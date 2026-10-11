@@ -7,12 +7,18 @@ import { PwaLifecycle } from "@/components/pwa-lifecycle";
 
 type MockWorker = ServiceWorker & { postMessage: ReturnType<typeof vi.fn> };
 
-function createWorker(): MockWorker {
+function createWorker(version?: string): MockWorker {
   const worker = new EventTarget() as MockWorker;
   Object.defineProperties(worker, {
     state: { configurable: true, value: "installed" },
-    postMessage: { configurable: true, value: vi.fn() },
+    postMessage: {
+      configurable: true,
+      value: vi.fn((message: { type?: string }, ports?: MessagePort[]) => {
+        if (message.type === "GET_VERSION" && version) ports?.[0]?.postMessage({ type: "PWA_VERSION", version });
+      }),
+    },
   });
+  if (version) Object.defineProperty(worker, "scriptURL", { value: "https://example.test/sw.js" });
   return worker;
 }
 
@@ -319,9 +325,275 @@ describe("PwaLifecycle", () => {
    * for the same reason (2026-09-17 audit, finding L4).
    */
   describe("update notice dismissal", () => {
+    it("keeps Later scoped to the same release across page loads", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const version = "2026-10-11-v1-build-aaaaaaaaaaaa";
+      const first = createWorker(version);
+      installServiceWorkerStub(first, true);
+      render(<PwaLifecycle />);
+      await screen.findByRole("region", { name: "Update available" });
+      await userEvent.click(screen.getByRole("button", { name: "Later" }));
+
+      cleanup();
+      const sameRelease = createWorker(version);
+      const closePort = vi.fn();
+      sameRelease.postMessage.mockImplementation((message: { type?: string }, ports?: MessagePort[]) => {
+        if (message.type !== "GET_VERSION" || !ports?.[0]) return;
+        const originalClose = ports[0].close.bind(ports[0]);
+        vi.spyOn(ports[0], "close").mockImplementation(() => {
+          originalClose();
+          closePort();
+        });
+        ports[0].postMessage({ type: "PWA_VERSION", version });
+      });
+      installServiceWorkerStub(sameRelease, true);
+      render(<PwaLifecycle />);
+      await waitFor(() => expect(closePort).toHaveBeenCalled());
+      expect(screen.queryByRole("region", { name: "Update available" })).not.toBeInTheDocument();
+    });
+
+    it("replays an activation that happens while the lifecycle module is still loading", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const { container } = installServiceWorkerStub(null, true);
+      render(<PwaLifecycle />);
+      Object.defineProperty(container, "controller", {
+        configurable: true,
+        value: createWorker("2026-10-11-v1-build-cccccccccccc"),
+      });
+      container.dispatchEvent(new Event("controllerchange"));
+      expect(await screen.findByRole("region", { name: "Update available" })).toBeInTheDocument();
+    });
+
+    it("does not offer Reload for a waiting worker that activated during its version lookup", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const { registration, container } = installServiceWorkerStub(null, true);
+      render(<PwaLifecycle />);
+      await waitFor(() => expect(container.register).toHaveBeenCalled());
+      const worker = createWorker("release-d");
+      worker.postMessage.mockImplementation(() => {});
+      Object.defineProperties(registration, {
+        waiting: { configurable: true, value: worker },
+        installing: { configurable: true, value: worker },
+      });
+      act(() => {
+        registration.dispatchEvent(new Event("updatefound"));
+        worker.dispatchEvent(new Event("statechange"));
+      });
+      await waitFor(() => expect(worker.postMessage).toHaveBeenCalled());
+      const port = worker.postMessage.mock.calls[0][1][0] as MessagePort;
+      const closed = vi.spyOn(port, "close");
+      Object.defineProperty(worker, "state", { configurable: true, value: "activated" });
+      port.postMessage({ type: "PWA_VERSION", version: "release-d" });
+      await waitFor(() => expect(closed).toHaveBeenCalled());
+      expect(screen.queryByRole("button", { name: /reload/i })).not.toBeInTheDocument();
+    });
+
+    it("offers an update activated by another tab even after an earlier release was dismissed", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const first = createWorker("2026-10-11-v1-build-aaaaaaaaaaaa");
+      const { container } = installServiceWorkerStub(first, true);
+      render(<PwaLifecycle />);
+      await screen.findByRole("region", { name: "Update available" });
+      await userEvent.click(screen.getByRole("button", { name: "Later" }));
+
+      Object.defineProperty(container, "controller", {
+        configurable: true,
+        value: createWorker("2026-10-11-v1-build-bbbbbbbbbbbb"),
+      });
+      act(() => container.dispatchEvent(new Event("controllerchange")));
+      expect(await screen.findByRole("region", { name: "Update available" })).toBeInTheDocument();
+    });
+
+    it.each(["waiting", "activated"] as const)(
+      "removes a superseded %s notice while identifying a release dismissed in another tab",
+      async (initialState) => {
+        window.history.replaceState({}, "", "/?pwa-dev=1");
+        const first = createWorker("release-a");
+        const { registration, container } = installServiceWorkerStub(initialState === "waiting" ? first : null, true);
+        render(<PwaLifecycle />);
+        await waitFor(() => expect(container.register).toHaveBeenCalled());
+        if (initialState === "activated") {
+          Object.defineProperty(container, "controller", { configurable: true, value: first });
+          act(() => container.dispatchEvent(new Event("controllerchange")));
+        }
+        await screen.findByRole("region", { name: "Update available" });
+
+        const second = createWorker("release-b");
+        second.postMessage.mockImplementation(() => {});
+        window.localStorage.setItem(
+          "clinical-kb-pwa-update-dismissed-at:https://example.test/sw.js#release-b",
+          String(Date.now()),
+        );
+        Object.defineProperties(registration, {
+          waiting: { configurable: true, value: second },
+          installing: { configurable: true, value: second },
+        });
+        if (initialState === "waiting") {
+          Object.defineProperty(first, "state", { configurable: true, value: "redundant" });
+        }
+        act(() => {
+          registration.dispatchEvent(new Event("updatefound"));
+          second.dispatchEvent(new Event("statechange"));
+        });
+        // No stale Reload action while the replacement's identity is pending.
+        expect(screen.queryByRole("region", { name: "Update available" })).not.toBeInTheDocument();
+        const secondPort = second.postMessage.mock.calls[0][1][0] as MessagePort;
+        const closed = vi.spyOn(secondPort, "close");
+        secondPort.postMessage({ type: "PWA_VERSION", version: "release-b" });
+        await waitFor(() => expect(closed).toHaveBeenCalled());
+        expect(screen.queryByRole("region", { name: "Update available" })).not.toBeInTheDocument();
+        expect(first.postMessage).not.toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+
+        const third = createWorker("release-c");
+        Object.defineProperties(registration, {
+          waiting: { configurable: true, value: third },
+          installing: { configurable: true, value: third },
+        });
+        act(() => {
+          registration.dispatchEvent(new Event("updatefound"));
+          third.dispatchEvent(new Event("statechange"));
+        });
+        await screen.findByRole("region", { name: "Update available" });
+        await userEvent.click(screen.getByRole("button", { name: "Reload" }));
+        expect(third.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+      },
+    );
+
+    it("still offers an older worker that does not support the version handshake", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const legacyWorker = createWorker("unused");
+      legacyWorker.postMessage.mockImplementation(() => {});
+      installServiceWorkerStub(legacyWorker, true);
+      render(<PwaLifecycle />);
+      expect(await screen.findByRole("region", { name: "Update available" }, { timeout: 2_500 })).toBeInTheDocument();
+    });
+
+    it.each(["timeout", "unavailable", "invalid"] as const)(
+      "does not persist an unknown release dismissal or hide its successor (%s)",
+      async (reply) => {
+        window.history.replaceState({}, "", "/?pwa-dev=1");
+        if (reply === "unavailable") vi.stubGlobal("MessageChannel", undefined);
+        const unknownWorker = () => {
+          const worker = createWorker("unused");
+          worker.postMessage.mockImplementation((message: { type?: string }, ports?: MessagePort[]) => {
+            if (reply === "invalid" && message.type === "GET_VERSION") {
+              ports?.[0]?.postMessage({ type: "PWA_VERSION", version: "invalid version!" });
+            }
+          });
+          return worker;
+        };
+        const first = unknownWorker();
+        const { registration, container } = installServiceWorkerStub(first, true);
+        render(<PwaLifecycle />);
+        await screen.findByRole("region", { name: "Update available" }, { timeout: 2_500 });
+        await userEvent.click(screen.getByRole("button", { name: "Later" }));
+        expect(Object.keys(window.localStorage).filter((key) => key.includes("pwa-update-dismissed"))).toEqual([]);
+
+        // Another tab activates this same worker. Even a later successful version
+        // reply must honor Later for the worker already dismissed in this page.
+        let completeReply: () => void = () => {};
+        const replyComplete =
+          reply === "unavailable"
+            ? Promise.resolve()
+            : new Promise<void>((resolve) => {
+                completeReply = resolve;
+              });
+        first.postMessage.mockImplementation((message: { type?: string }, ports?: MessagePort[]) => {
+          if (message.type === "GET_VERSION" && ports?.[0]) {
+            const close = ports[0].close.bind(ports[0]);
+            vi.spyOn(ports[0], "close").mockImplementation(() => {
+              close();
+              completeReply();
+            });
+            ports[0].postMessage({ type: "PWA_VERSION", version: "known-after-dismissal" });
+          }
+        });
+        Object.defineProperty(container, "controller", { configurable: true, value: first });
+        act(() => container.dispatchEvent(new Event("controllerchange")));
+        await act(async () => {
+          await replyComplete;
+        });
+        expect(screen.queryByRole("region", { name: "Update available" })).not.toBeInTheDocument();
+
+        const second = unknownWorker();
+        Object.defineProperties(registration, {
+          waiting: { configurable: true, value: second },
+          installing: { configurable: true, value: second },
+        });
+        act(() => {
+          registration.dispatchEvent(new Event("updatefound"));
+          second.dispatchEvent(new Event("statechange"));
+        });
+        expect(await screen.findByRole("region", { name: "Update available" }, { timeout: 2_500 })).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Later" }));
+
+        cleanup();
+        installServiceWorkerStub(unknownWorker(), true);
+        render(<PwaLifecycle />);
+        expect(await screen.findByRole("region", { name: "Update available" }, { timeout: 2_500 })).toBeInTheDocument();
+      },
+    );
+
+    it("ignores a late release reply from a superseded waiting worker", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const first = createWorker("unused");
+      first.postMessage.mockImplementation(() => {});
+      const { registration } = installServiceWorkerStub(first, true);
+      render(<PwaLifecycle />);
+      await waitFor(() => expect(first.postMessage).toHaveBeenCalled());
+      const firstPort = first.postMessage.mock.calls[0][1][0] as MessagePort;
+      const firstClosed = vi.spyOn(firstPort, "close");
+
+      const second = createWorker("2026-10-11-v1-build-bbbbbbbbbbbb");
+      Object.defineProperties(registration, {
+        waiting: { configurable: true, value: second },
+        installing: { configurable: true, value: second },
+      });
+      act(() => {
+        registration.dispatchEvent(new Event("updatefound"));
+        second.dispatchEvent(new Event("statechange"));
+      });
+      await screen.findByRole("region", { name: "Update available" });
+      firstPort.postMessage({ type: "PWA_VERSION", version: "2026-10-11-v1-build-aaaaaaaaaaaa" });
+      await waitFor(() => expect(firstClosed).toHaveBeenCalled());
+      await userEvent.click(screen.getByRole("button", { name: "Reload" }));
+      expect(second.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+      expect(first.postMessage).not.toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+    });
+
+    it("offers a newer release at the same worker URL after Later, in this tab and after a page load", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const first = createWorker("2026-10-11-v1-build-aaaaaaaaaaaa");
+      const { registration } = installServiceWorkerStub(first, true);
+      render(<PwaLifecycle />);
+      await screen.findByRole("region", { name: "Update available" });
+      await userEvent.click(screen.getByRole("button", { name: "Later" }));
+
+      const second = createWorker("2026-10-11-v1-build-bbbbbbbbbbbb");
+      Object.defineProperties(registration, {
+        waiting: { configurable: true, value: second },
+        installing: { configurable: true, value: second },
+      });
+      act(() => {
+        registration.dispatchEvent(new Event("updatefound"));
+        second.dispatchEvent(new Event("statechange"));
+      });
+      expect(await screen.findByRole("region", { name: "Update available" })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Later" }));
+
+      cleanup();
+      const third = createWorker("2026-10-11-v1-build-cccccccccccc");
+      installServiceWorkerStub(third, true);
+      render(<PwaLifecycle />);
+      expect(await screen.findByRole("region", { name: "Update available" })).toBeInTheDocument();
+    });
+
+    const knownRelease = "2026-10-11-v1-build-known";
     async function showUpdateNotice() {
       window.history.replaceState({}, "", "/?pwa-dev=1");
-      const { container } = installServiceWorkerStub(createWorker(), true);
+      const worker = createWorker(knownRelease);
+      const { container } = installServiceWorkerStub(null, true);
+      Object.defineProperty(container, "controller", { configurable: true, value: worker });
       render(<PwaLifecycle />);
       await waitFor(() => expect(container.register).toHaveBeenCalled());
       act(() => {
@@ -337,13 +609,25 @@ describe("PwaLifecycle", () => {
 
       // A new page load: everything in memory is gone, only storage survives.
       cleanup();
-      const { container } = installServiceWorkerStub(createWorker(), true);
+      const worker = createWorker(knownRelease);
+      const { container } = installServiceWorkerStub(null, true);
+      Object.defineProperty(container, "controller", { configurable: true, value: worker });
+      const replied = vi.fn();
+      worker.postMessage.mockImplementation((message: { type?: string }, ports?: MessagePort[]) => {
+        if (message.type !== "GET_VERSION" || !ports?.[0]) return;
+        const close = ports[0].close.bind(ports[0]);
+        vi.spyOn(ports[0], "close").mockImplementation(() => {
+          close();
+          replied();
+        });
+        ports[0].postMessage({ type: "PWA_VERSION", version: knownRelease });
+      });
       render(<PwaLifecycle />);
       await waitFor(() => expect(container.register).toHaveBeenCalled());
       act(() => {
         container.dispatchEvent(new Event("controllerchange"));
       });
-
+      await waitFor(() => expect(replied).toHaveBeenCalled());
       expect(screen.queryByRole("region", { name: "Update available" })).not.toBeInTheDocument();
     });
 
@@ -354,13 +638,13 @@ describe("PwaLifecycle", () => {
       await userEvent.click(screen.getByRole("button", { name: "Later" }));
 
       cleanup();
-      window.localStorage.setItem("clinical-kb-pwa-update-dismissed-at", String(Date.now() - 7 * 60 * 60 * 1000));
-      const { container } = installServiceWorkerStub(createWorker(), true);
+      window.localStorage.setItem(
+        `clinical-kb-pwa-update-dismissed-at:https://example.test/sw.js#${knownRelease}`,
+        String(Date.now() - 7 * 60 * 60 * 1000),
+      );
+      const { container } = installServiceWorkerStub(createWorker(knownRelease), true);
       render(<PwaLifecycle />);
       await waitFor(() => expect(container.register).toHaveBeenCalled());
-      act(() => {
-        container.dispatchEvent(new Event("controllerchange"));
-      });
 
       expect(await screen.findByRole("region", { name: "Update available" })).toBeInTheDocument();
     });
