@@ -27,15 +27,15 @@ seconds, with no deploy step in between), `# RAG ranking protection`, `# Railway
 | Claude Code hook scripts | [`docs/agents/claude-hook-scripts.md`](docs/agents/claude-hook-scripts.md) |
 | The `bug-hunter` shortcut | [`docs/agents/bug-hunter-shortcut.md`](docs/agents/bug-hunter-shortcut.md) |
 | Repository skills, the `/issues` outstanding-work memory | [`docs/agents/repository-skills-and-issues.md`](docs/agents/repository-skills-and-issues.md) |
-| Codex dependency, review throttling, desktop worktree, reasoning effort, productivity, GitHub review, Cloud; Cursor Cloud | the `docs/agents/codex-*.md` and `docs/agents/cursor-cloud.md` pointers below |
+| Codex dependency, review throttling, desktop worktree, reasoning effort, productivity, GitHub review, Cloud; Cursor Cloud | the `docs/agents/codex-*.md` and `docs/agents/cursor-cloud.md` pointers in `AGENTS.md` |
 
-Five always-loaded sections stay here in full. Exact-text gate protection is narrower than
+Five always-loaded sections stay in `AGENTS.md` in full. Exact-text gate protection is narrower than
 that list: `# Search chrome behaviour` is pinned by `tests/ui-overlay-css-contract.test.ts`
 (marker + “Hidden means zero reserve”); `## Codex Cloud environment` is pinned as a
 **pointer heading** by `scripts/check-codex-cloud-setup.mjs` (body lives in
 `docs/agents/codex-cloud-environment.md`); `## Bare PR publication is not readiness work`
-and the format-before-push rule stay here and are enforced operationally via skills,
+and the format-before-push rule stay in `AGENTS.md` and are enforced operationally via skills,
 hooks, and `scripts/guard-push.mjs` rather than a body-text parser; `## Anti-conflict and
-CI-speed operating procedure` stays here by convention and is **not** exact-text pinned —
+CI-speed operating procedure` stays in `AGENTS.md` by convention and is **not** exact-text pinned —
 silent reword would still pass `verify:full`. Do not treat every always-loaded block as
 gate-locked.
