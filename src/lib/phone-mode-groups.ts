@@ -95,8 +95,8 @@ export const phoneModeGroups = [
     drawn: true,
     modeIds: ["favourites", "sources"],
   },
-  // Retired from the menu but still a registered mode, so old links resolve:
-  // `/tools` now redirects to Psychiatry (audit item 8). Never drawn.
+  // Retired from the menu but still a registered mode (audit item 8), so `/tools`
+  // still opens for old links and bookmarks. Never drawn.
   {
     id: "retired",
     label: "Retired",

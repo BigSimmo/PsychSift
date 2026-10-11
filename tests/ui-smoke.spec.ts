@@ -848,7 +848,16 @@ async function openMobileClinicalGuideMenu(page: Page) {
     { name: "Medication", href: "/?mode=prescribing" },
     { name: "Factsheets", href: "/?mode=factsheets" },
   ]);
-  await expect(navigation.getByRole("button", { name: "More modes" })).toBeVisible();
+  // The phone menu (owner pick "variant C", 11 Oct 2026): Clinical | Work tabs in
+  // the brand band, an alerts bell beside the close cross, and every clinical page
+  // listed under its group in place of the More modes sheet.
+  await expect(menu.getByRole("tab", { name: "Clinical" })).toHaveAttribute("aria-selected", "true");
+  await expect(menu.getByRole("tab", { name: /^Work/ })).toHaveAttribute("aria-selected", "false");
+  await expect(menu.getByTestId("clinical-menu-bell")).toHaveAttribute("href", "/my-day/notifications");
+  await expect(navigation.getByRole("button", { name: "More modes" })).toHaveCount(0);
+  for (const group of ["Search", "Psychiatry", "Medicines", "Library"]) {
+    await expect(menu.getByRole("navigation", { name: group, exact: true })).toBeAttached();
+  }
   await expect(menu.getByRole("button", { name: "Guide & help", exact: true })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /^(Switch to )?(dark|light) mode$/i })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /Appearance Auto/ })).toBeVisible();
@@ -1305,6 +1314,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     const newChat = menu.getByRole("button", { name: "New chat" });
     const restingButtonShadow = await newChat.evaluate((element) => getComputedStyle(element).boxShadow);
     await closeMenu.focus();
+    // The Clinical | Work tabs sit between Close and the menu body: one tab stop.
+    await page.keyboard.press("Tab");
+    await expect(menu.getByRole("tab", { name: "Clinical" })).toBeFocused();
     await page.keyboard.press("Tab");
     // Firefox includes scrollable containers in the tab order; the sheet body
     // (overflow-y-auto) sits between Close and "New chat" in DOM order and
@@ -2037,10 +2049,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(modeCount).toBeGreaterThanOrEqual(10);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
     await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeAttached();
+    // Tools left the menu (audit item 8, 11 Oct 2026); `/tools` still opens for old links.
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
     // Sources reached the desktop menu (built from `appModeDefinitions`) but not
     // this one, which renders `phoneModeGroups` and drops any mode no group names.
@@ -2100,31 +2113,29 @@ test.describe("PsychSift UI smoke coverage", () => {
     await sideToggle.getByRole("button", { name: "Clinical", exact: true }).click();
     await expect(modeOptions).toHaveCount(modeCount);
 
-    // A lower group remains reachable through the sheet's own scroll owner.
-    // Tools is browse-first, so selecting it opens the canonical directory.
-    const toolsMode = appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ });
-    await toolsMode.scrollIntoViewIfNeeded();
-    await expect(toolsMode).toBeVisible();
-    await toolsMode.click();
+    // The lowest group remains reachable through the sheet's own scroll owner.
+    // Sources sits at the foot of the Clinical list (audit item 8, 11 Oct 2026).
+    const sourcesMode = appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ });
+    await sourcesMode.scrollIntoViewIfNeeded();
+    await expect(sourcesMode).toBeVisible();
+    await sourcesMode.click();
 
     await expect(modeSheet).toHaveCount(0);
     await expect(appModeMenu).toHaveCount(0);
-    await expect(page).toHaveURL(/\/tools$/);
-    const toolsTrigger = page.getByRole("button", { name: "Mode Tools" });
-    await expect(toolsTrigger).toBeVisible();
-    await expect(page.getByTestId("tools-search-results-page")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/[?&]mode=sources\b/);
+    const sourcesTrigger = page.getByRole("button", { name: "Mode Sources" });
+    await expect(sourcesTrigger).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     // Reopening on a mode in a lower group must position that selected row in
     // the sheet's own scrollport, without requiring a hunt from the top.
-    await toolsTrigger.click();
-    const reopenedToolsMode = page.getByRole("menu", { name: "Choose app mode" }).getByRole("menuitemradio", {
-      name: /^Tools\b/,
+    await sourcesTrigger.click();
+    const reopenedSourcesMode = page.getByRole("menu", { name: "Choose app mode" }).getByRole("menuitemradio", {
+      name: /^Sources\b/,
     });
-    await expect(reopenedToolsMode).toHaveAttribute("aria-checked", "true");
-    await expect(reopenedToolsMode).toBeInViewport();
-    await expect(page.getByText("Currently Tools", { exact: true })).toBeVisible();
+    await expect(reopenedSourcesMode).toHaveAttribute("aria-checked", "true");
+    await expect(reopenedSourcesMode).toBeInViewport();
+    await expect(page.getByText("Currently Sources", { exact: true })).toBeVisible();
   });
 
   test("phone mode menu dismisses via backdrop and restores focus to the Mode button", async ({ page }) => {
@@ -4678,11 +4689,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu).toBeVisible();
     await expect(modeDialog.getByRole("textbox", { name: "Find a mode" })).toHaveCount(0);
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
-    await expect(modeDialog.getByRole("status")).toHaveText("19 in Clinical");
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
+    await expect(modeDialog.getByRole("status")).toHaveText("18 in Clinical");
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading")).toHaveCount(3);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
@@ -4695,22 +4706,18 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toHaveCount(0);
     await modeDialog.getByRole("radio", { name: "Clinical" }).click();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await answerMode.focus();
     await expect(answerMode).toBeFocused();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Evidence\b/ })).toHaveCount(0);
     // Arrow Down follows the drawn order, group by group: the end of Search
-    // steps into Psychiatry, and the end of Psychiatry steps into Medicines & tools.
+    // steps into Psychiatry, and the end of Psychiatry steps into Medicines.
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Services\b/ })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Favourites\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Psychiatry\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -4725,11 +4732,16 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Therapy\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeFocused();
+    // Calculators and the Dictionary moved here from Medicines (audit item 8).
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Calculators\b/ })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^First Nations\b/ })).toBeFocused();
-    // Medicines & tools is led by its hub, as Psychiatry is.
+    // Medicines is led by its hub, as Psychiatry is.
     await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeFocused();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeFocused();
     await page.keyboard.press("Escape");
