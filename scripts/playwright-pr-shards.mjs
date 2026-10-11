@@ -283,15 +283,17 @@ export const prUiSpecProfiles = Object.freeze([
   },
   {
     // Unmeasured (new in Roster release two); estimated until a CI timing report exists.
+    // Moved to shard 3 when the assessment scrolling spec joined shard 1, keeping
+    // both groups inside the duration-balance ceilings.
     file: "tests/ui-roster-team.spec.ts",
-    shard: 1,
+    shard: 3,
     fullSeconds: 13.3,
     criticalSeconds: 0,
   },
   {
     // Estimated (new assessment scrolling coverage); re-measure after the first PR timing report.
     file: "tests/ui-phone-scroll-assessments.spec.ts",
-    shard: 3,
+    shard: 1,
     fullSeconds: 25,
     criticalSeconds: 0,
   },
