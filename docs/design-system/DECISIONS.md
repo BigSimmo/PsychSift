@@ -224,7 +224,7 @@ dark mode, the owner approved these seven rules for both modes:
    controls and illustrations, in Clinical blue. No search bar is added at the top.
 2. **Calmer bands.** The band and top bar carry no dot texture, and the band's line drawing
    is fainter (0.08 light, 0.11 dark, from 0.11 and 0.14).
-3. **Primary buttons take the area colour.** Never black or ink-filled buttons, in either mode.
+3. **Primary buttons take the area colour.** Never black or ink-filled buttons, in either mode. First Nations keeps its own standard (v13.1), which holds its olive to the pill, current tab, icon tiles, day track and quotation accents, so its buttons stay neutral.
 4. **Filter chips stay on one line.** They scroll sideways with an edge fade and never wrap to
    leave one chip alone.
 5. **Red means overdue, lapsed or urgent only,** in both modes. Priority and category labels

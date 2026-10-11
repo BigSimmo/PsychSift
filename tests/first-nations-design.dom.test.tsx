@@ -97,16 +97,7 @@ describe("First Nations design guard (standard v13.1)", () => {
     for (const { f, text } of files) if (f !== "voice.tsx") expect(text, f).not.toMatch(/fn-voice/);
   });
   it("uses the mode colour only in the allowed places", () => {
-    // fn-button.tsx: a filled (primary) button wears the area colour, per the
-    // owner-approved rule "primary buttons always take the area colour"
-    // (design pass, October 2026). Outlined buttons stay neutral.
-    const allowed = new Set([
-      "module-header.tsx",
-      "day-track.tsx",
-      "voice.tsx",
-      "first-nations-nav-header.tsx",
-      "fn-button.tsx",
-    ]);
+    const allowed = new Set(["module-header.tsx", "day-track.tsx", "voice.tsx", "first-nations-nav-header.tsx"]);
     for (const { f, text } of files) if (!allowed.has(f)) expect(text, f).not.toMatch(/mode-identity|modeIdentity/);
   });
   it("gives tabs no count badges", () => {
