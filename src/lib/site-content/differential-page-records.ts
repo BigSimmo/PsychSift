@@ -56,15 +56,23 @@ export const readPresentationPageRecord = cache(async (slug: string) => {
   const seed = getPresentationWorkflow(slug);
   if (isDemoMode() || isLocalNoAuthMode()) return seed;
   await connection();
-  const { records } = await readCanonicalSiteContentRecords({
-    supabase: createAdminClient(),
-    kind: "presentation",
-    slug,
-    seeds: seed ? [{ workflow: seed }] : [],
-    mapRecord: ({ finalRenderPayload }) => ({
-      workflow: finalRenderPayload as unknown as NonNullable<typeof seed>,
-    }),
-  });
-  const workflow = records[0]?.workflow;
+  const read = (lookupSlug: string) =>
+    readCanonicalSiteContentRecords({
+      supabase: createAdminClient(),
+      kind: "presentation",
+      slug: lookupSlug,
+      seeds: seed ? [{ workflow: seed }] : [],
+      mapRecord: ({ finalRenderPayload }) => ({
+        workflow: finalRenderPayload as unknown as NonNullable<typeof seed>,
+      }),
+    });
+  const legacySlug = Object.entries({
+    "presentation-depression": "depression",
+    "presentation-substance-intoxication": "substance-intoxication",
+    "presentation-substance-withdrawal": "substance-withdrawal",
+  }).find(([canonical]) => canonical === slug)?.[1];
+  const { records } = await read(slug);
+  const fallback = records.length === 0 && legacySlug ? await read(legacySlug) : { records: [] };
+  const workflow = (records[0] ?? fallback.records[0])?.workflow;
   return workflow ? scopePresentationWorkflow(workflow) : null;
 });
