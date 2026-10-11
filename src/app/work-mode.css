@@ -2866,7 +2866,9 @@ html[data-work-frame] .app-toast-region {
 
 @media (forced-colors: active) {
   .work-side-menu__row[aria-current="true"],
-  .work-rail__item[aria-current="true"] .work-rail__pill {
+  .work-rail__item[aria-current="true"] .work-rail__pill,
+  .clinical-rail__item[aria-current="page"] .work-rail__pill,
+  .clinical-rail__item[data-current="true"] .work-rail__pill {
     outline: 2px solid Highlight;
   }
 
