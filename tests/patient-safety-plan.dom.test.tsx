@@ -379,8 +379,17 @@ describe("PatientSafetyPlan — browser Back and shell controls", () => {
     back.mockRestore();
   });
 
+  /** Leave a dirty plan by an in-app link: its sentinel, from this page load, stays behind. */
+  function leaveSentinelBehind(hadHistoryBefore: boolean) {
+    const { back, view } = renderDirtyPlan();
+    const marker = (window.history.state as Record<string, Record<string, unknown>>)[SENTINEL];
+    view.unmount();
+    back.mockRestore();
+    window.history.replaceState({ __NA: true, [SENTINEL]: { ...marker, hadHistoryBefore } }, "");
+  }
+
   it("returning to a left-behind sentinel skips both plan entries when there was a page before", () => {
-    window.history.replaceState({ __NA: true, [SENTINEL]: { hadHistoryBefore: true } }, "");
+    leaveSentinelBehind(true);
     const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
     router.replace.mockClear();
     const view = render(<PatientSafetyPlan />);
@@ -394,12 +403,30 @@ describe("PatientSafetyPlan — browser Back and shell controls", () => {
   it("returning to a left-behind sentinel opens Psychiatry when the plan was the first page", () => {
     // Checking history from the sentinel would always find the plan's own entry behind it, so
     // the answer recorded when the sentinel was pushed is the one used.
-    window.history.replaceState({ __NA: true, [SENTINEL]: { hadHistoryBefore: false } }, "");
+    leaveSentinelBehind(false);
     const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
     router.replace.mockClear();
     const view = render(<PatientSafetyPlan />);
     expect(go).not.toHaveBeenCalled();
     expect(router.replace).toHaveBeenCalledWith(expect.stringMatching(/^\/psychiatry/));
+    view.unmount();
+    go.mockRestore();
+  });
+
+  it("reloading on a sentinel stays on a fresh plan instead of leaving", () => {
+    // Browsers keep history state across a reload, so the sentinel is still there, but it
+    // came from an earlier page load.
+    window.history.replaceState(
+      { __NA: true, [SENTINEL]: { hadHistoryBefore: true, documentId: "an earlier page load" } },
+      "",
+    );
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
+    router.replace.mockClear();
+    const view = render(<PatientSafetyPlan />);
+    expect(go).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(onSentinel()).toBe(false);
+    expect(window.history.state).toMatchObject({ __NA: true });
     view.unmount();
     go.mockRestore();
   });

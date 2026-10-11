@@ -83,7 +83,21 @@ function onPlanSentinel(): boolean {
 function pushPlanSentinel(hadHistoryBefore: boolean) {
   const state: unknown = window.history.state;
   const base = typeof state === "object" && state !== null ? state : {};
-  window.history.pushState({ ...base, [PLAN_SENTINEL_KEY]: { hadHistoryBefore } }, "");
+  window.history.pushState({ ...base, [PLAN_SENTINEL_KEY]: { hadHistoryBefore, documentId: PLAN_DOCUMENT_ID } }, "");
+}
+
+/**
+ * Names this page load. Browsers keep history state across a reload or a restored tab, so a
+ * sentinel from an earlier page load must not be read as a return from an in-app link.
+ */
+const PLAN_DOCUMENT_ID = Math.random().toString(36).slice(2);
+
+function sentinelFromThisPageLoad(): boolean {
+  if (!onPlanSentinel()) return false;
+  const marker: unknown = (window.history.state as Record<string, unknown>)[PLAN_SENTINEL_KEY];
+  return typeof marker === "object" && marker !== null && "documentId" in marker
+    ? marker.documentId === PLAN_DOCUMENT_ID
+    : false;
 }
 
 /**
@@ -642,11 +656,15 @@ export function PatientSafetyPlan() {
   // plan: skip both the sentinel and the original plan entry, so Back reaches the page before.
   // This runs before the dirty guard below, so a newly pushed sentinel is not mistaken for a
   // returning one on the initial mount.
+  // A sentinel from an earlier page load (a reload, or a restored tab) is only taken off:
+  // the clinician meant to stay here, on a fresh empty plan.
   useEffect(() => {
     if (!onPlanSentinel()) return;
+    const returning = sentinelFromThisPageLoad();
     const rest = { ...(window.history.state as Record<string, unknown>) };
     delete rest[PLAN_SENTINEL_KEY];
     window.history.replaceState(rest, "");
+    if (!returning) return;
     if (hadHistoryBeforeRef.current) {
       window.history.go(-2);
     } else {
