@@ -23,6 +23,8 @@ For context transfer or memory setup/use, read `docs/agents/shared-context-and-m
 
 # Required project instruction continuation
 
+At task start, read [task lifecycle and receipt handoff](docs/task-receipts.md) and [the organisation map](docs/organisation/README.md).
+
 Before any repository write or publication, read and follow [the remaining project instructions](PROJECT-INSTRUCTIONS-CONTINUATION.md). Their full text remains binding. This split changes startup size only and grants no new authority. The retained headings below index that required continuation.
 
 <!-- BEGIN:nextjs-agent-rules -->
