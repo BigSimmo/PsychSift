@@ -66,6 +66,12 @@ const PATH_RULES: ReadonlyArray<{ readonly prefix: string; readonly kind: Psychi
 ];
 
 /**
+ * The Act and Standards page and the MHA clock sit under /forms/ but are not forms, so they
+ * are never recorded as form visits; the Psychiatry card links them separately.
+ */
+const NOT_A_FORM = new Set(["/forms/act", "/forms/clock"]);
+
+/**
  * The section a path belongs to, or null when it is not a record page: section
  * homes, search pages, catalogue lists and the interactive tools return null. Documents are
  * left out: the viewer's page title does not name the document, so there is
@@ -74,7 +80,7 @@ const PATH_RULES: ReadonlyArray<{ readonly prefix: string; readonly kind: Psychi
 export function psychiatryVisitKindForPath(pathname: string): PsychiatryVisitKind | null {
   const path = pathname.split(/[?#]/)[0] ?? "";
   const rule = PATH_RULES.find((candidate) => path.startsWith(candidate.prefix));
-  if (!rule) return null;
+  if (!rule || NOT_A_FORM.has(path.replace(/\/+$/, ""))) return null;
   const rest = path.slice(rule.prefix.length).split("/").filter(Boolean);
   if (rest.length === 0) return null;
   // `/differentials/presentations` and `/differentials/diagnoses` are lists; their `[slug]` pages are records.
@@ -302,9 +308,6 @@ export function psychiatryMonthFigures(
   const month = perthMonth(now);
   return { thisMonth: months[month] ?? 0, lastMonth: months[previousMonth(month)] ?? 0 };
 }
-
-/** The Act and Standards page and the MHA clock are not forms; the card links them separately. */
-const NOT_A_FORM = new Set(["/forms/act", "/forms/clock"]);
 
 /**
  * The forms opened most in the 90 days, most first, ties to the most recent.
