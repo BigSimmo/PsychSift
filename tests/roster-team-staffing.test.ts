@@ -255,3 +255,19 @@ describe("staffingAskText", () => {
     expect(dated).not.toMatch(/\d+ doctors/);
   });
 });
+
+describe("staffingDays: the caller's work zone", () => {
+  it("puts a shift on the day it falls in the given zone, not Perth's", () => {
+    // 22:30 Thu in Perth is 01:30 Fri in Sydney.
+    const late = { ...shift(ME, "2026-10-22"), startsAt: "2026-10-22T14:30:00Z" };
+    const window = { from: "2026-10-22", to: "2026-10-23" };
+    const perth = staffingDays([late], window, { actorId: ME, knownThrough: "2026-10-23", zone: "Australia/Perth" });
+    const sydney = staffingDays([late], window, {
+      actorId: ME,
+      knownThrough: "2026-10-23",
+      zone: "Australia/Sydney",
+    });
+    expect(perth.map((day) => day.on)).toEqual([1, 0]);
+    expect(sydney.map((day) => day.on)).toEqual([0, 1]);
+  });
+});

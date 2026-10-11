@@ -202,9 +202,13 @@ describe("overlay and global CSS contracts", () => {
     expect(standaloneShellBlock).toContain("min-height: 100vh;");
     expect(standaloneShellBlock).toContain("height: 100vh;");
     expect(standaloneShellBlock).toContain("overflow: hidden;");
+    // Clip, after the hidden fallback: a route change's scrollIntoView scrolled
+    // a hidden box and shoved the whole app up (10 Oct 2026). Clip cannot scroll.
+    expect(standaloneShellBlock).toMatch(/overflow: hidden;\s*overflow: clip;/);
     expect(standaloneFrameBlock).toContain("min-height: 0;");
     expect(standaloneFrameBlock).toContain("position: relative;");
     expect(standaloneFrameBlock).toContain("overflow: hidden;");
+    expect(standaloneFrameBlock).toMatch(/overflow: hidden;\s*overflow: clip;/);
     expect(standaloneScrollBlock).toContain("overflow-x: hidden;");
     expect(standaloneScrollBlock).toContain("overscroll-behavior-y: contain;");
     expect(standaloneScrollBlock).toContain("-webkit-overflow-scrolling: touch;");

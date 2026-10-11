@@ -1,0 +1,41 @@
+name: CodSpeed
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Lets CodSpeed trigger backtest runs to build an initial performance history.
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write # OpenID Connect authentication with CodSpeed; no upload token secret is needed.
+
+jobs:
+  # CPU-simulation benchmarks for the pure clinical text pipeline (bench/*.bench.ts).
+  # Simulation counts instructions instead of timing them, so results stay stable on
+  # shared GitHub-hosted runners. The benchmarks use synthetic fixtures only and need
+  # no Supabase or provider credentials.
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node and install dependencies
+        uses: ./.github/actions/setup-node-cached
+
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@f842b9a3ffe213dbb81768fd7f7eeb4dfcf1c369 # v5.4.2
+        with:
+          mode: simulation
+          run: npm run bench

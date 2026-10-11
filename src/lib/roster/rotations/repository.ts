@@ -3,7 +3,6 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
-import { isAdministratorUser } from "@/lib/authorization";
 import { PublicApiError } from "@/lib/http";
 import { cleanRanking, type Placement, type RotationLock } from "@/lib/roster/rotations/allocate";
 import {
@@ -35,6 +34,7 @@ import {
   withdrawPreference,
 } from "@/lib/roster/rotations/operations";
 import type { createAdminClient } from "@/lib/supabase/admin";
+import { canManageRotations, loadWorkRoleContext, type WorkRoleContext } from "@/lib/work-roles/server";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -47,7 +47,9 @@ type AdminClient = ReturnType<typeof createAdminClient>;
  * Access, checked here on every call with the session user the route passes in:
  * - a doctor sees a round only while they are an active member of its team and
  *   named in it, and may only save or withdraw their own preference;
- * - every other action needs `canManageRotationsFor` for the round's team.
+ * - every other action needs `canManageRotations` (the shared role rule) for the
+ *   round's team: the site administrator, the team's Roster manager, or Medical
+ *   Workforce at a hospital the team belongs to.
  *
  * The tables are service-role only (no policies), so nothing here is reachable
  * from the browser except through these checks.
@@ -142,44 +144,50 @@ export type RoundCommand = z.infer<typeof roundCommandSchema>;
 
 // ---------------------------------------------------------------- who may manage
 
-/** True when the account holds the site administrator claim. Any failure reads as false. */
-export async function isSiteAdministrator(client: AdminClient, userId: string): Promise<boolean> {
-  try {
-    const { data, error } = await client.auth.admin.getUserById(userId);
-    if (error || !data?.user) return false;
-    return isAdministratorUser(data.user);
-  } catch {
-    return false;
+/**
+ * The session user's roles, read once per request. The administrator claim is
+ * read fresh from Auth, and any failed read throws, so a check never passes on
+ * missing data.
+ */
+async function readRoleContext(client: AdminClient, userId: string): Promise<WorkRoleContext> {
+  const { data, error } = await client.auth.admin.getUserById(userId);
+  if (error || !data?.user) {
+    throw new PublicApiError("Your roles could not be checked. Try again shortly.", 503, {
+      code: "work_roles_unavailable",
+    });
   }
+  return loadWorkRoleContext(client, { id: userId, appMetadata: data.user.app_metadata ?? {} });
 }
 
-/**
- * The ONE check for running a team's rotation rounds: the site administrator,
- * or an active member holding the team's Roster manager role (the SQL helper
- * `roster_rotation_can_manage`).
- *
- * TODO(PR 3375): once the Hospital roles work merges, swap the body for
- * `canManageRotations(ctx, serviceId)` from "@/lib/work-roles/server". Every
- * caller already goes through this function, so nothing else changes.
- *
- * Pass `known.siteAdministrator` when the caller has already looked it up, to
- * save a second auth read.
- */
-export async function canManageRotationsFor(
+function isSiteAdministrator(context: WorkRoleContext): boolean {
+  return context.grants.some((grant) => grant.role === "administrator");
+}
+
+/** Teams a role names directly, so a Medical Workforce lead sees their hospital's teams without being a member. */
+function teamsNamedByRoles(context: WorkRoleContext): string[] {
+  const ids = new Set<string>();
+  for (const grant of context.grants) {
+    if (grant.role === "manager") ids.add(grant.serviceId);
+    if (grant.role === "workforce" || grant.role === "dct") for (const id of grant.serviceIds) ids.add(id);
+  }
+  return [...ids];
+}
+
+/** Every team the user may run rounds for: their own teams first, then teams their roles cover. */
+async function readManageableTeams(
   client: AdminClient,
-  userId: string,
-  serviceId: string,
-  known: { siteAdministrator?: boolean } = {},
-): Promise<boolean> {
-  if (!userId || !serviceId) return false;
-  const siteAdministrator = known.siteAdministrator ?? (await isSiteAdministrator(client, userId));
-  if (siteAdministrator) return true;
-  const { data, error } = await client.rpc("roster_rotation_can_manage", {
-    p_service_id: serviceId,
-    p_user_id: userId,
-  });
-  if (error) throw databaseError(error);
-  return data === true;
+  context: WorkRoleContext,
+  myTeams: readonly Team[],
+): Promise<Team[]> {
+  const mine = myTeams.filter((team) => canManageRotations(context, team.serviceId));
+  const known = new Set(myTeams.map((team) => team.serviceId));
+  const others = teamsNamedByRoles(context).filter((id) => !known.has(id) && canManageRotations(context, id));
+  const names = await serviceNames(client, others);
+  const extra = others
+    .filter((id) => names.has(id))
+    .map((id) => ({ serviceId: id, name: names.get(id) ?? "Team" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return [...mine, ...extra];
 }
 
 // ---------------------------------------------------------------- teams and people
@@ -333,6 +341,7 @@ const ROUND_COLUMNS =
   "id,service_id,status,setup,locks,allocation,admin_name,version,created_at,opened_at,published_at,updated_at";
 const PREFERENCE_COLUMNS = "round_id,user_id,ranking,submitted_at,updated_at";
 const MAX_ROUNDS = 200;
+const PREFERENCE_PAGE = 1000;
 
 const rankingSchema = z.array(rotationIdSchema(64)).max(60);
 
@@ -420,14 +429,24 @@ async function loadPreferences(
   onlyUserId?: string,
 ): Promise<PreferenceRow[]> {
   if (!roundIds.length) return [];
-  let query = client
-    .from("roster_rotation_preferences")
-    .select(PREFERENCE_COLUMNS)
-    .in("round_id", [...roundIds]);
-  if (onlyUserId) query = query.eq("user_id", onlyUserId);
-  const { data, error } = await query;
-  if (error) throw databaseError(error);
-  return (data ?? []) as PreferenceRow[];
+  // The API returns at most 1,000 rows per request, and the overview can span many rounds, so read in
+  // pages until a short page comes back. Missing rows would show doctors as having sent nothing.
+  const rows: PreferenceRow[] = [];
+  for (let from = 0; ; from += PREFERENCE_PAGE) {
+    let query = client
+      .from("roster_rotation_preferences")
+      .select(PREFERENCE_COLUMNS)
+      .in("round_id", [...roundIds]);
+    if (onlyUserId) query = query.eq("user_id", onlyUserId);
+    const { data, error } = await query
+      .order("round_id")
+      .order("user_id")
+      .range(from, from + PREFERENCE_PAGE - 1);
+    if (error) throw databaseError(error);
+    const page = (data ?? []) as PreferenceRow[];
+    rows.push(...page);
+    if (page.length < PREFERENCE_PAGE) return rows;
+  }
 }
 
 // ---------------------------------------------------------------- read
@@ -436,35 +455,37 @@ export type RotationsOverview = {
   readonly mine: MyRound[];
   readonly managed: ManagedRound[];
   readonly canManage: boolean;
-  readonly team: { readonly serviceId: string; readonly name: string; readonly people: RotationTeamPerson[] } | null;
+  /** Every team the reader may start a round for, each with its active members. */
+  readonly teams: RotationTeamWithPeople[];
+  /** The first of `teams`, for screens that show one team. */
+  readonly team: RotationTeamWithPeople | null;
+};
+
+type RotationTeamWithPeople = {
+  readonly serviceId: string;
+  readonly name: string;
+  readonly people: RotationTeamPerson[];
 };
 
 /** Everything the rotation screens read for one signed-in user. */
 export async function readRotations(client: AdminClient, userId: string): Promise<RotationsOverview> {
   if (!userId) throw new PublicApiError("Sign in to open Roster.", 401, { code: "roster_auth_required" });
-  const [siteAdministrator, teams] = await Promise.all([
-    isSiteAdministrator(client, userId),
-    readMyTeams(client, userId),
-  ]);
-  const manageable = (
-    await Promise.all(
-      teams.map(async (team) =>
-        (await canManageRotationsFor(client, userId, team.serviceId, { siteAdministrator })) ? team : null,
-      ),
-    )
-  ).filter((team): team is Team => team !== null);
+  const [context, teams] = await Promise.all([readRoleContext(client, userId), readMyTeams(client, userId)]);
+  const siteAdministrator = isSiteAdministrator(context);
+  const manageable = await readManageableTeams(client, context, teams);
   const memberIds = new Set(teams.map((team) => team.serviceId));
   const manageIds = new Set(manageable.map((team) => team.serviceId));
 
-  // The site administrator can run every team's rounds; anyone else reads their own teams' only.
+  // The site administrator can run every team's rounds; anyone else reads their own teams' and the teams they run.
   let roundsQuery = client
     .from("roster_rotation_rounds")
     .select(ROUND_COLUMNS)
     .order("created_at", { ascending: false })
     .limit(MAX_ROUNDS);
   if (!siteAdministrator) {
-    if (!memberIds.size) return { mine: [], managed: [], canManage: false, team: null };
-    roundsQuery = roundsQuery.in("service_id", [...memberIds]);
+    const visible = new Set([...memberIds, ...manageIds]);
+    if (!visible.size) return { mine: [], managed: [], canManage: false, teams: [], team: null };
+    roundsQuery = roundsQuery.in("service_id", [...visible]);
   }
   const { data, error } = await roundsQuery;
   if (error) throw databaseError(error);
@@ -483,7 +504,9 @@ export async function readRotations(client: AdminClient, userId: string): Promis
   ]);
   const preferencesByRound = new Map<string, PreferenceRow[]>();
   for (const pref of [...allPreferences, ...myPreferences]) {
-    preferencesByRound.set(pref.round_id, [...(preferencesByRound.get(pref.round_id) ?? []), pref]);
+    const list = preferencesByRound.get(pref.round_id);
+    if (list) list.push(pref);
+    else preferencesByRound.set(pref.round_id, [pref]);
   }
 
   const mine: MyRound[] = [];
@@ -497,14 +520,17 @@ export async function readRotations(client: AdminClient, userId: string): Promis
     }
   }
 
-  const teamForNewRounds = manageable[0] ?? (siteAdministrator ? teams[0] : undefined);
+  // A Medical Workforce lead can cover every team at a hospital, so each team comes back and the new-round
+  // form lets them choose.
+  const withPeople = await Promise.all(
+    manageable.map(async (team) => ({ ...team, people: await readTeamPeople(client, team.serviceId) })),
+  );
   return {
     mine,
     managed,
     canManage: siteAdministrator || manageable.length > 0,
-    team: teamForNewRounds
-      ? { ...teamForNewRounds, people: await readTeamPeople(client, teamForNewRounds.serviceId) }
-      : null,
+    teams: withPeople,
+    team: withPeople[0] ?? null,
   };
 }
 
@@ -518,11 +544,10 @@ export async function createRotationRound(
   now = new Date(),
 ): Promise<{ roundId: string }> {
   if (!userId) throw new PublicApiError("Sign in to open Roster.", 401, { code: "roster_auth_required" });
-  const siteAdministrator = await isSiteAdministrator(client, userId);
-  const teams = await readMyTeams(client, userId);
+  const [context, teams] = await Promise.all([readRoleContext(client, userId), readMyTeams(client, userId)]);
   let team: Team | undefined;
   if (body.serviceId) {
-    if (!(await canManageRotationsFor(client, userId, body.serviceId, { siteAdministrator }))) throw MANAGER_ONLY();
+    if (!canManageRotations(context, body.serviceId)) throw MANAGER_ONLY();
     team = teams.find((candidate) => candidate.serviceId === body.serviceId);
     if (!team) {
       const names = await serviceNames(client, [body.serviceId]);
@@ -531,12 +556,7 @@ export async function createRotationRound(
       team = { serviceId: body.serviceId, name };
     }
   } else {
-    for (const candidate of teams) {
-      if (await canManageRotationsFor(client, userId, candidate.serviceId, { siteAdministrator })) {
-        team = candidate;
-        break;
-      }
-    }
+    team = (await readManageableTeams(client, context, teams))[0];
     if (!team) throw MANAGER_ONLY();
   }
   const setup = await withTeamNames(client, team.serviceId, body.setup);
@@ -675,8 +695,8 @@ export async function runRoundCommand(
     return { ok: true };
   }
 
-  // Everything else runs the round: the site administrator or the team's rotation administrator.
-  if (!(await canManageRotationsFor(client, userId, row.service_id))) {
+  // Everything else runs the round: anyone the shared role rule lets run this team's rotations.
+  if (!canManageRotations(await readRoleContext(client, userId), row.service_id)) {
     // A non-member learns nothing about the round; a member who is not its administrator is told why.
     if (!(await isActiveMember(client, row.service_id, userId))) throw NOT_FOUND();
     throw MANAGER_ONLY();

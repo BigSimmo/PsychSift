@@ -813,7 +813,7 @@ export function MhaClockPage({
         </a>
         <FlatList label="Related pages">
           <FlatRow href="/forms/act" icon={ShieldCheck} title="Form pages and the Act" />
-          <FlatRow href="/on-call/call" icon={Phone} title="Handover" subtitle="On Call" />
+          <FlatRow href="/on-call/handover" icon={Phone} title="Handover" subtitle="On Call" />
         </FlatList>
         <UndoBar
           removed={undo.removed}

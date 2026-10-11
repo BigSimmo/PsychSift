@@ -477,6 +477,34 @@ begin
   if public.roster_publish_fingerprint(pg_temp.id('svc'),d,d) <> fingerprint then raise exception 'invalid off code partially wrote'; end if;
 end $off_codes$;
 
+-- Safe number: a save goes ahead only while the team still holds the needs the editor read,
+-- so a manager who read before another manager's save is refused and that save stands.
+do $needs_stale$
+declare
+  svc uuid := pg_temp.id('svc');
+  read_before jsonb;
+  read_after jsonb;
+  monday jsonb := '[{"weekday":1,"date":null,"kind":"day","grade":null,"siteId":null,"needed":3}]';
+  tuesday jsonb := '[{"weekday":2,"date":null,"kind":"night","grade":null,"siteId":null,"needed":2}]';
+begin
+  select coalesce(jsonb_agg(id), '[]') into read_before from public.roster_staffing_needs where service_id = svc;
+  perform public.roster_needs_replace(pg_temp.id('mgr'), svc, read_before, monday);
+  perform pg_temp.expect_error(format('select public.roster_needs_replace(%L,%L,%L,%L)',
+    pg_temp.id('mgr'), svc, read_before, tuesday), 'roster_conflict');
+  if (select count(*) from public.roster_staffing_needs where service_id = svc) <> 1
+     or not exists (select 1 from public.roster_staffing_needs where service_id = svc and kind = 'day' and needed = 3) then
+    raise exception 'needs: a stale save replaced the first save';
+  end if;
+  select jsonb_agg(id) into read_after from public.roster_staffing_needs where service_id = svc;
+  perform pg_temp.expect_error(format('select public.roster_needs_replace(%L,%L,%L,%L)',
+    pg_temp.id('mei'), svc, read_after, tuesday), 'roster_role_denied');
+  perform public.roster_needs_replace(pg_temp.id('mgr'), svc, read_after, tuesday);
+  if (select count(*) from public.roster_staffing_needs where service_id = svc) <> 1
+     or not exists (select 1 from public.roster_staffing_needs where service_id = svc and kind = 'night' and weekday = 2) then
+    raise exception 'needs: a save over a fresh read did not go ahead';
+  end if;
+end $needs_stale$;
+
 -- 14. Deleting a doctor's account is never blocked by a Roster table.
 reset role;
 do $delete_account$

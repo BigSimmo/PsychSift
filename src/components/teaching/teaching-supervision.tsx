@@ -13,7 +13,6 @@ import {
   AssessHeader,
   AssessNote,
   AssessPair,
-  AssessSample,
   AssessSegmented,
   AssessUndoBar,
   CorrectionDiff,
@@ -46,7 +45,6 @@ import {
   type SupervisionTopic,
   type TeachingDepthInput,
 } from "@/lib/teaching/depth-model";
-import { useExampleData } from "@/lib/example-data/store";
 
 const MAX_TOPICS = 5;
 const STATUS_LABELS = { pending: "Awaiting confirmation", confirmed: "Confirmed" } as const;
@@ -713,6 +711,8 @@ function SupervisionBody({
   const waiting = useMemo(() => pendingConfirmations(pairings), [pairings]);
   const waitingIds = useMemo(() => new Set(waiting.map((item) => item.id)), [waiting]);
   const supervising = pairings.some((p) => p.access === "supervisor" && !p.readOnlyUntil);
+  // The page draws in Teaching's frame (item "supervision") and is Assessments' Registrar tab.
+  useModeBandCount("supervision", supervising ? waiting.length : null);
   useModeBandCount("assess-supervision", supervising ? waiting.length : null);
   if (!pairings.length)
     return (
@@ -772,8 +772,6 @@ function SupervisionBody({
 }
 
 function SupervisionPage({ demoMode }: { demoMode: boolean }) {
-  // The shared example banner already says the records are made up, so the demo note shows only without it.
-  const { active: exampleShown } = useExampleData("assess");
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const resource = useTeachingResource<{ pairings: SupervisionPairingView[] }>(
@@ -793,9 +791,6 @@ function SupervisionPage({ demoMode }: { demoMode: boolean }) {
   return (
     <WorkBody testId="teaching-supervision">
       <AssessHeader eyebrow="Confirmed hours" title="Registrar supervision" />
-      {demoMode && !exampleShown ? (
-        <AssessSample>Example data. Changes stay on this page and are not saved.</AssessSample>
-      ) : null}
       {body}
       {sender.busy ? (
         <p role="status" className="assess-note" data-center="">

@@ -500,7 +500,7 @@ export function CmeDashboard({
             subtitle="For things you do regularly, like a peer review group"
             lead={<CalendarDays aria-hidden="true" strokeWidth={2} />}
             leadTone="mode"
-            href={`/cme/routines?year=${set.year}`}
+            href="/cme/routines"
           />
         </CmeFlatList>
       </CmeGroup>

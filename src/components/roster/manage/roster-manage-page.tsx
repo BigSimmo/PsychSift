@@ -15,6 +15,8 @@ import { RosterApproveTab } from "./roster-approve-tab";
 import { RosterCoverTab } from "./roster-cover-tab";
 import { RosterPeopleList } from "./roster-people-list";
 import { RosterTeamSettings } from "./roster-team-settings";
+import { RosterSafeNumber } from "./roster-safe-number";
+import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { RosterPublishTab } from "./publish/roster-publish-tab";
 import { ClipboardList, Lock, Users } from "lucide-react";
 import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
@@ -68,7 +70,16 @@ function NotManager() {
   );
 }
 
-function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | null }) {
+function ManagerTeam({
+  team,
+  actorId,
+  example,
+}: {
+  team: RosterTeam;
+  actorId: string | null;
+  /** The invented example team: its settings editors send nothing. */
+  example: boolean;
+}) {
   const { serviceId } = team;
   const now = useRosterNow();
   const overview = useRosterRead(serviceId, "overview");
@@ -125,6 +136,12 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
               }}
             />
             <RosterTeamSettings serviceId={serviceId} overview={overview.data} />
+            <RosterSafeNumber
+              serviceId={serviceId}
+              overview={overview.data}
+              example={example}
+              onSaved={() => manageChanged("safe-number")}
+            />
           </>
         )}
       </div>
@@ -149,12 +166,15 @@ function ManagerTeam({ team, actorId }: { team: RosterTeam; actorId: string | nu
 
 export function RosterManagePage() {
   const teams = useRosterTeams();
+  const signedOutSample = useRosterSignedOutSample();
+  const example = signedOutSample || teams.data?.sample === true;
   // A link from My Day names the team it is about (`?team=`); it only selects among the teams the reader may use.
   const [selected, setSelected] = useState(() =>
     typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("team") ?? ""),
   );
   const available = teams.data?.teams.filter((team) => team.enabled && team.role === "manager") ?? [];
-  const team = available.find((item) => item.serviceId === selected) ?? available[0];
+  // A named team the reader does not manage says so, rather than quietly opening another team they do.
+  const team = selected ? available.find((item) => item.serviceId === selected) : available[0];
   return (
     <InformationPageShell>
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4" data-mode-identity="roster">
@@ -174,6 +194,19 @@ export function RosterManagePage() {
             <p>{teams.message}</p>
             <Button onClick={teams.reload}>Try again</Button>
           </div>
+        ) : !team && available.length > 0 ? (
+          <WorkCard testId="roster-manage-not-your-team">
+            <WorkEmpty
+              icon={Lock}
+              title="That team isn't one you manage"
+              body="Pick one of your own teams instead."
+              action={
+                <WorkButton icon={Users} onClick={() => setSelected(available[0]!.serviceId)}>
+                  {`Open ${available[0]!.name}`}
+                </WorkButton>
+              }
+            />
+          </WorkCard>
         ) : !team ? (
           <NotManager />
         ) : (
@@ -195,7 +228,7 @@ export function RosterManagePage() {
               </label>
             ) : null}
             <Suspense fallback={<WorkStateLoading label="Loading your team…" />}>
-              <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} />
+              <ManagerTeam key={team.serviceId} team={team} actorId={teams.data?.actorId ?? null} example={example} />
             </Suspense>
           </>
         )}

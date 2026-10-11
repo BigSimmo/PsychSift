@@ -33,7 +33,6 @@
  */
 
 import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
-import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
 import { WORK_MODE_PREFERENCE_COOKIE } from "@/lib/work-mode-launch/launch";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
@@ -237,10 +236,8 @@ function removeQuietly(storage: () => Storage, key: string): void {
  */
 export function clearAccountScopedBrowserStorage(): void {
   if (typeof window === "undefined") return;
-  // Cookie — the live version switch (src/lib/live-version): a tester's choice of version only.
+  // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
   try {
-    document.cookie = `${LIVE_VERSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
-    // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
     document.cookie = `${WORK_MODE_PREFERENCE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
   } catch {
     // No document (a worker) or cookies blocked: nothing was set.

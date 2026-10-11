@@ -149,14 +149,14 @@ describe("release-browser-matrix engine coverage", () => {
       shard: number;
       total: number;
     }>;
-    expect(jobs).toHaveLength(17);
+    expect(jobs).toHaveLength(21);
     for (const [project, engine, total] of [
       ["chromium-mockups", "chromium", 1],
       ["firefox", "firefox", 3],
-      ["webkit", "webkit", 2],
+      ["webkit", "webkit", 3],
       ["mobile-webkit", "webkit", 5],
       ["mobile-pwa-standalone", "webkit", 5],
-      ["tablet", "webkit", 1],
+      ["tablet", "webkit", 4],
     ] as const) {
       expect(jobs.filter((job) => job.project === project)).toEqual(
         Array.from({ length: total }, (_, index) => ({ project, engine, shard: index + 1, total })),

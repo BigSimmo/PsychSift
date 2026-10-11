@@ -22,6 +22,8 @@ export type WorkCalendarSourceStatus = "off" | "loading" | "ready" | "error" | "
 export type WorkCalendarSourceRead = {
   readonly status: WorkCalendarSourceStatus;
   readonly entries: readonly WorkCalendarEntry[];
+  /** Reads the source again, after it failed. */
+  readonly retry?: () => void;
 };
 
 export type WorkCalendarSource = {

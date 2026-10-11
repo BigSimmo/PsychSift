@@ -15,8 +15,8 @@ export const runtime = "nodejs";
 /**
  * Admin · Courses, the organiser's side of saved Bookings: post a course, save an
  * edit, or cancel a course. The draft is checked here with the form's own rules;
- * who may post for which team (a site administrator, or that team's Roster
- * manager), capacity and what moved for booked doctors are checked in SQL.
+ * who may post for which team (work_can 'courses.manage': a site administrator,
+ * that team's Roster manager, or Medical Workforce or the DCT of its hospital), capacity and what moved for booked doctors are checked in SQL.
  */
 export async function POST(request: Request) {
   return withBookingsApi(request, async (client, actorId) => {

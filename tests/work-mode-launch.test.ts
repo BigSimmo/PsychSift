@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isWorkModePreviewUser,
   resolveWorkModeLaunch,
+  WORK_MODE_LAUNCH_DEFAULT,
   workModeLaunchSetting,
   type WorkModeLaunchUser,
 } from "@/lib/work-mode-launch/launch";
@@ -13,8 +14,8 @@ const admin: WorkModeLaunchUser = { id: "a1", appMetadata: { site_role: "adminis
 const doctor: WorkModeLaunchUser = { id: "D2", appMetadata: {} };
 
 describe("work-mode launch switch", () => {
-  it("defaults to the preview audience in production and to everyone elsewhere", () => {
-    expect(workModeLaunchSetting(PROD)).toBe("preview");
+  it("defaults to everyone, in production and elsewhere", () => {
+    expect(workModeLaunchSetting(PROD)).toBe("everyone");
     expect(workModeLaunchSetting({ NODE_ENV: "development" })).toBe("everyone");
     expect(workModeLaunchSetting({ NODE_ENV: "test" })).toBe("everyone");
     expect(workModeLaunchSetting({ NODE_ENV: "production", PLAYWRIGHT_OFFLINE_MODE: "true" })).toBe("everyone");
@@ -26,10 +27,42 @@ describe("work-mode launch switch", () => {
     expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: " Everyone " })).toBe("everyone");
   });
 
-  it("shows the new work mode in production only to the preview audience", () => {
-    expect(resolveWorkModeLaunch({ user: admin, environment: PROD }).newWorkMode).toBe(true);
-    expect(resolveWorkModeLaunch({ user: doctor, environment: PROD }).newWorkMode).toBe(false);
-    expect(resolveWorkModeLaunch({ user: null, environment: PROD }).newWorkMode).toBe(false);
+  it("states the unset default explicitly as everyone, for every reader including signed out", () => {
+    expect(WORK_MODE_LAUNCH_DEFAULT).toBe("everyone");
+    expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: "" })).toBe("everyone");
+    expect(workModeLaunchSetting({ ...PROD, WORK_MODE_LAUNCH: "  " })).toBe("everyone");
+    for (const user of [admin, doctor, null]) {
+      expect(resolveWorkModeLaunch({ user, environment: PROD })).toMatchObject({
+        newWorkMode: true,
+        choiceAvailable: true,
+      });
+    }
+  });
+
+  it("rolls back from Railway: off hides the new work mode from everyone, the administrator too", () => {
+    const off = { ...PROD, WORK_MODE_LAUNCH: "off" };
+    for (const user of [admin, doctor, null]) {
+      expect(resolveWorkModeLaunch({ user, environment: off })).toMatchObject({
+        newWorkMode: false,
+        choiceAvailable: false,
+      });
+    }
+  });
+
+  it("honours a device's classic choice under the everyone default", () => {
+    expect(resolveWorkModeLaunch({ user: doctor, environment: PROD, preference: "classic" })).toMatchObject({
+      newWorkMode: false,
+      classicPreferred: true,
+      choiceAvailable: true,
+    });
+  });
+
+  it("shows the new work mode to everyone in production, or only to the preview audience under preview", () => {
+    expect(resolveWorkModeLaunch({ user: doctor, environment: PROD }).newWorkMode).toBe(true);
+    const preview = { ...PROD, WORK_MODE_LAUNCH: "preview" };
+    expect(resolveWorkModeLaunch({ user: admin, environment: preview }).newWorkMode).toBe(true);
+    expect(resolveWorkModeLaunch({ user: doctor, environment: preview }).newWorkMode).toBe(false);
+    expect(resolveWorkModeLaunch({ user: null, environment: preview }).newWorkMode).toBe(false);
   });
 
   it("admits listed user ids and the app-metadata flag, never user-editable metadata", () => {
@@ -45,15 +78,17 @@ describe("work-mode launch switch", () => {
   });
 
   it("lets the device preference roll back instantly, but never switch the mode on", () => {
-    // A live version tester uses the live version switch instead (tests/live-version.test.ts).
-    const launched = { ...PROD, WORK_MODE_LAUNCH: "everyone" };
-    const classic = resolveWorkModeLaunch({ user: doctor, environment: launched, preference: "classic" });
+    const classic = resolveWorkModeLaunch({ user: admin, environment: PROD, preference: "classic" });
     expect(classic).toMatchObject({
       newWorkMode: false,
       classicPreferred: true,
       choiceAvailable: true,
     });
-    const forced = resolveWorkModeLaunch({ user: doctor, environment: PROD, preference: "new" });
+    const forced = resolveWorkModeLaunch({
+      user: doctor,
+      environment: { ...PROD, WORK_MODE_LAUNCH: "preview" },
+      preference: "new",
+    });
     expect(forced.newWorkMode).toBe(false);
     expect(forced.choiceAvailable).toBe(false);
   });

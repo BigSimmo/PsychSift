@@ -503,7 +503,9 @@ test.describe("phone PWA standalone mode bounded scroll shell (#71NT23)", () => 
       expect(initial.mainOverflowY, "standalone #main-content is scrollable").toMatch(/^(?:auto|scroll)$/);
       expect(initial.mainOverscrollBehaviorY, "main contains overscroll").toBe("contain");
       expect(initial.framePosition, "phone viewport frame is relative").toBe("relative");
-      expect(initial.shellOverflowY, "shell bounds overflow").toBe("hidden");
+      // `clip` bounds it like `hidden` but cannot be scrolled by a jump to a
+      // section, which shoved the installed app up (globals.css).
+      expect(initial.shellOverflowY, "shell bounds overflow").toMatch(/^(?:hidden|clip)$/);
       expect(initial.shellHeight, "standalone shell matches viewport height").toBeCloseTo(phoneViewport.height, 0);
       expect(initial.frameHeight, "phone viewport frame matches viewport height").toBeCloseTo(phoneViewport.height, 0);
       expect(initial.docScrollTop, "document remains un-scrolled").toBe(0);

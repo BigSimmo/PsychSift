@@ -613,7 +613,7 @@ export function HeroCard({
                 Open handover
               </Link>
               <Link
-                href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
+                href={withMyDayReturn("/on-call#log-a-call")}
                 className={heroGlassButton}
                 data-testid="my-day-hero-log-call"
               >
@@ -624,7 +624,7 @@ export function HeroCard({
           ) : (
             <>
               <Link
-                href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
+                href={withMyDayReturn("/on-call#log-a-call")}
                 className={heroButton}
                 data-testid="my-day-hero-log-call"
               >
@@ -744,7 +744,7 @@ interface MyDayQuickAction {
 const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
   {
     label: "Log a call",
-    href: "/on-call/call#on-call-call-log-heading",
+    href: "/on-call#log-a-call",
     icon: Phone,
     testId: "my-day-qa-call",
     mode: "on-call",

@@ -27,6 +27,11 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
     props.open ? <div data-testid="mock-entry-editor">{props.entry?.title ?? "new entry"}</div> : null,
 }));
 
+// The Medical Workforce sharing card reads its own choice; its behaviour is tested in admin-new-job-sharing.dom.test.tsx.
+vi.mock("@/components/admin/new-job/admin-new-job-sharing", () => ({
+  AdminNewJobSharing: () => <div data-testid="admin-new-job-sharing" />,
+}));
+
 const loginOwn = onCallEntryFixture({
   section: "logistics",
   title: "Demo logins, paging and remote access",
@@ -123,6 +128,15 @@ describe("AdminNewJobPage", () => {
     expect(screen.getByText(jobContact.title)).toBeTruthy();
     const link = screen.getByRole("link", { name: "9000 0012" });
     expect(link.getAttribute("href")).toBe("tel:0890000012");
+  });
+
+  it("offers the Medical Workforce sharing choice to a signed-in doctor, and not with example records", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.getByTestId("admin-new-job-sharing")).toBeTruthy();
+    cleanup();
+    Object.assign(entryState, { demoMode: true });
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.queryByTestId("admin-new-job-sharing")).toBeNull();
   });
 
   it("shows no week timings anywhere on the page", () => {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
+import { useWorkFrameGateOpen } from "@/components/work-frame/use-work-frame-gate-open";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
 import { useApplicationsStore } from "@/lib/cme/device-record";
@@ -289,6 +290,8 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
   // Pages: the frame's and the features'. Only a signed-in reader's own device words are listed.
   const applications = useApplicationsStore(null).state;
   const routeVisible = useWorkModeRouteVisible();
+  // A role's pages (Hospital, Manage team, Post a shift) are found by the readers the frame shows them to.
+  const gateOpen = useWorkFrameGateOpen();
   const ownEntries = useMemo(
     () =>
       enabled && onCallStatus === "ready" && !onCall.demoMode
@@ -301,8 +304,8 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
       withFeaturePages(
         workSearchPages(),
         featureSearchPages(signedOut ? null : { entries: ownEntries, applications }),
-      ).filter((page) => routeVisible(page.href)),
-    [signedOut, ownEntries, applications, routeVisible],
+      ).filter((page) => routeVisible(page.href) && (page.gates ?? []).every(gateOpen)),
+    [signedOut, ownEntries, applications, routeVisible, gateOpen],
   );
 
   return useMemo<WorkSearchRecords>(() => {

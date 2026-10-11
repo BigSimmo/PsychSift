@@ -1,5 +1,5 @@
 import type { AppModeId } from "@/lib/app-modes";
-import { WORK_AREAS, type WorkAreaId, type WorkFrameIconName } from "@/lib/work-frame/areas";
+import { WORK_AREAS, type WorkAreaId, type WorkFrameGate, type WorkFrameIconName } from "@/lib/work-frame/areas";
 import { alternativeMatches, workSearchTerms } from "@/lib/work-search/terms";
 
 /**
@@ -7,9 +7,10 @@ import { alternativeMatches, workSearchTerms } from "@/lib/work-search/terms";
  * page itself, so the 40-odd pages behind the More sheets are one search away.
  *
  * Built from the work frame's own navigation table (`WORK_AREAS`), so a page is
- * offered only when the frame lists it: never an action, never a page gated to
- * organisers, posters or editors (the reader may not be one), and each route
- * once, under the area that owns it. Page names only, never records.
+ * offered only when the frame lists it: never an action, and each route once,
+ * under the area that owns it. A page the frame gates (organisers, posters,
+ * roster managers, hospital roles) carries its gates, and the search offers it
+ * only to readers the frame would show it to. Page names only, never records.
  */
 
 export interface WorkSearchPage {
@@ -25,6 +26,8 @@ export interface WorkSearchPage {
   readonly icon: WorkFrameIconName;
   /** Other words people use for the page. Matched with the label's weight. */
   readonly keywords: readonly string[];
+  /** Frame gates that must all be open for this reader (the page's own, and its inner area's way in). */
+  readonly gates?: readonly WorkFrameGate[];
 }
 
 /** Short synonym lists, keyed `<area id>:<item id>`. Plain words a reader might type for the page. */
@@ -85,6 +88,8 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "admin:admin-export": ["spreadsheet", "csv", "download", "export"],
   "admin:help": ["crisis", "support", "eap", "wellbeing", "help"],
   "admin:admin-overtime": ["overtime", "claims", "extra hours"],
+  "admin:admin-hospital": ["hospital", "sick calls", "medical workforce", "dct", "safe number"],
+  "admin:admin-people": ["roles", "give a role", "supervisors", "people"],
   "call:now": ["on call", "tonight", "shift"],
   "call:call": ["phone", "numbers", "switchboard", "pager", "contacts", "ring"],
   "call:refer": ["referral", "referrals", "refer"],
@@ -109,28 +114,29 @@ const LAUNCH_GATES: ReadonlySet<string> = new Set(["new-work-mode", "classic-wor
 export function workSearchPages(): readonly WorkSearchPage[] {
   if (pagesMemory) return pagesMemory;
   const pages: WorkSearchPage[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const areas = Object.entries(WORK_AREAS) as [WorkAreaId, (typeof WORK_AREAS)[WorkAreaId]][];
   // An inner area whose way in is gated (Manage team, for roster managers) is gated as a whole.
-  const gatedAreas = new Set(
-    areas
-      .flatMap(([, area]) => area.groups.flatMap((group) => group.items))
-      .filter((item) => item.opens && item.gate)
-      .map((item) => item.opens),
-  );
+  const areaGates = new Map<string, WorkFrameGate>();
+  for (const [, area] of areas)
+    for (const item of area.groups.flatMap((group) => group.items))
+      if (item.opens && item.gate) areaGates.set(item.opens, item.gate);
   for (const [areaId, area] of areas) {
-    if (gatedAreas.has(areaId)) continue;
+    const areaGate = areaGates.get(areaId);
     const items = [...area.tabs, ...area.groups.flatMap((group) => group.items)];
     for (const item of items) {
-      // Actions run on a page, and gated pages may not be the reader's: neither is offered.
-      // The two launch gates only pick which copy of a page the frame lists; the search
-      // hides new-only routes per reader, so classic readers keep Needs you and Alerts.
-      if (!item.href || (item.gate && !LAUNCH_GATES.has(item.gate))) continue;
+      // Actions run on a page, so they are never offered.
+      if (!item.href) continue;
       // A link into another area (`paths: []` or `leadsTo`) is listed under its own area.
       if (item.leadsTo || (item.paths && item.paths.length === 0)) continue;
-      if (seen.has(item.href)) continue;
-      seen.add(item.href);
-      pages.push({
+      const gates = [areaGate, item.gate].filter(
+        (gate): gate is WorkFrameGate => gate !== undefined && !LAUNCH_GATES.has(gate),
+      );
+      const earlier = seen.get(item.href);
+      // A route listed twice keeps its open copy, so a gated listing never hides an open one.
+      if (earlier !== undefined && (gates.length > 0 || !pages[earlier]!.gates?.length)) continue;
+      if (earlier === undefined) seen.set(item.href, pages.length);
+      pages[earlier ?? pages.length] = {
         id: `${areaId}:${item.id}`,
         label: item.label,
         area: area.name,
@@ -139,7 +145,10 @@ export function workSearchPages(): readonly WorkSearchPage[] {
         href: item.href,
         icon: item.icon,
         keywords: KEYWORDS[`${areaId}:${item.id}`] ?? [],
-      });
+        // The two launch gates only pick which copy of a page the frame lists; the search
+        // hides new-only routes per reader, so classic readers keep Needs you and Alerts.
+        gates,
+      };
     }
   }
   pagesMemory = pages;

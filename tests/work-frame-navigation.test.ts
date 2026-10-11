@@ -112,10 +112,13 @@ describe("work frame navigation", () => {
     expect(workFrameTabLabel(hours)).toBe("Hours");
   });
 
-  it("lists inner area pages in AI Search, but never a manager's pages", () => {
-    const ids = workSearchPages().map((page) => page.id);
+  it("lists inner area pages in AI Search, and a manager's pages only behind Manage team's gate", () => {
+    const pages = workSearchPages();
+    const ids = pages.map((page) => page.id);
     expect(ids).toContain("open:open-shifts-browse");
-    expect(ids.some((id) => id.startsWith("manage:"))).toBe(false);
+    const manage = pages.filter((page) => page.id.startsWith("manage:"));
+    expect(manage.length).toBeGreaterThan(0);
+    for (const page of manage) expect(page.gates?.length, page.id).toBeGreaterThan(0);
     expect(searchWorkPages("locum")[0]?.page.href).toBe("/open-shifts");
   });
 

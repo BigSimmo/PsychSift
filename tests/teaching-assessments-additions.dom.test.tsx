@@ -202,7 +202,10 @@ describe("The assessor's outcome statements (item 15)", () => {
 describe("A signed-in doctor's Progress tab (A2, item 20)", () => {
   it("shows their own EPA counts from Teaching, not a second copy of the CLA notice", async () => {
     const today = perthDateKey(new Date());
-    window.localStorage.setItem(TEACHING_TERM_TRACKER_STORAGE_KEY, JSON.stringify(sampleTermTracker(today)));
+    const tracker = sampleTermTracker(today);
+    // Only one EPA, logged today, so the counts are exact whatever the date the suite runs on.
+    const epas = [{ id: "today", termId: tracker.currentTermId!, epa: 2 as const, on: today }];
+    window.localStorage.setItem(TEACHING_TERM_TRACKER_STORAGE_KEY, JSON.stringify({ ...tracker, epas }));
     nav.search = "view=progress";
     render(<TeachingAssessments demoMode={false} />);
     const progress = screen.getByTestId("teaching-assessments-progress");
@@ -210,6 +213,31 @@ describe("A signed-in doctor's Progress tab (A2, item 20)", () => {
     expect(within(progress).getByRole("link", { name: "Count EPAs" })).toHaveAttribute("href", "/teaching/term");
     expect(await within(progress).findByText(/EPAs this year/)).toBeInTheDocument();
     expect(progress).toHaveTextContent("Your forms and EPAs themselves stay in CLA.");
+    // Each EPA's count this year sits under the term card, one row per EPA.
+    const byEpa = await within(progress).findByTestId("assessments-epa-counts");
+    const rows = within(byEpa).getAllByRole("listitem");
+    expect(rows).toHaveLength(4);
+    expect(byEpa).toHaveTextContent("Recognition and care of the acutely unwell patient");
+    // The one logged EPA counts against EPA 2 only.
+    expect(rows.map((row) => row.textContent?.match(/EPA (\d):.*?(\d+) this year$/)?.slice(1))).toEqual([
+      ["1", "0"],
+      ["2", "1"],
+      ["3", "0"],
+      ["4", "0"],
+    ]);
+  });
+
+  it("leaves out the per-EPA list until an EPA is logged", async () => {
+    const today = perthDateKey(new Date());
+    window.localStorage.setItem(
+      TEACHING_TERM_TRACKER_STORAGE_KEY,
+      JSON.stringify({ ...sampleTermTracker(today), epas: [] }),
+    );
+    nav.search = "view=progress";
+    render(<TeachingAssessments demoMode={false} />);
+    const progress = screen.getByTestId("teaching-assessments-progress");
+    await within(progress).findByText(/EPAs this year/);
+    expect(within(progress).queryByTestId("assessments-epa-counts")).toBeNull();
   });
 
   it("shows a supervisor or DCT address the CLA notice, never this account's counts", () => {

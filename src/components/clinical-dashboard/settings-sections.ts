@@ -146,12 +146,6 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "sample demo made up fake test data look around explore tour work mode",
   },
   {
-    id: "settings-row-live-version",
-    section: "app-preferences",
-    label: "Live version",
-    keywords: "newest everyone preview test tester beta new features early access release version",
-  },
-  {
     id: "settings-row-hide-new-work-screens",
     section: "app-preferences",
     label: "Hide new work screens",

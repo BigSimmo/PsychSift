@@ -158,10 +158,10 @@ describe("MyDayHoursPage", () => {
     expect(screen.queryByTestId("my-day-hours-facts")).toBeNull();
   });
 
-  it("shows example hours with a demo notice in demo mode", () => {
+  it("shows example hours with no example notice in demo mode", () => {
     setShifts({ sample: true, demoMode: true, shifts: [day("2026-10-05")] });
     render(<MyDayHoursPage now={NOW} />);
-    expect(screen.getByTestId("my-day-hours-demo-notice")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-hours-demo-notice")).toBeNull();
     expect(screen.getByTestId("my-day-hours-facts")).toBeTruthy();
   });
 

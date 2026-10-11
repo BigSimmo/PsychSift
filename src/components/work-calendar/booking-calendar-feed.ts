@@ -37,7 +37,9 @@ export function watchBookingCalendar(
   let last = "";
   const send = (status: WorkCalendarSourceRead["status"], state: BookingsState | null) => {
     if (!live) return;
-    const entries = state ? bookingWorkCalendarEntries(state, (id) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(id)) : [];
+    const entries = state
+      ? bookingWorkCalendarEntries(state, (id) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(id), input.zone)
+      : [];
     // Only a change in content is passed on, so the calendar's list stays the same object otherwise.
     const signature = JSON.stringify([status, entries]);
     if (signature === last) return;

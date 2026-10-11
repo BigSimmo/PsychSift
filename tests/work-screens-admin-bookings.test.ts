@@ -670,6 +670,11 @@ describe("bookingWorkCalendarEntries", () => {
       href: href("example:course-bls"),
     });
     expect(bookingWorkCalendarId("x")).toBe("booking:x");
+    // With the reader's zone known, each course carries its exact start.
+    expect(entries[0]!.startsAt).toBeUndefined();
+    expect(bookingWorkCalendarEntries(s, href, "Australia/Sydney")[0]).toMatchObject({
+      startsAt: "2026-10-22T02:00:00.000Z",
+    });
   });
 });
 

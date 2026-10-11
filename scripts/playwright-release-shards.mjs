@@ -55,6 +55,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 14.6,
     "tests/ui-hydration.spec.ts": 2.0,
     "tests/ui-mode-nav-density.spec.ts": 56.7,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 15.0,
     "tests/ui-on-call-boards.spec.ts": 48.2,
     "tests/ui-on-call-call.spec.ts": 7.7,
     "tests/ui-on-call-now.spec.ts": 14.5,
@@ -102,6 +104,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 31.6,
     "tests/ui-hydration.spec.ts": 4.3,
     "tests/ui-mode-nav-density.spec.ts": 95.9,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 25.0,
     "tests/ui-on-call-boards.spec.ts": 79.7,
     "tests/ui-on-call-call.spec.ts": 9.3,
     "tests/ui-on-call-now.spec.ts": 20.4,
@@ -149,6 +153,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 29.9,
     "tests/ui-hydration.spec.ts": 3.4,
     "tests/ui-mode-nav-density.spec.ts": 101.8,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 35.0,
     "tests/ui-on-call-boards.spec.ts": 122.7,
     "tests/ui-on-call-call.spec.ts": 14.5,
     "tests/ui-on-call-now.spec.ts": 31.4,
@@ -196,6 +202,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-formulation.spec.ts": 40.1,
     "tests/ui-hydration.spec.ts": 4.4,
     "tests/ui-mode-nav-density.spec.ts": 131.3,
+    // Estimated (new 10 Oct 2026, no release timing yet): about the size of ui-roster-team.
+    "tests/ui-my-day-calendar.spec.ts": 30.0,
     "tests/ui-on-call-boards.spec.ts": 126.0,
     "tests/ui-on-call-call.spec.ts": 15.0,
     "tests/ui-on-call-now.spec.ts": 33.1,
@@ -225,6 +233,77 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-universal-search.spec.ts": 25.3,
     "tests/ui-user-journeys.spec.ts": 50.0,
     "tests/ui-visual-artifacts.spec.ts": 14.4,
+  }),
+  // Measured 2026-10-11 from the per-test durations in the tablet leg log of main run
+  // 38053471704, the only leg that ran tablet. That leg ran every project file on one runner and
+  // hit the 30-minute global timeout with 345 tests not run, so the files it never reached carry
+  // the mobile-webkit cost (same WebKit engine, touch and mobile layout) until a tablet
+  // release-ui-timings report replaces them. Each such line is marked.
+  tablet: Object.freeze({
+    "tests/adaptive-answer-ui.spec.ts": 33.6,
+    "tests/answer-progress-ui-smoke.spec.ts": 20.7,
+    "tests/api-csrf-proxy.spec.ts": 0.1,
+    "tests/dsm-ui-smoke.spec.ts": 8.4,
+    "tests/ui-accessibility.spec.ts": 82.7,
+    "tests/ui-admin.spec.ts": 10.1,
+    "tests/ui-chrome-scroll.spec.ts": 20.9,
+    "tests/ui-clinical-ask.spec.ts": 27.0,
+    "tests/ui-cme-phone.spec.ts": 54.6,
+    "tests/ui-dictionary.spec.ts": 39.6,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-document-canvas.spec.ts": 1.2,
+    "tests/ui-forms-section-nav.spec.ts": 29.8,
+    "tests/ui-formulation-result-cards.spec.ts": 4.7,
+    "tests/ui-formulation.spec.ts": 47.6,
+    "tests/ui-hydration.spec.ts": 4.6,
+    "tests/ui-mode-nav-density.spec.ts": 123.2,
+    "tests/ui-my-day-calendar.spec.ts": 8.7,
+    "tests/ui-on-call-boards.spec.ts": 112.2,
+    "tests/ui-on-call-call.spec.ts": 13.9,
+    "tests/ui-on-call-now.spec.ts": 30.3,
+    "tests/ui-on-call-service.spec.ts": 27.7,
+    "tests/ui-overlap.spec.ts": 71.2,
+    "tests/ui-patient-number-field.spec.ts": 19.8,
+    "tests/ui-phone-motion.spec.ts": 19.9,
+    "tests/ui-phone-scroll-document-rail.spec.ts": 11.6,
+    "tests/ui-phone-scroll-page-owned.spec.ts": 99.4,
+    "tests/ui-phone-scroll-routes.spec.ts": 244.6,
+    "tests/ui-phone-scroll-submitted-root.spec.ts": 1.5,
+    "tests/ui-phone-scroll.spec.ts": 237.9,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-pwa.spec.ts": 6.3,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-roster-team.spec.ts": 25.2,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-route-coverage.spec.ts": 61.4,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-smoke.spec.ts": 674.0,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-sources.spec.ts": 32.9,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-specifiers.spec.ts": 71.9,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-stress.spec.ts": 27.7,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-style-contract.spec.ts": 0.0,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-teaching.spec.ts": 35.2,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-therapy-nav-scroll.spec.ts": 14.9,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-therapy-pathways.spec.ts": 15.6,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-token-layer-resolution.spec.ts": 0.0,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-tools-show-all.spec.ts": 1.7,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-tools.spec.ts": 372.7,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-universal-search.spec.ts": 31.5,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-user-journeys.spec.ts": 52.7,
+    // Estimated from mobile-webkit (not reached before the timeout).
+    "tests/ui-visual-artifacts.spec.ts": 19.7,
   }),
 });
 

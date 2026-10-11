@@ -315,7 +315,7 @@ describe("PWA service worker cache and lifecycle policy", () => {
     expect(worker.openWindow).toHaveBeenCalledWith("/roster/swaps");
   });
 
-  it("shows one fixed line for a bell reminder that names nothing, and opens Notifications", async () => {
+  it("shows one fixed line for a bell reminder that names nothing, and opens My Day's full list", async () => {
     const worker = createWorkerHarness();
     await worker.push({ t: "due", title: "Contract ends", url: "https://elsewhere.example/steal" });
     expect(worker.showNotification).toHaveBeenCalledWith("PsychSift", {
@@ -323,7 +323,7 @@ describe("PWA service worker cache and lifecycle policy", () => {
       data: { t: "due" },
     });
     await worker.clickNotification({ t: "due", url: "https://elsewhere.example/steal" });
-    expect(worker.openWindow).toHaveBeenCalledWith("/my-day/notifications");
+    expect(worker.openWindow).toHaveBeenCalledWith("/my-day?view=all");
   });
 
   it("uses generic Roster words when push data is missing or malformed", async () => {

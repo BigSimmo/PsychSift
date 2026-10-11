@@ -2376,8 +2376,8 @@
         "reviewer": null,
         "preparedAt": "2026-09-14"
       },
-      "release": "published",
-      "releaseNote": null,
+      "release": "held",
+      "releaseNote": "Held from clinical use. The cited APA Cultural Formulation Interview limitation names First Nations governance, so the Indigenous-content rule routes this record to Aboriginal governance review; the clinical sign-off tool will not sign it (owner rule 2026-09-26). The record's body is not Indigenous content, and it was prepared 2026-09-14 and never reviewed, so it had been published without review.",
       "domains": ["Cultural"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -2444,8 +2444,8 @@
         "reviewer": null,
         "preparedAt": "2026-09-14"
       },
-      "release": "published",
-      "releaseNote": null,
+      "release": "held",
+      "releaseNote": "Held from clinical use. The cited APA Cultural Formulation Interview limitation names First Nations governance, so the Indigenous-content rule routes this record to Aboriginal governance review; the clinical sign-off tool will not sign it (owner rule 2026-09-26). The record's body is not Indigenous content, and it was prepared 2026-09-14 and never reviewed, so it had been published without review.",
       "domains": ["Cultural", "Social"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -2512,8 +2512,8 @@
         "reviewer": null,
         "preparedAt": "2026-09-14"
       },
-      "release": "published",
-      "releaseNote": null,
+      "release": "held",
+      "releaseNote": "Held from clinical use. The cited AIHW Social & emotional wellbeing locator names a First Nations perspective, so the Indigenous-content rule routes this record to Aboriginal governance review; the clinical sign-off tool will not sign it (owner rule 2026-09-26). The record's body is not Indigenous content, and it was prepared 2026-09-14 and never reviewed, so it had been published without review.",
       "domains": ["Cultural", "Social"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -2580,8 +2580,8 @@
         "reviewer": null,
         "preparedAt": "2026-09-14"
       },
-      "release": "published",
-      "releaseNote": null,
+      "release": "held",
+      "releaseNote": "Held from clinical use. The cited APA Cultural Formulation Interview limitation names First Nations governance, so the Indigenous-content rule routes this record to Aboriginal governance review; the clinical sign-off tool will not sign it (owner rule 2026-09-26). The record's body is not Indigenous content, and it was prepared 2026-09-14 and never reviewed, so it had been published without review.",
       "domains": ["Cultural"],
       "group": "cultural",
       "clinicalQuestion": null,
@@ -4022,8 +4022,8 @@
         "reviewer": null,
         "preparedAt": "2026-09-14"
       },
-      "release": "published",
-      "releaseNote": null,
+      "release": "held",
+      "releaseNote": "Held from clinical use. It carries Aboriginal and Torres Strait Islander content, so it needs review under Aboriginal governance before release, and the clinical sign-off tool will not sign it (owner rule 2026-09-26). Prepared 2026-09-14 and never reviewed, so it had been published without review.",
       "domains": [],
       "group": "guides",
       "blocks": [

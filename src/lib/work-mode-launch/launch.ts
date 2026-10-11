@@ -13,7 +13,7 @@
  * Three controls, from slowest to fastest, none of which needs a migration:
  *
  *   1. `WORK_MODE_LAUNCH` (server env): `off`, `preview` or `everyone`. The
- *      audience switch. Unset means `preview` in production. Changing it is a
+ *      audience switch. Unset means `everyone`. Changing it is a
  *      Railway variable change, so the app restarts but nothing is rebuilt.
  *   2. The preview audience: the administrator (`app_metadata.site_role`, the
  *      same claim that already gates the developer area), anyone listed in
@@ -23,16 +23,12 @@
  *      tap in Settings, no deploy: the reader is back without the new screens
  *      on the next page load. It can only turn them off, never on.
  *
- * Under `preview` the new screens are also a live version switch preview feature
- * (`src/lib/live-version/`): the preview audience is its testers, and a tester
- * who switches to "Everyone's version" sees exactly what everyone else does.
- *
- * Outside production, and in the isolated offline Playwright build, the default
- * is `everyone`, so local previews, unit tests and browser
- * journeys keep seeing the new mode with no setup. An explicit env value still wins.
+ * Outside production, and in the isolated offline Playwright build, the whole device
+ * counts as the preview audience, so local previews, unit tests and browser
+ * journeys see the new mode with no setup even under `preview`.
  */
 
-import { isLiveVersionTester, resolveLiveVersion } from "@/lib/live-version/live-version";
+import { isAdministratorAppMetadata } from "@/lib/authorization";
 
 export const WORK_MODE_PREFERENCE_COOKIE = "psychsift-work-mode";
 export const WORK_MODE_CLASSIC_PREFERENCE = "classic";
@@ -59,6 +55,17 @@ type LaunchEnvironment = Record<string, string | undefined>;
 
 const LAUNCH_SETTINGS: ReadonlySet<string> = new Set(["off", "preview", "everyone"]);
 
+/**
+ * The audience when `WORK_MODE_LAUNCH` is unset, in every environment. On for
+ * everyone since 10 October 2026, the owner's decision when the live version
+ * switch was removed (PR #3433): the new work screens, course bookings, rotation
+ * preferences, the two-pane side menu and phone bell reminders all reach every
+ * reader. Roll the new work screens back without a deploy by setting
+ * `WORK_MODE_LAUNCH=preview` (or `off`) on Railway; a reader can still choose
+ * the classic work mode on their own device in Settings.
+ */
+export const WORK_MODE_LAUNCH_DEFAULT: WorkModeLaunchSetting = "everyone";
+
 function relaxedDefaults(environment: LaunchEnvironment): boolean {
   return environment.NODE_ENV !== "production" || environment.PLAYWRIGHT_OFFLINE_MODE === "true";
 }
@@ -68,35 +75,41 @@ export function workModeLaunchSetting(environment: LaunchEnvironment): WorkModeL
   if (value && LAUNCH_SETTINGS.has(value)) return value as WorkModeLaunchSetting;
   // An unrecognised value is a typo in a live switch: fail closed to the preview audience.
   if (value) return "preview";
-  return relaxedDefaults(environment) ? "everyone" : "preview";
+  return WORK_MODE_LAUNCH_DEFAULT;
+}
+
+function previewUserIds(environment: LaunchEnvironment): ReadonlySet<string> {
+  return new Set(
+    (environment.WORK_MODE_PREVIEW_USER_IDS ?? "")
+      .split(",")
+      .map((id) => id.trim().toLowerCase())
+      .filter(Boolean),
+  );
 }
 
 export function isWorkModePreviewUser(user: WorkModeLaunchUser | null, environment: LaunchEnvironment): boolean {
-  return isLiveVersionTester(user, environment);
+  if (!user) return false;
+  if (isAdministratorAppMetadata(user.appMetadata)) return true;
+  if (user.appMetadata.work_mode_preview === true) return true;
+  return previewUserIds(environment).has(user.id.toLowerCase());
 }
 
 export function resolveWorkModeLaunch({
   user,
   environment,
   preference,
-  liveVersion,
 }: {
   user: WorkModeLaunchUser | null;
   environment: LaunchEnvironment;
   preference?: string | null;
-  /** The live version switch cookie: "everyone" hides the new screens from a tester. */
-  liveVersion?: string | null;
 }): WorkModeLaunch {
   const setting = workModeLaunchSetting(environment);
   const relaxed = relaxedDefaults(environment);
   // Relaxed (dev, tests, offline browser build) has no signed-in user to check, so
   // the whole device counts as the preview audience there.
   const previewAudience = relaxed || isWorkModePreviewUser(user, environment);
-  // A live version tester switches with the live version switch instead, and Settings hides the
-  // classic row from them, so a classic cookie left from before can never strand them.
-  const classicPreferred = preference === WORK_MODE_CLASSIC_PREFERENCE && !isLiveVersionTester(user, environment);
-  const live = resolveLiveVersion({ user, environment, choice: liveVersion });
-  const audienceAllowed = setting === "everyone" || (setting === "preview" && previewAudience && live.newest);
+  const classicPreferred = preference === WORK_MODE_CLASSIC_PREFERENCE;
+  const audienceAllowed = setting === "everyone" || (setting === "preview" && previewAudience);
   const newWorkMode = audienceAllowed && !classicPreferred;
   return { newWorkMode, previewAudience, classicPreferred, choiceAvailable: audienceAllowed };
 }

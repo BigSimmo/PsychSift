@@ -166,12 +166,20 @@ describe("the in-memory index", () => {
 });
 
 describe("Pages", () => {
-  it("lists each page once, never an action or a gated page", () => {
+  it("lists each page once, never an action, and a gated page with its gates", () => {
     const pages = workSearchPages();
+    const byHref = (href: string) => pages.find((page) => page.href === href);
     expect(new Set(pages.map((page) => page.href)).size).toBe(pages.length);
-    expect(pages.some((page) => page.href === "/open-shifts/post")).toBe(false);
-    expect(pages.some((page) => page.href === "/on-call/service")).toBe(false);
     expect(pages.every((page) => page.href.startsWith("/"))).toBe(true);
+    // Role pages are found by the readers the frame shows them to, and by nobody else.
+    expect(byHref("/admin/hospital")?.gates).toEqual(["hospital-hub"]);
+    expect(byHref("/roster/manage")?.gates?.length).toBeGreaterThan(0);
+    // An open page listed twice keeps its open copy: Supervision is Teaching's, for every reader.
+    expect(byHref("/teaching/supervision")?.gates).toEqual([]);
+    // Launch gates are the route list's job, not the search's.
+    expect(
+      pages.some((page) => page.gates?.some((gate) => gate === "new-work-mode" || gate === "classic-work-mode")),
+    ).toBe(false);
   });
 
   it("finds a page by its name or a word people use for it", () => {

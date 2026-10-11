@@ -51,6 +51,7 @@ export type PeopleView = {
 };
 
 const uuid = z.string().uuid();
+const hospitalName = z.string().trim().min(1).max(160);
 export const peopleChangeSchema = z.discriminatedUnion("action", [
   z
     .object({
@@ -66,7 +67,10 @@ export const peopleChangeSchema = z.discriminatedUnion("action", [
     .refine((value) => Boolean(value.userId) !== Boolean(value.email), { message: "Pick one person." }),
   z.object({ action: z.literal("revoke"), grantId: uuid }).strict(),
   z.object({ action: z.literal("link-team"), hospitalId: uuid, serviceId: uuid }).strict(),
-  z.object({ action: z.literal("create-hospital"), name: z.string().trim().min(1).max(160) }).strict(),
+  z.object({ action: z.literal("create-hospital"), name: hospitalName }).strict(),
+  z.object({ action: z.literal("move-team"), serviceId: uuid, toHospitalId: uuid }).strict(),
+  z.object({ action: z.literal("rename-hospital"), hospitalId: uuid, name: hospitalName }).strict(),
+  z.object({ action: z.literal("archive-hospital"), hospitalId: uuid }).strict(),
 ]);
 export type PeopleChange = z.infer<typeof peopleChangeSchema>;
 
@@ -185,6 +189,22 @@ export async function readPeople(
   const roleRows = check(managers);
   const grantRows = check(grants);
 
+  // A whole-team supervisor whose team has moved away (the move could not remove them) stays filed
+  // under the hospital that gave the role, so name that team too.
+  const serviceNames = new Map(serviceRows.map((row) => [row.id, row.name]));
+  const elsewhere = [
+    ...new Set(
+      grantRows
+        .map((row) => row.service_id)
+        .filter((id): id is string => typeof id === "string" && !serviceNames.has(id)),
+    ),
+  ];
+  if (elsewhere.length) {
+    for (const row of check(await client.from("on_call_services").select("id,name").in("id", elsewhere))) {
+      serviceNames.set(row.id, row.name);
+    }
+  }
+
   const rosterNames = new Map(roleRows.map((row) => [`${row.service_id}:${row.user_id}`, row.roster_name]));
   const names = new Map<string, string>();
   const people = new Map<string, PeoplePerson>();
@@ -199,7 +219,6 @@ export async function readPeople(
     people.set(row.user_id, { ...person, name: names.get(row.user_id) ?? name });
   }
   const active = new Set(memberRows.map((row) => `${row.service_id}:${row.user_id}`));
-  const serviceNames = new Map(serviceRows.map((row) => [row.id, row.name]));
   const teams: PeopleTeam[] = serviceRows
     .map((service) => ({
       serviceId: service.id,
@@ -396,6 +415,130 @@ async function revoke(client: Client, context: WorkRoleContext, grantId: string)
   return row.hospital_id;
 }
 
+function hospitalUnavailable(): PublicApiError {
+  return new PublicApiError("That hospital is unavailable. It may have been archived.", 404, {
+    code: "work_people_not_found",
+  });
+}
+
+/** A failed write, in the same words every action here uses. */
+function writeFailed(error: { code?: string | null }): PublicApiError {
+  if (isMissingTableError(error)) return notReady();
+  return unavailable();
+}
+
+/**
+ * Moves a linked team to another hospital that is still open, for a team linked to the wrong one.
+ * Medical Workforce and DCT reach comes from the links when roles are read (`loadWorkRoleContext`),
+ * so it follows the team at once. Roster managers stay. Whole-team supervisors are removed: their
+ * grant is filed under the old hospital but `work_can` matches it by team alone, so it would keep
+ * working at the new hospital where nobody there could see or remove it. Supervisors of named
+ * trainees are left alone, because they are scoped to the old hospital and simply stop matching.
+ * There is no transaction, so the move goes first and a failed removal is reported, never hidden.
+ * Answers with the hospital the team left.
+ */
+async function moveTeam(
+  client: Client,
+  context: WorkRoleContext,
+  change: Extract<PeopleChange, { action: "move-team" }>,
+): Promise<string> {
+  if (!isAdministrator(context)) throw denied();
+  const links = check(
+    await client.from("work_hospital_teams").select("hospital_id").eq("service_id", change.serviceId).limit(1),
+  );
+  const from = links[0]?.hospital_id;
+  if (!from) {
+    throw new PublicApiError("That team isn't linked to a hospital. Link it instead.", 404, {
+      code: "work_team_not_linked",
+    });
+  }
+  if (from === change.toHospitalId) {
+    throw new PublicApiError("That team is already in this hospital.", 409, { code: "work_team_linked" });
+  }
+  const target = check(
+    await client.from("work_hospitals").select("id").eq("id", change.toHospitalId).is("archived_at", null).limit(1),
+  );
+  if (!target.length) throw hospitalUnavailable();
+  // Only while it is still where it was read, so two moves at once cannot both land.
+  const { data, error } = await client
+    .from("work_hospital_teams")
+    .update({ hospital_id: change.toHospitalId, linked_by: context.userId, linked_at: new Date().toISOString() })
+    .eq("service_id", change.serviceId)
+    .eq("hospital_id", from)
+    .select("service_id");
+  if (error?.code === "23503") throw hospitalUnavailable();
+  if (error) throw writeFailed(error);
+  if (!data?.length) {
+    throw new PublicApiError("That team changed while you were moving it. Try again.", 409, {
+      code: "work_team_changed",
+    });
+  }
+  const { error: supervisorError } = await client
+    .from("work_role_grants")
+    .update({ revoked_at: new Date().toISOString(), revoked_by: context.userId })
+    .eq("role", "supervisor")
+    .eq("service_id", change.serviceId)
+    .is("subject_user_id", null)
+    .is("revoked_at", null);
+  if (supervisorError) {
+    throw new PublicApiError(
+      "The team moved, but its whole-team supervisors weren't removed. Remove them under the hospital it left.",
+      503,
+      { code: "work_team_supervisors_left" },
+    );
+  }
+  return from;
+}
+
+async function renameHospital(
+  client: Client,
+  context: WorkRoleContext,
+  change: Extract<PeopleChange, { action: "rename-hospital" }>,
+): Promise<void> {
+  if (!isAdministrator(context)) throw denied();
+  if (looksLikePatientDetail(change.name)) {
+    throw new PublicApiError("Use the hospital's name only.", 400, { code: "work_people_invalid" });
+  }
+  const { data, error } = await client
+    .from("work_hospitals")
+    .update({ name: change.name })
+    .eq("id", change.hospitalId)
+    .is("archived_at", null)
+    .select("id");
+  // The same unique name rule as adding one: no two open hospitals share a name, whatever the case.
+  if (error?.code === "23505") {
+    throw new PublicApiError("A hospital with that name already exists.", 409, { code: "work_hospital_exists" });
+  }
+  if (error) throw writeFailed(error);
+  if (!data?.length) throw hospitalUnavailable();
+}
+
+/**
+ * Archives a hospital. Refused while any team is still linked to it, so no team is left in a
+ * hospital nobody can open. Every role given there lapses with it (`loadWorkRoleContext` and
+ * `work_can` skip archived hospitals), and the rows stay as the record.
+ */
+async function archiveHospital(
+  client: Client,
+  context: WorkRoleContext,
+  change: Extract<PeopleChange, { action: "archive-hospital" }>,
+): Promise<void> {
+  if (!isAdministrator(context)) throw denied();
+  if ((await hospitalTeamIds(client, change.hospitalId)).length) {
+    throw new PublicApiError("Move its teams first. A hospital with teams can't be archived.", 409, {
+      code: "work_hospital_has_teams",
+    });
+  }
+  const { data, error } = await client
+    .from("work_hospitals")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", change.hospitalId)
+    .is("archived_at", null)
+    .select("id");
+  if (error) throw writeFailed(error);
+  if (!data?.length) throw hospitalUnavailable();
+}
+
 export async function applyPeopleChange(
   client: Client,
   context: WorkRoleContext,
@@ -437,5 +580,14 @@ export async function applyPeopleChange(
       if (error || !data) throw unavailable();
       return readPeople(client, context, data.id);
     }
+    case "move-team":
+      return readPeople(client, context, await moveTeam(client, context, change));
+    case "rename-hospital":
+      await renameHospital(client, context, change);
+      return readPeople(client, context, change.hospitalId);
+    case "archive-hospital":
+      await archiveHospital(client, context, change);
+      // It drops out of the list, so show the first hospital left.
+      return readPeople(client, context, null);
   }
 }

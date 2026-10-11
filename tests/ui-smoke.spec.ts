@@ -806,18 +806,6 @@ async function openMobileTableFullscreen(page: Page, clinicalTable: Locator) {
   return tableDialog;
 }
 
-/**
- * Pins the page to Everyone's version of the live version switch. The offline
- * build shows the newest work by default, and the phone menu below is the one
- * everyone who is not a tester still gets; the two-pane menu that replaces it
- * for testers is covered by tests/two-pane-side-menu.dom.test.tsx.
- */
-async function useEveryonesVersion(page: Page, baseURL: string | undefined) {
-  await page
-    .context()
-    .addCookies([{ name: "psychsift-live-version", value: "everyone", url: new URL("/", baseURL).toString() }]);
-}
-
 async function openMobileClinicalGuideMenu(page: Page) {
   const trigger = page.getByRole("button", { name: "Open PsychSift menu" });
   await expect(trigger).toBeVisible();
@@ -1238,12 +1226,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.locator('[data-testid="global-search-input"]:visible').first()).toBeEnabled();
   });
 
-  test("Medication shortcut opens the shared Medication home", async ({ page, baseURL }) => {
+  test("Medication shortcut opens the shared Medication home", async ({ page }) => {
     // Medication was reversed out of its standalone `/medications` home (see
     // src/app/(search-app)/medications/page.tsx) so its idle view is now the shared
     // home, matching the other consolidated modes and Documents.
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
@@ -1257,9 +1244,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByRole("button", { name: "Mode Medication" })).toBeVisible();
   });
 
-  test("mobile search focus is singular, visible, and contained at clipped edges", async ({ page, baseURL }) => {
+  test("mobile search focus is singular, visible, and contained at clipped edges", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/?mode=answer");
     await waitForDemoDashboardReady(page);
@@ -1500,10 +1486,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("plain-answer-response")).toHaveCount(0);
   });
 
-  test("tablet shows icon rail without drawer trigger or expand control @critical", async ({ page, baseURL }) => {
+  test("tablet shows icon rail without drawer trigger or expand control @critical", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    // The classic icon rail is what everyone who is not a tester gets on a tablet.
-    await useEveryonesVersion(page, baseURL);
+    // The classic icon rail is what every reader gets on a tablet.
     await mockDemoApi(page);
     // Seed expanded preference so #clinical-tools-sidebar mounts. Without this
     // seed the panel is absent (count 0) and toBeHidden() would pass vacuously;
@@ -1573,36 +1558,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("tablet two-pane rail opens the menu on the side it names", async ({ page }) => {
-    // Newest is the offline build's default, so this is the tester's tablet.
+  test("tablet rail highlights the active tool for key routes", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await mockDemoApi(page);
-    await gotoApp(page, "/?mode=answer");
-    await waitForDemoDashboardReady(page);
-
-    const rail = page.getByTestId("two-pane-rail");
-    await expect(rail).toBeVisible();
-    await expect(page.getByLabel("PsychSift collapsed sidebar")).toBeHidden();
-    await expect(page.getByRole("button", { name: "Open PsychSift menu" })).toBeHidden();
-    await expect(rail.getByTestId("two-pane-rail-clinical")).toHaveAttribute("data-current", "true");
-    expect((await rail.boundingBox())?.width).toBe(84);
-
-    await rail.getByTestId("two-pane-rail-clinical").click();
-    const menu = page.getByTestId("two-pane-side-menu");
-    await expect(menu).toBeVisible();
-    await expect(menu.getByRole("heading", { level: 2, name: "Clinical" })).toBeVisible();
-    await menu.getByRole("button", { name: "Close menu" }).click();
-    await expect(menu).toBeHidden();
-    await expect(rail.getByTestId("two-pane-rail-clinical")).toBeFocused();
-
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(rail).toBeHidden();
-  });
-
-  test("tablet rail highlights the active tool for key routes", async ({ page, baseURL }) => {
-    await page.setViewportSize({ width: 768, height: 1024 });
-    // Covers the classic icon rail, which the newest live version replaces on tablets.
-    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
 
     for (const route of [
@@ -1787,10 +1744,8 @@ test.describe("PsychSift UI smoke coverage", () => {
 
   test("account settings stays readable at narrow phone widths and closes from its single control or Escape", async ({
     page,
-    baseURL,
   }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
@@ -4930,10 +4885,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("medication-result-acamprosate-phone")).toBeVisible();
   });
 
-  test("tablet document chrome keeps one new-chat action and readable Sources rows", async ({ page, baseURL }) => {
+  test("tablet document chrome keeps one new-chat action and readable Sources rows", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 900 });
-    // Covers the classic icon rail, which the newest live version replaces on tablets.
-    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
     // Documents' idle browse tiles (including the old "Browse library" button)
     // are retired — `/documents` now redirects to the shared home instead of
@@ -6611,9 +6564,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     { name: "tablet", width: 768, height: 1024 },
     { name: "desktop", width: 1280, height: 900 },
   ]) {
-    test(`guide opens and dismisses at ${viewport.name}`, async ({ page, baseURL }) => {
+    test(`guide opens and dismisses at ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      if (viewport.width < 1024) await useEveryonesVersion(page, baseURL);
       await mockPrivateUnauthenticatedApi(page);
       await gotoApp(page, "/");
 
@@ -6640,9 +6592,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     });
   }
 
-  test("guide centre topic navigation and tour progress remain accessible", async ({ page, baseURL }) => {
+  test("guide centre topic navigation and tour progress remain accessible", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
@@ -6744,9 +6695,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("guide centre phone dock paints through the bottom safe area", async ({ page, baseURL }) => {
+  test("guide centre phone dock paints through the bottom safe area", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
 

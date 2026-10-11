@@ -152,6 +152,10 @@ const reviewedActionPins = new Map([
       ["c3c9e263c25d99ce0380d002d59b67737d91b0dc", "v7"],
     ]),
   ],
+  // Reviewed 2026-10-10 for the CodSpeed benchmark workflow (codspeed.yml):
+  // annotated tag v5.4.2 peels to this commit. Official CodSpeed action; it
+  // authenticates with GitHub OIDC (id-token: write) and receives no secrets.
+  ["CodSpeedHQ/action", new Map([["f842b9a3ffe213dbb81768fd7f7eeb4dfcf1c369", "v5.4.2"]])],
   // Reviewed 2026-07-31: official autofix.ci action; tag v1.3.4 / moving v1 both
   // resolve to this immutable commit (node24 runtime). Used only after local
   // Prettier write; the action itself never receives write tokens in-workflow.

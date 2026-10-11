@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Info,
   Phone,
-  ShieldCheck,
   TriangleAlert,
   X,
   type LucideIcon,
@@ -124,16 +123,6 @@ export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps
 export const closeIcon = X;
 
 /* ---------------------------------------------------------- small pieces */
-
-/** The calm line that says these are made-up records. */
-export function AssessSample({ children, testId }: { readonly children: ReactNode; readonly testId?: string }) {
-  return (
-    <p role="status" className="assess-sample m-0" data-testid={testId}>
-      <ShieldCheck aria-hidden="true" strokeWidth={2} />
-      <span className="min-w-0">{children}</span>
-    </p>
-  );
-}
 
 export type SegOption<T extends string> = { readonly value: T; readonly label: string };
 

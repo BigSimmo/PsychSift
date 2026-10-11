@@ -129,7 +129,7 @@ export function OpenShiftsBrowsePage() {
             <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
             My Day
           </Link>
-          <span>{`Example list updated ${perthTimeOf(now.toISOString())} · example roster as of ${formatDayShort(today)}`}</span>
+          <span>{`List updated ${perthTimeOf(now.toISOString())} · roster as of ${formatDayShort(today)}`}</span>
         </div>
       ) : null}
 

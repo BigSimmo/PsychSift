@@ -14,6 +14,7 @@ import {
   publishedFormulationRecord,
 } from "@/lib/formulation-concepts";
 import {
+  formulationConceptDomainsInUse,
   formulationConceptIndex,
   formulationConceptIndexGroups,
   searchFormulationConcepts,
@@ -132,7 +133,9 @@ describe("formulation concept library", () => {
     for (const domain of ["Biological", "Social", "Cultural"]) {
       expect(declared.has(domain)).toBe(true);
       expect(formulationMechanisms.some((mechanism) => mechanism.domains.includes(domain))).toBe(false);
-      expect(publishedFormulationConcepts.some((concept) => concept.domains.includes(domain))).toBe(true);
+      // Carried by a concept record. Every Cultural concept is held pending sign-off
+      // (#R8HED2), so this counts held records too.
+      expect(formulationConcepts.some((concept) => concept.domains.includes(domain))).toBe(true);
     }
     for (const concept of formulationConcepts) {
       for (const domain of concept.domains) expect(declared.has(domain)).toBe(true);
@@ -144,12 +147,17 @@ describe("formulation concept library", () => {
       ...formulationMechanisms.flatMap((mechanism) => mechanism.domains),
       ...publishedFormulationConcepts.flatMap((concept) => concept.domains),
     ]);
+    const heldOnly = new Set(
+      heldFormulationConcepts.flatMap((concept) => concept.domains).filter((domain) => !carried.has(domain)),
+    );
     // Before the concept import this was 9 of 12: Biological, Social and
     // Cultural were declared and carried by nothing, so the filter derived them
     // away. They are now reachable, and the filter must not hide content the
-    // same page lists.
-    for (const domain of formulationContent.domains) expect(carried.has(domain)).toBe(true);
-    expect(carried.size).toBe(formulationContent.domains.length);
+    // same page lists. A domain whose only records are held (Cultural, #R8HED2)
+    // is the exception: it has nothing to reach, so it must not be offered.
+    for (const domain of formulationContent.domains) expect(carried.has(domain) || heldOnly.has(domain)).toBe(true);
+    for (const domain of heldOnly) expect(formulationConceptDomainsInUse).not.toContain(domain);
+    expect(carried.size + heldOnly.size).toBe(formulationContent.domains.length);
   });
 
   it("groups every published concept under a named browse group", () => {
@@ -157,8 +165,9 @@ describe("formulation concept library", () => {
     for (const concept of publishedFormulationConcepts) {
       expect(groupIds.has(concept.group)).toBe(true);
     }
+    // A group may be wholly held (cultural, #R8HED2), but never empty.
     for (const group of formulationConceptGroups) {
-      expect(publishedFormulationConcepts.some((concept) => concept.group === group.id)).toBe(true);
+      expect(formulationConcepts.some((concept) => concept.group === group.id)).toBe(true);
     }
   });
 

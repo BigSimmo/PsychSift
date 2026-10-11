@@ -120,18 +120,23 @@ export function RosterRotationBand({
   );
 }
 
-const KIND_TAG: Readonly<Record<string, string>> = { rotation: "Rotation", course: "Course" };
+const KIND_TAG: Readonly<Record<string, string>> = { rotation: "Rotation", course: "Course", deadline: "Deadline" };
 
-/** One Coming up row: "Consultation liaison starts", or its end. */
+/** One Coming up row: "Consultation liaison starts", or its end. A one-day entry keeps its own title. */
 export function RosterEntryEdgeRow({ edge }: { readonly edge: WorkCalendarEdge }) {
   const { entry, date } = edge;
   const weekday = formatPerthDay(date).split(" ")[0] ?? "";
   const tag = KIND_TAG[entry.kind];
+  const oneDay = entry.start === entry.end;
   const row = {
     month: weekday,
     day: Number(date.slice(8, 10)),
-    title: `${entry.title} ${edge.edge === "start" ? "starts" : "ends"}`,
-    sub: edge.edge === "start" ? entry.detail || formatPerthDay(date) : `Last day · ${formatPerthDay(date)}`,
+    title: oneDay ? entry.title : `${entry.title} ${edge.edge === "start" ? "starts" : "ends"}`,
+    sub: oneDay
+      ? [entry.startTime, entry.detail || formatPerthDay(date)].filter(Boolean).join(" · ")
+      : edge.edge === "start"
+        ? entry.detail || formatPerthDay(date)
+        : `Last day · ${formatPerthDay(date)}`,
     end: tag ? <WorkTag tone={edge.edge === "start" ? "mode" : "neutral"}>{tag}</WorkTag> : undefined,
     testId: `roster-month-edge-${edge.edge}`,
   };

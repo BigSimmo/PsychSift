@@ -50,7 +50,7 @@ import {
   type RotationDraft,
   type RoundDraft,
 } from "./round-admin-model";
-import { AvatarRow, RotationsAdminGate } from "./rounds-page";
+import { AvatarRow, RotationNoTeam, RotationsAdminGate } from "./rounds-page";
 
 /**
  * The round form (mockup `S.newround`): three steps on one page, Terms,
@@ -75,7 +75,9 @@ const iconButton =
 export function NewRotationRoundPage() {
   const read = useRotations();
   const router = useRouter();
-  useModeBandHeading({ eyebrow: read.team?.name ?? "Manage team", title: "New round" });
+  const [chosen, setChosen] = useState<string | null>(null);
+  const team = read.teams.find((candidate) => candidate.serviceId === chosen) ?? read.team;
+  useModeBandHeading({ eyebrow: team?.name ?? "Manage team", title: "New round" });
   return (
     <main className="min-w-0">
       <WorkBody testId="rotation-new-round">
@@ -85,6 +87,8 @@ export function NewRotationRoundPage() {
         <RotationsAdminGate read={read} what="rotation rounds">
           <NewRoundStart
             read={read}
+            team={team}
+            onChooseTeam={setChosen}
             onDone={(roundId) => router.replace(roundId ? manageRoundHref(roundId) : MANAGE_ROTATIONS_HREF)}
             onCancel={() => router.push(MANAGE_ROTATIONS_HREF)}
           />
@@ -94,53 +98,71 @@ export function NewRotationRoundPage() {
   );
 }
 
-/** Starts a new round with everyone in the team (`team.people`), whether real or the example. */
+/**
+ * Starts a new round with everyone in the chosen team (`team.people`), whether real or the example.
+ * Someone who runs more than one team (Medical Workforce, say) picks the team first.
+ */
 function NewRoundStart({
   read,
+  team,
+  onChooseTeam,
   onDone,
   onCancel,
 }: {
   readonly read: RotationsRead;
+  readonly team: RotationsRead["team"];
+  readonly onChooseTeam: (serviceId: string) => void;
   readonly onDone: (roundId: string | undefined) => void;
   readonly onCancel: () => void;
 }) {
   const now = useRosterNow();
-  const latest = read.managed[0]?.round;
   const makeId = useIdMaker(read.source);
+  // A save in flight belongs to this team's form, so the team can't change until it finishes.
+  const [saving, setSaving] = useState(false);
+  const latest = read.managed.find((round) => round.round.serviceId === team?.serviceId)?.round;
 
-  if (!read.team) {
-    return (
-      <WorkCard testId="rotation-new-round-no-team">
-        <WorkEmpty
-          icon={Users}
-          title="No team to run a round for"
-          body="Rounds are for the team you manage in Roster."
-          action={
-            <WorkButton variant="secondary" href="/roster/manage" testId="rotation-new-round-manage">
-              Back to Manage team
-            </WorkButton>
-          }
-        />
-      </WorkCard>
-    );
-  }
-  const people = read.team.people.map((person) => ({ ...person }));
+  if (!team) return <RotationNoTeam />;
+  const people = team.people.map((person) => ({ ...person }));
   const initial = newRoundDraft({
     now,
     people,
-    // Last round's rotations are the usual start; each one can be changed or removed.
+    // The team's last round's rotations are the usual start; each one can be changed or removed.
     rotations: (latest?.rotations ?? []).map((rotation, index) => ({ ...rotation, id: makeId("rotation", index) })),
     makeId,
   });
   return (
-    <RoundForm
-      read={read}
-      initial={initial}
-      roster={people}
-      carriedFrom={latest?.name ?? null}
-      onDone={onDone}
-      onCancel={onCancel}
-    />
+    <div className="grid gap-4">
+      {read.teams.length > 1 ? (
+        <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
+          Team
+          <select
+            value={team.serviceId}
+            onChange={(event) => onChooseTeam(event.target.value)}
+            disabled={saving}
+            className={rosterField}
+            data-testid="rotation-new-round-team"
+          >
+            {read.teams.map((candidate) => (
+              <option value={candidate.serviceId} key={candidate.serviceId}>
+                {candidate.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {/* A new team starts a fresh form, with that team's people. */}
+      <RoundForm
+        key={team.serviceId}
+        read={read}
+        initial={initial}
+        roster={people}
+        serviceId={team.serviceId}
+        carriedFrom={latest?.name ?? null}
+        onBusyChange={setSaving}
+        onDone={onDone}
+        onCancel={onCancel}
+      />
+    </div>
   );
 }
 
@@ -166,11 +188,25 @@ export type RoundFormProps = {
   readonly editing?: ManagedRound;
   /** The round whose rotations a new round started from, to say so. */
   readonly carriedFrom?: string | null;
+  /** The team a new round is for. */
+  readonly serviceId?: string;
+  /** Told when a save starts and ends. */
+  readonly onBusyChange?: (busy: boolean) => void;
   readonly onDone: (roundId: string | undefined) => void;
   readonly onCancel: () => void;
 };
 
-export function RoundForm({ read, initial, roster, editing, carriedFrom, onDone, onCancel }: RoundFormProps) {
+export function RoundForm({
+  read,
+  initial,
+  roster,
+  editing,
+  carriedFrom,
+  serviceId,
+  onBusyChange,
+  onDone,
+  onCancel,
+}: RoundFormProps) {
   const [draft, setDraft] = useState<RoundDraft>(initial);
   const [step, setStep] = useState<FormStep>("terms");
   const [problem, setProblem] = useState<string | null>(null);
@@ -189,6 +225,8 @@ export function RoundForm({ read, initial, roster, editing, carriedFrom, onDone,
         : { terms: new Set<string>(), rotations: new Set<string>(), people: new Set<string>() },
     [editing],
   );
+
+  useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
 
   // Move focus to the step's heading when the step changes, not on first load.
   useEffect(() => {
@@ -233,7 +271,7 @@ export function RoundForm({ read, initial, roster, editing, carriedFrom, onDone,
       const saved = await read.actions.editRound(editing.round.id, check.setup);
       if (!saved.ok) return fail(saved.message);
     } else {
-      const created = await read.actions.createRound(check.setup);
+      const created = await read.actions.createRound(check.setup, serviceId);
       if (!created.ok) return fail(created.message);
       roundId = created.roundId;
     }
@@ -992,7 +1030,7 @@ export function EditRoundForm({
   readonly onDone: () => void;
   readonly onCancel: () => void;
 }) {
-  const teamPeople = read.team?.people;
+  const teamPeople = read.teams.find((team) => team.serviceId === managed.round.serviceId)?.people;
   const roster = useMemo(() => {
     // Everyone in the round, plus the rest of the team, so a removed person can come back.
     const inRound = managed.round.people.map((person) => ({ ...person }));

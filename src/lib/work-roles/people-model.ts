@@ -80,7 +80,12 @@ export type WorkPeopleAction =
   | (GrantCover & { readonly action: "grant"; readonly email: string; readonly userId?: never })
   | { readonly action: "revoke"; readonly grantId: string }
   | { readonly action: "link-team"; readonly hospitalId: string; readonly serviceId: string }
-  | { readonly action: "create-hospital"; readonly name: string };
+  | { readonly action: "create-hospital"; readonly name: string }
+  /** A linked team to another open hospital, for a team linked to the wrong one. The administrator only. */
+  | { readonly action: "move-team"; readonly serviceId: string; readonly toHospitalId: string }
+  | { readonly action: "rename-hospital"; readonly hospitalId: string; readonly name: string }
+  /** Refused while any team is still linked to it. */
+  | { readonly action: "archive-hospital"; readonly hospitalId: string };
 
 /* --------------------------------------------------------------- parsing */
 
@@ -469,6 +474,60 @@ export function hospitalNameProblem(name: string, existing: readonly PeopleHospi
   return null;
 }
 
+/** What is wrong with a hospital's new name, or null. The same rules as adding one, leaving itself out. */
+export function renameHospitalProblem(
+  name: string,
+  current: PeopleHospitalRef,
+  hospitals: readonly PeopleHospitalRef[],
+): string | null {
+  if (name.trim() && name.trim() === current.name.trim()) return "That's its name now.";
+  return hospitalNameProblem(
+    name,
+    hospitals.filter((hospital) => hospital.id !== current.id),
+  );
+}
+
+/* ------------------------------------------------- fix a hospital mix-up */
+
+/**
+ * What moving a team changes, in plain sentences, for the confirm step. It mirrors the server:
+ * hospital roles follow the team's link, roster managers stay, whole-team supervisors lose the
+ * role, and a role for named trainees stays in the hospital that gave it.
+ */
+export function moveTeamEffects(teamName: string, fromName: string, toName: string, supervisors: number): string[] {
+  return [
+    `Medical Workforce and the DCT at ${toName} start seeing ${teamName}, and those at ${fromName} stop.`,
+    `Its members show under ${toName} from now on.`,
+    `Roster managers for ${teamName} keep their roles.`,
+    ...(supervisors > 0
+      ? [
+          `${supervisors === 1 ? "1 supervisor" : `${supervisors} supervisors`} of ${teamName} will lose the role. Give it again at ${toName}.`,
+        ]
+      : []),
+    `Supervisors given named trainees at ${fromName} no longer cover those trainees' work in ${teamName}.`,
+  ];
+}
+
+/** A whole-team supervisor grant for this team: the ones a move removes. */
+export function isWholeTeamSupervisor(grant: PeopleGrant, serviceId: string): boolean {
+  return grant.role === "supervisor" && grant.serviceId === serviceId && grant.subjectUserId === null;
+}
+
+/** What archiving a hospital changes, in plain sentences, for the confirm step. */
+export function archiveHospitalEffects(hospitalName: string): string[] {
+  return [
+    `Medical Workforce, the DCT and supervisors at ${hospitalName} lose those roles straight away. Who held them stays on record.`,
+    `${hospitalName} drops out of every hospital list, and it can't be brought back from this page.`,
+  ];
+}
+
+/** Why a hospital can't be archived yet, or null when it can. */
+export function archiveBlockedReason(hospital: PeopleHospital): string | null {
+  const count = hospital.teams.length;
+  if (count === 0) return null;
+  return `Move its teams first. ${hospital.name} still has ${count === 1 ? "one team" : `${count} teams`}.`;
+}
+
 /* ------------------------------------------------------- example memory */
 
 /** The example records: every hospital in full, kept in page memory only. */
@@ -498,13 +557,64 @@ export function applyExampleAction(
   action: WorkPeopleAction,
   context: { readonly now: string; readonly newId: (kind: string) => string },
 ):
-  | { readonly ok: true; readonly state: ExampleWorkPeople; readonly hospitalId: string }
+  /** `hospitalId` is the hospital to show next, null when none is left. */
+  | { readonly ok: true; readonly state: ExampleWorkPeople; readonly hospitalId: string | null }
   | { readonly ok: false; readonly problem: string } {
   const replace = (hospital: PeopleHospital) => ({
     ...state,
     hospitals: state.hospitals.map((entry) => (entry.id === hospital.id ? hospital : entry)),
   });
   switch (action.action) {
+    case "move-team": {
+      const from = state.hospitals.find((entry) => entry.teams.some((team) => team.serviceId === action.serviceId));
+      const to = state.hospitals.find((entry) => entry.id === action.toHospitalId);
+      if (!from) return { ok: false, problem: "That team isn't linked to a hospital. Link it instead." };
+      if (!to) return { ok: false, problem: "That hospital is unavailable. It may have been archived." };
+      if (from.id === to.id) return { ok: false, problem: "That team is already in this hospital." };
+      const team = from.teams.find((entry) => entry.serviceId === action.serviceId)!;
+      // Hospital people are the members of its teams, so the team's members follow it, and leave
+      // the old hospital unless another of its teams still holds them. Whole-team supervisors lose the role.
+      const fromTeams = new Set(from.teams.filter((entry) => entry !== team).map((entry) => entry.serviceId));
+      const members = from.people.filter((person) => person.serviceIds.includes(team.serviceId));
+      const movedFrom: PeopleHospital = {
+        ...from,
+        teams: from.teams.filter((entry) => entry !== team),
+        grants: from.grants.filter((grant) => !isWholeTeamSupervisor(grant, team.serviceId)),
+        people: from.people.filter(
+          (person) => !person.serviceIds.includes(team.serviceId) || person.serviceIds.some((id) => fromTeams.has(id)),
+        ),
+      };
+      const movedTo: PeopleHospital = {
+        ...to,
+        teams: [...to.teams, team],
+        people: [...to.people, ...members.filter((person) => !to.people.some((p) => p.userId === person.userId))],
+      };
+      return {
+        ok: true,
+        state: {
+          ...state,
+          hospitals: state.hospitals.map((entry) =>
+            entry.id === from.id ? movedFrom : entry.id === to.id ? movedTo : entry,
+          ),
+        },
+        hospitalId: from.id,
+      };
+    }
+    case "rename-hospital": {
+      const hospital = state.hospitals.find((entry) => entry.id === action.hospitalId);
+      if (!hospital) return { ok: false, problem: "That hospital is unavailable. It may have been archived." };
+      const problem = renameHospitalProblem(action.name, hospital, state.hospitals);
+      if (problem) return { ok: false, problem };
+      return { ok: true, state: replace({ ...hospital, name: action.name.trim() }), hospitalId: hospital.id };
+    }
+    case "archive-hospital": {
+      const hospital = state.hospitals.find((entry) => entry.id === action.hospitalId);
+      if (!hospital) return { ok: false, problem: "That hospital is unavailable. It may have been archived." };
+      const blocked = archiveBlockedReason(hospital);
+      if (blocked) return { ok: false, problem: blocked };
+      const hospitals = state.hospitals.filter((entry) => entry.id !== hospital.id);
+      return { ok: true, state: { ...state, hospitals }, hospitalId: hospitals[0]?.id ?? null };
+    }
     case "create-hospital": {
       const problem = hospitalNameProblem(action.name, state.hospitals);
       if (problem) return { ok: false, problem };

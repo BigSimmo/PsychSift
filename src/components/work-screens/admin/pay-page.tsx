@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
@@ -232,7 +231,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
         </WorkCard>
       ) : current ? (
         <WorkHero
-          eyebrow={`${shifts.sample ? "Example roster · " : ""}This pay fortnight · ${formatPayWindow(current.window)}`}
+          eyebrow={`This pay fortnight · ${formatPayWindow(current.window)}`}
           title={`${formatPayHours(current.rostered)} rostered`}
           sub={
             current.extra === null
@@ -262,7 +261,6 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-lg font-semibold text-[color:var(--text-heading)]">
             {payslipResultWord(latestResult, latest.resolved)}
-            {isExampleRecord(latest) ? <ExampleTag /> : null}
           </p>
           <dl className="mt-2 grid gap-1 text-sm">
             <div className="flex justify-between gap-3">
@@ -333,7 +331,7 @@ export function AdminPayPage({ now: pinned }: { now?: Date } = {}) {
                       {formatPayWindow({ start: check.periodStart, end: check.periodEnd })}
                     </span>
                     <span className="work-row__sub">
-                      {`${isExampleRecord(check) ? "Example · " : ""}${check.note ?? `Checked ${formatRecordedDate(check.checkedOn)}`}`}
+                      {check.note ?? `Checked ${formatRecordedDate(check.checkedOn)}`}
                     </span>
                   </span>
                   {result.matches ? (

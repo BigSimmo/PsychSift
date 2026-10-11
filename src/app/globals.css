@@ -5430,11 +5430,17 @@ td,
   }
 
   @media (max-width: 639px) and (display-mode: standalone) {
+    /* Neither box may ever scroll: only the scroll surface inside does. Hidden
+       still lets script scroll a box, and a route change's scrollIntoView did,
+       shifting the whole app (top bar included) up by the scroll padding with no
+       way back (CPD Summary to Log from a scrolled page, 10 Oct 2026). Clip
+       refuses that; hidden stays as the fallback for browsers without clip. */
     .mobile-app-shell,
     .phone-viewport-shell {
       min-height: 100vh;
       height: 100vh;
       overflow: hidden;
+      overflow: clip;
     }
 
     .phone-viewport-frame {
@@ -5442,6 +5448,7 @@ td,
       min-height: 0;
       height: 100%;
       overflow: hidden;
+      overflow: clip;
     }
 
     .phone-scroll-surface {

@@ -36,7 +36,7 @@ import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favouri
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import {
   LazyTwoPaneSideMenu,
   LazyWorkSideCounts,
@@ -524,9 +524,9 @@ function GlobalStandaloneSearchShellBody({
   // The counts reader stays mounted once the phone menu has opened on a work
   // page, so reopening the menu never fetches the feed again.
   const [workMenuOpened, setWorkMenuOpened] = useState(false);
-  // The two-pane side menu (owner pick 8 Oct 2026, behind the Live version
-  // switch) replaces both phone menus, and carries the Work side on every page.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  // The two-pane side menu (owner pick 8 Oct 2026) would replace both phone menus
+  // and carry the Work side on every page. It is off again (10 Oct 2026).
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const newWorkMode = useNewWorkMode();
   const twoPaneCounts = twoPaneSideMenu && newWorkMode;
   // Clinical pages hand 1024 px up to the full sidebar, so the rail (and its counts) stop there.
@@ -878,7 +878,9 @@ function GlobalStandaloneSearchShellBody({
 
     const onScrollCapture = (event: Event) => {
       const target = event.target;
-      if (!(target instanceof HTMLElement) || !main.contains(target)) return;
+      // The shell's own scroll is already reported by `handleMainScroll`;
+      // reporting it again here measured the chrome twice per scroll frame.
+      if (!(target instanceof HTMLElement) || target === main || !main.contains(target)) return;
       if (target.scrollHeight <= target.clientHeight + 1) return;
       reportChromeScrollHideRef.current({
         offset: target.scrollTop,

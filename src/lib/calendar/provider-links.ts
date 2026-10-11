@@ -1,4 +1,9 @@
-import { addDays, CALENDAR_TIME_ZONE, eventUtcRange, type CalendarEvent } from "@/lib/calendar/calendar-event";
+import {
+  allDayEndExclusive,
+  CALENDAR_TIME_ZONE,
+  eventUtcRange,
+  type CalendarEvent,
+} from "@/lib/calendar/calendar-event";
 import { compactDate, compactUtc, recurrenceRule } from "@/lib/calendar/ics";
 
 /**
@@ -16,7 +21,7 @@ export function googleCalendarUrl(event: CalendarEvent): string {
   const range = eventUtcRange(event);
   const dates = range
     ? `${compactUtc(range.start)}/${compactUtc(range.end)}`
-    : `${compactDate(event.date)}/${compactDate(addDays(event.date, 1))}`;
+    : `${compactDate(event.date)}/${compactDate(allDayEndExclusive(event))}`;
   const params = new URLSearchParams({ action: "TEMPLATE", text: event.title, dates, ctz: CALENDAR_TIME_ZONE });
   if (event.notes) params.set("details", event.notes);
   if (event.location) params.set("location", event.location);
@@ -43,7 +48,7 @@ export function outlookCalendarUrl(event: CalendarEvent): string {
     params.set("enddt", range.end.toISOString());
   } else {
     params.set("startdt", event.date);
-    params.set("enddt", addDays(event.date, 1));
+    params.set("enddt", allDayEndExclusive(event));
     params.set("allday", "true");
   }
   if (event.notes) params.set("body", event.notes);

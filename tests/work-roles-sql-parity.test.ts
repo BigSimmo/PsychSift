@@ -23,8 +23,23 @@ function sqlRule(capability: string) {
   };
 }
 
+/**
+ * Capabilities only TypeScript checks: their readers call `can()` and never `work_can()`, so the SQL
+ * function leaves them out and refuses them (it fails closed on an unknown capability). Adding one
+ * here needs no migration. Using one from SQL means adding its line to `work_can()` and removing it here.
+ */
+const TYPESCRIPT_ONLY = new Set<string>(["staffing.overview"]);
+
 describe("work_can matches the TypeScript rules", () => {
-  it.each(WORK_CAPABILITIES)("%s", (capability) => {
+  it.each(WORK_CAPABILITIES.filter((capability) => TYPESCRIPT_ONLY.has(capability)))(
+    "%s is TypeScript only, so work_can refuses it",
+    (capability) => {
+      expect(sqlRule(capability)).toBeNull();
+      expect(sql).toMatch(/else return false;/);
+    },
+  );
+
+  it.each(WORK_CAPABILITIES.filter((capability) => !TYPESCRIPT_ONLY.has(capability)))("%s", (capability) => {
     const rule = WORK_CAPABILITY_RULES[capability];
     expect(sqlRule(capability)).toEqual({
       administrator: rule.administrator,

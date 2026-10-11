@@ -19,6 +19,7 @@ import { AdminNavHeader } from "@/components/admin/admin-nav-header";
 import { ADMIN_NEW_JOB_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
 import { AdminStatusIcon } from "@/components/admin/admin-status-tag";
+import { AdminNewJobSharing } from "@/components/admin/new-job/admin-new-job-sharing";
 import { AdminNewJobStart } from "@/components/admin/new-job/admin-new-job-start";
 import { AdminNewJobStepRow } from "@/components/admin/new-job/admin-new-job-step-row";
 import { AdminSavedUndoBar } from "@/components/admin/new-job/admin-saved-undo-bar";
@@ -413,6 +414,10 @@ export function AdminNewJobPage({ now: nowProp }: { now?: Date } = {}) {
                   />
                 )}
               </AdminSection>
+
+              {/* Share with Medical Workforce (owner request 10 Oct 2026): off until the doctor turns it
+                  on. Not behind the new work mode switch, so it can always be turned off again. */}
+              {isAuthenticated && !state.demoMode ? <AdminNewJobSharing /> : null}
 
               {/* The credentials wallet moved here from Today (work-mode redesign,
                   owner request 6 Oct 2026), beside the pack it feeds. */}

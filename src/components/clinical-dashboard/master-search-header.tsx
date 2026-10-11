@@ -85,7 +85,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
 import { workAreaFor } from "@/lib/work-frame/areas";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { LargeTextFlag } from "@/components/work-frame/use-large-text";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
@@ -384,9 +384,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const router = useRouter();
   const currentPathname = usePathname();
   const [, setLastAppMode] = useLastAppMode();
-  // The two-pane side menu (Live version: Newest) keeps the menu button
+  // The two-pane side menu (off again since 10 Oct 2026) keeps the menu button
   // beside Back on phones, so the menu opens from every work page.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const visibleAppModeOptions = visibleAppModeDefinitionsForSession({
     authenticated: canAccessFavourites,
     demoMode: false,
@@ -2666,7 +2666,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             onClick={toggleModeMenu}
             onKeyDown={handleModeTriggerKeyDown}
             className={cn(
-              "universal-header-mode-button inline-grid h-12 w-[min(13rem,calc(100vw-9rem))] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:w-auto sm:min-w-[13rem] sm:pr-3",
+              "universal-header-mode-button inline-grid h-12 w-auto min-w-0 max-w-[calc(100vw-9rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:pr-3",
             )}
             aria-haspopup="dialog"
             aria-expanded={modeMenuOpen}
@@ -2952,7 +2952,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             modePickerGlassClass,
           )}
         >
-          {modeSheetView === "sections" ? (
+          {/* Built only while open: the Sheet draws nothing closed, and this list is
+              every mode's row, which the header would otherwise rebuild each time it
+              slides away or back on a scroll. */}
+          {!modeMenuOpen ? null : modeSheetView === "sections" ? (
             renderModeSectionLevel()
           ) : (
             <div

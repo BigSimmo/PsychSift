@@ -73,7 +73,7 @@ export function AdminCoursesPage() {
   const courseId = params.get("course");
   const postingNew = params.get("new") === "1";
   const bookings = useBookings();
-  const { organiser, sample } = useCourseOrganiser();
+  const { organiser, hospitalRole, sample } = useCourseOrganiser();
   const { page, posting, manages } = bookings;
   // Saved courses: only the ones this reader runs (the read also carries courses they can book).
   const state = useMemo(
@@ -115,13 +115,13 @@ export function AdminCoursesPage() {
                 This is the organiser&apos;s side
               </p>
               <p className="mt-1 text-sm">
-                Medical Education or a team manager posts courses here. You are seeing it with example courses, so you
-                can try posting, editing and cancelling.
+                Medical Education, Medical Workforce, the DCT or a team manager posts courses here. You are seeing it
+                with example courses, so you can try posting, editing and cancelling.
               </p>
             </WorkCard>
           ) : null}
           {!canPost && !state?.courses.length ? (
-            <NotAnOrganiser />
+            <NotAnOrganiser noTeams={hospitalRole} />
           ) : !state ? null : postingNew && canPost ? (
             <CourseForm key="new" state={state} bookings={bookings} course={null} />
           ) : courseId ? (
@@ -144,14 +144,21 @@ function managedOnly(state: BookingsState, examples: boolean, manages: (courseId
   };
 }
 
-/** Signed in, but this account does not run any courses. */
-function NotAnOrganiser() {
+/**
+ * Signed in, but this account does not run any courses. `noTeams`: they hold Medical Workforce or the
+ * DCT, but their hospital has no team linked yet, so there is nowhere to post for.
+ */
+function NotAnOrganiser({ noTeams }: { readonly noTeams: boolean }) {
   return (
     <WorkCard>
       <WorkEmpty
         icon={CalendarDays}
-        title="You don't post courses"
-        body="Medical Education and team managers post courses here. Courses posted for you are in Bookings."
+        title={noTeams ? "No teams to post for yet" : "You don't post courses"}
+        body={
+          noTeams
+            ? "You post courses for the teams linked to your hospital, and none are linked yet. A site administrator links them in People and roles."
+            : "Medical Education, Medical Workforce, the DCT and team managers post courses here. Courses posted for you are in Bookings."
+        }
         action={
           <WorkButton href={ADMIN_WORK_SCREEN_HREFS.bookings} testId="admin-courses-to-bookings">
             Bookings

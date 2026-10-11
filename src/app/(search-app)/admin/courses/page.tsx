@@ -3,7 +3,6 @@ import { Suspense } from "react";
 
 import { ModeHomeRouteLoading } from "@/components/mode-home-page-skeleton";
 import { AdminCoursesPage } from "@/components/work-screens/admin/courses-page";
-import { requireLivePreview } from "@/lib/live-version/server";
 
 export const metadata: Metadata = {
   title: "Courses | Admin | PsychSift",
@@ -12,7 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminCoursesRoute() {
-  await requireLivePreview("course-bookings");
   // The page reads `?new` and `?course` through `useSearchParams`, which needs a Suspense boundary.
   return (
     <Suspense fallback={<ModeHomeRouteLoading />}>

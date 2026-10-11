@@ -117,17 +117,24 @@ const NO_CLASHES: ReadonlyMap<string, RosterClash> = new Map();
  * Remounts on sign-in, sign-out, account switch and demo change, like TeachingAccountPage, so the last
  * week kept for offline reading never shows one account's sessions to another.
  */
-export function TeachingThisWeek({ demoMode: serverDemoMode }: { demoMode: boolean }) {
+export function TeachingThisWeek({
+  demoMode: serverDemoMode,
+  week = null,
+}: {
+  demoMode: boolean;
+  /** A Perth date (YYYY-MM-DD) whose week opens first, so a link to a later session lands on it. */
+  week?: string | null;
+}) {
   const auth = useAuthSession();
   const demoMode = useTeachingDemoMode(serverDemoMode);
-  return <ThisWeekScreen key={`${auth.authEpoch}:${demoMode}`} demoMode={demoMode} />;
+  return <ThisWeekScreen key={`${auth.authEpoch}:${demoMode}`} demoMode={demoMode} week={week} />;
 }
 
-function ThisWeekScreen({ demoMode }: { demoMode: boolean }) {
+function ThisWeekScreen({ demoMode, week }: { demoMode: boolean; week: string | null }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
-  const [chosenMonday, setChosenMonday] = useState<string | null>(null);
+  const [chosenMonday, setChosenMonday] = useState<string | null>(() => (week ? mondayOf(week) : null));
   const monday = chosenMonday ?? (today ? mondayOf(today) : null);
   const range = useMemo(() => (monday ? { from: monday, to: addDays(monday, 6) } : null), [monday]);
   const view = useTeachingWeek(range, { demoMode }, now);

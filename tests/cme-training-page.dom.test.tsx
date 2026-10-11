@@ -34,7 +34,7 @@ async function openRecordPart(name: "Stages, rotations and breaks" | "Milestones
   await userEvent.setup().click(screen.getByRole("button", { name: new RegExp(`^${name}`) }));
 }
 
-const NOT_RECORDED = "Not recorded in PsychSift yet. Keep them in InTrain (RANZCP) or your ePortfolio (interns).";
+const NOT_RECORDED = "Not recorded in PsychSift yet. Keep them in InTrain (RANZCP) or CLA (interns).";
 
 /** 28 September 2026, 10:00 Perth. */
 const NOW_ISO = "2026-09-28T02:00:00.000Z";
@@ -294,7 +294,7 @@ describe("CME training page, mock-up layout", () => {
       "Open your college training portalInTrain is the official record",
     );
     expect(screen.getByTestId("cme-training-eportfolio")).toHaveTextContent(
-      "Your ePortfolioThe official record of your training",
+      "Clinical Learning Australia (CLA)The official record of your training",
     );
     expect(page).not.toHaveTextContent(/\bAMA\b/);
   });
@@ -498,7 +498,7 @@ describe("CME training page, the mock-up's sample people", () => {
     // The CPD rule is never worked out from the registrar example's record.
     expect(screen.getByTestId("cme-training-cpd-rule-result")).toHaveTextContent("Not worked out here");
     expect(screen.getByTestId("cme-training-eportfolio")).toHaveTextContent(
-      "Your ePortfolioThe official record of your training",
+      "Clinical Learning Australia (CLA)The official record of your training",
     );
     expect(screen.getByRole("link", { name: /Intern teaching/ })).toHaveAttribute("href", "/teaching");
     expect(screen.getByTestId("cme-training-footer")).toHaveTextContent(

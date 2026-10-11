@@ -56,7 +56,7 @@ import {
 import { formatZonedDay, zonedToday } from "@/lib/work-time/format";
 
 /**
- * The two-pane side menu, behind the Live version switch. Owner picks, 8 Oct
+ * The two-pane side menu, on for everyone since 10 Oct 2026. Owner picks, 8 Oct
  * 2026: "1. Quiet strip", then "B. Today on top" as the base with option C's
  * Clinical side, then the round 9 improvements. A strip down the left holds
  * the logo, the Clinical and Work switch, My Day, Saved and Reminders, then

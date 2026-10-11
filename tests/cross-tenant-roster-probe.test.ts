@@ -34,7 +34,7 @@ function fakeRequest(leak: "none" | "nonmember-read" | "member-manage" | "revoca
         path.includes("/remind") ||
         path.includes("/invite") ||
         (method === "POST" &&
-          ["role.set", "member.remove", "settings.set", "swap.approve", "open.approve"].includes(
+          ["role.set", "member.remove", "settings.set", "needs.set", "swap.approve", "open.approve"].includes(
             String((init.body as { action?: string } | undefined)?.action),
           ));
       if (!member && leak !== "nonmember-read") status = 403;
