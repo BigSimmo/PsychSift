@@ -107,11 +107,11 @@ describe("work-mode launch routes", () => {
   });
 
   it("hides new-only screens on the classic work mode and leaves existing screens alone", () => {
-    expect(workModeRouteHidden("/cme/applications/cv", classic)).toBe(true);
+    expect(workModeRouteHidden("/admin/applications/cv", classic)).toBe(true);
     expect(workModeRouteHidden("/cme/log", classic)).toBe(false);
     expect(workModeRouteHidden("/my-day", classic)).toBe(false);
-    expect(workModeRouteHidden("/cme/applications/cv", launched)).toBe(false);
-    expect(workModeRouteHidden("/cme/applications?tab=cv#top", classic)).toBe(true);
+    expect(workModeRouteHidden("/admin/applications/cv", launched)).toBe(false);
+    expect(workModeRouteHidden("/admin/applications?tab=cv#top", classic)).toBe(true);
   });
 
   it("matches a new view of an existing page by its query, and leaves the page itself alone", () => {

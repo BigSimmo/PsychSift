@@ -88,7 +88,7 @@ describe("Today", () => {
       }),
     );
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
-    expect(screen.getByTestId("applications-today-card").getAttribute("href")).toBe("/cme/applications");
+    expect(screen.getByTestId("applications-today-card").getAttribute("href")).toBe("/admin/applications");
     localStorage.removeItem(CPD_APPLICATIONS_STORAGE_KEY);
   });
 

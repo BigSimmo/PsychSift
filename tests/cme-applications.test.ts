@@ -287,7 +287,7 @@ describe("hooks for other areas", () => {
         title: "Applications close tomorrow",
         dueOn: "2026-10-07",
         area: "cpd",
-        href: "/cme/applications",
+        href: "/admin/applications",
         kind: "action",
       },
       {
@@ -295,7 +295,7 @@ describe("hooks for other areas", () => {
         title: "Dr Grant has not replied in 16 days",
         dueOn: today,
         area: "cpd",
-        href: "/cme/applications",
+        href: "/admin/applications",
         kind: "action",
       },
     ]);

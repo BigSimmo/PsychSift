@@ -969,14 +969,6 @@ const cpd: WorkArea = {
           paths: ["/cme/setup", "/cme/programme"],
         },
         { id: "training", label: "Training", sub: "Registrar record", icon: "layers", href: "/cme/training" },
-        {
-          id: "applications",
-          label: "Jobs",
-          sub: "Season dates, referees, CV",
-          icon: "flag",
-          href: "/cme/applications",
-          paths: ["/cme/applications", "/cme/applications/cv"],
-        },
       ],
     },
     {
@@ -1021,23 +1013,8 @@ const cpd: WorkArea = {
     {
       label: "Settings",
       items: [
-        {
-          id: "customise",
-          label: "Customise",
-          sub: "Summary sections",
-          icon: "sliders",
-          href: "/cme/customise",
-          band: false,
-        },
-        {
-          id: "setup-edit",
-          label: "Set up",
-          sub: "Home and total",
-          icon: "settings",
-          href: "/cme/setup?edit=1",
-          paths: ["/cme/setup"],
-          query: { edit: "1" },
-        },
+        // Customise is reached from Summary's own button, and Set up is the same page as Targets, so neither
+        // is listed here (11 Oct 2026 audit).
         { id: "cpd-help", label: "Help", sub: "How CPD works", icon: "help", action: "work-help" },
       ],
     },
@@ -1127,6 +1104,16 @@ const admin: WorkArea = {
           sub: "New to WA hospitals",
           icon: "compass",
           href: "/admin/new-job/starter",
+        },
+        // Career admin, beside New job and Contract (moved from CPD, 11 Oct 2026 audit).
+        {
+          id: "applications",
+          label: "Job applications",
+          short: "Jobs",
+          sub: "Season dates, referees, CV",
+          icon: "flag",
+          href: "/admin/applications",
+          paths: ["/admin/applications", "/admin/applications/cv"],
         },
         {
           id: "admin-ready",

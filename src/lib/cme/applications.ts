@@ -491,8 +491,8 @@ export function nudgeMessage(referee: Referee, today: string): string {
 
 /* ---------------------------------------------------------------- hooks for other areas */
 
-export const APPLICATIONS_HREF = "/cme/applications";
-export const APPLICATIONS_CV_HREF = "/cme/applications/cv";
+export const APPLICATIONS_HREF = "/admin/applications";
+export const APPLICATIONS_CV_HREF = "/admin/applications/cv";
 
 export type ApplicationsNeedsYouItem = {
   readonly id: string;
