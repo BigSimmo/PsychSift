@@ -63,6 +63,8 @@ function crisisContact(id: (typeof WA_CRISIS_CONTACTS)[number]["id"]) {
   if (!contact) throw new Error(`missing crisis contact ${id}`);
   return contact;
 }
+const LEAVE_PLAN_PROMPT = "Leave this safety plan? Your entries are only in this browser tab and will be lost.";
+
 const EMERGENCY_CONTACT = crisisContact("SYN-CRISIS-CONTACT-001");
 const MHERL_METRO_CONTACT = crisisContact("SYN-CRISIS-CONTACT-002");
 const MHERL_PEEL_CONTACT = crisisContact("SYN-CRISIS-CONTACT-003");
@@ -578,6 +580,29 @@ export function PatientSafetyPlan() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
 
+  // Inside the app shell, the header, side menu and mode links are client-side
+  // navigations, which never fire beforeunload. Ask before any in-app link
+  // leaves this page with entries on it, with the same words as the back control.
+  useEffect(() => {
+    if (!isDirty) return;
+    const guardLinks = (event: globalThis.MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      if (destination.pathname === window.location.pathname) return;
+      if (window.confirm(LEAVE_PLAN_PROMPT)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    document.addEventListener("click", guardLinks, true);
+    return () => document.removeEventListener("click", guardLinks, true);
+  }, [isDirty]);
+
   const planText = useMemo(() => {
     const guardLines = exampleActive
       ? ["*** EXAMPLE — SAMPLE SAFETY PLAN WITH NON-WORKING NUMBERS, NOT FOR PATIENT HANDOVER ***", ""]
@@ -686,9 +711,7 @@ export function PatientSafetyPlan() {
                 fallbackHref={appModeHomeHref("psychiatry")}
                 onBeforeNavigate={() => {
                   if (!isDirty) return true;
-                  return window.confirm(
-                    "Leave this safety plan? Your entries are only in this browser tab and will be lost.",
-                  );
+                  return window.confirm(LEAVE_PLAN_PROMPT);
                 }}
               />
             </div>

@@ -271,3 +271,40 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     }
   });
 });
+
+describe("PatientSafetyPlan — in-app links inside the shell", () => {
+  function renderWithShellLink() {
+    render(
+      <>
+        <a href="/psychiatry">Shell link</a>
+        <PatientSafetyPlan />
+      </>,
+    );
+    return screen.getByRole("link", { name: "Shell link" });
+  }
+
+  it("lets a shell link leave freely while the plan is empty", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const link = renderWithShellLink();
+    expect(fireEvent.click(link)).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("asks before a shell link discards entries, and stays when the doctor says no", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const link = renderWithShellLink();
+    // fireEvent rather than userEvent: an earlier case in this file uses fake timers.
+    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
+
+    // fireEvent.click returns false when the click's default (the navigation) was prevented.
+    expect(fireEvent.click(link)).toBe(false);
+    expect(confirm).toHaveBeenCalledWith(
+      "Leave this safety plan? Your entries are only in this browser tab and will be lost.",
+    );
+
+    confirm.mockReturnValue(true);
+    expect(fireEvent.click(link)).toBe(true);
+    confirm.mockRestore();
+  });
+});
