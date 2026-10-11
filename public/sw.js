@@ -27,7 +27,7 @@ function hasSensitiveRequestSignals(request, url) {
   // Keep the full URL as the cache key; every other query remains network-only.
   const deploymentAsset =
     url.pathname.startsWith("/_next/static/") &&
-    url.searchParams.size === 1 &&
+    [...url.searchParams.keys()].length === 1 &&
     /^[a-f0-9]{40}$/i.test(url.searchParams.get("dpl") ?? "");
   return (
     request.method !== "GET" ||
