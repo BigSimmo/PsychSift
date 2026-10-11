@@ -7,7 +7,7 @@ import { onCallTelHref } from "@/lib/on-call/home-modules";
 
 import { ChevronDown, ClipboardList, FileText, ListChecks, Pencil, Phone, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { cardInteractive, cardSurface, focusRing } from "@/components/card-recipes";
 import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
@@ -221,6 +221,7 @@ function PlaybookCard({
   const freshness = onCallEntryFreshness(entry, now);
   const steps = details ? [...details.escalationSteps].sort((a, b) => a.order - b.order) : [];
   const showVerify = freshness.state === "stale" && Boolean(onVerified);
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     // One problem per row, opening to its steps (usefulness audit, 11 Oct 2026): at 3 am the reader
@@ -229,7 +230,8 @@ function PlaybookCard({
     <details
       id={onCallEntryAnchorId(entry.id)}
       tabIndex={-1}
-      open={defaultOpen || undefined}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
       // The shared recipe, not a hand-rolled copy of it: these three had every
       // class right except `forced-colors:border`, so in Windows High Contrast
       // the card edge disappeared.
@@ -375,7 +377,9 @@ export function OnCallPlaybookSection({
   const linked = sorted.filter(isLinked);
   const unlinked = sorted.filter((entry) => !isLinked(entry));
 
-  const first = linked[0] ?? unlinked[0];
+  // The initial card is based on stable entry order, not document resolution: loading
+  // guidance must not move the reader's open problem between groups.
+  const first = sorted[0];
   const card = (entry: OnCallEntry) => (
     <PlaybookCard
       key={entry.id}
@@ -493,16 +497,47 @@ function hasResolvedGuidance(entry: OnCallEntry, documents: Readonly<Record<stri
 function useOpenPlaybookFromHash(count: number) {
   useEffect(() => {
     const open = () => {
-      const id = decodeURIComponent(window.location.hash.slice(1));
+      let id: string;
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        return;
+      }
       if (!id) return;
       const target = document.getElementById(id);
-      if (!(target instanceof HTMLDetailsElement)) return;
-      target.open = true;
+      if (!target) return;
+      if (target instanceof HTMLDetailsElement) {
+        target.open = true;
+        target.focus({ preventScroll: true });
+      }
       target.scrollIntoView({ block: "start" });
-      target.focus({ preventScroll: true });
     };
     open();
     window.addEventListener("hashchange", open);
-    return () => window.removeEventListener("hashchange", open);
+    // Hospital ladders are rendered after their handbook request resolves, so
+    // retry when the anchor is inserted rather than relying on entry count.
+    const observer = new MutationObserver(() => {
+      let id: string;
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        return;
+      }
+      if (id && document.getElementById(id)) {
+        open();
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    try {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (id && document.getElementById(id)) observer.disconnect();
+    } catch {
+      // The initial open already ignores malformed fragments.
+    }
+    return () => {
+      window.removeEventListener("hashchange", open);
+      observer.disconnect();
+    };
   }, [count]);
 }
