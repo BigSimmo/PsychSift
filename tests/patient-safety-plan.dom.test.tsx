@@ -413,28 +413,23 @@ describe("PatientSafetyPlan — browser Back and shell controls", () => {
     go.mockRestore();
   });
 
-  it("reloading on a sentinel stays on a fresh plan and adopts the sentinel", () => {
+  it("reloading on a sentinel steps back to the plan's own entry", () => {
     // Browsers keep history state across a reload, so the sentinel is still there, but it
-    // came from an earlier page load. It is kept, so a later confirmed leave skips both
-    // plan entries, and the guard does not push a second one.
+    // came from an earlier page load and the reloaded plan is empty. One step back lands on
+    // the plan's own entry, so the next Back reaches the page before.
     window.history.replaceState(
       { __NA: true, [SENTINEL]: { hadHistoryBefore: true, documentId: "an earlier page load" } },
       "",
     );
     const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
     const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
-    const push = vi.spyOn(window.history, "pushState");
     router.replace.mockClear();
     const view = render(<PatientSafetyPlan />);
+    expect(back).toHaveBeenCalledTimes(1);
     expect(go).not.toHaveBeenCalled();
     expect(router.replace).not.toHaveBeenCalled();
-    const marker = (window.history.state as Record<string, Record<string, unknown>>)[SENTINEL];
-    expect(marker?.hadHistoryBefore).toBe(true);
-    expect(marker?.documentId).not.toBe("an earlier page load");
-    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
-    expect(push).not.toHaveBeenCalled();
+    expect(window.history.state).toEqual({ __NA: true });
     view.unmount();
-    push.mockRestore();
     back.mockRestore();
     go.mockRestore();
   });
