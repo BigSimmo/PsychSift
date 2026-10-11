@@ -177,7 +177,7 @@ export function SearchScreen() {
     <section data-screen-label="Search" className={`${pageContainer} space-y-2.5 sm:space-y-3`}>
       <SearchResultsHeaderBand
         modeId="therapy-compass"
-        query={q}
+        query={browsing ? "" : q}
         emptyQuerySubject="Therapies"
         matchCount={results.length}
         status={b.error ? "error" : b.loading ? "loading" : "ready"}

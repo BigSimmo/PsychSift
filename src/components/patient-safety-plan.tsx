@@ -615,8 +615,31 @@ export function PatientSafetyPlan() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
 
+  // Record this before the dirty-plan guard can add a sentinel. history.length also counts
+  // forward entries, so it cannot reliably answer this question later.
+  const hadHistoryBeforeRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    hadHistoryBeforeRef.current = canNavigateBack();
+  }, []);
+
   // The header back control's own leave step while the plan is dirty; set by the guard below.
   const leaveByBackRef = useRef<(() => "stay" | "handled" | "fallback") | null>(null);
+
+  // Arriving on a sentinel left behind when an in-app link or shell control left a dirty
+  // plan: skip both the sentinel and the original plan entry, so Back reaches the page before.
+  // This runs before the dirty guard below, so a newly pushed sentinel is not mistaken for a
+  // returning one on the initial mount.
+  useEffect(() => {
+    if (!onPlanSentinel()) return;
+    const rest = { ...(window.history.state as Record<string, unknown>) };
+    delete rest[PLAN_SENTINEL_KEY];
+    window.history.replaceState(rest, "");
+    if (hadHistoryBeforeRef.current) {
+      window.history.go(-2);
+    } else {
+      router.replace(appModeHomeHref("psychiatry"));
+    }
+  }, [router]);
 
   // Inside the app shell, the header, side menu and mode links are client-side
   // navigations, which never fire beforeunload, and Back / back-swipe is a client-side
@@ -659,7 +682,7 @@ export function PatientSafetyPlan() {
     // page and nothing visibly moves. Declining pushes the sentinel back; confirming
     // steps back once more, past the real entry, to the page before.
     const planHref = window.location.href;
-    const hadHistoryBefore = canNavigateBack();
+    const hadHistoryBefore = hadHistoryBeforeRef.current ?? canNavigateBack();
     if (!onPlanSentinel()) pushPlanSentinel();
     const detach = () => {
       detached = true;
@@ -703,12 +726,6 @@ export function PatientSafetyPlan() {
       dropPlanSentinel();
     };
   }, [isDirty]);
-
-  // Arriving on a sentinel left behind when an in-app link or shell control left a dirty
-  // plan: step off it, so Back from here goes to the page before, not this page again.
-  useEffect(() => {
-    dropPlanSentinel();
-  }, []);
 
   const planText = useMemo(() => {
     const guardLines = exampleActive
