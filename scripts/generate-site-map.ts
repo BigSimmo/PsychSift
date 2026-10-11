@@ -147,7 +147,8 @@ const routeDescriptions: Record<string, string> = {
   "/medications/[slug]": "Medication detail.",
   "/privacy": "Public privacy and data-processing transparency notice; governance approval pending.",
   "/reference/colour-coding": "Clinical domain and category colour-coding palette reference.",
-  "/safety-plan": "Patient safety plan generator (Stanley-Brown six steps) — a Tools-page clinical tool.",
+  "/safety-plan":
+    "Patient safety plan generator (Stanley-Brown six steps), inside the search shell under Psychiatry; opened from the Psychiatry page's For a shift row.",
   "/services": "Services home and search surface.",
   "/services/[slug]": "Registry-backed service detail.",
   "/services/search":
@@ -388,7 +389,7 @@ const routeOwnershipRows = [
   ["Therapy Compass", "src/app/(search-app)/therapy-compass, src/lib/therapies.ts"],
   ["Factsheets", "src/app/(search-app)/factsheets, src/components/factsheets"],
   ["Dictionary", "src/app/(search-app)/dictionary, src/lib/dictionary.ts"],
-  ["Safety Plan", "src/app/safety-plan, src/components/patient-safety-plan.tsx"],
+  ["Safety Plan", "src/app/(search-app)/safety-plan, src/components/patient-safety-plan.tsx"],
   ["Privacy", "src/app/privacy"],
   [
     "Tools",

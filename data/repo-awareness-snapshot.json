@@ -775,7 +775,7 @@
       },
       {
         "path": "/safety-plan",
-        "file": "src/app/safety-plan/page.tsx",
+        "file": "src/app/(search-app)/safety-plan/page.tsx",
         "area": "product"
       },
       {

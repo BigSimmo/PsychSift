@@ -665,7 +665,7 @@
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
         "src/app/reference/colour-coding/page.tsx",
-        "src/app/safety-plan/page.tsx"
+        "src/app/(search-app)/safety-plan/page.tsx"
       ],
       "routeRoots": true,
       "roots": [],

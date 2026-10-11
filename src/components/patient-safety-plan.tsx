@@ -662,21 +662,17 @@ export function PatientSafetyPlan() {
 
   return (
     <main
-      id="main-content"
-      tabIndex={-1}
-      className={cn(
-        "safety-plan-tool min-w-0 bg-[color:var(--background)] text-[color:var(--text)]",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)]",
-      )}
+      data-testid="safety-plan-tool"
+      className="safety-plan-tool min-w-0 bg-[color:var(--background)] text-[color:var(--text)]"
     >
       {/*
-        Safety plan sits outside the search shell, so this header owns the OS top
-        inset via max(safe-area-top) — same contract as /privacy and colour-coding.
-        Avoid axis py-* here so it cannot fight the side-specific pt-* pad.
+        Safety plan renders inside the shared search shell, which owns the app
+        header, the OS top inset and the #main-content skip target, so this page
+        header only pads its own content.
       */}
       <header
         data-testid="safety-plan-tool-header"
-        className="border-b border-[color:var(--border)] bg-[color:var(--surface)] pt-[max(0.75rem,var(--safe-area-top))] sm:pt-[max(1.25rem,var(--safe-area-top))]"
+        className="border-b border-[color:var(--border)] bg-[color:var(--surface)] pt-3 sm:pt-5"
       >
         <div className="mx-auto grid max-w-7xl gap-4 px-4 pb-4 pt-3 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:px-8">
           {/*
@@ -687,7 +683,7 @@ export function PatientSafetyPlan() {
             <div className="flex min-h-tap items-center lg:contents">
               <NavigationBackButton
                 className="size-tap"
-                fallbackHref={appModeHomeHref("tools")}
+                fallbackHref={appModeHomeHref("psychiatry")}
                 onBeforeNavigate={() => {
                   if (!isDirty) return true;
                   return window.confirm(
@@ -937,6 +933,9 @@ export function PatientSafetyPlan() {
         <div
           id="spg-panel-preview"
           data-safety-plan-copy
+          // Print isolation: inside the search shell, the shared print-output rule
+          // hides the app chrome so only the patient copy reaches the page.
+          data-print-output
           role="tabpanel"
           aria-labelledby="spg-tab-preview"
           className={cn(

@@ -429,12 +429,14 @@ describe("Psychiatry hub · For a shift", () => {
     );
   });
 
-  it("signposts Medicines instead of copying Medication and Calculators", () => {
+  it("signposts Medicines and keeps Safety plan and MHA forms out of the quick actions", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
     const actions = within(screen.getByRole("list", { name: "Quick actions" }));
     expect(actions.queryByText("Medication")).toBeNull();
     expect(actions.queryByText("Calculators")).toBeNull();
-    expect(actions.getByText("Safety plan")).toBeTruthy();
+    expect(actions.queryByText("Safety plan")).toBeNull();
+    expect(actions.queryByText("MHA forms")).toBeNull();
+    expect(screen.getByTestId("psychiatry-shift-safety-plan").getAttribute("href")).toBe("/safety-plan");
     expect(actions.getByText("First Nations")).toBeTruthy();
     expect(screen.getByTestId("psychiatry-medicines-signpost").getAttribute("href")).toBe("/medicines");
   });

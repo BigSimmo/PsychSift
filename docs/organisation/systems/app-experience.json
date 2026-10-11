@@ -52,7 +52,6 @@
     "src/app/privacy/**",
     "src/app/reference/**",
     "src/app/robots.ts",
-    "src/app/safety-plan/**",
     "src/app/sitemap.ts",
     "src/app/work-mode.css",
     "src/components/AccessibleTable.tsx",

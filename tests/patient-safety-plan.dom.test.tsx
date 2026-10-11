@@ -26,17 +26,19 @@ const exampleExportPattern =
   /\*\*\* EXAMPLE — SAMPLE SAFETY PLAN WITH NON-WORKING NUMBERS, NOT FOR PATIENT HANDOVER \*\*\*/;
 
 describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
-  it("owns the OS top inset outside the search shell", () => {
-    // /safety-plan is a standalone tool route (no chrome-safe-area-top host),
-    // so the tool header must bake max(safe-area-top) into its top pad.
+  it("sits inside the search shell, which owns the top inset and the skip target", () => {
+    // /safety-plan renders inside the (search-app) shell, so the shell header owns the
+    // OS top inset and #main-content. The tool must not duplicate either.
     const { container } = render(<PatientSafetyPlan />);
     const header = container.querySelector('[data-testid="safety-plan-tool-header"]');
     expect(header).toBeTruthy();
     const className = header?.getAttribute("class") ?? "";
-    expect(className).toContain("pt-[max(0.75rem,var(--safe-area-top))]");
-    expect(className).toContain("sm:pt-[max(1.25rem,var(--safe-area-top))]");
+    expect(className).not.toContain("safe-area-top");
     expect(className).not.toMatch(/(?:^|\s)py-\S+/);
     expect(className).not.toMatch(/(?:^|\s)sm:py-\S+/);
+    expect(container.querySelector("#main-content")).toBeNull();
+    // The patient copy is the print output, so the shell chrome never prints.
+    expect(container.querySelector("[data-safety-plan-copy]")?.hasAttribute("data-print-output")).toBe(true);
     expect(screen.getByRole("heading", { name: /Safety plan generator/i })).toBeTruthy();
   });
 
