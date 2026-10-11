@@ -690,7 +690,7 @@ export function DictionaryTopicsPage() {
                   <Link
                     key={topic.slug}
                     href={`/dictionary/topics/${topic.slug}`}
-                    className="group grid min-h-[6rem] grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 last:border-b-0 hover:bg-[color:var(--surface-subtle)] sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                    className="group grid min-h-[6rem] grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 last:border-b-0 hover:bg-[color:var(--surface-subtle)] sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                   >
                     <span className="grid h-10 w-10 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
                       <Layers3 className="h-5 w-5" aria-hidden="true" />

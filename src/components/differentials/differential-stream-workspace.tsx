@@ -814,12 +814,11 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
         {!hasQuery && safetyItems.length > 0 ? (
           <section
             data-testid="differentials-stream-safety-shelf"
-            // A neutral hairline card with a small area-coloured label. These are
-            // jump links to pathways listed below, not alerts, so they are not
-            // red (red is kept for overdue, lapsed or urgent states).
+            // A neutral hairline card with a restrained danger cue on its label.
+            // These are jump links to pathways listed below, not alert cards.
             className="grid gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3"
           >
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-eyebrow text-[color:var(--clinical-accent)]">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-eyebrow text-[color:var(--danger)]">
               <ShieldAlert className="h-4 w-4" aria-hidden />
               {isPresentation ? "High-priority presentation pathways" : "Must-check / emergent shelf"}
             </div>

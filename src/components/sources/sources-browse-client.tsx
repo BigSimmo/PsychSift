@@ -149,6 +149,7 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
           // own. The list draws the box and divides rows with a hairline.
           "group grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-3.5 py-3.5 transition-colors",
           "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
         )}
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
