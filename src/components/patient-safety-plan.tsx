@@ -103,7 +103,7 @@ function pushPlanSentinel(hadHistoryBefore: boolean) {
  * own entry sits behind it. Null when this is not a sentinel.
  */
 function sentinelHadHistoryBefore(): boolean | null {
-  if (!onPlanSentinel()) return null;
+  if (!hasPlanSentinel()) return null;
   const marker: unknown = (window.history.state as Record<string, unknown>)[PLAN_SENTINEL_KEY];
   return typeof marker === "object" && marker !== null && "hadHistoryBefore" in marker
     ? marker.hadHistoryBefore === true
@@ -654,13 +654,15 @@ export function PatientSafetyPlan() {
   // This runs before the dirty guard below, so a newly pushed sentinel is not mistaken for a
   // returning one on the initial mount.
   useEffect(() => {
-    // A marker can survive a full reload. Remove stale markers, but only
-    // navigate away for a sentinel created by this document's Back guard.
+    // A marker survives a reload or a restored tab. Adopt it for this page load instead of
+    // navigating away: the entry still sits one step past the plan's own entry, so the
+    // guard reuses it and a confirmed leave still skips both plan entries.
     if (!hasPlanSentinel()) return;
     if (!onPlanSentinel()) {
-      const rest = { ...(window.history.state as Record<string, unknown>) };
-      delete rest[PLAN_SENTINEL_KEY];
-      window.history.replaceState(rest, "");
+      const state = window.history.state as Record<string, unknown>;
+      const marker = state[PLAN_SENTINEL_KEY];
+      const fields = typeof marker === "object" && marker !== null ? marker : {};
+      window.history.replaceState({ ...state, [PLAN_SENTINEL_KEY]: { ...fields, documentId: PLAN_DOCUMENT_ID } }, "");
       return;
     }
     const rest = { ...(window.history.state as Record<string, unknown>) };
