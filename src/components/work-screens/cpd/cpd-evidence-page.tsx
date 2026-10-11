@@ -165,9 +165,9 @@ export function CpdEvidencePage({
   const yearChips = [...new Set([year, ...years])].sort((a, b) => b - a);
   const filtered = category !== "all" || status !== "all";
   const needsEmpty = needsEvidenceEmpty(view, filtered);
-  // Nothing was checked (the demo, the sample): zero counts, filters and an empty "Needs evidence"
-  // would read as all clear, so the page says once that nothing was checked and offers one way in.
-  const unchecked = evidenceUnchecked(view);
+  // Keep the controls available whenever a carried filter or non-default order is active. Otherwise
+  // an all-unknown filtered view can hide the only way to clear that filter (and "latest" can be old).
+  const unchecked = !filtered && order === "newest" && evidenceUnchecked(view);
   const firstUnchecked = view.notCounted[0];
 
   function attachFromList(clearFilters: boolean) {
@@ -205,7 +205,7 @@ export function CpdEvidencePage({
           </WorkChips>
         ) : null}
 
-        {view.total === 0 ? (
+        {view.total === 0 && !filtered ? (
           <WorkEmpty
             icon={FileText}
             title={`No activities logged in ${year}`}
@@ -402,7 +402,7 @@ export function CpdEvidencePage({
                 </li>
               ) : null}
               <li className="min-w-0">
-                <WorkIconRow icon={FileText} title="End of year" sub="Hand it in" href="/cme/check" />
+                <WorkIconRow icon={FileText} title="End of year" sub="Check, tidy, hand in" href="/cme/check" />
               </li>
             </WorkCard>
           </>
