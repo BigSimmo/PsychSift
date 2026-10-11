@@ -169,6 +169,9 @@ describe("Week: Other services", () => {
     expect(window.location.search).toBe("");
     fireEvent.click(screen.getByRole("button", { name: "Other services" }));
     expect(window.location.search).toBe("?view=other");
+    // Moving week keeps the address on the week shown, so a reload does not jump back.
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(window.location.search).toBe("?view=other&week=2026-10-05");
     window.history.replaceState(null, "", "/");
   });
 

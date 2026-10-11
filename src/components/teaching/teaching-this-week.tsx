@@ -124,6 +124,14 @@ function storedFilter(): ThisWeekFilter | null {
   return rememberedFilter;
 }
 
+/** The address names the week only while it is not this week, so a reload opens the week on screen. */
+function syncWeekParam(monday: string | null) {
+  const url = new URL(window.location.href);
+  if (monday) url.searchParams.set("week", monday);
+  else url.searchParams.delete("week");
+  if (url.href !== window.location.href) window.history.replaceState(null, "", url);
+}
+
 /** The address says Other services only while it is the chosen filter, so a reload opens what was showing. */
 function syncViewParam(value: ThisWeekFilter) {
   const url = new URL(window.location.href);
@@ -200,7 +208,10 @@ function ThisWeekScreen({ demoMode, week, openOther }: { demoMode: boolean; week
             now={now}
             today={today}
             monday={monday}
-            onMonday={setChosenMonday}
+            onMonday={(next) => {
+              setChosenMonday(next);
+              syncWeekParam(next);
+            }}
             whatsOn={whatsOn.status === "ready" ? whatsOn.data : null}
             whatsOnFailed={whatsOn.status === "error" || whatsOn.status === "offline" || whatsOn.status === "setup"}
             retryWhatsOn={whatsOn.retry}
