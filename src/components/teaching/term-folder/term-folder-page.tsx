@@ -1,20 +1,9 @@
 "use client";
 
-import {
-  CalendarDays,
-  Check,
-  ChevronLeft,
-  Copy,
-  Download,
-  ExternalLink,
-  Folder,
-  Printer,
-  ShieldCheck,
-} from "lucide-react";
+import { CalendarDays, Check, Copy, Download, ExternalLink, Folder, Printer, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 
-import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
@@ -57,6 +46,7 @@ import { perthTime } from "@/lib/teaching/time";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
 import type { TermRecord } from "@/lib/teaching/term-tracker";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /*
  * Term evidence folder (feature 12, mock-up nf_teach_acc). Since 11 Oct 2026 (owner-approved mock-up) the
@@ -159,7 +149,6 @@ function FolderActions({
         type="button"
         className={cn(
           "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-sm text-sm font-semibold text-[color:var(--mode-identity)]",
-          focusRing,
           unavailableText,
         )}
         aria-disabled={blocker ? true : undefined}
@@ -454,7 +443,6 @@ export function FolderEarlierTerms({ view }: { view: { readonly earlier: readonl
               href={`${TERM_FOLDER_PATH}?term=${encodeURIComponent(term.id)}`}
               className={cn(
                 "flex min-h-12 items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 no-underline",
-                focusRing,
               )}
             >
               <Folder aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
@@ -503,18 +491,7 @@ function TermFolderContent({ demoMode, termId }: { demoMode: boolean; termId: st
     <InformationPageShell width="narrow" gap={false} testId="term-folder">
       <T5Page>
         <h1 className="sr-only">Term evidence folder</h1>
-        <Link
-          href="/teaching/term"
-          data-print-hide
-          data-testid="term-folder-back"
-          className={cn(
-            "inline-flex min-h-12 w-fit items-center gap-1 rounded-sm pr-2 text-sm font-semibold text-[color:var(--mode-identity)] no-underline",
-            focusRing,
-          )}
-        >
-          <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-          Term
-        </Link>
+        <WorkPageBack href="/teaching/term" label="Term" testId="term-folder-back" history={false} />
         {body}
       </T5Page>
     </InformationPageShell>

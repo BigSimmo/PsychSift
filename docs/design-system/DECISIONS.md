@@ -245,6 +245,30 @@ without retraining the reader.
 
 ---
 
+## C9 · The desktop and tablet shell (usefulness and layout audit, 11 October 2026)
+
+**Chose.** Built on the owner's go-ahead for the 11 October usefulness and layout audit:
+
+1. **Tablet rule.** Page content behaves like a phone at 768 px (an upright tablet: one
+   column) and like desktop from 1024 px (a tablet on its side: two columns, a list beside a
+   record). The side rail still replaces the menu button from 768 px (owner pick "Burger and
+   rail", 7 October), so only the content follows the rule.
+2. **One width per kind of page.** Reading pages (lists, forms, settings) keep the 45rem
+   column; wide pages (calendars, boards, tables, a list beside a record, the shared page
+   shell) take 64rem from 1024 px. The band's title and tabs always take the page's width,
+   so the title lines up with the cards. Declared with `data-page-width` (work-mode.css,
+   "page widths"); `src/components/work-frame/work-desktop-layout.tsx` gives area pages
+   `WorkWidePage`, `WorkSplit` (list beside record) and `WorkColumns` (two or three columns).
+3. **Desktop Clinical matches Work.** The Clinical rail shows a name under every icon, in the
+   work rail's style and Clinical blue; the mode pill drops its small "Mode" label at every
+   width; tablets and desktop show the bell in the Clinical header, as on Work pages. Phones,
+   the brand lockup on mode homes and the Clinical search box are unchanged.
+
+**Rejected.** Moving the side rail to 1024 px: it was the owner's own 7 October pick, and an
+upright tablet reads well with it.
+
+---
+
 ## Q&A record — clinical inputs (31 July 2026)
 
 | #   | Question                                               | Answer                                                  | Design consequence                                                                                                                                                                                                                                                           |

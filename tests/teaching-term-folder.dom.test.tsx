@@ -21,6 +21,14 @@ import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { authState } from "./helpers/teaching-auth";
 import { NOW, json, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 // eslint-disable-next-line react-hooks/rules-of-hooks
 useTeachingTestClock(NOW);
 
@@ -191,6 +199,14 @@ describe("term evidence folder on the Term page", () => {
     );
   });
 
+  it("has one way back to Term, in the top bar", async () => {
+    const removeSlot = addHeaderBackSlot();
+    render(<TermFolderPage demoMode termId={null} />);
+    expect(await screen.findByTestId("term-folder-back")).toHaveAttribute("href", "/teaching/term");
+    expect(screen.getByRole("link", { name: "Back to Term" })).toBeVisible();
+    removeSlot();
+  });
+
   it("says in the copied demo summary that it is made up", async () => {
     const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
@@ -355,10 +371,13 @@ describe("former standalone folder page (kept until its code can be removed)", (
     expect(within(empty).getByRole("link", { name: "Set up your term" })).toHaveAttribute("href", "/teaching/term");
   });
 
-  it("has a visible way back to Term", async () => {
+  it("draws its way back to Term only in the top bar, never a second link in the page", async () => {
+    const removeSlot = addHeaderBackSlot();
     render(<TermFolderPage demoMode termId={null} />);
-    expect(await screen.findByTestId("term-folder-back")).toHaveAttribute("href", "/teaching/term");
-    expect(screen.getByRole("link", { name: "Term" })).toBeVisible();
+    const back = await screen.findByTestId("term-folder-back");
+    expect(back.closest("#universal-header-leading")).not.toBeNull();
+    expect(screen.getAllByRole("link", { name: /Term$/ })).toEqual([back]);
+    removeSlot();
   });
 
   it("says a link to a term no longer on this phone shows another term", async () => {

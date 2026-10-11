@@ -105,6 +105,38 @@ describe("Needs you header bell", () => {
     expect(screen.queryByTestId("needs-you-bell")).toBeNull();
   });
 
+  it("arms the clinical bell's count on idle only for a signed-in reader", () => {
+    vi.useFakeTimers();
+    const matchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      centre.summary = { count: 2, overdue: 0 };
+      nav.pathname = "/psychiatry";
+      auth.status = "unconfigured";
+      const demo = render(<NeedsYouButton modeId="psychiatry" clinical />);
+      expect(screen.getByTestId("needs-you-bell")).toBeTruthy();
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.queryByTestId("needs-you-badge")).toBeNull();
+      demo.unmount();
+      auth.status = "authenticated";
+      render(<NeedsYouButton modeId="psychiatry" clinical />);
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByTestId("needs-you-badge").textContent).toBe("2");
+    } finally {
+      window.matchMedia = matchMedia;
+      vi.useRealTimers();
+    }
+  });
+
   it("shows on On Call home and Who's on", () => {
     nav.pathname = "/on-call";
     const { unmount } = render(<NeedsYouButton modeId="on-call" />);
