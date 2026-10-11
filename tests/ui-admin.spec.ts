@@ -56,7 +56,7 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await page.goto("/on-call/compliance");
     await expect(page).toHaveURL(/\/admin\/renewals$/);
     await expect(page.getByRole("heading", { level: 1, name: "Renewals" })).toBeVisible();
-    await expect(page.getByRole("radio", { name: "Checklist" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Soonest" })).toBeVisible();
     await expect(page.getByRole("radio", { name: "Personal" })).toBeVisible();
     // CI runs this in demo mode. The demo corpus links seven rows to catalogue
     // items (`src/lib/on-call/demo-entries.ts`), so the Registration and
@@ -81,9 +81,11 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await expect(rail).toBeVisible();
 
     // Crisis lines are the page's first real content, above every one of the
-    // four content sections.
+    // content sections. Support lists no statewide service in the demo corpus, so it is
+    // hidden rather than drawn as an empty card (audit 11 Oct 2026).
     const crisisTop = (await crisis.boundingBox())?.y ?? Number.POSITIVE_INFINITY;
-    for (const label of ["Support", "Guides", "Contacts", "On site"]) {
+    await expect(page.locator('section[aria-label="Support"]')).toHaveCount(0);
+    for (const label of ["Guides", "Contacts", "On site"]) {
       const section = page.locator(`section[aria-label="${label}"]`);
       const sectionTop = (await section.boundingBox())?.y ?? Number.NEGATIVE_INFINITY;
       expect(sectionTop, `${label}'s section should sit below the crisis lines`).toBeGreaterThan(crisisTop);
