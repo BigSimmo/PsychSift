@@ -4337,6 +4337,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/investigations/firefox-click-state-failures.md",
+        "section": "investigations",
+        "catalogued": false
+      },
+      {
         "path": "docs/archive/rag-scalability-wip-remediation-2026-07-17.md",
         "section": "archive",
         "catalogued": true
@@ -5258,6 +5263,9 @@
       },
       {
         "name": "governance"
+      },
+      {
+        "name": "investigations"
       },
       {
         "name": "on-call"
