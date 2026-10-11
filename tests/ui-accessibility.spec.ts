@@ -3,7 +3,7 @@ import { expect, test, type Page, type TestInfo } from "playwright/test";
 import { THERAPY_CATALOGUE_SUMMARY } from "@/components/therapy-compass/data/generated-assets";
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { expectNoPageHorizontalOverflow, gotoApp } from "./helpers/spec-navigation";
-import { visibleByTestId } from "./playwright-settlement";
+import { clickWhenHydrated, visibleByTestId } from "./playwright-settlement";
 
 const readySetupChecks = [
   { id: "env", label: ".env.local configured", status: "ready", detail: "Test environment ready." },
@@ -276,7 +276,7 @@ test.describe("PsychSift accessibility coverage", () => {
     await gotoApp(page);
 
     await expect(page).toHaveTitle("Clinical Answers | PsychSift");
-    await page.getByRole("button", { name: /Mode\s*Answer/i }).click();
+    await clickWhenHydrated(page.getByRole("button", { name: /Mode\s*Answer/i }));
     const modeMenu = page.getByRole("menu");
     await expect(modeMenu).toBeVisible();
     await modeMenu.getByText("Dictionary", { exact: true }).click();

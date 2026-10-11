@@ -1,6 +1,6 @@
 import { expect, test } from "playwright/test";
 
-import { visibleByTestId } from "./playwright-settlement";
+import { clickWhenHydrated, visibleByTestId } from "./playwright-settlement";
 
 /**
  * `/issues` #256, proven where it actually failed: in the browser.
@@ -169,7 +169,7 @@ test.describe("Forms section navigation", () => {
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
     await expect(trigger).toHaveAttribute("data-state", "collapsed");
     await expect(trigger.getByText(preview)).toBeVisible();
-    await trigger.click();
+    await clickWhenHydrated(trigger);
 
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
     await expect(trigger).toHaveAttribute("data-state", "expanded");

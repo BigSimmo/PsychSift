@@ -18,7 +18,6 @@ import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
 
-const SERVICE_WORKER_URL = "/sw.js";
 const INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-install-dismissed-at";
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
 const INSTALL_DISMISSAL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -28,21 +27,10 @@ const INSTALL_DISMISSAL_MS = 30 * 24 * 60 * 60 * 1000;
  * install prompt has been persisting its dismissal since it was written; this is the same
  * treatment for the same reason (2026-09-17 audit, finding L4).
  *
- * Keyed by the waiting worker's script URL rather than a bare flag, so dismissing THIS update
+ * Keyed by the worker's release version rather than its unchanging /sw.js URL, so dismissing THIS update
  * does not suppress the NEXT one: a clinician who says "later" to one version must still be
  * offered the one after it. Short window -- an update is worth re-offering the same day.
  */
-const UPDATE_DISMISSAL_KEY = "clinical-kb-pwa-update-dismissed-at";
-const UPDATE_DISMISSAL_MS = 6 * 60 * 60 * 1000;
-/**
- * How often an open app asks for a newer service worker. It was an hour, and only on a
- * tab becoming visible or the network returning, so a ward computer left on one page, or a
- * phone app resumed within the hour, kept running the old build after a release (the stale
- * PWA Josh reported, 7 October 2026). Ten minutes, checked on visibility, focus, a
- * back-forward restore and a timer while visible, costs one small no-cache fetch of sw.js.
- */
-const UPDATE_CHECK_INTERVAL_MS = 10 * 60 * 1000;
-const PWA_CACHE_PREFIX = "clinical-kb-pwa-";
 const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
 type InstallChoice = { outcome: "accepted" | "dismissed"; platform: string };
@@ -89,28 +77,9 @@ function wasInstallRecentlyDismissed(key: string = INSTALL_DISMISSAL_KEY) {
   return false;
 }
 
-function wasUpdateRecentlyDismissed(token?: string | null) {
-  try {
-    const key = token ? `${UPDATE_DISMISSAL_KEY}:${token}` : UPDATE_DISMISSAL_KEY;
-    const dismissedAt = Number(window.localStorage.getItem(key));
-    if (!Number.isFinite(dismissedAt) || dismissedAt <= 0) return false;
-    if (Date.now() - dismissedAt < UPDATE_DISMISSAL_MS) return true;
-    window.localStorage.removeItem(key);
-  } catch {
-    // Storage can be unavailable in private/restricted contexts. Re-offering the update is the
-    // safe failure: the notice is an offer, and showing it twice costs less than never showing it.
-  }
-  return false;
-}
-
-function rememberUpdateDismissal(token?: string | null) {
-  try {
-    const key = token ? `${UPDATE_DISMISSAL_KEY}:${token}` : UPDATE_DISMISSAL_KEY;
-    window.localStorage.setItem(key, String(Date.now()));
-  } catch {
-    // See above: the in-session ref still suppresses it for this page view.
-  }
-}
+// Service-worker registration, update identification and dismissal persistence
+// load on demand instead of in every route's initial bundle.
+const loadPwaServiceWorker = () => import("@/components/pwa-service-worker");
 
 function rememberInstallDismissal(key: string = INSTALL_DISMISSAL_KEY) {
   try {
@@ -126,34 +95,6 @@ function isIosBrowser() {
   if (/iPad|iPhone|iPod/.test(userAgent)) return true;
   // iPadOS 13+ reports a macOS user agent but exposes multi-touch.
   return platform === "MacIntel" && (maxTouchPoints ?? 0) > 1;
-}
-
-async function teardownLocalPwa() {
-  try {
-    // Exact-match the owned worker URL: a suffix check would also catch an
-    // unrelated same-origin worker registered at a nested path like
-    // /other-app/sw.js.
-    const ownedWorkerUrl = new URL(SERVICE_WORKER_URL, window.location.origin).href;
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.allSettled(
-      registrations
-        .filter((registration) =>
-          [registration.active, registration.waiting, registration.installing].some(
-            (worker) => worker?.scriptURL === ownedWorkerUrl,
-          ),
-        )
-        .map((registration) => registration.unregister()),
-    );
-    if ("caches" in window) {
-      const cacheNames = await window.caches.keys();
-      await Promise.allSettled(
-        cacheNames.filter((name) => name.startsWith(PWA_CACHE_PREFIX)).map((name) => window.caches.delete(name)),
-      );
-    }
-  } catch {
-    // Teardown is a local-dev convenience; on failure the documented manual
-    // DevTools path in docs/pwa.md still applies.
-  }
 }
 
 const cardClassName = "pwa-notice-card pointer-events-auto relative text-[color:var(--text)]";
@@ -380,7 +321,10 @@ export function PwaLifecycle() {
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const lastUpdateCheckRef = useRef(0);
-  const updateDismissedRef = useRef(false);
+  const dismissedUpdateTokenRef = useRef<string | null | undefined>(undefined);
+  const dismissedUpdateWorkerRef = useRef<ServiceWorker | null>(null);
+  const updateWorkerRef = useRef<ServiceWorker | null>(null);
+  const updateTokenRef = useRef<string | null>(null);
   const refreshRequestedRef = useRef(false);
   const reloadingRef = useRef(false);
   const hasSeenControllerRef = useRef(false);
@@ -470,146 +414,75 @@ export function PwaLifecycle() {
       // Explicit local opt-out: unregister the worker a previous `?pwa-dev=1`
       // session installed and delete the owned caches. Non-local hosts ignore
       // the flag entirely.
-      void teardownLocalPwa();
+      void loadPwaServiceWorker().then((serviceWorker) => serviceWorker.teardownLocalPwa());
       return;
     }
     if (process.env.NODE_ENV !== "production" && pwaDevFlag !== "1") return;
 
-    // Seeded before anything can expose a waiting worker, so a dismissal from an earlier page
-    // view is honoured rather than re-offered on every navigation.
-    if (wasUpdateRecentlyDismissed()) updateDismissedRef.current = true;
-
-    let cancelled = false;
-    let cancelScheduledRegistration: () => void = () => {};
-    const registrationCleanups = new Set<() => void>();
+    // The registration and update machinery only matters once the page is idle,
+    // so it loads on demand instead of shipping in every route's initial bundle.
+    // The initial controller and any activation during the load are captured
+    // here so the lazy lifecycle cannot miss an update notice.
     hasSeenControllerRef.current = Boolean(navigator.serviceWorker.controller);
-
-    let broadcastChannel: BroadcastChannel | null = null;
-    try {
-      broadcastChannel = new BroadcastChannel("pwa_channel");
-      broadcastChannel.addEventListener("message", (event) => {
-        if (event.data === "sw-updated" && !cancelled && !updateDismissedRef.current) {
-          setActivatedUpdateReady(true);
-        }
-      });
-    } catch {
-      // Swallowing is correct: BroadcastChannel is unsupported in some embedded/private
-      // browsing contexts; cross-tab update notices are a progressive enhancement.
-    }
-
-    const exposeWaitingWorker = (worker: ServiceWorker | null) => {
-      if (!cancelled && worker && !updateDismissedRef.current && !wasUpdateRecentlyDismissed(worker.scriptURL)) {
-        setWaitingWorker(worker);
-      }
+    let disposed = false;
+    let missedControllerChange = false;
+    let stop: (() => void) | undefined;
+    const noteControllerChange = () => {
+      missedControllerChange = true;
     };
-
-    const watchInstallingWorker = (registration: ServiceWorkerRegistration) => {
-      const worker = registration.installing;
-      if (!worker) return;
-      const handleStateChange = () => {
-        if (worker.state === "installed" && navigator.serviceWorker.controller) {
-          exposeWaitingWorker(registration.waiting ?? worker);
-        }
-      };
-      worker.addEventListener("statechange", handleStateChange);
-      registrationCleanups.add(() => worker.removeEventListener("statechange", handleStateChange));
+    navigator.serviceWorker.addEventListener("controllerchange", noteControllerChange);
+    let attempts = 0;
+    let retryTimer: number | undefined;
+    const clearRetry = () => {
+      window.clearTimeout(retryTimer);
+      window.removeEventListener("online", start);
+      window.removeEventListener("focus", start);
     };
-
-    const checkForUpdates = () => {
-      const registration = registrationRef.current;
-      if (!registration || document.visibilityState !== "visible" || !navigator.onLine) return;
-      if (Date.now() - lastUpdateCheckRef.current < UPDATE_CHECK_INTERVAL_MS) return;
-      lastUpdateCheckRef.current = Date.now();
-      void registration.update().catch(() => undefined);
+    const start = () => {
+      if (disposed || stop) return;
+      // While offline, wait for the online event instead of spending attempts.
+      if (attempts > 0 && !navigator.onLine) return;
+      clearRetry();
+      attempts += 1;
+      loadPwaServiceWorker().then(
+        (serviceWorker) => {
+          if (disposed || stop) return;
+          navigator.serviceWorker.removeEventListener("controllerchange", noteControllerChange);
+          stop = serviceWorker.startServiceWorkerLifecycle({
+            dismissedUpdateTokenRef,
+            dismissedUpdateWorkerRef,
+            hasSeenControllerRef,
+            lastUpdateCheckRef,
+            missedControllerChange,
+            refreshRequestedRef,
+            registrationRef,
+            reloadingRef,
+            setActivatedUpdateReady,
+            setWaitingWorker,
+            updateTokenRef,
+            updateWorkerRef,
+          });
+        },
+        // A chunk that failed to load (for example offline) is retried once
+        // connectivity returns, so update checks are not lost for the page view.
+        () => {
+          // Transient failures while online retry too: on focus, on reconnect,
+          // or after a short backoff, bounded so a missing chunk cannot loop.
+          if (disposed) return;
+          // Reconnecting always retries; the cap bounds only focus/backoff retries.
+          window.addEventListener("online", start);
+          if (attempts >= 5) return;
+          window.addEventListener("focus", start);
+          retryTimer = window.setTimeout(start, 15_000 * attempts);
+        },
+      );
     };
-
-    const handleControllerChange = () => {
-      if (reloadingRef.current) return;
-      const wasPreviouslyControlled = hasSeenControllerRef.current;
-      hasSeenControllerRef.current = true;
-      if (refreshRequestedRef.current) {
-        reloadingRef.current = true;
-        window.location.reload();
-        return;
-      }
-      setWaitingWorker(null);
-      if (!cancelled && wasPreviouslyControlled && !updateDismissedRef.current) {
-        setActivatedUpdateReady(true);
-        try {
-          broadcastChannel?.postMessage("sw-updated");
-        } catch {
-          // Swallowing is correct: postMessage throws once the channel is closed during
-          // teardown; the local setActivatedUpdateReady above already handled this tab.
-        }
-      }
-    };
-
-    const register = async () => {
-      try {
-        const registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL, {
-          scope: "/",
-          updateViaCache: "none",
-        });
-        if (cancelled) return;
-        registrationRef.current = registration;
-        exposeWaitingWorker(registration.waiting);
-        watchInstallingWorker(registration);
-        const handleUpdateFound = () => watchInstallingWorker(registration);
-        registration.addEventListener("updatefound", handleUpdateFound);
-        registrationCleanups.add(() => registration.removeEventListener("updatefound", handleUpdateFound));
-        lastUpdateCheckRef.current = Date.now();
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") console.warn("PsychSift PWA registration failed", error);
-      }
-    };
-
-    const scheduleRegistration = () => {
-      const idleWindow = window as unknown as {
-        cancelIdleCallback?: Window["cancelIdleCallback"];
-        requestIdleCallback?: Window["requestIdleCallback"];
-      };
-      const requestIdle = idleWindow.requestIdleCallback?.bind(window);
-      const cancelIdle = idleWindow.cancelIdleCallback?.bind(window);
-
-      if (requestIdle && cancelIdle) {
-        const idleId = requestIdle(() => void register(), { timeout: 2_000 });
-        cancelScheduledRegistration = () => cancelIdle(idleId);
-      } else {
-        const timeoutId = window.setTimeout(() => void register(), 0);
-        cancelScheduledRegistration = () => window.clearTimeout(timeoutId);
-      }
-    };
-
-    const handleLoad = () => scheduleRegistration();
-    if (document.readyState === "complete") scheduleRegistration();
-    else window.addEventListener("load", handleLoad, { once: true });
-
-    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
-    document.addEventListener("visibilitychange", checkForUpdates);
-    window.addEventListener("online", checkForUpdates);
-    window.addEventListener("focus", checkForUpdates);
-    window.addEventListener("pageshow", checkForUpdates);
-    const updateTimer = window.setInterval(checkForUpdates, UPDATE_CHECK_INTERVAL_MS);
-
+    start();
     return () => {
-      cancelled = true;
-      cancelScheduledRegistration();
-      for (const cleanup of registrationCleanups) cleanup();
-      registrationCleanups.clear();
-      window.removeEventListener("load", handleLoad);
-      navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
-      document.removeEventListener("visibilitychange", checkForUpdates);
-      window.removeEventListener("online", checkForUpdates);
-      window.removeEventListener("focus", checkForUpdates);
-      window.removeEventListener("pageshow", checkForUpdates);
-      window.clearInterval(updateTimer);
-      registrationRef.current = null;
-      try {
-        broadcastChannel?.close();
-      } catch {
-        // Swallowing is correct: close() on an already-closed channel throws in some
-        // browsers; there is nothing to recover during effect cleanup.
-      }
+      disposed = true;
+      clearRetry();
+      navigator.serviceWorker.removeEventListener("controllerchange", noteControllerChange);
+      stop?.();
     };
   }, []);
 
@@ -646,8 +519,10 @@ export function PwaLifecycle() {
 
   const dismissUpdate = () => {
     refreshRequestedRef.current = false;
-    updateDismissedRef.current = true;
-    rememberUpdateDismissal(waitingWorker?.scriptURL);
+    dismissedUpdateTokenRef.current = updateTokenRef.current;
+    dismissedUpdateWorkerRef.current = updateWorkerRef.current;
+    const token = updateTokenRef.current;
+    if (token) void loadPwaServiceWorker().then((serviceWorker) => serviceWorker.rememberUpdateDismissal(token));
     setWaitingWorker(null);
     setActivatedUpdateReady(false);
   };
