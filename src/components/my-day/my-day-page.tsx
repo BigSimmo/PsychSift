@@ -443,8 +443,11 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
     .filter((mode) => state.sources.some((source) => source.mode === mode && source.status === "ready"))
     .map(myDayModeLabel);
   const myWorkSample = state.sources.some((source) => source.mode === "my-work" && source.sample === true);
-  // Admin's dates and numbers: dropped whole for a signed-in reader if they are invented examples.
-  const adminReal = allowSample || !myWorkSample;
+  // Admin's dates and numbers: dropped whole if they are invented examples. Needs you leaves invented
+  // items out (as the bell does), so a Renewals card of examples beside it would show a passed date while
+  // Needs you said nothing needs you (usefulness audit, 11 Oct 2026). The example day, when switched on,
+  // brings its own renewals and its own matching Needs you rows.
+  const adminReal = !myWorkSample;
   const renewals = adminReal ? (state.renewals ?? NO_RENEWALS) : NO_RENEWALS;
   const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
   const demoNote = allowSample && state.demoMode;

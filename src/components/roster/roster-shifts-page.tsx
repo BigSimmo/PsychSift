@@ -1,5 +1,6 @@
 "use client";
 
+import { AgreementEntryLink } from "@/components/agreement-ask/agreement-entry-link";
 import {
   CalendarClock,
   CalendarDays,
@@ -839,7 +840,11 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
           }}
         />
       ) : (
-        <div className="grid min-w-0 gap-3 pb-20">{body()}</div>
+        <div className="grid min-w-0 gap-3 pb-20">
+          {body()}
+          {/* Rest and hours questions come up while reading a roster (usefulness audit, 11 Oct 2026). */}
+          <AgreementEntryLink />
+        </div>
       )}
 
       <ConfirmDialog
