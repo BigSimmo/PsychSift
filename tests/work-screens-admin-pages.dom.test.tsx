@@ -208,6 +208,19 @@ describe("Admin Requests", () => {
     expect(screen.getByTestId("admin-sharing")).toBeTruthy();
   });
 
+  it("keeps Done when it is chosen from Send a pack, as the address drops ?view=send", () => {
+    search.params = new URLSearchParams("view=send");
+    const view = withToasts(<AdminRequestsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-requests-tab-done"));
+    search.params = new URLSearchParams();
+    view.rerender(
+      <ToastProvider>
+        <AdminRequestsPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("admin-requests-tab-done").getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("sends a health reason to Staff Health only", () => {
     withToasts(<AdminRequestsPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-requests-new"));

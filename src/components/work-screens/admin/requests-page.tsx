@@ -139,7 +139,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   if (viewParam !== seenView) {
     setSeenView(viewParam);
     if (viewParam === "send") setChosenTab("send");
-    else if (seenView === "send") setChosenTab("open");
+    else if (seenView === "send" && tab === "send") setChosenTab("open");
   }
   function setTab(next: "open" | "done" | "send") {
     setChosenTab(next);
@@ -392,7 +392,7 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
 
               {tab === "open" && suggestions.length > 0 ? (
                 <>
-                  <WorkSectionLabel count="From Compliance">You may need more time</WorkSectionLabel>
+                  <WorkSectionLabel count="From Renewals">You may need more time</WorkSectionLabel>
                   <WorkCard testId="admin-requests-suggestions">
                     {suggestions.map((suggestion) => (
                       <WorkIconRow
