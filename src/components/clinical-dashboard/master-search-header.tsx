@@ -1580,6 +1580,13 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // during route transitions where both slots can briefly coexist.
     const composerSlotId = desktopHomeComposerSlotId ?? desktopPageComposerSlotId;
     const composerSlotKind = desktopHomeComposerSlotId ? "home" : "page";
+    // The page's first client render still expects its SSR reserve attribute.
+    // Every mutation, including phone/suppression/fallback clears, must wait
+    // for the owning segment's hydration, just like portal adoption does.
+    const syncReserve = (pending: boolean) => {
+      const slot = composerSlotId ? document.getElementById(composerSlotId) : null;
+      if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, pending);
+    };
 
     if (!composerSlotId || !searchComposerVisible) {
       // No page-owned slot at this route, or the shell suppressed the composer:
@@ -1587,11 +1594,18 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       // Deferred to a microtask (not requestAnimationFrame) so it stays off the
       // synchronous effect body without being frame-gated — headless CI can starve rAF.
       let cancelled = false;
+      const observer = new MutationObserver(() => syncReserve(false));
+      if (composerSlotId) {
+        observer.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: [desktopComposerSlotReadyAttr],
+        });
+      }
       queueMicrotask(() => {
         if (cancelled) return;
-        if (composerSlotId) {
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), false);
-        }
+        syncReserve(false);
         setDesktopComposerPortalActive(false);
         setDesktopComposerPortalHost(null);
         setDesktopComposerPortalFallback(false);
@@ -1599,6 +1613,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       });
       return () => {
         cancelled = true;
+        observer.disconnect();
       };
     }
 
@@ -1665,7 +1680,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           portalFailureStartedAt = null;
           setDesktopComposerPortalFallback(false);
           // Viewport never hosts this hero slot — collapse the SSR reserve band.
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), false);
+          syncReserve(false);
           return;
         }
         const now = window.performance.now();
@@ -1685,14 +1700,14 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             );
           }
           // Keep the SSR pending reserve while we retry adoption.
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), true);
+          syncReserve(true);
         } else {
           // A missing/unhydrated page slot must not remove search forever. Home
           // routes suppress the header fallback during the bounded retry window
           // because ModeHomeTemplate already reserves the settled hero geometry;
           // only surface the fallback after portal adoption has genuinely failed.
           // Collapse the empty hero band once the header fallback takes over.
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), false);
+          syncReserve(false);
           setDesktopComposerPortalFallback(true);
         }
       }
@@ -1719,11 +1734,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         // in which the DOM lacks an attribute the page's client render still
         // produces — a page segment hydrating inside it logs a
         // `data-composer-reserve` mismatch (client "pending" vs server null).
-        // Nothing is stranded by skipping: the effect body re-establishes the
-        // reserve on the very next tick, and a real unmount takes the slot
-        // element with it. Invariant 15's three required clears (media query
-        // mismatch, suppressed composer, portal fallback) live in `syncTarget`
-        // and the suppression branch above, and are untouched.
+        // Hydration readiness is observed by the effect body, so its pending
+        // clear still runs once the owning segment is safe to mutate. A real
+        // unmount takes the slot element with it.
         const slot = document.getElementById(composerSlotId);
         if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, false);
       }

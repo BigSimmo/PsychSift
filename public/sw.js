@@ -7,7 +7,7 @@
  */
 
 const CACHE_PREFIX = "clinical-kb-pwa-";
-const CACHE_VERSION = "2026-10-09-v2";
+const CACHE_VERSION = "2026-10-11-v1";
 const SHELL_CACHE = `${CACHE_PREFIX}shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `${CACHE_PREFIX}static-${CACHE_VERSION}`;
 const STATIC_CACHE_PREFIX = `${CACHE_PREFIX}static-`;
@@ -23,10 +23,16 @@ function isSameOrigin(url) {
 }
 
 function hasSensitiveRequestSignals(request, url) {
+  // Next's version-skew protection tags static assets with the public release SHA.
+  // Keep the full URL as the cache key; every other query remains network-only.
+  const deploymentAsset =
+    url.pathname.startsWith("/_next/static/") &&
+    url.searchParams.size === 1 &&
+    /^[a-f0-9]{40}$/i.test(url.searchParams.get("dpl") ?? "");
   return (
     request.method !== "GET" ||
     !isSameOrigin(url) ||
-    url.search !== "" ||
+    (url.search !== "" && !deploymentAsset) ||
     request.cache === "no-store" ||
     request.headers.get("cache-control")?.toLowerCase().includes("no-store") ||
     request.headers.has("authorization") ||
@@ -56,7 +62,11 @@ function responseHasSafePublicMetadata(request, response) {
   if (response.url) {
     const requestUrl = new URL(request.url);
     const responseUrl = new URL(response.url);
-    if (!isSameOrigin(responseUrl) || responseUrl.pathname !== requestUrl.pathname || responseUrl.search !== "") {
+    if (
+      !isSameOrigin(responseUrl) ||
+      responseUrl.pathname !== requestUrl.pathname ||
+      responseUrl.search !== requestUrl.search
+    ) {
       return false;
     }
   }
@@ -288,9 +298,10 @@ self.addEventListener("activate", (event) => {
     (async () => {
       const names = await safeCacheNames();
       const retainedStaticCaches = new Set(
+        // CacheStorage lists caches in creation order. Release suffixes are
+        // commit hashes, whose alphabetical order says nothing about recency.
         names
           .filter((name) => name.startsWith(STATIC_CACHE_PREFIX) && name !== STATIC_CACHE)
-          .sort()
           .slice(-MAX_RETAINED_STATIC_CACHES),
       );
       await Promise.allSettled(
@@ -320,6 +331,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data?.type === "GET_VERSION") {
+    event.ports?.[0]?.postMessage({ type: "PWA_VERSION", version: CACHE_VERSION });
+  }
 });
 
 // Push payloads carry one type code only. The worker owns every word and click

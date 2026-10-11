@@ -28,7 +28,7 @@ const INSTALL_DISMISSAL_MS = 30 * 24 * 60 * 60 * 1000;
  * install prompt has been persisting its dismissal since it was written; this is the same
  * treatment for the same reason (2026-09-17 audit, finding L4).
  *
- * Keyed by the waiting worker's script URL rather than a bare flag, so dismissing THIS update
+ * Keyed by the worker's release version rather than its unchanging /sw.js URL, so dismissing THIS update
  * does not suppress the NEXT one: a clinician who says "later" to one version must still be
  * offered the one after it. Short window -- an update is worth re-offering the same day.
  */
@@ -89,9 +89,9 @@ function wasInstallRecentlyDismissed(key: string = INSTALL_DISMISSAL_KEY) {
   return false;
 }
 
-function wasUpdateRecentlyDismissed(token?: string | null) {
+function wasUpdateRecentlyDismissed(token: string) {
   try {
-    const key = token ? `${UPDATE_DISMISSAL_KEY}:${token}` : UPDATE_DISMISSAL_KEY;
+    const key = `${UPDATE_DISMISSAL_KEY}:${token}`;
     const dismissedAt = Number(window.localStorage.getItem(key));
     if (!Number.isFinite(dismissedAt) || dismissedAt <= 0) return false;
     if (Date.now() - dismissedAt < UPDATE_DISMISSAL_MS) return true;
@@ -103,13 +103,44 @@ function wasUpdateRecentlyDismissed(token?: string | null) {
   return false;
 }
 
-function rememberUpdateDismissal(token?: string | null) {
+function rememberUpdateDismissal(token: string) {
   try {
-    const key = token ? `${UPDATE_DISMISSAL_KEY}:${token}` : UPDATE_DISMISSAL_KEY;
+    const key = `${UPDATE_DISMISSAL_KEY}:${token}`;
     window.localStorage.setItem(key, String(Date.now()));
   } catch {
     // See above: the in-session ref still suppresses it for this page view.
   }
+}
+
+/** Ask the installed worker itself; fetching /sw.js could name a later release than the waiting one. */
+async function workerUpdateToken(worker: ServiceWorker | null): Promise<string | null> {
+  if (!worker?.scriptURL) return null;
+  const scriptURL = worker.scriptURL;
+  if (typeof MessageChannel === "undefined") return null;
+  const version = await new Promise<string | null>((resolve) => {
+    const channel = new MessageChannel();
+    const finish = (value: string | null) => {
+      window.clearTimeout(timeout);
+      channel.port1.close();
+      channel.port2.close();
+      resolve(value);
+    };
+    // Workers from before the version handshake must not leave the notice waiting indefinitely.
+    const timeout = window.setTimeout(() => finish(null), 1_000);
+    channel.port1.onmessage = (event: MessageEvent<unknown>) => {
+      const data = event.data as { type?: unknown; version?: unknown } | null;
+      if (data?.type !== "PWA_VERSION" || typeof data.version !== "string") return;
+      finish(/^[a-z0-9._-]{1,128}$/i.test(data.version) ? data.version : null);
+    };
+    try {
+      worker.postMessage({ type: "GET_VERSION" }, [channel.port2]);
+    } catch {
+      finish(null);
+    }
+  });
+  // An unknown release must never share a persistent dismissal with every
+  // subsequent release at /sw.js. Its worker object is the in-page identity.
+  return version ? `${scriptURL}#${version}` : null;
 }
 
 function rememberInstallDismissal(key: string = INSTALL_DISMISSAL_KEY) {
@@ -380,7 +411,10 @@ export function PwaLifecycle() {
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const lastUpdateCheckRef = useRef(0);
-  const updateDismissedRef = useRef(false);
+  const dismissedUpdateTokenRef = useRef<string | null | undefined>(undefined);
+  const dismissedUpdateWorkerRef = useRef<ServiceWorker | null>(null);
+  const updateWorkerRef = useRef<ServiceWorker | null>(null);
+  const updateTokenRef = useRef<string | null>(null);
   const refreshRequestedRef = useRef(false);
   const reloadingRef = useRef(false);
   const hasSeenControllerRef = useRef(false);
@@ -475,11 +509,8 @@ export function PwaLifecycle() {
     }
     if (process.env.NODE_ENV !== "production" && pwaDevFlag !== "1") return;
 
-    // Seeded before anything can expose a waiting worker, so a dismissal from an earlier page
-    // view is honoured rather than re-offered on every navigation.
-    if (wasUpdateRecentlyDismissed()) updateDismissedRef.current = true;
-
     let cancelled = false;
+    let updateRequest = 0;
     let cancelScheduledRegistration: () => void = () => {};
     const registrationCleanups = new Set<() => void>();
     hasSeenControllerRef.current = Boolean(navigator.serviceWorker.controller);
@@ -488,8 +519,8 @@ export function PwaLifecycle() {
     try {
       broadcastChannel = new BroadcastChannel("pwa_channel");
       broadcastChannel.addEventListener("message", (event) => {
-        if (event.data === "sw-updated" && !cancelled && !updateDismissedRef.current) {
-          setActivatedUpdateReady(true);
+        if (event.data === "sw-updated" && !cancelled) {
+          void exposeUpdate(navigator.serviceWorker.controller, true);
         }
       });
     } catch {
@@ -497,10 +528,29 @@ export function PwaLifecycle() {
       // browsing contexts; cross-tab update notices are a progressive enhancement.
     }
 
-    const exposeWaitingWorker = (worker: ServiceWorker | null) => {
-      if (!cancelled && worker && !updateDismissedRef.current && !wasUpdateRecentlyDismissed(worker.scriptURL)) {
-        setWaitingWorker(worker);
+    const exposeUpdate = async (worker: ServiceWorker | null, activated: boolean) => {
+      if (cancelled || (!worker && !activated)) return;
+      const request = ++updateRequest;
+      if (updateWorkerRef.current !== worker) {
+        // The previous waiting worker may now be redundant. Remove its Reload
+        // action while identifying the replacement, including dismissed releases.
+        setWaitingWorker(null);
+        setActivatedUpdateReady(false);
       }
+      const token = await workerUpdateToken(worker);
+      if (cancelled || request !== updateRequest) return;
+      updateTokenRef.current = token;
+      updateWorkerRef.current = worker;
+      if (
+        (worker && dismissedUpdateWorkerRef.current === worker) ||
+        (token && (dismissedUpdateTokenRef.current === token || wasUpdateRecentlyDismissed(token)))
+      ) {
+        setWaitingWorker(null);
+        setActivatedUpdateReady(false);
+        return;
+      }
+      setWaitingWorker(activated ? null : worker);
+      setActivatedUpdateReady(activated);
     };
 
     const watchInstallingWorker = (registration: ServiceWorkerRegistration) => {
@@ -508,7 +558,7 @@ export function PwaLifecycle() {
       if (!worker) return;
       const handleStateChange = () => {
         if (worker.state === "installed" && navigator.serviceWorker.controller) {
-          exposeWaitingWorker(registration.waiting ?? worker);
+          void exposeUpdate(registration.waiting ?? worker, false);
         }
       };
       worker.addEventListener("statechange", handleStateChange);
@@ -533,8 +583,8 @@ export function PwaLifecycle() {
         return;
       }
       setWaitingWorker(null);
-      if (!cancelled && wasPreviouslyControlled && !updateDismissedRef.current) {
-        setActivatedUpdateReady(true);
+      if (!cancelled && wasPreviouslyControlled) {
+        void exposeUpdate(navigator.serviceWorker.controller, true);
         try {
           broadcastChannel?.postMessage("sw-updated");
         } catch {
@@ -552,7 +602,7 @@ export function PwaLifecycle() {
         });
         if (cancelled) return;
         registrationRef.current = registration;
-        exposeWaitingWorker(registration.waiting);
+        void exposeUpdate(registration.waiting, false);
         watchInstallingWorker(registration);
         const handleUpdateFound = () => watchInstallingWorker(registration);
         registration.addEventListener("updatefound", handleUpdateFound);
@@ -646,8 +696,9 @@ export function PwaLifecycle() {
 
   const dismissUpdate = () => {
     refreshRequestedRef.current = false;
-    updateDismissedRef.current = true;
-    rememberUpdateDismissal(waitingWorker?.scriptURL);
+    dismissedUpdateTokenRef.current = updateTokenRef.current;
+    dismissedUpdateWorkerRef.current = updateWorkerRef.current;
+    if (updateTokenRef.current) rememberUpdateDismissal(updateTokenRef.current);
     setWaitingWorker(null);
     setActivatedUpdateReady(false);
   };
