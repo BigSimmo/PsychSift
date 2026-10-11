@@ -103,8 +103,8 @@ as $$
             h.current_publication_id is distinct from rr.target_publication_id
             or h.retired is distinct from rr.tombstone))))
       as population_complete,
-      s.valid and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,
-      s.valid and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,
+      s.valid and r.id is not null and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,
+      s.valid and r.id is not null and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,
       s.valid and not exists (
         select 1 from active_records rr
         left join public.site_content_publications p on p.id = rr.target_publication_id
