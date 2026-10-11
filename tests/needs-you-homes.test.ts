@@ -4,6 +4,7 @@ import {
   isNotificationsPath,
   isStaffWorkHomePath,
   needsYouBellVisibleForAuth,
+  clinicalWideBellVisible,
   staffWorkBellVisible,
 } from "@/lib/needs-you/homes";
 import { groupNeedsYouItems, needsYouWaitingCopy } from "@/lib/needs-you/groups";
@@ -68,6 +69,16 @@ describe("where the header bell shows", () => {
     expect(staffWorkBellVisible("medicines", "/medicines")).toBe(false);
     expect(staffWorkBellVisible("my-day", null)).toBe(false);
     expect(staffWorkBellVisible("my-day", undefined)).toBe(false);
+  });
+
+  it("shows on clinical pages for the big-screen header, never First Nations or the work modes", () => {
+    // 11 Oct 2026 audit: the tablet and desktop Clinical header matches Work's.
+    expect(clinicalWideBellVisible("answer", "/")).toBe(true);
+    expect(clinicalWideBellVisible("dsm", "/dsm/search")).toBe(true);
+    expect(clinicalWideBellVisible("psychiatry", "/psychiatry")).toBe(true);
+    expect(clinicalWideBellVisible("first-nations", "/first-nations")).toBe(false);
+    expect(clinicalWideBellVisible("roster", "/roster")).toBe(false);
+    expect(clinicalWideBellVisible("answer", null)).toBe(false);
   });
 
   it("knows the Notifications page and the pages below it", () => {

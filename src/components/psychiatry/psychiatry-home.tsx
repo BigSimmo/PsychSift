@@ -82,6 +82,8 @@ export interface PsychiatrySectionCounts {
   readonly formulation: number;
   readonly therapy: number;
   readonly forms: number;
+  readonly calculators: number;
+  readonly dictionary: number;
 }
 
 const PAGE_IDS = ["ask", "tools", "saved"] as const;
@@ -168,6 +170,10 @@ function sectionCountLine(modeId: AppModeId, counts: PsychiatrySectionCounts): s
       return plural(counts.therapy, "therapy", "therapies");
     case "forms":
       return plural(counts.forms, "form", "forms");
+    case "calculators":
+      return plural(counts.calculators, "calculator", "calculators");
+    case "dictionary":
+      return plural(counts.dictionary, "term", "terms");
     default:
       return null;
   }

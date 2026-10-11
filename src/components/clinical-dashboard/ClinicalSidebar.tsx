@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type RefObject } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -22,7 +30,7 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   SunMedium,
-  Wrench,
+  type LucideIcon,
 } from "lucide-react";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { BrandMark } from "@/components/clinical-dashboard/brand";
@@ -40,10 +48,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
+import { phoneModeGroups, phoneModeGroupsForSide } from "@/lib/phone-mode-groups";
 import { isDashboardModeHref } from "@/lib/search-route-ownership";
 import { useSidebarPins, pinnableSidebarModeIds } from "@/components/clinical-dashboard/use-sidebar-pins";
 import { useTheme } from "@/components/clinical-dashboard/use-theme";
 import type { ThemePreference } from "@/lib/theme";
+import {
+  CLINICAL_MENU_PANEL_ID,
+  ClinicalMenuBell,
+  ClinicalMenuTabs,
+  ClinicalMenuWorkAreas,
+  clinicalMenuTabId,
+} from "@/components/clinical-dashboard/clinical-menu-drawer";
+import { LazyWorkSideCounts } from "@/components/work-frame/lazy-work-side-nav";
+import { useWorkSideCounts } from "@/components/work-frame/work-frame-store";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { needsYouBellVisibleForAuth } from "@/lib/needs-you/homes";
+import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
+import { useAuthSession } from "@/lib/supabase/client";
+import type { WorkAreaId } from "@/lib/work-frame/areas";
 
 export type SidebarIdentity = {
   displayName: string;
@@ -88,8 +111,9 @@ const sidebarToolItems = [
   // points straight at the shared home too, matching Documents/Services above.
   { id: "prescribing", label: appModeDefinition("prescribing").label, icon: Pill, href: "/?mode=prescribing" },
   { id: "factsheets", label: "Factsheets", icon: appModeIcons.factsheets, href: "/?mode=factsheets" },
-  // PT-11: standalone /tools is the canonical entry; /?mode=tools redirects to it.
-  { id: "tools", label: "Tools", icon: Wrench, href: "/tools" },
+  // Tools left the menu (usefulness and layout audit, 11 Oct 2026, item 8): its
+  // calculators and dictionary now sit under Psychiatry. `/tools` still opens
+  // for old links and bookmarks.
 ] as const;
 
 const sidebarAccountLibraryItems = [
@@ -99,29 +123,37 @@ const sidebarAccountLibraryItems = [
 const visibleSidebarToolItems = sidebarToolItems;
 
 /** Specialist modes that are available from More modes but are not first-run pins. */
+// Clinical in the menu's grouped order (Psychiatry and its sections, then
+// Medicines, then Sources), then Work.
 const sidebarMoreModeIds = [
-  "forms",
-  "differentials",
+  "psychiatry",
   "dsm",
+  "differentials",
   "specifiers",
   "formulation",
-  "calculators",
   "therapy-compass",
+  "forms",
+  "calculators",
   "dictionary",
-  "sources",
-  "on-call",
-  "cme",
-  "teaching",
-  "psychiatry",
-  "my-work",
-  "roster",
-  "open-shifts",
   "first-nations",
-  "my-day",
   "medicines",
+  "sources",
+  "my-day",
+  "on-call",
+  "open-shifts",
+  "roster",
+  "teaching",
+  "cme",
+  "my-work",
 ] as const satisfies readonly AppModeId[];
 
-const sidebarModeItems = [
+/* Typed by `AppModeId` rather than the literal ids listed above, so a caller may
+ * still ask about a mode the menu no longer lists (Tools, kept for old links)
+ * without the comparison becoming a type error. */
+type SidebarModeItem = { id: AppModeId; label: string; description: string; icon: SidebarIcon; href: string };
+type SidebarIcon = (typeof sidebarToolItems)[number]["icon"];
+
+const sidebarModeItems: readonly SidebarModeItem[] = [
   ...visibleSidebarToolItems.map((item) => ({
     ...item,
     description: appModeDefinition(item.id).description,
@@ -135,7 +167,7 @@ const sidebarModeItems = [
   })),
 ];
 
-export function sidebarModeItem(modeId: AppModeId) {
+export function sidebarModeItem(modeId: AppModeId): SidebarModeItem | undefined {
   return sidebarModeItems.find((item) => item.id === modeId);
 }
 
@@ -170,8 +202,6 @@ export function selectModeFromLinkClick(
 const collapsedSidebarControl =
   "h-tap w-tap shrink-0 place-items-center rounded-xl border border-transparent text-[color:var(--text-muted)] transition hover:border-[color:var(--border)] hover:bg-[color:var(--surface)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 const collapsedSidebarButton = `grid ${collapsedSidebarControl}`;
-const collapsedSidebarActiveButton =
-  "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]";
 /* The same state on a full-width row, and deliberately the same language: the
  * rail and the expanded list mark the current mode, so they may not mark it two
  * different ways.
@@ -199,6 +229,36 @@ const sidebarItemActive =
    with the same 12px of air on both sides, so the rail reads as one column of
    48px controls broken into groups rather than four rules with three spacings. */
 const collapsedSidebarDivider = "my-1.5 h-px w-8 shrink-0 bg-[color:var(--border)]";
+
+/* The rail's items wear the work rail's look: an icon in a soft pill with its
+   name underneath, so a reader never has to guess what an icon is and the two
+   sides read as one app (desktop and tablet shell, 11 Oct 2026 audit). The
+   classes live with the work rail in work-mode.css. */
+const railItem = "work-rail__item clinical-rail__item";
+
+/* Shorter names where a mode's own label would not fit under its icon. */
+const railShortLabels: Partial<Record<AppModeId, string>> = {
+  dsm: "DSM-5",
+  medicines: "Medicines",
+  "therapy-compass": "Therapy",
+};
+
+function railLabel(id: AppModeId | "favourites", label: string) {
+  return (id !== "favourites" && railShortLabels[id]) || label;
+}
+
+function RailItemBody({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <>
+      <span className="work-rail__pill" aria-hidden="true">
+        <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+      </span>
+      <span className="work-rail__label" aria-hidden="true">
+        {label}
+      </span>
+    </>
+  );
+}
 
 /* Brand lockup header — the phone drawer (ClinicalMobileSidebar) and the
  * expanded desktop sidebar share it, so the two entry points to the same
@@ -294,7 +354,12 @@ const brandHeaderGround =
 const brandWordmark =
   "truncate text-lg font-extrabold leading-5 tracking-[var(--tracking-display)] text-[color:var(--text-heading)]";
 const brandStrapline = "block truncate text-xs font-medium leading-5 text-[color:var(--text-muted)]";
-const drawerHeader = `-mt-[var(--safe-area-top)] gap-x-3 border-[color:var(--border-lux)] px-4 pb-3 pt-[calc(0.75rem+var(--safe-area-top))] sm:px-5 sm:pb-3.5 sm:pt-[calc(0.875rem+var(--safe-area-top))] ${brandHeaderGround}`;
+const drawerHeaderFrame =
+  "-mt-[var(--safe-area-top)] gap-x-3 border-[color:var(--border-lux)] px-4 pt-[calc(0.75rem+var(--safe-area-top))] sm:px-5 sm:pt-[calc(0.875rem+var(--safe-area-top))]";
+const drawerHeader = `${drawerHeaderFrame} pb-3 sm:pb-3.5 ${brandHeaderGround}`;
+/* With the Clinical | Work tabs the band ends at the tabs' own underline, so it
+ * gives up its bottom padding and the active tab's rule sits on the divider. */
+const drawerHeaderWithTabs = `${drawerHeaderFrame} pb-0 ${brandHeaderGround}`;
 const drawerHeaderTitle = brandWordmark;
 /* Ghost close control, matching the collapsed rail's idiom (transparent border
  * that resolves on hover, so forced-colors still has an edge to paint) instead
@@ -341,20 +406,19 @@ function SidebarModesTrigger({
 
   if (variant === "collapsed") {
     return (
-      <Button
+      <button
         ref={triggerRef}
-        variant="ghost"
-        icon={LayoutGrid}
+        type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="More modes"
-        title="More modes"
-        testId="sidebar-more-modes"
-        className={cn("gap-0 px-0 [&>span]:hidden", collapsedSidebarButton, active && collapsedSidebarActiveButton)}
+        data-testid="sidebar-more-modes"
+        data-current={active ? "true" : undefined}
+        className={railItem}
         onClick={onOpen}
       >
-        <span className="sr-only">More modes</span>
-      </Button>
+        <RailItemBody icon={LayoutGrid} label="More" />
+      </button>
     );
   }
 
@@ -418,10 +482,29 @@ export function SidebarModesEditorSheet({
   const hasMatches = sidebarModeItems.some((mode) =>
     `${mode.label} ${mode.description}`.toLowerCase().includes(normalizedQuery),
   );
-  const orderedModes = [
-    ...pinnedModeIds.map(sidebarModeItem).filter((mode): mode is NonNullable<typeof mode> => Boolean(mode)),
-    ...sidebarModeItems.filter((mode) => !pinnedModeIds.includes(mode.id)),
-  ].filter((mode) => `${mode.label} ${mode.description}`.toLowerCase().includes(normalizedQuery));
+  const matchesQuery = (mode: (typeof sidebarModeItems)[number]) =>
+    `${mode.label} ${mode.description}`.toLowerCase().includes(normalizedQuery);
+  // Shortcuts first, then everything else under the same groups the mode menu
+  // draws (Psychiatry, Medicines, Work...), rather than one long mixed list
+  // (usefulness and layout audit, 11 Oct 2026, item 8).
+  const pinnedModes = pinnedModeIds
+    .map(sidebarModeItem)
+    .filter((mode): mode is NonNullable<typeof mode> => Boolean(mode))
+    .filter(matchesQuery);
+  const unpinnedModes = sidebarModeItems.filter((mode) => !pinnedModeIds.includes(mode.id) && matchesQuery(mode));
+  const groupedSections = phoneModeGroups
+    .filter((group) => group.drawn)
+    .map((group) => ({
+      id: group.id,
+      label: group.showHeading ? group.label : group.side === "work" ? "Work" : "Library",
+      modes: unpinnedModes.filter((mode) => (group.modeIds as readonly AppModeId[]).includes(mode.id)),
+    }));
+  const groupedIds = new Set(groupedSections.flatMap((section) => section.modes.map((mode) => mode.id)));
+  const sections = [
+    { id: "pinned", label: "Shortcuts", modes: pinnedModes },
+    ...groupedSections,
+    { id: "other", label: "More", modes: unpinnedModes.filter((mode) => !groupedIds.has(mode.id)) },
+  ].filter((section) => section.modes.length > 0);
 
   return (
     <Sheet
@@ -454,103 +537,113 @@ export function SidebarModesEditorSheet({
         />
       </label>
 
-      <nav aria-label="More modes" className="mt-4 grid gap-1">
-        {orderedModes.map((mode) => {
-          const Icon = mode.icon;
-          const pinnedIndex = pinnedModeIds.indexOf(mode.id);
-          const pinned = pinnedIndex >= 0;
-          const modeActive = activeMode === mode.id;
-          const modeLabelId = `sidebar-mode-${mode.id}-label`;
-          const modeDescriptionId = `sidebar-mode-${mode.id}-description`;
-          return (
-            <div
-              key={mode.id}
-              className="flex min-w-0 items-center gap-1 rounded-lg border border-transparent p-1 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--surface-subtle)]"
+      <nav aria-label="More modes" className="mt-4 grid gap-4">
+        {sections.map((section) => (
+          <section key={section.id} aria-labelledby={`sidebar-more-modes-${section.id}`} className="grid gap-1">
+            <h3
+              id={`sidebar-more-modes-${section.id}`}
+              className="px-2 text-xs font-semibold tracking-wide text-[color:var(--text-muted)] uppercase"
             >
-              <Link
-                href={mode.href}
-                prefetch={mode.id === "tools" ? true : undefined}
-                onFocus={mode.id === "tools" ? onPrefetchApplications : undefined}
-                onPointerEnter={mode.id === "tools" ? onPrefetchApplications : undefined}
-                onClick={(event) => {
-                  selectModeFromLinkClick(event, mode, onSelectMode);
-                  closeEditor();
-                  onNavigate?.();
-                }}
-                aria-current={modeActive ? "page" : undefined}
-                aria-labelledby={modeLabelId}
-                aria-describedby={modeDescriptionId}
-                className={cn(sidebarItem, "h-auto flex-1 py-2")}
-              >
-                <Icon
-                  aria-hidden="true"
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    modeActive ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
-                  )}
-                />
-                <span className="min-w-0 text-left">
-                  <span id={modeLabelId} className="block text-sm font-semibold text-[color:var(--text)]">
-                    {mode.label}
-                  </span>
-                  <span
-                    id={modeDescriptionId}
-                    className="block truncate text-xs font-normal text-[color:var(--text-muted)]"
+              {section.label}
+            </h3>
+            {section.modes.map((mode) => {
+              const Icon = mode.icon;
+              const pinnedIndex = pinnedModeIds.indexOf(mode.id);
+              const pinned = pinnedIndex >= 0;
+              const modeActive = activeMode === mode.id;
+              const modeLabelId = `sidebar-mode-${mode.id}-label`;
+              const modeDescriptionId = `sidebar-mode-${mode.id}-description`;
+              return (
+                <div
+                  key={mode.id}
+                  className="flex min-w-0 items-center gap-1 rounded-lg border border-transparent p-1 transition-colors hover:border-[color:var(--border)] hover:bg-[color:var(--surface-subtle)]"
+                >
+                  <Link
+                    href={mode.href}
+                    prefetch={mode.id === "tools" ? true : undefined}
+                    onFocus={mode.id === "tools" ? onPrefetchApplications : undefined}
+                    onPointerEnter={mode.id === "tools" ? onPrefetchApplications : undefined}
+                    onClick={(event) => {
+                      selectModeFromLinkClick(event, mode, onSelectMode);
+                      closeEditor();
+                      onNavigate?.();
+                    }}
+                    aria-current={modeActive ? "page" : undefined}
+                    aria-labelledby={modeLabelId}
+                    aria-describedby={modeDescriptionId}
+                    className={cn(sidebarItem, "h-auto flex-1 py-2")}
                   >
-                    {mode.description}
-                  </span>
-                </span>
-              </Link>
-              {pinned ? (
-                <>
+                    <Icon
+                      aria-hidden="true"
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        modeActive ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
+                      )}
+                    />
+                    <span className="min-w-0 text-left">
+                      <span id={modeLabelId} className="block text-sm font-semibold text-[color:var(--text)]">
+                        {mode.label}
+                      </span>
+                      <span
+                        id={modeDescriptionId}
+                        className="block truncate text-xs font-normal text-[color:var(--text-muted)]"
+                      >
+                        {mode.description}
+                      </span>
+                    </span>
+                  </Link>
+                  {pinned ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onMovePinnedMode(mode.id, -1);
+                          setStatus(`${mode.label} moved up.`);
+                        }}
+                        disabled={pinnedIndex === 0}
+                        className={toolbarButton}
+                        aria-label={`Move ${mode.label} up`}
+                        title={`Move ${mode.label} up`}
+                      >
+                        <ArrowUp aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onMovePinnedMode(mode.id, 1);
+                          setStatus(`${mode.label} moved down.`);
+                        }}
+                        disabled={pinnedIndex === pinnedModeIds.length - 1}
+                        className={toolbarButton}
+                        aria-label={`Move ${mode.label} down`}
+                        title={`Move ${mode.label} down`}
+                      >
+                        <ArrowDown aria-hidden="true" className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => {
-                      onMovePinnedMode(mode.id, -1);
-                      setStatus(`${mode.label} moved up.`);
+                      onTogglePinnedMode(mode.id);
+                      setStatus(`${mode.label} ${pinned ? "unpinned" : "pinned"}.`);
                     }}
-                    disabled={pinnedIndex === 0}
-                    className={toolbarButton}
-                    aria-label={`Move ${mode.label} up`}
-                    title={`Move ${mode.label} up`}
+                    className={cn(
+                      toolbarButton,
+                      pinned &&
+                        "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+                    )}
+                    aria-label={`${pinned ? "Unpin" : "Pin"} ${mode.label}`}
+                    aria-pressed={pinned}
+                    title={`${pinned ? "Unpin" : "Pin"} ${mode.label}`}
                   >
-                    <ArrowUp aria-hidden="true" className="h-4 w-4" />
+                    <Pin aria-hidden="true" className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onMovePinnedMode(mode.id, 1);
-                      setStatus(`${mode.label} moved down.`);
-                    }}
-                    disabled={pinnedIndex === pinnedModeIds.length - 1}
-                    className={toolbarButton}
-                    aria-label={`Move ${mode.label} down`}
-                    title={`Move ${mode.label} down`}
-                  >
-                    <ArrowDown aria-hidden="true" className="h-4 w-4" />
-                  </button>
-                </>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  onTogglePinnedMode(mode.id);
-                  setStatus(`${mode.label} ${pinned ? "unpinned" : "pinned"}.`);
-                }}
-                className={cn(
-                  toolbarButton,
-                  pinned &&
-                    "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
-                )}
-                aria-label={`${pinned ? "Unpin" : "Pin"} ${mode.label}`}
-                aria-pressed={pinned}
-                title={`${pinned ? "Unpin" : "Pin"} ${mode.label}`}
-              >
-                <Pin aria-hidden="true" className="h-4 w-4" />
-              </button>
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
+          </section>
+        ))}
 
         {!hasMatches ? (
           <div className="rounded-lg border border-dashed border-[color:var(--border)] p-5 text-center text-sm text-[color:var(--text-muted)]">
@@ -580,7 +673,7 @@ function appearanceLabel(preference: ThemePreference) {
   return appearanceOptions.find((option) => option.value === preference)?.label ?? "Auto";
 }
 
-function SidebarAppearanceMenu() {
+function SidebarAppearanceMenu({ rowItem = sidebarItem }: { rowItem?: string } = {}) {
   const { preference, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -646,7 +739,7 @@ function SidebarAppearanceMenu() {
           setOpen(true);
           focusMenuEdge(event.key === "ArrowUp" ? "last" : "first");
         }}
-        className={sidebarItem}
+        className={rowItem}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? "sidebar-appearance-menu" : undefined}
@@ -687,7 +780,7 @@ function SidebarAppearanceMenu() {
                   setOpen(false);
                   window.requestAnimationFrame(() => triggerRef.current?.focus());
                 }}
-                className={cn(sidebarItem, "h-auto py-2")}
+                className={cn(rowItem, "h-auto py-2")}
               >
                 <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1 text-left">
@@ -721,7 +814,18 @@ export function ClinicalSidebarContent({
   onNavigate,
   onSelectMode,
   onOpenSearch,
+  drawer = false,
+  workPane,
 }: {
+  /**
+   * The phone drawer's layout: 44px rows (the owner's side-menu height), every
+   * clinical page listed under the mode menu's groups in place of the More
+   * modes sheet, and one current-page mark only (no standing tint on the
+   * newest recent chat).
+   */
+  drawer?: boolean;
+  /** The drawer's Work tab: replaces New chat and the clinical list, keeping the foot. */
+  workPane?: ReactNode;
   recentQueries: string[];
   identity: SidebarIdentity;
   activeMode: AppModeId;
@@ -757,6 +861,12 @@ export function ClinicalSidebarContent({
   const moreModesActive =
     (pinnableSidebarModeIds as readonly AppModeId[]).includes(activeMode) && !pinnedModeIds.includes(activeMode);
   const accountLabel = accountProfileLabel(identity);
+  const rowItem = sidebarItem;
+  // One heading rhythm for every list heading in the drawer: a 36px row whose
+  // 48px Edit target overhangs it invisibly, so the gaps above each heading match.
+  const sectionHeading = drawer
+    ? "flex h-9 items-center justify-between gap-2 px-1"
+    : "mb-2 flex items-center justify-between gap-2 px-1";
 
   function openModeEditor(triggerRef: RefObject<HTMLButtonElement | null>) {
     modeEditorReturnFocusRef.current = triggerRef.current;
@@ -797,179 +907,198 @@ export function ClinicalSidebarContent({
         </div>
       ) : null}
 
-      <Button
-        variant="primary"
-        icon={MessageSquarePlus}
-        className="w-full shrink-0 px-3"
-        onClick={() => {
-          onNewChat();
-          onNavigate?.();
-        }}
-      >
-        New chat
-      </Button>
+      {workPane ?? (
+        <>
+          <Button
+            variant="primary"
+            icon={MessageSquarePlus}
+            className="w-full shrink-0 px-3"
+            onClick={() => {
+              onNewChat();
+              onNavigate?.();
+            }}
+          >
+            New chat
+          </Button>
 
-      {/* Scroll region: search, recent chats, and shortcuts scroll together on
+          {/* Scroll region: search, recent chats, and shortcuts scroll together on
           short viewports while the header, New chat, and account footer stay
           pinned. */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-        <button
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            window.requestAnimationFrame(onOpenSearch);
-          }}
-          aria-label="Search PsychSift"
-          aria-keyshortcuts="Control+K Meta+K"
-          className="focus-ring-contained flex min-h-tap w-full shrink-0 items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-medium text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition-colors hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
-        >
-          <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 flex-1 truncate text-left">Search PsychSift</span>
-          <kbd className="hidden rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-1.5 py-0.5 text-2xs pointer-fine:inline-block font-semibold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)]">
-            Ctrl K
-          </kbd>
-        </button>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+            <button
+              type="button"
+              onClick={() => {
+                onNavigate?.();
+                window.requestAnimationFrame(onOpenSearch);
+              }}
+              aria-label="Search PsychSift"
+              aria-keyshortcuts="Control+K Meta+K"
+              className="focus-ring-contained flex min-h-tap w-full shrink-0 items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-sm font-medium text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition-colors hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
+            >
+              <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate text-left">Search PsychSift</span>
+              <kbd className="hidden rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-1.5 py-0.5 text-2xs pointer-fine:inline-block font-semibold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)]">
+                Ctrl K
+              </kbd>
+            </button>
 
-        <section className="min-w-0 shrink-0">
-          <div className="grid gap-1">
-            {visibleRecentQueries.length ? (
-              visibleRecentQueries.map((recent, index) => (
-                <button
-                  key={`${recent}:${index}`}
-                  type="button"
-                  onClick={() => {
-                    onPickRecent(recent);
-                    onNavigate?.();
-                  }}
-                  title={recent}
-                  className={cn(sidebarItem, "border border-transparent", index === 0 && sidebarItemActive)}
-                >
-                  <MessageSquare
-                    aria-hidden="true"
-                    className={cn("h-4 w-4 shrink-0", index === 0 && "text-[color:var(--clinical-accent)]")}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-left">{recent}</span>
-                </button>
-              ))
-            ) : (
-              <p
-                className={cn(
-                  "rounded-lg border border-dashed border-[color:var(--border)] px-3 py-2 text-sm",
-                  textMuted,
-                )}
-              >
-                Recent chats will appear here.
-              </p>
-            )}
-            {recentQueries.length > 3 ? (
-              <Button
-                variant="ghost"
-                className="w-full justify-start px-2.5 text-left text-[color:var(--text-muted)]"
-                onClick={() => setShowAllRecent((current) => !current)}
-              >
-                {showAllRecent ? "Show less" : "View all chats"}
-              </Button>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="min-w-0 shrink-0">
-          <div className="mb-2 flex items-center justify-between gap-2 px-1">
-            <p className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">Shortcuts</p>
-            <SidebarModesTrigger
-              variant="edit"
-              active={false}
-              open={modeEditorOpen}
-              onOpen={() => openModeEditor(editModesTriggerRef)}
-              triggerRef={editModesTriggerRef}
-            />
-          </div>
-          <nav aria-label="Pinned shortcuts" className="grid gap-0.5">
-            {pinnedModeItems.map((item) => {
-              const Icon = item.icon;
-              const active = activeMode === item.id;
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  prefetch={item.id === "tools" ? true : undefined}
-                  onFocus={item.id === "tools" ? onPrefetchApplications : undefined}
-                  onPointerEnter={item.id === "tools" ? onPrefetchApplications : undefined}
-                  onClick={(event) => {
-                    selectModeFromLinkClick(event, item, onSelectMode);
-                    onNavigate?.();
-                  }}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(sidebarItem, "border border-transparent", active && sidebarItemActive)}
-                >
-                  <Icon
-                    aria-hidden="true"
+            <section className="min-w-0 shrink-0">
+              <div className="grid gap-1">
+                {visibleRecentQueries.length ? (
+                  visibleRecentQueries.map((recent, index) => (
+                    <button
+                      key={`${recent}:${index}`}
+                      type="button"
+                      onClick={() => {
+                        onPickRecent(recent);
+                        onNavigate?.();
+                      }}
+                      title={recent}
+                      className={cn(rowItem, "border border-transparent", !drawer && index === 0 && sidebarItemActive)}
+                    >
+                      <MessageSquare
+                        aria-hidden="true"
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          !drawer && index === 0 && "text-[color:var(--clinical-accent)]",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-left">{recent}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p
                     className={cn(
-                      "h-4 w-4 shrink-0",
-                      active ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
+                      "rounded-lg border border-dashed border-[color:var(--border)] px-3 py-2 text-sm",
+                      textMuted,
                     )}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-                </Link>
-              );
-            })}
-            {!pinnedModeItems.length ? (
-              <p className="rounded-lg border border-dashed border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--text-muted)]">
-                Pin your most-used modes.
-              </p>
-            ) : null}
-            <SidebarModesTrigger
-              variant="expanded"
-              active={moreModesActive}
-              open={modeEditorOpen}
-              onOpen={() => openModeEditor(moreModesTriggerRef)}
-              triggerRef={moreModesTriggerRef}
-            />
-          </nav>
-        </section>
-
-        {showAccountLibrary ? (
-          <section className="min-w-0 shrink-0">
-            <div className="mb-2 flex items-center justify-between gap-2 px-1">
-              <p className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                Your library
-              </p>
-            </div>
-            <nav aria-label="Your library" className="grid gap-0.5">
-              {sidebarAccountLibraryItems.map((item) => {
-                const Icon = item.icon;
-                const active = activeMode === item.id;
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    onClick={onNavigate}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(sidebarItem, "border border-transparent", active && sidebarItemActive)}
                   >
-                    <Icon
-                      aria-hidden="true"
-                      className={cn(
-                        "h-4 w-4 shrink-0",
-                        active ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </section>
-        ) : null}
-      </div>
+                    Recent chats will appear here.
+                  </p>
+                )}
+                {recentQueries.length > 3 ? (
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start px-2.5 text-left text-[color:var(--text-muted)]"
+                    onClick={() => setShowAllRecent((current) => !current)}
+                  >
+                    {showAllRecent ? "Show less" : "View all chats"}
+                  </Button>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="min-w-0 shrink-0">
+              <div className={sectionHeading}>
+                <p className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                  Shortcuts
+                </p>
+                <SidebarModesTrigger
+                  variant="edit"
+                  active={false}
+                  open={modeEditorOpen}
+                  onOpen={() => openModeEditor(editModesTriggerRef)}
+                  triggerRef={editModesTriggerRef}
+                />
+              </div>
+              <nav aria-label="Pinned shortcuts" className="grid gap-0.5">
+                {pinnedModeItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = activeMode === item.id;
+                  return (
+                    <Link
+                      key={item.id}
+                      href={item.href}
+                      prefetch={item.id === "tools" ? true : undefined}
+                      onFocus={item.id === "tools" ? onPrefetchApplications : undefined}
+                      onPointerEnter={item.id === "tools" ? onPrefetchApplications : undefined}
+                      onClick={(event) => {
+                        selectModeFromLinkClick(event, item, onSelectMode);
+                        onNavigate?.();
+                      }}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(rowItem, "border border-transparent", active && sidebarItemActive)}
+                    >
+                      <Icon
+                        aria-hidden="true"
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          active ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+                    </Link>
+                  );
+                })}
+                {!pinnedModeItems.length ? (
+                  <p className="rounded-lg border border-dashed border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--text-muted)]">
+                    Pin your most-used modes.
+                  </p>
+                ) : null}
+                {drawer ? null : (
+                  <SidebarModesTrigger
+                    variant="expanded"
+                    active={moreModesActive}
+                    open={modeEditorOpen}
+                    onOpen={() => openModeEditor(moreModesTriggerRef)}
+                    triggerRef={moreModesTriggerRef}
+                  />
+                )}
+              </nav>
+            </section>
+
+            {drawer ? (
+              <SidebarGroupedModes
+                activeMode={activeMode}
+                rowItem={rowItem}
+                showAccountLibrary={showAccountLibrary}
+                onSelectMode={onSelectMode}
+                onNavigate={onNavigate}
+              />
+            ) : showAccountLibrary ? (
+              <section className="min-w-0 shrink-0">
+                <div className="mb-2 flex items-center justify-between gap-2 px-1">
+                  <p className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                    Your library
+                  </p>
+                </div>
+                <nav aria-label="Your library" className="grid gap-0.5">
+                  {sidebarAccountLibraryItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = activeMode === item.id;
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        onClick={onNavigate}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(rowItem, "border border-transparent", active && sidebarItemActive)}
+                      >
+                        <Icon
+                          aria-hidden="true"
+                          className={cn(
+                            "h-4 w-4 shrink-0",
+                            active ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
+                          )}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </section>
+            ) : null}
+          </div>
+        </>
+      )}
 
       <div className="mt-auto grid shrink-0 gap-1 border-t border-[color:var(--border)] pt-3">
-        <SidebarAppearanceMenu />
+        <SidebarAppearanceMenu rowItem={rowItem} />
         <Button
           variant="ghost"
           icon={SettingsIcon}
           trailingIcon={ChevronRight}
-          className={cn(sidebarItem, "justify-start [&>span]:min-w-0 [&>span]:flex-1 [&>span]:text-left")}
+          className={cn(rowItem, "justify-start [&>span]:min-w-0 [&>span]:flex-1 [&>span]:text-left")}
           onClick={() => {
             onNavigate?.();
             window.requestAnimationFrame(onOpenSettings);
@@ -1022,6 +1151,103 @@ export function ClinicalSidebarContent({
     </div>
   );
 }
+/**
+ * The drawer's page list: every clinical page as a one-tap row under the mode
+ * menu's own groups (Search, Psychiatry, Medicines, Library), in place of the
+ * More modes sheet.
+ *
+ * The rules that keep it from reading as a second copy of Shortcuts:
+ * - Groups list every page, so a reader always finds a page where it lives,
+ *   whatever they have pinned. Shortcuts stay the reader's own pins above.
+ * - The current page is marked once: in Shortcuts when it is pinned there,
+ *   otherwise in its group.
+ * - A group's own dashboard (Psychiatry, Medicines) is its first row, named
+ *   "Overview", so the heading is never repeated as a row beneath it.
+ */
+function SidebarGroupedModes({
+  activeMode,
+  rowItem,
+  showAccountLibrary,
+  onSelectMode,
+  onNavigate,
+}: {
+  activeMode: AppModeId;
+  rowItem: string;
+  showAccountLibrary: boolean;
+  onSelectMode?: (mode: AppModeId) => void;
+  onNavigate?: () => void;
+}) {
+  const { pinnedModeIds } = useSidebarPins();
+  const currentInGroups = !pinnedModeIds.includes(activeMode);
+  const groups = phoneModeGroupsForSide("clinical").map((group) => ({
+    id: group.id,
+    label: group.showHeading ? group.label : "Library",
+    items: (group.modeIds as readonly AppModeId[])
+      .filter((id) => showAccountLibrary || id !== "favourites")
+      .map((id) => {
+        if (id === "favourites") return { id, label: "Favourites", icon: Heart, href: "/favourites" };
+        const item = sidebarModeItem(id) ?? {
+          id,
+          label: appModeDefinition(id).label,
+          icon: appModeIcons[id],
+          href: appModeHomeHref(id),
+        };
+        return groupOverviewModeIds.has(id) ? { ...item, label: "Overview" } : item;
+      }),
+  }));
+  return (
+    <>
+      {groups.map((group) =>
+        group.items.length ? (
+          <section
+            key={group.id}
+            className="min-w-0 shrink-0"
+            aria-labelledby={`sidebar-group-${group.id}`}
+            data-testid={`sidebar-group-${group.id}`}
+          >
+            <p
+              id={`sidebar-group-${group.id}`}
+              className="flex h-9 items-center px-1 text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
+            >
+              {group.label}
+            </p>
+            <nav aria-labelledby={`sidebar-group-${group.id}`} className="grid gap-0.5">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = currentInGroups && activeMode === item.id;
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    onClick={(event) => {
+                      selectModeFromLinkClick(event, item, onSelectMode);
+                      onNavigate?.();
+                    }}
+                    aria-current={active ? "page" : undefined}
+                    aria-label={item.label === "Overview" ? `${group.label} overview` : undefined}
+                    className={cn(rowItem, "border border-transparent", active && sidebarItemActive)}
+                  >
+                    <Icon
+                      aria-hidden="true"
+                      className={cn(
+                        "h-4 w-4 shrink-0",
+                        active ? "text-[color:var(--clinical-accent)]" : "text-[color:var(--text-muted)]",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </section>
+        ) : null,
+      )}
+    </>
+  );
+}
+
+/** Modes that are their group's own dashboard, listed first in the group as "Overview". */
+const groupOverviewModeIds = new Set<AppModeId>(["psychiatry", "medicines"]);
 
 function ClinicalCollapsedRail({
   hiddenOnDesktop,
@@ -1126,27 +1352,15 @@ function ClinicalCollapsedRail({
         <span className={cn(collapsedSidebarDivider, "my-0")} aria-hidden="true" />
       </div>
 
-      <Button
-        variant="ghost"
-        icon={MessageSquarePlus}
-        className={cn("gap-0 px-0 [&>span]:hidden", collapsedSidebarButton)}
-        aria-label="New chat"
-        title="New chat"
-        onClick={onNewChat}
-      >
-        <span className="sr-only">New chat</span>
-      </Button>
+      <button type="button" className={railItem} aria-label="New chat" onClick={onNewChat}>
+        <RailItemBody icon={MessageSquarePlus} label="New chat" />
+      </button>
       <div
         data-testid="collapsed-sidebar-scroll-region"
-        /* `both-edges`, not a bare `stable`: a one-sided gutter takes its width
-           off the right of this box only, so the centred column of icons sat
-           ~6px left of the brand, New chat, Settings and the account button —
-           the misalignment that runs the length of the rail. Reserving the
-           gutter on both edges keeps the column on the rail's centre line
-           whether or not a scrollbar is showing. The horizontal padding goes
-           with it: two 15px gutters plus `px-3` left less than a 48px control's
-           width of content box. */
-        className="grid min-h-0 w-full flex-1 content-start justify-items-center gap-1.5 overflow-y-auto overscroll-contain pb-1 [scrollbar-gutter:stable_both-edges]"
+        /* No scrollbar gutter: the labelled items are as wide as the rail
+           allows, and a gutter would push them off its centre line. The column
+           still scrolls, with the bar hidden as the work rail's is. */
+        className="grid min-h-0 w-full flex-1 content-start justify-items-center gap-1 overflow-y-auto overscroll-contain pb-1 [scrollbar-width:none]"
       >
         <nav aria-label="Pinned shortcuts" className="grid justify-items-center gap-1.5">
           {pinnedModeItems.map((item) => {
@@ -1160,12 +1374,11 @@ function ClinicalCollapsedRail({
                 onFocus={item.id === "tools" ? onPrefetchApplications : undefined}
                 onPointerEnter={item.id === "tools" ? onPrefetchApplications : undefined}
                 onClick={(event) => selectModeFromLinkClick(event, item, onSelectMode)}
-                className={cn(collapsedSidebarButton, active && collapsedSidebarActiveButton)}
+                className={railItem}
                 aria-label={item.label}
-                title={item.label}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon aria-hidden="true" className="h-4 w-4" />
+                <RailItemBody icon={Icon} label={railLabel(item.id, item.label)} />
               </Link>
             );
           })}
@@ -1176,13 +1389,12 @@ function ClinicalCollapsedRail({
             <Link
               href={currentModeItem.href}
               onClick={(event) => selectModeFromLinkClick(event, currentModeItem, onSelectMode)}
-              className={cn(collapsedSidebarButton, collapsedSidebarActiveButton)}
+              className={railItem}
               aria-label={currentModeItem.label}
-              title={currentModeItem.label}
               aria-current="page"
               data-testid="collapsed-sidebar-current-mode"
             >
-              <currentModeItem.icon aria-hidden="true" className="h-4 w-4" />
+              <RailItemBody icon={currentModeItem.icon} label={railLabel(currentModeItem.id, currentModeItem.label)} />
             </Link>
           </nav>
         ) : null}
@@ -1204,12 +1416,11 @@ function ClinicalCollapsedRail({
                   <Link
                     key={item.id}
                     href={item.href}
-                    className={cn(collapsedSidebarButton, active && collapsedSidebarActiveButton)}
+                    className={railItem}
                     aria-label={item.label}
-                    title={item.label}
                     aria-current={active ? "page" : undefined}
                   >
-                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    <RailItemBody icon={Icon} label={item.label} />
                   </Link>
                 );
               })}
@@ -1220,18 +1431,16 @@ function ClinicalCollapsedRail({
       {/* Mirrors the rule under the brand mark, so the rail is bracketed the
           same way at both ends and the two footer controls read as one group. */}
       <span className={cn(collapsedSidebarDivider, "my-0")} aria-hidden="true" />
-      <Button
-        variant="ghost"
-        icon={SettingsIcon}
-        className={cn("gap-0 px-0 [&>span]:hidden", collapsedSidebarButton)}
+      <button
+        type="button"
+        className={railItem}
         aria-label="Settings"
-        title="Settings"
         onClick={onOpenSettings}
         onPointerEnter={onPrefetchSettings}
         onFocus={onPrefetchSettings}
       >
-        <span className="sr-only">Settings</span>
-      </Button>
+        <RailItemBody icon={SettingsIcon} label="Settings" />
+      </button>
       <button
         type="button"
         onClick={onOpenAccount}
@@ -1341,6 +1550,23 @@ export function ClinicalDesktopSidebar({
   );
 }
 
+/**
+ * The phone side menu (owner pick "variant C", 11 Oct 2026).
+ *
+ * The brand band keeps the lockup, and for readers with the work areas it also
+ * carries an alerts bell beside the close cross and Clinical | Work tabs along
+ * its foot. The menu opens on the side the page belongs to: Clinical on
+ * clinical pages, Work in the work areas.
+ *
+ * Clinical is the restored classic menu (New chat, Search, Recent chats,
+ * Shortcuts) followed by every clinical page under its group. Work is the
+ * seven work areas with what is waiting in each. Appearance, Settings and the
+ * account card stay at the foot of both.
+ *
+ * The bell, the area counts and the overdue dot all read the one notification
+ * feed, and only once the menu has first opened. Unknown or empty shows
+ * nothing: no badge, no dot, never a stand-in number.
+ */
 export function ClinicalMobileSidebar({
   open,
   recentQueries,
@@ -1358,6 +1584,8 @@ export function ClinicalMobileSidebar({
   onOpenSearch,
   onSelectMode,
   hiddenFrom = "md",
+  startSide = "clinical",
+  currentArea = null,
 }: {
   open: boolean;
   recentQueries: string[];
@@ -1376,50 +1604,110 @@ export function ClinicalMobileSidebar({
   onSelectMode?: (mode: AppModeId) => void;
   /** Breakpoint the drawer disappears at; workflow routes keep it until lg. */
   hiddenFrom?: "md" | "lg";
+  /** The tab the menu opens on: the side the current page belongs to. */
+  startSide?: ModeMenuSideId;
+  /** The work area on screen, already rolled up from an inner area, for the Work tab's current row. */
+  currentArea?: WorkAreaId | null;
 }) {
+  // The work areas, their counts and the bell exist only for readers on the new work mode.
+  const workAvailable = useNewWorkMode();
+  const { status: authStatus } = useAuthSession();
+  const alertsAvailable = workAvailable && needsYouBellVisibleForAuth(authStatus);
+  const [side, setSide] = useState<ModeMenuSideId>(startSide);
+  const [wasOpen, setWasOpen] = useState(open);
+  const [opened, setOpened] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setSide(startSide);
+  }
+  if (open && !opened) setOpened(true);
+  const counts = useWorkSideCounts();
+  const close = () => onOpenChange(false);
+  const shownSide: ModeMenuSideId = workAvailable ? side : "clinical";
+
+  const content = (
+    <ClinicalSidebarContent
+      showHeader={false}
+      drawer
+      recentQueries={recentQueries}
+      identity={identity}
+      activeMode={activeMode}
+      showAccountLibrary={showAccountLibrary}
+      onNewChat={onNewChat}
+      onPickRecent={onPickRecent}
+      onOpenSettings={onOpenSettings}
+      onOpenAccount={onOpenAccount}
+      onPrefetchSettings={onPrefetchSettings}
+      onPrefetchAccount={onPrefetchAccount}
+      onPrefetchApplications={onPrefetchApplications}
+      onOpenSearch={onOpenSearch}
+      onSelectMode={onSelectMode}
+      onNavigate={close}
+      workPane={
+        shownSide === "work" ? (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+            <ClinicalMenuWorkAreas
+              counts={alertsAvailable ? counts : null}
+              currentArea={currentArea}
+              onNavigate={close}
+            />
+          </div>
+        ) : undefined
+      }
+    />
+  );
+
+  // The counts reader sits beside the Sheet, not inside it: the Sheet renders
+  // nothing while closed, so a reader inside it would refetch on every open.
   return (
-    <Sheet
-      open={open}
-      onClose={() => onOpenChange(false)}
-      title={BRAND_NAME}
-      closeLabel="Close PsychSift menu"
-      placement="left"
-      contentClassName={hiddenFrom === "lg" ? "lg:hidden" : "md:hidden"}
-      headerLeading={<BrandMark tone="emphasis" optical="chrome" className="h-8 w-8" />}
-      headerClassName={drawerHeader}
-      titleClassName={drawerHeaderTitle}
-      closeButtonClassName={drawerHeaderClose}
-      descriptionContent={
-        <>
-          {/* The functional sentence still reaches assistive technology, where
+    <>
+      {workAvailable ? <LazyWorkSideCounts active={opened && alertsAvailable} /> : null}
+      <Sheet
+        open={open}
+        onClose={close}
+        title={BRAND_NAME}
+        closeLabel="Close PsychSift menu"
+        placement="left"
+        testId="clinical-mobile-menu"
+        contentClassName={hiddenFrom === "lg" ? "lg:hidden" : "md:hidden"}
+        headerLeading={<BrandMark tone="emphasis" optical="chrome" className="h-8 w-8" />}
+        headerClassName={workAvailable ? drawerHeaderWithTabs : drawerHeader}
+        titleClassName={drawerHeaderTitle}
+        closeButtonClassName={drawerHeaderClose}
+        headerActions={
+          alertsAvailable ? <ClinicalMenuBell counts={counts} className={drawerHeaderClose} onNavigate={close} /> : null
+        }
+        headerBottom={
+          workAvailable ? <ClinicalMenuTabs side={shownSide} onChange={setSide} overdue={counts?.overdue ?? 0} /> : null
+        }
+        descriptionContent={
+          <>
+            {/* The functional sentence still reaches assistive technology, where
               "what does this dialog contain" is the useful answer. The visible
               line is the strapline, which is identity — the two audiences want
               different sentences, so they get different sentences rather than one
-              compromise that serves neither. */}
-          <span className="sr-only">{BRAND_MENU_DESCRIPTION}</span>
-          <span aria-hidden="true" className={brandStrapline}>
-            {BRAND_CATCHPHRASE_BARE}
-          </span>
-        </>
-      }
-    >
-      <ClinicalSidebarContent
-        showHeader={false}
-        recentQueries={recentQueries}
-        identity={identity}
-        activeMode={activeMode}
-        showAccountLibrary={showAccountLibrary}
-        onNewChat={onNewChat}
-        onPickRecent={onPickRecent}
-        onOpenSettings={onOpenSettings}
-        onOpenAccount={onOpenAccount}
-        onPrefetchSettings={onPrefetchSettings}
-        onPrefetchAccount={onPrefetchAccount}
-        onPrefetchApplications={onPrefetchApplications}
-        onOpenSearch={onOpenSearch}
-        onSelectMode={onSelectMode}
-        onNavigate={() => onOpenChange(false)}
-      />
-    </Sheet>
+              compromise that serves neither. Under 360px it gives way to the
+              bell, so the wordmark keeps its room beside two 48px controls. */}
+            <span className="sr-only">{BRAND_MENU_DESCRIPTION}</span>
+            <span aria-hidden="true" className={cn(brandStrapline, alertsAvailable && "max-[359px]:hidden")}>
+              {BRAND_CATCHPHRASE_BARE}
+            </span>
+          </>
+        }
+      >
+        {workAvailable ? (
+          <div
+            id={CLINICAL_MENU_PANEL_ID}
+            role="tabpanel"
+            aria-labelledby={clinicalMenuTabId(shownSide)}
+            className="flex min-h-full min-w-0 flex-col"
+          >
+            {content}
+          </div>
+        ) : (
+          content
+        )}
+      </Sheet>
+    </>
   );
 }

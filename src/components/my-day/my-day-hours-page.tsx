@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 
+import { AgreementEntryLink } from "@/components/agreement-ask/agreement-entry-link";
 import { focusRing } from "@/components/card-recipes";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -94,7 +95,13 @@ function MyDayHoursBody({ now }: { now: Date }) {
     );
   }
 
-  const link = <ShiftsLink />;
+  // Rest and hours questions come up here, so the agreement is one tap away (usefulness audit, 11 Oct 2026).
+  const link = (
+    <>
+      <ShiftsLink />
+      <AgreementEntryLink className={cn(quietCard, "px-3")} />
+    </>
+  );
 
   if (shifts.status === "error" || shifts.status === "signed-out") {
     return (

@@ -68,6 +68,20 @@ test("@critical keeps natural-language Smart search inside all seven selected mo
     await page.goto(`/?mode=${mode}`);
     const input = composer(page);
     await expect(input).toBeVisible();
+    for (const [control, eventName] of [
+      [input, "onChange"],
+      [input.locator("xpath=ancestor::form[1]"), "onSubmit"],
+    ] as const) {
+      await expect
+        .poll(() =>
+          control.evaluate((element, handlerName) => {
+            const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
+            const props = propsKey ? (element as unknown as Record<string, Record<string, unknown>>)[propsKey] : null;
+            return typeof props?.[handlerName] === "function";
+          }, eventName),
+        )
+        .toBe(true);
+    }
     await input.fill(query);
     await expect(page.getByTestId("smart-search-intent-cue")).toContainText("Smart search");
     await expect(page.getByRole("button", { name: "Get Smart answer" })).toHaveCount(0);

@@ -1,16 +1,16 @@
 "use client";
 
-import { Check, ChevronLeft, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkBody, WorkDock, WorkIconCircle, WorkSectionLabel, WorkTag } from "@/components/mode-kit/work";
 import { announce } from "@/components/ui/live-announcer";
 import { useOptionalToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /**
  * Small, flat, presentational pieces shared by two CPD features (Send to AMA
@@ -59,19 +59,8 @@ export function CpdFeaturePage({
   return (
     <main data-mode-identity={identity} data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
       <WorkBody>
-        {back ? (
-          <ContextualBackLink
-            fallbackHref={back.href}
-            data-testid="cpd-feature-back"
-            className={cn(
-              focusRing,
-              "-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
-            )}
-          >
-            <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-            {back.label}
-          </ContextualBackLink>
-        ) : null}
+        {/* One way back: drawn in the top bar, not as a second link here. */}
+        {back ? <WorkPageBack href={back.href} label={back.label} testId="cpd-feature-back" /> : null}
         <h1 className="sr-only">{title}</h1>
         {children}
       </WorkBody>

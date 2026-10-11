@@ -28,7 +28,6 @@ import { SearchCommandProvider } from "@/components/clinical-dashboard/search-co
 import {
   ClinicalDesktopSidebar,
   ClinicalMobileSidebar,
-  ClinicalSidebarContent,
   deriveSidebarIdentity,
 } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -41,7 +40,6 @@ import { confirmShellNavigation } from "@/lib/navigation-guards";
 import {
   LazyTwoPaneSideMenu,
   LazyWorkSideCounts,
-  LazyWorkSideMenu,
   prefetchTwoPaneSideMenu,
 } from "@/components/work-frame/lazy-work-side-nav";
 import {
@@ -522,8 +520,8 @@ function GlobalStandaloneSearchShellBody({
   const workSideNav = useWorkSideNav(searchMode);
   const workRailShown = useWorkRailShown();
   const workSideArea = workSideNav ? workSideCurrentArea(searchMode, pathname) : null;
-  // The counts reader stays mounted once the phone menu has opened on a work
-  // page, so reopening the menu never fetches the feed again.
+  // The two-pane menu's counts reader stays mounted once that menu has opened,
+  // so reopening it never fetches the feed again.
   const [workMenuOpened, setWorkMenuOpened] = useState(false);
   // The two-pane side menu (owner pick 8 Oct 2026) would replace both phone menus
   // and carry the Work side on every page. It is off again (10 Oct 2026).
@@ -532,7 +530,7 @@ function GlobalStandaloneSearchShellBody({
   const twoPaneCounts = twoPaneSideMenu && newWorkMode;
   // Clinical pages hand 1024 px up to the full sidebar, so the rail (and its counts) stop there.
   const twoPaneRailShown = useTwoPaneRailShown(!workSideNav);
-  if ((workSideNav || twoPaneCounts) && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
+  if (twoPaneCounts && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
   // The phone menu only exists below 768 px. Turning a phone to landscape past
   // that width closes it, so its backdrop never blocks the rail layout. The
   // two-pane menu is the tablet rail's own menu, so it stays open.
@@ -1275,10 +1273,11 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
+        {/* The rail's counts. The phone menu (ClinicalMobileSidebar) reads its own
+            once it first opens. */}
         <LazyWorkSideCounts
           active={
-            (workSideNav && (twoPaneSideMenu ? twoPaneRailShown : workRailShown)) ||
-            ((workSideNav || twoPaneCounts) && workMenuOpened)
+            (workSideNav && (twoPaneSideMenu ? twoPaneRailShown : workRailShown)) || (twoPaneCounts && workMenuOpened)
           }
         />
         {twoPaneSideMenu ? (
@@ -1304,40 +1303,11 @@ function GlobalStandaloneSearchShellBody({
               await auth.signOut();
             }}
           />
-        ) : workSideNav ? (
-          <LazyWorkSideMenu
-            open={mobileMenuOpen}
-            onOpenChange={setMobileMenuOpen}
-            identity={sidebarIdentity}
-            currentArea={workSideArea}
-            onOpenSettings={openSettingsWithDefaultFocus}
-            onSignOut={async () => {
-              clinicalAskSession.clear();
-              await auth.signOut();
-            }}
-            clinical={
-              <ClinicalSidebarContent
-                showHeader={false}
-                recentQueries={recentQueries}
-                identity={sidebarIdentity}
-                activeMode={searchMode}
-                showAccountLibrary={favouritesAccessible}
-                onNewChat={startNewChat}
-                onPickRecent={pickRecentQuery}
-                onOpenSettings={openSettingsWithDefaultFocus}
-                onOpenAccount={openAccountProfileWithDefaultFocus}
-                onPrefetchSettings={loadSettingsDialog}
-                onPrefetchAccount={prefetchAccountDialog}
-                onPrefetchApplications={prefetchApplications}
-                onOpenSearch={openSidebarSearch}
-                onSelectMode={changeMode}
-                onNavigate={() => setMobileMenuOpen(false)}
-              />
-            }
-          />
         ) : (
           <ClinicalMobileSidebar
             open={mobileMenuOpen}
+            startSide={workSideNav ? "work" : "clinical"}
+            currentArea={workSideArea}
             hiddenFrom="md"
             recentQueries={recentQueries}
             identity={sidebarIdentity}

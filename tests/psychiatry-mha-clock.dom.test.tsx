@@ -537,7 +537,17 @@ describe("MhaClockPage", () => {
 });
 
 describe("Psychiatry hub · For a shift", () => {
-  const counts = { dsm: 1, differentials: 1, presentations: 1, specifiers: 1, formulation: 1, therapy: 1, forms: 1 };
+  const counts = {
+    dsm: 1,
+    differentials: 1,
+    presentations: 1,
+    specifiers: 1,
+    formulation: 1,
+    therapy: 1,
+    forms: 1,
+    calculators: 1,
+    dictionary: 1,
+  };
 
   it("links the MHA clock with this device's running count and form codes", () => {
     addMhaClock("2", now);
