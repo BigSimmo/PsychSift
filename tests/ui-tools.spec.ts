@@ -1601,10 +1601,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(page.getByTestId("service-search-result-13yarn")).toBeVisible();
     await filterPanel.getByRole("button", { name: "Close", exact: true }).click();
 
-    await page
-      .getByTestId("service-search-result-13yarn")
-      .getByRole("link", { name: "Review referral for 13YARN" })
-      .click();
+    const yarnResult = page.getByTestId("service-search-result-13yarn");
+    await yarnResult.getByRole("button", { name: "More actions for 13YARN" }).click();
+    await yarnResult.getByRole("link", { name: "Review referral for 13YARN" }).click();
     await expect(page).toHaveURL(/\/services\/13yarn$/);
     await expect(page.getByText("Best use").first()).toBeVisible();
     await expect(page.getByText(/crisis support/i).first()).toBeVisible();

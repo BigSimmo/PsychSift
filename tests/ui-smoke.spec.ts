@@ -5409,6 +5409,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     const currentStage = progress.locator('[aria-current="step"]');
     await expect(currentStage).toHaveText("Search");
 
+    // Shortlisting sits behind each card's "More" toggle; the card's visible
+    // action is the call button.
+    const moreToggles = navigator.getByRole("button", { name: /^More actions for / });
+    await moreToggles.nth(0).click();
+    await moreToggles.nth(1).click();
     const addButtons = navigator.getByRole("button", { name: /Add .* to shortlist/ });
     await addButtons.nth(0).click();
     const shortlist = navigator.getByTestId("services-shortlist-bar");
