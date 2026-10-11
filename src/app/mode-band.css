@@ -455,7 +455,7 @@ html.dark:not([data-mode-band]):has(.universal-header[data-clinical-band]) {
 }
 
 html:not([data-mode-band]) .universal-header[data-clinical-band],
-html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-clinical-band],
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) [data-testid="chrome-safe-area-top"],
 html:not([data-mode-band]):has(.universal-header[data-clinical-band]) #phone-header-collapse-addon-slot .mode-nav-rail {
   background: var(--clinical-band-bg);
 }

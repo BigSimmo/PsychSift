@@ -107,6 +107,20 @@ export function modeMenuSideForMode(modeId: AppModeId): ModeMenuSideId {
 }
 
 /**
+ * A Clinical page (not the shared home) wears the clinical band's soft tint on
+ * its top bar (owner design review, 11 Oct 2026; mode-band.css). Decided from
+ * the mode and address alone, so it is in the server HTML and never flashes.
+ * Returns the `data-clinical-band` attribute value.
+ */
+export function clinicalBandAttribute(
+  modeId: AppModeId,
+  pathname: string | null | undefined,
+  onWorkArea: boolean,
+): "" | undefined {
+  return !onWorkArea && (pathname ?? "/") !== "/" && modeMenuSideForMode(modeId) === "clinical" ? "" : undefined;
+}
+
+/**
  * `modes` in the order one side of the menu draws them.
  *
  * Arrow keys walk this order, so it has to be the order on screen for the

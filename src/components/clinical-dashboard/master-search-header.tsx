@@ -144,6 +144,7 @@ import {
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
 import {
+  clinicalBandAttribute,
   modeMenuSideForMode,
   modeMenuSides,
   orderModesForSide,
@@ -623,13 +624,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       pathname: currentPathname ?? "",
       modeOwnPages,
     });
-  /**
-   * A Clinical page (not the shared home) wears the clinical band's soft tint on
-   * its top bar (owner design review, 11 Oct 2026; mode-band.css). Decided from
-   * the mode and address alone, so it is in the server HTML and never flashes.
-   */
-  const routeClinicalBand =
-    !routeWorkArea && (currentPathname ?? "/") !== "/" && modeMenuSideForMode(selectedAppMode.id) === "clinical";
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
   const pendingModeSelectionFocusRef = useRef<AppModeId | null>(null);
@@ -2540,14 +2534,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     <header
       id="search"
       data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
-      // The work-mode frame's round glass buttons and glass pill (work-mode.css).
-      // Decided from the mode and address alone, so it is in the server HTML.
+      // Work frame (glass buttons and pill) and band tints, decided from the mode and
+      // address alone so they are in the server HTML (work-mode.css, mode-band.css).
       data-work-frame={routeWorkArea?.id}
-      // A framed page's top bar wears its band's tint from the first paint,
-      // before the band has published it on <html> (work-mode.css).
       data-work-band={routeWorkFramed ? "" : undefined}
       data-mode-identity={routeWorkFrame?.area.identity}
-      data-clinical-band={routeClinicalBand ? "" : undefined}
+      data-clinical-band={clinicalBandAttribute(selectedAppMode.id, currentPathname, Boolean(routeWorkArea))}
       className={cn(
         // No backdrop-filter on the header itself: it would form a backdrop
         // root and starve the .edge-glass-header-backdrop scrim (the single
@@ -3134,7 +3126,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         // Tinted with the top bar from the first paint on a framed work page.
         data-work-band={routeWorkFramed ? "" : undefined}
         data-mode-identity={routeWorkFrame?.area.identity}
-        data-clinical-band={routeClinicalBand ? "" : undefined}
         className={cn(
           // Visible phone chrome owns the OS inset. Hidden phone chrome must
           // release it so the scroll surface reaches the physical viewport
