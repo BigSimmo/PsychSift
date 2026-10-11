@@ -29,6 +29,7 @@ import {
   dateTile,
   evidenceHref,
   evidenceRowLine,
+  evidenceUnchecked,
   evidenceView,
   fileCountWords,
   needsEvidenceEmpty,
@@ -77,7 +78,7 @@ function rowFor(row: EvidenceRow, offline: boolean) {
     ) : row.state === "attached" ? (
       <WorkTag tone="green">{fileCountWords(row.files)}</WorkTag>
     ) : (
-      <WorkTag tone="neutral">Not counted</WorkTag>
+      <WorkTag tone="neutral">Not checked</WorkTag>
     );
   return (
     <li key={row.id} className="min-w-0">
@@ -164,6 +165,10 @@ export function CpdEvidencePage({
   const yearChips = [...new Set([year, ...years])].sort((a, b) => b - a);
   const filtered = category !== "all" || status !== "all";
   const needsEmpty = needsEvidenceEmpty(view, filtered);
+  // Nothing was checked (the demo, the sample): zero counts, filters and an empty "Needs evidence"
+  // would read as all clear, so the page says once that nothing was checked and offers one way in.
+  const unchecked = evidenceUnchecked(view);
+  const firstUnchecked = view.notCounted[0];
 
   function attachFromList(clearFilters: boolean) {
     if (clearFilters) {
@@ -225,120 +230,142 @@ export function CpdEvidencePage({
           />
         ) : (
           <>
-            {/* Tiles at least 6rem wide, so large text or a four-figure count drops a column, never scrolls sideways. */}
-            <div
-              className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-2"
-              data-testid="cpd-evidence-counts"
-            >
-              <CountTile value={view.total} label="Activities" testId="cpd-evidence-count-total" />
-              <CountTile value={view.attached} label="With evidence" testId="cpd-evidence-count-attached" />
-              <CountTile value={view.missing} label="Missing" testId="cpd-evidence-count-missing" />
-            </div>
-
-            <WorkChips scroll label="Type">
-              {EVIDENCE_CATEGORY_FILTERS.map((f) => (
-                <WorkChip
-                  key={f.id}
-                  selected={category === f.id}
-                  onClick={() => {
-                    setCategory(f.id);
-                    setShowAll(false);
-                    remember({ category: f.id });
-                  }}
-                  testId={`cpd-evidence-type-${f.id}`}
+            {unchecked ? (
+              <WorkEmpty
+                icon={FileText}
+                title="No evidence checked yet"
+                body={
+                  view.total === 1
+                    ? "This activity has not been checked for a certificate. Open it to see its evidence or add one."
+                    : `These ${view.total} activities have not been checked for certificates. Open one to see its evidence or add a certificate.`
+                }
+                action={
+                  firstUnchecked ? (
+                    <WorkButton href={firstUnchecked.href} icon={Paperclip} testId="cpd-evidence-start">
+                      Open the latest activity
+                    </WorkButton>
+                  ) : null
+                }
+                testId="cpd-evidence-unchecked"
+              />
+            ) : (
+              <>
+                {/* Tiles at least 6rem wide, so large text or a four-figure count drops a column, never scrolls sideways. */}
+                <div
+                  className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-2"
+                  data-testid="cpd-evidence-counts"
                 >
-                  {f.label}
-                </WorkChip>
-              ))}
-            </WorkChips>
-            <WorkChips scroll label="Show">
-              {EVIDENCE_STATUS_FILTERS.map((f) => (
-                <WorkChip
-                  key={f.id}
-                  selected={status === f.id}
-                  count={view.typeCounts[f.id]}
-                  onClick={() => {
-                    setStatus(f.id);
-                    remember({ status: f.id });
-                  }}
-                  testId={`cpd-evidence-show-${f.id}`}
-                >
-                  {f.label}
-                </WorkChip>
-              ))}
-              <WorkChip
-                selected={order === "oldest"}
-                onClick={() => {
-                  const next: EvidenceOrder = order === "oldest" ? "newest" : "oldest";
-                  setOrder(next);
-                  remember({ order: next });
-                }}
-                testId="cpd-evidence-order"
-              >
-                Oldest first
-              </WorkChip>
-            </WorkChips>
+                  <CountTile value={view.total} label="Activities" testId="cpd-evidence-count-total" />
+                  <CountTile value={view.attached} label="With evidence" testId="cpd-evidence-count-attached" />
+                  <CountTile value={view.missing} label="Missing" testId="cpd-evidence-count-missing" />
+                </div>
 
-            {status !== "attached" ? (
-              <section
-                ref={needsRef}
-                tabIndex={-1}
-                className="grid min-w-0 gap-1.5 outline-none"
-                aria-labelledby="cpd-evidence-needs"
-              >
-                <WorkSectionLabel id="cpd-evidence-needs" count={view.needs.length}>
-                  Needs evidence
-                </WorkSectionLabel>
-                {view.needs.length ? (
-                  <WorkCard as="ul" testId="cpd-evidence-needs-list">
-                    {view.needs.map((row) => rowFor(row, offline))}
-                  </WorkCard>
-                ) : (
-                  <WorkEmpty
-                    icon={CheckCircle2}
-                    title={needsEmpty.title}
-                    body={needsEmpty.body}
-                    testId="cpd-evidence-all-done"
-                  />
-                )}
-              </section>
-            ) : null}
+                <WorkChips scroll label="Type">
+                  {EVIDENCE_CATEGORY_FILTERS.map((f) => (
+                    <WorkChip
+                      key={f.id}
+                      selected={category === f.id}
+                      onClick={() => {
+                        setCategory(f.id);
+                        setShowAll(false);
+                        remember({ category: f.id });
+                      }}
+                      testId={`cpd-evidence-type-${f.id}`}
+                    >
+                      {f.label}
+                    </WorkChip>
+                  ))}
+                </WorkChips>
+                <WorkChips scroll label="Show">
+                  {EVIDENCE_STATUS_FILTERS.map((f) => (
+                    <WorkChip
+                      key={f.id}
+                      selected={status === f.id}
+                      count={view.typeCounts[f.id]}
+                      onClick={() => {
+                        setStatus(f.id);
+                        remember({ status: f.id });
+                      }}
+                      testId={`cpd-evidence-show-${f.id}`}
+                    >
+                      {f.label}
+                    </WorkChip>
+                  ))}
+                  <WorkChip
+                    selected={order === "oldest"}
+                    onClick={() => {
+                      const next: EvidenceOrder = order === "oldest" ? "newest" : "oldest";
+                      setOrder(next);
+                      remember({ order: next });
+                    }}
+                    testId="cpd-evidence-order"
+                  >
+                    Oldest first
+                  </WorkChip>
+                </WorkChips>
 
-            {status === "attached" && !view.has.length ? (
-              <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-has">
-                <WorkSectionLabel id="cpd-evidence-has" count={0}>
-                  Has evidence
-                </WorkSectionLabel>
-                <WorkEmpty
-                  icon={Paperclip}
-                  title={category === "all" ? "No activity has evidence yet" : "None of this type has evidence yet"}
-                  body="Open an activity to attach its certificate."
-                  testId="cpd-evidence-has-empty"
-                />
-              </section>
-            ) : null}
+                {status !== "attached" ? (
+                  <section
+                    ref={needsRef}
+                    tabIndex={-1}
+                    className="grid min-w-0 gap-1.5 outline-none"
+                    aria-labelledby="cpd-evidence-needs"
+                  >
+                    <WorkSectionLabel id="cpd-evidence-needs" count={view.needs.length}>
+                      Needs evidence
+                    </WorkSectionLabel>
+                    {view.needs.length ? (
+                      <WorkCard as="ul" testId="cpd-evidence-needs-list">
+                        {view.needs.map((row) => rowFor(row, offline))}
+                      </WorkCard>
+                    ) : (
+                      <WorkEmpty
+                        icon={view.unknown > 0 ? FileText : CheckCircle2}
+                        title={needsEmpty.title}
+                        body={needsEmpty.body}
+                        testId="cpd-evidence-all-done"
+                      />
+                    )}
+                  </section>
+                ) : null}
 
-            {status !== "missing" && view.has.length ? (
-              <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-has">
-                <WorkSectionLabel
-                  id="cpd-evidence-has"
-                  count={view.has.length}
-                  action={
-                    view.has.length > ATTACHED_PREVIEW
-                      ? {
-                          label: showAll ? "Show fewer" : `All ${view.has.length}`,
-                          onClick: () => setShowAll(!showAll),
-                        }
-                      : undefined
-                  }
-                >
-                  Has evidence
-                </WorkSectionLabel>
-                <WorkCard as="ul" testId="cpd-evidence-has-list">
-                  {attachedShown.map((row) => rowFor(row, offline))}
-                </WorkCard>
-              </section>
-            ) : null}
+                {status === "attached" && !view.has.length ? (
+                  <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-has">
+                    <WorkSectionLabel id="cpd-evidence-has" count={0}>
+                      Has evidence
+                    </WorkSectionLabel>
+                    <WorkEmpty
+                      icon={Paperclip}
+                      title={category === "all" ? "No activity has evidence yet" : "None of this type has evidence yet"}
+                      body="Open an activity to attach its certificate."
+                      testId="cpd-evidence-has-empty"
+                    />
+                  </section>
+                ) : null}
+
+                {status !== "missing" && view.has.length ? (
+                  <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-has">
+                    <WorkSectionLabel
+                      id="cpd-evidence-has"
+                      count={view.has.length}
+                      action={
+                        view.has.length > ATTACHED_PREVIEW
+                          ? {
+                              label: showAll ? "Show fewer" : `All ${view.has.length}`,
+                              onClick: () => setShowAll(!showAll),
+                            }
+                          : undefined
+                      }
+                    >
+                      Has evidence
+                    </WorkSectionLabel>
+                    <WorkCard as="ul" testId="cpd-evidence-has-list">
+                      {attachedShown.map((row) => rowFor(row, offline))}
+                    </WorkCard>
+                  </section>
+                ) : null}
+              </>
+            )}
 
             {view.notCounted.length ? (
               <section className="grid min-w-0 gap-1.5" aria-labelledby="cpd-evidence-unknown">
@@ -354,7 +381,7 @@ export function CpdEvidencePage({
                       : undefined
                   }
                 >
-                  Evidence not counted
+                  Not checked yet
                 </WorkSectionLabel>
                 <WorkCard as="ul" testId="cpd-evidence-unknown-list">
                   {unknownShown.map((row) => rowFor(row, offline))}

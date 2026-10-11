@@ -8,6 +8,7 @@ import {
   evidenceRowLine,
   evidenceView,
   fileCountWords,
+  evidenceUnchecked,
   needsEvidenceEmpty,
   parseEvidenceCategory,
   parseEvidenceOrder,
@@ -111,7 +112,7 @@ describe("CPD evidence view", () => {
     expect(evidenceRowLine(view.has[0]!)).toBe("Reviewing · 2.5\u00a0h");
     expect(fileCountWords(1)).toBe("1 file");
     expect(fileCountWords(3)).toBe("3 files");
-    expect(fileCountWords(null)).toBe("Not counted");
+    expect(fileCountWords(null)).toBe("Not checked");
   });
 });
 
@@ -178,10 +179,12 @@ describe("CPD evidence, adversarial review fixes", () => {
     const uncounted = [entries[1]!, entries[2]!];
     const view = evidenceView(uncounted, 2026, all);
     expect(view.missing).toBe(0);
-    expect(needsEvidenceEmpty(view, false).title).toBe("None known to need evidence");
-    expect(needsEvidenceEmpty(view, false).body).toBe("Evidence was not counted for 1 activity. Open it to check.");
+    expect(needsEvidenceEmpty(view, false).title).toBe("None found missing yet");
+    expect(needsEvidenceEmpty(view, false).body).toBe("Evidence was not checked for 1 activity. Open it to check.");
+    expect(evidenceUnchecked(view)).toBe(false);
     const demo = evidenceView(DEMO_CME_ENTRIES, 2026, all);
     expect(demo.unknown).toBe(demo.total);
+    expect(evidenceUnchecked(demo)).toBe(true);
     expect(needsEvidenceEmpty(demo, false).title).not.toMatch(/Every activity/);
     expect(needsEvidenceEmpty(evidenceView([entries[1]!], 2026, all), false).title).toBe("Every activity has evidence");
     expect(needsEvidenceEmpty(evidenceView([entries[1]!], 2026, all), true).title).toBe("Nothing here needs evidence");
