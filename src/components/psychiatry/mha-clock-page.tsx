@@ -136,6 +136,11 @@ function mhaClockCaveatLine(caveat: NonNullable<MhaTimerItem["entry"]["caveat"]>
   return `The Act also says (s ${caveat.section}): “${caveat.quote}”`;
 }
 
+/** The repeat line shown for recurring countdowns, shared so the copy matches. */
+function mhaClockRepeatLine(hours: number): string {
+  return `Repeats every ${hours} hours while the order is in force.`;
+}
+
 /** The Act section label the page links each limit to, word for word. Shared so the copy matches. */
 function mhaClockSectionLabel(entry: MhaTimerItem["entry"]): string {
   const heading = mhaActSection(entry.section)?.title;
@@ -164,6 +169,9 @@ function handoverLimitLines(item: MhaTimerItem): string[] {
   }
   return [
     head,
+    ...(item.kind === "countdown" && item.repeatsEveryHours !== null
+      ? [`    ${mhaClockRepeatLine(item.repeatsEveryHours)}`]
+      : []),
     ...(entry.condition ? [`    ${entry.condition}`] : []),
     ...(entry.caveat ? [`    ${mhaClockCaveatLine(entry.caveat)}`] : []),
     `    ${mhaClockSectionLabel(entry)}`,
@@ -445,7 +453,7 @@ function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs
               : `${mhaClockDuration(item.deadline.getTime() - nowMs)} left`}
           </p>
           {item.repeatsEveryHours !== null ? (
-            <p className="text-xs text-[color:var(--dash-muted)]">{`Repeats every ${item.repeatsEveryHours} hours while the order is in force.`}</p>
+            <p className="text-xs text-[color:var(--dash-muted)]">{mhaClockRepeatLine(item.repeatsEveryHours)}</p>
           ) : null}
         </div>
       ) : (
