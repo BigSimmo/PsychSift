@@ -683,15 +683,7 @@ const teaching: WorkArea = {
         { id: "feedback", label: "Feedback", sub: "Rate a session", icon: "star", href: "/teaching/feedback" },
         { id: "review", label: "Log to CPD", sub: "Weekly review", icon: "award", href: "/teaching/review" },
         { id: "exam-prep", label: "Exam prep", sub: "Your plan", icon: "pen", href: "/teaching/exam-prep" },
-        {
-          id: "term-folder",
-          label: "Evidence folder",
-          // CPD has its own "Evidence" page, so the short name says which one this is.
-          short: "Term folder",
-          sub: "Your term in one place",
-          icon: "folder",
-          href: "/teaching/term/folder",
-        },
+        // Evidence folder merged into Term (owner decision, 11 Oct 2026); /teaching/term/folder redirects there.
       ],
     },
     {

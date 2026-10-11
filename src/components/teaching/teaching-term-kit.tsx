@@ -143,17 +143,19 @@ export function DeviceOnlyNotice({
   data,
   fileName,
   demoMode,
+  className,
 }: {
   readonly section: "teachingTermTracker" | "teachingExamPrep";
   readonly data: unknown;
   readonly fileName: string;
   readonly demoMode: boolean;
+  readonly className?: string;
 }) {
   const kept = useKeptWithAccount(section);
   const [failed, setFailed] = useState(false);
   if (kept || demoMode) return null;
   return (
-    <T5Note icon="alert" tone="warning" testId="teaching-device-only-notice">
+    <T5Note icon="alert" tone="warning" className={className} testId="teaching-device-only-notice">
       <span className="grid min-w-0 gap-2">
         <span>
           <strong className="font-semibold">Saved on this phone only.</strong> This page is kept in this browser, so it

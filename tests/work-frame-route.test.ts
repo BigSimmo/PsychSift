@@ -84,7 +84,7 @@ describe("workFrameCurrentItem", () => {
     expect(workFrameCurrentItem(WORK_AREAS.cpd, "/cme/applications/cv", "")?.id).toBe("applications");
     expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/new-job/ready", "")?.id).toBe("admin-ready");
     expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson-roster");
-    expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term/folder", "")?.id).toBe("term-folder");
+    expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term", "")?.id).toBe("term");
   });
 
   it("keeps pages that draw their own header off the band", () => {

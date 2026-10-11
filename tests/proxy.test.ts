@@ -507,6 +507,7 @@ describe("Admin mode redirects", () => {
     ["/on-call/compliance", "/admin/renewals"],
     ["/on-call/logistics", "/admin/help"],
     ["/on-call/education", "/teaching/week"],
+    ["/teaching/term/folder", "/teaching/term"],
   ])("sends %s to %s as one 307 and keeps the query string", async (from, to) => {
     const response = await proxy(requestFor(`${from}?from=bookmark`));
     expect(response.status).toBe(307);

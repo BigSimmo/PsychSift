@@ -85,6 +85,11 @@ const staticRouteRedirects: Record<string, string> = {
   // stays `education` in the database; Teaching owns the programme. Fragments and
   // query strings travel with the 307 so bookmarks keep their anchors.
   "/on-call/education": "/teaching/week",
+  // Teaching's evidence folder merged into the Term page (owner-approved mock-up,
+  // 11 Oct 2026). Answered before the work-mode route gate, so a classic-mode
+  // reader with an old folder link lands on Term too, not on a 404. A `?term=`
+  // query travels but Term always shows the current term.
+  "/teaching/term/folder": "/teaching/term",
 };
 
 /**
