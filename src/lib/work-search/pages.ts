@@ -93,15 +93,12 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "call:call": ["phone", "numbers", "switchboard", "pager", "contacts", "ring"],
   "call:refer": ["referral", "referrals", "refer"],
   "call:find": ["handbook", "wards", "equipment", "systems down"],
-  "call:playbook": ["what to do", "emergency", "codes"],
+  "call:playbook": ["what to do", "emergency", "codes", "who to call", "escalate"],
   "call:whoswho": ["roles", "teams"],
-  "call:starting-here": ["checklist", "induction", "orientation", "first week", "first night", "new job"],
+  "call:starting-here": ["checklist", "induction", "orientation", "first week", "first night", "first shift", "new job"],
   "call:card": ["print", "pocket card"],
-  "call:call-now": ["who to call", "escalate"],
   "call:whoson": ["tonight's team", "who's on"],
-  "call:pulse": ["how is it going", "workload"],
   "call:check": ["before you leave", "checklist"],
-  "call:first-night": ["new", "first shift"],
   "call:handover": ["handover"],
 };
 
