@@ -963,7 +963,7 @@ const cpd: WorkArea = {
         {
           id: "setup",
           label: "End of year",
-          sub: "Hand in your year",
+          sub: "Hand it in",
           icon: "check-list",
           href: "/cme/check",
           paths: ["/cme/check", "/cme/evidence", "/cme/export", "/cme/cpd-home"],
@@ -972,7 +972,7 @@ const cpd: WorkArea = {
         {
           id: "targets",
           label: "Targets",
-          sub: "Your confirmed numbers",
+          sub: "Your numbers",
           icon: "flag",
           href: "/cme/setup",
           paths: ["/cme/setup", "/cme/programme"],
