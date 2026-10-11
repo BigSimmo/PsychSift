@@ -101,7 +101,7 @@ function read(): readonly WorkPageStar[] {
   } catch {
     // Storage blocked (private window, policy): nothing is saved, and that is honest.
   }
-  cache = parse(raw);
+  cache = normalizeWorkPageStars(parse(raw));
   return cache;
 }
 
@@ -257,15 +257,49 @@ const MOVED_WORK_PAGES: Readonly<Record<string, { areaId: WorkAreaId; itemId: st
   "cpd:applications": { areaId: "admin", itemId: "applications" },
 };
 
+function normalizeWorkPageStars(stars: readonly WorkPageStar[]): readonly WorkPageStar[] {
+  const out: WorkPageStar[] = [];
+  const byKey = new Map<string, WorkPageStar>();
+  for (const saved of stars) {
+    const moved = MOVED_WORK_PAGES[workPageStarKey(saved.areaId, saved.itemId)];
+    const star = moved ? { ...saved, ...moved } : saved;
+    const key = workPageStarKey(star.areaId, star.itemId);
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, star);
+      out.push(star);
+      continue;
+    }
+    const merged = {
+      ...existing,
+      starredAt: Math.min(existing.starredAt, star.starredAt),
+      pinnedAt:
+        existing.pinnedAt === null
+          ? star.pinnedAt
+          : star.pinnedAt === null
+            ? existing.pinnedAt
+            : Math.max(existing.pinnedAt, star.pinnedAt),
+      openedAt:
+        existing.openedAt === null
+          ? star.openedAt
+          : star.openedAt === null
+            ? existing.openedAt
+            : Math.max(existing.openedAt, star.openedAt),
+    };
+    byKey.set(key, merged);
+    out[out.indexOf(existing)] = merged;
+  }
+  return out;
+}
+
 export function resolveWorkPageStars(
   stars: readonly WorkPageStar[],
   routeVisible: (href: string) => boolean = () => true,
 ): ResolvedWorkPageStar[] {
   const out: ResolvedWorkPageStar[] = [];
   const seen = new Set<string>();
-  for (const saved of stars) {
-    const moved = MOVED_WORK_PAGES[workPageStarKey(saved.areaId, saved.itemId)];
-    const star = moved ? { ...saved, ...moved } : saved;
+  for (const saved of normalizeWorkPageStars(stars)) {
+    const star = saved;
     const area = WORK_AREAS[star.areaId];
     if (!area) continue;
     const item = workAreaItems(area).find((candidate) => candidate.id === star.itemId);
