@@ -27,6 +27,27 @@ export function setModeHomeComposerReservePending(slot: Element | null | undefin
   }
 }
 
+/**
+ * Set the SSR reserve on a page-owned composer slot only once its owning
+ * segment has hydrated; mutating it earlier causes a hydration mismatch.
+ */
+export function syncHydratedComposerReserve(slotId: string | null | undefined, pending: boolean): void {
+  const slot = slotId ? document.getElementById(slotId) : null;
+  if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, pending);
+}
+
+/** Re-run `onChange` whenever composer slots mount or report hydration readiness. */
+export function observeDesktopComposerSlots(onChange: () => void): MutationObserver {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: [desktopComposerSlotReadyAttr],
+  });
+  return observer;
+}
+
 /** Mobile/tablet search-composer slot for differentials compare actions. */
 export const differentialsMobileCompareAddonSlotId = "differentials-mobile-compare-addon-slot";
 

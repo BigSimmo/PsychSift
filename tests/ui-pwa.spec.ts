@@ -1,4 +1,7 @@
-import { expect, test, type BrowserContext, type Page } from "playwright/test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { chromium, expect, test, type BrowserContext, type Page } from "playwright/test";
 
 const PWA_ENTRY = "/?pwa-dev=1";
 const WORKER_PATH = "/sw.js";
@@ -140,108 +143,162 @@ test.describe("PsychSift PWA", () => {
     if (browserName === "chromium") await clearPwaBrowserState(context, page);
   });
 
-  test("has a browser-valid manifest, installable icons, and a root worker", async ({ context, page }) => {
-    await openControlledPwa(page);
+  test("has a browser-valid manifest, installable icons, and a root worker", async ({
+    baseURL,
+    channel,
+    contextOptions,
+    headless,
+    launchOptions,
+    viewport,
+  }) => {
+    if (!baseURL) throw new Error("PWA installability requires the configured Playwright baseURL");
+    // Page.getInstallabilityErrors reports in-incognito for Playwright's usual
+    // per-test context even when the manifest, icons, and worker are valid.
+    const profileDir = await mkdtemp(join(tmpdir(), "psychsift-pwa-installability-"));
+    let persistentContext: BrowserContext | null = null;
+    try {
+      persistentContext = await chromium.launchPersistentContext(profileDir, {
+        ...launchOptions,
+        ...contextOptions,
+        channel,
+        headless,
+        viewport,
+        baseURL,
+        serviceWorkers: "allow",
+      });
+      const context = persistentContext;
+      await context.route("**/api/**", (route) => route.abort("blockedbyclient"));
+      await context.route(/^https:\/\/[^/]*\.supabase\.co\//i, (route) => route.abort("blockedbyclient"));
+      await context.route(/^https:\/\/api\.openai\.com\//i, (route) => route.abort("blockedbyclient"));
+      const page = context.pages()[0] ?? (await context.newPage());
+      await openControlledPwa(page);
 
-    const session = await context.newCDPSession(page);
-    const appManifest = await session.send("Page.getAppManifest");
-    expect(new URL(appManifest.url).pathname).toBe("/manifest.webmanifest");
-    expect(appManifest.errors, JSON.stringify(appManifest.errors)).toEqual([]);
-    expect(appManifest.data).toBeTruthy();
+      const session = await context.newCDPSession(page);
+      const appManifest = await session.send("Page.getAppManifest");
+      expect(new URL(appManifest.url).pathname).toBe("/manifest.webmanifest");
+      expect(appManifest.errors, JSON.stringify(appManifest.errors)).toEqual([]);
+      expect(appManifest.data).toBeTruthy();
 
-    const manifest = JSON.parse(appManifest.data ?? "{}") as {
-      id?: string;
-      start_url?: string;
-      scope?: string;
-      display?: string;
-      icons?: ManifestIcon[];
-    };
-    expect(manifest).toMatchObject({ id: "/", start_url: "/", scope: "/", display: "standalone" });
+      const manifest = JSON.parse(appManifest.data ?? "{}") as {
+        id?: string;
+        start_url?: string;
+        scope?: string;
+        display?: string;
+        icons?: ManifestIcon[];
+      };
+      expect(manifest).toMatchObject({ id: "/", start_url: "/", scope: "/", display: "standalone" });
 
-    const icons = manifest.icons ?? [];
-    expect(icons.length).toBeGreaterThanOrEqual(5);
-    const probes = await probeManifestIcons(page, icons);
-    const probesBySource = new Map(probes.map((probe) => [probe.src, probe]));
+      const icons = manifest.icons ?? [];
+      expect(icons.length).toBeGreaterThanOrEqual(5);
+      const probes = await probeManifestIcons(page, icons);
+      const probesBySource = new Map(probes.map((probe) => [probe.src, probe]));
 
-    for (const icon of icons) {
-      const probe = probesBySource.get(icon.src);
-      if (!probe) throw new Error(`Manifest icon was not probed: ${icon.src}`);
+      for (const icon of icons) {
+        const probe = probesBySource.get(icon.src);
+        if (!probe) throw new Error(`Manifest icon was not probed: ${icon.src}`);
 
-      expect(probe.status, icon.src).toBe(200);
-      expect(probe.mime, icon.src).toBe(icon.type);
-      expect(probe.width, icon.src).toBeGreaterThan(0);
-      expect(probe.height, icon.src).toBeGreaterThan(0);
+        expect(probe.status, icon.src).toBe(200);
+        expect(probe.mime, icon.src).toBe(icon.type);
+        expect(probe.width, icon.src).toBeGreaterThan(0);
+        expect(probe.height, icon.src).toBeGreaterThan(0);
 
-      if (icon.sizes !== "any") {
-        const size = icon.sizes.match(/^(\d+)x(\d+)$/);
-        expect(size, `${icon.src} should declare concrete dimensions`).not.toBeNull();
-        expect(probe.width, icon.src).toBe(Number(size?.[1]));
-        expect(probe.height, icon.src).toBe(Number(size?.[2]));
-        expect(probe.hasPngSignature, icon.src).toBe(true);
+        if (icon.sizes !== "any") {
+          const size = icon.sizes.match(/^(\d+)x(\d+)$/);
+          expect(size, `${icon.src} should declare concrete dimensions`).not.toBeNull();
+          expect(probe.width, icon.src).toBe(Number(size?.[1]));
+          expect(probe.height, icon.src).toBe(Number(size?.[2]));
+          expect(probe.hasPngSignature, icon.src).toBe(true);
+        }
+      }
+
+      const workerResponse = await context.request.get(new URL(WORKER_PATH, page.url()).toString());
+      expect(workerResponse.status()).toBe(200);
+      const workerHeaders = workerResponse.headers();
+      expect(workerHeaders["content-type"]).toMatch(/^application\/javascript\b/i);
+      expect(workerHeaders["cache-control"]).toContain("no-cache");
+      expect(workerHeaders["cache-control"]).toContain("no-store");
+      expect(workerHeaders["service-worker-allowed"]).toBe("/");
+      expect(workerHeaders["cross-origin-resource-policy"]).toBe("same-origin");
+      expect(workerHeaders["content-security-policy"]).toContain("default-src 'self'");
+      expect(workerHeaders["content-security-policy"]).toContain("script-src 'self'");
+      expect(workerHeaders["set-cookie"]).toBeUndefined();
+
+      const manifestResponse = await context.request.get(new URL("/manifest.webmanifest", page.url()).toString());
+      expect(manifestResponse.status()).toBe(200);
+      expect(manifestResponse.headers()["content-type"]).toMatch(/^application\/manifest\+json\b/i);
+      expect(manifestResponse.headers()["cache-control"]).toContain("must-revalidate");
+      expect(manifestResponse.headers()["set-cookie"]).toBeUndefined();
+
+      const offlineDocumentResponse = await context.request.get(new URL("/offline.html", page.url()).toString());
+      expect(offlineDocumentResponse.status()).toBe(200);
+      expect(offlineDocumentResponse.headers()["content-security-policy"]).toContain("default-src 'none'");
+      expect(offlineDocumentResponse.headers()["x-robots-tag"]).toBe("noindex, nofollow");
+      expect(offlineDocumentResponse.headers()["set-cookie"]).toBeUndefined();
+
+      const svgIconResponse = await context.request.get(new URL("/icon.svg", page.url()).toString());
+      expect(svgIconResponse.status()).toBe(200);
+      expect(svgIconResponse.headers()["content-type"]).toMatch(/^image\/svg\+xml\b/i);
+      expect(svgIconResponse.headers()["set-cookie"]).toBeUndefined();
+
+      const workerState = await page.evaluate(async () => {
+        const registration = await navigator.serviceWorker.getRegistration("/");
+        return {
+          origin: window.location.origin,
+          scope: registration?.scope ?? null,
+          scriptURL: registration?.active?.scriptURL ?? null,
+          activeState: registration?.active?.state ?? null,
+          updateViaCache: registration?.updateViaCache ?? null,
+          controllerURL: navigator.serviceWorker.controller?.scriptURL ?? null,
+        };
+      });
+      expect(workerState).toEqual({
+        origin: workerState.origin,
+        scope: `${workerState.origin}/`,
+        scriptURL: `${workerState.origin}/sw.js`,
+        activeState: "activated",
+        updateViaCache: "none",
+        controllerURL: `${workerState.origin}/sw.js`,
+      });
+
+      const workerVersion = await page.evaluate(
+        () =>
+          new Promise<unknown>((resolve, reject) => {
+            const channel = new MessageChannel();
+            const timeout = setTimeout(() => {
+              channel.port1.close();
+              channel.port2.close();
+              reject(new Error("The active worker did not identify its release"));
+            }, 5_000);
+            channel.port1.onmessage = (event) => {
+              clearTimeout(timeout);
+              channel.port1.close();
+              channel.port2.close();
+              resolve(event.data);
+            };
+            navigator.serviceWorker.controller!.postMessage({ type: "GET_VERSION" }, [channel.port2]);
+          }),
+      );
+      expect(workerVersion).toEqual({ type: "PWA_VERSION", version: expect.stringMatching(/^\d{4}-\d{2}-\d{2}-v\d+/) });
+
+      await expect
+        .poll(
+          async () => {
+            const { installabilityErrors } = await session.send("Page.getInstallabilityErrors");
+            return installabilityErrors.map((error) => error.errorId);
+          },
+          {
+            message: "Chromium should report no stable installability errors after the root worker controls the page",
+            timeout: 15_000,
+          },
+        )
+        .toEqual([]);
+    } finally {
+      try {
+        await persistentContext?.close();
+      } finally {
+        await rm(profileDir, { recursive: true, force: true });
       }
     }
-
-    const workerResponse = await context.request.get(new URL(WORKER_PATH, page.url()).toString());
-    expect(workerResponse.status()).toBe(200);
-    const workerHeaders = workerResponse.headers();
-    expect(workerHeaders["content-type"]).toMatch(/^application\/javascript\b/i);
-    expect(workerHeaders["cache-control"]).toContain("no-cache");
-    expect(workerHeaders["cache-control"]).toContain("no-store");
-    expect(workerHeaders["service-worker-allowed"]).toBe("/");
-    expect(workerHeaders["cross-origin-resource-policy"]).toBe("same-origin");
-    expect(workerHeaders["content-security-policy"]).toContain("default-src 'self'");
-    expect(workerHeaders["content-security-policy"]).toContain("script-src 'self'");
-    expect(workerHeaders["set-cookie"]).toBeUndefined();
-
-    const manifestResponse = await context.request.get(new URL("/manifest.webmanifest", page.url()).toString());
-    expect(manifestResponse.status()).toBe(200);
-    expect(manifestResponse.headers()["content-type"]).toMatch(/^application\/manifest\+json\b/i);
-    expect(manifestResponse.headers()["cache-control"]).toContain("must-revalidate");
-    expect(manifestResponse.headers()["set-cookie"]).toBeUndefined();
-
-    const offlineDocumentResponse = await context.request.get(new URL("/offline.html", page.url()).toString());
-    expect(offlineDocumentResponse.status()).toBe(200);
-    expect(offlineDocumentResponse.headers()["content-security-policy"]).toContain("default-src 'none'");
-    expect(offlineDocumentResponse.headers()["x-robots-tag"]).toBe("noindex, nofollow");
-    expect(offlineDocumentResponse.headers()["set-cookie"]).toBeUndefined();
-
-    const svgIconResponse = await context.request.get(new URL("/icon.svg", page.url()).toString());
-    expect(svgIconResponse.status()).toBe(200);
-    expect(svgIconResponse.headers()["content-type"]).toMatch(/^image\/svg\+xml\b/i);
-    expect(svgIconResponse.headers()["set-cookie"]).toBeUndefined();
-
-    const workerState = await page.evaluate(async () => {
-      const registration = await navigator.serviceWorker.getRegistration("/");
-      return {
-        origin: window.location.origin,
-        scope: registration?.scope ?? null,
-        scriptURL: registration?.active?.scriptURL ?? null,
-        activeState: registration?.active?.state ?? null,
-        updateViaCache: registration?.updateViaCache ?? null,
-        controllerURL: navigator.serviceWorker.controller?.scriptURL ?? null,
-      };
-    });
-    expect(workerState).toEqual({
-      origin: workerState.origin,
-      scope: `${workerState.origin}/`,
-      scriptURL: `${workerState.origin}/sw.js`,
-      activeState: "activated",
-      updateViaCache: "none",
-      controllerURL: `${workerState.origin}/sw.js`,
-    });
-
-    await expect
-      .poll(
-        async () => {
-          const { installabilityErrors } = await session.send("Page.getInstallabilityErrors");
-          return installabilityErrors.map((error) => error.errorId);
-        },
-        {
-          message: "Chromium should report no stable installability errors after the root worker controls the page",
-          timeout: 15_000,
-        },
-      )
-      .toEqual([]);
   });
 
   test("keeps the install surface polished, reachable, and clear of search at every target width", async ({ page }) => {
@@ -591,7 +648,11 @@ test.describe("PsychSift PWA", () => {
       const cachedUrl = new URL(entry.url);
       expect(entry.cacheName).toMatch(new RegExp(`^${PWA_CACHE_PREFIX}`));
       expect(cachedUrl.origin, entry.url).toBe(origin);
-      expect(cachedUrl.search, entry.url).toBe("");
+      if (cachedUrl.search) {
+        expect(cachedUrl.pathname, entry.url).toMatch(/^\/_next\/static\//);
+        expect([...cachedUrl.searchParams.keys()], entry.url).toEqual(["dpl"]);
+        expect(cachedUrl.searchParams.get("dpl"), entry.url).toMatch(/^[a-f0-9]{40}$/i);
+      }
       expect(cachedUrl.pathname, entry.url).not.toMatch(sensitivePath);
       expect(isAllowedPublicCachePath(cachedUrl.pathname), entry.url).toBe(true);
     }

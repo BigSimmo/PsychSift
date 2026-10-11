@@ -319,29 +319,33 @@ export function readStandaloneShellGeometry(page: Page): Promise<StandaloneShell
 }
 
 export async function addPhoneScrollRunway(page: Page) {
-  await page.evaluate(() => {
-    const main = document.getElementById("main-content");
-    if (!main) throw new Error("addPhoneScrollRunway: #main-content was not rendered");
-    const filler = document.createElement("div");
-    filler.dataset.testid = "phone-header-scroll-runway";
-    filler.setAttribute("aria-hidden", "true");
-    filler.style.height = "1600px";
-    filler.style.minHeight = "1600px";
-    // Idle phone homes make `#main-content` a flex column. A height-only
-    // sibling still shrinks to fit (`flex-shrink: 1`, automatic min-size 0),
-    // so hide-on-scroll never gets travel. Lock the runway to its intended size.
-    filler.style.flexShrink = "0";
-    filler.style.flexGrow = "0";
-    filler.style.pointerEvents = "none";
-    main.append(filler);
-  });
-  // Wait for the runway to exist rather than for 50ms to pass. The sleep was a bet
-  // that layout lands within 50ms of the append; on a loaded CI runner it does not
-  // have to, and the caller then drags against a scroll range that is still short.
+  // A streamed route can replace its initially visible #main-content after
+  // navigation. Reattach the runway to the current owner while waiting for its
+  // scroll range; otherwise the old node can hold all 1600px of test runway.
   await expect
-    .poll(async () => (await readGeometry(page)).maxOffset, {
-      message: "the appended 1600px runway must reach layout before the caller scrolls against it",
-    })
+    .poll(
+      async () => {
+        await page.evaluate(() => {
+          const main = document.getElementById("main-content");
+          if (!main || main.querySelector('[data-testid="phone-header-scroll-runway"]')) return;
+          const filler = document.createElement("div");
+          filler.dataset.testid = "phone-header-scroll-runway";
+          filler.setAttribute("aria-hidden", "true");
+          filler.style.height = "1600px";
+          filler.style.minHeight = "1600px";
+          // Idle phone homes make #main-content a flex column. Lock the runway
+          // against flex shrink so it supplies actual scroll travel.
+          filler.style.flexShrink = "0";
+          filler.style.flexGrow = "0";
+          filler.style.pointerEvents = "none";
+          main.append(filler);
+        });
+        return (await readGeometry(page)).maxOffset;
+      },
+      {
+        message: "the appended 1600px runway must reach layout before the caller scrolls against it",
+      },
+    )
     .toBeGreaterThanOrEqual(minimumHideTravelPx);
 }
 
