@@ -16,7 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
@@ -79,8 +79,16 @@ import {
  * pack they send themselves. Sharing straight from PsychSift to a health
  * service is not live, and the page says so first.
  */
-export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
-  usePaperworkHeading("Sharing", "Not live yet · you send it yourself");
+export function AdminSharingPage({ now }: { now?: Date } = {}) {
+  usePaperworkHeading("Sharing", "You send it yourself");
+  return <SharingBody now={now} />;
+}
+
+/**
+ * The sharing choices and the pack, as its own page or as Requests' "Send a pack" view (Sharing merged
+ * into Requests, audit 11 Oct 2026). Embedded, Requests owns the page title, notices and related links.
+ */
+export function SharingBody({ now: pinned, embedded = false }: { now?: Date; embedded?: boolean }) {
   const page = usePaperworkPage("admin.sharing");
   const { store, entriesState, own, online } = page;
   const say = usePaperworkSay();
@@ -276,21 +284,24 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
 
   const log = recentShareLog(sharing.log);
 
+  const Wrap = embedded ? EmbeddedWrap : WorkBody;
   return (
-    <WorkBody testId="admin-sharing">
-      <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
-        Sharing
-      </PageTitleUnderBand>
-      {page.signedOut ? (
+    <Wrap testId="admin-sharing">
+      {embedded ? null : (
+        <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
+          Sharing
+        </PageTitleUnderBand>
+      )}
+      {page.signedOut && !embedded ? (
         <PaperworkSampleNotice what="sharing choices" testId="admin-sharing-signed-out" examples={page.examplesShown} />
       ) : null}
-      {page.demo ? <PaperworkDemoNotice testId="admin-sharing-demo" /> : null}
+      {page.demo && !embedded ? <PaperworkDemoNotice testId="admin-sharing-demo" /> : null}
 
       <WorkCard padded testId="admin-sharing-not-live">
-        <p className="text-sm font-semibold text-[color:var(--text-heading)]">Not live yet</p>
+        <p className="text-sm font-semibold text-[color:var(--text-heading)]">You send it yourself</p>
         <p className="mt-1 text-sm text-[color:var(--text)]">
-          PsychSift cannot send your records to a health service yet. That needs new storage and Josh&apos;s approval.
-          For now, choose what you would share and send the pack yourself.
+          Choose what Medical Workforce and Staff Health should see, then save the file or open an email draft and send
+          it from your own email. PsychSift never sends it for you.
         </p>
       </WorkCard>
 
@@ -419,36 +430,42 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
         <WorkIconRow icon={ShieldAlert} title="Health reasons" sub="Go to Staff Health only" />
       </WorkCard>
 
-      <WorkSectionLabel>Related</WorkSectionLabel>
-      <WorkCard>
-        <WorkIconRow
-          icon={ClipboardList}
-          title="Compliance"
-          sub="Every requirement and its date"
-          href={ADMIN_PAGE_HREFS.compliance}
-        />
-        <WorkIconRow
-          icon={Inbox}
-          title="Requests"
-          sub="Asks you send and track"
-          href={ADMIN_WORK_SCREEN_HREFS.requests}
-        />
-        <WorkIconRow
-          icon={FileText}
-          title="Documents"
-          sub="Where your files are kept"
-          href={ADMIN_WORK_SCREEN_HREFS.documents}
-        />
-      </WorkCard>
+      {embedded ? null : (
+        <>
+          <WorkSectionLabel>Related</WorkSectionLabel>
+          <WorkCard>
+            <WorkIconRow
+              icon={ClipboardList}
+              title="Renewals by group"
+              sub="Every requirement and its date"
+              href={ADMIN_PAGE_HREFS.compliance}
+            />
+            <WorkIconRow
+              icon={Inbox}
+              title="Requests"
+              sub="Asks you send and track"
+              href={ADMIN_WORK_SCREEN_HREFS.requests}
+            />
+            <WorkIconRow
+              icon={FileText}
+              title="Documents"
+              sub="Where your files are kept"
+              href={ADMIN_WORK_SCREEN_HREFS.documents}
+            />
+          </WorkCard>
+        </>
+      )}
 
-      <PaperworkFootNote testId="admin-sharing-footnote">
-        <KeptWhere
-          section="adminPaperwork"
-          account="Your choices are kept with your account."
-          device="Your choices stay on this phone."
-        />{" "}
-        PsychSift sends nothing. Files you already sent stay with whoever you sent them to.
-      </PaperworkFootNote>
+      {embedded ? null : (
+        <PaperworkFootNote testId="admin-sharing-footnote">
+          <KeptWhere
+            section="adminPaperwork"
+            account="Your choices are kept with your account."
+            device="Your choices stay on this phone."
+          />{" "}
+          PsychSift sends nothing. Files you already sent stay with whoever you sent them to.
+        </PaperworkFootNote>
+      )}
 
       <Sheet
         open={preview !== null}
@@ -482,7 +499,16 @@ export function AdminSharingPage({ now: pinned }: { now?: Date } = {}) {
           }}
         />
       ) : null}
-    </WorkBody>
+    </Wrap>
+  );
+}
+
+/** Embedded in Requests: the sections sit straight in Requests' own body. */
+function EmbeddedWrap({ testId, children }: { readonly testId: string; readonly children: ReactNode }) {
+  return (
+    <div className="grid gap-3" data-testid={testId}>
+      {children}
+    </div>
   );
 }
 

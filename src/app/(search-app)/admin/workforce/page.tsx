@@ -1,20 +1,12 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
-import { ModeHomeRouteLoading } from "@/components/mode-home-page-skeleton";
-import { AdminWorkforcePage } from "@/components/work-screens/admin/workforce-page";
+import { HOSPITAL_HUB_HREF } from "@/lib/work-roles/hospital-hub";
 
-export const metadata: Metadata = {
-  title: "Workforce | Admin | PsychSift",
-  description:
-    "The health service's side for Medical Workforce staff: starters, contract ends, requests and readiness. Not live yet, shown as a labelled sample.",
-};
-
+/**
+ * Workforce was a sample of the health service's side. Its live version is Hospital's Medical Workforce
+ * section (sick calls, short-staffed days, new starters, people and roles), which checks the role on the
+ * server, so an old link lands there (audit 11 Oct 2026).
+ */
 export default function AdminWorkforceRoute() {
-  // The page reads `?view=sample` through `useSearchParams`, which needs a Suspense boundary.
-  return (
-    <Suspense fallback={<ModeHomeRouteLoading />}>
-      <AdminWorkforcePage />
-    </Suspense>
-  );
+  redirect(HOSPITAL_HUB_HREF);
 }
