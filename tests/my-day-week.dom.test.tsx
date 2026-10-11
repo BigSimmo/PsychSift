@@ -322,6 +322,7 @@ describe("MyDayWeekPage", () => {
     expect(screen.getByTestId("my-day-week-failed-notice").textContent).toContain(
       "Couldn't load: Team shifts and On Call teaching entries. Showing the rest.",
     );
+    expect(screen.queryByTestId("my-day-week-hours")).toBeNull();
   });
 
   it("lists CPD routines due in the week and dated My Day items, once each", () => {
