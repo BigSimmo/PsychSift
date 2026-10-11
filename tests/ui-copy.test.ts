@@ -128,12 +128,12 @@ const EXPECTED_MODE_TITLES: Record<
   psychiatry: {
     sharedTitle: "Psychiatry",
     standaloneTitle: "Psychiatry",
-    subtitle: "Diagnosis, specifiers, formulation, therapy and forms.",
+    subtitle: "Diagnosis, formulation, therapy, forms, rating scales and the dictionary.",
   },
   medicines: {
-    sharedTitle: "Medicines & tools",
-    standaloneTitle: "Medicines & tools",
-    subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
+    sharedTitle: "Medicines",
+    standaloneTitle: "Medicines",
+    subtitle: "Medication, factsheets, statewide charts and outside references.",
   },
   "my-work": {
     sharedTitle: "Admin",

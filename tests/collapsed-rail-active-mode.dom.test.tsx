@@ -50,7 +50,7 @@ describe("collapsed rail marks the active mode (#03ARD6)", () => {
     ["cme", "CPD"],
     ["differentials", "Differentials"],
     ["on-call", "On Call"],
-    ["psychiatry", "Psychiatry"],
+    ["forms", "Forms"],
     ["my-work", "Admin"],
     ["first-nations", "First Nations"],
     ["teaching", "Teaching"],

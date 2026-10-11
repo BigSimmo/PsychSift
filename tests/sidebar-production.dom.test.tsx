@@ -46,21 +46,18 @@ afterEach(() => {
 });
 
 describe("production PsychSift sidebar", () => {
-  it("prefetches Applications only when its Tools shortcut receives pointer or focus intent", () => {
+  it("no longer prefetches Applications now that Tools has left the shortcuts", () => {
+    // Tools left the menu (audit item 8, 11 Oct 2026), and with it the only
+    // shortcut that warmed the Applications chunk on pointer or focus intent.
     const onPrefetchApplications = vi.fn();
     renderSidebar({ onPrefetchApplications });
 
-    const toolsLink = screen.getByRole("link", { name: "Tools" });
-    expect(onPrefetchApplications).not.toHaveBeenCalled();
-
+    expect(screen.queryByRole("link", { name: "Tools" })).toBeNull();
+    const psychiatryLink = screen.getByRole("link", { name: "Psychiatry" });
     fireEvent.pointerEnter(screen.getByRole("link", { name: "Answer" }));
+    fireEvent.pointerEnter(psychiatryLink);
+    fireEvent.focus(psychiatryLink);
     expect(onPrefetchApplications).not.toHaveBeenCalled();
-
-    fireEvent.pointerEnter(toolsLink);
-    expect(onPrefetchApplications).toHaveBeenCalledTimes(1);
-
-    fireEvent.focus(toolsLink);
-    expect(onPrefetchApplications).toHaveBeenCalledTimes(2);
   });
 
   it("shows three unheaded recents before editable shortcuts and opens the shared search owner", async () => {
@@ -82,9 +79,9 @@ describe("production PsychSift sidebar", () => {
       "Answer",
       "Documents",
       "Services",
+      "Psychiatry",
       "Medication",
       "Factsheets",
-      "Tools",
     ]);
     expect(navigation.getByRole("link", { name: "Medication" })).toHaveAttribute("href", "/?mode=prescribing");
     expect(navigation.getAllByRole("button").at(-1)).toHaveAccessibleName("More modes");
@@ -111,10 +108,10 @@ describe("production PsychSift sidebar", () => {
       "my-day",
       "answer",
       "services",
+      "psychiatry",
       "prescribing",
-      "factsheets",
       "forms",
-      "tools",
+      "factsheets",
     ]);
 
     await user.click(within(editor).getByRole("button", { name: "Close more modes" }));
@@ -125,10 +122,10 @@ describe("production PsychSift sidebar", () => {
       "My Day",
       "Answer",
       "Services",
+      "Psychiatry",
       "Medication",
-      "Factsheets",
       "Forms",
-      "Tools",
+      "Factsheets",
     ]);
     expect(navigation.getAllByRole("button").at(-1)).toHaveAccessibleName("More modes");
   });
@@ -199,7 +196,7 @@ describe("sidebar shortcuts select modes in place", () => {
     renderSidebar({ onSelectMode, showAccountLibrary: true });
     const restore = suppressJsdomNavigation();
 
-    fireEvent.click(screen.getByRole("link", { name: "Tools" }));
+    fireEvent.click(screen.getByRole("link", { name: "Psychiatry" }));
     fireEvent.click(screen.getByRole("link", { name: "Favourites" }));
 
     expect(onSelectMode).not.toHaveBeenCalled();
