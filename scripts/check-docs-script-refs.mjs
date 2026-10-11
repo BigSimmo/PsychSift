@@ -84,9 +84,13 @@ function collectDocs(dirRelative, targets) {
   }
 }
 
+// Root documents scanned for stale `npm run` references. The continuation holds binding
+// policy split out of AGENTS.md, so its commands must stay checked too.
+export const ROOT_SCRIPT_REF_DOCS = Object.freeze(["README.md", "AGENTS.md", "PROJECT-INSTRUCTIONS-CONTINUATION.md"]);
+
 function main() {
   const validScripts = parsePackageScripts(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-  const targets = ["README.md", "AGENTS.md"];
+  const targets = [...ROOT_SCRIPT_REF_DOCS];
   collectDocs("docs", targets);
 
   let stale = 0;

@@ -14,6 +14,7 @@ describe("bundled Cloud skill link coverage", () => {
   it("includes nested shipped references in the normal blocking scan", () => {
     expect(defaultTargets()).toContain(target);
     expect(defaultTargets()).toContain(".claude/cloud-profile/skills/sentry-nextjs-sdk/SKILL.md");
+    expect(defaultTargets()).toContain("PROJECT-INSTRUCTIONS-CONTINUATION.md");
   });
 
   it("catches the escaped sibling link and checks its corrected destination", () => {
