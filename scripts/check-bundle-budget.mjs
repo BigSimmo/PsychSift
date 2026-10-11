@@ -253,8 +253,24 @@ export function initialDashboardChunkNames(appBuildManifest, pageClientReference
     ...pageClientChunks,
   ]);
   return [...names]
-    .filter((name) => typeof name === "string" && name.endsWith(".js"))
+    .map((name) => (typeof name === "string" ? manifestChunkPath(name) : null))
+    .filter((name) => name?.endsWith(".js"))
     .map((name) => name.replace(/^\/?static\/chunks\//, ""));
+}
+
+/**
+ * Next appends the deployment asset token (`?dpl=<deploymentId>`) to client
+ * chunk URLs and URI-encodes path segments once `deploymentId` is configured.
+ * Strip both so manifest entries match the on-disk chunk file names; otherwise
+ * every route resolves zero chunks and the production/mockup split collapses.
+ */
+export function manifestChunkPath(chunk) {
+  const withoutQuery = chunk.split(/[?#]/, 1)[0];
+  try {
+    return decodeURI(withoutQuery);
+  } catch {
+    return withoutQuery;
+  }
 }
 
 function loadRootPageClientReferenceManifest() {
@@ -304,9 +320,8 @@ export function clientRouteAndChunkNamesFromManifestSource(source) {
   if (typeof route !== "string") return null;
   for (const clientModule of Object.values(manifest?.clientModules ?? {})) {
     for (const chunk of Array.isArray(clientModule?.chunks) ? clientModule.chunks : []) {
-      if (typeof chunk === "string" && chunk.endsWith(".js")) {
-        names.add(chunk.replace(/^\/?static\/chunks\//, ""));
-      }
+      const name = typeof chunk === "string" ? manifestChunkPath(chunk) : null;
+      if (name?.endsWith(".js")) names.add(name.replace(/^\/?static\/chunks\//, ""));
     }
   }
   return { route: normalizeManifestRoute(route), chunks: names };
@@ -905,6 +920,13 @@ export function selfTest() {
   check(
     "clientRouteAndChunkNamesFromManifestSource parses chunks",
     parsed && parsed.route === "/" && parsed.chunks.has("a.js"),
+  );
+  const dplSrc =
+    'globalThis.__RSC_MANIFEST["/on-call/page"]={"clientModules":{"a":{"chunks":["static/chunks/app/(search-app)/on-call/page-1.js?dpl=abc"]}}};';
+  const dplParsed = clientRouteAndChunkNamesFromManifestSource(dplSrc);
+  check(
+    "clientRouteAndChunkNamesFromManifestSource strips deployment token",
+    dplParsed && dplParsed.chunks.has("app/(search-app)/on-call/page-1.js") && dplParsed.chunks.size === 1,
   );
 
   // parseMaxDistance

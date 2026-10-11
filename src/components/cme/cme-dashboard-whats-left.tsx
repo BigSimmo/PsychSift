@@ -304,7 +304,7 @@ export function CmeWhatsLeft({
       end={
         // A short word: held to the 48 px tap width, its words kept at the right edge.
         <CmeTextLink href={`/cme/check?year=${set.year}`} testId="cme-year-check-link" className="min-w-12 justify-end">
-          Report
+          End of year
         </CmeTextLink>
       }
     >

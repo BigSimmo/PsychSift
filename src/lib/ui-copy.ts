@@ -139,7 +139,7 @@ export const sharedHomePresentation = {
   },
   psychiatry: {
     title: "Psychiatry",
-    subtitle: "Diagnosis, specifiers, formulation, therapy and forms.",
+    subtitle: "Diagnosis, formulation, therapy, forms, rating scales and the dictionary.",
     suggestions: ["major depressive disorder", "behavioural activation", "Form 1A"],
   },
   "my-work": {
@@ -164,8 +164,8 @@ export const sharedHomePresentation = {
     suggestions: ["overdue", "due soon", "coming up"],
   },
   medicines: {
-    title: "Medicines & tools",
-    subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
+    title: "Medicines",
+    subtitle: "Medication, factsheets, statewide charts and outside references.",
     suggestions: ["lithium monitoring", "clozapine", "valproate"],
   },
   "open-shifts": {

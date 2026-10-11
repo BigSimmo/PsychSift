@@ -149,14 +149,14 @@ function PaperworkSignpost({ overview }: { readonly overview: ComplianceOverview
   const title = nextJob ? "Paperwork for your next job" : "Paperwork";
   const countLine = nextJob
     ? toDo.length > 0
-      ? `${toDo.length} to do before you start, in Compliance`
+      ? `${toDo.length} to do before you start, in Renewals`
       : "Nothing due before you start, on the dates you recorded"
     : needsAction > 0
-      ? `${needsActionPhrase(needsAction)}, in Compliance`
+      ? `${needsActionPhrase(needsAction)}, in Renewals`
       : "Nothing needs action on the dates you recorded";
   const alsoLine =
     nextJob && needsAction > 0 && toDo.length < needsAction
-      ? `${needsActionPhrase(needsAction)} in Compliance overall.`
+      ? `${needsActionPhrase(needsAction)} in Renewals overall.`
       : null;
   return (
     <WorkCard as="ul">

@@ -2,7 +2,8 @@
 export const ADMIN_PAGE_HREFS = {
   today: "/admin",
   renewals: "/admin/renewals",
-  compliance: "/admin/compliance",
+  // Compliance is Renewals' By group view since 11 Oct 2026.
+  compliance: "/admin/renewals?view=group",
   complianceExport: "/admin/compliance/export",
   newJob: "/admin/new-job",
   help: "/admin/help",

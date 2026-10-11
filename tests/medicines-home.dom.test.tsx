@@ -1,8 +1,8 @@
 /** @vitest-environment jsdom */
 
-// The Medicines & tools hub is Psychiatry's twin: a front door to the sections
+// The Medicines hub is Psychiatry's twin: a front door to the sections
 // it gathers. Each section tile must point at that section's existing home,
-// the hub must list exactly the sections the menu's Medicines & tools group
+// the hub must list exactly the sections the menu's Medicines group
 // lists, and the find box runs the medication search.
 
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -16,24 +16,24 @@ import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-mo
 import { clearMedicineVisits, recordMedicineVisit } from "@/lib/medicines-recent";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 
-const counts: MedicinesSectionCounts = { medications: 120, calculators: 14, tools: 19, factsheets: 1, dictionary: 300 };
+const counts: MedicinesSectionCounts = { medications: 120, factsheets: 1 };
 const now = new Date("2026-10-03T04:00:00Z");
 
 beforeEach(() => push.mockReset());
 afterEach(cleanup);
 
 describe("MedicinesHome", () => {
-  it("links every section in the menu's Medicines & tools group to its existing home, with its count", () => {
+  it("links every section in the menu's Medicines group to its existing home, with its count", () => {
     render(<MedicinesHome counts={counts} now={now} />);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Medicines & tools" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Medicines" })).toBeTruthy();
 
     const group = phoneModeGroups.find((candidate) => candidate.id === "care");
     expect(group?.modeIds[0]).toBe("medicines");
     const sections = (group?.modeIds ?? []).filter((modeId: AppModeId) => modeId !== "medicines");
-    expect(sections).toEqual(["prescribing", "tools", "calculators", "factsheets", "dictionary"]);
+    expect(sections).toEqual(["prescribing", "factsheets"]);
 
-    const list = screen.getByRole("list", { name: "Medicines and tools sections" });
+    const list = screen.getByRole("list", { name: "Medicines sections" });
     const links = within(list).getAllByRole("link");
     expect(links).toHaveLength(sections.length);
     sections.forEach((modeId, index) => {
@@ -41,7 +41,7 @@ describe("MedicinesHome", () => {
       expect(links[index]?.getAttribute("href")).toBe(appModeHomeHref(modeId));
     });
     expect(links[0]).toHaveTextContent("120 medicines");
-    expect(links[3]).toHaveTextContent("1 factsheet");
+    expect(links[1]).toHaveTextContent("1 factsheet");
   });
 
   it("sends a typed medicine to the medication search, and ignores an empty box", () => {

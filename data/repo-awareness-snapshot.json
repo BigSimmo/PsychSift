@@ -79,7 +79,7 @@
       },
       {
         "id": "medicines",
-        "label": "Medicines & tools",
+        "label": "Medicines",
         "home": "/medicines",
         "dev_only": false
       },
@@ -509,6 +509,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/applications",
+        "file": "src/app/(search-app)/admin/applications/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/therapy-recommend-popup-dossier",
         "file": "src/app/mockups/therapy-recommend-popup-dossier/page.tsx",
         "area": "mockup"
@@ -556,6 +561,11 @@
       {
         "path": "/roster/settings",
         "file": "src/app/(search-app)/roster/settings/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/applications/cv",
+        "file": "src/app/(search-app)/admin/applications/cv/page.tsx",
         "area": "product"
       },
       {
@@ -1119,11 +1129,6 @@
         "area": "product"
       },
       {
-        "path": "/cme/applications",
-        "file": "src/app/(search-app)/cme/applications/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/mockups/development/corpus-health",
         "file": "src/app/mockups/development/corpus-health/page.tsx",
         "area": "mockup"
@@ -1176,11 +1181,6 @@
       {
         "path": "/formulation/[slug]",
         "file": "src/app/(search-app)/formulation/[slug]/page.tsx",
-        "area": "product"
-      },
-      {
-        "path": "/cme/applications/cv",
-        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
         "area": "product"
       },
       {
@@ -1794,6 +1794,16 @@
         "path": "/applications",
         "file": "src/app/applications/route.ts",
         "target": "/tools"
+      },
+      {
+        "path": "/cme/applications",
+        "file": "src/app/(search-app)/cme/applications/page.tsx",
+        "target": "/admin/applications"
+      },
+      {
+        "path": "/cme/applications/cv",
+        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
+        "target": "/admin/applications/cv"
       },
       {
         "path": "/dictionary/browse",
@@ -11867,6 +11877,14 @@
         "scope": "PR #1431 visual baseline seed guidance",
         "outcome": "approved after correcting candidate-copy and AWAITING_BASELINE instructions; unique README content consolidated into PR #1490 to avoid ledger churn",
         "checks": "docs links passed; Prettier passed; documentation-only diff reviewed"
+      },
+      {
+        "date": "2026-10-11",
+        "ref": "codex/fix-on-call-navigation-and-page-hydration",
+        "head": "4f7ef99a95650f5eef0386aaeb49dc0eb59f76fc",
+        "scope": "local all-page navigation and shared update fix review",
+        "outcome": "Fixed release recovery, On Call fallback clarity, release-specific worker notices, prior-cache ordering and shared composer hydration; all 221 production route patterns covered and 138 eligible link/history journeys passed. Safe-state dynamic coverage does not prove authenticated private workflows.",
+        "checks": "132 focused unit/DOM tests; 137 phone contract tests; 12 phone browser cases; 52 corrected owning browser tests; source typecheck and scoped lint/format passed. Broad Chromium run stopped at user request after 514 passes; four additional test-readiness fixes are being narrowly verified and remaining matrix is delegated to GitHub. Record identifies local product checkpoint before the final browser-harness-only changes."
       },
       {
         "date": "2026-07-30",

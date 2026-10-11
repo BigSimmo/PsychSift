@@ -29,7 +29,7 @@ describe("CPD annual summary months", () => {
     expect(within(more).getByTestId("cpd-home-entry-link").getAttribute("href")).toBe(
       `/cme/cpd-home?year=${DEMO_CME_YEAR.year}`,
     );
-    expect(within(more).getByTestId("applications-entry-link").getAttribute("href")).toBe("/cme/applications");
+    expect(within(more).getByTestId("applications-entry-link").getAttribute("href")).toBe("/admin/applications");
   });
 
   it("keeps every activity in the page so nothing is lost when folded", () => {

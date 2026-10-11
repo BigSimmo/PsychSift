@@ -1,11 +1,9 @@
 "use client";
 
-import { ChevronLeft, ClipboardCopy, Info, Plane, Users } from "lucide-react";
+import { ClipboardCopy, Info, Plane, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { focusRing } from "@/components/card-recipes";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -45,6 +43,7 @@ import {
 import { StaffingFrame, StaffingResult, StaffingStatusNote, lowestOf } from "./roster-leave-staffing-check";
 import { RosterStaffingLegend, RosterStaffingStrip } from "./roster-staffing-strip";
 import { useTeamStaffing } from "./use-team-staffing";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /**
  * Team staffing (feature #7): plan leave with the team in view. The strip
@@ -173,18 +172,7 @@ export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } =
 
   return (
     <InformationPageShell testId="roster-staffing-page">
-      <ContextualBackLink
-        fallbackHref="/roster"
-        data-testid="roster-staffing-back"
-        data-mode-identity="roster"
-        className={cn(
-          focusRing,
-          "-ml-1 -mb-2 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
-        )}
-      >
-        <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-        Roster
-      </ContextualBackLink>
+      <WorkPageBack href="/roster" label="Roster" testId="roster-staffing-back" />
       <RosterPageHeader
         icon={Users}
         eyebrow="Plan leave with the team in view"

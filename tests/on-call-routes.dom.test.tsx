@@ -181,10 +181,10 @@ describe("on-call section routes", () => {
       if (route.view === "compliance") {
         // Renewals (Admin update 1) has no in-page nav rail and no anchor: it
         // is a plain tabbed page, not a scroll-and-jump section list. Its own
-        // section structure is the Checklist/Personal radio switch, with the
+        // section structure is the Soonest/By group/Personal radio switch, with the
         // Checklist tab's requirements summary as the equivalent landmark.
         expect(screen.getByRole("radiogroup", { name: "Renewals" })).toBeInTheDocument();
-        expect(screen.getByRole("radio", { name: "Checklist" })).toBeInTheDocument();
+        expect(screen.getByRole("radio", { name: "Soonest" })).toBeInTheDocument();
         expect(screen.getByRole("radio", { name: "Personal" })).toBeInTheDocument();
         expect(screen.getByTestId("admin-renewals-summary")).toBeInTheDocument();
         return;

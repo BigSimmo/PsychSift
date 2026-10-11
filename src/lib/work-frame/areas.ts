@@ -103,8 +103,8 @@ export type WorkFrameGate =
   | "signed-in"
   /**
    * Hospital-side roles: the site administrator, Medical Workforce or the DCT, from
-   * `useWorkRoles`. Also open while example data is switched on or the reader is signed
-   * out, so the example hospital can be looked around. The page checks again on the server.
+   * `useWorkRoles`. Also open while example data is switched on, so the example hospital can
+   * be looked around. Signed out it stays hidden. The page checks again on the server.
    */
   | "hospital-role"
   /** The Hospital screen: everyone "hospital-role" lets in, plus supervisors and roster managers. */
@@ -188,6 +188,9 @@ const myDay: WorkArea = {
   id: "day",
   name: "My Day",
   identity: "my-day",
+  // Usefulness audit (11 Oct 2026): Calendar is the one month view, so it is a tab; Hours is
+  // checked now and then, so it sits in More with a line on Week; the setup pages that apply
+  // to all of Work mode are reached from the side menu (Work profile, Help) and Help (Set up Work).
   tabs: [
     { id: "my-day-today", label: "Today", sub: "Your day", icon: "sun", href: "/my-day", title: "Today" },
     {
@@ -198,7 +201,13 @@ const myDay: WorkArea = {
       href: "/my-day/week",
       title: "This week",
     },
-    { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
+    {
+      id: "my-day-calendar",
+      label: "Calendar",
+      sub: "Everything dated",
+      icon: "calendar",
+      href: "/my-day/calendar",
+    },
   ],
   groups: [
     {
@@ -215,13 +224,7 @@ const myDay: WorkArea = {
           // The new work mode reads this list in Notifications (the address redirects there).
           gate: "classic-work-mode",
         },
-        {
-          id: "my-day-calendar",
-          label: "Calendar",
-          sub: "Everything dated",
-          icon: "calendar",
-          href: "/my-day/calendar",
-        },
+        { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
         {
           id: "my-day-favourites",
           label: "Favourites",
@@ -267,16 +270,16 @@ const myDay: WorkArea = {
       ],
     },
     {
-      label: "Set up",
+      label: "Settings",
       items: [
         {
-          id: "my-day-setup",
-          label: "Set up Work",
-          sub: "Walkthrough",
-          icon: "compass",
-          href: "/my-day/setup",
-          // The walkthrough and the help centre draw their own Back in the top bar.
-          band: false,
+          // Its Privacy tab is part of the same page, so one entry covers both.
+          id: "my-day-profile",
+          label: "Work profile",
+          short: "Profile",
+          sub: "Stage, workplaces, privacy",
+          icon: "user",
+          href: "/my-day/profile",
         },
         {
           id: "my-day-help",
@@ -284,15 +287,8 @@ const myDay: WorkArea = {
           sub: "How each area works",
           icon: "help",
           href: "/my-day/help",
+          // The help centre draws its own Back in the top bar.
           band: false,
-        },
-        {
-          id: "my-day-profile",
-          label: "Work profile",
-          short: "Profile",
-          sub: "Stage, workplaces",
-          icon: "user",
-          href: "/my-day/profile",
         },
         {
           id: "my-day-alerts",
@@ -302,15 +298,6 @@ const myDay: WorkArea = {
           href: "/my-day/alerts",
           // The new work mode keeps these settings under Notifications (the address redirects there).
           gate: "classic-work-mode",
-        },
-        {
-          id: "my-day-privacy",
-          label: "Privacy",
-          sub: "What is kept where",
-          icon: "shield",
-          href: "/my-day/profile?tab=privacy",
-          paths: ["/my-day/profile"],
-          query: { tab: "privacy" },
         },
         {
           id: "my-day-customise",
@@ -958,25 +945,26 @@ const cpd: WorkArea = {
     {
       label: "Your year",
       items: [
-        { id: "setup", label: "Report", sub: "Year check", icon: "check-list", href: "/cme/check" },
+        // One End of year page with three steps (11 Oct 2026 audit). Evidence, Export and AMA CPD Home are the
+        // detail pages its steps open, so they leave the menu and keep End of year current.
+        {
+          id: "setup",
+          label: "End of year",
+          sub: "Hand it in",
+          icon: "check-list",
+          href: "/cme/check",
+          paths: ["/cme/check", "/cme/evidence", "/cme/export", "/cme/cpd-home"],
+        },
         { id: "plan", label: "Plan", sub: "Your goals", icon: "target", href: "/cme/plan" },
         {
           id: "targets",
           label: "Targets",
-          sub: "Your confirmed numbers",
+          sub: "Your numbers",
           icon: "flag",
           href: "/cme/setup",
           paths: ["/cme/setup", "/cme/programme"],
         },
         { id: "training", label: "Training", sub: "Registrar record", icon: "layers", href: "/cme/training" },
-        {
-          id: "applications",
-          label: "Jobs",
-          sub: "Season dates, referees, CV",
-          icon: "flag",
-          href: "/cme/applications",
-          paths: ["/cme/applications", "/cme/applications/cv"],
-        },
       ],
     },
     {
@@ -999,45 +987,13 @@ const cpd: WorkArea = {
           href: "/cme/routines",
           paths: [],
         },
-        { id: "cpd-evidence", label: "Evidence", sub: "Certificates to add", icon: "file", href: "/cme/evidence" },
-        {
-          id: "cpd-export",
-          label: "Export",
-          sub: "CSV and printable",
-          icon: "download",
-          href: "/cme/export",
-        },
-        {
-          id: "cpd-home",
-          label: "AMA CPD Home",
-          short: "CPD Home",
-          sub: "Send your year",
-          icon: "send",
-          href: "/cme/cpd-home",
-          paths: ["/cme/cpd-home"],
-        },
       ],
     },
     {
-      label: "Settings",
+      label: "Help",
       items: [
-        {
-          id: "customise",
-          label: "Customise",
-          sub: "Summary sections",
-          icon: "sliders",
-          href: "/cme/customise",
-          band: false,
-        },
-        {
-          id: "setup-edit",
-          label: "Set up",
-          sub: "Home and total",
-          icon: "settings",
-          href: "/cme/setup?edit=1",
-          paths: ["/cme/setup"],
-          query: { edit: "1" },
-        },
+        // Customise is reached from Summary's own button, and Set up is the same page as Targets, so neither
+        // is listed here (11 Oct 2026 audit).
         { id: "cpd-help", label: "Help", sub: "How CPD works", icon: "help", action: "work-help" },
       ],
     },
@@ -1064,14 +1020,7 @@ const admin: WorkArea = {
     {
       label: "Paperwork",
       items: [
-        {
-          id: "admin-compliance",
-          label: "Compliance",
-          sub: "Every requirement",
-          icon: "shield",
-          href: "/admin/compliance",
-        },
-        { id: "admin-export", label: "Export", sub: "Spreadsheet", icon: "download", href: "/admin/compliance/export" },
+        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
         {
           id: "admin-bookings",
           label: "Bookings",
@@ -1088,8 +1037,6 @@ const admin: WorkArea = {
           href: "/admin/courses",
           gate: "course-organiser",
         },
-        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
-        { id: "admin-sharing", label: "Sharing", sub: "Not live yet", icon: "send", href: "/admin/sharing" },
         {
           id: "admin-documents",
           label: "Documents",
@@ -1127,6 +1074,16 @@ const admin: WorkArea = {
           sub: "New to WA hospitals",
           icon: "compass",
           href: "/admin/new-job/starter",
+        },
+        // Career admin, beside New job and Contract (moved from CPD, 11 Oct 2026 audit).
+        {
+          id: "applications",
+          label: "Job applications",
+          short: "Jobs",
+          sub: "Season dates, referees, CV",
+          icon: "flag",
+          href: "/admin/applications",
+          paths: ["/admin/applications", "/admin/applications/cv"],
         },
         {
           id: "admin-ready",
@@ -1178,14 +1135,6 @@ const admin: WorkArea = {
           icon: "users",
           href: "/admin/people",
           gate: "hospital-role",
-        },
-        {
-          id: "admin-workforce",
-          label: "Workforce",
-          sub: "Their view, sample",
-          icon: "layers",
-          href: "/admin/workforce",
-          band: false,
         },
       ],
     },

@@ -119,6 +119,8 @@
       "disposition": "owned",
       "routes": [
         "src/app/(display)/teaching/display/[token]/page.tsx",
+        "src/app/(search-app)/admin/applications/cv/page.tsx",
+        "src/app/(search-app)/admin/applications/page.tsx",
         "src/app/(search-app)/admin/compliance/export/page.tsx",
         "src/app/(search-app)/admin/compliance/page.tsx",
         "src/app/(search-app)/admin/contract/page.tsx",

@@ -3,6 +3,8 @@ import { Suspense } from "react";
 
 import { ModeHomeRouteLoading } from "@/components/mode-home-page-skeleton";
 import { PsychiatryHome, type PsychiatrySectionCounts } from "@/components/psychiatry/psychiatry-home";
+import { calculators } from "@/lib/calculators/calculator-fixtures";
+import { dictionaryEntries } from "@/lib/dictionary-data";
 import { differentialStaticParams, presentationStaticParams } from "@/lib/differentials";
 import { dsmStaticParams } from "@/lib/dsm";
 import { formRecords } from "@/lib/forms";
@@ -12,7 +14,8 @@ import { therapySlugs } from "@/lib/therapies";
 
 export const metadata: Metadata = {
   title: "Psychiatry | PsychSift",
-  description: "Diagnosis, specifiers, formulation, therapy and Mental Health Act forms in one place.",
+  description:
+    "Diagnosis, specifiers, formulation, therapy, Mental Health Act forms, rating scales and the dictionary in one place.",
 };
 
 /**
@@ -36,6 +39,8 @@ export default function PsychiatryHomeRoute() {
     formulation: formulationMechanisms.length,
     therapy: therapySlugs().length,
     forms: formRecords.length,
+    calculators: calculators.length,
+    dictionary: dictionaryEntries.length,
   };
   // The hub reads ?page= through `useSearchParams`, which needs a Suspense boundary.
   return (

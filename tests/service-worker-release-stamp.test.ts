@@ -1,11 +1,46 @@
 import { readFileSync } from "node:fs";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { releaseSuffix, stampServiceWorkerSource } from "../scripts/stamp-service-worker.mjs";
 
 const serviceWorker = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.resetModules();
+});
+
+async function navigationDeploymentId(commitSha?: string, explicitId?: string) {
+  vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", commitSha ?? "");
+  vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "");
+  vi.stubEnv("GITHUB_SHA", "");
+  vi.stubEnv("NEXT_DEPLOYMENT_ID", explicitId ?? "");
+  vi.stubEnv("SENTRY_AUTH_TOKEN", "");
+  vi.stubEnv("ANALYZE", "false");
+  vi.resetModules();
+  const { default: loadNextConfig } = await import("../next.config");
+  return (await loadNextConfig()).deploymentId;
+}
+
+describe("navigation release identity", () => {
+  it("gives Next navigation a different identity for each deployed release", async () => {
+    const first = "a5c56cee5de2f014338b61e47c69aa8eb33a30cb";
+    const second = "cc1379790fae317a454832202c4b70d01d8f803b";
+    expect(await navigationDeploymentId(first)).toBe(first);
+    expect(await navigationDeploymentId(second)).toBe(second);
+  });
+
+  it("keeps local builds unversioned when no release is configured", async () => {
+    expect(await navigationDeploymentId()).toBeUndefined();
+    expect(await navigationDeploymentId("not-a-sha")).toBeUndefined();
+  });
+
+  it("honours an explicitly configured Next deployment identity", async () => {
+    expect(await navigationDeploymentId("a5c56cee5de2f014338b61e47c69aa8eb33a30cb", "release-42")).toBe("release-42");
+  });
+});
 
 /**
  * A browser decides a service worker has changed by byte-comparing the script. `CACHE_VERSION`

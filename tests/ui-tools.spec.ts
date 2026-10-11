@@ -461,15 +461,20 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     { name: "phone", width: 390, height: 844 },
     { name: "desktop", width: 1280, height: 900 },
   ] as const) {
-    test(`universal mode picker opens the all tools directory at ${viewport.name} width`, async ({ page }) => {
+    test(`universal mode picker no longer lists Tools, and /tools still opens, at ${viewport.name} width`, async ({
+      page,
+    }) => {
+      // Tools left the mode menu (usefulness and layout audit, 11 Oct 2026, item 8):
+      // its calculators and dictionary sit under Psychiatry. The directory keeps
+      // its address for old links and bookmarks.
       await mockAnswerDashboardApi(page);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await gotoLauncher(page, "/?mode=answer");
 
       const menu = await openAppModeMenu(page, "Answer");
-      const toolsOption = menu.getByRole("menuitemradio", { name: /^Tools\b/ });
-      await toolsOption.scrollIntoViewIfNeeded();
-      await Promise.all([page.waitForURL(/\/tools$/), toolsOption.click()]);
+      await expect(menu.getByRole("menuitemradio", { name: /^Psychiatry\b/ })).toBeAttached();
+      await expect(menu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
+      await gotoLauncher(page, "/tools");
 
       await expect(visibleByTestId(page, "tools-search-results-page")).toBeVisible();
       await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
@@ -777,7 +782,8 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeVisible();
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeVisible();
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeVisible();
-    await expect(servicesMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeVisible();
+    // Tools left the mode menu (usefulness and layout audit, 11 Oct 2026).
+    await expect(servicesMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     const formsMode = servicesMenu.getByRole("menuitemradio", { name: /^Forms\b/ });
     await waitForReactEventHandler(formsMode);
     await formsMode.click();

@@ -10,6 +10,14 @@ import { CPD_HOME_SEND_STORAGE_KEY, clearAccountScopedBrowserStorage } from "@/l
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import * as clipboard from "@/lib/copy-to-clipboard";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 const announcer = vi.hoisted(() => ({ announce: vi.fn() }));
 vi.mock("@/components/ui/live-announcer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/ui/live-announcer")>()),
@@ -80,9 +88,11 @@ describe("Send to AMA CPD Home", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it("says first that CPD Home's import format is not checked, and draws the hand-off", () => {
+  it("says in one line that CPD Home's import format is not confirmed, and draws the hand-off", () => {
     renderPage();
-    expect(screen.getByTestId("cpd-home-format").textContent).toContain("Format to be confirmed with AMA CPD Home");
+    expect(screen.getByTestId("cpd-home-format").textContent).toContain(
+      "What AMA CPD Home can import is not confirmed yet.",
+    );
     expect(screen.getByTestId("cpd-home-handoff").getAttribute("aria-label")).toBe(
       "Your log of 3 activities goes into a CSV file. What AMA CPD Home can import is not checked yet.",
     );
@@ -299,11 +309,13 @@ describe("Send to AMA CPD Home", () => {
   });
 
   it("goes back to the CPD summary, where its link lives, even with nothing to send", () => {
+    const removeSlot = addHeaderBackSlot();
     const { unmount } = renderPage();
     expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
     unmount();
     renderPage({ entries: [] });
     expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+    removeSlot();
   });
 
   it("says the import format is not confirmed, with its source pending", () => {

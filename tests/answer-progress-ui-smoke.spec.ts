@@ -162,15 +162,36 @@ async function installTimedAnswerStream(page: Page) {
           { delay: 4_800, event: "final", data: answer },
         ];
 
+        // Keep each transient line visible until the test has checked it. On a
+        // loaded browser runner, timer-driven phases can outrun earlier UI checks.
+        let advancedPhase = 0;
+        let unblockPhase: (() => void) | undefined;
+        (window as Window & { advanceTimedAnswerStream?: () => void }).advanceTimedAnswerStream = () => {
+          advancedPhase += 1;
+          unblockPhase?.();
+        };
+        const waitForPhase = (phase: number) =>
+          new Promise<void>((resolve) => {
+            if (advancedPhase >= phase) resolve();
+            else unblockPhase = resolve;
+          });
+
         return new Response(
           new ReadableStream({
             start(controller) {
-              for (const item of events) {
-                window.setTimeout(() => {
+              void (async () => {
+                let previousDelay = 0;
+                for (const item of events) {
+                  const stage = item.event === "progress" ? (item.data as { stage: string }).stage : item.event;
+                  if (stage === "generating") await waitForPhase(1);
+                  if (stage === "revising") await waitForPhase(2);
+                  if (stage === "verifying") await waitForPhase(3);
+                  await new Promise<void>((resolve) => window.setTimeout(resolve, item.delay - previousDelay));
                   controller.enqueue(encoder.encode(`event: ${item.event}\ndata: ${JSON.stringify(item.data)}\n\n`));
                   if (item.event === "final") controller.close();
-                }, item.delay);
-              }
+                  previousDelay = item.delay;
+                }
+              })();
             },
           }),
           { status: 200, headers: { "Content-Type": "text/event-stream; charset=utf-8" } },
@@ -179,6 +200,14 @@ async function installTimedAnswerStream(page: Page) {
     },
     { answer: finalAnswer },
   );
+}
+
+async function advanceTimedAnswerStream(page: Page) {
+  await page.evaluate(() => {
+    const advance = (window as Window & { advanceTimedAnswerStream?: () => void }).advanceTimedAnswerStream;
+    if (!advance) throw new Error("Timed answer stream is not installed");
+    advance();
+  });
 }
 
 async function installHoldingAnswerStream(page: Page) {
@@ -486,11 +515,14 @@ test("answer progress remains user-safe through fallback and discloses the unusu
   // the line. See tests/answer-progress.test.ts for the rule.
   await expect(line).toContainText("Prioritising Australian sources", { timeout: 3_000 });
   await expect(line).not.toContainText(/\d/);
+  await advanceTimedAnswerStream(page);
   await expect(line).toContainText("Writing the answer", { timeout: 4_000 });
+  await advanceTimedAnswerStream(page);
 
   // The wait is where the reader learns the model was not used, rather than
   // meeting a source-only answer that then has to defend itself.
   await expect(line).toContainText("Assembling the answer from the sources directly", { timeout: 5_000 });
+  await advanceTimedAnswerStream(page);
 
   // Rolling deployments may still route a new client to an older server that
   // emits provisional token/revising frames. The client must ignore both so
