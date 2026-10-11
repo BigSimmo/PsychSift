@@ -19,7 +19,7 @@ import { useDelayedPost } from "@/components/teaching/use-delayed-post";
 import { resetExampleDataForTests, setExampleDataOn, useExampleData } from "@/lib/example-data/store";
 import { demoFeedbackOpen, demoSupervision } from "@/lib/teaching/depth-demo";
 import { IMPORT_TEMPLATE_HEADERS, readinessLabels } from "@/lib/teaching/depth-model";
-import { entry, pairingView, NOTE } from "./helpers/teaching-depth-fixtures";
+import { ENTRY, entry, pairingView, NOTE } from "./helpers/teaching-depth-fixtures";
 
 const NB = "\u00a0";
 const id = "11111111-1111-4111-8111-111111111111";
@@ -394,6 +394,27 @@ describe("Teaching depth journeys", () => {
     expect(screen.getByRole("button", { name: "career" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "risk" }));
     expect(screen.getByRole("button", { name: "career" })).toBeEnabled();
+  });
+
+  it("keeps the supervision page short: target behind Edit, three past sessions, and wrapping topic chips", async () => {
+    const dates = ["2026-09-28", "2026-09-21", "2026-09-14", "2026-09-07", "2026-08-31"];
+    const entries = dates.map((date, index) => entry({ entryId: `${ENTRY.slice(0, -1)}${index}`, date }));
+    vi.mocked(fetch).mockImplementation(async () => reply({ pairings: [pairingView({ targetHours: 40, entries })] }));
+    render(<TeachingSupervision demoMode={false} />);
+    // The target is one line until Edit opens the form.
+    expect(await screen.findByText(/^Your personal target: 40\sh$/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Your personal target (hours, optional)")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit your personal target" }));
+    expect(screen.getByLabelText("Your personal target (hours, optional)")).toHaveValue(40);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Your personal target (hours, optional)")).toBeNull();
+    // Only the last three sessions show until Show all.
+    const recent = screen.getByRole("list", { name: "Recent sessions with Dr Demo Supervisor" });
+    expect(recent.querySelectorAll("li")).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Show all 5" }));
+    expect(recent.querySelectorAll("li")).toHaveLength(5);
+    // The topic chips wrap onto more lines instead of running off a phone screen.
+    expect(screen.getByRole("button", { name: "career" }).parentElement).toHaveClass("flex-wrap");
   });
 });
 

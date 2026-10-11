@@ -393,6 +393,27 @@ const roster: WorkArea = {
           // names it that from the first paint, not only once the page sets its heading.
           title: "Leave and requests",
         },
+        // Where an unwell doctor looks (usability audit, 11 Oct 2026): Roster's More and the Leave page,
+        // not only My Day's card. The page keeps its own header, so the band stays off it.
+        {
+          id: "sick",
+          label: "Sick for tomorrow",
+          short: "Sick",
+          sub: "No reason needed",
+          icon: "heart",
+          href: "/roster/sick",
+          band: false,
+        },
+        // Moved from Open shifts (audit, 11 Oct 2026): it adds a shift to your own roster, not one on offer.
+        {
+          id: "log-shift",
+          label: "Log a shift",
+          short: "Log",
+          sub: "Add one by hand",
+          icon: "calendar-plus",
+          href: "/open-shifts/log",
+          band: false,
+        },
         {
           id: "hours",
           label: "Hours and rest",
@@ -443,15 +464,9 @@ const roster: WorkArea = {
     {
       label: "Set up",
       items: [
-        {
-          id: "calendar",
-          label: "Teaching and expiries",
-          sub: "Add to your calendar",
-          icon: "link",
-          href: "/roster/calendar",
-          band: false,
-        },
-        { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
+        // "Teaching and expiries" (On Call's calendar page) left Roster: it holds no shifts, and On Call's
+        // menu still opens it. "Join a team" left More too: Month, Team, Swaps and My shifts offer it
+        // wherever there is no team yet (audit, 11 Oct 2026).
         { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
         { id: "rost-help", label: "Help", sub: "How Roster works", icon: "help", action: "work-help" },
       ],
@@ -511,14 +526,6 @@ const openShifts: WorkArea = {
           icon: "grid",
           href: "/open-shifts/board",
           gate: "open-shifts-poster",
-          band: false,
-        },
-        {
-          id: "open-shifts-log",
-          label: "Log a shift",
-          sub: "Offered to you",
-          icon: "pen",
-          href: "/open-shifts/log",
           band: false,
         },
         { id: "open-shifts-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
@@ -655,13 +662,22 @@ const teaching: WorkArea = {
           icon: "folder",
           href: "/teaching/resources",
         },
+        // On Call's calendar page, moved here from Roster's More (audit, 11 Oct 2026): it holds teaching
+        // sessions and expiry dates, no shifts. The page keeps its own header.
+        {
+          id: "calendar",
+          label: "Add to calendar",
+          sub: "Teaching and expiries",
+          icon: "link",
+          href: "/roster/calendar",
+          band: false,
+        },
       ],
     },
     {
       label: "Your record",
       items: [
-        { id: "feedback", label: "Feedback", sub: "Rate a session", icon: "star", href: "/teaching/feedback" },
-        { id: "review", label: "Log to CPD", sub: "Weekly review", icon: "award", href: "/teaching/review" },
+        // Feedback and Log to CPD left More (audit, 11 Oct 2026): Today, Logbook and My Day already offer both.
         { id: "exam-prep", label: "Exam prep", sub: "Your plan", icon: "pen", href: "/teaching/exam-prep" },
         {
           id: "term-folder",

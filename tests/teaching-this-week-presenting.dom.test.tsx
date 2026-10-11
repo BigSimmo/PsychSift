@@ -151,6 +151,25 @@ describe("This week", () => {
     );
     expect(screen.queryByTestId("teaching-week-partial")).toBeNull();
   });
+
+  it("opens on the coming Monday-to-Sunday week on a Sunday in Perth", async () => {
+    // Sunday 11 October 2026, midday in Perth.
+    vi.setSystemTime(new Date("2026-10-11T04:00:00Z"));
+    const weeks: string[] = [];
+    serveFetch((url) => {
+      if (url.startsWith("/api/teaching?view=week")) {
+        weeks.push(url);
+        return json(200, week({ sessions: [], relocated: [] }));
+      }
+      return sideReads(url);
+    });
+    render(<TeachingThisWeek demoMode={false} />);
+    await screen.findByTestId("teaching-week-list");
+    expect(weeks[0]).toContain("from=2026-10-12");
+    expect(weeks[0]).toContain("to=2026-10-18");
+    // The coming week is the page's own week, so it offers no "This week" jump back.
+    expect(within(screen.getByTestId("teaching-week-nav")).queryByRole("button", { name: "This week" })).toBeNull();
+  });
 });
 
 describe("Presenting", () => {
@@ -194,6 +213,16 @@ describe("Presenting", () => {
     await waitFor(() => expect(posts).toEqual([{ action: "readiness.deid.confirm", occurrenceId: OCC }]));
     await waitFor(() => expect(panel).not.toHaveTextContent("patient check open"));
     expect(panel).toHaveTextContent(/No patient details in the slides\. You confirmed this on \d+\s\w{3}\./);
+  });
+
+  it("does not repeat Supervision, which has its own page", async () => {
+    serveFetch((url) =>
+      url === "/api/teaching/depth?view=teach" ? json(200, { upcoming: [talk], taught: [] }) : null,
+    );
+    render(<TeachingPresenting demoMode={false} />);
+    await screen.findByTestId("teaching-next-talk");
+    expect(screen.queryByTestId("teaching-supervision-summary")).toBeNull();
+    expect(screen.queryByText(/^Supervision/)).toBeNull();
   });
 
   it("opens a later talk in place, so its patient check can be done there too", async () => {

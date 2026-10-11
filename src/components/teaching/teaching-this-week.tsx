@@ -26,7 +26,7 @@ import {
   T5Time,
 } from "@/components/teaching/t5-kit";
 import { TeachingCalendarSheet } from "@/components/teaching/teaching-calendar-sheet";
-import { addDays, mondayOf, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
+import { addDays, mondayOf, openingMondayOf, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
 import { TeachingContextBar } from "@/components/teaching/teaching-modules";
 import { withUnit } from "@/components/teaching/teaching-number";
 import type { SessionSummaryRead } from "@/components/teaching/teaching-reads";
@@ -135,7 +135,8 @@ function ThisWeekScreen({ demoMode, week }: { demoMode: boolean; week: string | 
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const [chosenMonday, setChosenMonday] = useState<string | null>(() => (week ? mondayOf(week) : null));
-  const monday = chosenMonday ?? (today ? mondayOf(today) : null);
+  // On a Sunday the page opens on the coming week (`openingMondayOf`).
+  const monday = chosenMonday ?? (today ? openingMondayOf(today) : null);
   const range = useMemo(() => (monday ? { from: monday, to: addDays(monday, 6) } : null), [monday]);
   const view = useTeachingWeek(range, { demoMode }, now);
   const online = useOnline();
@@ -223,7 +224,7 @@ function ThisWeekBody({
   const ready = live && view.status === "ready";
   const relocated = useRelocatedTeaching(ready);
   const handbook = useHandbookTeaching(ready);
-  const thisMonday = mondayOf(today);
+  const thisMonday = openingMondayOf(today);
   const current = monday === thisMonday;
   // Links from My Day, On Call and work search end in #on-call-entry-…; the rows exist only once the
   // week has loaded, so the browser's own jump has already missed them.

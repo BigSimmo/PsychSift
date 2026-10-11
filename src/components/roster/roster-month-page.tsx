@@ -49,6 +49,7 @@ import {
   monthTotals,
   nextLeave,
   nextNights,
+  nextShifts,
   rosterDays,
   runWords,
   type MonthShift,
@@ -290,7 +291,15 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         cues.get(shift.id)?.warning,
     )
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
-  const nights = nextNights(monthShifts, now);
+  // Coming up: the next three shifts after the one the lead card already shows.
+  const leadShown = !shifts.teamLoading && leadDisplay ? leadDisplay.id : null;
+  const upcoming = nextShifts(monthShifts, now, 3, leadShown);
+  // A run of nights still gets its own row when it starts after the shifts listed.
+  const nightRun = nextNights(monthShifts, now);
+  const nights =
+    nightRun && !upcoming.some((item) => item.id === nightRun.first.id) && nightRun.first.id !== leadShown
+      ? nightRun
+      : null;
   const leave = nextLeave(monthShifts, now);
   const leaveShift = leave ? byId.get(leave.shift.id) : null;
 
@@ -434,11 +443,32 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
   function comingUp() {
     const edges = comingEntryEdges(calendar.entries, today);
-    if (!nights && !leave && !edges.length) return null;
+    if (!upcoming.length && !nights && !leave && !edges.length) return null;
     return (
       <>
         <WorkSectionLabel>Coming up</WorkSectionLabel>
         <WorkCard as="ul" testId="roster-month-coming">
+          {upcoming.map((item) => {
+            const date = perthDateOf(item.startsAt);
+            const shown = byId.get(item.id);
+            const place = shown ? (shown.workplace ?? shown.location) : null;
+            return (
+              <li key={item.id}>
+                <WorkDateRow
+                  month={monthShort(date)}
+                  day={Number(date.slice(8, 10))}
+                  title={SHIFT_KIND_LABEL[item.kind]}
+                  sub={[`${dayWords(date)} · ${clockSpan(item)}`, place].filter(Boolean).join(" · ")}
+                  end={<RosterShiftChip kind={item.kind} />}
+                  onClick={() => {
+                    setMonth(monthKeyOf(date));
+                    openDay(date);
+                  }}
+                  testId="roster-month-coming-shift"
+                />
+              </li>
+            );
+          })}
           {nights ? (
             <li>
               <WorkDateRow

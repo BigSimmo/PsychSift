@@ -1,16 +1,16 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Download, Plus, X } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { modeTapArea } from "@/components/mode-kit/recipes";
 import { modeNumberText } from "@/components/mode-kit/type";
 import { cn, textMuted } from "@/components/ui-primitives";
-import { T5Note } from "@/components/teaching/t5-kit";
+import { T5Button, T5Note } from "@/components/teaching/t5-kit";
 import { dayOfMonth, monthShort } from "@/lib/teaching/term-tracker";
 import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
-import { KeptWhere } from "@/components/work-sync/kept-where";
+import { KeptWhere, useKeptWithAccount } from "@/components/work-sync/kept-where";
 
 /*
  * Small shared pieces for Teaching's Term and Exam prep pages: a calendar date tile, a segmented ring
@@ -106,6 +106,76 @@ export function NoPatientDetailsMark({ section }: { readonly section: "teachingT
         device="Stays on this device and is not backed up."
       />{" "}
       You choose what to share.
+    </T5Note>
+  );
+}
+
+/**
+ * Saves a readable copy of what this page keeps on the device as a file. It is built in the browser
+ * from what is already on screen; nothing is sent anywhere. False when the browser refused the file.
+ */
+export function downloadDeviceCopy(fileName: string, data: unknown): boolean {
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  try {
+    const blob = new Blob([`${JSON.stringify(data, null, 2)}\n`], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The clear "saved on this phone only" notice at the top of Term and Exam prep, with a button to save a
+ * copy. It shows only while the device copy is the only one: once the section matches the copy kept
+ * with the doctor's account it is on every device they sign in on, and the notice steps aside. The
+ * made-up sample is never saved, so it gets no notice either.
+ */
+export function DeviceOnlyNotice({
+  section,
+  data,
+  fileName,
+  demoMode,
+}: {
+  readonly section: "teachingTermTracker" | "teachingExamPrep";
+  readonly data: unknown;
+  readonly fileName: string;
+  readonly demoMode: boolean;
+}) {
+  const kept = useKeptWithAccount(section);
+  const [failed, setFailed] = useState(false);
+  if (kept || demoMode) return null;
+  return (
+    <T5Note icon="alert" tone="warning" testId="teaching-device-only-notice">
+      <span className="grid min-w-0 gap-2">
+        <span>
+          <strong className="font-semibold">Saved on this phone only.</strong> This page is kept in this browser, so it
+          will not be on a new phone, and it is lost if the browser&rsquo;s data is cleared. Download a copy to keep it
+          safe.
+        </span>
+        <span>
+          <T5Button
+            variant="secondary"
+            icon={Download}
+            testId="teaching-device-only-download"
+            onClick={() => setFailed(!downloadDeviceCopy(fileName, data))}
+          >
+            Download a copy
+          </T5Button>
+        </span>
+        {failed ? (
+          <span role="alert" className="text-[color:var(--danger-text)]">
+            This browser would not save the file. Try again, or try another browser.
+          </span>
+        ) : null}
+      </span>
     </T5Note>
   );
 }

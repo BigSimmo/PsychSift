@@ -29,7 +29,12 @@ import {
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
-import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
+import {
+  DeviceOnlyNotice,
+  NoPatientDetailsMark,
+  TermAddItem,
+  TermRemoveButton,
+} from "@/components/teaching/teaching-term-kit";
 import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { milestoneRows, overdueNote, termPanel } from "@/components/teaching/term-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
@@ -741,6 +746,14 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-term">
       <T5Page>
         <h1 className="sr-only">This term</h1>
+        {today && state && !(demoMode && !sample) ? (
+          <DeviceOnlyNotice
+            section="teachingTermTracker"
+            data={state}
+            fileName={`term-goals-${today}.json`}
+            demoMode={demoMode}
+          />
+        ) : null}
         {body}
       </T5Page>
     </InformationPageShell>

@@ -4,6 +4,7 @@ import {
   monthTotals,
   nextLeave,
   nextNights,
+  nextShifts,
   payslipFigures,
   rosterDays,
   runWords,
@@ -90,6 +91,24 @@ describe("Coming up", () => {
     );
     expect(run?.count).toBe(2);
     expect(run?.dates).toEqual(["2026-10-16", "2026-10-17"]);
+  });
+
+  it("lists the next three working shifts in start order, skipping leave, past shifts and the lead", () => {
+    const list = nextShifts(
+      [
+        shift("n16", "2026-10-16", "night", "21:00", "08:30", "2026-10-17"),
+        shift("old", "2026-10-01", "day"),
+        shift("d8", "2026-10-08", "day"),
+        shift("al", "2026-10-09", "leave", "00:00", "00:00", "2026-10-10"),
+        shift("e12", "2026-10-12", "evening", "14:00", "22:30"),
+        shift("d7", "2026-10-07", "day"),
+        shift("d20", "2026-10-20", "day"),
+      ],
+      now,
+      3,
+      "d7",
+    );
+    expect(list.map((item) => item.id)).toEqual(["d8", "e12", "n16"]);
   });
 
   it("finds the next leave and its length in days", () => {

@@ -267,8 +267,11 @@ function TeamCalendarSection({ team, actorId, now }: { team: RosterTeam; actorId
   );
 }
 
-/** Phone numbers (in On Call), Join and (for managers) Manage, as the mock-up's last list. */
-function TeamLinks({ manager }: { manager: boolean }) {
+/**
+ * Phone numbers (in On Call), Join and (for managers) Manage, as the mock-up's last list.
+ * `join={false}` when the No team card above already carries the one Join a team button.
+ */
+function TeamLinks({ manager, join = true }: { manager: boolean; join?: boolean }) {
   return (
     <RosterList label="Teams">
       <RosterRow
@@ -279,12 +282,14 @@ function TeamLinks({ manager }: { manager: boolean }) {
         // (The service handbook needs a sign-in and is the editors' page.)
         href="/on-call/call"
       />
-      <RosterRow
-        lead={<RosterIconLead icon={Users} />}
-        title="Join a team"
-        sub="Paste an invite link or code"
-        href="/roster/join"
-      />
+      {join ? (
+        <RosterRow
+          lead={<RosterIconLead icon={Users} />}
+          title="Join a team"
+          sub="Paste an invite link or code"
+          href="/roster/join"
+        />
+      ) : null}
       {manager ? (
         <RosterRow
           lead={<RosterIconLead icon={Lock} />}
@@ -345,7 +350,7 @@ export function RosterTeamPage({ now: suppliedNow }: { readonly now?: Date } = {
                 }
               />
             </WorkCard>
-            <TeamLinks manager={false} />
+            <TeamLinks manager={false} join={listed.length > 0} />
           </>
         ) : (
           <>
