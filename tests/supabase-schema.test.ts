@@ -367,10 +367,10 @@ describe("site-content Task 4 health schema", () => {
     );
     expect(migrationHealth?.[0]).toContain("language sql stable security definer set search_path = ''");
     expect(migrationHealth?.[0]).toContain(
-      "s.valid and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,",
+      "s.valid and r.id is not null and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,",
     );
     expect(migrationHealth?.[0]).toContain(
-      "s.valid and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,",
+      "s.valid and r.id is not null and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,",
     );
     expect(migrationHealth?.[0]).not.toContain("public.site_content_release_digest(r.id)");
     expect(migrationHealth?.[0]).not.toContain("public.site_content_dynamic_state_digest(r.id)");

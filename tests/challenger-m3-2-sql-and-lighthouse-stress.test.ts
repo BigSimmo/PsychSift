@@ -337,7 +337,7 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       ]);
     });
 
-    it("isValidationGuardSql allows CREATE INDEX inside comments, strings, and dollar quotes but forbids real DDL", () => {
+    it("isValidationGuardSql allows CREATE INDEX inside comments and strings but forbids real and dollar-quoted DDL", () => {
       // Base valid validation guard structure
       const validGuardBase =
         "SET LOCAL statement_timeout = '5s';\n" +
@@ -362,9 +362,10 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       const stringIndex = validGuardBase + "\nPERFORM format('CREATE INDEX %I ON %I', 'idx_t', 't');";
       expect(isValidationGuardSql(stringIndex)).toBe(true);
 
-      // 5. CREATE INDEX inside dollar quote is ignored (remains valid)
+      // 5. CREATE INDEX inside a dollar quote still counts: dollar-quoted bodies (DO blocks,
+      // EXECUTE) run as code, so the guard fails closed rather than trusting them.
       const dollarIndex = validGuardBase + "\nPERFORM $dyn$CREATE INDEX idx_t ON t(id);$dyn$;";
-      expect(isValidationGuardSql(dollarIndex)).toBe(true);
+      expect(isValidationGuardSql(dollarIndex)).toBe(false);
     });
   });
 
