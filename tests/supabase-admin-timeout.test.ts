@@ -10,7 +10,7 @@ import {
 vi.mock("@/lib/env", () => ({
   requireServerEnv: () => ({
     NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:9999",
-    SUPABASE_SERVICE_ROLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.t-IDcSemACt8x4iTMCda8Yhe3iZaWbvV5XKSTbuAn0M",
+    SUPABASE_SERVICE_ROLE_KEY: "unit-test-service-role-key",
   }),
 }));
 
