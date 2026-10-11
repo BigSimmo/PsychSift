@@ -158,11 +158,13 @@ import type { ClinicalDocument, ClinicalQueryMode } from "@/lib/types";
 import { type SearchScopeFilters } from "@/lib/search-scope";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 
-// The bell and AI Search only render on staff work pages. A separate chunk keeps their code,
-// the notification feed helpers and their CSS off every clinical page's main thread.
-const loadHeaderControls = () => import("@/components/needs-you/staff-work-header-controls");
-const StaffWorkHeaderControls = dynamic(() => loadHeaderControls().then((m) => m.StaffWorkHeaderControls));
-const ClinicalHeaderBell = dynamic(() => loadHeaderControls().then((m) => m.ClinicalHeaderBell));
+// Lazy chunks; the clinical bell loads the bell alone, never AI Search.
+const StaffWorkHeaderControls = dynamic(() =>
+  import("@/components/needs-you/staff-work-header-controls").then((m) => m.StaffWorkHeaderControls),
+);
+const ClinicalHeaderBell = dynamic(() =>
+  import("@/components/needs-you/needs-you-button").then((m) => m.NeedsYouButton),
+);
 
 // Shared between the composer input's aria-describedby and the rendered
 // PrivacyInputNotice id/testId so the wiring cannot drift apart.
@@ -2855,7 +2857,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               a chat-less mode that own their control somewhere else — On Call's
               section pages moved the page menu into their own in-page header, and
               the button reappeared in a mode that has never had a chat. */}
-          {appModeHasWorkSearch(selectedAppMode.id) ? null : <ClinicalHeaderBell modeId={selectedAppMode.id} />}
+          {appModeHasWorkSearch(selectedAppMode.id) ? null : (
+            <ClinicalHeaderBell modeId={selectedAppMode.id} clinical />
+          )}
           {modeHasConversation ? (
             <button
               type="button"
