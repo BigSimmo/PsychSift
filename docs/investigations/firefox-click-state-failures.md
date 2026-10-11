@@ -4,7 +4,8 @@
 **Issue Reference**: #33346A (ULID: `01M2ZTPSXQ33346AYMPF41R5AR`)  
 **Components**: `src/components/ui/sheet.tsx`, `src/components/document-viewer/source-panels.tsx`  
 **Test Suites**: `tests/ui-smoke.spec.ts`, `tests/ui-tools.spec.ts`  
-**Engine**: Mozilla Gecko (`Desktop Firefox` in Playwright)
+**Engine**: Mozilla Gecko (`Desktop Firefox` in Playwright)  
+**Status**: Unproven hypotheses. The retained Firefox trace has not been read (trace download is blocked from cloud sandboxes, see `#PM71Z1`), and the simulation below calls the handler directly rather than showing Gecko emitting the event sequence. Confirm against the trace or a real Gecko run before proposing a fix; `#33346A` stays open until then.
 
 ---
 
@@ -15,7 +16,7 @@ During CI execution on Firefox runners, two specific tests exhibited intermitten
 1. `tests/ui-tools.spec.ts:667` ("tool links point to the expected in-app modes"): On pass 4 of 6 (Forms), the detail sheet (`[data-testid="tools-search-detail-sheet"]:visible`) resolved to 0 elements after clicking `About Forms`.
 2. `tests/ui-smoke.spec.ts:5478` ("search regressions avoid fetch errors and open viewer hits @critical"): Clicking `Next document search hit` left the UI on "Hit 1 of 2", failing the assertion for "Hit 2 of 2".
 
-Both issues were previously triaged under issue #33346A. Earlier investigations ruled out CSS display anomalies, text splitting, or URL routing errors. This investigation establishes the exact engine-level root cause in Mozilla Gecko's event processing pipeline.
+Both issues were previously triaged under issue #33346A. Earlier investigations ruled out CSS display anomalies, text splitting, or URL routing errors. This document sets out candidate engine-level mechanisms in Mozilla Gecko's event processing pipeline. They are hypotheses, not an established root cause.
 
 ---
 
@@ -46,7 +47,7 @@ In HTML5, `<details name="...">` enforces mutual exclusivity natively. When deta
 
 ---
 
-## 3. Detailed Root Cause Analysis
+## 3. Candidate Mechanisms (Unproven)
 
 ### 3.1 Sheet Focus Restoration Race (`src/components/ui/sheet.tsx`)
 
