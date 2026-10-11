@@ -148,9 +148,11 @@ describe("year check page", () => {
   it("reads as End of year in three numbered steps, listing the activity that still needs evidence", () => {
     render(<CmeYearCheckPage set={SET} entries={ENTRIES} />);
     const steps = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    expect(steps).toEqual(
-      expect.arrayContaining(["Step 1: What is missing", "Step 2: Evidence to tidy", "Step 3: Hand it in"]),
-    );
+    expect(steps.filter((text) => text?.startsWith("Step "))).toEqual([
+      "Step 1: What is missing",
+      "Step 2: Evidence to tidy",
+      "Step 3: Hand it in",
+    ]);
     const step2 = screen.getByTestId("cme-year-end-evidence");
     expect(step2).toHaveTextContent("1 activity has no certificate");
     const attach = within(step2)

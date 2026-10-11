@@ -205,7 +205,7 @@ export function CpdEvidencePage({
           </WorkChips>
         ) : null}
 
-        {view.total === 0 && !filtered ? (
+        {view.total === 0 ? (
           <WorkEmpty
             icon={FileText}
             title={`No activities logged in ${year}`}
