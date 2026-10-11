@@ -421,26 +421,50 @@ export function PwaLifecycle() {
 
     // The registration and update machinery only matters once the page is idle,
     // so it loads on demand instead of shipping in every route's initial bundle.
+    // The initial controller and any activation during the load are captured
+    // here so the lazy lifecycle cannot miss an update notice.
+    hasSeenControllerRef.current = Boolean(navigator.serviceWorker.controller);
     let disposed = false;
+    let missedControllerChange = false;
     let stop: (() => void) | undefined;
-    void loadPwaServiceWorker().then((serviceWorker) => {
-      if (disposed) return;
-      stop = serviceWorker.startServiceWorkerLifecycle({
-        dismissedUpdateTokenRef,
-        dismissedUpdateWorkerRef,
-        hasSeenControllerRef,
-        lastUpdateCheckRef,
-        refreshRequestedRef,
-        registrationRef,
-        reloadingRef,
-        setActivatedUpdateReady,
-        setWaitingWorker,
-        updateTokenRef,
-        updateWorkerRef,
-      });
-    });
+    const noteControllerChange = () => {
+      missedControllerChange = true;
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", noteControllerChange);
+    const start = () => {
+      if (disposed || stop) return;
+      window.removeEventListener("online", start);
+      loadPwaServiceWorker().then(
+        (serviceWorker) => {
+          if (disposed || stop) return;
+          navigator.serviceWorker.removeEventListener("controllerchange", noteControllerChange);
+          stop = serviceWorker.startServiceWorkerLifecycle({
+            dismissedUpdateTokenRef,
+            dismissedUpdateWorkerRef,
+            hasSeenControllerRef,
+            lastUpdateCheckRef,
+            missedControllerChange,
+            refreshRequestedRef,
+            registrationRef,
+            reloadingRef,
+            setActivatedUpdateReady,
+            setWaitingWorker,
+            updateTokenRef,
+            updateWorkerRef,
+          });
+        },
+        // A chunk that failed to load (for example offline) is retried once
+        // connectivity returns, so update checks are not lost for the page view.
+        () => {
+          if (!disposed) window.addEventListener("online", start);
+        },
+      );
+    };
+    start();
     return () => {
       disposed = true;
+      window.removeEventListener("online", start);
+      navigator.serviceWorker.removeEventListener("controllerchange", noteControllerChange);
       stop?.();
     };
   }, []);

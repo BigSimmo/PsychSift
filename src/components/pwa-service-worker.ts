@@ -107,6 +107,8 @@ export type ServiceWorkerLifecycleContext = {
   setWaitingWorker: Dispatch<SetStateAction<ServiceWorker | null>>;
   updateTokenRef: RefObject<string | null>;
   updateWorkerRef: RefObject<ServiceWorker | null>;
+  /** A controller change observed while this module was still loading. */
+  missedControllerChange: boolean;
 };
 
 /** Register the worker and surface updates; returns the effect cleanup. */
@@ -122,12 +124,12 @@ export function startServiceWorkerLifecycle({
   setWaitingWorker,
   updateTokenRef,
   updateWorkerRef,
+  missedControllerChange,
 }: ServiceWorkerLifecycleContext): () => void {
   let cancelled = false;
   let updateRequest = 0;
   let cancelScheduledRegistration: () => void = () => {};
   const registrationCleanups = new Set<() => void>();
-  hasSeenControllerRef.current = Boolean(navigator.serviceWorker.controller);
 
   let broadcastChannel: BroadcastChannel | null = null;
   let pendingActivatedUpdate = false;
@@ -160,6 +162,9 @@ export function startServiceWorkerLifecycle({
     }
     const token = await workerUpdateToken(worker);
     if (cancelled || request !== updateRequest) return;
+    // A waiting worker can activate or be superseded during the version lookup;
+    // never aim Reload at a worker that is no longer the installed, waiting one.
+    if (!activated && worker?.state !== "installed") return;
     updateTokenRef.current = token;
     updateWorkerRef.current = worker;
     const dismissed = isDismissed(worker, token);
@@ -173,7 +178,9 @@ export function startServiceWorkerLifecycle({
     // worker the user already dismissed must not hide the activated release.
     const waiting = registrationRef.current?.waiting;
     if (cancelled || !waiting || waiting === controller) return;
-    if (!isDismissed(waiting, await workerUpdateToken(waiting))) await exposeUpdate(waiting, false);
+    const token = await workerUpdateToken(waiting);
+    if (cancelled || registrationRef.current?.waiting !== waiting) return;
+    if (!isDismissed(waiting, token)) await exposeUpdate(waiting, false);
   };
 
   const watchInstallingWorker = (registration: ServiceWorkerRegistration) => {
@@ -260,6 +267,9 @@ export function startServiceWorkerLifecycle({
   else window.addEventListener("load", handleLoad, { once: true });
 
   navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+  // Replay an activation (including one from another tab's skipWaiting) that
+  // happened before these listeners existed.
+  if (missedControllerChange) handleControllerChange();
   document.addEventListener("visibilitychange", checkForUpdates);
   window.addEventListener("online", checkForUpdates);
   window.addEventListener("focus", checkForUpdates);

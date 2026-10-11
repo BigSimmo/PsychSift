@@ -352,6 +352,42 @@ describe("PwaLifecycle", () => {
       expect(screen.queryByRole("region", { name: "Update available" })).not.toBeInTheDocument();
     });
 
+    it("replays an activation that happens while the lifecycle module is still loading", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const { container } = installServiceWorkerStub(null, true);
+      render(<PwaLifecycle />);
+      Object.defineProperty(container, "controller", {
+        configurable: true,
+        value: createWorker("2026-10-11-v1-build-cccccccccccc"),
+      });
+      container.dispatchEvent(new Event("controllerchange"));
+      expect(await screen.findByRole("region", { name: "Update available" })).toBeInTheDocument();
+    });
+
+    it("does not offer Reload for a waiting worker that activated during its version lookup", async () => {
+      window.history.replaceState({}, "", "/?pwa-dev=1");
+      const { registration, container } = installServiceWorkerStub(null, true);
+      render(<PwaLifecycle />);
+      await waitFor(() => expect(container.register).toHaveBeenCalled());
+      const worker = createWorker("release-d");
+      worker.postMessage.mockImplementation(() => {});
+      Object.defineProperties(registration, {
+        waiting: { configurable: true, value: worker },
+        installing: { configurable: true, value: worker },
+      });
+      act(() => {
+        registration.dispatchEvent(new Event("updatefound"));
+        worker.dispatchEvent(new Event("statechange"));
+      });
+      await waitFor(() => expect(worker.postMessage).toHaveBeenCalled());
+      const port = worker.postMessage.mock.calls[0][1][0] as MessagePort;
+      const closed = vi.spyOn(port, "close");
+      Object.defineProperty(worker, "state", { configurable: true, value: "activated" });
+      port.postMessage({ type: "PWA_VERSION", version: "release-d" });
+      await waitFor(() => expect(closed).toHaveBeenCalled());
+      expect(screen.queryByRole("button", { name: /reload/i })).not.toBeInTheDocument();
+    });
+
     it("offers an update activated by another tab even after an earlier release was dismissed", async () => {
       window.history.replaceState({}, "", "/?pwa-dev=1");
       const first = createWorker("2026-10-11-v1-build-aaaaaaaaaaaa");
