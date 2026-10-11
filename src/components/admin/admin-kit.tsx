@@ -32,7 +32,13 @@ export function AdminPage({
 }) {
   return (
     <main data-testid={testId} className={styles.page}>
-      <div className={cn("work-body", wide && styles.wide)}>{children}</div>
+      <div
+        className={cn("work-body", wide && styles.wide)}
+        data-page-width={wide ? "wide" : undefined}
+        data-page-padded={wide ? "" : undefined}
+      >
+        {children}
+      </div>
     </main>
   );
 }

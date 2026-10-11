@@ -523,7 +523,9 @@ describe("MyDayPage", () => {
     render(<MyDayPage now={NOW} />);
     const empty = screen.getByTestId("my-day-empty");
     expect(empty.textContent).toContain("Nothing needs you right now");
-    expect(empty.textContent).toMatch(/Checked .* at \d{2}:\d{2}\./);
+    // When it checked is said once, in the stamp under the card (usefulness audit, 11 Oct 2026).
+    expect(empty.textContent).not.toContain("Checked");
+    expect(screen.getByTestId("my-day-stamp").textContent).toMatch(/Checked \d{2}:\d{2}/);
   });
 
   it("names only the modes that were checked, and never says nothing needs you while one failed", () => {
@@ -536,9 +538,11 @@ describe("MyDayPage", () => {
     const empty = screen.getByTestId("my-day-empty");
     expect(empty.textContent).toContain("Nothing found in the sources that loaded");
     expect(empty.textContent).not.toContain("Nothing needs you right now");
-    expect(empty.textContent).toContain("On Call");
-    expect(empty.textContent).toContain("Teaching");
-    expect(empty.textContent).not.toContain("Roster");
+    // The stamp under the card names what was checked; the card does not repeat it.
+    const stamp = screen.getByTestId("my-day-stamp").textContent ?? "";
+    expect(stamp).toContain("On Call");
+    expect(stamp).toContain("Teaching");
+    expect(stamp).not.toContain("Roster,");
     // Design review item 10: the "Read-only…" footer line is gone; with nothing
     // unavailable and no demo data there is no small print at all.
     expect(screen.queryByTestId("my-day-footer")).toBeNull();

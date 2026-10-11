@@ -1011,7 +1011,7 @@
     "area": "cpd",
     "areaName": "CPD",
     "name": "Job applications",
-    "url": "/cme/applications",
+    "url": "/admin/applications",
     "w": 390,
     "png": 1
   },
@@ -1020,7 +1020,7 @@
     "area": "cpd",
     "areaName": "CPD",
     "name": "Job applications",
-    "url": "/cme/applications",
+    "url": "/admin/applications",
     "w": 1280,
     "vh": 800,
     "png": 1
@@ -1030,7 +1030,7 @@
     "area": "cpd",
     "areaName": "CPD",
     "name": "CV",
-    "url": "/cme/applications/cv",
+    "url": "/admin/applications/cv",
     "w": 390,
     "png": 1
   },
@@ -1039,7 +1039,7 @@
     "area": "cpd",
     "areaName": "CPD",
     "name": "CV",
-    "url": "/cme/applications/cv",
+    "url": "/admin/applications/cv",
     "w": 1280,
     "vh": 800,
     "png": 1

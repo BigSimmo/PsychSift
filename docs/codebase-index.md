@@ -232,7 +232,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | PWA and SEO (`/manifest.webmanifest`, `/robots.txt`, `/sitemap.xml`, OG image, icons)                                                                                                                   | `src/app/manifest.ts`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `apple-icon.tsx`, `icons/[variant]/route.tsx`          |
 
 Added 7 October 2026 and described in their mode sections below: `/on-call/first-week`, `/on-call/whos-on/roster`,
-`/cme/cpd-home`, `/cme/applications`, `/cme/applications/cv`, `/admin/contract`, `/admin/leave`,
+`/cme/cpd-home`, `/admin/applications`, `/admin/applications/cv` (first at `/cme/applications`, moved to Admin 11 Oct and redirected), `/admin/contract`, `/admin/leave`,
 `/admin/new-job/starter`, `/admin/new-job/ready`, `/roster/sick`, `/roster/staffing`, `/my-day/profile/agreement`
 and `/teaching/term/folder`.
 
@@ -786,14 +786,15 @@ age-and-sex readings; it leans towards a false alarm).
   like one are left out of every file and copy. The device keeps the files made (when, row count,
   activity ids) and which were marked added, under `psychsift:cpd:cpd-home-v1`
   (`CPD_HOME_SEND_STORAGE_KEY`). Linked from Summary (`CpdHomeEntryLink` in `cme-annual-summary.tsx`).
-- `/cme/applications` (`src/components/cme/applications/applications-page.tsx`, season rail and
+- `/admin/applications` (moved from `/cme/applications` on 11 Oct 2026, which now redirects; the page lives in Admin's
+  More under Work and leave; `src/components/cme/applications/applications-page.tsx`, season rail and
   referees, over `src/lib/cme/applications.ts`) is the doctor's plan for one recruitment season. **No
   recruitment date is built in**: every date is one the doctor typed from the advert, and a stage
   without one says "Date not added". Referees keep a colleague's name, role, status and a short dated
   history. The server page reads only the sign-in state. Kept under `psychsift:cpd:applications-v1`
   (`CPD_APPLICATIONS_STORAGE_KEY`). Linked from Summary (`ApplicationsEntryLink`) and the CPD home's
   Today card (`ApplicationsTodayCard` in `cme-dashboard.tsx`).
-- `/cme/applications/cv` (`applications-cv-page.tsx` over `src/lib/cme/applications-cv.ts`) builds a
+- `/admin/applications/cv` (old `/cme/applications/cv` redirects; `applications-cv-page.tsx` over `src/lib/cme/applications-cv.ts`) builds a
   CV only from records PsychSift already holds: the registration renewal date from Admin, terms from
   Teaching's term tracker, teaching given and attended and registrars supervised (the Teaching
   `teach`, logbook and `supervision` reads), CPD hours and outcome work (all years, loaded on the

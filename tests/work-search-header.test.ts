@@ -53,6 +53,7 @@ describe("AI Search header icon", () => {
     const header = readFileSync("src/components/clinical-dashboard/master-search-header.tsx", "utf8");
     expect(header.match(/@\/components\/(?:work-search|needs-you)\/[\w-]+/g)).toEqual([
       "@/components/needs-you/staff-work-header-controls",
+      "@/components/needs-you/needs-you-button",
     ]);
 
     const controls = readFileSync("src/components/needs-you/staff-work-header-controls.tsx", "utf8");

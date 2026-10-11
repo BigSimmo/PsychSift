@@ -321,6 +321,14 @@ test.describe("previously uncovered production routes", () => {
         // [data-therapy-root]), so read the canvas colour from the workspace root
         // still in the page, and prove the bar is anchored under the collapsing top bar.
         const nav = currentPage.getByRole("navigation", { name: "Therapy pages" });
+        await expect
+          .poll(
+            () => nav.evaluate((element) => Boolean(element.closest('[data-testid="universal-header-collapse"]'))),
+            {
+              message: "Therapy navigation must settle into the shared header after hydration",
+            },
+          )
+          .toBe(true);
         const layout = await nav.evaluate((element) => {
           const bar = element.querySelector<HTMLElement>(".mode-nav__bar");
           const root = document.querySelector("[data-therapy-root]");

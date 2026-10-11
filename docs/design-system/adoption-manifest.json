@@ -3282,6 +3282,8 @@
       "documentedDisposition": null,
       "routes": [
         "src/app/(display)/teaching/display/[token]/page.tsx",
+        "src/app/(search-app)/admin/applications/cv/page.tsx",
+        "src/app/(search-app)/admin/applications/page.tsx",
         "src/app/(search-app)/admin/bookings/page.tsx",
         "src/app/(search-app)/admin/compliance/export/page.tsx",
         "src/app/(search-app)/admin/compliance/page.tsx",
@@ -3500,6 +3502,26 @@
       "roots": [
         {
           "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/admin/applications/cv/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["CmePage"]
+        },
+        {
+          "file": "src/app/(search-app)/admin/applications/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -3766,7 +3788,7 @@
           "literalCkbV2": false,
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
-          "sanctionedPatternsPresent": ["CmePage"]
+          "sanctionedPatternsPresent": []
         },
         {
           "file": "src/app/(search-app)/cme/applications/page.tsx",
@@ -6336,6 +6358,8 @@
   "routeCoverage": {
     "discovered": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/applications/cv/page.tsx",
+      "src/app/(search-app)/admin/applications/page.tsx",
       "src/app/(search-app)/admin/bookings/page.tsx",
       "src/app/(search-app)/admin/compliance/export/page.tsx",
       "src/app/(search-app)/admin/compliance/page.tsx",
@@ -6559,6 +6583,8 @@
     ],
     "declared": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
+      "src/app/(search-app)/admin/applications/cv/page.tsx",
+      "src/app/(search-app)/admin/applications/page.tsx",
       "src/app/(search-app)/admin/bookings/page.tsx",
       "src/app/(search-app)/admin/compliance/export/page.tsx",
       "src/app/(search-app)/admin/compliance/page.tsx",
@@ -6786,7 +6812,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 228,
+    "inheritedCkbV2RootCount": 230,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6795,8 +6821,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 229,
-    "productionRouteCount": 221,
-    "nextUiEntryCount": 329
+    "rootCount": 231,
+    "productionRouteCount": 223,
+    "nextUiEntryCount": 331
   }
 }

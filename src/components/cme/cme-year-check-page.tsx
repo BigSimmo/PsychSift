@@ -1,4 +1,4 @@
-import { Award, BookOpen, CalendarDays, FileText, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Award, BookOpen, CalendarDays, Clock, FileText, Send, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -28,6 +28,10 @@ import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import { buildCmeYearCheck, type CmeYearCheckRow } from "@/lib/cme/year-check";
 import { canCloseCmeYear, CME_CLOSE_WINDOW_DAYS } from "@/lib/cme/year-close";
 import { CmeExampleCsvButton } from "@/components/cme/cme-example-csv-button";
+import { evidenceRowLine, evidenceView } from "@/lib/work-screens/cpd/evidence";
+
+/** Activities still needing a certificate shown in step 2 before "All". */
+const EVIDENCE_PREVIEW = 5;
 
 /**
  * Where the CPD rule summaries come from: the same captured, fingerprinted Medical Board registration
@@ -166,7 +170,54 @@ const RULE_LANES: readonly { id: CpdRuleLane | "intern"; title: string; subtitle
 ];
 
 /**
- * REPORT — the year as an audit would read it, then what the owner hands over.
+ * One numbered step of End of year. The number is real order: check what is missing, tidy the evidence,
+ * then hand the year in.
+ */
+function YearEndStep({
+  step,
+  title,
+  sub,
+  testId,
+  children,
+}: {
+  readonly step: number;
+  readonly title: string;
+  readonly sub: string;
+  readonly testId: string;
+  readonly children: ReactNode;
+}) {
+  const headingId = `cme-year-end-step-${step}`;
+  return (
+    <section
+      aria-labelledby={headingId}
+      data-testid={testId}
+      className="grid min-w-0 gap-3 scroll-mt-24"
+      id={`step-${step}`}
+    >
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span
+          aria-hidden="true"
+          className="nums mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity)] text-xs font-normal text-[color:var(--mode-identity-contrast)]"
+        >
+          {step}
+        </span>
+        <div className="grid min-w-0">
+          <h2 id={headingId} className="m-0 text-base font-semibold leading-6 text-[color:var(--text-heading)]">
+            <span className="sr-only">Step {step}: </span>
+            {title}
+          </h2>
+          <p className="m-0 text-sm-minus leading-5 text-[color:var(--text-muted)]">{sub}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * END OF YEAR (`/cme/check`, formerly Report) — one page with three steps that replaces the year's
+ * hand-in pages in the menu (11 Oct 2026 audit, mockup approved by the owner): what is missing, evidence
+ * to tidy, then hand it in. Evidence, Export and AMA CPD Home stay as the detail pages each step opens.
  *
  * A thin part-per-check line under the count; the targets the owner confirmed
  * and the record-keeping checks, each open row with a quiet text action at its
@@ -214,6 +265,23 @@ export function CmeYearCheckPage({
   const lane = rule.lane;
   const confirmedShort = formatCalendarDateShort(set.confirmedOn);
 
+  const evidence = evidenceView(entries, set.year, { category: "all", status: "all", order: "newest" });
+  const evidenceUnchecked = evidence.total > 0 && evidence.unknown === evidence.total;
+  const evidenceRow = records.find((row) => row.id === "evidence");
+  const copiedRow = records.find((row) => row.id === "copied");
+  const otherRecords = records.filter((row) => row.id !== "evidence" && row.id !== "copied");
+  const evidenceSub = !evidence.total
+    ? "Nothing logged yet"
+    : evidenceUnchecked
+      ? "Evidence not checked yet"
+      : evidence.missing
+        ? `${activities(evidence.missing)} ${evidence.missing === 1 ? "has" : "have"} no certificate${
+            evidence.unknown ? ` · Evidence not checked for ${activities(evidence.unknown)}` : ""
+          }`
+        : evidence.unknown
+          ? `Evidence not checked for ${activities(evidence.unknown)}`
+          : "Every activity has evidence";
+
   const openTargets = targets.filter((row) => !row.ready).length;
   const openRecords = records.filter((row) => !row.ready).length;
   const weeksLeft = Math.max(0, Math.ceil(daysRemainingInCpdYear(now, set.year) / 7));
@@ -231,7 +299,7 @@ export function CmeYearCheckPage({
 
   return (
     <main data-testid="cme-year-check" data-mode-identity="cme" className="w-full">
-      <CmeBandHeading eyebrow={`Year check · ${weeksLabel}`} title="Report" />
+      <CmeBandHeading eyebrow={`${set.year} · ${weeksLabel}`} title="End of year" />
       <WorkBody>
         <section aria-labelledby="cme-check-heading" className="work-hero">
           <h1 id="cme-check-heading" className="work-hero__eyebrow m-0">
@@ -250,99 +318,197 @@ export function CmeYearCheckPage({
           </div>
         </section>
 
-        <div className="grid gap-5">
-          <div className="grid gap-3.5">
-            <CmeGroup
-              testId="cme-check-targets"
-              label={`Targets you confirmed · ${confirmedSetName(set)}, ${confirmedShort}`}
-            >
-              <CmeFlatList>
-                {targets.map((row) => (
-                  <CheckRow key={row.id} row={row} set={set} />
-                ))}
-              </CmeFlatList>
-            </CmeGroup>
+        <div className="grid gap-6">
+          <YearEndStep
+            step={1}
+            title="What is missing"
+            sub="Your targets and record checks, open ones first"
+            testId="cme-year-end-missing"
+          >
+            <div className="grid gap-3.5">
+              <CmeGroup
+                testId="cme-check-targets"
+                label={`Targets you confirmed · ${confirmedSetName(set)}, ${confirmedShort}`}
+              >
+                <CmeFlatList>
+                  {targets.map((row) => (
+                    <CheckRow key={row.id} row={row} set={set} />
+                  ))}
+                </CmeFlatList>
+              </CmeGroup>
 
-            <CmeGroup testId="cme-check-records" label="Your own record-keeping checks">
-              <CmeFlatList>
-                {records.map((row) => (
-                  <CheckRow key={row.id} row={row} set={set} />
-                ))}
-              </CmeFlatList>
-              <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-note">
-                Short of something? A note can explain it, but it does not reduce the requirement.{" "}
-                {closable && !closed ? (
-                  <CmeTextLink href={closeHref} className="min-h-0">
-                    Add a note
-                  </CmeTextLink>
-                ) : closed ? (
-                  "Notes go on the closed year's record."
-                ) : (
-                  `You can add one when you close the year, from ${formatCmeRowDate(closableFrom, today)}.`
-                )}
-              </p>
-            </CmeGroup>
-          </div>
+              <CmeGroup testId="cme-check-records" label="Your own record-keeping checks">
+                <CmeFlatList>
+                  {otherRecords.map((row) => (
+                    <CheckRow key={row.id} row={row} set={set} />
+                  ))}
+                </CmeFlatList>
+                <p className="text-xs text-[color:var(--text-muted)]" data-testid="cme-check-note">
+                  Short of something? A note can explain it, but it does not reduce the requirement.{" "}
+                  {closable && !closed ? (
+                    <CmeTextLink href={closeHref} className="min-h-0">
+                      Add a note
+                    </CmeTextLink>
+                  ) : closed ? (
+                    "Notes go on the closed year's record."
+                  ) : (
+                    `You can add one when you close the year, from ${formatCmeRowDate(closableFrom, today)}.`
+                  )}
+                </p>
+              </CmeGroup>
 
-          {domainRequirements.map((requirement) => (
-            <CmeDomainsRing
-              key={requirement.id}
-              requirement={requirement}
-              entries={entries}
-              year={set.year}
-              source={
-                requirement.id === "domains" && readCpdHome(set.confirmedSource).kind === "ranzcp" ? (
-                  <SourceLink href={RANZCP_CPD_URL}>RANZCP</SourceLink>
-                ) : undefined
-              }
-            />
-          ))}
+              {domainRequirements.map((requirement) => (
+                <CmeDomainsRing
+                  key={requirement.id}
+                  requirement={requirement}
+                  entries={entries}
+                  year={set.year}
+                  source={
+                    requirement.id === "domains" && readCpdHome(set.confirmedSource).kind === "ranzcp" ? (
+                      <SourceLink href={RANZCP_CPD_URL}>RANZCP</SourceLink>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+          </YearEndStep>
 
-          <CmeGroup testId="cme-check-summary" label="Annual summary">
+          <YearEndStep step={2} title="Evidence to tidy" sub={evidenceSub} testId="cme-year-end-evidence">
             <CmeFlatList>
-              <CmeFlatRow
-                lead={<FileText {...leadIcon} />}
-                title={`${activities(yearEntries.length)} · ${yearHours} h${
-                  goalCount === null ? "" : ` · ${goalCount} ${goalCount === 1 ? "goal" : "goals"}`
-                }`}
-                subtitle="A personal record, not proof you meet the standard. Your CPD home reports that."
-              />
+              {evidenceRow ? <CheckRow row={evidenceRow} set={set} /> : null}
+              {evidence.needs.slice(0, EVIDENCE_PREVIEW).map((row) => (
+                <CmeFlatRow
+                  key={row.id}
+                  testId={`cme-year-end-evidence-${row.id}`}
+                  lead={<CmeRowMark state="open" />}
+                  title={row.title}
+                  subtitle={`${formatCmeRowDate(row.date, today)} · ${evidenceRowLine(row)}`}
+                  end={
+                    <Link href={row.href} className="work-button min-h-tap shrink-0" data-variant="tinted">
+                      Attach
+                      <span className="sr-only">: {row.title}</span>
+                    </Link>
+                  }
+                />
+              ))}
             </CmeFlatList>
-            <div className="flex flex-wrap gap-x-5 pl-7">
-              <CmeTextLink href={summaryHref} testId="cme-check-save-pdf">
-                Save as PDF
-              </CmeTextLink>
-              {demoMode ? (
-                // The export route reads the account, so on an example page it would hand over REAL records.
-                <CmeExampleCsvButton
-                  testId="cme-check-csv"
-                  className={cn(
-                    focusRing,
-                    "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
-                  )}
-                >
-                  Download CSV
-                </CmeExampleCsvButton>
-              ) : (
-                <a
-                  href={`/api/cme/export?year=${set.year}`}
-                  download
-                  data-testid="cme-check-csv"
-                  className={cn(
-                    focusRing,
-                    "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
-                  )}
-                >
-                  Download CSV
-                </a>
-              )}
+            <p className="flex flex-wrap items-center gap-x-4 text-xs text-[color:var(--text-muted)]">
+              <span>Check every file is free of patient details first.</span>
               <NewWorkModeOnly>
-                <CmeTextLink href={`/cme/export?year=${set.year}`} testId="cme-check-export">
-                  All export options
+                <CmeTextLink
+                  href={`/cme/evidence?year=${set.year}`}
+                  testId="cme-year-end-evidence-all"
+                  className="min-h-0"
+                >
+                  {evidence.needs.length > EVIDENCE_PREVIEW
+                    ? `All ${evidence.needs.length}`
+                    : "Every activity's evidence"}
                 </CmeTextLink>
               </NewWorkModeOnly>
-            </div>
-          </CmeGroup>
+            </p>
+          </YearEndStep>
+
+          <YearEndStep
+            step={3}
+            title="Hand it in"
+            sub="Save your year, copy it to your CPD home, then close it"
+            testId="cme-year-end-hand-in"
+          >
+            <CmeGroup testId="cme-check-summary" label="Annual summary">
+              <CmeFlatList>
+                <CmeFlatRow
+                  lead={<FileText {...leadIcon} />}
+                  title={`${activities(yearEntries.length)} · ${yearHours} h${
+                    goalCount === null ? "" : ` · ${goalCount} ${goalCount === 1 ? "goal" : "goals"}`
+                  }`}
+                  subtitle="A personal record, not proof you meet the standard. Your CPD home reports that."
+                />
+              </CmeFlatList>
+              <div className="flex flex-wrap gap-x-5 pl-7">
+                <CmeTextLink href={summaryHref} testId="cme-check-save-pdf">
+                  Save as PDF
+                </CmeTextLink>
+                {demoMode ? (
+                  // The export route reads the account, so on an example page it would hand over REAL records.
+                  <CmeExampleCsvButton
+                    testId="cme-check-csv"
+                    className={cn(
+                      focusRing,
+                      "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
+                    )}
+                  >
+                    Download CSV
+                  </CmeExampleCsvButton>
+                ) : (
+                  <a
+                    href={`/api/cme/export?year=${set.year}`}
+                    download
+                    data-testid="cme-check-csv"
+                    className={cn(
+                      focusRing,
+                      "inline-flex min-h-12 items-center whitespace-nowrap text-sm-minus font-medium text-[color:var(--clinical-accent)] no-underline hover:underline",
+                    )}
+                  >
+                    Download CSV
+                  </a>
+                )}
+                <NewWorkModeOnly>
+                  <CmeTextLink href={`/cme/export?year=${set.year}`} testId="cme-check-export">
+                    All export options
+                  </CmeTextLink>
+                </NewWorkModeOnly>
+              </div>
+            </CmeGroup>
+
+            <CmeGroup testId="cme-year-end-copy" label="Your CPD home">
+              <CmeFlatList>
+                {copiedRow ? <CheckRow row={copiedRow} set={set} /> : null}
+                <NewWorkModeOnly>
+                  <CmeFlatRow
+                    testId="cme-year-end-copy-all"
+                    href={`/cme/cpd-home?year=${set.year}`}
+                    lead={<Send {...leadIcon} />}
+                    title="Copy everything"
+                    subtitle={yearEntries.length ? `All ${yearEntries.length}, one after another` : "One after another"}
+                  />
+                </NewWorkModeOnly>
+              </CmeFlatList>
+              <p
+                className="flex items-start gap-1.5 text-xs text-[color:var(--text-muted)]"
+                data-testid="cme-year-end-copy-note"
+              >
+                <Clock {...leadIcon} className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  What AMA CPD Home can import is not confirmed yet, so copy each activity, or try the CSV. Nothing is
+                  sent for you.
+                </span>
+              </p>
+            </CmeGroup>
+
+            <CmeGroup testId="cme-year-end-close" label="Close the year">
+              <CmeFlatList>
+                <CmeFlatRow
+                  testId="cme-check-close"
+                  lead={<CalendarDays {...leadIcon} />}
+                  title="Close the year"
+                  subtitle={
+                    closed
+                      ? `Closed on ${formatCalendarDateLong(perthCalendarDate(new Date(set.closedAt!)))}. Closed in PsychSift only, not in ${homeName}.`
+                      : closable
+                        ? `Closes the year in PsychSift only, not in ${homeName}.`
+                        : `From ${formatCmeRowDate(closableFrom, today)}. Closes the year in PsychSift only, not in ${homeName}.`
+                  }
+                  end={
+                    closed ? (
+                      <CmeTextLink href={summaryHref}>View</CmeTextLink>
+                    ) : closable ? (
+                      <CmeTextLink href={closeHref}>Close</CmeTextLink>
+                    ) : undefined
+                  }
+                />
+              </CmeFlatList>
+            </CmeGroup>
+          </YearEndStep>
 
           <CmeGroup
             testId="cme-check-rule"
@@ -384,27 +550,8 @@ export function CmeYearCheckPage({
             </p>
           </CmeGroup>
 
-          <CmeGroup testId="cme-check-settings" label="Year end and settings">
+          <CmeGroup testId="cme-check-settings" label="Settings">
             <CmeFlatList>
-              <CmeFlatRow
-                testId="cme-check-close"
-                lead={<CalendarDays {...leadIcon} />}
-                title="Close the year"
-                subtitle={
-                  closed
-                    ? `Closed on ${formatCalendarDateLong(perthCalendarDate(new Date(set.closedAt!)))}. Closed in PsychSift only, not in ${homeName}.`
-                    : closable
-                      ? `Closes the year in PsychSift only, not in ${homeName}.`
-                      : `From ${formatCmeRowDate(closableFrom, today)}. Closes the year in PsychSift only, not in ${homeName}.`
-                }
-                end={
-                  closed ? (
-                    <CmeTextLink href={summaryHref}>View</CmeTextLink>
-                  ) : closable ? (
-                    <CmeTextLink href={closeHref}>Close</CmeTextLink>
-                  ) : undefined
-                }
-              />
               <CmeFlatRow
                 testId="cme-check-setup"
                 href={`/cme/setup?year=${set.year}`}

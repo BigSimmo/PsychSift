@@ -15,6 +15,18 @@ test.describe("React Hydration Safety", () => {
       themeCookie: "dark",
     },
     {
+      name: "dictionary catalogue phone composer slot",
+      route: "/dictionary/search",
+      storage: {},
+      viewport: { width: 390, height: 844 },
+    },
+    {
+      name: "dictionary catalogue desktop composer slot",
+      route: "/dictionary/search",
+      storage: {},
+      viewport: { width: 1280, height: 900 },
+    },
+    {
       name: "document viewer deep-linked page",
       route: "/documents/11111111-1111-4111-8111-111111111111?page=1",
       storage: {},
@@ -45,6 +57,8 @@ test.describe("React Hydration Safety", () => {
         if (isHydrationError(text)) hydrationErrors.push(text);
       });
 
+      if ("viewport" in scenario) await page.setViewportSize(scenario.viewport);
+
       if ("themeCookie" in scenario) {
         expect(baseURL).toBeTruthy();
         await page
@@ -62,6 +76,18 @@ test.describe("React Hydration Safety", () => {
       // Wait until React has hydrated the page's main landmark. networkidle is
       // unreliable on routes that keep a connection open (ledger #PVVAPA).
       await expectHydrated(page.locator("main").first());
+      if ("viewport" in scenario) {
+        // The parent header can hydrate before this streamed page segment.
+        // Wait for the slot itself before accepting a warning-free load.
+        await expect(page.getByTestId("dictionary-catalogue-composer")).toHaveAttribute(
+          "data-composer-slot-ready",
+          "true",
+        );
+        await expect(page.getByTestId("dictionary-catalogue-composer")).not.toHaveAttribute(
+          "data-composer-reserve",
+          "pending",
+        );
+      }
 
       // Fail the test if any hydration errors were captured
       expect(hydrationErrors, "Expected no React hydration mismatch warnings or errors in the console").toEqual([]);

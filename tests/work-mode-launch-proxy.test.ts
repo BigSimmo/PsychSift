@@ -34,7 +34,7 @@ describe("proxy work-mode launch gate", () => {
   });
 
   it("honours the device's classic preference instantly", async () => {
-    const response = await proxy(requestFor("/cme/applications", "psychsift-work-mode=classic"));
+    const response = await proxy(requestFor("/admin/applications", "psychsift-work-mode=classic"));
     expect(rewrittenTo(response)).toBe("/_work-mode-not-launched");
   });
 });
