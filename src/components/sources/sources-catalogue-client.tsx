@@ -136,6 +136,7 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
         // draws the box and a hairline divides each source from the next.
         "group grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-3.5 transition-colors",
         "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
       )}
     >
       <span className="min-w-0">
