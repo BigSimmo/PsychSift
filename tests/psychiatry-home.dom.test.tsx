@@ -30,6 +30,8 @@ const counts: PsychiatrySectionCounts = {
   formulation: 12,
   therapy: 205,
   forms: 54,
+  calculators: 14,
+  dictionary: 300,
 };
 const now = new Date("2026-10-03T04:00:00Z");
 
@@ -56,6 +58,8 @@ describe("PsychiatryHome", () => {
       "formulation",
       "therapy-compass",
       "forms",
+      "calculators",
+      "dictionary",
       "first-nations",
     ]);
 

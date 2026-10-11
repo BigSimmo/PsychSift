@@ -2648,6 +2648,12 @@ html[data-work-frame] .app-toast-region {
   color: var(--mode-identity-deep, var(--mode-identity));
 }
 
+/* In dark themes the deep identity is too dark to read on the drawer, and the
+   identity itself is the light tint, so the current row uses it there. */
+.dark .work-side-menu__row[aria-current="true"] .work-side-menu__name {
+  color: var(--mode-identity);
+}
+
 .work-side-menu__count {
   min-width: 1.375rem;
   height: 1.375rem;
