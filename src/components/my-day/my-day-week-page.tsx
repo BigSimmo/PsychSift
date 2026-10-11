@@ -195,7 +195,7 @@ function MyDayWeekBody({ now }: { now: Date }) {
         cmeRoutines={items.cmeRoutines}
         reminders={reminders}
         rosterKnown={showShifts}
-        teamMessage={shifts.teamMessage ?? undefined}
+        hoursPartial={Boolean(shifts.teamMessage) || Boolean(shifts.teamRefreshing)}
       />
       {/* The one calendar is on for everyone, with no preview or launch gate. */}
       <Link
@@ -450,7 +450,7 @@ export function MyDayWeekDays({
   cmeRoutines,
   reminders,
   rosterKnown,
-  teamMessage,
+  hoursPartial = false,
   view = "week",
   onView,
   shownMonth = null,
@@ -465,8 +465,8 @@ export function MyDayWeekDays({
   readonly reminders: ReminderSettings;
   /** False when the roster did not load: the strip shows no false "off" and empty days say why. */
   readonly rosterKnown: boolean;
-  /** A partial roster cannot support an honest hours total. */
-  readonly teamMessage?: string;
+  /** Team shifts failed or are still refreshing: a partial roster cannot support an honest hours total. */
+  readonly hoursPartial?: boolean;
   /** Notices drawn under the Week and Month switch. */
   readonly notices?: ReactNode;
 } & Partial<WeekViewProps>) {
@@ -615,7 +615,7 @@ export function MyDayWeekDays({
             })}
           </ul>
 
-          {rosterKnown && !teamMessage ? (
+          {rosterKnown && !hoursPartial ? (
             // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same Monday-to-Sunday week as Hours.
             <Link
               href="/my-day/hours"
