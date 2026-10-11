@@ -283,7 +283,7 @@ body {
   }
 
   .work-dock[data-beside-filters] {
-    margin-inline-start: 18rem;
+    margin-inline-start: calc(var(--spacing) * 72);
   }
 }
 
