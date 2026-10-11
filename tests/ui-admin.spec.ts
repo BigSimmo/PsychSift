@@ -66,10 +66,11 @@ test.describe("Admin mode — redirects, pill identity and shared chrome", () =>
     await expect(page.getByRole("heading", { name: /^Checks · \d+$/ })).toBeVisible();
     await expect(visibleByTestId(page, "admin-renewals-checklist-row-medical-registration-renewal")).toBeVisible();
 
-    // By group is where the retired Compliance page now lives, and its address opens it directly.
+    // By group is where the retired Compliance page now lives, and its old address redirects there.
     await page.getByRole("radio", { name: "By group" }).click();
     await expect(visibleByTestId(page, "admin-compliance-group-registration")).toBeVisible();
-    await page.goto("/admin/renewals?view=group");
+    await page.goto("/admin/compliance");
+    await expect(page).toHaveURL(/\/admin\/renewals\?view=group$/);
     await expect(page.getByRole("radio", { name: "By group" })).toBeChecked();
     await expect(visibleByTestId(page, "admin-compliance-group-registration")).toBeVisible();
   });
