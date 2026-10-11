@@ -7,7 +7,7 @@ import { onCallTelHref } from "@/lib/on-call/home-modules";
 
 import { ChevronDown, ClipboardList, FileText, ListChecks, Pencil, Phone, Search } from "lucide-react";
 import Link from "next/link";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { cardInteractive, cardSurface, focusRing } from "@/components/card-recipes";
 import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
@@ -221,6 +221,9 @@ function PlaybookCard({
   const freshness = onCallEntryFreshness(entry, now);
   const steps = details ? [...details.escalationSteps].sort((a, b) => a.order - b.order) : [];
   const showVerify = freshness.state === "stale" && Boolean(onVerified);
+  // Read once: when linked guidance resolves and a different problem becomes first, the one the
+  // reader already has open must not snap shut under them.
+  const [initiallyOpen] = useState(defaultOpen);
 
   return (
     // One problem per row, opening to its steps (usefulness audit, 11 Oct 2026): at 3 am the reader
@@ -229,7 +232,7 @@ function PlaybookCard({
     <details
       id={onCallEntryAnchorId(entry.id)}
       tabIndex={-1}
-      open={defaultOpen || undefined}
+      open={initiallyOpen || undefined}
       // The shared recipe, not a hand-rolled copy of it: these three had every
       // class right except `forced-colors:border`, so in Windows High Contrast
       // the card edge disappeared.
@@ -347,7 +350,7 @@ export function OnCallPlaybookSection({
 }: OnCallPlaybookSectionProps) {
   const playbookEntries = entries.filter((entry) => entry.section === "playbook");
   // Now's problem buttons link here with the problem's anchor: open that one and bring it into view.
-  useOpenPlaybookFromHash(playbookEntries.length);
+  useOpenPlaybookFromHash();
 
   if (playbookEntries.length === 0) {
     return (
@@ -488,21 +491,54 @@ function hasResolvedGuidance(entry: OnCallEntry, documents: Readonly<Record<stri
 
 /**
  * Opens the problem a link points at (`/on-call/playbook#<anchor>`), on arrival and whenever the
- * hash changes, and scrolls it into view. Waits for the entries to arrive (`count`).
+ * hash changes, and scrolls it into view. A personal entry is a disclosure and is opened; a
+ * hospital ladder is a plain section and is only scrolled to. Either can arrive after the page
+ * does (the entries and the handbook load separately), so a missing target is watched for.
  */
-function useOpenPlaybookFromHash(count: number) {
+function useOpenPlaybookFromHash() {
   useEffect(() => {
-    const open = () => {
-      const id = decodeURIComponent(window.location.hash.slice(1));
-      if (!id) return;
-      const target = document.getElementById(id);
-      if (!(target instanceof HTMLDetailsElement)) return;
-      target.open = true;
+    let observer: MutationObserver | null = null;
+    let giveUp: number | undefined;
+    const stopWatching = () => {
+      observer?.disconnect();
+      observer = null;
+      window.clearTimeout(giveUp);
+    };
+    const reveal = (target: HTMLElement) => {
+      if (target instanceof HTMLDetailsElement) target.open = true;
       target.scrollIntoView({ block: "start" });
       target.focus({ preventScroll: true });
     };
+    const open = () => {
+      stopWatching();
+      let id: string;
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        // A damaged bookmark opens nothing rather than breaking the page.
+        return;
+      }
+      if (!id) return;
+      const target = document.getElementById(id);
+      if (target) {
+        reveal(target);
+        return;
+      }
+      observer = new MutationObserver(() => {
+        const arrived = document.getElementById(id);
+        if (!arrived) return;
+        stopWatching();
+        reveal(arrived);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      // Stop watching once loading is long over, so a stale anchor never yanks the page later.
+      giveUp = window.setTimeout(stopWatching, 15_000);
+    };
     open();
     window.addEventListener("hashchange", open);
-    return () => window.removeEventListener("hashchange", open);
-  }, [count]);
+    return () => {
+      stopWatching();
+      window.removeEventListener("hashchange", open);
+    };
+  }, []);
 }
