@@ -30,12 +30,12 @@ import type { CmeRoutine } from "@/lib/cme/routines";
 import { summariseHours } from "@/lib/roster/hours";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
 import { dueCountsByDate } from "@/lib/my-day/dashboard";
-import { kindsByDate as kindsByDateOf, mondayIndex } from "@/lib/my-day/figures";
+import { kindsByDate as kindsByDateOf } from "@/lib/my-day/figures";
 import { duePerthDate, mergeMyDayItems } from "@/lib/my-day/merge";
 import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figures";
 import { myDayItemWeekDate, myDayWeekDates, myDayWeekDayLabel, myDayWeekRangeLabel } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
-import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
@@ -191,7 +191,7 @@ function MyDayWeekBody({ now }: { now: Date }) {
         cmeRoutines={items.cmeRoutines}
         reminders={reminders}
         rosterKnown={showShifts}
-        teamMessage={shifts.teamMessage}
+        teamMessage={shifts.teamMessage ?? undefined}
       />
       {/* The one calendar is on for everyone, with no preview or launch gate. */}
       <Link
@@ -498,12 +498,9 @@ export function MyDayWeekDays({
       summariseHours(
         shifts.map((shift) => ({ startsAt: shift.startsAt, endsAt: shift.endsAt, kind: kindOf(shift) })),
         [],
-        {
-          start: addDaysToDate(today, -mondayIndex(today)),
-          end: addDaysToDate(today, 6 - mondayIndex(today)),
-        },
+        { start: today, end: lastDate },
       ).totalHours,
-    [shifts, today],
+    [shifts, today, lastDate],
   );
   // An overnight shift that started the day before: an empty day says when it ends.
   const endsOn = (date: string): MyShift | undefined =>
@@ -614,7 +611,7 @@ export function MyDayWeekDays({
           </ul>
 
           {rosterKnown && !teamMessage ? (
-            // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over this Monday-to-Sunday week.
+            // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same seven days the strip shows.
             <Link
               href="/my-day/hours"
               data-testid="my-day-week-hours"
@@ -627,7 +624,7 @@ export function MyDayWeekDays({
               <AreaIcon mode="my-day" icon={Clock} />
               <span className="grid min-w-0 flex-1">
                 <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
-                  {`${hoursText(rosteredHours)} h rostered this week`}
+                  {`${hoursText(rosteredHours)} h rostered these seven days`}
                 </span>
                 <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
               </span>
