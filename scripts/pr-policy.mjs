@@ -480,13 +480,29 @@ const executeVariablePattern = /\bexecute\s+[a-z_]\w*\s*;/i;
  * one of these functions in a comment is not flagged. Missing contents yield no paths: the nudge
  * is advisory, so it degrades to the path patterns rather than failing closed.
  */
+export const POSTGRES_TOKEN_PATTERN =
+  /('(?:''|\\.|[^'\\])*')|("(?:""|\\.|[^"\\])*")|(\$([A-Za-z_][A-Za-z0-9_]*)?\$[\s\S]*?\$\4\$)|(\/\*[\s\S]*?\*\/)|(--[^\r\n]*)/g;
+
+export function stripSqlComments(sql, options = {}) {
+  const replacement = options.commentReplacement ?? " ";
+  const stripped = String(sql ?? "").replace(POSTGRES_TOKEN_PATTERN, (match, sQuote, dQuote, dollarQuote) => {
+    if (sQuote || dQuote || dollarQuote) {
+      return match;
+    }
+    return replacement;
+  });
+
+  if (options.collapseWhitespace) {
+    return stripped.replace(/\s+/g, " ").trim();
+  }
+  return stripped;
+}
+
 export function retrievalFunctionMigrationPaths(addedMigrationContents) {
   if (!addedMigrationContents || typeof addedMigrationContents !== "object") return [];
   return Object.entries(addedMigrationContents)
     .filter(([, sql]) => {
-      const executable = String(sql ?? "")
-        .replace(/\/\*[\s\S]*?\*\//g, " ")
-        .replace(/--[^\n]*/g, " ");
+      const executable = stripSqlComments(String(sql ?? ""));
       return (
         retrievalFunctionStatementPattern.test(executable) ||
         (retrievalFunctionDefinitionReadPattern.test(executable) && executeVariablePattern.test(executable))
@@ -702,9 +718,14 @@ function migrationVersionTime(version) {
 /** Strip SQL comments and single-quoted literals so CREATE INDEX inside pin strings is ignored. */
 function stripSqlCommentsAndStrings(sql) {
   return String(sql ?? "")
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/--[^\n]*/g, " ")
-    .replace(/'(?:[^']|'')*'/g, "''");
+    .replace(POSTGRES_TOKEN_PATTERN, (match, sQuote, dQuote, dollarQuote) => {
+      if (sQuote) return "''";
+      if (dollarQuote) return "$$$$";
+      if (dQuote) return match;
+      return " ";
+    })
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**

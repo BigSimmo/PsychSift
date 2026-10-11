@@ -9,13 +9,53 @@
  * about the same file.
  */
 
-/** Comments removed, whitespace collapsed. */
+/**
+ * PostgreSQL token pattern covering:
+ * - Group 1: Single-quoted string literals with SQL ('') and backslash (\.) escapes.
+ * - Group 2: Double-quoted identifiers with SQL ("") and backslash (\.) escapes.
+ * - Group 3: Dollar-quoted string constants ($tag$...$tag$ or $$...$$), where Group 4 captures the tag.
+ * - Group 5: Multi-line / block comments (/* ... * /).
+ * - Group 6: Single-line comments (-- ...).
+ */
+export const POSTGRES_TOKEN_PATTERN =
+  /('(?:''|\\.|[^'\\])*')|("(?:""|\\.|[^"\\])*")|(\$([A-Za-z_][A-Za-z0-9_]*)?\$[\s\S]*?\$\4\$)|(\/\*[\s\S]*?\*\/)|(--[^\r\n]*)/g;
+
+export interface StripSqlCommentsOptions {
+  /**
+   * Whether to collapse all whitespace sequences to a single space and trim.
+   * Defaults to false.
+   */
+  collapseWhitespace?: boolean;
+  /**
+   * Replacement for stripped comments. Defaults to a single space " " to prevent
+   * adjacent tokens from colliding (e.g. `SELECT 1--comment\nFROM t` -> `SELECT 1 FROM t`).
+   */
+  commentReplacement?: string;
+}
+
+/**
+ * Strips SQL line (`-- ...`) and block (`/* ... * /`) comments while strictly
+ * preserving string literals (`'...'`), double-quoted identifiers (`"..."`), and
+ * dollar-quoted literals (`$tag$...$tag$` or `$$...$$`) containing `--` or `/*`.
+ */
+export function stripSqlComments(sql: string, options: StripSqlCommentsOptions = {}): string {
+  const replacement = options.commentReplacement ?? " ";
+  const stripped = String(sql ?? "").replace(POSTGRES_TOKEN_PATTERN, (match, sQuote, dQuote, dollarQuote) => {
+    if (sQuote || dQuote || dollarQuote) {
+      return match;
+    }
+    return replacement;
+  });
+
+  if (options.collapseWhitespace) {
+    return stripped.replace(/\s+/g, " ").trim();
+  }
+  return stripped;
+}
+
+/** Comments removed, whitespace collapsed. Preserves string and dollar-quoted literals containing '--'. */
 export function stripMigrationSql(sql: string): string {
-  return sql
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/--[^\n]*/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return stripSqlComments(sql, { collapseWhitespace: true });
 }
 
 /**

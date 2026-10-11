@@ -543,6 +543,17 @@ export function presentationStaticParams() {
   return differentialPresentations().map((presentation) => ({ slug: presentation.id }));
 }
 
+export const LEGACY_PRESENTATION_SLUG_ALIASES: Record<string, string> = {
+  depression: "presentation-depression",
+  "substance-intoxication": "presentation-substance-intoxication",
+  "substance-withdrawal": "presentation-substance-withdrawal",
+};
+
+export function resolvePresentationSlug(slug: string): string {
+  const normalized = slug.trim().toLowerCase();
+  return LEGACY_PRESENTATION_SLUG_ALIASES[normalized] ?? normalized;
+}
+
 /** Server-computed context for the diagnosis detail page. Everything the page
  *  needs from the full catalog travels in this small serializable payload so
  *  the client component never imports the generated snapshot. */

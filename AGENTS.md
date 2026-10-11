@@ -308,7 +308,7 @@ surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approa
 
 ## Anti-conflict and CI-speed operating procedure
 
-Read and follow [Publication workflows](docs/agents/native-startup/publication-workflows.md) before acting in this area. The full policy remains in force.
+Read and follow [Publication workflows](docs/agents/native-startup/publication-workflows.md) for PRs, sync, and review policy. Full policy remains in force.
 
 ## Codex Cloud environment
 

@@ -29,9 +29,9 @@ const siteContentHealthMigration = readFileSync(
   new URL("../supabase/migrations/20260824123000_add_site_content_health_probe.sql", import.meta.url),
   "utf8",
 ).replace(/\s+/g, " ");
-const materializedSiteContentHealthMigration = readFileSync(
+const evaluateSiteContentReleaseDigestMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260913072413_materialize_site_content_health_operational_base.sql",
+    "../supabase/migrations/20261010120000_evaluate_site_content_release_digest_once_per_health_read.sql",
     import.meta.url,
   ),
   "utf8",
@@ -357,7 +357,7 @@ describe("site-content Task 4 health schema", () => {
   it("mirrors the health wrapper and evaluates its operational evidence once", () => {
     const healthFunction = /create (?:or replace )?function public\.read_site_content_health\(\).*? \$\$;/g;
     const schemaHealth = [...schema.matchAll(healthFunction)].at(-1)?.[0];
-    const migrationHealth = materializedSiteContentHealthMigration.match(healthFunction);
+    const migrationHealth = evaluateSiteContentReleaseDigestMigration.match(healthFunction);
 
     expect(schemaHealth).toBeDefined();
     expect(migrationHealth).toHaveLength(1);
@@ -366,13 +366,21 @@ describe("site-content Task 4 health schema", () => {
       "base as materialized ( select public.site_content_health_operational_base() payload )",
     );
     expect(migrationHealth?.[0]).toContain("language sql stable security definer set search_path = ''");
-    expect(materializedSiteContentHealthMigration).toContain(
+    expect(migrationHealth?.[0]).toContain(
+      "s.valid and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,",
+    );
+    expect(migrationHealth?.[0]).toContain(
+      "s.valid and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,",
+    );
+    expect(migrationHealth?.[0]).not.toContain("public.site_content_release_digest(r.id)");
+    expect(migrationHealth?.[0]).not.toContain("public.site_content_dynamic_state_digest(r.id)");
+    expect(evaluateSiteContentReleaseDigestMigration).toContain(
       "revoke all on function public.read_site_content_health() from public, anon, authenticated, service_role;",
     );
-    expect(materializedSiteContentHealthMigration).toContain(
+    expect(evaluateSiteContentReleaseDigestMigration).toContain(
       "grant execute on function public.read_site_content_health() to service_role;",
     );
-    expect(materializedSiteContentHealthMigration).toContain(
+    expect(evaluateSiteContentReleaseDigestMigration).toContain(
       "alter function public.read_site_content_health() owner to postgres;",
     );
   });

@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCheck, ChevronDown, ClipboardCopy, ClipboardList, N
 import { useState } from "react";
 
 import { cn } from "@/components/ui-primitives";
+import { useCopyToast } from "@/components/ui/toast";
 
 import { calculators, domainLabels, type CalculatorFixture } from "./calculator-fixtures";
 import {
@@ -135,16 +136,18 @@ export function CalculatorsBedsideSheetMockup() {
   const [session, setSession] = useState<SessionAnswers>({});
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ phq9: true });
   const [copied, setCopied] = useState(false);
+  const showToast = useCopyToast();
 
   const startedCalcs = calculators
     .map((calc) => ({ calc, derived: deriveCalculator(calc, session[calc.id] ?? {}) }))
     .filter((entry) => entry.derived.started);
 
-  const copySession = async () => {
+  const handleCopy = async () => {
     const lines = startedCalcs.map(({ calc, derived }) => formatResultSummary(calc, derived));
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
       setCopied(true);
+      showToast("Copied bedside summary");
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
       /* clipboard unavailable in some embeds — mockup-safe no-op */
@@ -217,7 +220,8 @@ export function CalculatorsBedsideSheetMockup() {
             </span>
             <button
               type="button"
-              onClick={copySession}
+              onClick={handleCopy}
+              aria-label="Copy summary"
               disabled={!startedCalcs.length}
               className={cn(
                 "inline-flex min-h-tap items-center gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",

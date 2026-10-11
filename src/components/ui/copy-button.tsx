@@ -2,7 +2,7 @@
 
 import { Clipboard, ClipboardCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, type ButtonSize, type ButtonVariant } from "@/components/ui/button";
 import { useCopyToast } from "@/components/ui/toast";
 import { copyButton } from "@/lib/ui-copy";
 
@@ -15,6 +15,9 @@ export type CopyButtonProps = {
   className?: string;
   testId?: string;
   disabled?: boolean;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  toastTitle?: string;
 };
 
 /**
@@ -32,6 +35,9 @@ export function CopyButton({
   className,
   testId,
   disabled,
+  variant = "secondary",
+  size = "sm",
+  toastTitle,
 }: CopyButtonProps) {
   const showToast = useCopyToast();
   const idleCompact = shortLabel ?? label;
@@ -39,13 +45,13 @@ export function CopyButton({
 
   const handleClick = () => {
     onClick();
-    showToast();
+    showToast(toastTitle);
   };
 
   return (
     <Button
-      variant="secondary"
-      size="sm"
+      variant={variant}
+      size={size}
       icon={copied ? ClipboardCheck : Clipboard}
       onClick={handleClick}
       aria-label={ariaLabel ?? label}

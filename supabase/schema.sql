@@ -17454,11 +17454,8 @@ as $$
             h.current_publication_id is distinct from rr.target_publication_id
             or h.retired is distinct from rr.tombstone))))
       as population_complete,
-      s.valid and coalesce(r.release_digest = public.site_content_release_digest(r.id)
-        and s.active_release_digest = r.release_digest
-        and public.site_content_provider_free_checks_pass(r.id), false) release_digest_valid,
-      s.valid and coalesce(r.dynamic_state_digest = public.site_content_dynamic_state_digest(r.id), false)
-        dynamic_digest_valid,
+      s.valid and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,
+      s.valid and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,
       s.valid and not exists (
         select 1 from active_records rr
         left join public.site_content_publications p on p.id = rr.target_publication_id
@@ -17481,7 +17478,7 @@ as $$
           or rr.record->>'validationStatus' is null
           or rr.record->>'validationStatus' not in ('locally_reviewed','approved')))
         governance_valid
-    from transition s left join active_release r on true
+    from transition s left join active_release r on true cross join base b
   ), projected as (
     select b.payload || jsonb_build_object(
       'activePublicSiteRelease', case when not s.valid or r.id is null then null else jsonb_build_object(
