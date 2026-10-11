@@ -133,11 +133,11 @@ test("keeps mobile search, domain filtering, record actions, and universal chrom
   const domainGroup = page.getByRole("group", { name: "Domain" });
   await expect(domainGroup).toBeVisible();
   await expect(domainGroup.getByRole("radio")).toHaveCount(0);
-  // Derived from what the library carries, not from what is declared. All 12
-  // now qualify: the contextual concepts added the Biological, Social and
-  // Cultural records that no mechanism carried, so those three stopped being
-  // permanently-empty options and became reachable ones.
-  await expect(domainGroup.getByRole("button")).toHaveCount(12);
+  // Derived from what the library carries, not from what is declared. 11 of
+  // the 12 qualify: the contextual concepts added the Biological and Social
+  // records that no mechanism carried, and Cultural is not offered while all
+  // its records are held for Aboriginal governance review (#3412, #R8HED2).
+  await expect(domainGroup.getByRole("button")).toHaveCount(11);
   const affect = domainGroup.getByRole("button", { name: /^Affect/ });
   await expect(affect).toHaveAttribute("aria-pressed", "false");
   await affect.click();
