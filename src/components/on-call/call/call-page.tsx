@@ -472,7 +472,9 @@ export function OnCallCallPage() {
                 {/* Emergency stays first; the cover on now follows it, or leads when there is no Emergency group. */}
                 {coverGroup}
               </div>
-            ) : null}
+            ) : (
+              coverGroup
+            )}
             {/* The departments share one card, each a labelled part of it divided by a hairline, so a
                 department with one number is a row in a list rather than a box of its own. */}
             {departmentGroups.length > 0 ? (
@@ -480,7 +482,6 @@ export function OnCallCallPage() {
                 {departmentGroups.map((group) => hospitalGroup(group, true))}
               </div>
             ) : null}
-            {emergencyGroup ? null : coverGroup}
           </div>
         ) : null}
 
