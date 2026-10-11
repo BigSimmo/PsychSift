@@ -493,32 +493,40 @@ function ThisWeekBody({
                   : `No sessions are booked for ${weekTitle(days[0], days[days.length - 1])} yet. They appear here as soon as an organiser adds them.`}
             </T5Empty>
           ) : (
-            days.map((key) => {
-              const onDay = sessionsOn(sessions, key);
-              if (onDay.length === 0) return null;
-              return (
-                <div key={key} id={`day-${key}`} tabIndex={-1} className="grid scroll-mt-32 gap-y-2.25">
-                  <h3
-                    className={cn(
-                      "work-label m-0 min-h-5 px-0.5",
-                      key === today && "text-[color:var(--mode-identity)]!",
-                    )}
+            // From 1024px the days flow down two columns, Monday at the top left, so a full week fits the screen.
+            <div className="grid gap-y-2.25 lg:block lg:columns-2 lg:gap-x-4">
+              {days.map((key) => {
+                const onDay = sessionsOn(sessions, key);
+                if (onDay.length === 0) return null;
+                return (
+                  <div
+                    key={key}
+                    id={`day-${key}`}
+                    tabIndex={-1}
+                    className="grid scroll-mt-32 gap-y-2.25 lg:mb-4 lg:break-inside-avoid"
                   >
-                    {dayHeading(key, today)}
-                  </h3>
-                  <T5List>
-                    {onDay.map((session) => (
-                      <WeekRow
-                        key={session.occurrenceId}
-                        session={session}
-                        context={context}
-                        clash={clashes.get(session.occurrenceId) ?? null}
-                      />
-                    ))}
-                  </T5List>
-                </div>
-              );
-            })
+                    <h3
+                      className={cn(
+                        "work-label m-0 min-h-5 px-0.5",
+                        key === today && "text-[color:var(--mode-identity)]!",
+                      )}
+                    >
+                      {dayHeading(key, today)}
+                    </h3>
+                    <T5List>
+                      {onDay.map((session) => (
+                        <WeekRow
+                          key={session.occurrenceId}
+                          session={session}
+                          context={context}
+                          clash={clashes.get(session.occurrenceId) ?? null}
+                        />
+                      ))}
+                    </T5List>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </T5Section>
       </>

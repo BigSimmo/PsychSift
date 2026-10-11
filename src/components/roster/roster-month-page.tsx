@@ -10,7 +10,6 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import {
-  WorkBody,
   WorkButton,
   WorkCard,
   WorkDateRow,
@@ -635,53 +634,59 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
     const thisMonth = monthKeyOf(today);
     return (
-      <div className="grid gap-2.25">
-        {notices}
-        {shifts.teamLoading ? null : statusCards()}
-        <RosterRotationBand entries={monthRotations(calendar.entries, month, today)} month={month} />
-        <WorkCard padded testId="roster-month-calendar">
-          <RosterMonthGrid
-            month={month}
-            today={today}
-            selected={selected}
-            days={days}
-            holidays={holidays}
-            loadedFrom={loadedFrom}
-            onSelect={openDay}
-            onMonthChange={changeMonth}
-            previousDisabled={`${month}-01` <= loadedFrom}
-          />
-          <RosterMonthLegend
-            swapAsked={waiting.length > 0 || asked.length > 0}
-            starts={[...days].some(([date, day]) => date.startsWith(month) && Boolean(day.starts?.length))}
-          />
-          {month !== thisMonth ? (
-            <div className="mt-1 grid justify-items-center">
-              <WorkButton
-                variant="quiet"
-                onClick={() => {
-                  setMonth(thisMonth);
-                  setSelected(null);
-                }}
-              >
-                Back to this month
-              </WorkButton>
-            </div>
-          ) : null}
-        </WorkCard>
-        {comingUp()}
-        <MonthTotalsCard totals={totals} partial={partial} month={month} />
-        {shifts.sample ? null : (
-          <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
-            Your copy of the roster. Check official changes with your service.
+      // Phone and upright tablet: one column in this order. From 1024px the calendar and what is happening now sit
+      // on the left, and what comes next and the month's totals beside them, so the month reads at a glance.
+      <div className="grid gap-2.25 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)] lg:items-start lg:gap-x-5">
+        <div className="grid min-w-0 gap-2.25">
+          {notices}
+          {shifts.teamLoading ? null : statusCards()}
+          <RosterRotationBand entries={monthRotations(calendar.entries, month, today)} month={month} />
+          <WorkCard padded testId="roster-month-calendar">
+            <RosterMonthGrid
+              month={month}
+              today={today}
+              selected={selected}
+              days={days}
+              holidays={holidays}
+              loadedFrom={loadedFrom}
+              onSelect={openDay}
+              onMonthChange={changeMonth}
+              previousDisabled={`${month}-01` <= loadedFrom}
+            />
+            <RosterMonthLegend
+              swapAsked={waiting.length > 0 || asked.length > 0}
+              starts={[...days].some(([date, day]) => date.startsWith(month) && Boolean(day.starts?.length))}
+            />
+            {month !== thisMonth ? (
+              <div className="mt-1 grid justify-items-center">
+                <WorkButton
+                  variant="quiet"
+                  onClick={() => {
+                    setMonth(thisMonth);
+                    setSelected(null);
+                  }}
+                >
+                  Back to this month
+                </WorkButton>
+              </div>
+            ) : null}
+          </WorkCard>
+        </div>
+        <div className="grid min-w-0 gap-2.25">
+          {comingUp()}
+          <MonthTotalsCard totals={totals} partial={partial} month={month} />
+          {shifts.sample ? null : (
+            <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
+              Your copy of the roster. Check official changes with your service.
+            </p>
+          )}
+          <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">
+            WA public holidays, wa.gov.au, read 25 Sep 2026.{" "}
+            <Link href="/roster/shifts" className="font-semibold text-[color:var(--mode-identity)]">
+              Week by week
+            </Link>
           </p>
-        )}
-        <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">
-          WA public holidays, wa.gov.au, read 25 Sep 2026.{" "}
-          <Link href="/roster/shifts" className="font-semibold text-[color:var(--mode-identity)]">
-            Week by week
-          </Link>
-        </p>
+        </div>
       </div>
     );
   }
@@ -689,7 +694,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   return (
     // The page's main landmark, so "Skip to main content" and screen-reader landmarks land on the month.
     <main className="min-w-0">
-      <WorkBody testId="roster-month-main">
+      {/* A calendar page: from 1024px the frame takes its wide column (work-mode.css, "page widths"). */}
+      <div className="work-body" data-page-width="wide" data-page-padded="" data-testid="roster-month-main">
         <h1 className="sr-only">Roster, month</h1>
         {canEdit ? (
           <ModeBandAction>
@@ -771,7 +777,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
             return failure;
           }}
         />
-      </WorkBody>
+      </div>
     </main>
   );
 }
