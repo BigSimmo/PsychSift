@@ -465,7 +465,15 @@ export function OnCallCallPage() {
         {showHospital && ready && !searching ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
 
         {showHospital && ready && hospitalCount + cover.length > 0 ? (
-          <div id={onCallGroupAnchorId("hospital")} className="grid min-w-0 scroll-mt-32 gap-5">
+          <div
+            id={onCallGroupAnchorId("hospital")}
+            className={cn(
+              "grid min-w-0 scroll-mt-32 gap-5",
+              // Desktop (usefulness audit, 11 Oct 2026): Emergency and the cover on now beside the
+              // departments, rather than one list stretched across the screen. One column below 1024px.
+              (emergencyGroup || cover.length > 0) && departmentGroups.length > 0 && "lg:grid-cols-2 lg:items-start",
+            )}
+          >
             {emergencyGroup ? (
               <div className="grid min-w-0 gap-5">
                 {hospitalGroup(emergencyGroup, false)}

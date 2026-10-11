@@ -330,6 +330,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
           mode="on-call"
           modeName="On Call"
           testId="on-call-home-shell"
+          columns="two"
           status={
             <>
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
@@ -386,12 +387,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                 now={now}
                 live={!pinnedNow}
               />
-              <NowShiftShortcuts />
-              <NowShiftPulseCard now={now} />
-              {/* A week before a new job starts until the end of its first week. */}
-              <NewWorkModeOnly>
-                <FirstWeekTodayCardLive now={now} />
-              </NewWorkModeOnly>
             </>
           }
           comingUp={
@@ -411,6 +406,18 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                 />
               ) : null}
               <NowWhoToCall situations={situations} reminder={pinnedReminder?.title ?? null} />
+            </>
+          }
+          atAGlance={
+            <>
+              {/* Shift tools sit after the team's numbers, so on a computer the numbers and the
+                  escalation fill the left column and the tools the right (usefulness audit, 11 Oct 2026). */}
+              <NowShiftShortcuts />
+              <NowShiftPulseCard now={now} />
+              {/* A week before a new job starts until the end of its first week. */}
+              <NewWorkModeOnly>
+                <FirstWeekTodayCardLive now={now} />
+              </NewWorkModeOnly>
             </>
           }
           shortcuts={
