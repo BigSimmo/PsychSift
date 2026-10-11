@@ -104,9 +104,9 @@ describe("mobile interaction regressions", () => {
       /data-testid="tools-local-search-submit"[\s\S]{0,120}?className=\{cn\(\s*"grid h-tap w-tap place-items-center/,
     );
 
-    expect(header).toContain('router.push("/dsm/compare")');
-    expect(header).toContain('router.push("/specifiers/builder")');
-    expect(header).toContain('router.push("/formulation/map")');
+    expect(header).toContain('pushIfLeaveConfirmed("/dsm/compare")');
+    expect(header).toContain('pushIfLeaveConfirmed("/specifiers/builder")');
+    expect(header).toContain('pushIfLeaveConfirmed("/formulation/map")');
     expect(header).not.toContain("window.location.assign");
   });
 });

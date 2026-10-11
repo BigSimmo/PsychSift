@@ -45,6 +45,7 @@ import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-sectio
 import { ServiceReferralFlow } from "@/components/services/service-referral-flow";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { compactCatalogField } from "@/lib/compact-best-use-title";
+import { extractFirstDialablePhone } from "@/lib/service-call";
 import { serviceCoreGroupIds, serviceCoreGroups } from "@/lib/service-core-groups";
 import {
   serviceNavigatorQuery,
@@ -168,16 +169,6 @@ function criterionPill(tone: ServiceCriterion["tone"]) {
   if (tone === "meet") return { label: "Meets", className: toneSuccess };
   if (tone === "reject") return { label: "Reject", className: toneDanger };
   return { label: "Caution", className: toneWarning };
-}
-
-function extractFirstDialablePhone(value: string): string | undefined {
-  const sanitized = value.replace(/\b24\/7\b/gi, "").replace(/\((?:option|ext|line|menu)\s*\d+\)/gi, "");
-  const parts = sanitized.split(/[;\n/]|\s+or\s+/i).map((p) => p.trim());
-  for (const part of parts) {
-    const compact = part.replace(/[^\d+]/g, "");
-    if (compact.length >= 3) return compact;
-  }
-  return undefined;
 }
 
 function contactHref(contact: ServiceContact | null | undefined) {

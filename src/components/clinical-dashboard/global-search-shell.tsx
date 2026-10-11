@@ -36,6 +36,7 @@ import { MasterSearchHeader } from "@/components/clinical-dashboard/master-searc
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
 import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import {
   LazyTwoPaneSideMenu,
   LazyWorkSideCounts,
@@ -753,6 +754,7 @@ function GlobalStandaloneSearchShellBody({
   });
 
   function navigateToMode(mode: AppModeId, options: SearchNavigationOptions = {}) {
+    if (!confirmShellNavigation()) return;
     const nextOptions = { queryMode, scopeFilters, ...options };
     if (mode === "documents" && options.query?.trim()) {
       router.push(documentsSearchHref(nextOptions));
@@ -780,8 +782,6 @@ function GlobalStandaloneSearchShellBody({
       openAccountSetup("favourites");
       return;
     }
-    setLastAppMode(mode);
-
     // Dedicated modes return to their dedicated standalone home. Remaining modes
     // return to the shared home. Preserve any current query as an unsubmitted draft,
     // but omit `run=1`; only an explicit submit may open the selected mode's
@@ -798,6 +798,9 @@ function GlobalStandaloneSearchShellBody({
     const destination = new URL(href, window.location.origin);
     const destinationSearch = destination.search.startsWith("?") ? destination.search.slice(1) : destination.search;
     const alreadyOnDestination = pathname === destination.pathname && searchParamString === destinationSearch;
+    // A page with unsaved work may ask first; re-selecting the mode already shown never leaves, so never asks.
+    if (!alreadyOnDestination && !confirmShellNavigation()) return;
+    setLastAppMode(mode);
 
     setMobileMenuOpen(false);
 
@@ -826,6 +829,7 @@ function GlobalStandaloneSearchShellBody({
   }
 
   function startNewAnswerChat(clearClinicalAsk: () => void = () => undefined) {
+    if (!confirmShellNavigation()) return;
     clearClinicalAsk();
     setQuery("");
     setMobileMenuOpen(false);

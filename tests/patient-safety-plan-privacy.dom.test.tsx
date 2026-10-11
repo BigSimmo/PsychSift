@@ -88,7 +88,7 @@ describe("PatientSafetyPlan privacy contract", () => {
     fireEvent.click(screen.getByRole("button", { name: "Go back" }));
 
     expect(router.replace).toHaveBeenCalledOnce();
-    expect(router.replace).toHaveBeenCalledWith(appModeHomeHref("tools"));
+    expect(router.replace).toHaveBeenCalledWith(appModeHomeHref("psychiatry"));
   });
 
   it("confirms before leaving unadded safety-plan step text", () => {
@@ -139,6 +139,6 @@ describe("PatientSafetyPlan privacy contract", () => {
 
     expect(confirmSpy).not.toHaveBeenCalled();
     expect(router.replace).toHaveBeenCalledOnce();
-    expect(router.replace).toHaveBeenCalledWith(appModeHomeHref("tools"));
+    expect(router.replace).toHaveBeenCalledWith(appModeHomeHref("psychiatry"));
   });
 });

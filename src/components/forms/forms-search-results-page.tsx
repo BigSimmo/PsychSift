@@ -239,12 +239,12 @@ function ResultsTable({
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-5 pb-3">
         <h2 className="text-lg font-extrabold text-[color:var(--text-heading)]">
-          {listingRegister ? "All forms" : "Best matches"}
+          {listingRegister ? "Forms" : "Best matches"}
         </h2>
         {/* The count is stated once, in the band above; this line only says how
             the list is ordered. */}
         <span className="text-sm font-semibold text-[color:var(--text-muted)]">
-          {sortValue === "alpha" ? "Sorted A–Z" : listingRegister ? "By form code" : "Ranked by relevance"}
+          {sortValue === "alpha" ? "Sorted A–Z" : listingRegister ? "A to Z by form code" : "Ranked by relevance"}
         </span>
       </div>
       <div
@@ -590,7 +590,7 @@ function MobileCards({
         <>
           <div className="flex items-baseline justify-between gap-2 px-1">
             <h2 className="text-base font-extrabold text-[color:var(--text-heading)]">
-              {exactMatch ? `Also references ${exactMatch.code}` : listingRegister ? "All forms" : "Best matches"}
+              {exactMatch ? `Also references ${exactMatch.code}` : listingRegister ? "Forms" : "Best matches"}
             </h2>
             {/* The band above already states the total. A count is shown here
                 only beside an exact code match, where the remainder differs. */}
@@ -843,6 +843,7 @@ function FormsSearchResultsPageContent({ query }: FormsSearchResultsPageProps) {
           modeId="forms"
           headingLevel={1}
           query={query}
+          emptyQuerySubject="Forms"
           matchCount={displayedMatches.length}
           status={
             registry.status === "unauthorized"

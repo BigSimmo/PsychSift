@@ -739,10 +739,16 @@ test.describe("Tablet usability regressions", () => {
     await page.goto("/services/search?q=crisis&run=1", { waitUntil: "domcontentloaded" });
     await expect(async () => {
       await expect(page.locator("header#search")).toHaveCount(1);
-      await expect(page.getByRole("link", { name: /^Review referral for / }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: /^More actions for / }).first()).toBeVisible();
     }).toPass({ timeout: 30_000 });
+    await page
+      .getByRole("button", { name: /^More actions for / })
+      .first()
+      .click();
 
     const controls = [
+      page.getByRole("link", { name: /^Call .+, / }).first(),
+      page.getByRole("button", { name: /^More actions for / }).first(),
       page.getByRole("link", { name: /^Review referral for / }).first(),
       page.getByRole("button", { name: /^Add .+ to shortlist$/ }).first(),
       page.getByRole("button", { name: /^(Save|Remove) .+ (to|from) favourites$/ }).first(),

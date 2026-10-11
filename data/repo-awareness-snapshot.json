@@ -224,6 +224,11 @@
         "area": "product"
       },
       {
+        "path": "/forms/clock",
+        "file": "src/app/(search-app)/forms/clock/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/documents/[id]",
         "file": "src/app/(search-app)/documents/[id]/page.tsx",
         "area": "product"
@@ -780,7 +785,7 @@
       },
       {
         "path": "/safety-plan",
-        "file": "src/app/safety-plan/page.tsx",
+        "file": "src/app/(search-app)/safety-plan/page.tsx",
         "area": "product"
       },
       {

@@ -3357,6 +3357,7 @@
         "src/app/(search-app)/first-nations/talking/page.tsx",
         "src/app/(search-app)/forms/[slug]/page.tsx",
         "src/app/(search-app)/forms/act/page.tsx",
+        "src/app/(search-app)/forms/clock/page.tsx",
         "src/app/(search-app)/forms/page.tsx",
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
@@ -4252,6 +4253,16 @@
         },
         {
           "file": "src/app/(search-app)/forms/act/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/forms/clock/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6089,10 +6100,10 @@
       "disposition": "owned",
       "documentedDisposition": null,
       "routes": [
+        "src/app/(search-app)/safety-plan/page.tsx",
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
-        "src/app/reference/colour-coding/page.tsx",
-        "src/app/safety-plan/page.tsx"
+        "src/app/reference/colour-coding/page.tsx"
       ],
       "routeRoots": true,
       "proofApplicability": "required",
@@ -6138,6 +6149,16 @@
       ],
       "roots": [
         {
+          "file": "src/app/(search-app)/safety-plan/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": ["PatientSafetyPlan"]
+        },
+        {
           "file": "src/app/auth/reset-password/page.tsx",
           "exists": true,
           "imports": [],
@@ -6166,16 +6187,6 @@
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
           "sanctionedPatternsPresent": ["ColourCodingReferencePage"]
-        },
-        {
-          "file": "src/app/safety-plan/page.tsx",
-          "exists": true,
-          "imports": [],
-          "importedFamilies": [],
-          "literalCkbV2": false,
-          "dynamicCkbV2": false,
-          "v2MountMode": "inherited-global-root",
-          "sanctionedPatternsPresent": ["PatientSafetyPlan"]
         }
       ]
     },
@@ -6448,6 +6459,7 @@
       "src/app/(search-app)/first-nations/talking/page.tsx",
       "src/app/(search-app)/forms/[slug]/page.tsx",
       "src/app/(search-app)/forms/act/page.tsx",
+      "src/app/(search-app)/forms/clock/page.tsx",
       "src/app/(search-app)/forms/page.tsx",
       "src/app/(search-app)/forms/search/page.tsx",
       "src/app/(search-app)/formulation/[slug]/page.tsx",
@@ -6525,6 +6537,7 @@
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
       "src/app/(search-app)/roster/today/page.tsx",
+      "src/app/(search-app)/safety-plan/page.tsx",
       "src/app/(search-app)/services/[slug]/page.tsx",
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
@@ -6578,8 +6591,7 @@
       "src/app/(search-app)/tools/page.tsx",
       "src/app/auth/reset-password/page.tsx",
       "src/app/privacy/page.tsx",
-      "src/app/reference/colour-coding/page.tsx",
-      "src/app/safety-plan/page.tsx"
+      "src/app/reference/colour-coding/page.tsx"
     ],
     "declared": [
       "src/app/(display)/teaching/display/[token]/page.tsx",
@@ -6673,6 +6685,7 @@
       "src/app/(search-app)/first-nations/talking/page.tsx",
       "src/app/(search-app)/forms/[slug]/page.tsx",
       "src/app/(search-app)/forms/act/page.tsx",
+      "src/app/(search-app)/forms/clock/page.tsx",
       "src/app/(search-app)/forms/page.tsx",
       "src/app/(search-app)/forms/search/page.tsx",
       "src/app/(search-app)/formulation/[slug]/page.tsx",
@@ -6750,6 +6763,7 @@
       "src/app/(search-app)/roster/swaps/page.tsx",
       "src/app/(search-app)/roster/team/page.tsx",
       "src/app/(search-app)/roster/today/page.tsx",
+      "src/app/(search-app)/safety-plan/page.tsx",
       "src/app/(search-app)/services/[slug]/page.tsx",
       "src/app/(search-app)/services/page.tsx",
       "src/app/(search-app)/services/search/page.tsx",
@@ -6803,8 +6817,7 @@
       "src/app/(search-app)/tools/page.tsx",
       "src/app/auth/reset-password/page.tsx",
       "src/app/privacy/page.tsx",
-      "src/app/reference/colour-coding/page.tsx",
-      "src/app/safety-plan/page.tsx"
+      "src/app/reference/colour-coding/page.tsx"
     ],
     "undeclared": [],
     "missing": [],
@@ -6812,7 +6825,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 230,
+    "inheritedCkbV2RootCount": 231,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6821,8 +6834,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 231,
-    "productionRouteCount": 223,
-    "nextUiEntryCount": 331
+    "rootCount": 232,
+    "productionRouteCount": 224,
+    "nextUiEntryCount": 333
   }
 }

@@ -20,6 +20,9 @@ import {
  */
 export const registryModeNavDensityProfiles = {
   dsm: "two-item",
+  // Three single short words (Forms, Clock, Act), well inside the budget
+  // calibrated for Search/Build/Compare/Map.
+  forms: "compact-four",
   specifiers: "compact-four",
   formulation: "compact-four",
   differentials: "balanced-four",

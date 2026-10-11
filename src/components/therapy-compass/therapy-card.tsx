@@ -32,7 +32,7 @@ import { useTherapyFavourite } from "./use-therapy-favourite";
  * the one filled `--command` slot (COMPONENTS.md §9.1). A featured top match
  * is that page-level primary, so only `featured` promotes Open.
  */
-const cardActionButton = "min-w-0 px-2 text-xs sm:px-4 sm:text-sm-minus";
+const cardActionButton = "min-w-0 px-2 text-xs sm:px-4 sm:text-sm-minus md:w-auto";
 
 /** Large search-result card with why-matched / avoid / best-fit columns. */
 export function ResultCard({
@@ -41,12 +41,18 @@ export function ResultCard({
   featured = false,
   query,
   whyMatched: whyMatchedOverride,
+  browsing = false,
 }: {
   therapy: Therapy;
   rank?: number;
   featured?: boolean;
   query?: string;
   whyMatched?: string;
+  /**
+   * Nothing typed: the card is one row of an A to Z list, not a search result,
+   * so the first column is labelled for what it holds rather than "Why matched".
+   */
+  browsing?: boolean;
 }) {
   const b = useTcBindings();
   const sheetUnavailableId = useId();
@@ -68,7 +74,7 @@ export function ResultCard({
     whyMatchedOverride ||
     cardPreviewText(therapy.bestUsedFor, { exclude: therapy.name }) ||
     cardPreviewText(therapy.indications, { exclude: therapy.name }) ||
-    "Relevant to the current search.";
+    (browsing ? "See record for indications." : "Relevant to the current search.");
   const avoidModify =
     summarise(therapy.contraindicationsOrCautions, 1) || "Check source and review status before clinical use.";
   const rankedBestFit = [therapy.setting, therapy.timeRequired, therapy.patientPopulation]
@@ -92,7 +98,13 @@ export function ResultCard({
     <article
       data-therapy-result-card
       data-therapy-result-featured={featured ? "" : undefined}
-      className={cn(featured ? heroCard : cardSurface, "relative overflow-hidden")}
+      className={cn(
+        featured ? heroCard : cardSurface,
+        "relative overflow-hidden",
+        // The whole card opens the record (the Open link is stretched across it), so on a
+        // pointer-sized screen the card itself answers hover rather than three wide buttons.
+        !featured && "transition-colors md:hover:border-[color:var(--border-strong)]",
+      )}
     >
       {/*
         Icon-only action. The accessible name is the `sr-only` label rather than an
@@ -152,7 +164,12 @@ export function ResultCard({
           data-therapy-result-evidence
           className="-mx-4 grid grid-cols-1 gap-px overflow-hidden border-y border-[color:var(--border)] bg-[color:var(--border)] sm:mx-0 sm:grid-cols-3 sm:rounded-lg sm:border"
         >
-          <CardCell icon={Target} eyebrow="Why matched" tone="accent" text={whyMatched} />
+          <CardCell
+            icon={Target}
+            eyebrow={browsing ? "Best used for" : "Why matched"}
+            tone="accent"
+            text={whyMatched}
+          />
           <CardCell icon={TriangleAlert} eyebrow="Avoid / modify" tone="warning" text={avoidModify} />
           <CardCell icon={Clock} eyebrow="Best fit" tone="muted" text={bestFit} />
         </div>
@@ -166,7 +183,14 @@ export function ResultCard({
           {notice}
         </p>
       ) : null}
-      <div data-therapy-result-actions className="grid grid-cols-3 gap-2 px-4 py-3.5 sm:px-5 sm:pb-4 md:pt-0">
+      {/*
+        Phone: three equal buttons in one row. Desktop: the card is the open target, so the
+        actions shrink to their own width at the row's end instead of spanning the card.
+      */}
+      <div
+        data-therapy-result-actions
+        className="grid grid-cols-3 gap-2 px-4 py-3.5 sm:px-5 sm:pb-4 md:flex md:justify-end md:pt-0"
+      >
         {/*
           A link rather than a `Button` with `router.push`. `b.workspaceHref`
           builds the same URL `b.open` pushes, so the destination is unchanged,

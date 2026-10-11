@@ -179,6 +179,7 @@
         "src/app/(search-app)/first-nations/talking/page.tsx",
         "src/app/(search-app)/forms/[slug]/page.tsx",
         "src/app/(search-app)/forms/act/page.tsx",
+        "src/app/(search-app)/forms/clock/page.tsx",
         "src/app/(search-app)/forms/page.tsx",
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
@@ -667,7 +668,7 @@
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
         "src/app/reference/colour-coding/page.tsx",
-        "src/app/safety-plan/page.tsx"
+        "src/app/(search-app)/safety-plan/page.tsx"
       ],
       "routeRoots": true,
       "roots": [],

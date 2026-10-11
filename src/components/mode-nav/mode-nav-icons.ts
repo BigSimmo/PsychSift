@@ -42,6 +42,9 @@ import {
   Wrench,
   type LucideIcon,
   Clock,
+  FileSignature,
+  FileText,
+  Timer,
 } from "lucide-react";
 
 import {
@@ -149,6 +152,12 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   "my-day-today": Sunrise,
   "my-day-week": CalendarDays,
   "my-day-hours": Clock,
+  // Clinical Forms. The list wears the mode's own mark (`category-identity.ts`),
+  // the clock the Timer the Psychiatry hub's MHA clock row wears, and the Act the
+  // FileText its Act row wears, so each page keeps one mark wherever it is listed.
+  "forms-list": FileSignature,
+  "forms-clock": Timer,
+  "forms-act": FileText,
   // Psychiatry's three hub pages.
   "psychiatry-ask": Search,
   "psychiatry-tools": Wrench,

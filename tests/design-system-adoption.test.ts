@@ -1520,7 +1520,8 @@ describe("design-system adoption manifest", () => {
     // 219 -> 221: Hospital's Short-staffed days and New starters pages.
     // 221 -> 223: Job applications and its CV moved to /admin/applications (the old /cme addresses
     // stay as redirects).
-    expect(manifest.routeCoverage.discovered).toHaveLength(223);
+    // 223 -> 224: Clinical Forms' Clock tab (`/forms/clock`), the MHA clock under Forms.
+    expect(manifest.routeCoverage.discovered).toHaveLength(224);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

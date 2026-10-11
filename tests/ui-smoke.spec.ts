@@ -5432,6 +5432,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     const currentStage = progress.locator('[aria-current="step"]');
     await expect(currentStage).toHaveText("Search");
 
+    // Shortlisting sits behind each card's "More" toggle; the card's visible
+    // action is the call button.
+    const moreToggles = navigator.getByRole("button", { name: /^More actions for / });
+    await moreToggles.nth(0).click();
+    await moreToggles.nth(1).click();
     const addButtons = navigator.getByRole("button", { name: /Add .* to shortlist/ });
     await addButtons.nth(0).click();
     const shortlist = navigator.getByTestId("services-shortlist-bar");
@@ -5439,7 +5444,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(shortlist.getByRole("button", { name: "Compare" })).toBeDisabled();
     await expect(currentStage).toHaveText("Shortlist");
 
-    await addButtons.nth(1).click();
+    // The first card's button now reads "Remove … from shortlist", so the second
+    // open card's button is the only "Add" match left.
+    await addButtons.first().click();
     await expect(shortlist).toContainText("2 shortlisted");
     await shortlist.getByRole("button", { name: "Compare" }).click();
     await expect(navigator.getByTestId("services-comparison")).toBeVisible();

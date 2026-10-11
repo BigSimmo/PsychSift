@@ -180,6 +180,8 @@ describe("header addon slot ownership", () => {
       "/documents/11111111-1111-4111-8111-111111111111/source",
       "/services/community-team",
       "/forms/transport-crisis-form",
+      "/forms/clock",
+      "/forms/act",
       "/specifiers/with-anxious-distress",
       "/formulation/rumination",
       "/dsm/diagnoses/major-depressive-disorder",
@@ -387,6 +389,10 @@ describe("header addon slot ownership", () => {
       // First Nations' own header, mounted on the mode home and every section.
       "src/components/first-nations/first-nations-nav-header.tsx",
       "src/components/forms/form-detail-page.tsx",
+      // The Forms tabs on Clock and Act, both information pages the shell never
+      // draws a bar on; `/forms/clock` and `/forms/act` are already claimants
+      // through the `/forms` slug-detail rule.
+      "src/components/forms/forms-mode-nav.tsx",
       "src/components/formulation/formulation-nav-header.tsx",
       // On Call now follows the sibling convention exactly: both its headers —
       // the essentials card's and the section pages' — live in

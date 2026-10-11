@@ -31,12 +31,24 @@ const MAX_CARDS = 24;
 export function SearchScreen() {
   const b = useTcBindings();
   const q = b.search.query;
-  const results = b.searchResults;
+  // Nothing typed is browsing, not a search: show the list A to Z with no
+  // "Best match" or "Why matched", so it never reads as the app having picked
+  // something for this patient. Display-only; the search library is untouched.
+  // "Nothing typed" uses the scorer's own normalisation, so punctuation alone
+  // (which the scorer cannot rank on) is browsing too.
+  const browsing = !hasSearchableTherapyQuery(q);
+  const results = useMemo(
+    () =>
+      browsing
+        ? [...b.searchResults].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }))
+        : b.searchResults,
+    [b.searchResults, browsing],
+  );
   const shown = results.slice(0, MAX_CARDS);
   // An empty query gives every record the same baseline score and then sorts
   // alphabetically, so only call out a best match when the scorer had real
   // query evidence to rank. Facets narrow the list but do not rank it.
-  const hasRankedQuery = hasSearchableTherapyQuery(q);
+  const hasRankedQuery = !browsing;
   const topics = useMemo(() => new Set(b.search.tags), [b.search.tags]);
   // Filters only — the query is deliberately excluded. It counts toward the
   // sheet's Clear all (see below), because `clearSearch` resets it, but the
@@ -165,7 +177,8 @@ export function SearchScreen() {
     <section data-screen-label="Search" className={`${pageContainer} space-y-2.5 sm:space-y-3`}>
       <SearchResultsHeaderBand
         modeId="therapy-compass"
-        query={q}
+        query={browsing ? "" : q}
+        emptyQuerySubject="Therapies"
         matchCount={results.length}
         status={b.error ? "error" : b.loading ? "loading" : "ready"}
         faultBody={b.error ?? undefined}
@@ -216,7 +229,12 @@ export function SearchScreen() {
           ) : (
             <div className="flex flex-col gap-3.5">
               {shown.map((t, index) => (
-                <ResultCard key={t.slug} therapy={t} featured={hasRankedQuery && index === 0} />
+                <ResultCard
+                  key={t.slug}
+                  therapy={t}
+                  featured={!browsing && hasRankedQuery && index === 0}
+                  browsing={browsing}
+                />
               ))}
             </div>
           )}

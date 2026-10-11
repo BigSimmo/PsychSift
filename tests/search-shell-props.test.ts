@@ -127,4 +127,14 @@ describe("searchShellPropsForPathname", () => {
       desktopSearchPlacement: "hero",
     });
   });
+
+  it("shows the safety plan under Psychiatry with no search composer", () => {
+    const safetyPlan = {
+      initialMode: "psychiatry",
+      desktopSearchPlacement: "hero",
+      searchComposerVisible: false,
+    } as const;
+    expect(searchShellPropsForPathname("/safety-plan")).toEqual(safetyPlan);
+    expect(searchShellPropsForPathname("/safety-planx").initialMode).not.toBe("psychiatry");
+  });
 });

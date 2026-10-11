@@ -158,6 +158,7 @@ import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-
 import type { ClinicalDocument, ClinicalQueryMode } from "@/lib/types";
 import { type SearchScopeFilters } from "@/lib/search-scope";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 
 // Lazy chunks; the clinical bell loads the bell alone, never AI Search.
 const StaffWorkHeaderControls = dynamic(() =>
@@ -386,6 +387,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
+  // Direct pushes skip link guards and beforeunload: ask any page with unsaved work first.
+  const pushIfLeaveConfirmed = (href: string) => confirmShellNavigation() && router.push(href);
   const currentPathname = usePathname();
   const [, setLastAppMode] = useLastAppMode();
   // The two-pane side menu (off again since 10 Oct 2026) keeps the menu button
@@ -805,23 +808,23 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "factsheets-browse") {
-      router.push(factsheetsTopicsHref);
+      pushIfLeaveConfirmed(factsheetsTopicsHref);
       return;
     }
     if (actionId === "dictionary-search") {
-      router.push(`/dictionary/search${trimmedQuery ? `?q=${encodeURIComponent(trimmedQuery)}` : ""}`);
+      pushIfLeaveConfirmed(`/dictionary/search${trimmedQuery ? `?q=${encodeURIComponent(trimmedQuery)}` : ""}`);
       return;
     }
     if (actionId === "dictionary-topics") {
-      router.push("/dictionary/topics");
+      pushIfLeaveConfirmed("/dictionary/topics");
       return;
     }
     if (actionId === "dictionary-compare") {
-      router.push("/dictionary/compare");
+      pushIfLeaveConfirmed("/dictionary/compare");
       return;
     }
     if (actionId === "dictionary-sources") {
-      router.push("/dictionary/sources");
+      pushIfLeaveConfirmed("/dictionary/sources");
       return;
     }
     if (actionId === "services-search") {
@@ -880,7 +883,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "calculators-browse") {
-      router.push("/calculators");
+      pushIfLeaveConfirmed("/calculators");
       return;
     }
     if (actionId === "differentials-build") {
@@ -908,7 +911,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "dsm-compare") {
-      router.push("/dsm/compare");
+      pushIfLeaveConfirmed("/dsm/compare");
       return;
     }
     if (actionId === "dsm-criteria") {
@@ -921,15 +924,15 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "specifiers-builder") {
-      router.push("/specifiers/builder");
+      pushIfLeaveConfirmed("/specifiers/builder");
       return;
     }
     if (actionId === "specifiers-compare") {
-      router.push("/specifiers/compare");
+      pushIfLeaveConfirmed("/specifiers/compare");
       return;
     }
     if (actionId === "specifiers-map") {
-      router.push("/specifiers/map");
+      pushIfLeaveConfirmed("/specifiers/map");
       return;
     }
     if (actionId === "formulation-search") {
@@ -937,22 +940,23 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "formulation-builder") {
-      router.push("/formulation/builder");
+      pushIfLeaveConfirmed("/formulation/builder");
       return;
     }
     if (actionId === "formulation-compare") {
-      router.push("/formulation/compare");
+      pushIfLeaveConfirmed("/formulation/compare");
       return;
     }
     if (actionId === "formulation-map") {
-      router.push("/formulation/map");
+      pushIfLeaveConfirmed("/formulation/map");
       return;
     }
   }
 
   function selectAppMode(mode: (typeof appModeDefinitions)[number]) {
-    setModeMenuOpen(false);
     const standaloneHref = standaloneModeHomeHref(mode.id as AppModeId);
+    if (standaloneHref && !confirmShellNavigation()) return;
+    setModeMenuOpen(false);
     if (standaloneHref) {
       // Dedicated modes navigate to their canonical standalone homes
       // instead of retargeting the shared-home composer.
@@ -1006,7 +1010,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       onSearchModeChange(mode.id);
       return;
     }
-    if ("href" in mode && mode.href) router.push(mode.href);
+    if ("href" in mode && mode.href) pushIfLeaveConfirmed(mode.href);
   }
 
   function selectAppModeById(modeId: string) {

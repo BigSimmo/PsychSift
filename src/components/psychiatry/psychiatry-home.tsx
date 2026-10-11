@@ -108,6 +108,8 @@ const KIND_MODE: Readonly<Record<PsychiatryVisitKind, AppModeId>> = {
   forms: "forms",
 };
 
+// Safety plan lives once, under "For a shift", and the MHA forms once, under "Mental Health Act",
+// so neither is repeated here.
 const QUICK_ACTIONS: readonly DashQuickAction[] = [
   { label: "Specifier builder", href: "/specifiers/builder", icon: Tags, testId: "psychiatry-qa-specifier-builder" },
   { label: "Formulation builder", href: "/formulation/builder", icon: Network, testId: "psychiatry-qa-formulation" },
@@ -119,8 +121,6 @@ const QUICK_ACTIONS: readonly DashQuickAction[] = [
     testId: "psychiatry-qa-presentation",
   },
   { label: "Compare diagnoses", href: "/dsm/compare", icon: GitCompareArrows, testId: "psychiatry-qa-compare" },
-  { label: "MHA forms", href: "/forms/search", icon: FileText, testId: "psychiatry-qa-forms" },
-  { label: "Safety plan", href: "/safety-plan", icon: LifeBuoy, testId: "psychiatry-qa-safety-plan" },
   {
     label: "First Nations",
     href: appModeHomeHref("first-nations"),
