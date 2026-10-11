@@ -2734,8 +2734,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                   {pillModeLabel}
                 </span>
               ) : (
-                // No "Mode" eyebrow at any width (11 Oct 2026 audit): the big-screen
-                // pill now reads as the phone's and as a work area's, the name alone.
                 <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
                   {selectedAppMode.label}
                 </span>
@@ -2860,7 +2858,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               a chat-less mode that own their control somewhere else — On Call's
               section pages moved the page menu into their own in-page header, and
               the button reappeared in a mode that has never had a chat. */}
-          {/* Tablets and desktop: the bell, as on every work page (11 Oct 2026 audit). */}
           {appModeHasWorkSearch(selectedAppMode.id) ? null : <ClinicalHeaderBell modeId={selectedAppMode.id} />}
           {modeHasConversation ? (
             <button
