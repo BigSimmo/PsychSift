@@ -76,6 +76,7 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
         const proc = spawnSync(
           process.execPath,
           [
+            "--input-type=module",
             "-e",
             `
             import { evaluateClinicalHazardControls } from './scripts/check-clinical-hazard-controls.mjs';
