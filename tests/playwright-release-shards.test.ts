@@ -30,6 +30,7 @@ describe("release-browser-matrix duration shards", () => {
       "firefox",
       "mobile-pwa-standalone",
       "mobile-webkit",
+      "tablet",
       "webkit",
     ]);
     for (const project of RELEASE_SHARDED_PROJECTS) {

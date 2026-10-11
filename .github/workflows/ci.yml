@@ -733,6 +733,12 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check "PyMuPDF==1.28.0"
 
       - name: Unit tests with partial coverage
+        # A partition takes 5-9 minutes. On PR #3450 (run 38102156845) partition 1 printed its last
+        # result after 6.5 minutes, went silent, and held the run until the 20-minute job cap. Every
+        # test already has a 30-second timeout, so a freeze outside a test body (a file import or a
+        # worker that never exits) is what this catches: the step now fails at 13 minutes instead,
+        # 7 minutes sooner, with the same red result. Nothing is skipped or retried.
+        timeout-minutes: 13
         run: >-
           node scripts/run-vitest.mjs run --config=vitest.coverage-shard.config.mts
           --coverage --shard=${{ matrix.shard }}/2 --reporter=default --reporter=blob
@@ -1979,13 +1985,21 @@ jobs:
         # Before iPhone legs were five, two and three both timed out (runs
         # 36156676861, 36210366372, 36214387379); refresh the table from the
         # release-ui-timings artifacts before changing any count.
+        #
+        # 2026-10-11: tablet ran whole on one leg and never finished. Main run
+        # 38053471704 hit the 30-minute global timeout with 345 tablet tests not
+        # run, and that one leg held Railway's "Wait for CI" for ~35 min on every
+        # merge (main runs took 36-40 min). Tablet now splits four ways (~12 min
+        # each by its new timing table) and webkit three ways (19.5 -> 13 min by
+        # its existing table), so every tablet test runs and main finishes sooner.
         include:
           - { engine: chromium, project: chromium-mockups, shard: 1, total: 1 }
           - { engine: firefox, project: firefox, shard: 1, total: 3 }
           - { engine: firefox, project: firefox, shard: 2, total: 3 }
           - { engine: firefox, project: firefox, shard: 3, total: 3 }
-          - { engine: webkit, project: webkit, shard: 1, total: 2 }
-          - { engine: webkit, project: webkit, shard: 2, total: 2 }
+          - { engine: webkit, project: webkit, shard: 1, total: 3 }
+          - { engine: webkit, project: webkit, shard: 2, total: 3 }
+          - { engine: webkit, project: webkit, shard: 3, total: 3 }
           - { engine: webkit, project: mobile-webkit, shard: 1, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 2, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 3, total: 5 }
@@ -1996,7 +2010,10 @@ jobs:
           - { engine: webkit, project: mobile-pwa-standalone, shard: 3, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 4, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 5, total: 5 }
-          - { engine: webkit, project: tablet, shard: 1, total: 1 }
+          - { engine: webkit, project: tablet, shard: 1, total: 4 }
+          - { engine: webkit, project: tablet, shard: 2, total: 4 }
+          - { engine: webkit, project: tablet, shard: 3, total: 4 }
+          - { engine: webkit, project: tablet, shard: 4, total: 4 }
 
     steps:
       - name: Checkout
