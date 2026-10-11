@@ -812,36 +812,48 @@ async function openMobileClinicalGuideMenu(page: Page) {
   await waitForReactEventHandler(trigger, "onClick");
   await trigger.click();
 
-  const menu = page.getByRole("dialog", { name: "PsychSift menu" });
+  const menu = page.getByRole("dialog", { name: "PsychSift" });
   await expect(menu).toBeVisible();
   const menuBox = await menu.boundingBox();
   expect(menuBox).not.toBeNull();
   expect(menuBox!.x).toBeGreaterThanOrEqual(0);
-  await expect(menu.getByRole("heading", { level: 2, name: "Clinical" })).toBeVisible();
-  await expect(menu.getByTestId("two-pane-menu-new-question")).toBeVisible();
-  await expect(menu.getByRole("textbox", { name: "Find questions, pages and areas" })).toBeVisible();
-  await expect(menu.getByRole("button", { name: "Edit shortcuts" })).toBeVisible();
-  const shortcuts = menu.getByRole("region", { name: "Shortcuts" });
-  await expect(shortcuts).toBeVisible();
+  await expect(menu.getByRole("button", { name: "New chat" })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Search PsychSift" })).toBeVisible();
+  await expect(menu.getByText("Recent chats", { exact: true })).toHaveCount(0);
+  await expect(menu.getByText("Shortcuts", { exact: true })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Edit" })).toBeVisible();
+  const navigation = menu.getByRole("navigation", { name: "Pinned shortcuts" });
+  await expect(navigation).toBeVisible();
   expect(
-    await shortcuts
+    await navigation
       .getByRole("link")
       .evaluateAll((links) => links.map((link) => ({ name: link.textContent, href: link.getAttribute("href") }))),
   ).toEqual([
-    // The first five pinned modes. Answer is the New question button above, so
-    // it is not repeated as a shortcut (two-pane-side-menu.tsx, SHORTCUTS_SHOWN).
+    // Design review 2026-10-03, item 4: My Day leads the default shortcuts.
     { name: "My Day", href: "/my-day" },
+    { name: "Answer", href: "/?mode=answer" },
     // Owner decision 2026-08-27: Documents joins the other consolidated modes and
-    // links at the shared home. Medication also points straight at the shared home.
+    // links at the shared home. `/documents` still exists and still paints its
+    // browse/recent workspace, but it is a second landing page — same subtitle,
+    // different title — and reaching it from the sidebar read as the wrong screen.
+    // It keeps its route and its inbound link from the Tools directory.
+    // Medication also redirects now — through its own bespoke proxy fast-path
+    // rather than the shared consolidatedModeHomePaths map, since /medications has
+    // no /search sub-route (src/proxy.ts, medicationsHomeTarget()) — and the
+    // pinned sidebar entry points straight at the shared home now too, matching
+    // Documents/Services above (ClinicalSidebar.tsx).
     { name: "Documents", href: "/?mode=documents" },
     { name: "Services", href: "/?mode=services" },
     { name: "Medication", href: "/?mode=prescribing" },
     { name: "Factsheets", href: "/?mode=factsheets" },
+    { name: "Tools", href: "/tools" },
   ]);
+  await expect(navigation.getByRole("button", { name: "More modes" })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Guide & help", exact: true })).toHaveCount(0);
-  await expect(menu.getByRole("button", { name: /^Appearance, Auto\./ })).toBeVisible();
+  await expect(menu.getByRole("button", { name: /^(Switch to )?(dark|light) mode$/i })).toHaveCount(0);
+  await expect(menu.getByRole("button", { name: /Appearance Auto/ })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(menu.getByTestId("two-pane-menu-you")).toBeVisible();
+  await expect(menu.getByText("Guest")).toBeVisible();
   await expect(page.getByRole("dialog", { name: "PsychSift guide" })).toHaveCount(0);
   await expectNoPageHorizontalOverflow(page);
   return menu;
@@ -892,14 +904,14 @@ async function openGuide(page: Page) {
         // The swallowed click leaves the phone menu OPEN, so a retry that always
         // reopens would toggle it shut and then fail to find Settings inside it.
         // Reuse the open menu; only summon one when there is none.
-        const openMenu = page.getByRole("dialog", { name: "PsychSift menu" });
+        const openMenu = page.getByRole("dialog", { name: "PsychSift" });
         const menu = (await openMenu.isVisible().catch(() => false))
           ? openMenu
           : await openMobileClinicalGuideMenu(page);
         await menu.getByRole("button", { name: "Settings", exact: true }).click();
       } else if (viewport && viewport.width < 1024) {
-        // Tablets get the two-pane rail; the full sidebar starts at 1024 px.
-        const railSettings = page.getByTestId("two-pane-rail-settings");
+        const rail = page.getByLabel("PsychSift collapsed sidebar");
+        const railSettings = rail.getByRole("button", { name: "Settings", exact: true });
         await expect(railSettings).toBeVisible();
         await railSettings.click();
       } else {
@@ -1289,54 +1301,55 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(universalFocus.pillShadow).not.toBe(restingPill.shadow);
 
     const menu = await openMobileClinicalGuideMenu(page);
-    const closeMenu = menu.getByRole("button", { name: "Close menu" });
-    const newQuestion = menu.getByTestId("two-pane-menu-new-question");
-    const restingButtonShadow = await newQuestion.evaluate((element) => getComputedStyle(element).boxShadow);
-    // Reach New question from the keyboard so the ring is the keyboard one.
-    await newQuestion.focus();
+    const closeMenu = menu.getByRole("button", { name: "Close PsychSift menu" });
+    const newChat = menu.getByRole("button", { name: "New chat" });
+    const restingButtonShadow = await newChat.evaluate((element) => getComputedStyle(element).boxShadow);
+    await closeMenu.focus();
     await page.keyboard.press("Tab");
-    await page.keyboard.press("Shift+Tab");
-    await expect(newQuestion).toBeFocused();
-    const buttonFocus = await newQuestion.evaluate((element) => {
+    // Firefox includes scrollable containers in the tab order; the sheet body
+    // (overflow-y-auto) sits between Close and "New chat" in DOM order and
+    // genuinely overflows at this viewport. Step over it when focused.
+    const onScrollableBody = await page.evaluate(() => {
+      const element = document.activeElement;
+      return element instanceof HTMLElement && element.classList.contains("overflow-y-auto");
+    });
+    if (onScrollableBody) await page.keyboard.press("Tab");
+    await expect(newChat).toBeFocused();
+    const buttonFocus = await newChat.evaluate((element) => {
       const style = getComputedStyle(element);
-      return {
-        outlineStyle: style.outlineStyle,
-        outlineWidth: Number.parseFloat(style.outlineWidth),
-        boxShadow: style.boxShadow,
-      };
+      return { outlineStyle: style.outlineStyle, boxShadow: style.boxShadow };
     });
     expect(buttonFocus.outlineStyle).toBe("solid");
-    expect(buttonFocus.outlineWidth).toBeGreaterThanOrEqual(2);
     expect(buttonFocus.boxShadow).toBe(restingButtonShadow);
 
-    // The find field shows one focus owner, its own border, and stays inside the sheet.
-    const find = menu.getByTestId("two-pane-menu-find");
-    await find.focus();
-    // The border eases in over a short transition, so wait for it to settle.
-    await expect
-      .poll(() =>
-        find.evaluate((element) => {
-          const field = element.closest(".two-pane-menu__find");
-          return field ? getComputedStyle(field).borderTopColor : null;
-        }),
-      )
-      .not.toBe("rgba(0, 0, 0, 0)");
-    const fieldFocus = await find.evaluate((element) => {
-      const field = element.closest(".two-pane-menu__find");
-      const sheet = element.closest('[role="dialog"]');
-      const fieldRect = field?.getBoundingClientRect();
-      const sheetRect = sheet?.getBoundingClientRect();
+    const guideSearch = menu.getByRole("button", { name: "Search PsychSift" });
+    await guideSearch.focus();
+    const fieldFocus = await guideSearch.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      const outlineWidth = Number.parseFloat(style.outlineWidth);
+      const outlineOffset = Number.parseFloat(style.outlineOffset);
       return {
-        inputOutline: getComputedStyle(element).outlineStyle,
-        contained:
-          Boolean(fieldRect && sheetRect) && fieldRect!.left >= sheetRect!.left && fieldRect!.right <= sheetRect!.right,
+        outlineStyle: style.outlineStyle,
+        outlineWidth,
+        outlineOffset,
+        paintedTop: rect.top - outlineOffset - outlineWidth,
+        paintedRight: rect.right + outlineOffset + outlineWidth,
+        paintedBottom: rect.bottom + outlineOffset + outlineWidth,
+        paintedLeft: rect.left - outlineOffset - outlineWidth,
+        rect: { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left },
       };
     });
-    expect(fieldFocus.inputOutline).toBe("none");
-    expect(fieldFocus.contained).toBe(true);
-
-    await closeMenu.click();
-    await expect(menu).toBeHidden();
+    expect(fieldFocus.outlineStyle).toBe("solid");
+    expect(fieldFocus.outlineWidth).toBeGreaterThanOrEqual(2);
+    expect(fieldFocus.outlineOffset).toBeLessThan(0);
+    expect(fieldFocus.paintedTop).toBeGreaterThanOrEqual(fieldFocus.rect.top);
+    expect(fieldFocus.paintedRight).toBeLessThanOrEqual(fieldFocus.rect.right);
+    expect(fieldFocus.paintedBottom).toBeLessThanOrEqual(fieldFocus.rect.bottom);
+    expect(fieldFocus.paintedLeft).toBeGreaterThanOrEqual(fieldFocus.rect.left);
+    await guideSearch.click();
+    await expect(menu).toHaveCount(0);
+    await expect(visibleQuestionInput(page)).toBeFocused();
     await expectNoPageHorizontalOverflow(page);
   });
 
@@ -1473,17 +1486,21 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("plain-answer-response")).toHaveCount(0);
   });
 
-  test("collapsed desktop rail lists pinned shortcuts and More modes @critical", async ({ page }) => {
-    // Tablets get the two-pane rail (covered below); this icon rail is the
-    // collapsed sidebar from 1024 px, which is also its default state.
-    await page.setViewportSize({ width: 1280, height: 900 });
+  test("tablet shows icon rail without drawer trigger or expand control @critical", async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    // The classic icon rail is what every reader gets on a tablet.
     await mockDemoApi(page);
+    // Seed expanded preference so #clinical-tools-sidebar mounts. Without this
+    // seed the panel is absent (count 0) and toBeHidden() would pass vacuously;
+    // we need the remembered-expanded path where the panel exists but stays
+    // display:none below lg while tablet still only presents the icon rail.
+    await page.addInitScript(() => window.localStorage.setItem("clinical-kb-sidebar-collapsed", "0"));
     await gotoApp(page, "/?mode=answer");
     await waitForDemoDashboardReady(page);
 
-    await expect(page.getByRole("button", { name: "Open PsychSift menu" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
-    await expect(page.locator("#clinical-tools-sidebar")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Open PsychSift menu" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Expand sidebar" })).toHaveCount(0);
+    await expect(page.locator("#clinical-tools-sidebar")).toBeHidden();
     await expect(page.getByLabel("PsychSift collapsed sidebar")).toBeVisible();
 
     const rail = page.getByLabel("PsychSift collapsed sidebar");
@@ -1541,34 +1558,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("tablet two-pane rail opens the menu on the side it names", async ({ page }) => {
+  test("tablet rail highlights the active tool for key routes", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await mockDemoApi(page);
-    await gotoApp(page, "/?mode=answer");
-    await waitForDemoDashboardReady(page);
-
-    const rail = page.getByTestId("two-pane-rail");
-    await expect(rail).toBeVisible();
-    await expect(page.getByLabel("PsychSift collapsed sidebar")).toBeHidden();
-    await expect(page.getByRole("button", { name: "Open PsychSift menu" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "Expand sidebar" })).toHaveCount(0);
-    await expect(rail.getByTestId("two-pane-rail-clinical")).toHaveAttribute("data-current", "true");
-    expect((await rail.boundingBox())?.width).toBe(84);
-
-    await rail.getByTestId("two-pane-rail-clinical").click();
-    const menu = page.getByTestId("two-pane-side-menu");
-    await expect(menu).toBeVisible();
-    await expect(menu.getByRole("heading", { level: 2, name: "Clinical" })).toBeVisible();
-    await menu.getByRole("button", { name: "Close menu" }).click();
-    await expect(menu).toBeHidden();
-    await expect(rail.getByTestId("two-pane-rail-clinical")).toBeFocused();
-
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(rail).toBeHidden();
-  });
-
-  test("collapsed desktop rail highlights the active tool for key routes", async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
     await mockDemoApi(page);
 
     for (const route of [
@@ -1763,7 +1754,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     const setup = accountSetupDialog(page);
     const menu = await openMobileClinicalGuideMenu(page);
     await menu.getByRole("button", { name: "Settings", exact: true }).click();
-    await expect(menu).toBeHidden();
+    await expect(menu).toHaveCount(0);
     await expect(settings).toBeVisible();
     await expectAccountSettingsSurface(settings, "phone");
     const settingsBox = await settings.boundingBox();
@@ -1824,9 +1815,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(settings).toBeHidden();
 
     const accountMenu = await openMobileClinicalGuideMenu(page);
-    await accountMenu.getByTestId("two-pane-menu-you").click();
-    await accountMenu.getByTestId("two-pane-menu-account").click();
-    await expect(accountMenu).toBeHidden();
+    await accountMenu.getByTestId("sidebar-account-settings").click();
+    await expect(accountMenu).toHaveCount(0);
     await expect(setup).toBeVisible();
     await expectAccountSetupSurface(setup);
     await expectAccountProviderLayout(setup, "stack");
@@ -4913,14 +4903,7 @@ test.describe("PsychSift UI smoke coverage", () => {
           return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
         }).length,
     );
-    // Tablets keep New question in the two-pane menu, so the page shows no
-    // second new-chat button beside it.
-    expect(visibleNewChatCount).toBeLessThanOrEqual(1);
-    await page.getByTestId("two-pane-rail-clinical").click();
-    const menu = page.getByTestId("two-pane-side-menu");
-    await expect(menu.getByTestId("two-pane-menu-new-question")).toBeVisible();
-    await menu.getByRole("button", { name: "Close menu" }).click();
-    await expect(menu).toBeHidden();
+    expect(visibleNewChatCount).toBe(1);
 
     await page.getByTestId("document-filter-trigger-wide").click();
     const browseLibraryButton = page.getByRole("button", { name: "Browse all sources" }).first();

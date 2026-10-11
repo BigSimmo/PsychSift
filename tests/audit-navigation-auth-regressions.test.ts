@@ -421,8 +421,8 @@ describe("audit navigation and auth regressions", () => {
     const desktopSidebar = sourceSegment(clinicalDashboardSource, "<ClinicalDesktopSidebar", "<PhoneFooterLayerFrame", {
       label: "desktop sidebar prefetch wiring",
     });
-    const mobileSidebar = sourceSegment(clinicalDashboardSource, "<TwoPaneSideMenuHost", "</PhoneFooterLayerFrame>", {
-      label: "side menu prefetch wiring",
+    const mobileSidebar = sourceSegment(clinicalDashboardSource, "<ClinicalMobileSidebar", "</PhoneFooterLayerFrame>", {
+      label: "mobile sidebar prefetch wiring",
     });
     expect(desktopSidebar).toContain("onPrefetchApplications={prefetchApplications}");
     expect(mobileSidebar).toContain("onPrefetchApplications={prefetchApplications}");
