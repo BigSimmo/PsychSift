@@ -1064,14 +1064,7 @@ const admin: WorkArea = {
     {
       label: "Paperwork",
       items: [
-        {
-          id: "admin-compliance",
-          label: "Compliance",
-          sub: "Every requirement",
-          icon: "shield",
-          href: "/admin/compliance",
-        },
-        { id: "admin-export", label: "Export", sub: "Spreadsheet", icon: "download", href: "/admin/compliance/export" },
+        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
         {
           id: "admin-bookings",
           label: "Bookings",
@@ -1088,7 +1081,6 @@ const admin: WorkArea = {
           href: "/admin/courses",
           gate: "course-organiser",
         },
-        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
         {
           id: "admin-documents",
           label: "Documents",

@@ -34,6 +34,7 @@ import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ComplianceByGroup } from "@/components/admin/admin-compliance-page";
 import { complianceBucket, complianceBucketCounts, type ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { renewNext } from "@/lib/admin/renew-next";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -117,6 +118,14 @@ function detailSubjectForCatalogueItem(id: string, own: readonly OnCallEntry[]):
  * page reads was recorded by the reader; nothing is checked with an issuer —
  * see `src/lib/on-call/compliance.ts`, "What this page may never say".
  */
+type RenewalsView = "checklist" | "group" | "personal";
+
+/** Opening a requirement keeps By group when the reader is on it; a personal renewal opens on Personal. */
+function keepViewFor(kind: "catalogue" | "personal", current: RenewalsView): RenewalsView {
+  if (kind === "personal") return "personal";
+  return current === "group" ? "group" : "checklist";
+}
+
 export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
   const mountedAt = useMemo(() => new Date(), []);
@@ -148,7 +157,16 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   // opens; null while the sheet is closed.
   const [recordQueue, setRecordQueue] = useState<readonly CatalogueItem[] | null>(null);
 
-  const [tab, setTab] = useState<"checklist" | "personal">("checklist");
+  // Soonest ("checklist"), By group (Compliance, merged in 11 Oct 2026) or Personal. `?view=group` opens
+  // By group, which is where the old Compliance address now lands.
+  const [tab, setTab] = useState<RenewalsView>(() => (searchParams?.get("view") === "group" ? "group" : "checklist"));
+  // A later link to `?view=group` while the page is open (Compliance's old address, New job's signpost).
+  const viewParam = searchParams?.get("view") ?? null;
+  const [seenView, setSeenView] = useState(viewParam);
+  if (viewParam !== seenView) {
+    setSeenView(viewParam);
+    if (viewParam === "group") setTab("group");
+  }
   const [kindFilter, setKindFilter] = useState<ChecklistKindFilter>("all");
   const [glance, setGlance] = useState<ComplianceBucket | null>(null);
   const [detailSubject, setDetailSubject] = useState<ChecklistItemSubject | null>(null);
@@ -264,7 +282,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
       const subject = detailSubjectForEntry(entry);
       if (!subject) return;
       openedHash.current = hash;
-      setTab(subject.kind === "catalogue" ? "checklist" : "personal");
+      setTab((current) => keepViewFor(subject.kind, current));
       setDetailSubject(subject);
     }
     openFromHash();
@@ -282,7 +300,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
       const subject = entry ? detailSubjectForEntry(entry) : detailSubjectForCatalogueItem(id, own);
       if (!subject) return;
       openedItem.current = id;
-      setTab(subject.kind === "catalogue" ? "checklist" : "personal");
+      setTab((current) => keepViewFor(subject.kind, current));
       setDetailSubject(subject);
     }
     openFromItemParam(itemParam);
@@ -403,7 +421,7 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
     eyebrow: filteredLabel ? `Showing ${filteredLabel}` : "Medical Board and WA Health · checked 26 Sep",
   });
 
-  const recordDatesInDock = canEdit && tab === "checklist" && notRecordedItems.length > 0;
+  const recordDatesInDock = canEdit && tab !== "personal" && notRecordedItems.length > 0;
 
   return (
     <AdminPage testId="admin-renewals-main">
@@ -456,7 +474,8 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
             onChange={setTab}
             layout="equal"
             options={[
-              { value: "checklist", label: "Checklist" },
+              { value: "checklist", label: "Soonest" },
+              { value: "group", label: "By group" },
               { value: "personal", label: "Personal" },
             ]}
           />
@@ -534,6 +553,8 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
                 </>
               )}
             </>
+          ) : tab === "group" ? (
+            <ComplianceByGroup state={state} now={now} canEdit={canEdit} />
           ) : (
             <PersonalRenewalsList
               entries={personalEntries}

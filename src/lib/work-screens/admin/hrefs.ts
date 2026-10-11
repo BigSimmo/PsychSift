@@ -1,7 +1,8 @@
 /** The wiring thread's Admin routes. Icon-free, like `ADMIN_PAGE_HREFS`, so a link costs nothing. */
 export const ADMIN_WORK_SCREEN_HREFS = {
   requests: "/admin/requests",
-  sharing: "/admin/sharing",
+  // Sharing is Requests' "Send a pack" view since 11 Oct 2026.
+  sharing: "/admin/requests#send",
   documents: "/admin/documents",
   pay: "/admin/pay",
   tax: "/admin/tax",

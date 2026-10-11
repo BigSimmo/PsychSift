@@ -87,7 +87,11 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   ],
   [
     "/admin/sharing",
-    "Not live, so it left Admin's menu (audit 11 Oct 2026). Reached from the Requests and Documents rows through ADMIN_WORK_SCREEN_HREFS.sharing, which this literal-href scan does not model.",
+    "Merged into Requests as its Send a pack view (audit 11 Oct 2026). It redirects to /admin/requests#send; the page stays only for existing bookmarks.",
+  ],
+  [
+    "/admin/compliance",
+    "Merged into Renewals as its By group view (audit 11 Oct 2026). It redirects to /admin/renewals?view=group; the page stays only for existing bookmarks.",
   ],
   [
     "/admin/workforce",

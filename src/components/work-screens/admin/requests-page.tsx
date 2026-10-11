@@ -1,7 +1,7 @@
 "use client";
 
-import { CalendarClock, ClipboardList, Copy, Inbox, Mail, Plus, Send, Share2, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { CalendarClock, ClipboardList, Copy, Inbox, Mail, Plus, Send, Trash2 } from "lucide-react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { AdminStatusWord } from "@/components/admin/admin-status-word";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
@@ -39,13 +39,13 @@ import {
   usePaperworkSay,
   useSingleFlight,
 } from "@/components/work-screens/admin/paperwork-shared";
+import { SharingBody } from "@/components/work-screens/admin/sharing-page";
 import { buildComplianceOverview } from "@/lib/admin/compliance-overview";
 import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { formatRecordedDate } from "@/lib/admin/renewal-dates";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
-import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { guardExampleAction, isExampleRecord, type ExampleBlockedAction } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
@@ -121,6 +121,15 @@ function requestProblem(request: AdminRequest) {
 
 const PATIENT_NOT_SENT = "This request may hold a patient detail, so nothing was copied or sent. Edit it first.";
 
+function subscribeHash(onChange: () => void): () => void {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
+}
+
+function readHashIsSend(): boolean {
+  return window.location.hash === "#send";
+}
+
 export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Requests", "You send them, PsychSift keeps track");
   const page = usePaperworkPage("admin.requests");
@@ -128,7 +137,10 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   const say = usePaperworkSay();
   const now = useMemo(() => pinned ?? new Date(), [pinned]);
   const today = perthDateOf(now);
-  const [tab, setTab] = useState<"open" | "done">("open");
+  // "send" is Sharing, merged into Requests on 11 Oct 2026: its old address lands on `#send`.
+  const landedOnSend = useSyncExternalStore(subscribeHash, readHashIsSend, () => false);
+  const [chosenTab, setTab] = useState<"open" | "done" | "send" | null>(null);
+  const tab = chosenTab ?? (landedOnSend ? "send" : "open");
   const [draft, setDraft] = useState<{ value: Draft; editing: string | null } | null>(null);
   const [answering, setAnswering] = useState<AdminRequest | null>(null);
   const [failed, setFailed] = useState(false);
@@ -290,111 +302,120 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
             >
               Done
             </WorkChip>
+            <WorkChip selected={tab === "send"} onClick={() => setTab("send")} testId="admin-requests-tab-send">
+              Send a pack
+            </WorkChip>
           </WorkChips>
 
-          {tab === "open" && chaseCount > 0 ? (
-            <p role="status" className="text-sm text-[color:var(--text)]" data-testid="admin-requests-chase-line">
-              {chaseCount === 1
-                ? "1 request has had no reply for a week."
-                : `${chaseCount} requests have had no reply for a week.`}
-            </p>
-          ) : null}
-
-          <WorkSectionLabel count={list.length ? (tab === "open" ? "Soonest first" : "Newest first") : undefined}>
-            {tab === "open" ? "Your asks" : "Answered"}
-          </WorkSectionLabel>
-          {list.length === 0 ? (
-            <WorkCard>
-              <WorkEmpty
-                icon={Inbox}
-                title={tab === "open" ? "No open requests" : "Nothing answered yet"}
-                body={
-                  tab === "open"
-                    ? "Ask for more time, send a document or ask a question. You send it, and it is tracked here."
-                    : "When you record an answer, the request moves here."
-                }
-                action={
-                  tab === "open" ? (
-                    <WorkButton
-                      icon={Plus}
-                      onClick={() => setDraft({ value: blankDraft(), editing: null })}
-                      testId="admin-requests-empty-new"
-                    >
-                      New request
-                    </WorkButton>
-                  ) : undefined
-                }
-                testId={`admin-requests-empty-${tab}`}
-              />
-            </WorkCard>
+          {tab === "send" ? (
+            <SharingBody embedded now={now} />
           ) : (
-            <ul className="grid gap-2" data-testid={`admin-requests-list-${tab}`}>
-              {list.map((request) => (
-                <RequestCard
-                  key={request.id}
-                  request={request}
-                  today={today}
-                  onCopy={() => void sendByCopy(request)}
-                  onEmail={() => sendByEmail(request)}
-                  onSeen={() => withUndo(request, markSeen(request, today), "Marked as seen")}
-                  onAnswer={() => setAnswering(request)}
-                  onChase={() => void chase(request)}
-                  onReopen={() => withUndo(request, reopen(request), "Reopened")}
-                  onEdit={() =>
-                    setDraft({
-                      value: blankDraft({
-                        kind: request.kind,
-                        title: request.title,
-                        to: request.to,
-                        dueOn: request.dueOn ?? "",
-                        askedFor: request.askedFor ?? "",
-                        reason: request.reason ?? null,
-                        note: request.note ?? "",
-                        email: request.toEmail ?? "",
-                      }),
-                      editing: request.id,
-                    })
-                  }
-                  onRemove={() => remove(request)}
-                />
-              ))}
-            </ul>
-          )}
-
-          {tab === "open" && suggestions.length > 0 ? (
             <>
-              <WorkSectionLabel count="From Compliance">You may need more time</WorkSectionLabel>
-              <WorkCard testId="admin-requests-suggestions">
-                {suggestions.map((suggestion) => (
-                  <WorkIconRow
-                    key={suggestion.key}
-                    icon={CalendarClock}
-                    tone="neutral"
-                    title={suggestion.title}
-                    sub={
-                      <>
-                        <AdminStatusWord bucket={suggestion.bucket} className="text-xs" />
-                        {` · ${formatRecordedDate(suggestion.dueOn)}`}
-                      </>
+              {tab === "open" && chaseCount > 0 ? (
+                <p role="status" className="text-sm text-[color:var(--text)]" data-testid="admin-requests-chase-line">
+                  {chaseCount === 1
+                    ? "1 request has had no reply for a week."
+                    : `${chaseCount} requests have had no reply for a week.`}
+                </p>
+              ) : null}
+
+              <WorkSectionLabel count={list.length ? (tab === "open" ? "Soonest first" : "Newest first") : undefined}>
+                {tab === "open" ? "Your asks" : "Answered"}
+              </WorkSectionLabel>
+              {list.length === 0 ? (
+                <WorkCard>
+                  <WorkEmpty
+                    icon={Inbox}
+                    title={tab === "open" ? "No open requests" : "Nothing answered yet"}
+                    body={
+                      tab === "open"
+                        ? "Ask for more time, send a document or ask a question. You send it, and it is tracked here."
+                        : "When you record an answer, the request moves here."
                     }
-                    end={<span className="text-sm font-semibold text-[color:var(--mode-identity)]">Ask</span>}
-                    onClick={() =>
-                      setDraft({
-                        value: blankDraft({
-                          kind: "more-time",
-                          title: suggestion.title,
-                          dueOn: suggestion.dueOn,
-                          askedFor: addDaysToDate(suggestion.dueOn < today ? today : suggestion.dueOn, 14),
-                        }),
-                        editing: null,
-                      })
+                    action={
+                      tab === "open" ? (
+                        <WorkButton
+                          icon={Plus}
+                          onClick={() => setDraft({ value: blankDraft(), editing: null })}
+                          testId="admin-requests-empty-new"
+                        >
+                          New request
+                        </WorkButton>
+                      ) : undefined
                     }
-                    testId={`admin-requests-suggest-${suggestion.key}`}
+                    testId={`admin-requests-empty-${tab}`}
                   />
-                ))}
-              </WorkCard>
+                </WorkCard>
+              ) : (
+                <ul className="grid gap-2" data-testid={`admin-requests-list-${tab}`}>
+                  {list.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      today={today}
+                      onCopy={() => void sendByCopy(request)}
+                      onEmail={() => sendByEmail(request)}
+                      onSeen={() => withUndo(request, markSeen(request, today), "Marked as seen")}
+                      onAnswer={() => setAnswering(request)}
+                      onChase={() => void chase(request)}
+                      onReopen={() => withUndo(request, reopen(request), "Reopened")}
+                      onEdit={() =>
+                        setDraft({
+                          value: blankDraft({
+                            kind: request.kind,
+                            title: request.title,
+                            to: request.to,
+                            dueOn: request.dueOn ?? "",
+                            askedFor: request.askedFor ?? "",
+                            reason: request.reason ?? null,
+                            note: request.note ?? "",
+                            email: request.toEmail ?? "",
+                          }),
+                          editing: request.id,
+                        })
+                      }
+                      onRemove={() => remove(request)}
+                    />
+                  ))}
+                </ul>
+              )}
+
+              {tab === "open" && suggestions.length > 0 ? (
+                <>
+                  <WorkSectionLabel count="From Compliance">You may need more time</WorkSectionLabel>
+                  <WorkCard testId="admin-requests-suggestions">
+                    {suggestions.map((suggestion) => (
+                      <WorkIconRow
+                        key={suggestion.key}
+                        icon={CalendarClock}
+                        tone="neutral"
+                        title={suggestion.title}
+                        sub={
+                          <>
+                            <AdminStatusWord bucket={suggestion.bucket} className="text-xs" />
+                            {` · ${formatRecordedDate(suggestion.dueOn)}`}
+                          </>
+                        }
+                        end={<span className="text-sm font-semibold text-[color:var(--mode-identity)]">Ask</span>}
+                        onClick={() =>
+                          setDraft({
+                            value: blankDraft({
+                              kind: "more-time",
+                              title: suggestion.title,
+                              dueOn: suggestion.dueOn,
+                              askedFor: addDaysToDate(suggestion.dueOn < today ? today : suggestion.dueOn, 14),
+                            }),
+                            editing: null,
+                          })
+                        }
+                        testId={`admin-requests-suggest-${suggestion.key}`}
+                      />
+                    ))}
+                  </WorkCard>
+                </>
+              ) : null}
             </>
-          ) : null}
+          )}
         </>
       )}
 
@@ -402,15 +423,9 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
       <WorkCard>
         <WorkIconRow
           icon={ClipboardList}
-          title="Compliance"
+          title="Renewals by group"
           sub="Every requirement and its date"
           href={ADMIN_PAGE_HREFS.compliance}
-        />
-        <WorkIconRow
-          icon={Share2}
-          title="Sharing"
-          sub="What you would share, and the pack"
-          href={ADMIN_WORK_SCREEN_HREFS.sharing}
         />
       </WorkCard>
 

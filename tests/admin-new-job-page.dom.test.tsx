@@ -275,7 +275,7 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     ];
     render(<AdminNewJobPage now={NOW} />);
     const signpost = screen.getByTestId("admin-new-job-paperwork");
-    expect(signpost.getAttribute("href")).toBe("/admin/compliance");
+    expect(signpost.getAttribute("href")).toBe("/admin/renewals?view=group");
     expect(signpost).toHaveTextContent("Paperwork for your next job");
     expect(screen.getByTestId("admin-new-job-paperwork-count").textContent).toMatch(
       /^\d+ to do before you start, in Compliance$/,

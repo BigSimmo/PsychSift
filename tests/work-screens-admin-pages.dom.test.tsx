@@ -116,9 +116,9 @@ afterEach(() => {
 });
 
 describe("Admin Sharing", () => {
-  it("says it is not live, starts every switch off and offers no pack", () => {
+  it("says you send it yourself, starts every switch off and offers no pack", () => {
     withToasts(<AdminSharingPage now={NOW} />);
-    expect(screen.getByTestId("admin-sharing-not-live").textContent).toContain("Not live yet");
+    expect(screen.getByTestId("admin-sharing-not-live").textContent).toContain("PsychSift never sends it for you");
     for (const sw of screen.getAllByRole("switch")) expect(sw.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByTestId("admin-sharing-nothing-on")).toBeTruthy();
   });
