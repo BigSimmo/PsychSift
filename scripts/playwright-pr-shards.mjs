@@ -289,6 +289,13 @@ export const prUiSpecProfiles = Object.freeze([
     criticalSeconds: 0,
   },
   {
+    // Estimated (new assessment scrolling coverage); re-measure after the first PR timing report.
+    file: "tests/ui-phone-scroll-assessments.spec.ts",
+    shard: 3,
+    fullSeconds: 25,
+    criticalSeconds: 0,
+  },
+  {
     file: "tests/ui-phone-scroll-document-rail.spec.ts",
     shard: 1,
     fullSeconds: 3.7,
