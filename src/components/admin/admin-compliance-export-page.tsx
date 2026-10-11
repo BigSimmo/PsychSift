@@ -118,7 +118,7 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
   return (
     <AdminPage testId="admin-compliance-export-main">
       <div className="grid min-w-0 gap-1">
-        <InformationPageBreadcrumbs home={{ label: "Compliance", href: ADMIN_PAGE_HREFS.compliance }} />
+        <InformationPageBreadcrumbs home={{ label: "Renewals", href: ADMIN_PAGE_HREFS.compliance }} />
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
           Export a copy
         </PageTitleUnderBand>

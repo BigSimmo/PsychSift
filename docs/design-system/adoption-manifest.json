@@ -2529,7 +2529,6 @@
         "src/components/work-screens/admin/requests-page.tsx",
         "src/components/work-screens/admin/sharing-page.tsx",
         "src/components/work-screens/admin/tax-page.tsx",
-        "src/components/work-screens/admin/workforce-page.tsx",
         "src/components/work-screens/assessments/assessments-trainee-page.tsx",
         "src/components/work-search/work-search-keys.tsx",
         "src/components/work-search/work-search-sheet.tsx"
@@ -3779,7 +3778,7 @@
           "literalCkbV2": false,
           "dynamicCkbV2": false,
           "v2MountMode": "inherited-global-root",
-          "sanctionedPatternsPresent": ["ModeHome"]
+          "sanctionedPatternsPresent": []
         },
         {
           "file": "src/app/(search-app)/cme/applications/cv/page.tsx",

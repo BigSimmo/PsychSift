@@ -949,9 +949,9 @@ test.describe("Compliance — the view the boards never drew", () => {
     expect(summaryBox!.y, "the 'not a check' line has slipped below the list").toBeLessThan(firstGroup!.y);
   });
 
-  test("keeps Checklist and Personal tabs, and Personal holds only the reader's own renewals", async ({ page }) => {
+  test("keeps Soonest and Personal tabs, and Personal holds only the reader's own renewals", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
-    await expect(page.getByRole("radio", { name: "Checklist" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Soonest" })).toBeVisible();
     await page.getByRole("radio", { name: "Personal" }).click();
 
     const personal = visibleByTestId(page, "admin-renewals-personal");

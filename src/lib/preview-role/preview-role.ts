@@ -86,9 +86,9 @@ const ADMIN_SCREENS: readonly PreviewRoleScreen[] = [
     ready: true,
   },
   {
-    label: "Workforce",
-    href: "/admin/workforce",
-    sub: "New starters and what is missing",
+    label: "Hospital",
+    href: "/admin/hospital",
+    sub: "Medical Workforce: sick calls, starters, people and roles",
     ready: true,
   },
   {
