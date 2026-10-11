@@ -431,9 +431,17 @@ export function PwaLifecycle() {
       missedControllerChange = true;
     };
     navigator.serviceWorker.addEventListener("controllerchange", noteControllerChange);
+    let attempts = 0;
+    let retryTimer: number | undefined;
+    const clearRetry = () => {
+      window.clearTimeout(retryTimer);
+      window.removeEventListener("online", start);
+      window.removeEventListener("focus", start);
+    };
     const start = () => {
       if (disposed || stop) return;
-      window.removeEventListener("online", start);
+      clearRetry();
+      attempts += 1;
       loadPwaServiceWorker().then(
         (serviceWorker) => {
           if (disposed || stop) return;
@@ -456,14 +464,19 @@ export function PwaLifecycle() {
         // A chunk that failed to load (for example offline) is retried once
         // connectivity returns, so update checks are not lost for the page view.
         () => {
-          if (!disposed) window.addEventListener("online", start);
+          // Transient failures while online retry too: on focus, on reconnect,
+          // or after a short backoff, bounded so a missing chunk cannot loop.
+          if (disposed || attempts >= 5) return;
+          window.addEventListener("online", start);
+          window.addEventListener("focus", start);
+          retryTimer = window.setTimeout(start, 15_000 * attempts);
         },
       );
     };
     start();
     return () => {
       disposed = true;
-      window.removeEventListener("online", start);
+      clearRetry();
       navigator.serviceWorker.removeEventListener("controllerchange", noteControllerChange);
       stop?.();
     };
