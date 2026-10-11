@@ -273,7 +273,7 @@ function TodayBody({
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              href="/teaching/week?view=other"
+              href={`/teaching/week?view=other&week=${mondayOf(today)}`}
             />
           ) : null}
         </T5List>
