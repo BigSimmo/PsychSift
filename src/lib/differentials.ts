@@ -554,6 +554,14 @@ export function resolvePresentationSlug(slug: string): string {
   return LEGACY_PRESENTATION_SLUG_ALIASES[normalized] ?? normalized;
 }
 
+/** Published-content lookup order for a presentation: the canonical `presentation-` slug, then
+ *  the legacy slug that hosted publications seeded before the namespace may still carry. */
+export function presentationLookupSlugs(slug: string): string[] {
+  const canonical = resolvePresentationSlug(slug);
+  const legacy = Object.entries(LEGACY_PRESENTATION_SLUG_ALIASES).find(([, target]) => target === canonical)?.[0];
+  return legacy ? [canonical, legacy] : [canonical];
+}
+
 /** Server-computed context for the diagnosis detail page. Everything the page
  *  needs from the full catalog travels in this small serializable payload so
  *  the client component never imports the generated snapshot. */

@@ -11,6 +11,7 @@ import { loadDifferentialSnapshot } from "@/lib/differential-seed";
 import {
   getDifferentialRecord,
   getPresentationWorkflow,
+  presentationLookupSlugs,
   resolvePresentationSlug,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
@@ -93,28 +94,35 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     const seedGovernance = deriveGovernanceFromSnapshot(snapshot);
     const canonicalSlug = resolvePresentationSlug(normalizedSlug);
     const seedWorkflow = getPresentationWorkflow(canonicalSlug);
-    const presentation = await readCanonicalSiteContentRecords({
-      supabase,
-      kind: "presentation",
-      slug: canonicalSlug,
-      seeds: seedWorkflow
-        ? [
-            {
-              workflow: seedWorkflow,
-              governance: {
-                sourceStatus: seedGovernance.source_status,
-                validationStatus: seedGovernance.validation_status,
-                lastReviewedAt: null,
-                reviewDueAt: null,
+    const lookupSlugs = presentationLookupSlugs(normalizedSlug);
+    const readPresentation = (lookupSlug: string) =>
+      readCanonicalSiteContentRecords({
+        supabase,
+        kind: "presentation",
+        slug: lookupSlug,
+        seeds: seedWorkflow
+          ? [
+              {
+                workflow: seedWorkflow,
+                governance: {
+                  sourceStatus: seedGovernance.source_status,
+                  validationStatus: seedGovernance.validation_status,
+                  lastReviewedAt: null,
+                  reviewDueAt: null,
+                },
               },
-            },
-          ]
-        : [],
-      mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-        workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
-        governance: canonicalSiteContentGovernance(canonicalRecord),
-      }),
-    });
+            ]
+          : [],
+        mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
+          workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
+          governance: canonicalSiteContentGovernance(canonicalRecord),
+        }),
+      });
+    let presentation = await readPresentation(lookupSlugs[0]);
+    for (const fallbackSlug of lookupSlugs.slice(1)) {
+      if (presentation.records.length > 0) break;
+      presentation = await readPresentation(fallbackSlug);
+    }
     const payload = presentation.records[0];
     if (!payload) return notFoundResponse(normalizedSlug);
     const diagnosisPopulation = await readCanonicalSiteContentRecords({

@@ -6,7 +6,7 @@ import {
   differentialRecords,
   getDifferentialRecord,
   getPresentationWorkflow,
-  LEGACY_PRESENTATION_SLUG_ALIASES,
+  presentationLookupSlugs,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
 } from "@/lib/differentials";
@@ -67,11 +67,11 @@ export const readPresentationPageRecord = cache(async (slug: string) => {
         workflow: finalRenderPayload as unknown as NonNullable<typeof seed>,
       }),
     });
-  // Hosted publications seeded before the `presentation-` namespace still carry the legacy slug,
-  // so a canonical slug with no published record falls back to its legacy alias.
-  const legacySlug = Object.entries(LEGACY_PRESENTATION_SLUG_ALIASES).find(([, canonical]) => canonical === slug)?.[0];
-  const { records } = await read(slug);
-  const fallback = records.length === 0 && legacySlug ? await read(legacySlug) : { records: [] };
-  const workflow = (records[0] ?? fallback.records[0])?.workflow;
+  // Hosted publications seeded before the `presentation-` namespace may still carry the legacy slug.
+  let workflow: NonNullable<typeof seed> | undefined;
+  for (const lookupSlug of presentationLookupSlugs(slug)) {
+    workflow = (await read(lookupSlug)).records[0]?.workflow;
+    if (workflow) break;
+  }
   return workflow ? scopePresentationWorkflow(workflow) : null;
 });

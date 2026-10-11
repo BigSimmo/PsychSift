@@ -13,6 +13,7 @@ import {
   getDifferentialDetailContext,
   getDifferentialRecord,
   getPresentationWorkflow,
+  presentationLookupSlugs,
   resolvePresentationSlug,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
@@ -116,30 +117,37 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     const seedGovernance = deriveGovernanceFromSnapshot(snapshot);
     if (kind === "presentation") {
       const seedWorkflow = getPresentationWorkflow(resolvePresentationSlug(normalizedSlug));
-      const canonical = await readCanonicalSiteContentRecords({
-        supabase,
-        kind: "presentation",
-        slug: normalizedSlug,
-        seeds: seedWorkflow
-          ? [
-              {
-                workflow: seedWorkflow,
-                governance: {
-                  sourceStatus: seedGovernance.source_status,
-                  validationStatus: seedGovernance.validation_status,
-                  lastReviewedAt: null,
-                  reviewDueAt: null,
+      const lookupSlugs = presentationLookupSlugs(normalizedSlug);
+      const readPresentation = (lookupSlug: string) =>
+        readCanonicalSiteContentRecords({
+          supabase,
+          kind: "presentation",
+          slug: lookupSlug,
+          seeds: seedWorkflow
+            ? [
+                {
+                  workflow: seedWorkflow,
+                  governance: {
+                    sourceStatus: seedGovernance.source_status,
+                    validationStatus: seedGovernance.validation_status,
+                    lastReviewedAt: null,
+                    reviewDueAt: null,
+                  },
                 },
-              },
-            ]
-          : [],
-        // Canonical payloads were seeded before presentation scope existed, so
-        // they are relabelled here too — see scopeDifferentialRecord.
-        mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-          workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
-          governance: canonicalSiteContentGovernance(canonicalRecord),
-        }),
-      });
+              ]
+            : [],
+          // Canonical payloads were seeded before presentation scope existed, so
+          // they are relabelled here too — see scopeDifferentialRecord.
+          mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
+            workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
+            governance: canonicalSiteContentGovernance(canonicalRecord),
+          }),
+        });
+      let canonical = await readPresentation(lookupSlugs[0]);
+      for (const fallbackSlug of lookupSlugs.slice(1)) {
+        if (canonical.records.length > 0) break;
+        canonical = await readPresentation(fallbackSlug);
+      }
       const payload = canonical.records[0];
       if (!payload) return notFoundResponse(normalizedSlug);
       return differentialResponse(
