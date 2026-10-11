@@ -76,13 +76,14 @@ export const phoneModeGroups = [
     modeIds: ["medicines", "prescribing", "tools", "calculators", "factsheets", "dictionary"],
   },
   // One list, and the switch already names it, so the menu draws no second heading.
+  // Same area order as the side menu and the rail: My Day, On Call, Open shifts, Roster, Teaching, CPD, Admin.
   {
     id: "work",
     label: "Work",
     hint: "Your working day",
     side: "work",
     showHeading: false,
-    modeIds: ["my-day", "cme", "open-shifts", "roster", "my-work", "on-call", "teaching"],
+    modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
@@ -103,6 +104,20 @@ export function phoneModeGroupsForSide(side: ModeMenuSideId) {
 /** Which room a mode belongs to. A mode in no group, which the exhaustiveness test forbids, reads as Clinical. */
 export function modeMenuSideForMode(modeId: AppModeId): ModeMenuSideId {
   return phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId))?.side ?? "clinical";
+}
+
+/**
+ * A Clinical page (not the shared home) wears the clinical band's soft tint on
+ * its top bar (owner design review, 11 Oct 2026; mode-band.css). Decided from
+ * the mode and address alone, so it is in the server HTML and never flashes.
+ * Returns the `data-clinical-band` attribute value.
+ */
+export function clinicalBandAttribute(
+  modeId: AppModeId,
+  pathname: string | null | undefined,
+  onWorkArea: boolean,
+): "" | undefined {
+  return !onWorkArea && (pathname ?? "/") !== "/" && modeMenuSideForMode(modeId) === "clinical" ? "" : undefined;
 }
 
 /**

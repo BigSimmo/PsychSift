@@ -63,7 +63,7 @@ export function PathwaysScreen() {
       <div className={cn(cardSurface, "grid grid-cols-1 sm:grid-cols-[320px_minmax(0,_1fr)] gap-4")}>
         <PathwayListRail pathways={b.pathways} activeSlug={pathway.slug} onSelect={b.selectPathway} />
 
-        <div className="min-w-0 px-4 py-5 sm:px-6 sm:py-6">
+        <div className="min-w-0 px-4 py-1 sm:px-6 sm:py-6">
           <div className="hidden sm:block">
             <PathwayDetailHeader
               pathway={pathway}

@@ -386,6 +386,9 @@ const roster: WorkArea = {
           sub: "Leave and requests",
           icon: "flag",
           href: "/roster/requests",
+          // Team staffing is reached from Leave's "Plan with the team in view", so it keeps the
+          // Roster band with Leave current instead of dropping the frame.
+          paths: ["/roster/requests", "/roster/staffing"],
           // The page is Leave and requests (swaps, dates and shift changes too), so the band
           // names it that from the first paint, not only once the page sets its heading.
           title: "Leave and requests",

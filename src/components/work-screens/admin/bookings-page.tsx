@@ -287,7 +287,15 @@ function AvailabilityTag({
     case "closed":
       return <WorkTag tone="neutral">Closed</WorkTag>;
     case "book":
-      return <WorkTag>Book</WorkTag>;
+      // The one state that is an action, so it looks like a button, not a
+      // status word. It sits inside the row's link (which opens the course to
+      // book), so it borrows the secondary button face as a span: a real
+      // <button> inside a link is invalid and would split the tap target.
+      return (
+        <span className="work-button" data-variant="secondary">
+          Book
+        </span>
+      );
     case "cancelled":
       return <WorkTag tone="neutral">Cancelled</WorkTag>;
     case "started":

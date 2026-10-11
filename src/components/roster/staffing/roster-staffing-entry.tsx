@@ -13,6 +13,8 @@ import { cn } from "@/components/ui-primitives";
  */
 function RosterStaffingEntryLinkShown() {
   return (
+    // Drawn like the Leave rows below it (one card, the same icon circle, title and line sizes), so the way
+    // into Team staffing reads as one of them rather than a bigger heading.
     <Link
       href="/roster/staffing"
       data-mode-identity="roster"
@@ -20,20 +22,19 @@ function RosterStaffingEntryLinkShown() {
       className={cn(
         focusRing,
         modePressable,
-        "flex min-h-14 min-w-0 items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 no-underline",
+        "work-card flex min-h-14 min-w-0 items-center gap-2.5 px-3 py-2 no-underline",
       )}
     >
-      <span
-        aria-hidden="true"
-        className="grid size-9 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
-      >
-        <Users aria-hidden="true" strokeWidth={1.75} className="size-icon-md" />
+      <span aria-hidden="true" className="work-ic forced-colors:border">
+        <Users aria-hidden="true" strokeWidth={2} />
       </span>
-      <span className="grid min-w-0 flex-1">
-        <span className="text-base-minus font-semibold text-[color:var(--text-heading)]">
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        <span className="break-words text-sm leading-5 font-bold text-[color:var(--text-heading)]">
           Plan with the team in view
         </span>
-        <span className="text-sm text-[color:var(--text-muted)]">How many are on each day, before you pick dates</span>
+        <span className="break-words text-2xs leading-4 text-[color:var(--text-muted)]">
+          How many are on each day, before you pick dates
+        </span>
       </span>
       <span className="shrink-0 text-sm font-semibold text-[color:var(--mode-identity)]">Plan</span>
     </Link>

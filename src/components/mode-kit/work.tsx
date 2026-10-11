@@ -397,7 +397,12 @@ export function WorkChip(props: WorkChipProps) {
   );
 }
 
-/** A row of chips. `scroll` keeps them on one line and lets the row scroll sideways. */
+/**
+ * A row of chips. Every row now stays on one line and scrolls sideways with an
+ * edge fade (work-mode.css `.work-chips`), so a chip is never left alone on a
+ * second line. `scroll` is kept so existing callers still compile; it no longer
+ * changes the layout.
+ */
 export function WorkChips({
   children,
   scroll,

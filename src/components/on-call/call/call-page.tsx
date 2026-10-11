@@ -151,10 +151,12 @@ function HandbookCallRow({
 function HospitalGroup({
   group,
   searching,
+  inCard = false,
   children,
 }: {
   readonly group: OnCallCallGroup;
   readonly searching: boolean;
+  readonly inCard?: boolean;
   readonly children: (items: readonly HandbookItem[]) => ReactNode;
 }) {
   const [showAll, setShowAll] = useState(false);
@@ -176,6 +178,7 @@ function HospitalGroup({
           : undefined
       }
       id={onCallGroupAnchorId(group.slug)}
+      inCard={inCard}
       testId={`on-call-call-group-${group.slug}`}
     >
       {children(visible)}
@@ -380,6 +383,26 @@ export function OnCallCallPage() {
       </OnCallGroupedList>
     ) : null;
 
+  const emergencyGroup = groups[0]?.kind === "emergency" ? groups[0] : null;
+  const departmentGroups = emergencyGroup ? groups.slice(1) : groups;
+  const hospitalGroup = (group: OnCallCallGroup, inCard: boolean) => (
+    <HospitalGroup key={group.slug} group={group} searching={searching} inCard={inCard}>
+      {(visible) =>
+        visible.map((item) => (
+          <HandbookCallRow
+            key={item.id}
+            item={item}
+            handbook={handbook}
+            pinned={pinnedIds.has(item.id)}
+            emergencyGroup={group.kind === "emergency"}
+            hospitalPhone={hospitalPhone}
+            fallback={fallback}
+          />
+        ))
+      }
+    </HospitalGroup>
+  );
+
   return (
     <OnCallHubPageFrame page="call" lead={<OnCallHospitalLine handbook={handbook} />}>
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
@@ -443,28 +466,22 @@ export function OnCallCallPage() {
 
         {showHospital && ready && hospitalCount + cover.length > 0 ? (
           <div id={onCallGroupAnchorId("hospital")} className="grid min-w-0 scroll-mt-32 gap-5">
-            {groups.map((group, index) => (
-              <div key={group.slug} className="grid min-w-0 gap-5">
-                <HospitalGroup group={group} searching={searching}>
-                  {(visible) =>
-                    visible.map((item) => (
-                      <HandbookCallRow
-                        key={item.id}
-                        item={item}
-                        handbook={handbook}
-                        pinned={pinnedIds.has(item.id)}
-                        emergencyGroup={group.kind === "emergency"}
-                        hospitalPhone={hospitalPhone}
-                        fallback={fallback}
-                      />
-                    ))
-                  }
-                </HospitalGroup>
+            {emergencyGroup ? (
+              <div className="grid min-w-0 gap-5">
+                {hospitalGroup(emergencyGroup, false)}
                 {/* Emergency stays first; the cover on now follows it, or leads when there is no Emergency group. */}
-                {index === 0 && group.kind === "emergency" ? coverGroup : null}
+                {coverGroup}
               </div>
-            ))}
-            {groups[0]?.kind === "emergency" ? null : coverGroup}
+            ) : (
+              coverGroup
+            )}
+            {/* The departments share one card, each a labelled part of it divided by a hairline, so a
+                department with one number is a row in a list rather than a box of its own. */}
+            {departmentGroups.length > 0 ? (
+              <div className="work-card grid min-w-0" data-testid="on-call-call-departments-card">
+                {departmentGroups.map((group) => hospitalGroup(group, true))}
+              </div>
+            ) : null}
           </div>
         ) : null}
 

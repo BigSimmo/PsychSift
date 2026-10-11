@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { appModeIds, type AppModeId } from "@/lib/app-modes";
 import {
+  clinicalBandAttribute,
   modeMenuSideForMode,
   modeMenuSides,
   orderByPhoneModeGroups,
@@ -49,7 +50,7 @@ describe("phone mode groups", () => {
     expect(groupOf("my-day")).toMatchObject({
       id: "work",
       showHeading: false,
-      modeIds: ["my-day", "cme", "open-shifts", "roster", "my-work", "on-call", "teaching"],
+      modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
     });
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
     expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines & tools" });
@@ -75,5 +76,18 @@ describe("phone mode groups", () => {
     expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms", "cme"]);
     expect(orderModesForSide(someModes, "work").map((mode) => mode.id)).toEqual(["cme"]);
     expect(orderModesForSide(someModes, "clinical").map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms"]);
+  });
+});
+
+describe("clinicalBandAttribute", () => {
+  it("tints a Clinical page", () => {
+    expect(clinicalBandAttribute("dictionary", "/dictionary", false)).toBe("");
+  });
+
+  it("leaves the shared home, Work areas and Work modes untinted", () => {
+    expect(clinicalBandAttribute("dictionary", "/", false)).toBeUndefined();
+    expect(clinicalBandAttribute("dictionary", null, false)).toBeUndefined();
+    expect(clinicalBandAttribute("dictionary", "/admin", true)).toBeUndefined();
+    expect(clinicalBandAttribute("roster", "/roster", false)).toBeUndefined();
   });
 });

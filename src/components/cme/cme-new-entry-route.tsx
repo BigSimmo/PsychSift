@@ -253,7 +253,8 @@ export function CmeNewEntryRoute({
         {demoMode ? (
           <div className="mt-4" data-testid="cme-entry-demo-notice">
             <InlineNotice tone="neutral">
-              Demo mode lets you inspect the form. Saving is available only in your signed-in private record.
+              This is an example, so you can look through the form. Saving is available only in your signed-in private
+              record.
             </InlineNotice>
           </div>
         ) : null}

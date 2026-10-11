@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  CircleHelp,
-  Info,
-  ListFilter,
-  Shield,
-  TriangleAlert,
-} from "lucide-react";
+import { CalendarDays, ChevronDown, CircleHelp, Info, ListFilter, Shield, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -117,20 +108,10 @@ export function OpenShiftsBrowsePage() {
       </PageTitleUnderBand>
       <ModeBandStatus value={openShiftsStatus(state)} testId="open-shifts-status" />
       {sample && state.status === "ready" ? (
-        <div
-          className="flex flex-wrap items-center gap-x-3 px-3 pt-1 text-sm text-[color:var(--text-muted)]"
-          data-testid="open-shifts-sample-context"
-        >
-          <Link
-            href="/my-day"
-            aria-label="Back to My Day"
-            className="inline-flex min-h-12 items-center gap-0.5 font-medium text-[color:var(--mode-identity)]"
-          >
-            <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
-            My Day
-          </Link>
-          <span>{`List updated ${perthTimeOf(now.toISOString())} · roster as of ${formatDayShort(today)}`}</span>
-        </div>
+        // The header's Back already returns to My Day, so this line carries only the freshness note.
+        <p className="m-0 px-3 pt-3 text-sm text-[color:var(--text-muted)]" data-testid="open-shifts-sample-context">
+          {`List updated ${perthTimeOf(now.toISOString())} · roster as of ${formatDayShort(today)}`}
+        </p>
       ) : null}
 
       {state.status === "signed-out" ? (
@@ -145,7 +126,9 @@ export function OpenShiftsBrowsePage() {
         <>
           <div className="relative">
             <div
-              className="flex gap-2 overflow-x-auto px-3 pt-3 pb-1 [scrollbar-width:none]"
+              // `work-chips` gives the one-line sideways scroll and the edge
+              // fade every chip row shares (work-mode.css).
+              className="work-chips px-3 pt-3 pb-1"
               role="group"
               aria-label="Quick filters"
             >
@@ -199,11 +182,6 @@ export function OpenShiftsBrowsePage() {
                 <ChevronDown aria-hidden="true" strokeWidth={1.6} className="size-icon-xs" />
               </button>
             </div>
-            {/* A fade at the edge says more chips sit off-screen; the row scrolls without a scrollbar. */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute top-3 right-0 h-12 w-8 bg-gradient-to-l from-[color:var(--background)] to-transparent forced-colors:hidden"
-            />
             <div className="flex min-h-10 items-center justify-between px-3 text-sm text-[color:var(--text-muted)]">
               <span>
                 <span className="font-semibold text-[color:var(--text-heading)] nums">

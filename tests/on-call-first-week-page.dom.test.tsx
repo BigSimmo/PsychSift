@@ -146,7 +146,8 @@ describe("Your first week, the pack", () => {
     // "Your first week" is one heading, the visible one, never a hidden copy as well.
     expect(screen.getAllByRole("heading", { name: "Your first week" })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your first week");
-    expect(screen.getByTestId("on-call-first-week-page-back")).toHaveAttribute("href", "/on-call");
+    // One way back: the band's Now tab is On Call, so the page adds no second link to it.
+    expect(screen.queryByTestId("on-call-first-week-page-back")).toBeNull();
     const strip = screen.getByRole("progressbar", { name: "Sections read" });
     expect(strip).toHaveAttribute("aria-valuetext", "0 of 5 sections read");
     expect(screen.getByTestId("on-call-first-week-row-who")).toHaveAttribute("href", "/on-call/first-week?section=who");
