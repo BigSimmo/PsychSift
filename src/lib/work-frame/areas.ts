@@ -1172,18 +1172,15 @@ const onCall: WorkArea = {
         { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
         { id: "whoswho", label: "Who's who", sub: "Roles and teams", icon: "users", href: "/on-call/who-is-who" },
         {
-          id: "orientation",
-          label: "Orientation",
-          sub: "Checklists",
-          icon: "check-list",
-          href: "/on-call/orientation",
-        },
-        {
-          id: "first-week",
-          label: "First week",
-          sub: "Starting out",
+          // One entry for the three pages a doctor new to a hospital needs; a chip row on each
+          // moves between them (usefulness audit, 11 Oct 2026).
+          id: "starting-here",
+          label: "Starting here",
+          short: "Starting",
+          sub: "Before you start, first night",
           icon: "flag",
           href: "/on-call/first-week",
+          paths: ["/on-call/first-week", "/on-call/first-night", "/on-call/orientation"],
         },
         { id: "card", label: "Pocket card", sub: "To print", icon: "card", href: "/on-call/card" },
         // The area's last group (Service) is for editors only, so Help sits with the reference pages.
@@ -1191,16 +1188,11 @@ const onCall: WorkArea = {
       ],
     },
     {
+      // Trimmed (usefulness audit, 11 Oct 2026): "Who to call now" is the Playbook's job, so it opens
+      // there from Now; Shift pulse shows on Now once it has a pattern; Who's on links to the roster
+      // names; Teaching and Renewals are in the side menu.
       label: "Tonight tools",
       items: [
-        {
-          id: "call-now",
-          label: "Who to call now",
-          short: "Call now",
-          sub: "Pick a problem",
-          icon: "phone",
-          href: "/on-call/now",
-        },
         ...(ON_CALL_WHOS_ON_ENABLED
           ? [
               {
@@ -1209,39 +1201,25 @@ const onCall: WorkArea = {
                 sub: "Tonight's team",
                 icon: "users",
                 href: "/on-call/whos-on",
+                paths: ["/on-call/whos-on", "/on-call/whos-on/roster"],
               } as const,
             ]
-          : []),
-        {
-          id: "whoson-roster",
-          label: "From the roster",
-          short: "Roster",
-          sub: "Your team's roster",
-          icon: "calendar",
-          href: "/on-call/whos-on/roster",
-        },
-        {
-          id: "pulse",
-          label: "Shift pulse",
-          sub: "How it is going",
-          icon: "pulse",
-          href: "/on-call/pulse",
-          band: false,
-        },
+          : [
+              {
+                id: "whoson-roster",
+                label: "From the roster",
+                short: "Roster",
+                sub: "Your team's roster",
+                icon: "calendar",
+                href: "/on-call/whos-on/roster",
+              } as const,
+            ]),
         {
           id: "check",
           label: "Check these",
           sub: "Before you leave",
           icon: "check-list",
           href: "/on-call/check",
-          band: false,
-        },
-        {
-          id: "first-night",
-          label: "First night",
-          sub: "New to this site",
-          icon: "star",
-          href: "/on-call/first-night",
           band: false,
         },
         {
@@ -1252,35 +1230,12 @@ const onCall: WorkArea = {
           href: "/on-call/handover",
           band: false,
         },
-      ],
-    },
-    {
-      label: "Other areas",
-      items: [
-        {
-          id: "teaching",
-          label: "Teaching",
-          sub: "This week",
-          icon: "board",
-          href: "/teaching",
-          paths: [],
-          leadsTo: "teaching",
-        },
         {
           id: "logistics",
           label: "Numbers",
           sub: "Crisis lines first",
           icon: "phone",
           href: ON_CALL_ADMIN_ROWS_HREF,
-          paths: [],
-          leadsTo: "my-work",
-        },
-        {
-          id: "compliance",
-          label: "Renewals",
-          sub: "Dates to act on",
-          icon: "repeat",
-          href: "/admin/renewals",
           paths: [],
           leadsTo: "my-work",
         },

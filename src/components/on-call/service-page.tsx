@@ -512,7 +512,7 @@ export function ServicePage({
           onSignIn={() => setAccountOpen(true)}
         />
         {accountMounted ? <AccountSetupDialog open={accountOpen} onClose={() => setAccountOpen(false)} /> : null}
-        <OnCallCrisisLines />
+        <OnCallCrisisLines compact />
       </InformationPageShell>
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Phone } from "lucide-react";
+import { ChevronDown, ExternalLink, Phone } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
@@ -151,10 +151,50 @@ export function OnCallExternalLineRows({
 export function OnCallCrisisLines({
   now,
   testId = "on-call-crisis-lines",
+  compact = false,
 }: {
   readonly now?: Date;
   readonly testId?: string;
+  /**
+   * Before a hospital is set up (or signed out), every On Call page carried the whole block at its
+   * top, pushing the page's purpose a screen down (usefulness audit, 11 Oct 2026). Compact keeps
+   * 000 as a full row and folds the other lines, with their caveats and sources unchanged, behind
+   * one "More crisis lines" row. Loading, offline and failure screens keep the full block.
+   */
+  readonly compact?: boolean;
 }) {
+  if (compact) {
+    const lines = onCallCrisisLines();
+    const emergency = lines.filter(isTripleZero);
+    const others = lines.filter((line) => !isTripleZero(line));
+    return (
+      <OnCallGroupedList eyebrow="Public crisis lines" testId={testId}>
+        <OnCallExternalLineRows lines={emergency} now={now} emergencyTone testIdPrefix="on-call-crisis-line" />
+        {others.length > 0 ? (
+          <li className="min-w-0" data-testid={`${testId}-more`}>
+            <details className="group/crisis min-w-0">
+              <summary
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 cursor-pointer list-none items-center gap-3 rounded-sm pl-3 pr-1 text-sm font-semibold text-[color:var(--text-heading)] [&::-webkit-details-marker]:hidden",
+                )}
+              >
+                <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+                <span className="min-w-0 flex-1">More crisis lines</span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="size-icon-sm shrink-0 text-[color:var(--text-muted)] transition-transform group-open/crisis:rotate-180 motion-reduce:transition-none"
+                />
+              </summary>
+              <ul role="list" className="min-w-0">
+                <OnCallExternalLineRows lines={others} now={now} emergencyTone testIdPrefix="on-call-crisis-line" />
+              </ul>
+            </details>
+          </li>
+        ) : null}
+      </OnCallGroupedList>
+    );
+  }
   return (
     <OnCallGroupedList eyebrow="Public crisis lines" testId={testId}>
       <OnCallExternalLineRows lines={onCallCrisisLines()} now={now} emergencyTone testIdPrefix="on-call-crisis-line" />

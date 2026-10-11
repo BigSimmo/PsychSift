@@ -2,7 +2,7 @@
 import { OnCallDialRow } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
 import { OnCallUpdatedLine } from "@/components/on-call/kit/updated-line";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
@@ -21,7 +21,7 @@ export function HospitalLadders({ now: pinned }: { now?: Date }) {
       <OnCallHospitalLine handbook={handbook} />
       <OnCallHandbookState handbook={handbook} page="now" />
       {handbook.status !== "ready" ? (
-        <OnCallCrisisLines now={now} />
+        <OnCallCrisisLines now={now} compact={onCallCrisisLinesCompact(handbook.status)} />
       ) : (
         <>
           <h2 className="text-base font-normal">Hospital playbook</h2>

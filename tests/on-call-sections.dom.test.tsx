@@ -207,6 +207,32 @@ describe("OnCallPlaybookSection", () => {
     expect(screen.getByTestId("on-call-playbook-empty")).toBeInTheDocument();
     expect(screen.queryByRole("article")).toBeNull();
   });
+
+  it("brings a hospital ladder into view when it renders after the page, and ignores a damaged hash", async () => {
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    try {
+      window.history.replaceState(null, "", "#%E0");
+      expect(() => render(<OnCallPlaybookSection entries={[]} now={NOW} />)).not.toThrow();
+      cleanup();
+
+      window.history.replaceState(null, "", "#hospital-ladder-late");
+      render(<OnCallPlaybookSection entries={[]} now={NOW} />);
+      expect(scrolled).toEqual([]);
+      const ladder = document.createElement("section");
+      ladder.id = "hospital-ladder-late";
+      document.body.append(ladder);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(scrolled).toEqual(["hospital-ladder-late"]);
+      ladder.remove();
+    } finally {
+      Element.prototype.scrollIntoView = original;
+      window.history.replaceState(null, "", "#");
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

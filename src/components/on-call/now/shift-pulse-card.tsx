@@ -63,6 +63,31 @@ export function NowShiftPulseCard({ now }: { readonly now: Date }) {
 
   const peak = view?.peak ?? null;
   const highlighted = peakHours(peak);
+  // The chart shows only once there is a pattern (usefulness audit, 11 Oct 2026). Until then one quiet
+  // row keeps the page in reach, because breaks are started and ended there and it left More.
+  if (!peak) {
+    return (
+      <Link
+        href="/on-call/pulse"
+        data-testid="on-call-home-pulse-breaks"
+        className={cn(
+          "work-card",
+          modePressable,
+          focusRing,
+          "flex min-h-12 min-w-0 items-center gap-3 px-3 py-2.5 no-underline",
+        )}
+      >
+        <Clock aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+        <span className="grid min-w-0 flex-1">
+          <span className="break-words text-base-minus font-semibold text-[color:var(--text-heading)]">
+            Breaks and shift pulse
+          </span>
+          <span className={cn(modeSecondaryText, "break-words")}>Note a break; busy hours show after a few nights</span>
+        </span>
+        <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
+      </Link>
+    );
+  }
 
   return (
     <Link
