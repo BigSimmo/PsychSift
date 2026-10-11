@@ -111,7 +111,7 @@ export async function POST(request: Request) {
   let releaseAdmission: (() => void) | null = null;
 
   try {
-    supabase = createAdminClient();
+    supabase = createAdminClient({ timeoutMs: null });
     const adminSupabase = supabase;
     const administrator = await requireAuthenticatedUser(request, adminSupabase, { administrator: true });
     const uploadOwnerId = administrator.id;

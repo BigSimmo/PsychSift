@@ -36,7 +36,7 @@ export async function GET(request: Request, { params }: Context) {
   try {
     if (isDemoMode()) return NextResponse.json({ evidence: [], demoMode: true }, { headers: privateHeaders });
     const id = z.uuid().parse((await params).id);
-    const client = createAdminClient();
+    const client = createAdminClient({ timeoutMs: null });
     const user = await requireAuthenticatedUser(request, client);
     const rate = await consumeSubjectApiRateLimit({
       supabase: client,
@@ -57,7 +57,7 @@ export async function POST(request: Request, { params }: Context) {
   try {
     if (isDemoMode()) throw new PublicApiError("Sign in to attach evidence to your private record.", 400);
     const id = z.uuid().parse((await params).id);
-    const client = createAdminClient();
+    const client = createAdminClient({ timeoutMs: null });
     const user = await requireAuthenticatedUser(request, client);
     const rate = await consumeSubjectApiRateLimit({
       supabase: client,
