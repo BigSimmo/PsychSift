@@ -315,7 +315,12 @@ export function CmeYearCheckPage({
         </section>
 
         <div className="grid gap-6">
-          <YearEndStep step={1} title="What is missing" sub={openSummary} testId="cme-year-end-missing">
+          <YearEndStep
+            step={1}
+            title="What is missing"
+            sub="Your targets and record checks, open ones first"
+            testId="cme-year-end-missing"
+          >
             <div className="grid gap-3.5">
               <CmeGroup
                 testId="cme-check-targets"
