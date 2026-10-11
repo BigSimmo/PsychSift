@@ -53,7 +53,7 @@ export function MyDayFeatureCards({
         />
       ) : null}
       {visible("/on-call/first-week") ? <FirstWeekTodayCardLive now={now} feed /> : null}
-      {visible("/cme/applications") ? <ApplicationsTodayCard today={today} /> : null}
+      {visible("/admin/applications") ? <ApplicationsTodayCard today={today} /> : null}
       {!demo && hasTerm && visible(TERM_FOLDER_PATH) ? <TermFolderTodayCard demoMode={false} /> : null}
     </>
   );

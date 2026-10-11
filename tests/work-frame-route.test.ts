@@ -81,7 +81,7 @@ describe("workFrameCurrentItem", () => {
   });
 
   it("names the features' pages as their own items, not a tab", () => {
-    expect(workFrameCurrentItem(WORK_AREAS.cpd, "/cme/applications/cv", "")?.id).toBe("applications");
+    expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/applications/cv", "")?.id).toBe("applications");
     expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/new-job/ready", "")?.id).toBe("admin-ready");
     expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson-roster");
     expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term/folder", "")?.id).toBe("term-folder");
@@ -96,7 +96,8 @@ describe("workFrameCurrentItem", () => {
   });
 
   it("draws the band on the two Export pages, which have no header of their own", () => {
-    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("Export");
+    // CPD's Export is a step of End of year, so End of year stays current there; the page names itself.
+    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("End of year");
     expect(workFrameForRoute("teaching", "/teaching/assessments/export")?.page.label).toBe("Export");
   });
 });
