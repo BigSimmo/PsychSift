@@ -19,7 +19,6 @@ import {
   createEntry,
   deleteEntry,
   errorWords,
-  JuniorBackLink,
   JuniorFootNote,
   JuniorNotice,
   JuniorSectionLabel,
@@ -392,7 +391,7 @@ export function ContractEndPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <>
       <InformationPageShell testId="admin-contract-main">
-        <JuniorBackLink href="/admin" label="Admin" testId="admin-contract-back" />
+        {/* One way back: the band's Today tab is Admin Today, so the page adds no second link to it. */}
         <div className="grid gap-1">
           <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
             Contract end

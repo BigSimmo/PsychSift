@@ -26,7 +26,6 @@ import { ContractEndEntryLink } from "@/components/admin/contract/contract-entry
 import { LeaveEntitlementList } from "@/components/admin/leave/leave-entitlement-list";
 import {
   copyLabel,
-  JuniorBackLink,
   JuniorFootNote,
   JuniorSectionLabel,
   JuniorUndoBar,
@@ -589,7 +588,7 @@ export function LeaveWalletPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <InformationPageShell testId="admin-leave-main">
-      <JuniorBackLink href="/admin" label="Admin" testId="admin-leave-back" />
+      {/* One way back: the band's Today tab is Admin Today, so the page adds no second link to it. */}
       <div className="grid gap-1">
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
           Leave wallet
