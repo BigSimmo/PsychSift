@@ -1,6 +1,6 @@
 "use client";
 
-import { LifeBuoy, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useAccountData } from "@/components/account-data-provider";
 import { AdminCrisisLines } from "@/components/admin/admin-crisis-lines";
 import { adminHelpForwardHref } from "@/components/admin/admin-hash-forward";
-import { AdminHelpItemRow, AdminHelpOnSiteGlance } from "@/components/admin/admin-help-item-row";
+import { AdminHelpItemRow } from "@/components/admin/admin-help-item-row";
 import { AdminNote, AdminPage, adminStyles } from "@/components/admin/admin-kit";
 import { AdminLoadFailed } from "@/components/admin/admin-load-failed";
 import { AdminNavHeader } from "@/components/admin/admin-nav-header";
@@ -18,7 +18,7 @@ import { AdminShowAll } from "@/components/admin/admin-show-all";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { ModeBandAction, PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { WorkButton, WorkEmpty, WorkGlassButton, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkButton, WorkGlassButton, WorkSectionLabel } from "@/components/mode-kit/work";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
@@ -135,6 +135,12 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
   const alsoLooksFor = searching ? helpQueryAlsoLooksFor(query) : [];
   const noMatches = searching && filtered.length === 0;
   const canAdd = isAuthenticated && !state.demoMode;
+  // Support has no statewide service listed yet. Until it does, it takes no chip and no empty card
+  // under the crisis lines (audit 11 Oct 2026); it comes back by itself once a row exists.
+  const sections =
+    loadState === "loading" || items.some((item) => item.tab === "support")
+      ? ADMIN_HELP_SECTIONS
+      : ADMIN_HELP_SECTIONS.filter((section) => TAB_BY_SECTION_ID[section.id] !== "support");
 
   return (
     <>
@@ -200,12 +206,12 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
             Hidden with the sections when loading failed: a cached number is not offered as current. */}
         {loadState === "failed" ? null : <AdminPinnedNumbers items={items} testId="admin-help-pinned" />}
 
-        {loadState === "failed" ? null : <AdminNavHeader title="Help" sections={ADMIN_HELP_SECTIONS} />}
+        {loadState === "failed" ? null : <AdminNavHeader title="Numbers" sections={sections} />}
 
         {loadState === "failed" ? (
           <AdminLoadFailed reason={state.loadError} onRetry={retry} testId="admin-help-load-failed" />
         ) : (
-          ADMIN_HELP_SECTIONS.map((section) => {
+          sections.map((section) => {
             const tab = TAB_BY_SECTION_ID[section.id];
             const rows = byTab.get(tab) ?? [];
             return (
@@ -224,39 +230,25 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
                 {rows.length === 0 && loadState === "loading" ? (
                   // Design point 11: a loading section is a skeleton, never an empty-looking one.
                   <ModeModuleSkeleton rows={3} testId={`admin-help-${tab}-loading`} />
-                ) : rows.length === 0 && tab === "support" && !searching ? (
-                  // An honest empty state: no statewide service is listed yet, and none is invented.
-                  <div className="work-card">
-                    <WorkEmpty
-                      icon={LifeBuoy}
-                      title="Nothing here yet"
-                      body={EMPTY_MESSAGE.support}
-                      testId="admin-help-support-empty"
-                    />
-                  </div>
                 ) : rows.length === 0 ? (
                   <p className="text-sm text-[color:var(--text-muted)]">
                     {searching ? "Nothing here matches." : EMPTY_MESSAGE[tab]}
                   </p>
                 ) : (
-                  <>
-                    {/* Four tiles at a glance, as the mockup draws them. The full list follows. */}
-                    {tab === "on-site" ? <AdminHelpOnSiteGlance items={rows.slice(0, 4)} /> : null}
-                    <AdminShowAll
-                      items={rows}
-                      label={section.label}
-                      testId={`admin-help-${tab}-list`}
-                      listClassName="work-card work-rows"
-                      anchorIdOf={(item) => (item.entry ? onCallEntryAnchorId(item.entry.id) : item.key)}
-                      renderItem={(item) => (
-                        <AdminHelpItemRow
-                          key={item.key}
-                          item={item}
-                          onEdit={canAdd && item.entry ? openEditor : undefined}
-                        />
-                      )}
-                    />
-                  </>
+                  <AdminShowAll
+                    items={rows}
+                    label={section.label}
+                    testId={`admin-help-${tab}-list`}
+                    listClassName="work-card work-rows"
+                    anchorIdOf={(item) => (item.entry ? onCallEntryAnchorId(item.entry.id) : item.key)}
+                    renderItem={(item) => (
+                      <AdminHelpItemRow
+                        key={item.key}
+                        item={item}
+                        onEdit={canAdd && item.entry ? openEditor : undefined}
+                      />
+                    )}
+                  />
                 )}
               </section>
             );

@@ -21,8 +21,13 @@ export type ModeSecondaryNavigationEntry = {
    * them (On Call only, kit 1.7).
    */
   group?: "tools" | "more";
-  /** "editors": shown in the pages sheet only to a reader who can edit (F24). */
-  audience?: "editors";
+  /**
+   * "editors": shown in the pages sheet only to a reader who can edit (F24).
+   * "administrators": staff-only (the site administrator), such as Therapy's
+   * sign-off queue. Left out of every bar and sheet unless the caller says the
+   * reader is one (audit 11 Oct 2026). The route still answers a direct visit.
+   */
+  audience?: "editors" | "administrators";
   /** Registered and routed, but left out of the pages sheet (a page behind a flag). */
   hidden?: boolean;
 };
@@ -79,6 +84,8 @@ export const modeSecondaryNavigationRegistry = {
     { id: "recommend", label: "Recommend", href: "/therapy-compass/recommend" },
     { id: "compare", label: "Compare", href: "/therapy-compass/compare" },
     { id: "pathways", label: "Pathways", href: "/therapy-compass/pathways" },
+    // The qualified-clinician sign-off queue. It becomes `audience: "administrators"` once the owner's
+    // account carries the site administrator role; until then hiding it would hide it from the owner too.
     { id: "review", label: "Review", href: "/therapy-compass/review" },
   ],
   // Two genuinely distinct surfaces: `/factsheets/search` (query + filters +
@@ -374,13 +381,19 @@ export function groupModeSecondaryNavigationEntries<T extends ModeSecondaryNavig
  * `audience: "editors"` entries when `isEditor` is false. On Call passes
  * `readOnCallEditorFlag()`, which is true while the role is still unknown and
  * false only for a known non-editor (review S3); the page does the real gating.
+ * `audience: "administrators"` entries show only when `isAdministrator` is true.
  * The routes stay registered either way, so the pill still names the page.
  */
 export function visibleModeSecondaryNavigationEntries<T extends ModeSecondaryNavigationEntry>(
   entries: readonly T[],
-  { isEditor }: { readonly isEditor: boolean },
+  { isEditor, isAdministrator = false }: { readonly isEditor: boolean; readonly isAdministrator?: boolean },
 ): T[] {
-  return entries.filter((entry) => !entry.hidden && (entry.audience !== "editors" || isEditor));
+  return entries.filter(
+    (entry) =>
+      !entry.hidden &&
+      (entry.audience !== "editors" || isEditor) &&
+      (entry.audience !== "administrators" || isAdministrator),
+  );
 }
 
 /**

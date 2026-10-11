@@ -564,10 +564,13 @@ describe("mode secondary navigation registry", () => {
     expect(editor).toContain("whoson");
     expect(reader).not.toContain("service");
     expect(editor).toContain("service");
-    // Every other mode is untouched by the filter.
+    // Every other mode is untouched by the editor filter (the site administrator sees every entry).
     for (const modeId of appModeIds.filter((id) => id !== "on-call")) {
       expect(
-        visibleModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId), { isEditor: false }),
+        visibleModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId), {
+          isEditor: false,
+          isAdministrator: true,
+        }),
       ).toEqual(modeSecondaryNavigationEntries(modeId));
     }
   });
