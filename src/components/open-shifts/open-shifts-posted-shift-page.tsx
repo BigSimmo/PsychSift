@@ -122,7 +122,7 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
   const disabled = state.offline || state.refreshFailed;
 
   return (
-    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
+    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts" data-page-width="wide">
       <SubHeader backHref={back} backLabel="Post" title="Your posted shift" />
 
       <div className="px-3 pt-2">

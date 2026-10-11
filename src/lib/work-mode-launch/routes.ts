@@ -37,6 +37,8 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/on-call/first-week", owner: "junior-features" },
   { path: "/on-call/whos-on/roster", owner: "junior-features" },
   { path: "/cme/cpd-home", owner: "junior-features" },
+  { path: "/admin/applications", owner: "junior-features" },
+  // The old address of Job applications, which now redirects to Admin.
   { path: "/cme/applications", owner: "junior-features" },
   { path: "/my-day/profile/agreement", owner: "junior-features" },
   { path: "/teaching/term/folder", owner: "junior-features" },

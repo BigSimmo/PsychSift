@@ -30,6 +30,7 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   SunMedium,
+  type LucideIcon,
 } from "lucide-react";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { BrandMark } from "@/components/clinical-dashboard/brand";
@@ -201,8 +202,6 @@ export function selectModeFromLinkClick(
 const collapsedSidebarControl =
   "h-tap w-tap shrink-0 place-items-center rounded-xl border border-transparent text-[color:var(--text-muted)] transition hover:border-[color:var(--border)] hover:bg-[color:var(--surface)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
 const collapsedSidebarButton = `grid ${collapsedSidebarControl}`;
-const collapsedSidebarActiveButton =
-  "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]";
 /* The same state on a full-width row, and deliberately the same language: the
  * rail and the expanded list mark the current mode, so they may not mark it two
  * different ways.
@@ -230,6 +229,36 @@ const sidebarItemActive =
    with the same 12px of air on both sides, so the rail reads as one column of
    48px controls broken into groups rather than four rules with three spacings. */
 const collapsedSidebarDivider = "my-1.5 h-px w-8 shrink-0 bg-[color:var(--border)]";
+
+/* The rail's items wear the work rail's look: an icon in a soft pill with its
+   name underneath, so a reader never has to guess what an icon is and the two
+   sides read as one app (desktop and tablet shell, 11 Oct 2026 audit). The
+   classes live with the work rail in work-mode.css. */
+const railItem = "work-rail__item clinical-rail__item";
+
+/* Shorter names where a mode's own label would not fit under its icon. */
+const railShortLabels: Partial<Record<AppModeId, string>> = {
+  dsm: "DSM-5",
+  medicines: "Medicines",
+  "therapy-compass": "Therapy",
+};
+
+function railLabel(id: AppModeId | "favourites", label: string) {
+  return (id !== "favourites" && railShortLabels[id]) || label;
+}
+
+function RailItemBody({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <>
+      <span className="work-rail__pill" aria-hidden="true">
+        <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+      </span>
+      <span className="work-rail__label" aria-hidden="true">
+        {label}
+      </span>
+    </>
+  );
+}
 
 /* Brand lockup header — the phone drawer (ClinicalMobileSidebar) and the
  * expanded desktop sidebar share it, so the two entry points to the same
@@ -377,20 +406,19 @@ function SidebarModesTrigger({
 
   if (variant === "collapsed") {
     return (
-      <Button
+      <button
         ref={triggerRef}
-        variant="ghost"
-        icon={LayoutGrid}
+        type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="More modes"
-        title="More modes"
-        testId="sidebar-more-modes"
-        className={cn("gap-0 px-0 [&>span]:hidden", collapsedSidebarButton, active && collapsedSidebarActiveButton)}
+        data-testid="sidebar-more-modes"
+        data-current={active ? "true" : undefined}
+        className={railItem}
         onClick={onOpen}
       >
-        <span className="sr-only">More modes</span>
-      </Button>
+        <RailItemBody icon={LayoutGrid} label="More" />
+      </button>
     );
   }
 
@@ -1324,27 +1352,15 @@ function ClinicalCollapsedRail({
         <span className={cn(collapsedSidebarDivider, "my-0")} aria-hidden="true" />
       </div>
 
-      <Button
-        variant="ghost"
-        icon={MessageSquarePlus}
-        className={cn("gap-0 px-0 [&>span]:hidden", collapsedSidebarButton)}
-        aria-label="New chat"
-        title="New chat"
-        onClick={onNewChat}
-      >
-        <span className="sr-only">New chat</span>
-      </Button>
+      <button type="button" className={railItem} aria-label="New chat" onClick={onNewChat}>
+        <RailItemBody icon={MessageSquarePlus} label="New chat" />
+      </button>
       <div
         data-testid="collapsed-sidebar-scroll-region"
-        /* `both-edges`, not a bare `stable`: a one-sided gutter takes its width
-           off the right of this box only, so the centred column of icons sat
-           ~6px left of the brand, New chat, Settings and the account button —
-           the misalignment that runs the length of the rail. Reserving the
-           gutter on both edges keeps the column on the rail's centre line
-           whether or not a scrollbar is showing. The horizontal padding goes
-           with it: two 15px gutters plus `px-3` left less than a 48px control's
-           width of content box. */
-        className="grid min-h-0 w-full flex-1 content-start justify-items-center gap-1.5 overflow-y-auto overscroll-contain pb-1 [scrollbar-gutter:stable_both-edges]"
+        /* No scrollbar gutter: the labelled items are as wide as the rail
+           allows, and a gutter would push them off its centre line. The column
+           still scrolls, with the bar hidden as the work rail's is. */
+        className="grid min-h-0 w-full flex-1 content-start justify-items-center gap-1 overflow-y-auto overscroll-contain pb-1 [scrollbar-width:none]"
       >
         <nav aria-label="Pinned shortcuts" className="grid justify-items-center gap-1.5">
           {pinnedModeItems.map((item) => {
@@ -1358,12 +1374,11 @@ function ClinicalCollapsedRail({
                 onFocus={item.id === "tools" ? onPrefetchApplications : undefined}
                 onPointerEnter={item.id === "tools" ? onPrefetchApplications : undefined}
                 onClick={(event) => selectModeFromLinkClick(event, item, onSelectMode)}
-                className={cn(collapsedSidebarButton, active && collapsedSidebarActiveButton)}
+                className={railItem}
                 aria-label={item.label}
-                title={item.label}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon aria-hidden="true" className="h-4 w-4" />
+                <RailItemBody icon={Icon} label={railLabel(item.id, item.label)} />
               </Link>
             );
           })}
@@ -1374,13 +1389,12 @@ function ClinicalCollapsedRail({
             <Link
               href={currentModeItem.href}
               onClick={(event) => selectModeFromLinkClick(event, currentModeItem, onSelectMode)}
-              className={cn(collapsedSidebarButton, collapsedSidebarActiveButton)}
+              className={railItem}
               aria-label={currentModeItem.label}
-              title={currentModeItem.label}
               aria-current="page"
               data-testid="collapsed-sidebar-current-mode"
             >
-              <currentModeItem.icon aria-hidden="true" className="h-4 w-4" />
+              <RailItemBody icon={currentModeItem.icon} label={railLabel(currentModeItem.id, currentModeItem.label)} />
             </Link>
           </nav>
         ) : null}
@@ -1402,12 +1416,11 @@ function ClinicalCollapsedRail({
                   <Link
                     key={item.id}
                     href={item.href}
-                    className={cn(collapsedSidebarButton, active && collapsedSidebarActiveButton)}
+                    className={railItem}
                     aria-label={item.label}
-                    title={item.label}
                     aria-current={active ? "page" : undefined}
                   >
-                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    <RailItemBody icon={Icon} label={item.label} />
                   </Link>
                 );
               })}
@@ -1418,18 +1431,16 @@ function ClinicalCollapsedRail({
       {/* Mirrors the rule under the brand mark, so the rail is bracketed the
           same way at both ends and the two footer controls read as one group. */}
       <span className={cn(collapsedSidebarDivider, "my-0")} aria-hidden="true" />
-      <Button
-        variant="ghost"
-        icon={SettingsIcon}
-        className={cn("gap-0 px-0 [&>span]:hidden", collapsedSidebarButton)}
+      <button
+        type="button"
+        className={railItem}
         aria-label="Settings"
-        title="Settings"
         onClick={onOpenSettings}
         onPointerEnter={onPrefetchSettings}
         onFocus={onPrefetchSettings}
       >
-        <span className="sr-only">Settings</span>
-      </Button>
+        <RailItemBody icon={SettingsIcon} label="Settings" />
+      </button>
       <button
         type="button"
         onClick={onOpenAccount}

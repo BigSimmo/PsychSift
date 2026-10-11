@@ -69,7 +69,7 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import { zonedTimeOf } from "@/lib/work-time/format";
 
 /** The page's parent, where its link lives. */
-const CV_BACK: CpdFeatureBack = { href: "/cme/applications", label: "Job applications" };
+const CV_BACK: CpdFeatureBack = { href: "/admin/applications", label: "Job applications" };
 
 const SOURCE_ICON: Record<CvSource, typeof Award> = {
   admin: Briefcase,
@@ -227,6 +227,7 @@ export function ApplicationsCvPage({
 
   return (
     <CpdFeaturePage
+      identity="my-work"
       back={CV_BACK}
       eyebrow={
         hidden.size

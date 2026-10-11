@@ -86,7 +86,11 @@ export function MyDayFrame({
 
   return (
     <InformationPageShell testId={`${testId}-main`} width="bleed" className="bg-[color:var(--work-wash)]">
-      <div className={wide ? WIDE_PAGE_WIDTH : PAGE_WIDTH}>
+      <div
+        className={wide ? WIDE_PAGE_WIDTH : PAGE_WIDTH}
+        data-page-width={wide ? "wide" : "reading"}
+        data-page-padded=""
+      >
         <header className={bandShown ? "sr-only" : "grid gap-0.5 px-1"} data-testid={`${testId}-header`}>
           <PageTitleUnderBand className="text-2xl font-bold tracking-tight text-[color:var(--work-ink)]">
             {title}

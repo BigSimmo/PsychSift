@@ -22,7 +22,7 @@ export function ApplicationsTodayCard({ today }: { readonly today: string }) {
   if (!next && !quiet) return null;
   return (
     <Link
-      href="/cme/applications"
+      href="/admin/applications"
       data-testid="applications-today-card"
       data-mode-identity="cme"
       className={cn(flatCard, focusRing, "flex min-h-13 min-w-0 items-center gap-3 px-3 py-2 no-underline")}

@@ -439,49 +439,16 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
         />
       </section>
 
-      <section
-        className={cn(flatCard, "flex min-w-0 items-start gap-3 border-[color:var(--warning-border)] p-3")}
+      {/* The caveat is one line, so Copy and Download lead. What is not confirmed is listed under Import format. */}
+      <p
+        className="flex min-w-0 items-start gap-2 px-1 text-sm leading-5 text-[color:var(--text-muted)]"
         data-testid="cpd-home-format"
       >
-        <IconCircle icon={Clock} tone="amber" />
-        <div className="grid min-w-0 flex-1 gap-1">
-          <h2 className="text-base-minus font-medium leading-5 text-[color:var(--text-heading)]">
-            Format to be confirmed with AMA CPD Home
-          </h2>
-          <p className="text-sm leading-5 text-[color:var(--text-muted)]">
-            We have not checked what CPD Home can import. A plain CSV works now, and you can copy each activity to type
-            it in.
-          </p>
-          <button
-            type="button"
-            aria-expanded={checkOpen}
-            aria-controls="cpd-home-still-to-check"
-            onClick={() => setCheckOpen((open) => !open)}
-            className={cn(
-              focusRing,
-              "inline-flex min-h-12 items-center gap-1 justify-self-start text-sm font-medium text-[color:var(--warning)] underline underline-offset-4",
-            )}
-            data-testid="cpd-home-check-toggle"
-          >
-            What we still need to check
-            <ChevronDown
-              aria-hidden="true"
-              className={cn("size-icon-sm motion-safe:transition-transform", checkOpen && "rotate-180")}
-            />
-          </button>
-          {checkOpen ? (
-            <ul
-              id="cpd-home-still-to-check"
-              className="grid list-disc gap-1 pl-5 text-sm leading-5 text-[color:var(--text)]"
-            >
-              <li>Whether CPD Home imports a file at all, or takes activities typed in one at a time</li>
-              <li>Which columns it expects, and what it calls them</li>
-              <li>How it wants dates written, and its names for the three categories</li>
-              <li>Whether it takes reflections, and how long they can be</li>
-            </ul>
-          ) : null}
-        </div>
-      </section>
+        <Clock aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0" strokeWidth={1.8} />
+        <span>
+          What AMA CPD Home can import is not confirmed yet. Try the CSV, or copy each activity to type it in.
+        </span>
+      </p>
 
       {lastAdded && notYetAdded.length > 0 && scope === "new" ? (
         <section
@@ -817,6 +784,36 @@ export function CpdHomeSendPage({ set, entries, availableYears, demoMode, now }:
             <span className="text-sm leading-5 text-[color:var(--text-muted)]">Not confirmed yet</span>
           </span>
           <PendingTag>Source pending</PendingTag>
+        </div>
+        <div className="grid gap-1 px-1">
+          <button
+            type="button"
+            aria-expanded={checkOpen}
+            aria-controls="cpd-home-still-to-check"
+            onClick={() => setCheckOpen((open) => !open)}
+            className={cn(
+              focusRing,
+              "inline-flex min-h-12 items-center gap-1 justify-self-start text-sm font-medium text-[color:var(--warning)] underline underline-offset-4",
+            )}
+            data-testid="cpd-home-check-toggle"
+          >
+            What is not confirmed yet
+            <ChevronDown
+              aria-hidden="true"
+              className={cn("size-icon-sm motion-safe:transition-transform", checkOpen && "rotate-180")}
+            />
+          </button>
+          {checkOpen ? (
+            <ul
+              id="cpd-home-still-to-check"
+              className="grid list-disc gap-1 pl-5 text-sm leading-5 text-[color:var(--text)]"
+            >
+              <li>Whether CPD Home imports a file at all, or takes activities typed in one at a time</li>
+              <li>Which columns it expects, and what it calls them</li>
+              <li>How it wants dates written, and its names for the three categories</li>
+              <li>Whether it takes reflections, and how long they can be</li>
+            </ul>
+          ) : null}
         </div>
       </section>
 
