@@ -720,7 +720,7 @@ function stripSqlCommentsAndStrings(sql) {
   return String(sql ?? "")
     .replace(POSTGRES_TOKEN_PATTERN, (match, sQuote, dQuote, dollarQuote) => {
       if (sQuote) return "''";
-      if (dollarQuote) return "$$$$";
+      if (dollarQuote) return match;
       if (dQuote) return match;
       return " ";
     })
