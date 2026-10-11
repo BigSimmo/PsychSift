@@ -22,3 +22,13 @@ export function StaffWorkHeaderControls({ modeId }: { modeId: AppModeId }) {
     </>
   );
 }
+
+/**
+ * The clinical header's bell on tablets and desktop (11 Oct 2026 audit): the
+ * big-screen Clinical header matches Work's, area pill in the middle and the
+ * bell on the right, beside the page's own action. Its own export so the
+ * clinical header loads only the bell, never AI Search.
+ */
+export function ClinicalHeaderBell({ modeId }: { modeId: AppModeId }) {
+  return <NeedsYouButton modeId={modeId} clinical />;
+}

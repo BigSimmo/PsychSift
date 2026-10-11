@@ -119,7 +119,7 @@ export function OpenShiftsPostPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
+    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts" data-page-width="wide">
       <SubHeader backHref={`${OPEN_SHIFTS_HREF}/post`} backLabel="Post" title="Post a shift" />
       {state.status === "loading" ? (
         <ListSkeleton rows={5} />

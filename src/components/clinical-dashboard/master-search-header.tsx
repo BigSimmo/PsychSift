@@ -163,6 +163,9 @@ import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 const StaffWorkHeaderControls = dynamic(() =>
   import("@/components/needs-you/staff-work-header-controls").then((m) => m.StaffWorkHeaderControls),
 );
+const ClinicalHeaderBell = dynamic(() =>
+  import("@/components/needs-you/staff-work-header-controls").then((m) => m.ClinicalHeaderBell),
+);
 
 // Shared between the composer input's aria-describedby and the rendered
 // PrivacyInputNotice id/testId so the wiring cannot drift apart.
@@ -2731,14 +2734,11 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                   {pillModeLabel}
                 </span>
               ) : (
-                <>
-                  <span className="hidden truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--text-muted)] sm:block">
-                    Mode
-                  </span>
-                  <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                    {selectedAppMode.label}
-                  </span>
-                </>
+                // No "Mode" eyebrow at any width (11 Oct 2026 audit): the big-screen
+                // pill now reads as the phone's and as a work area's, the name alone.
+                <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
+                  {selectedAppMode.label}
+                </span>
               )}
             </span>
             <ChevronDown
@@ -2860,6 +2860,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               a chat-less mode that own their control somewhere else — On Call's
               section pages moved the page menu into their own in-page header, and
               the button reappeared in a mode that has never had a chat. */}
+          {/* Tablets and desktop: the bell, as on every work page (11 Oct 2026 audit). */}
+          {appModeHasWorkSearch(selectedAppMode.id) ? null : <ClinicalHeaderBell modeId={selectedAppMode.id} />}
           {modeHasConversation ? (
             <button
               type="button"

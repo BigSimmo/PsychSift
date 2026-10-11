@@ -5,7 +5,7 @@ import "@/components/needs-you/notification-centre.css";
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { LazyNotificationCentre, prefetchNeedsYouSheet } from "@/components/needs-you/lazy-needs-you-sheet";
 import type { NotificationBadgeSummary } from "@/components/needs-you/needs-you-sheet";
@@ -13,8 +13,32 @@ import { cn } from "@/components/ui-primitives";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import type { AppModeId } from "@/lib/app-modes";
 import { notificationBadgeText, notificationBellLabel } from "@/lib/needs-you/feed";
-import { isNotificationsPath, needsYouBellVisibleForAuth, staffWorkBellVisible } from "@/lib/needs-you/homes";
+import {
+  clinicalWideBellVisible,
+  isNotificationsPath,
+  needsYouBellVisibleForAuth,
+  staffWorkBellVisible,
+} from "@/lib/needs-you/homes";
 import { useAuthSession } from "@/lib/supabase/client";
+
+/* Tablets and desktop: where the side rail replaces the menu button (Tailwind's md). */
+const wideQuery = "(min-width: 768px)";
+
+function subscribeWide(callback: () => void) {
+  if (typeof window.matchMedia !== "function") return () => {};
+  const media = window.matchMedia(wideQuery);
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
+
+/** False on the server and on phones, so a phone never mounts the clinical bell. */
+function useWideScreen(): boolean {
+  return useSyncExternalStore(
+    subscribeWide,
+    () => typeof window.matchMedia === "function" && window.matchMedia(wideQuery).matches,
+    () => false,
+  );
+}
 
 /** How long after the header settles the centre starts its read for the badge. */
 const ARM_FALLBACK_MS = 1200;
@@ -45,7 +69,16 @@ const BELL_INTERACTIVE = cn(
  * mounted closed, only for that count. Red when something is overdue, 9+ at
  * most, hidden at zero; the accessible name says the count in words.
  */
-export function NeedsYouButton({ modeId, className }: { modeId: AppModeId; className?: string }) {
+export function NeedsYouButton({
+  modeId,
+  className,
+  clinical = false,
+}: {
+  modeId: AppModeId;
+  className?: string;
+  /** The clinical header's bell: tablets and desktop only (`clinicalWideBellVisible`). */
+  clinical?: boolean;
+}) {
   const pathname = usePathname();
   const { status } = useAuthSession();
   const newWorkMode = useNewWorkMode();
@@ -53,7 +86,10 @@ export function NeedsYouButton({ modeId, className }: { modeId: AppModeId; class
   const [armed, setArmed] = useState(false);
   const [summary, setSummary] = useState<NotificationBadgeSummary>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const visible = staffWorkBellVisible(modeId, pathname) && needsYouBellVisibleForAuth(status);
+  const wide = useWideScreen();
+  const visible =
+    (clinical ? wide && clinicalWideBellVisible(modeId, pathname) : staffWorkBellVisible(modeId, pathname)) &&
+    needsYouBellVisibleForAuth(status);
   // On the Notifications page the page itself is the list, so the bell only marks where the reader is.
   const current = newWorkMode && isNotificationsPath(pathname);
   const counting = visible && !current;

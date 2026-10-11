@@ -111,7 +111,7 @@ export function OpenShiftsLogPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
+    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts" data-page-width="wide">
       <SubHeader backHref={`${OPEN_SHIFTS_HREF}/mine`} backLabel="My requests" title="Log a shift" />
       <form
         className="flex flex-col gap-5 px-3 pt-2"

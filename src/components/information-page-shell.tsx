@@ -14,6 +14,9 @@ import { cn, pageContainer } from "@/components/ui-primitives";
  * - Default width: `pageContainer` (`max-w-7xl`).
  * - `narrow`: patient-facing reading width (`max-w-reading`).
  * - `bleed`: children own horizontal padding (full-bleed headers, factsheet action bars).
+ * - Inside a work area, a shell that lays out its own children (`gap`) is a
+ *   wide work page: `data-page-width="wide"` lets the work frame size it and
+ *   line the band's title up with it (work-mode.css, "page widths").
  *
  * Opt out (different product chrome): DocumentViewer and differentials
  * presentation workflow.
@@ -64,7 +67,9 @@ export function InformationPageShell({
           shell clips: the page simply loses the right-hand edge of every
           heading and paragraph on it, silently. `minmax(0,1fr)` lets the column
           shrink and hands the overflow back to the child that owns it. */}
-      <div className={cn(container, gap && "grid grid-cols-[minmax(0,1fr)] gap-5 sm:gap-6")}>{children}</div>
+      <div className={cn(container, gap && "grid grid-cols-[minmax(0,1fr)] gap-5 sm:gap-6")} data-page-width="wide">
+        {children}
+      </div>
     </Tag>
   );
 }
