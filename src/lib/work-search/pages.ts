@@ -58,7 +58,7 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "teach:week": ["sessions", "timetable", "this week", "what's on", "grand rounds", "other services"],
   "teach:logbook": ["attendance", "record", "log"],
   "teach:teach": ["presenting", "my talk", "talks", "presentation"],
-  "teach:term": ["term dates", "goals"],
+  "teach:term": ["term dates", "goals", "evidence folder", "term folder", "export", "print", "supervision and attendance"],
   "teach:calendar": ["sync", "ical", "ics", "phone calendar", "google calendar", "outlook", "expiries", "expiry"],
   "teach:resources": ["slides", "papers", "reading"],
   "teach:feedback": ["rate", "survey"],
