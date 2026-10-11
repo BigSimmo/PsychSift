@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 // The real reader reads the notification feed; these tests publish counts directly.
-vi.mock("@/components/work-frame/lazy-work-side-counts", () => ({
+vi.mock("@/components/work-frame/lazy-work-side-nav", () => ({
   LazyWorkSideCounts: () => null,
 }));
 

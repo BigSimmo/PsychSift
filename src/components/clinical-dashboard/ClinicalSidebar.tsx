@@ -60,7 +60,7 @@ import {
   ClinicalMenuWorkAreas,
   clinicalMenuTabId,
 } from "@/components/clinical-dashboard/clinical-menu-drawer";
-import { LazyWorkSideCounts } from "@/components/work-frame/lazy-work-side-counts";
+import { LazyWorkSideCounts } from "@/components/work-frame/lazy-work-side-nav";
 import { useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { needsYouBellVisibleForAuth } from "@/lib/needs-you/homes";
