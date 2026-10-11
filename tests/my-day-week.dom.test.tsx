@@ -35,6 +35,8 @@ type Shifts = {
   status: "loading" | "ready" | "signed-out" | "error";
   shifts: Record<string, unknown>[];
   teamLoading: boolean;
+  teamMessage?: string | null;
+  teamRefreshing?: boolean;
   demoMode: boolean;
   sample: boolean;
   reload: () => Promise<void>;
@@ -314,7 +316,7 @@ describe("MyDayWeekPage", () => {
   });
 
   it("warns when relocated teaching entries or team shifts could not be read", () => {
-    setShifts({ teamMessage: "Team shifts could not be loaded. Your own shifts are shown." } as Partial<Shifts>);
+    setShifts({ teamMessage: "Team shifts could not be loaded. Your own shifts are shown." });
     setTeaching([], {
       week: { sessions: [], relocated: [], teams: [], relocatedUnavailable: true },
     } as Partial<Teaching>);
@@ -339,7 +341,7 @@ describe("MyDayWeekPage", () => {
     expect(link.textContent).toMatch(/^16 h rostered this week/);
     unmount();
 
-    setShifts({ shifts, teamRefreshing: true } as Partial<Shifts>);
+    setShifts({ shifts, teamRefreshing: true });
     render(<MyDayWeekPage now={NOW} />);
     expect(screen.queryByTestId("my-day-week-hours")).toBeNull();
   });
