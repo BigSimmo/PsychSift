@@ -440,6 +440,8 @@ export function PwaLifecycle() {
     };
     const start = () => {
       if (disposed || stop) return;
+      // While offline, wait for the online event instead of spending attempts.
+      if (attempts > 0 && !navigator.onLine) return;
       clearRetry();
       attempts += 1;
       loadPwaServiceWorker().then(
@@ -466,8 +468,10 @@ export function PwaLifecycle() {
         () => {
           // Transient failures while online retry too: on focus, on reconnect,
           // or after a short backoff, bounded so a missing chunk cannot loop.
-          if (disposed || attempts >= 5) return;
+          if (disposed) return;
+          // Reconnecting always retries; the cap bounds only focus/backoff retries.
           window.addEventListener("online", start);
+          if (attempts >= 5) return;
           window.addEventListener("focus", start);
           retryTimer = window.setTimeout(start, 15_000 * attempts);
         },
