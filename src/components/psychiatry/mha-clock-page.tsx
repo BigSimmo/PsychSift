@@ -135,12 +135,21 @@ export const MHA_CLOCK_HANDOVER_NOT_CALCULABLE =
  * Times are absolute Perth times, never "time left", so a pasted line does not go out of date.
  */
 function handoverLimitLine(item: MhaTimerItem): string {
-  const trigger = item.entry.trigger;
-  if (item.kind !== "countdown") {
-    return `  ${trigger}: ${item.reason === "not-calculable" ? MHA_CLOCK_HANDOVER_NOT_CALCULABLE : MHA_TIMELINE_AWAITING_REVIEW}`;
-  }
-  const label = item.expired ? "time limit passed" : "time limit";
-  return `  ${trigger}: ${label} ${formatPerthDateTime(item.deadline)}`;
+  const { entry } = item;
+  const status =
+    item.kind !== "countdown"
+      ? item.reason === "not-calculable"
+        ? MHA_CLOCK_HANDOVER_NOT_CALCULABLE
+        : MHA_TIMELINE_AWAITING_REVIEW
+      : `${item.expired ? "time limit passed" : "time limit"} ${formatPerthDateTime(item.deadline)}`;
+  const qualification = [
+    entry.condition ? `Condition: ${entry.condition}` : null,
+    entry.leadIn ? `Act wording: ${entry.leadIn} ... ${entry.quote}` : `Act wording: ${entry.quote}`,
+    entry.caveat ? `Caveat: ${entry.caveat.quote}` : null,
+    `s ${entry.section}`,
+    `Source: ${mhaActMetadata.sourceUrl}`,
+  ].filter(Boolean).join("; ");
+  return `  ${entry.trigger}: ${status} — ${qualification}`;
 }
 
 /**
