@@ -31,7 +31,7 @@ import {
 } from "@/components/on-call/kit/calm";
 import { OnCallDialRow, toHandbookDial } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
 import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -452,7 +452,7 @@ export function OnCallCallPage() {
       </div>
 
       <OnCallHandbookState handbook={handbook} page="call" />
-      {showCrisis ? <OnCallCrisisLines /> : null}
+      {showCrisis ? <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} /> : null}
 
       <div id="on-call-people-list" className="grid min-w-0 gap-5">
         {searching && resultCount === 0 ? (

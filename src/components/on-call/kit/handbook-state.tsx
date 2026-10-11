@@ -32,6 +32,15 @@ const SIGN_IN_TITLES: Partial<Record<HospitalHandbookStatus, string>> = {
 };
 
 /**
+ * Whether the public crisis lines show in their compact form: before a hospital is set up and when
+ * signed out, where they would otherwise top every page (usefulness audit, 11 Oct 2026). Loading,
+ * offline and failure keep the full block, because then the hospital's own numbers cannot be reached.
+ */
+export function onCallCrisisLinesCompact(status: HospitalHandbookStatus): boolean {
+  return status === "no-service" || status in SIGN_IN_TITLES;
+}
+
+/**
  * What a hub page shows while the hospital handbook is not ready, in words that
  * say what the state means and what to do (amendment 1.6). `ready` renders
  * nothing: the page draws its own modules.

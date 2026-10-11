@@ -63,6 +63,8 @@ export function NowShiftPulseCard({ now }: { readonly now: Date }) {
 
   const peak = view?.peak ?? null;
   const highlighted = peakHours(peak);
+  // Shown only once there is a pattern to show (usefulness audit, 11 Oct 2026); the page stays in More.
+  if (!peak) return null;
 
   return (
     <Link

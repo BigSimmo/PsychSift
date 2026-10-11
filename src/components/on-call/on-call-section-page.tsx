@@ -16,6 +16,7 @@ import { OnCallEducationSection } from "@/components/on-call/on-call-education-s
 import { OnCallLogisticsSection } from "@/components/on-call/on-call-logistics-section";
 import { OnCallOrientationSection } from "@/components/on-call/on-call-orientation-section";
 import { HospitalLadders } from "@/components/on-call/hospital-ladders";
+import { OnCallStartingHereChips } from "@/components/on-call/starting-here-chips";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import { OnCallReferralsSection } from "@/components/on-call/on-call-referrals-section";
 import { OnCallWhoIsWhoSection } from "@/components/on-call/on-call-who-is-who-section";
@@ -447,6 +448,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
             The `<h1>` stays for the document outline and for a screen reader;
             it simply is not painted. */}
         <h1 className="sr-only">{title}</h1>
+        {view === "orientation" ? <OnCallStartingHereChips /> : null}
         {view === "playbook" ? <HospitalLadders /> : null}
 
         {upcomingTeaching.length > 0 ? (

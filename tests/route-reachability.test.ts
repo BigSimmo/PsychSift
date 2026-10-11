@@ -53,6 +53,11 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "Kept for old links only: redirects to /admin/applications, where Job applications now lives in the Admin menu.",
   ],
   ["/cme/applications/cv", "Kept for old links only: redirects to /admin/applications/cv."],
+  // Usefulness audit, 11 Oct 2026: the Playbook is the one home for "who do I call".
+  [
+    "/on-call/now",
+    "Kept for old links and bookmarks only: Now's problem buttons, its Playbook link and First night now open the matching Playbook entry. Due for removal under the 30-day dead-code rule.",
+  ],
   // Alerts work, owner approval 7 Oct 2026.
   [
     "/my-day/alerts/earlier",

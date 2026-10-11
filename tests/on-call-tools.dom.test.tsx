@@ -326,7 +326,7 @@ describe("check these", () => {
 });
 
 describe("first night", () => {
-  it("shows the three stages and the service's own induction manuals", () => {
+  it("shows the three stages and names the service's own induction manuals", () => {
     state.entries = [
       entry({
         id: "induct",
@@ -337,7 +337,8 @@ describe("first night", () => {
     ];
     render(<OnCallFirstNightPage />);
     expect(screen.getByTestId("on-call-first-night-before")).toHaveTextContent("Hospital induction");
-    expect(screen.getByTestId("on-call-first-night-before")).toHaveTextContent("Collect pager");
+    // Its checklist is ticked in the Hospital pack, not repeated here (usefulness audit, 11 Oct 2026).
+    expect(screen.getByTestId("on-call-first-night-before")).not.toHaveTextContent("Collect pager");
     expect(screen.getByTestId("on-call-first-night-night")).toHaveTextContent("Your first night");
     expect(screen.getByTestId("on-call-first-night-wrong")).toHaveTextContent("If something goes wrong");
   });

@@ -95,7 +95,7 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "call:find": ["handbook", "wards", "equipment", "systems down"],
   "call:playbook": ["what to do", "emergency", "codes"],
   "call:whoswho": ["roles", "teams"],
-  "call:orientation": ["checklist", "induction", "orientation"],
+  "call:starting-here": ["checklist", "induction", "orientation", "first week", "first night", "new job"],
   "call:card": ["print", "pocket card"],
   "call:call-now": ["who to call", "escalate"],
   "call:whoson": ["tonight's team", "who's on"],
