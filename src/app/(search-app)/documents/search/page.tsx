@@ -11,9 +11,10 @@ export const metadata: Metadata = {
 // Primary buttons wear the area colour, never the shared near-black command
 // fill (design pass, October 2026). Re-pointing the command tokens on the
 // button itself keeps Button's hover and pressed states and leaves every other
-// control on the page alone.
+// control on the page alone. In forced colours the accent becomes LinkText,
+// which ButtonText cannot sit on, so the native button pair comes back.
 const clinicalPrimaryAccent =
-  "[--command:var(--clinical-accent)] [--command-hover:var(--clinical-accent-hover)] [--command-active:var(--clinical-accent-active)] [--command-contrast:var(--clinical-accent-contrast)]";
+  "[--command:var(--clinical-accent)] [--command-hover:var(--clinical-accent-hover)] [--command-active:var(--clinical-accent-active)] [--command-contrast:var(--clinical-accent-contrast)] forced-colors:[--command:ButtonFace] forced-colors:[--command-hover:ButtonFace] forced-colors:[--command-active:ButtonFace]";
 
 // The empty screen's line drawing: two stacked documents and a magnifier, in
 // the area colour. It repeats what the heading says, so it is hidden from
