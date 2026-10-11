@@ -844,9 +844,9 @@ async function openMobileClinicalGuideMenu(page: Page) {
     // Documents/Services above (ClinicalSidebar.tsx).
     { name: "Documents", href: "/?mode=documents" },
     { name: "Services", href: "/?mode=services" },
+    { name: "Psychiatry", href: "/psychiatry" },
     { name: "Medication", href: "/?mode=prescribing" },
     { name: "Factsheets", href: "/?mode=factsheets" },
-    { name: "Tools", href: "/tools" },
   ]);
   await expect(navigation.getByRole("button", { name: "More modes" })).toBeVisible();
   await expect(menu.getByRole("button", { name: "Guide & help", exact: true })).toHaveCount(0);
@@ -1395,7 +1395,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expandSidebar.click();
     await expect(sidebar).toBeVisible();
     await expect(sidebar.getByRole("link", { name: "View tools" })).toHaveCount(0);
-    await expect(sidebar.getByRole("link", { name: "Tools", exact: true })).toHaveAttribute("href", "/tools");
+    // The Tools page is retired from the menu (audit item 8); Psychiatry takes its pin.
+    await expect(sidebar.getByRole("link", { name: "Tools", exact: true })).toHaveCount(0);
+    await expect(sidebar.getByRole("link", { name: "Psychiatry", exact: true }).first()).toHaveAttribute(
+      "href",
+      "/psychiatry",
+    );
     await expect(sidebar.getByTestId("sidebar-account-settings")).toHaveAccessibleName(
       /G Guest Not signed in\. Set up workspace/,
     );
@@ -1522,9 +1527,9 @@ test.describe("PsychSift UI smoke coverage", () => {
       { name: "Answer", href: "/?mode=answer" },
       { name: "Documents", href: "/?mode=documents" },
       { name: "Services", href: "/?mode=services" },
+      { name: "Psychiatry", href: "/psychiatry" },
       { name: "Medication", href: "/?mode=prescribing" },
       { name: "Factsheets", href: "/?mode=factsheets" },
-      { name: "Tools", href: "/tools" },
     ]);
     expect(
       await library

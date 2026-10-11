@@ -40,11 +40,16 @@ describe("phone mode groups", () => {
     expect(new Set(groupIds).size).toBe(groupIds.length);
   });
 
-  it("draws Clinical as Search, Psychiatry and Medicines, and Work as one list with On Call in it", () => {
+  it("draws Clinical as Search, Psychiatry, Medicines and the library, and Work as one list with On Call in it", () => {
     const groupOf = (modeId: AppModeId) =>
       phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId));
     expect(modeMenuSides.map((side) => side.id)).toEqual(["clinical", "work"]);
-    expect(phoneModeGroupsForSide("clinical").map((group) => group.id)).toEqual(["find", "psychiatry", "care"]);
+    expect(phoneModeGroupsForSide("clinical").map((group) => group.id)).toEqual([
+      "find",
+      "psychiatry",
+      "care",
+      "library",
+    ]);
     expect(phoneModeGroupsForSide("work").map((group) => group.id)).toEqual(["work"]);
     expect(groupOf("on-call")?.side).toBe("work");
     expect(groupOf("my-day")).toMatchObject({
@@ -53,24 +58,36 @@ describe("phone mode groups", () => {
       modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
     });
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
-    expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines & tools" });
-    expect(groupOf("favourites")?.modeIds).toEqual(["answer", "documents", "services", "sources", "favourites"]);
-    expect(groupOf("tools")?.modeIds).toEqual([
-      "medicines",
-      "prescribing",
-      "tools",
-      "calculators",
-      "factsheets",
-      "dictionary",
+    expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines" });
+    expect(groupOf("answer")?.modeIds).toEqual(["answer", "documents", "services"]);
+    expect(groupOf("favourites")?.modeIds).toEqual(["favourites", "sources"]);
+    expect(groupOf("medicines")?.modeIds).toEqual(["medicines", "prescribing", "factsheets"]);
+    // Rating scales and psychiatric terms sit with Psychiatry (audit item 8).
+    expect(groupOf("calculators")?.id).toBe("psychiatry");
+    expect(groupOf("dictionary")?.id).toBe("psychiatry");
+    // The Tools page is retired: still a Clinical mode for old links, never drawn.
+    expect(groupOf("tools")).toMatchObject({ id: "retired", drawn: false });
+    expect(modeMenuSideForMode("tools")).toBe("clinical");
+    expect(phoneModeGroupsForSide("clinical").flatMap((group) => group.modeIds)).not.toContain("tools");
+    expect(phoneModeGroups.map((group) => group.id)).toEqual([
+      "find",
+      "psychiatry",
+      "care",
+      "library",
+      "retired",
+      "work",
     ]);
-    expect(phoneModeGroups.map((group) => group.id)).toEqual(["find", "psychiatry", "care", "work"]);
     expect(modeMenuSideForMode("on-call")).toBe("work");
     expect(modeMenuSideForMode("answer")).toBe("clinical");
   });
 
   it("orders modes the way the grouped menus draw them, for arrow-key focus", () => {
     const registryOrder = appModeIds.map((id) => ({ id }));
-    expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual(groupedModeIds);
+    const drawnModeIds = phoneModeGroups
+      .filter((group) => group.drawn)
+      .flatMap((group) => group.modeIds as readonly AppModeId[]);
+    // Undrawn (retired) modes sort after everything drawn rather than vanishing.
+    expect(orderByPhoneModeGroups(registryOrder).map((mode) => mode.id)).toEqual([...drawnModeIds, "tools"]);
     // A session that hides some modes keeps the drawn order for the rest: Clinical, then Work.
     const someModes = (["cme", "psychiatry", "forms", "answer"] as const).map((id) => ({ id }));
     expect(orderByPhoneModeGroups(someModes).map((mode) => mode.id)).toEqual(["answer", "psychiatry", "forms", "cme"]);

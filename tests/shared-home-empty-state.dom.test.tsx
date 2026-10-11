@@ -129,7 +129,7 @@ const expectedPresentations = [
   {
     modeId: "psychiatry",
     title: "Psychiatry",
-    subtitle: "Diagnosis, specifiers, formulation, therapy and forms.",
+    subtitle: "Diagnosis, formulation, therapy, forms, rating scales and the dictionary.",
     iconClass: "lucide-brain",
   },
   {
@@ -158,8 +158,8 @@ const expectedPresentations = [
   },
   {
     modeId: "medicines",
-    title: "Medicines & tools",
-    subtitle: "Medication, calculators, clinical tools, factsheets and the dictionary.",
+    title: "Medicines",
+    subtitle: "Medication, factsheets, statewide charts and outside references.",
     iconClass: "lucide-pill-bottle",
   },
   {

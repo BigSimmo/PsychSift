@@ -79,7 +79,7 @@
       },
       {
         "id": "medicines",
-        "label": "Medicines & tools",
+        "label": "Medicines",
         "home": "/medicines",
         "dev_only": false
       },
