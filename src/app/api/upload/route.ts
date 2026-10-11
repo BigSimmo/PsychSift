@@ -111,7 +111,8 @@ export async function POST(request: Request) {
   let releaseAdmission: (() => void) | null = null;
 
   try {
-    supabase = createAdminClient({ timeoutMs: null });
+    // Bounded by the default deadline: only the Storage transfer below may run longer.
+    supabase = createAdminClient();
     const adminSupabase = supabase;
     const administrator = await requireAuthenticatedUser(request, adminSupabase, { administrator: true });
     const uploadOwnerId = administrator.id;
@@ -204,10 +205,13 @@ export async function POST(request: Request) {
       return publicErrorResponse(`Upload is paused. ${health.message}`, 503, { code: "upload_unavailable" });
 
     assertUploadNotAborted(request);
-    const upload = await adminSupabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).upload(storagePath, buffer, {
-      contentType: file.type,
-      upsert: false,
-    });
+    // Large document transfers may legitimately exceed the default deadline, so only this call is unbounded.
+    const upload = await createAdminClient({ timeoutMs: null })
+      .storage.from(env.SUPABASE_DOCUMENT_BUCKET)
+      .upload(storagePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
     if (upload.error) throw new Error(upload.error.message);
     uploadedPath = storagePath;
