@@ -94,8 +94,12 @@ export function NeedsYouButton({
   const current = newWorkMode && isNotificationsPath(pathname);
   const counting = visible && !current;
 
+  // The clinical bell reads the feed on its own only for a signed-in reader. Demo
+  // visitors' Clinical pages stay light until they reach for the bell.
+  const idleArm = counting && (!clinical || status === "authenticated");
+
   useEffect(() => {
-    if (!counting || armed) return;
+    if (!idleArm || armed) return;
     const idle = (
       window as Window & { requestIdleCallback?: (run: () => void, options?: { timeout: number }) => number }
     ).requestIdleCallback;
@@ -105,7 +109,7 @@ export function NeedsYouButton({
     }
     const timer = window.setTimeout(() => setArmed(true), ARM_FALLBACK_MS);
     return () => window.clearTimeout(timer);
-  }, [counting, armed]);
+  }, [idleArm, armed]);
 
   const arm = useCallback(() => {
     prefetchNeedsYouSheet();
