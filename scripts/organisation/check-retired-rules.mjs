@@ -41,6 +41,7 @@ export const RULES_FILE = "docs/organisation/retired-rules.json";
 /** The live instruction files: exact files, and folders (ending in "/") whose files all count. */
 export const INSTRUCTION_SCOPE = Object.freeze([
   "AGENTS.md",
+  "PROJECT-INSTRUCTIONS-CONTINUATION.md",
   "CLAUDE.md",
   "docs/agents-guide.md",
   "docs/codex-review-protocol.md",
