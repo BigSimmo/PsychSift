@@ -264,6 +264,11 @@ body {
   .work-columns[data-columns="3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  /* Keep a remaining dock in the first column when the right column is empty. */
+  .work-columns:has(> :nth-child(2):empty) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* The CPD log's filter column (from 1024px, desktop layout audit 11 Oct 2026):
