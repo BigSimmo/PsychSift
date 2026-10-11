@@ -516,11 +516,14 @@ export function PwaLifecycle() {
     hasSeenControllerRef.current = Boolean(navigator.serviceWorker.controller);
 
     let broadcastChannel: BroadcastChannel | null = null;
+    let pendingActivatedUpdate = false;
     try {
       broadcastChannel = new BroadcastChannel("pwa_channel");
       broadcastChannel.addEventListener("message", (event) => {
         if (event.data === "sw-updated" && !cancelled) {
-          void exposeUpdate(navigator.serviceWorker.controller, true);
+          const controller = navigator.serviceWorker.controller;
+          if (controller) void exposeUpdate(controller, true);
+          else pendingActivatedUpdate = true;
         }
       });
     } catch {
@@ -583,8 +586,10 @@ export function PwaLifecycle() {
         return;
       }
       setWaitingWorker(null);
-      if (!cancelled && wasPreviouslyControlled) {
-        void exposeUpdate(navigator.serviceWorker.controller, true);
+      const controller = navigator.serviceWorker.controller;
+      if (!cancelled && controller && (wasPreviouslyControlled || pendingActivatedUpdate)) {
+        pendingActivatedUpdate = false;
+        void exposeUpdate(controller, true);
         try {
           broadcastChannel?.postMessage("sw-updated");
         } catch {
