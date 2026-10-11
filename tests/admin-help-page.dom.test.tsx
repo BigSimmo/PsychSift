@@ -260,16 +260,14 @@ describe("AdminHelpPage layout (Admin polish, lane C)", () => {
     expect(link.className).toContain("min-h-tap");
   });
 
-  it("shows Support's empty state as a quiet panel with the existing explanation, inventing no service", () => {
+  it("leaves Support out, with no chip and no empty card, while no statewide service is listed", () => {
     render(<AdminHelpPage now={NOW} />);
-    const empty = within(screen.getByRole("region", { name: "Support" })).getByTestId("admin-help-support-empty");
-    expect(empty).toHaveTextContent("Nothing here yet");
-    expect(empty).toHaveTextContent(
-      "Crisis lines are above. Statewide support services will appear here, each with a link to its source.",
-    );
+    expect(screen.queryByRole("region", { name: "Support" })).toBeNull();
+    expect(screen.queryByTestId("admin-section-header-section-admin-help-support")).toBeNull();
+    expect(screen.queryByText("Nothing here yet")).toBeNull();
   });
 
-  it("shows On site at a glance: one tile per On site row, jumping to the full row, with a call link only for a number", () => {
+  it("lists each On site row once, with no glance tiles repeating them above the list", () => {
     const switchboard = onCallEntryFixture({
       section: "logistics",
       title: "Demo switchboard",
@@ -278,25 +276,10 @@ describe("AdminHelpPage layout (Admin polish, lane C)", () => {
     });
     Object.assign(entryState, { entries: [onSiteOwn, switchboard, guideShared] });
     render(<AdminHelpPage now={NOW} />);
-    const glance = screen.getByTestId("admin-help-on-site-glance");
-    const tiles = within(glance).getAllByRole("listitem");
-    expect(tiles).toHaveLength(2);
-
-    const foodTile = within(glance).getByTestId(`admin-help-glance-entry-${onSiteOwn.id}`);
-    expect(within(foodTile).getByRole("link").getAttribute("href")).toBe(`#on-call-entry-${onSiteOwn.id}`);
-    expect(within(foodTile).queryByRole("link", { name: /^Call / })).toBeNull();
-
-    const switchboardTile = within(glance).getByTestId(`admin-help-glance-entry-${switchboard.id}`);
-    expect(switchboardTile).toHaveTextContent("9000 0099");
-    const call = within(switchboardTile).getByRole("link", { name: /^Call Demo switchboard/ });
-    expect(call.getAttribute("href")).toBe("tel:0890000099");
-    expect(document.getElementById(`on-call-entry-${switchboard.id}`)).not.toBeNull();
-    // The glance sits above the full list, inside On site.
     const onSite = screen.getByRole("region", { name: "On site" });
-    expect(onSite).toContainElement(glance);
-    expect(
-      glance.compareDocumentPosition(screen.getByTestId("admin-help-on-site-list")) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(within(onSite).getAllByText("Demo switchboard")).toHaveLength(1);
+    expect(screen.queryByTestId("admin-help-on-site-glance")).toBeNull();
+    expect(document.getElementById(`on-call-entry-${switchboard.id}`)).not.toBeNull();
   });
 
   it("draws no glance grid when there are no On site rows", () => {

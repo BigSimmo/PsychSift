@@ -189,8 +189,9 @@ describe("Pages", () => {
       href: "/roster/requests",
     });
     // Several areas have an Export page now (Admin, CPD, Assessments), so the Admin one is among them.
-    expect(searchWorkPages("export").map((hit) => hit.page.href)).toContain("/admin/compliance/export");
-    expect(searchWorkPages("fit test")[0]?.page.href).toBe("/admin/compliance");
+    expect(searchWorkPages("export").map((hit) => hit.page.href)).toContain("/admin/renewals");
+    // Compliance is Renewals' By group view since 11 Oct 2026.
+    expect(searchWorkPages("fit test")[0]?.page.href).toBe("/admin/renewals");
     expect(searchWorkPages("switchboard")[0]?.page.href).toBe("/on-call/call");
     expect(searchWorkPages("sync")[0]?.page.href).toBe("/roster/calendar");
   });

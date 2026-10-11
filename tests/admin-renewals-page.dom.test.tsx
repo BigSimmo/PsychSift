@@ -877,6 +877,15 @@ describe("AdminRenewalsPage — the URL contract", () => {
     expect(sheet.queryByText("Sign in to record dates.")).toBeNull();
   });
 
+  it("?view=group opens By group, and the plain Renewals address afterwards opens Soonest again", () => {
+    navigation.query = "view=group";
+    const view = render(<AdminRenewalsPage now={NOW} />);
+    expect(screen.getByRole("radio", { name: "By group" })).toBeChecked();
+    navigation.query = "";
+    view.rerender(<AdminRenewalsPage now={NOW} />);
+    expect(screen.getByRole("radio", { name: "Soonest" })).toBeChecked();
+  });
+
   it("?show=not-recorded offers no Record dates when only a personal renewal is undated", () => {
     storeState.entries = [
       ...ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>

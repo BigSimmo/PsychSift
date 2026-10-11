@@ -782,7 +782,8 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeVisible();
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeVisible();
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeVisible();
-    await expect(servicesMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeVisible();
+    // Tools left the mode menu (usefulness and layout audit, 11 Oct 2026).
+    await expect(servicesMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     const formsMode = servicesMenu.getByRole("menuitemradio", { name: /^Forms\b/ });
     await waitForReactEventHandler(formsMode);
     await formsMode.click();

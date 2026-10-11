@@ -116,9 +116,9 @@ afterEach(() => {
 });
 
 describe("Admin Sharing", () => {
-  it("says it is not live, starts every switch off and offers no pack", () => {
+  it("says you send it yourself, starts every switch off and offers no pack", () => {
     withToasts(<AdminSharingPage now={NOW} />);
-    expect(screen.getByTestId("admin-sharing-not-live").textContent).toContain("Not live yet");
+    expect(screen.getByTestId("admin-sharing-not-live").textContent).toContain("PsychSift never sends it for you");
     for (const sw of screen.getAllByRole("switch")) expect(sw.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByTestId("admin-sharing-nothing-on")).toBeTruthy();
   });
@@ -184,6 +184,41 @@ describe("Admin Requests", () => {
     const toast = screen.getByText("Request removed").closest(".app-toast") as HTMLElement;
     fireEvent.click(within(toast).getByRole("button", { name: "Undo" }));
     expect((stored()?.requests as unknown[]).length).toBe(1);
+  });
+
+  it("opens Send a pack from Sharing's old address, and follows the address while open", () => {
+    search.params = new URLSearchParams("view=send");
+    const view = withToasts(<AdminRequestsPage now={NOW} />);
+    expect(screen.getByTestId("admin-requests-tab-send").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("admin-sharing")).toBeTruthy();
+    search.params = new URLSearchParams();
+    view.rerender(
+      <ToastProvider>
+        <AdminRequestsPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.queryByTestId("admin-sharing")).toBeNull();
+    fireEvent.click(screen.getByTestId("admin-requests-tab-done"));
+    search.params = new URLSearchParams("view=send");
+    view.rerender(
+      <ToastProvider>
+        <AdminRequestsPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("admin-sharing")).toBeTruthy();
+  });
+
+  it("keeps Done when it is chosen from Send a pack, as the address drops ?view=send", () => {
+    search.params = new URLSearchParams("view=send");
+    const view = withToasts(<AdminRequestsPage now={NOW} />);
+    fireEvent.click(screen.getByTestId("admin-requests-tab-done"));
+    search.params = new URLSearchParams();
+    view.rerender(
+      <ToastProvider>
+        <AdminRequestsPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("admin-requests-tab-done").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("sends a health reason to Staff Health only", () => {
