@@ -378,7 +378,9 @@ export function OnCallPlaybookSection({
   const linked = sorted.filter(isLinked);
   const unlinked = sorted.filter((entry) => !isLinked(entry));
 
-  const first = linked[0] ?? unlinked[0];
+  // Chosen from entry order and the recorded links alone, never from how the lookup resolved:
+  // a card that moves group remounts, and must come back open if it was the open one.
+  const first = sorted.find((entry) => entry.linkedDocumentIds.length > 0) ?? sorted[0];
   const card = (entry: OnCallEntry) => (
     <PlaybookCard
       key={entry.id}
