@@ -32,51 +32,56 @@ export const productionSpecFilePattern =
  * Caring Contacts specs left shard 3; no timing value was re-measured.
  * Teaching's estimated spec was added to shard 3; move the 2.3s formulation-result-cards
  * spec to shard 2 to keep both full and post-critical groups within their balance limits.
+ * Re-measured 2026-10-11 from the post-critical per-test durations in the three Production UI
+ * job logs of PR CI run 38101082169 (fullSeconds = measured + criticalSeconds; the two
+ * critical-only files keep their values). Shard 3 had drifted to 521s of tests against 401s and
+ * 346s, so it set the wall clock of every PR. Four moves (adaptive-answer-ui to shard 1;
+ * answer-progress-ui-smoke, ui-cme-phone and ui-pwa to shard 2) bring the groups to 422/426/420s.
  * These measurements guide grouping, never test omission or passing status.
  */
 export const prUiSpecProfiles = Object.freeze([
-  { file: "tests/ui-user-journeys.spec.ts", shard: 1, fullSeconds: 3.5, criticalSeconds: 0 },
-  { file: "tests/ui-admin.spec.ts", shard: 1, fullSeconds: 24, criticalSeconds: 0 },
+  { file: "tests/ui-user-journeys.spec.ts", shard: 1, fullSeconds: 26.4, criticalSeconds: 0 },
+  { file: "tests/ui-admin.spec.ts", shard: 1, fullSeconds: 7.5, criticalSeconds: 0 },
   {
     file: "tests/adaptive-answer-ui.spec.ts",
-    shard: 3,
-    fullSeconds: 19,
+    shard: 1,
+    fullSeconds: 21.4,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-smoke.spec.ts",
     shard: 3,
-    fullSeconds: 167,
+    fullSeconds: 212.3,
     criticalSeconds: 17.7,
   },
   {
     file: "tests/ui-mode-nav-density.spec.ts",
     shard: 2,
-    fullSeconds: 45.5,
+    fullSeconds: 38.9,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-cme-phone.spec.ts",
-    shard: 3,
-    fullSeconds: 15.6,
+    shard: 2,
+    fullSeconds: 33.4,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-on-call-boards.spec.ts",
     shard: 1,
-    fullSeconds: 34.8,
+    fullSeconds: 66,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-on-call-service.spec.ts",
     shard: 1,
-    fullSeconds: 4.2,
+    fullSeconds: 14.2,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-on-call-call.spec.ts",
     shard: 1,
-    fullSeconds: 20,
+    fullSeconds: 8.1,
     criticalSeconds: 0,
   },
   {
@@ -87,7 +92,7 @@ export const prUiSpecProfiles = Object.freeze([
     // 2026-09-26).
     file: "tests/ui-on-call-now.spec.ts",
     shard: 1,
-    fullSeconds: 30,
+    fullSeconds: 17.1,
     criticalSeconds: 0,
   },
   {
@@ -103,55 +108,55 @@ export const prUiSpecProfiles = Object.freeze([
     // exists — say so in the PR body.
     file: "tests/ui-teaching.spec.ts",
     shard: 3,
-    fullSeconds: 10,
+    fullSeconds: 20.7,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-phone-scroll-page-owned.spec.ts",
     shard: 2,
-    fullSeconds: 34.8,
+    fullSeconds: 37.1,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-accessibility.spec.ts",
     shard: 2,
-    fullSeconds: 22.9,
+    fullSeconds: 19.9,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-route-coverage.spec.ts",
     shard: 2,
-    fullSeconds: 18,
+    fullSeconds: 16.5,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-formulation.spec.ts",
     shard: 3,
-    fullSeconds: 12,
+    fullSeconds: 14.2,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-dictionary.spec.ts",
     shard: 2,
-    fullSeconds: 19.8,
+    fullSeconds: 17.4,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-sources.spec.ts",
     shard: 2,
-    fullSeconds: 28,
+    fullSeconds: 26,
     criticalSeconds: 4.9,
   },
   {
     file: "tests/ui-token-layer-resolution.spec.ts",
     shard: 3,
-    fullSeconds: 2.4,
+    fullSeconds: 2.7,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-tools-show-all.spec.ts",
     shard: 2,
-    fullSeconds: 0.5,
+    fullSeconds: 0.4,
     criticalSeconds: 0,
   },
   {
@@ -163,109 +168,109 @@ export const prUiSpecProfiles = Object.freeze([
   {
     file: "tests/api-csrf-proxy.spec.ts",
     shard: 2,
-    fullSeconds: 0.2,
+    fullSeconds: 0.1,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-phone-motion.spec.ts",
     shard: 3,
-    fullSeconds: 14.9,
+    fullSeconds: 16,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-therapy-pathways.spec.ts",
     shard: 3,
-    fullSeconds: 3.9,
+    fullSeconds: 4.1,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-patient-number-field.spec.ts",
     shard: 2,
-    fullSeconds: 5.9,
+    fullSeconds: 5.5,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-phone-scroll-routes.spec.ts",
     shard: 2,
-    fullSeconds: 151.8,
+    fullSeconds: 126.9,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-phone-scroll.spec.ts",
     shard: 1,
-    fullSeconds: 178.2,
+    fullSeconds: 142.7,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-universal-search.spec.ts",
     shard: 2,
-    fullSeconds: 25.2,
+    fullSeconds: 22.6,
     criticalSeconds: 0,
   },
   {
     file: "tests/dsm-ui-smoke.spec.ts",
     shard: 3,
-    fullSeconds: 3,
+    fullSeconds: 3.1,
     criticalSeconds: 0,
   },
   {
     file: "tests/answer-progress-ui-smoke.spec.ts",
-    shard: 3,
-    fullSeconds: 32,
+    shard: 2,
+    fullSeconds: 33.6,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-tools.spec.ts",
     shard: 3,
-    fullSeconds: 97.1,
+    fullSeconds: 133.3,
     criticalSeconds: 4,
   },
   {
     file: "tests/ui-chrome-scroll.spec.ts",
     shard: 1,
-    fullSeconds: 64.8,
+    fullSeconds: 64.7,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-overlap.spec.ts",
     shard: 2,
-    fullSeconds: 19.7,
+    fullSeconds: 21.9,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-stress.spec.ts",
     shard: 2,
-    fullSeconds: 7.2,
+    fullSeconds: 6.2,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-specifiers.spec.ts",
     shard: 1,
-    fullSeconds: 19.5,
+    fullSeconds: 25.5,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-formulation-result-cards.spec.ts",
     shard: 2,
-    fullSeconds: 2.3,
+    fullSeconds: 2.1,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-style-contract.spec.ts",
     shard: 3,
-    fullSeconds: 11.4,
+    fullSeconds: 15.5,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-hydration.spec.ts",
     shard: 2,
-    fullSeconds: 3.6,
+    fullSeconds: 1.9,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-pwa.spec.ts",
-    shard: 3,
-    fullSeconds: 9.1,
+    shard: 2,
+    fullSeconds: 13.1,
     criticalSeconds: 0,
   },
   {
@@ -273,38 +278,38 @@ export const prUiSpecProfiles = Object.freeze([
     // timing report exists. Shard 2 keeps both balance limits with this estimate.
     file: "tests/ui-my-day-calendar.spec.ts",
     shard: 2,
-    fullSeconds: 14,
+    fullSeconds: 4.5,
     criticalSeconds: 0,
   },
   {
     // Unmeasured (new in Roster release two); estimated until a CI timing report exists.
     file: "tests/ui-roster-team.spec.ts",
     shard: 1,
-    fullSeconds: 4,
+    fullSeconds: 13.3,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-phone-scroll-document-rail.spec.ts",
     shard: 1,
-    fullSeconds: 3.3,
+    fullSeconds: 3.7,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-visual-artifacts.spec.ts",
     shard: 1,
-    fullSeconds: 3.7,
+    fullSeconds: 11.4,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-forms-section-nav.spec.ts",
     shard: 3,
-    fullSeconds: 9,
+    fullSeconds: 14.2,
     criticalSeconds: 0,
   },
   {
     file: "tests/ui-therapy-nav-scroll.spec.ts",
     shard: 2,
-    fullSeconds: 3.2,
+    fullSeconds: 3.1,
     criticalSeconds: 0,
   },
   {
@@ -316,7 +321,7 @@ export const prUiSpecProfiles = Object.freeze([
   {
     file: "tests/ui-document-canvas.spec.ts",
     shard: 3,
-    fullSeconds: 4.6,
+    fullSeconds: 5.3,
     criticalSeconds: 0,
   },
 ]);
