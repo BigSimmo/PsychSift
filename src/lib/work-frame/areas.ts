@@ -397,9 +397,11 @@ const roster: WorkArea = {
         // not only My Day's card. The page keeps its own header, so the band stays off it.
         {
           id: "sick",
-          label: "Sick for tomorrow",
+          // "Sick for tomorrow" cut off at 390 px in More, so the tile says what it does.
+          label: "Report sick",
           short: "Sick",
-          sub: "No reason needed",
+          sub: "For tomorrow",
+          title: "Sick for tomorrow",
           icon: "heart",
           href: "/roster/sick",
           band: false,
@@ -667,7 +669,7 @@ const teaching: WorkArea = {
         {
           id: "calendar",
           label: "Add to calendar",
-          sub: "Teaching and expiries",
+          sub: "Sync to your phone",
           icon: "link",
           href: "/roster/calendar",
           band: false,
