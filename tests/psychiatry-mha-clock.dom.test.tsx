@@ -16,7 +16,16 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { MHA_TIMELINE_AWAITING_REVIEW, MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
-import { MhaClockPage, mhaClockHandoverText, type MhaClockForm } from "@/components/psychiatry/mha-clock-page";
+import {
+  MHA_CLOCK_HANDOVER_NOT_CALCULABLE,
+  MHA_CLOCK_NO_LIMITS,
+  MhaClockPage,
+  mhaClockHandoverText,
+  type MhaClockForm,
+} from "@/components/psychiatry/mha-clock-page";
+import mhaTimeframes from "../data/mha-timeframes.json";
+import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
+import type { MhaTimeframesFile } from "@/lib/mha-timeline";
 import { PsychiatryHome } from "@/components/psychiatry/psychiatry-home";
 import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
@@ -269,10 +278,15 @@ describe("MhaClockPage", () => {
 
   it("puts a signed-off limit's end time on the handover as a Perth time, never as time left", () => {
     const clock = { id: "abcdefgh-1", formCode: "3A", madeAt: new Date("2026-10-04T17:55:00Z").getTime() };
-    const entry = { trigger: "Detention" } as MhaTimerItem["entry"];
-    const base = { timerId: clock.id, entry, occurrence: 1, repeatsEveryHours: null } as const;
+    // Real governed entries, so the copied sub-lines are the page's own condition, caveat and section.
+    const entries = (mhaTimeframes as MhaTimeframesFile).entries;
+    const form3a = entries.find((entry) => entry.id === "form-3a-detention-to-take-person")!;
+    const metro = entries.find((entry) => entry.id === "form-3a-continuous-limit-metropolitan")!;
+    const conditional = entries.find((entry) => entry.id === "form-3d-6b-detention-to-take-person")!;
+    const base = { timerId: clock.id, occurrence: 1, repeatsEveryHours: null } as const;
     const running: MhaTimerItem = {
       ...base,
+      entry: form3a,
       kind: "countdown",
       deadline: new Date("2026-10-05T17:55:00Z"),
       remainingMs: 1,
@@ -280,28 +294,68 @@ describe("MhaClockPage", () => {
     };
     const passed: MhaTimerItem = {
       ...base,
+      entry: form3a,
       kind: "countdown",
       deadline: new Date("2026-10-05T05:55:00Z"),
       remainingMs: -1,
       expired: true,
     };
-    const review: MhaTimerItem = { timerId: clock.id, entry, kind: "quote-only", reason: "awaiting-review" };
+    const review: MhaTimerItem = { timerId: clock.id, entry: metro, kind: "quote-only", reason: "awaiting-review" };
+    const notCalculated: MhaTimerItem = {
+      timerId: clock.id,
+      entry: conditional,
+      kind: "quote-only",
+      reason: "not-calculable",
+    };
     const text = mhaClockHandoverText([clock], now.getTime(), false, {
       formTitle: (code) => (code === "3A" ? "Detention order" : undefined),
-      items: [running, passed, review, { ...running, timerId: "another-clock" }],
+      items: [running, passed, review, notCalculated, { ...running, timerId: "another-clock" }],
     });
+    const caveat = `    The Act also says (s 28): “${form3a.caveat!.quote}”`;
+    const s28 = `    Mental Health Act 2014 (WA) s 28${mhaActSection("28")?.title ? ` — ${mhaActSection("28")!.title}` : ""}`;
+    const s62 = `    Mental Health Act 2014 (WA) s 62${mhaActSection("62")?.title ? ` — ${mhaActSection("62")!.title}` : ""}`;
     expect(text.split("\n")).toEqual([
       "As at Mon 5 Oct 2026, 18:00 (Perth time)",
       "Form 3A (Detention order) · made Mon 5 Oct 2026, 01:55 (Perth time)",
-      "  Detention: time limit Tue 6 Oct 2026, 01:55 (Perth time)",
-      "  Detention: time limit passed Mon 5 Oct 2026, 13:55 (Perth time)",
-      `  Detention: ${MHA_TIMELINE_AWAITING_REVIEW}`,
+      `  ${form3a.trigger}: time limit Tue 6 Oct 2026, 01:55 (Perth time)`,
+      caveat,
+      s28,
+      `  ${form3a.trigger}: time limit passed Mon 5 Oct 2026, 13:55 (Perth time)`,
+      caveat,
+      s28,
+      `  ${metro.trigger}: ${MHA_TIMELINE_AWAITING_REVIEW}`,
+      caveat,
+      s28,
+      `  ${conditional.trigger}: ${MHA_CLOCK_HANDOVER_NOT_CALCULABLE}`,
+      `    ${conditional.condition}`,
+      s62,
+      `Mental Health Act 2014 (WA): ${mhaActMetadata.sourceUrl}`,
       MHA_TIMELINE_REFERENCE_NOTE,
     ]);
+    // Form 3A's earlier-expiry caveat travels with the copy, word for word as the page shows it.
+    expect(text).toContain(
+      "The Act also says (s 28): “The person cannot continue to be detained if the referral expires before the person is taken to the authorised hospital or other place”",
+    );
+    // The full Act quote stays on the page only, to keep the copy short.
+    expect(text).not.toContain(form3a.quote);
+    // A clock whose form has no limits in the app says so, in the page's own words.
+    expect(mhaClockHandoverText([clock], now.getTime(), false, { items: [] }).split("\n")[2]).toBe(
+      `  ${MHA_CLOCK_NO_LIMITS}`,
+    );
     // Without details, a clock is its form code and made-at time only, as before.
     expect(mhaClockHandoverText([clock], now.getTime()).split("\n")[1]).toBe(
       "Form 3A · made Mon 5 Oct 2026, 01:55 (Perth time)",
     );
+  });
+
+  it("copies each limit's caveat and section exactly as the page renders them", () => {
+    addMhaClock("3A", new Date(now.getTime() - 45 * 60_000));
+    render(<MhaClockPage forms={forms} now={now} />);
+    const lines = screen.getByTestId("mha-clock-handover-lines").textContent ?? "";
+    for (const link of screen.getAllByTestId("mha-clock-act-section")) {
+      expect(lines).toContain(link.textContent!.trim());
+    }
+    expect(lines).toContain("The Act also says (s 28):");
   });
 
   it("names Forms as the breadcrumb parent on the Forms mode's Clock tab, Psychiatry otherwise", () => {

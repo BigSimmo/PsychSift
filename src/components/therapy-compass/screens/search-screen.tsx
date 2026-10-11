@@ -34,7 +34,9 @@ export function SearchScreen() {
   // Nothing typed is browsing, not a search: show the list A to Z with no
   // "Best match" or "Why matched", so it never reads as the app having picked
   // something for this patient. Display-only; the search library is untouched.
-  const browsing = !q.trim();
+  // "Nothing typed" uses the scorer's own normalisation, so punctuation alone
+  // (which the scorer cannot rank on) is browsing too.
+  const browsing = !hasSearchableTherapyQuery(q);
   const results = useMemo(
     () =>
       browsing
@@ -46,7 +48,7 @@ export function SearchScreen() {
   // An empty query gives every record the same baseline score and then sorts
   // alphabetically, so only call out a best match when the scorer had real
   // query evidence to rank. Facets narrow the list but do not rank it.
-  const hasRankedQuery = hasSearchableTherapyQuery(q);
+  const hasRankedQuery = !browsing;
   const topics = useMemo(() => new Set(b.search.tags), [b.search.tags]);
   // Filters only — the query is deliberately excluded. It counts toward the
   // sheet's Clear all (see below), because `clearSearch` resets it, but the

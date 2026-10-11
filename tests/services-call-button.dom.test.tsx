@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { serviceCallTarget } from "@/lib/service-call";
+import { extractFirstDialablePhone, serviceCallTarget } from "@/lib/service-call";
 import type { ServiceRecord } from "@/lib/service-ranker";
 
 const withPhone: ServiceRecord = {
@@ -88,6 +88,24 @@ describe("serviceCallTarget", () => {
         primaryContact: { label: "Phone", value: "08) 9442 5000", kind: "phone" },
       }),
     ).toEqual({ href: "tel:0894425000", display: "08 9442 5000" });
+  });
+
+  it("dials only the main number when the record adds an unbracketed extension", () => {
+    const call = (value: string) =>
+      serviceCallTarget({ slug: "ext", title: "Ext", primaryContact: { label: "Phone", value, kind: "phone" } });
+    for (const value of [
+      "(08) 9442 5000 ext 1",
+      "(08) 9442 5000 Ext. 12",
+      "(08) 9442 5000 extn 3",
+      "(08) 9442 5000 extension 4",
+      "(08) 9442 5000 x1",
+      "(08) 9442 5000 X 22",
+      "(08) 9442 5000 #2",
+    ]) {
+      expect(call(value)).toEqual({ href: "tel:0894425000", display: "(08) 9442 5000" });
+    }
+    // A word that merely contains an x is not an extension marker.
+    expect(extractFirstDialablePhone("Fax (08) 9442 5001")).toBe("0894425001");
   });
 
   it("returns nothing when the record has no dialable phone", () => {

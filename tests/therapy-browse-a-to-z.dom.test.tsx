@@ -94,6 +94,20 @@ describe("therapy search with nothing typed", () => {
     expect(screen.getAllByText("Best used for")).toHaveLength(3);
   });
 
+  it("treats punctuation alone as nothing typed, as the scorer does", () => {
+    bindingsState.query = " ?!- ";
+    bindingsState.searchResults = unsorted;
+    render(<SearchScreen />);
+
+    expect(cardNames()).toEqual([
+      "Acceptance and Commitment Therapy (ACT)",
+      "Dialectical behaviour therapy",
+      "Interpersonal therapy",
+    ]);
+    expect(screen.queryByText("Why matched")).toBeNull();
+    expect(screen.queryByText("Best match")).toBeNull();
+  });
+
   it("keeps ranked order and match language once a query is typed", () => {
     bindingsState.query = "interpersonal";
     bindingsState.searchResults = unsorted;

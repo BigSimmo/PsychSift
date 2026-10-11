@@ -21,8 +21,10 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { canNavigateBack } from "@/components/contextual-back-link";
 import { NavigationBackButton } from "@/components/navigation-back-button";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
@@ -65,6 +67,37 @@ function crisisContact(id: (typeof WA_CRISIS_CONTACTS)[number]["id"]) {
   return contact;
 }
 const LEAVE_PLAN_PROMPT = "Leave this safety plan? Your entries are only in this browser tab and will be lost.";
+
+/** Marks the extra history entry that holds Back on this page while the plan has entries. */
+const PLAN_SENTINEL_KEY = "__psychsiftSafetyPlanGuard";
+
+function onPlanSentinel(): boolean {
+  const state: unknown = window.history.state;
+  return typeof state === "object" && state !== null && PLAN_SENTINEL_KEY in state;
+}
+
+/**
+ * Push the sentinel with the current entry's state, so Next's App Router keeps its own
+ * history state (`__NA` and the tree) and, with no URL given, never navigates.
+ */
+function pushPlanSentinel() {
+  const state: unknown = window.history.state;
+  const base = typeof state === "object" && state !== null ? state : {};
+  window.history.pushState({ ...base, [PLAN_SENTINEL_KEY]: true }, "");
+}
+
+/**
+ * Step back off a leftover sentinel, once, so the next Back reaches the page before this one
+ * instead of re-showing this page. The marker is taken off first, so a second call before the
+ * traversal lands (React's development double effects) does nothing.
+ */
+function dropPlanSentinel() {
+  if (!onPlanSentinel()) return;
+  const rest = { ...(window.history.state as Record<string, unknown>) };
+  delete rest[PLAN_SENTINEL_KEY];
+  window.history.replaceState(rest, "");
+  window.history.back();
+}
 
 const EMERGENCY_CONTACT = crisisContact("SYN-CRISIS-CONTACT-001");
 const MHERL_METRO_CONTACT = crisisContact("SYN-CRISIS-CONTACT-002");
@@ -501,6 +534,7 @@ function PreviewStep({ def, entries }: { def: StepDef; entries: Entry[] }) {
 /* ---------- root ---------- */
 
 export function PatientSafetyPlan() {
+  const router = useRouter();
   const [entries, setEntries] = useState<Record<StepKey, Entry[]>>(EMPTY_ENTRIES);
   const [reasons, setReasons] = useState<Entry[]>([]);
   const [planDate, setPlanDate] = useState("");
@@ -581,13 +615,29 @@ export function PatientSafetyPlan() {
     return () => window.removeEventListener("beforeunload", warn);
   }, [isDirty]);
 
+  // The header back control's own leave step while the plan is dirty; set by the guard below.
+  const leaveByBackRef = useRef<(() => "stay" | "handled" | "fallback") | null>(null);
+
   // Inside the app shell, the header, side menu and mode links are client-side
-  // navigations, which never fire beforeunload. Ask before any in-app link or
-  // router navigation leaves this page with entries on it.
+  // navigations, which never fire beforeunload, and Back / back-swipe is a client-side
+  // history traversal. Ask before any of them leaves this page with entries on it, with
+  // the same words as the back control. One action asks once: an in-app link that also
+  // calls a shell navigation (the mode menu) is approved by the first prompt.
   useEffect(() => {
     if (!isDirty) return;
-    const confirmLeave = () => window.confirm(LEAVE_PLAN_PROMPT);
+    let approvedThisTick = false;
+    let detached = false;
+    const confirmLeave = () => {
+      if (approvedThisTick) return true;
+      if (!window.confirm(LEAVE_PLAN_PROMPT)) return false;
+      approvedThisTick = true;
+      window.setTimeout(() => {
+        approvedThisTick = false;
+      }, 0);
+      return true;
+    };
     const unregister = registerNavigationGuard(confirmLeave);
+
     const guardLinks = (event: globalThis.MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -604,32 +654,61 @@ export function PatientSafetyPlan() {
     };
     document.addEventListener("click", guardLinks, true);
 
-    // popstate cannot be cancelled. Restore the current entry immediately, then
-    // replay the traversal only after the clinician confirms the draft may go.
-    const currentUrl = window.location.href;
-    const currentState = window.history.state;
-    const currentIndex = typeof currentState?.idx === "number" ? currentState.idx : 0;
-    let replaying = false;
-    const guardHistory = (event: PopStateEvent) => {
-      if (replaying) {
-        replaying = false;
-        return;
-      }
-      const nextIndex = typeof event.state?.idx === "number" ? event.state.idx : currentIndex - 1;
-      const direction = nextIndex < currentIndex ? -1 : 1;
-      window.history.pushState(currentState, "", currentUrl);
-      if (confirmLeave()) {
-        replaying = true;
-        window.history.go(direction);
-      }
-    };
-    window.addEventListener("popstate", guardHistory);
-    return () => {
-      unregister();
-      document.removeEventListener("click", guardLinks, true);
+    // popstate cannot be cancelled, so Back first lands on a sentinel copy of this entry:
+    // same URL, and Next's own router state copied across, so the router re-shows this
+    // page and nothing visibly moves. Declining pushes the sentinel back; confirming
+    // steps back once more, past the real entry, to the page before.
+    const planHref = window.location.href;
+    const hadHistoryBefore = canNavigateBack();
+    if (!onPlanSentinel()) pushPlanSentinel();
+    const detach = () => {
+      detached = true;
       window.removeEventListener("popstate", guardHistory);
     };
+    function guardHistory() {
+      // Moving forward onto the sentinel, or Back already jumped past this page: nothing to guard.
+      if (onPlanSentinel() || detached) return;
+      if (window.location.href !== planHref) {
+        detach();
+        return;
+      }
+      if (confirmLeave()) {
+        detach();
+        window.history.back();
+        return;
+      }
+      pushPlanSentinel();
+    }
+    window.addEventListener("popstate", guardHistory);
+
+    leaveByBackRef.current = () => {
+      if (!confirmLeave()) return "stay";
+      detach();
+      if (!onPlanSentinel()) return "fallback";
+      if (hadHistoryBefore) {
+        // Skip the sentinel and this page's own entry together.
+        window.history.go(-2);
+        return "handled";
+      }
+      return "fallback";
+    };
+
+    return () => {
+      unregister();
+      leaveByBackRef.current = null;
+      document.removeEventListener("click", guardLinks, true);
+      if (!detached) detach();
+      // Still on this page (the plan was cleared): drop the sentinel, so Back never does
+      // nothing. When the page is being left, the new page's entry is already current.
+      dropPlanSentinel();
+    };
   }, [isDirty]);
+
+  // Arriving on a sentinel left behind when an in-app link or shell control left a dirty
+  // plan: step off it, so Back from here goes to the page before, not this page again.
+  useEffect(() => {
+    dropPlanSentinel();
+  }, []);
 
   const planText = useMemo(() => {
     const guardLines = exampleActive
@@ -738,8 +817,14 @@ export function PatientSafetyPlan() {
                 className="size-tap"
                 fallbackHref={appModeHomeHref("psychiatry")}
                 onBeforeNavigate={() => {
-                  if (!isDirty) return true;
-                  return window.confirm(LEAVE_PLAN_PROMPT);
+                  const leaveByBack = leaveByBackRef.current;
+                  if (!isDirty || !leaveByBack) return true;
+                  const outcome = leaveByBack();
+                  if (outcome === "fallback") {
+                    // No page before this one in the tab: replace the sentinel with the fallback.
+                    router.replace(appModeHomeHref("psychiatry"));
+                  }
+                  return false;
                 }}
               />
             </div>

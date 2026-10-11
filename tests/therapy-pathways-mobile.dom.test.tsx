@@ -148,9 +148,12 @@ describe("Therapy pathways on a phone", () => {
 
   it("says once, at the top, what the Incomplete tag means", () => {
     renderPathways();
-    expect(screen.getByTestId("therapy-pathways-incomplete-note")).toHaveTextContent(
-      "Incomplete means clinician review has not yet confirmed the order of the steps.",
-    );
+    const note = screen.getByTestId("therapy-pathways-incomplete-note");
+    expect(note).toHaveTextContent("Incomplete means clinician review has not yet confirmed the order of the steps.");
+    // At the top: the note comes before the pathway picker and its steps in reading order.
+    for (const testId of ["therapy-pathway-picker", "therapy-pathway-steps"]) {
+      expect(note.compareDocumentPosition(screen.getByTestId(testId)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 
   it("counts only steps that link to a therapy record as linked steps", () => {

@@ -216,6 +216,22 @@ describe("mode secondary navigation registry", () => {
         currentSearchParams: new URLSearchParams("q=3A&run=1"),
       }),
     ).toBe("/forms/search?q=3A&run=1");
+    // ...and its category, risk and availability filters, which Clock and Act do not read.
+    const filtered = new URLSearchParams("q=3A&run=1&category=Detention&risk=high,low&availability=downloadable");
+    expect(
+      modeSecondaryNavigationHref({
+        modeId: "forms",
+        itemId: "forms-list",
+        href: "/forms/search",
+        currentSearchParams: filtered,
+      }),
+    ).toBe("/forms/search?q=3A&run=1&category=Detention&risk=high%2Clow&availability=downloadable");
+    for (const [itemId, href] of [
+      ["forms-clock", "/forms/clock"],
+      ["forms-act", "/forms/act"],
+    ] as const) {
+      expect(modeSecondaryNavigationHref({ modeId: "forms", itemId, href, currentSearchParams: filtered })).toBe(href);
+    }
     expect(
       modeSecondaryNavigationHref({
         modeId: "forms",

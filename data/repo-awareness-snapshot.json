@@ -4597,16 +4597,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/design-system/ADOPTION.md",
-        "section": "design-system",
-        "catalogued": true
-      },
-      {
-        "path": "docs/design-system/ADOPTION.md",
-        "section": "design-system",
-        "catalogued": true
-      },
-      {
         "path": "docs/decisions/2026-10-04-mha-countdowns-covered-by-samd-ruling.md",
         "section": "decisions",
         "catalogued": false

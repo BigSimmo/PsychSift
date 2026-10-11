@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { PatientSafetyPlan } from "@/components/patient-safety-plan";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 
 // The tool header renders a NavigationBackButton that reads the router/pathname.
 vi.mock("next/navigation", () => ({
@@ -306,5 +307,104 @@ describe("PatientSafetyPlan — in-app links inside the shell", () => {
     confirm.mockReturnValue(true);
     expect(fireEvent.click(link)).toBe(true);
     confirm.mockRestore();
+  });
+});
+
+describe("PatientSafetyPlan — browser Back and shell controls", () => {
+  const prompt = "Leave this safety plan? Your entries are only in this browser tab and will be lost.";
+  const SENTINEL = "__psychsiftSafetyPlanGuard";
+  const onSentinel = () => Boolean((window.history.state as Record<string, unknown> | null)?.[SENTINEL]);
+
+  /** What the browser does on Back from the sentinel: the real entry, without the marker, is current. */
+  function pressBack() {
+    const rest = { ...((window.history.state ?? {}) as Record<string, unknown>) };
+    delete rest[SENTINEL];
+    window.history.replaceState(rest, "");
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate", { state: rest }));
+    });
+  }
+
+  function renderDirtyPlan() {
+    window.history.replaceState({ __NA: true, keep: "router state" }, "");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    const view = render(<PatientSafetyPlan />);
+    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
+    return { back, view };
+  }
+
+  it("holds Back with one sentinel entry that keeps the router's own history state", () => {
+    const { back, view } = renderDirtyPlan();
+    expect(onSentinel()).toBe(true);
+    expect(window.history.state).toMatchObject({ __NA: true, keep: "router state" });
+    view.unmount();
+    // Leaving or unmounting while still on the sentinel steps off it, so Back never does nothing.
+    expect(back).toHaveBeenCalledTimes(1);
+    back.mockRestore();
+  });
+
+  it("stays on the plan when the doctor cancels Back, and holds Back again", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { back, view } = renderDirtyPlan();
+    pressBack();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith(prompt);
+    expect(back).not.toHaveBeenCalled();
+    expect(onSentinel()).toBe(true);
+    expect(screen.getByRole("button", { name: /Load example/i })).toBeTruthy();
+    // A second Back asks again.
+    pressBack();
+    expect(confirm).toHaveBeenCalledTimes(2);
+    view.unmount();
+    confirm.mockRestore();
+    back.mockRestore();
+  });
+
+  it("leaves when the doctor confirms Back, and asks only once", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { back, view } = renderDirtyPlan();
+    pressBack();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(onSentinel()).toBe(false);
+    // The real Back that follows is not guarded again.
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
+    });
+    expect(confirm).toHaveBeenCalledTimes(1);
+    view.unmount();
+    confirm.mockRestore();
+    back.mockRestore();
+  });
+
+  it("asks before a shell control navigates, and a link that also calls the shell asks once", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    window.history.replaceState(null, "");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    expect(confirmShellNavigation()).toBe(true);
+    render(
+      <>
+        <a
+          href="/psychiatry"
+          onClick={(event) => {
+            event.preventDefault();
+            confirmShellNavigation();
+          }}
+        >
+          Mode link
+        </a>
+        <PatientSafetyPlan />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
+    expect(confirmShellNavigation()).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(1);
+
+    confirm.mockClear();
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("link", { name: "Mode link" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+    back.mockRestore();
   });
 });

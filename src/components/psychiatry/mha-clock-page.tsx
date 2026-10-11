@@ -128,28 +128,46 @@ export function mhaClockDuration(ms: number): string {
 export const MHA_CLOCK_HANDOVER_NOT_CALCULABLE =
   "Time not calculated — this limit can also end earlier, as the Act explains";
 
+/** What the page shows, and the copy carries, for a clock whose form has no time limits in the app. */
+export const MHA_CLOCK_NO_LIMITS = "The app has no time limits for this form.";
+
+/** The caveat line the page shows under a limit, word for word. Shared so the copy matches. */
+function mhaClockCaveatLine(caveat: NonNullable<MhaTimerItem["entry"]["caveat"]>): string {
+  return `The Act also says (s ${caveat.section}): “${caveat.quote}”`;
+}
+
+/** The Act section label the page links each limit to, word for word. Shared so the copy matches. */
+function mhaClockSectionLabel(entry: MhaTimerItem["entry"]): string {
+  const heading = mhaActSection(entry.section)?.title;
+  return `Mental Health Act 2014 (WA) s ${entry.section}${heading ? ` — ${heading}` : ""}`;
+}
+
 /**
- * One handover line per time limit the page already shows for a clock. Nothing is worked out
+ * The handover lines for one time limit the page already shows for a clock. Nothing is worked out
  * here: a countdown's end time is the one `mhaTimers` gave the page (a limit signed off while the
  * countdown switch is on), and every other limit carries the page's own "not calculated" line.
  * Times are absolute Perth times, never "time left", so a pasted line does not go out of date.
+ *
+ * Under it, as indented sub-lines, go the same qualifications the page shows beside the limit: its
+ * condition, the Act's caveat (such as Form 3A's earlier expiry) and the Act section, so a pasted
+ * limit is never read without them. The full Act quote stays on the page, to keep the copy short.
  */
-function handoverLimitLine(item: MhaTimerItem): string {
+function handoverLimitLines(item: MhaTimerItem): string[] {
   const { entry } = item;
-  const status =
-    item.kind !== "countdown"
-      ? item.reason === "not-calculable"
-        ? MHA_CLOCK_HANDOVER_NOT_CALCULABLE
-        : MHA_TIMELINE_AWAITING_REVIEW
-      : `${item.expired ? "time limit passed" : "time limit"} ${formatPerthDateTime(item.deadline)}`;
-  const qualification = [
-    entry.condition ? `Condition: ${entry.condition}` : null,
-    entry.leadIn ? `Act wording: ${entry.leadIn} ... ${entry.quote}` : `Act wording: ${entry.quote}`,
-    entry.caveat ? `Caveat: ${entry.caveat.quote}` : null,
-    `s ${entry.section}`,
-    `Source: ${mhaActMetadata.sourceUrl}`,
-  ].filter(Boolean).join("; ");
-  return `  ${entry.trigger}: ${status} — ${qualification}`;
+  const trigger = entry.trigger;
+  let head: string;
+  if (item.kind !== "countdown") {
+    head = `  ${trigger}: ${item.reason === "not-calculable" ? MHA_CLOCK_HANDOVER_NOT_CALCULABLE : MHA_TIMELINE_AWAITING_REVIEW}`;
+  } else {
+    const label = item.expired ? "time limit passed" : "time limit";
+    head = `  ${trigger}: ${label} ${formatPerthDateTime(item.deadline)}`;
+  }
+  return [
+    head,
+    ...(entry.condition ? [`    ${entry.condition}`] : []),
+    ...(entry.caveat ? [`    ${mhaClockCaveatLine(entry.caveat)}`] : []),
+    `    ${mhaClockSectionLabel(entry)}`,
+  ];
 }
 
 /**
@@ -175,9 +193,12 @@ export function mhaClockHandoverText(
     ...clocks.flatMap((clock) => {
       const title = details?.formTitle?.(clock.formCode);
       const form = title ? `Form ${clock.formCode} (${title})` : `Form ${clock.formCode}`;
-      const limits = (details?.items ?? []).filter((item) => item.timerId === clock.id).map(handoverLimitLine);
-      return [`${form} · made ${formatPerthDateTime(new Date(clock.madeAt))}`, ...limits];
+      const limits = (details?.items ?? []).filter((item) => item.timerId === clock.id).flatMap(handoverLimitLines);
+      // With the page's limits supplied, a clock that has none says so, as the page does.
+      const noLimits = details?.items && limits.length === 0 ? [`  ${MHA_CLOCK_NO_LIMITS}`] : [];
+      return [`${form} · made ${formatPerthDateTime(new Date(clock.madeAt))}`, ...limits, ...noLimits];
     }),
+    `Mental Health Act 2014 (WA): ${mhaActMetadata.sourceUrl}`,
     MHA_TIMELINE_REFERENCE_NOTE,
   ].join("\n");
 }
@@ -390,7 +411,6 @@ function ShiftBand({ clocks, now }: { readonly clocks: readonly MhaClock[]; read
 
 function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs: number }) {
   const { entry } = item;
-  const heading = mhaActSection(entry.section)?.title;
   const quote =
     "border-l-2 border-[color:var(--dash-line-strong)] pl-3 text-sm italic leading-6 text-[color:var(--dash-ink)]";
   return (
@@ -441,7 +461,7 @@ function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs
       </blockquote>
       {entry.caveat ? (
         <blockquote cite={mhaActMetadata.sourceUrl} className={quote}>
-          {`The Act also says (s ${entry.caveat.section}): “${entry.caveat.quote}”`}
+          {mhaClockCaveatLine(entry.caveat)}
         </blockquote>
       ) : null}
       <a
@@ -455,7 +475,7 @@ function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs
         )}
       >
         <span>
-          {`Mental Health Act 2014 (WA) s ${entry.section}${heading ? ` — ${heading}` : ""}`}
+          {mhaClockSectionLabel(entry)}
           <ExternalLink aria-hidden="true" className="ml-1 inline-block size-icon-xs align-baseline" />
         </span>
       </a>
@@ -521,7 +541,7 @@ function ClockItem({
             ))}
           </ol>
         ) : (
-          <p className="text-xs text-[color:var(--dash-muted)]">The app has no time limits for this form.</p>
+          <p className="text-xs text-[color:var(--dash-muted)]">{MHA_CLOCK_NO_LIMITS}</p>
         )}
         {form ? (
           <Link href={`/forms/${form.slug}`} className={cn(flatLink, "self-start")}>

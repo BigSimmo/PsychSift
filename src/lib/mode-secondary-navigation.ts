@@ -779,12 +779,19 @@ export function modeSecondaryNavigationHref(params: {
   }
 
   if (modeId === "forms") {
-    // The list keeps its query, as Factsheets' Search does, so tapping the tab
-    // you are on never clears the results. Clock and Act read neither param.
+    // The list keeps its query and its category, risk and availability filters
+    // (the params `formFilterSelectionFromParams` reads), as Factsheets' Search
+    // does, so tapping the tab you are on never clears the results. Clock and
+    // Act read none of these params, so their links stay clean.
     if (itemId !== "forms-list") return href;
+    const filters = (["category", "risk", "availability"] as const).flatMap((key) => {
+      const value = currentSearchParams.get(key);
+      return value ? [[key, value] as const] : [];
+    });
     return navigationHrefWithParams(href, [
       ...(query ? ([["q", query]] as const) : []),
       ...(query && currentSearchParams.get("run") === "1" ? ([["run", "1"]] as const) : []),
+      ...filters,
     ]);
   }
 

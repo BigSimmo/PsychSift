@@ -1,5 +1,8 @@
 import type { ServiceContact, ServiceRecord } from "@/lib/service-ranker";
 
+// "ext", "extn", "extension", "x" (not inside a word such as "fax") or "#", then digits.
+const EXTENSION_TAIL = /(?:(?<![a-z])(?:ext(?:ension|n)?|x)(?![a-z])\.?|#)\s*\d.*$/i;
+
 /**
  * The first dialable number in a contact string, as the digits a `tel:` link
  * needs. Shared by the service record page and the search result card so the
@@ -7,7 +10,9 @@ import type { ServiceContact, ServiceRecord } from "@/lib/service-ranker";
  */
 export function extractFirstDialablePhone(value: string): string | undefined {
   const sanitized = value.replace(/\b24\/7\b/gi, "").replace(/\((?:option|ext|line|menu)\s*\d+\)/gi, "");
-  const parts = sanitized.split(/[;\n/]|\s+or\s+/i).map((p) => p.trim());
+  // An unbracketed extension ("ext 1", "extn 12", "x1", "#2") is not part of the number
+  // to dial, so each number is cut where one starts.
+  const parts = sanitized.split(/[;\n/]|\s+or\s+/i).map((p) => p.replace(EXTENSION_TAIL, "").trim());
   for (const part of parts) {
     const compact = part.replace(/[^\d+]/g, "");
     if (compact.length >= 3) return compact;
