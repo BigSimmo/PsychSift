@@ -703,7 +703,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   return (
                     <li key={page.id} data-mode-identity={page.identity}>
                       <Link
-                        href={page.href}
+                        href={
+                          page.id === "day:my-day-profile" && /\bprivacy\b/i.test(query)
+                            ? "/my-day/profile?tab=privacy"
+                            : page.href
+                        }
                         onClick={onPlainClick(openResult)}
                         data-work-search-result=""
                         className="work-row scroll-mb-6 scroll-mt-40"
