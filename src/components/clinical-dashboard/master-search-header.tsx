@@ -387,11 +387,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
-  // These shell controls push routes directly, which no link guard or beforeunload sees, so
-  // ask any page holding unsaved work (the safety plan) before leaving it.
-  const pushIfLeaveConfirmed = (href: string) => {
-    if (confirmShellNavigation()) router.push(href);
-  };
+  // Direct pushes skip link guards and beforeunload: ask any page with unsaved work first.
+  const pushIfLeaveConfirmed = (href: string) => confirmShellNavigation() && router.push(href);
   const currentPathname = usePathname();
   const [, setLastAppMode] = useLastAppMode();
   // The two-pane side menu (off again since 10 Oct 2026) keeps the menu button
