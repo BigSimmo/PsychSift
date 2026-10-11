@@ -259,6 +259,8 @@ const workflowPatterns = [
   "plugins/clinical-kb/skills",
   ".github/pull_request_template.md",
   "AGENTS.md",
+  // Binding policy split out of AGENTS.md; same instruction-surface lane.
+  "PROJECT-INSTRUCTIONS-CONTINUATION.md",
   // AGENTS.md is a small core plus an index; the rules themselves live in
   // docs/agents/**. Without this entry an edit to a moved rule matches only
   // /^.*\.md$/ and drops to the docs-only lane — the same edit that used to
@@ -1474,6 +1476,11 @@ function selfTest() {
     },
   );
   assertScope("agent-rule-reference", ["docs/agents/pull-request-workflow.md"], {
+    workflow_changed: true,
+    docs_only: false,
+    source_changed: false,
+  });
+  assertScope("instruction-continuation", ["PROJECT-INSTRUCTIONS-CONTINUATION.md"], {
     workflow_changed: true,
     docs_only: false,
     source_changed: false,

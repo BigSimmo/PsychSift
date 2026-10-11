@@ -312,3 +312,5 @@ connector guidance, see [`docs/agents/cursor-cloud.md`](docs/agents/cursor-cloud
 Read and follow [Commit as you go — the thing that loses work here is interruption, not carelessness](docs/agents/native-startup/commit-as-you-go.md) before acting in this area. The full policy remains in force.
 
 # How these rules are organised
+
+Read and follow [How these rules are organised](PROJECT-INSTRUCTIONS-CONTINUATION.md) before acting in this area. The full policy remains in force.
