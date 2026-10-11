@@ -62,6 +62,9 @@ ARG MAX_UPLOAD_MB=
 # declares the matching build argument. This non-secret SHA keeps build-time
 # source maps and runtime Sentry events on the same release identity.
 ARG RAILWAY_GIT_COMMIT_SHA=
+# Next reads this during the build to stamp navigation and static asset URLs with
+# the operator-selected release identity instead of the commit SHA fallback.
+ARG NEXT_DEPLOYMENT_ID=
 # Same trap as above: `sitemap.ts`/`robots.ts` read these to build the
 # canonical origin they advertise, and an undeclared ARG means Railway's
 # service-level value never reaches this `npm run build`, silently baking an

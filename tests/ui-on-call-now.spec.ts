@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "playwright/test";
 
-import { visibleByTestId } from "./playwright-settlement";
+import { clickWhenHydrated, expectHydrated, visibleByTestId } from "./playwright-settlement";
 
 /**
  * Now (the On Call mode home) and Who's on, in a browser, on the demo
@@ -147,7 +147,11 @@ test("hospital playbook keeps calls and their times on this device", async ({ pa
   await expect(ladder).toContainText("Hospital-set wait: 10 min");
   const call = ladder.getByRole("link", { name: /^Call Synthetic first role,/ });
   await expect(call).toHaveAttribute("href", "tel:0855500042");
-  await call.click();
+  await expectHydrated(call);
+  await call.evaluate((link) => {
+    link.addEventListener("click", (event) => event.preventDefault(), { once: true });
+  });
+  await clickWhenHydrated(call);
   await expect(ladder).toContainText(/called/i);
 });
 test("existing On Call calendar bookmarks reach Roster", async ({ page }) => {

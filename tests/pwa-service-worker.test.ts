@@ -280,8 +280,8 @@ function createWorkerHarness(origin = PRODUCTION_ORIGIN) {
       dispatch("install", event);
       await event.settle();
     },
-    message(data: unknown): void {
-      dispatch("message", { data });
+    message(data: unknown, ports: { postMessage: (data: unknown) => void }[] = []): void {
+      dispatch("message", { data, ports });
     },
     async push(data?: unknown): Promise<void> {
       const event = new ExtendableEventHarness() as ExtendableEventHarness & { data?: { json: () => unknown } };
@@ -440,6 +440,45 @@ describe("PWA service worker cache and lifecycle policy", () => {
     expect(worker.skipWaiting).toHaveBeenCalledOnce();
   });
 
+  it("identifies the worker release without activating it", () => {
+    const worker = createWorkerHarness();
+    const port = { postMessage: vi.fn() };
+    worker.message({ type: "GET_VERSION" }, [port]);
+    expect(port.postMessage).toHaveBeenCalledWith({
+      type: "PWA_VERSION",
+      version: WORKER_SOURCE.match(/^const CACHE_VERSION = "([^"]+)";/m)?.[1],
+    });
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
+    expect(() => worker.message({ type: "GET_VERSION" })).not.toThrow();
+  });
+
+  it("retains the two most recent releases even when their commit hashes sort earlier", async () => {
+    const worker = createWorkerHarness();
+    const old = "clinical-kb-pwa-static-2026-10-11-v1-build-ffffffffffff";
+    const recent = "clinical-kb-pwa-static-2026-10-11-v1-build-bbbbbbbbbbbb";
+    const newest = "clinical-kb-pwa-static-2026-10-11-v1-build-aaaaaaaaaaaa";
+    const assetUrl = `${PRODUCTION_ORIGIN}/_next/static/chunks/recent-8f31c9a2.js`;
+    for (const name of [old, recent, newest]) await worker.caches.open(name);
+    await (
+      await worker.caches.open(newest)
+    ).put(
+      new worker.Request(assetUrl, { destination: "script" }),
+      basicResponse("newest retained chunk", {
+        headers: { "Cache-Control": "public, max-age=31536000", "Content-Type": "text/javascript" },
+      }),
+    );
+    worker.setNetworkHandler(async () => {
+      throw new TypeError("old chunk no longer deployed");
+    });
+    await worker.activate();
+    expect(await worker.caches.keys()).toContain(recent);
+    expect(await worker.caches.keys()).toContain(newest);
+    expect(await worker.caches.keys()).not.toContain(old);
+    const result = await worker.dispatchFetch(new worker.Request(assetUrl, { destination: "script" }));
+    expect(await result.response?.text()).toBe("newest retained chunk");
+    expect(worker.networkFetch).not.toHaveBeenCalled();
+  });
+
   it("returns the offline shell for a failed navigation without caching navigated HTML", async () => {
     const worker = createWorkerHarness();
     await worker.install();
@@ -557,6 +596,45 @@ describe("PWA service worker cache and lifecycle policy", () => {
     expect(worker.networkFetch).toHaveBeenCalledTimes(2);
   });
 
+  it("caches deployment-tagged chunks by complete URL without mixing releases", async () => {
+    const worker = createWorkerHarness();
+    const assetPath = `${PRODUCTION_ORIGIN}/_next/static/chunks/app-8f31c9a2.js`;
+    const firstUrl = `${assetPath}?dpl=${"a".repeat(40)}`;
+    const secondUrl = `${assetPath}?dpl=${"b".repeat(40)}`;
+    worker.setNetworkHandler(async (request) => {
+      const response = basicResponse(new URL(request.url).searchParams.get("dpl"), {
+        headers: { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "text/javascript" },
+      });
+      Object.defineProperty(response, "url", { value: request.url });
+      return response;
+    });
+    for (const url of [firstUrl, secondUrl, firstUrl]) {
+      const result = await worker.dispatchFetch(new worker.Request(url, { destination: "script" }));
+      expect(result.handled).toBe(true);
+      expect(await result.response?.text()).toBe(new URL(url).searchParams.get("dpl"));
+    }
+    expect(worker.networkFetch).toHaveBeenCalledTimes(2);
+    expect(worker.caches.entryUrls()).toEqual([firstUrl, secondUrl]);
+  });
+
+  it("does not cache a deployment-tagged chunk whose response names another release", async () => {
+    const worker = createWorkerHarness();
+    const assetPath = `${PRODUCTION_ORIGIN}/_next/static/chunks/app-8f31c9a2.js`;
+    worker.setNetworkHandler(async () => {
+      const response = basicResponse("chunk", {
+        headers: { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "text/javascript" },
+      });
+      Object.defineProperty(response, "url", { value: `${assetPath}?dpl=${"b".repeat(40)}` });
+      return response;
+    });
+    const result = await worker.dispatchFetch(
+      new worker.Request(`${assetPath}?dpl=${"a".repeat(40)}`, { destination: "script" }),
+    );
+    expect(result.handled).toBe(true);
+    expect(await result.response?.text()).toBe("chunk");
+    expect(worker.caches.entryUrls()).toEqual([]);
+  });
+
   it("falls through to the network when CacheStorage reads fail for an online static asset", async () => {
     const worker = createWorkerHarness();
     const assetUrl = `${PRODUCTION_ORIGIN}/_next/static/chunks/cache-failure-8f31c9a2.js`;
@@ -641,6 +719,23 @@ describe("PWA service worker cache and lifecycle policy", () => {
       url: "/_next/static/chunks/app-8f31c9a2.js?tenant=private",
       destination: "script",
     },
+    {
+      label: "deployment query with a private query",
+      url: `/_next/static/chunks/app-8f31c9a2.js?dpl=${"a".repeat(40)}&tenant=private`,
+      destination: "script",
+    },
+    {
+      label: "duplicate deployment query",
+      url: `/_next/static/chunks/app-8f31c9a2.js?dpl=${"a".repeat(40)}&dpl=${"b".repeat(40)}`,
+      destination: "script",
+    },
+    {
+      label: "non-SHA deployment query",
+      url: "/_next/static/chunks/app-8f31c9a2.js?dpl=private",
+      destination: "script",
+    },
+    { label: "API with a deployment query", url: `/api/search?dpl=${"a".repeat(40)}` },
+    { label: "identity asset with a deployment query", url: `/icon.svg?dpl=${"a".repeat(40)}`, destination: "image" },
     {
       label: "no-store static request",
       url: "/_next/static/chunks/app-8f31c9a2.js",
