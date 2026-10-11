@@ -37,6 +37,7 @@ import { MasterSearchHeader } from "@/components/clinical-dashboard/master-searc
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
 import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
+import { canNavigate } from "@/lib/navigation-guards";
 import {
   LazyTwoPaneSideMenu,
   LazyWorkSideCounts,
@@ -755,6 +756,7 @@ function GlobalStandaloneSearchShellBody({
   });
 
   function navigateToMode(mode: AppModeId, options: SearchNavigationOptions = {}) {
+    if (!canNavigate()) return;
     const nextOptions = { queryMode, scopeFilters, ...options };
     if (mode === "documents" && options.query?.trim()) {
       router.push(documentsSearchHref(nextOptions));
@@ -782,6 +784,7 @@ function GlobalStandaloneSearchShellBody({
       openAccountSetup("favourites");
       return;
     }
+    if (!canNavigate()) return;
     setLastAppMode(mode);
 
     // Dedicated modes return to their dedicated standalone home. Remaining modes
@@ -828,6 +831,7 @@ function GlobalStandaloneSearchShellBody({
   }
 
   function startNewAnswerChat(clearClinicalAsk: () => void = () => undefined) {
+    if (!canNavigate()) return;
     clearClinicalAsk();
     setQuery("");
     setMobileMenuOpen(false);

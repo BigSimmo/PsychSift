@@ -26,6 +26,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { NavigationBackButton } from "@/components/navigation-back-button";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 import {
   cn,
   clinicalDivider,
@@ -581,10 +582,12 @@ export function PatientSafetyPlan() {
   }, [isDirty]);
 
   // Inside the app shell, the header, side menu and mode links are client-side
-  // navigations, which never fire beforeunload. Ask before any in-app link
-  // leaves this page with entries on it, with the same words as the back control.
+  // navigations, which never fire beforeunload. Ask before any in-app link or
+  // router navigation leaves this page with entries on it.
   useEffect(() => {
     if (!isDirty) return;
+    const confirmLeave = () => window.confirm(LEAVE_PLAN_PROMPT);
+    const unregister = registerNavigationGuard(confirmLeave);
     const guardLinks = (event: globalThis.MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -595,12 +598,37 @@ export function PatientSafetyPlan() {
       const destination = new URL(anchor.href, window.location.href);
       if (destination.origin !== window.location.origin) return;
       if (destination.pathname === window.location.pathname) return;
-      if (window.confirm(LEAVE_PLAN_PROMPT)) return;
+      if (confirmLeave()) return;
       event.preventDefault();
       event.stopPropagation();
     };
     document.addEventListener("click", guardLinks, true);
-    return () => document.removeEventListener("click", guardLinks, true);
+
+    // popstate cannot be cancelled. Restore the current entry immediately, then
+    // replay the traversal only after the clinician confirms the draft may go.
+    const currentUrl = window.location.href;
+    const currentState = window.history.state;
+    const currentIndex = typeof currentState?.idx === "number" ? currentState.idx : 0;
+    let replaying = false;
+    const guardHistory = (event: PopStateEvent) => {
+      if (replaying) {
+        replaying = false;
+        return;
+      }
+      const nextIndex = typeof event.state?.idx === "number" ? event.state.idx : currentIndex - 1;
+      const direction = nextIndex < currentIndex ? -1 : 1;
+      window.history.pushState(currentState, "", currentUrl);
+      if (confirmLeave()) {
+        replaying = true;
+        window.history.go(direction);
+      }
+    };
+    window.addEventListener("popstate", guardHistory);
+    return () => {
+      unregister();
+      document.removeEventListener("click", guardLinks, true);
+      window.removeEventListener("popstate", guardHistory);
+    };
   }, [isDirty]);
 
   const planText = useMemo(() => {
