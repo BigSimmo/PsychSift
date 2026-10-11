@@ -565,6 +565,7 @@
         "tests/challenger-m3-2-empirical.dom.test.tsx",
         "tests/challenger-m4-2-empirical.dom.test.tsx",
         "tests/challenger-m4-stress.dom.test.tsx",
+        "tests/challenger-m5-1-locator-uniqueness.dom.test.tsx",
         "tests/challenger-m5-stress.dom.test.tsx",
         "tests/cme-type-weight.test.ts",
         "tests/cme-visual-contract.dom.test.tsx",

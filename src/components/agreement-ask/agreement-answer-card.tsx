@@ -274,6 +274,7 @@ export const AgreementAnswerCard = forwardRef<HTMLHeadingElement, AgreementAnswe
               ariaLabel="Copy the answer with its clause numbers"
               copied={copied}
               onClick={onCopy}
+              toastOnSuccess={false}
               testId="agreement-copy"
             />
             <AgreementPdfLink href={answer.source.url} offline={offline} testId="agreement-open-pdf" />

@@ -62,6 +62,12 @@ const COMPARISON_CRITERIA: DifferentialComparisonCriterion[] = (
 
 const PRESENTATION_SLUG_OVERRIDES: Record<string, string> = {
   "1": "acute-confusion-encephalopathy",
+  "7": "presentation-substance-intoxication",
+  "8": "presentation-substance-withdrawal",
+  "14": "presentation-depression",
+  "substance-intoxication": "presentation-substance-intoxication",
+  "substance-withdrawal": "presentation-substance-withdrawal",
+  depression: "presentation-depression",
 };
 
 const OPTION_SLUG_OVERRIDES: Record<string, string> = {
@@ -202,7 +208,8 @@ export function parseEntryFile(content: string, fileName?: string): ParsedPresen
   const entryIdFromFile = fileName?.match(/^(\d+)/)?.[1] ?? "";
   const entryId = parseEntryHeader(content) || entryIdFromFile || "unknown";
   const title = parseEntryTitle(content);
-  const slug = PRESENTATION_SLUG_OVERRIDES[entryId] ?? slugify(title);
+  const defaultSlug = slugify(title);
+  const slug = PRESENTATION_SLUG_OVERRIDES[entryId] ?? PRESENTATION_SLUG_OVERRIDES[defaultSlug] ?? defaultSlug;
   const status = mapUrgency(splitSection(content, "Urgency") || "routine");
   const axisRaw = splitSection(content, "Axis").toLowerCase();
   const axis: ParsedPresentation["axis"] = axisRaw.includes("organic")

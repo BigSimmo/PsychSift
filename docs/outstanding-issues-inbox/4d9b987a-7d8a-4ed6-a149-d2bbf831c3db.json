@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "4d9b987a-7d8a-4ed6-a149-d2bbf831c3db",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#5Z3CDC",
+    "outcome": "Updated Privacy Impact Assessment in docs/privacy-impact-assessment.md covering CME evidence uploads, signed storage URLs, and subsystem privacy boundaries",
+    "baseRowFingerprint": "fb0129f2f85c94eef3c79c131b03ab4f38917e649f36c9592ee8bd59fcc7472e"
+  }
+}

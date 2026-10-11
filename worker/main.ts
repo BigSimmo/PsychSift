@@ -63,7 +63,7 @@ import type { JobDocument, JobRow } from "./types";
 /** Upper bound on the fatal-exit alert, so a stalled webhook cannot delay the exit and restart. */
 const FAILURE_WEBHOOK_TIMEOUT_MS = 5_000;
 
-const supabase = createAdminClient();
+const supabase = createAdminClient({ timeoutMs: null });
 const workerId = `${os.hostname()}-${process.pid}-${randomUUID().slice(0, 8)}`;
 const progressUpdateState = new Map<string, { updatedAt: number; progress: number; stage: string }>();
 const progressUpdateMinIntervalMs = env.WORKER_PROGRESS_UPDATE_MIN_INTERVAL_MS;
