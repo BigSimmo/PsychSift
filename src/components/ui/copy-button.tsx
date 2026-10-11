@@ -11,13 +11,17 @@ export type CopyButtonProps = {
   shortLabel?: string;
   ariaLabel?: string;
   copied: boolean;
-  onClick: () => void;
+  /** Return (or resolve) `false` when the copy failed, so no success toast is shown; a rejected
+   *  promise is treated the same way. */
+  onClick: () => void | boolean | Promise<void | boolean>;
   className?: string;
   testId?: string;
   disabled?: boolean;
   variant?: ButtonVariant;
   size?: ButtonSize;
   toastTitle?: string;
+  /** Set false when the caller already announces its own copy result. */
+  toastOnSuccess?: boolean;
 };
 
 /**
@@ -38,14 +42,20 @@ export function CopyButton({
   variant = "secondary",
   size = "sm",
   toastTitle,
+  toastOnSuccess = true,
 }: CopyButtonProps) {
   const showToast = useCopyToast();
   const idleCompact = shortLabel ?? label;
   const showCompactIdle = Boolean(shortLabel) && shortLabel !== label && !copied;
 
   const handleClick = () => {
-    onClick();
-    showToast(toastTitle);
+    const announce = (result: void | boolean) => {
+      if (toastOnSuccess && result !== false) showToast(toastTitle);
+    };
+    const result = onClick();
+    // Asynchronous clipboard writes announce only once they succeed.
+    if (result instanceof Promise) void result.then(announce, () => undefined);
+    else announce(result);
   };
 
   return (
