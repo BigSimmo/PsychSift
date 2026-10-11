@@ -255,6 +255,7 @@
 /* ------------------------------------------------------ the timeline */
 
 .timeline {
+  container-type: inline-size;
   display: grid;
   gap: calc(var(--spacing) * 2);
   margin-top: calc(var(--spacing) * 2.5);
@@ -316,6 +317,28 @@
 
 .tlAxisMonths {
   display: contents;
+}
+
+/* On a narrow card (a 320 px phone) a side name column leaves the twelve months about
+   10 px each, so names clip and the month initials run together. Stack each name over
+   a full-width track instead. */
+@container (max-width: 22rem) {
+  .tlRows {
+    gap: calc(var(--spacing) * 2);
+  }
+
+  .tlRow {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: calc(var(--spacing) * 0.5);
+  }
+
+  .tlAxis {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .tlAxis > span:first-child {
+    display: none;
+  }
 }
 
 .tlLegend {

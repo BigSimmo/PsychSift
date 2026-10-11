@@ -49,7 +49,7 @@ describe("phone mode groups", () => {
     expect(groupOf("my-day")).toMatchObject({
       id: "work",
       showHeading: false,
-      modeIds: ["my-day", "cme", "open-shifts", "roster", "my-work", "on-call", "teaching"],
+      modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
     });
     expect(groupOf("first-nations")?.id).toBe("psychiatry");
     expect(groupOf("prescribing")).toMatchObject({ id: "care", label: "Medicines & tools" });

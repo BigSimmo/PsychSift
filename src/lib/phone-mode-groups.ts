@@ -76,13 +76,14 @@ export const phoneModeGroups = [
     modeIds: ["medicines", "prescribing", "tools", "calculators", "factsheets", "dictionary"],
   },
   // One list, and the switch already names it, so the menu draws no second heading.
+  // Same area order as the side menu and the rail: My Day, On Call, Open shifts, Roster, Teaching, CPD, Admin.
   {
     id: "work",
     label: "Work",
     hint: "Your working day",
     side: "work",
     showHeading: false,
-    modeIds: ["my-day", "cme", "open-shifts", "roster", "my-work", "on-call", "teaching"],
+    modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;

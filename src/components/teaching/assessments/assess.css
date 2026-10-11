@@ -938,7 +938,8 @@ a.assess-pair__top:focus-visible {
   color: var(--work-ink);
   resize: vertical;
 }
-input.assess-txt {
+input.assess-txt,
+select.assess-txt {
   min-height: var(--spacing-tap, 3rem);
   resize: none;
 }
