@@ -303,8 +303,8 @@ export function psychiatryMonthFigures(
   return { thisMonth: months[month] ?? 0, lastMonth: months[previousMonth(month)] ?? 0 };
 }
 
-/** The Act and Standards page is a reference, not a form; the card links it separately. */
-const NOT_A_FORM = new Set(["/forms/act"]);
+/** The Act and Standards page and the MHA clock are not forms; the card links them separately. */
+const NOT_A_FORM = new Set(["/forms/act", "/forms/clock"]);
 
 /**
  * The forms opened most in the 90 days, most first, ties to the most recent.

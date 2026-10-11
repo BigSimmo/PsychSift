@@ -9,15 +9,17 @@ import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
 import { confirmShellNavigation } from "@/lib/navigation-guards";
 
 // The tool header renders a NavigationBackButton that reads the router/pathname.
+// One router for every render, as the App Router gives, so effects keyed on it run once.
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  prefetch: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  refresh: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-  }),
+  useRouter: () => router,
   usePathname: () => "/safety-plan",
 }));
 
@@ -375,6 +377,31 @@ describe("PatientSafetyPlan — browser Back and shell controls", () => {
     view.unmount();
     confirm.mockRestore();
     back.mockRestore();
+  });
+
+  it("returning to a left-behind sentinel skips both plan entries when there was a page before", () => {
+    window.history.replaceState({ __NA: true, [SENTINEL]: { hadHistoryBefore: true } }, "");
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
+    router.replace.mockClear();
+    const view = render(<PatientSafetyPlan />);
+    expect(go).toHaveBeenCalledWith(-2);
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(onSentinel()).toBe(false);
+    view.unmount();
+    go.mockRestore();
+  });
+
+  it("returning to a left-behind sentinel opens Psychiatry when the plan was the first page", () => {
+    // Checking history from the sentinel would always find the plan's own entry behind it, so
+    // the answer recorded when the sentinel was pushed is the one used.
+    window.history.replaceState({ __NA: true, [SENTINEL]: { hadHistoryBefore: false } }, "");
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
+    router.replace.mockClear();
+    const view = render(<PatientSafetyPlan />);
+    expect(go).not.toHaveBeenCalled();
+    expect(router.replace).toHaveBeenCalledWith(expect.stringMatching(/^\/psychiatry/));
+    view.unmount();
+    go.mockRestore();
   });
 
   it("asks before a shell control navigates, and a link that also calls the shell asks once", () => {

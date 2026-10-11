@@ -80,10 +80,23 @@ function onPlanSentinel(): boolean {
  * Push the sentinel with the current entry's state, so Next's App Router keeps its own
  * history state (`__NA` and the tree) and, with no URL given, never navigates.
  */
-function pushPlanSentinel() {
+function pushPlanSentinel(hadHistoryBefore: boolean) {
   const state: unknown = window.history.state;
   const base = typeof state === "object" && state !== null ? state : {};
-  window.history.pushState({ ...base, [PLAN_SENTINEL_KEY]: true }, "");
+  window.history.pushState({ ...base, [PLAN_SENTINEL_KEY]: { hadHistoryBefore } }, "");
+}
+
+/**
+ * Whether there was a page before the plan's own entry, as recorded when the sentinel was
+ * pushed. Checking history again from the sentinel would always say yes, because the plan's
+ * own entry sits behind it. Null when this is not a sentinel.
+ */
+function sentinelHadHistoryBefore(): boolean | null {
+  if (!onPlanSentinel()) return null;
+  const marker: unknown = (window.history.state as Record<string, unknown>)[PLAN_SENTINEL_KEY];
+  return typeof marker === "object" && marker !== null && "hadHistoryBefore" in marker
+    ? marker.hadHistoryBefore === true
+    : true;
 }
 
 /**
@@ -619,7 +632,7 @@ export function PatientSafetyPlan() {
   // forward entries, so it cannot reliably answer this question later.
   const hadHistoryBeforeRef = useRef<boolean | null>(null);
   useEffect(() => {
-    hadHistoryBeforeRef.current = canNavigateBack();
+    hadHistoryBeforeRef.current = sentinelHadHistoryBefore() ?? canNavigateBack();
   }, []);
 
   // The header back control's own leave step while the plan is dirty; set by the guard below.
@@ -683,7 +696,7 @@ export function PatientSafetyPlan() {
     // steps back once more, past the real entry, to the page before.
     const planHref = window.location.href;
     const hadHistoryBefore = hadHistoryBeforeRef.current ?? canNavigateBack();
-    if (!onPlanSentinel()) pushPlanSentinel();
+    if (!onPlanSentinel()) pushPlanSentinel(hadHistoryBefore);
     const detach = () => {
       detached = true;
       window.removeEventListener("popstate", guardHistory);
@@ -700,7 +713,7 @@ export function PatientSafetyPlan() {
         window.history.back();
         return;
       }
-      pushPlanSentinel();
+      pushPlanSentinel(hadHistoryBefore);
     }
     window.addEventListener("popstate", guardHistory);
 

@@ -114,6 +114,14 @@ describe("figures", () => {
     expect(mostOpenedForms(visits, []).map((v) => v.href)).toEqual(["/forms/a"]);
   });
 
+  it("leaves the MHA clock tab out of the most-opened forms", () => {
+    const visits: PsychiatryVisit[] = [
+      { href: "/forms/clock", title: "MHA clock", kind: "forms", at: now - 1 },
+      { href: "/forms/a", title: "A", kind: "forms", at: now - 2 },
+    ];
+    expect(mostOpenedForms(visits, []).map((v) => v.href)).toEqual(["/forms/a"]);
+  });
+
   it("sums the last seven days by section", () => {
     const day = 24 * 60 * 60 * 1000;
     expect(
