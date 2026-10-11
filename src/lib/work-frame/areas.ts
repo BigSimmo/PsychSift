@@ -679,7 +679,8 @@ const teaching: WorkArea = {
     {
       label: "Your record",
       items: [
-        // Feedback and Log to CPD left More (audit, 11 Oct 2026): Today, Logbook and My Day already offer both.
+        { id: "feedback", label: "Feedback", sub: "Rate a session", icon: "star", href: "/teaching/feedback" },
+        { id: "review", label: "Log to CPD", sub: "Weekly review", icon: "award", href: "/teaching/review" },
         { id: "exam-prep", label: "Exam prep", sub: "Your plan", icon: "pen", href: "/teaching/exam-prep" },
         {
           id: "term-folder",
