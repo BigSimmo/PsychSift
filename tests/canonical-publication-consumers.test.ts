@@ -108,7 +108,7 @@ describe("canonical publication consumers", () => {
   });
 
   it("falls back to the legacy presentation slug when hosted content predates the presentation- namespace", async () => {
-    const workflow = { ...differentialPresentations[0], title: "Hosted legacy depression" };
+    const workflow = { ...differentialPresentations()[0], title: "Hosted legacy depression" };
     canonicalRead.mockImplementation(async (args?: { kind: string; slug: string | null }) => ({
       records: args?.kind === "presentation" && args.slug === "depression" ? [{ workflow }] : [],
       source: "canonical_public",
