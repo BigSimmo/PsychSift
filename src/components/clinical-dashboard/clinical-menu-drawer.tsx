@@ -173,7 +173,7 @@ export function ClinicalMenuBell({
         <span
           aria-hidden="true"
           data-testid="clinical-menu-bell-badge"
-          className="absolute right-1.5 top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[color:var(--danger)] px-1 text-2xs font-bold leading-none tabular-nums text-[color:var(--surface)] ring-2 ring-[color:var(--surface-raised)]"
+          className="absolute right-1.5 top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[color:var(--danger)] px-1 text-2xs font-bold leading-none tabular-nums text-[color:var(--surface)] ring-2 ring-[color:var(--surface-raised)]"
         >
           {notificationBadgeText(waiting.total)}
         </span>
