@@ -73,6 +73,7 @@ const PATH_RULES: ReadonlyArray<{ readonly prefix: string; readonly kind: Psychi
  */
 export function psychiatryVisitKindForPath(pathname: string): PsychiatryVisitKind | null {
   const path = pathname.split(/[?#]/)[0] ?? "";
+  if (path === "/forms/clock") return null;
   const rule = PATH_RULES.find((candidate) => path.startsWith(candidate.prefix));
   if (!rule) return null;
   const rest = path.slice(rule.prefix.length).split("/").filter(Boolean);

@@ -27,6 +27,7 @@ describe("psychiatryVisitKindForPath", () => {
     expect(psychiatryVisitKindForPath("/differentials/presentations")).toBeNull();
     expect(psychiatryVisitKindForPath("/differentials/diagnoses")).toBeNull();
     expect(psychiatryVisitKindForPath("/forms/search")).toBeNull();
+    expect(psychiatryVisitKindForPath("/forms/clock")).toBeNull();
     expect(psychiatryVisitKindForPath("/documents/abc")).toBeNull();
     expect(psychiatryVisitKindForPath("/psychiatry")).toBeNull();
     // Tools keep their working state in the query, which a bare path cannot reopen.
