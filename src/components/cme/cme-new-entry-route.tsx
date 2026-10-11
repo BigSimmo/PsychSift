@@ -259,39 +259,6 @@ export function CmeNewEntryRoute({
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
-          <Checkbox
-            label="This activity replaces a missed teaching or supervision session"
-            checked={isReplacement}
-            onChange={(event) => setIsReplacement(event.target.checked)}
-            data-testid="cme-replacement-checkbox"
-          />
-          {isReplacement ? (
-            <div className="mt-3 pl-6">
-              <label
-                htmlFor="cme-missed-session-input"
-                className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
-              >
-                Missed session ID or reason
-              </label>
-              <input
-                id="cme-missed-session-input"
-                type="text"
-                value={linkedMissedSessionId}
-                onChange={(e) => setLinkedMissedSessionId(e.target.value)}
-                className={cn("mt-1", fieldControlPlain)}
-                data-testid="cme-missed-session-input"
-                aria-describedby="cme-missed-session-hint"
-              />
-              <p id="cme-missed-session-hint" className="mt-1.5 text-xs text-[color:var(--text-muted)]">
-                {missedSessionDraft && !UUID_PATTERN.test(missedSessionDraft)
-                  ? "That isn't a session ID, so this activity will save without linking a missed session."
-                  : "Paste the missed session ID. A written reason is not a session ID and is not sent."}
-              </p>
-            </div>
-          ) : null}
-        </div>
-
         <div className="mt-6">
           <CmeEntryForm
             onSubmit={saveEntry}
@@ -304,6 +271,41 @@ export function CmeNewEntryRoute({
             draftStorageKey={resumeDraft || sample ? undefined : CME_NEW_ENTRY_DRAFT_KEY}
             initialDraft={resumeDraft?.payload}
             onSaveDraft={demoMode ? undefined : saveDraft}
+            // A rare case, so it sits after "What was it" and the other main fields (11 Oct 2026 audit).
+            afterFields={
+              <div className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-4">
+                <Checkbox
+                  label="This activity replaces a missed teaching or supervision session"
+                  checked={isReplacement}
+                  onChange={(event) => setIsReplacement(event.target.checked)}
+                  data-testid="cme-replacement-checkbox"
+                />
+                {isReplacement ? (
+                  <div className="mt-3 pl-6">
+                    <label
+                      htmlFor="cme-missed-session-input"
+                      className="block text-xs font-semibold uppercase tracking-wider text-[color:var(--text-muted)]"
+                    >
+                      Missed session ID or reason
+                    </label>
+                    <input
+                      id="cme-missed-session-input"
+                      type="text"
+                      value={linkedMissedSessionId}
+                      onChange={(e) => setLinkedMissedSessionId(e.target.value)}
+                      className={cn("mt-1", fieldControlPlain)}
+                      data-testid="cme-missed-session-input"
+                      aria-describedby="cme-missed-session-hint"
+                    />
+                    <p id="cme-missed-session-hint" className="mt-1.5 text-xs text-[color:var(--text-muted)]">
+                      {missedSessionDraft && !UUID_PATTERN.test(missedSessionDraft)
+                        ? "That isn't a session ID, so this activity will save without linking a missed session."
+                        : "Paste the missed session ID. A written reason is not a session ID and is not sent."}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            }
             draftControls={
               <WaitingOnControls
                 idPrefix="cme-entry-draft"

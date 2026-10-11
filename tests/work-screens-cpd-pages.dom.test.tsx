@@ -73,7 +73,11 @@ afterEach(() => {
 describe("CPD Evidence page", () => {
   it("in the demo, where evidence is not counted, never claims every activity has evidence", () => {
     render(<CpdEvidencePage entries={DEMO_CME_ENTRIES} year={2026} years={[2026, 2025]} demoMode />);
-    expect(screen.getByTestId("cpd-evidence-all-done").textContent).toContain("None known to need evidence");
+    // Nothing was checked, so no zero counts or all-clear tick: one plain line and one way in.
+    expect(screen.getByTestId("cpd-evidence-unchecked").textContent).toContain("No evidence checked yet");
+    expect(screen.queryByTestId("cpd-evidence-all-done")).toBeNull();
+    expect(screen.queryByTestId("cpd-evidence-counts")).toBeNull();
+    expect(screen.getByTestId("cpd-evidence-start").getAttribute("href")).toMatch(/^\/cme\/log\//);
     expect(screen.queryByText("Every activity has evidence")).toBeNull();
     expect(screen.getByTestId("cpd-evidence-unknown-list")).toBeTruthy();
     expect(screen.queryByTestId("cpd-evidence-attach")).toBeNull();

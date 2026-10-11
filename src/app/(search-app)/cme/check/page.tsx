@@ -5,8 +5,8 @@ import { CmeYearCheckPage } from "@/components/cme/cme-year-check-page";
 import { loadCmePageData } from "@/lib/cme/load-cme-page-data";
 
 export const metadata: Metadata = {
-  title: "Year check | CPD | PsychSift",
-  description: "Your CPD year as an audit would read it: every target, evidence, reflections and what is copied.",
+  title: "End of year | CPD | PsychSift",
+  description: "Your CPD year in three steps: what is missing, evidence to tidy, then save, copy and close the year.",
 };
 
 export default async function CmeYearCheckRoute({ searchParams }: { searchParams: Promise<{ year?: string }> }) {

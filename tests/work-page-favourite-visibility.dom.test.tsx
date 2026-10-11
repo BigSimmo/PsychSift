@@ -45,8 +45,8 @@ function inLaunch(launch: WorkModeLaunch) {
   };
 }
 
-// CPD's Export is a new-only screen; its Log is on both work modes.
-const exportStar: WorkPageStar = { areaId: "cpd", itemId: "cpd-export", starredAt: 2, pinnedAt: null, openedAt: null };
+// Admin's Pay is a new-only screen; CPD's Log is on both work modes.
+const exportStar: WorkPageStar = { areaId: "admin", itemId: "admin-pay", starredAt: 2, pinnedAt: null, openedAt: null };
 const logStar: WorkPageStar = { areaId: "cpd", itemId: "log", starredAt: 1, pinnedAt: null, openedAt: null };
 
 function seed(stars: readonly WorkPageStar[]) {
@@ -69,20 +69,35 @@ describe("saved work pages on the classic work mode", () => {
   it("hides a new-only page that would 404, and keeps every other", () => {
     const routeVisible = (href: string) => !workModeRouteHidden(href, classic);
     expect(resolveWorkPageStars([exportStar, logStar], routeVisible).map((star) => star.key)).toEqual(["cpd:log"]);
-    expect(resolveWorkPageStars([exportStar, logStar]).map((star) => star.key)).toEqual(["cpd:cpd-export", "cpd:log"]);
+    expect(resolveWorkPageStars([exportStar, logStar]).map((star) => star.key)).toEqual(["admin:admin-pay", "cpd:log"]);
   });
 
   it("leaves the new-only page off the My Day shelf, still saved on the phone", () => {
     seed([exportStar, logStar]);
     const { result } = renderHook(() => useFavouritesShelf(), { wrapper: inLaunch(classic) });
     expect(result.current.items.map((item) => item.workKey)).toEqual(["cpd:log"]);
-    expect(loadWorkPageStars().map((star) => star.itemId)).toEqual(["cpd-export", "log"]);
+    expect(loadWorkPageStars().map((star) => star.itemId)).toEqual(["admin-pay", "log"]);
   });
 
   it("shows it again on the new work mode", () => {
     seed([exportStar, logStar]);
     const { result } = renderHook(() => useFavouritesShelf(), { wrapper: inLaunch(fresh) });
-    expect(result.current.items.map((item) => item.workKey)).toEqual(["cpd:cpd-export", "cpd:log"]);
+    expect(result.current.items.map((item) => item.workKey)).toEqual(["admin:admin-pay", "cpd:log"]);
+  });
+});
+
+describe("saved pages that moved", () => {
+  it("open the page that now holds them, once each", () => {
+    const star = (itemId: string, starredAt: number): WorkPageStar => ({
+      areaId: "cpd",
+      itemId,
+      starredAt,
+      pinnedAt: null,
+      openedAt: null,
+    });
+    const resolved = resolveWorkPageStars([star("cpd-export", 3), star("cpd-evidence", 2), star("applications", 1)]);
+    expect(resolved.map((entry) => entry.key)).toEqual(["cpd:setup", "admin:applications"]);
+    expect(resolved.map((entry) => entry.item.href)).toEqual(["/cme/check", "/admin/applications"]);
   });
 });
 
@@ -101,7 +116,7 @@ describe("the Add a work page sheet", () => {
 
   it("offers no page behind a closed gate on the new work mode", () => {
     const rows = rowSubs(fresh);
-    expect(rows.some((row) => row.includes("CSV and printable"))).toBe(true);
+    expect(rows.some((row) => row.includes("Payslip hours"))).toBe(true);
     // Classic only, and organisers only (no teaching role is known here).
     expect(rows.some((row) => row.startsWith("Needs you"))).toBe(false);
     expect(rows.some((row) => row.includes("Run the program"))).toBe(false);

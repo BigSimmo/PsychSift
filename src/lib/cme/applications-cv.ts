@@ -40,7 +40,7 @@ const FIX_IN: Partial<Record<CvSource, { fixHref: string; fixIn: string }>> = {
   cpd: { fixHref: "/cme/log", fixIn: "Log" },
   teaching: { fixHref: "/teaching", fixIn: "Teaching" },
   terms: { fixHref: "/teaching/term", fixIn: "your term tracker" },
-  you: { fixHref: "/cme/applications/cv", fixIn: "your statement" },
+  you: { fixHref: "/admin/applications/cv", fixIn: "your statement" },
 };
 
 /** A line, held back when its title reads like a patient detail. */
