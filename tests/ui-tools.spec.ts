@@ -3402,7 +3402,25 @@ test.describe("Responsive layout guards", () => {
   test("safety-plan working content stays local until an explicit export", async ({ page }) => {
     const appRequests: string[] = [];
     page.on("request", (request) => {
-      if (request.resourceType() === "fetch" || request.resourceType() === "xhr") appRequests.push(request.url());
+      if (request.resourceType() !== "fetch" && request.resourceType() !== "xhr") return;
+      // The shell header's links prefetch their routes (GET ?_rsc=…). Those carry no
+      // plan content, so they are not a leak; anything else, or anything holding the
+      // typed text, is.
+      const url = new URL(request.url());
+      const routePrefetch = request.method() === "GET" && url.searchParams.has("_rsc");
+      const normalizeRequestPart = (content: string) => {
+        const formDecodedContent = content.replace(/\+/g, " ");
+        try {
+          return decodeURIComponent(formDecodedContent);
+        } catch {
+          // Keep the raw content if a request contains an incomplete escape sequence.
+          return formDecodedContent;
+        }
+      };
+      const normalizedRequestContent = [request.url(), request.postData() ?? ""].map(normalizeRequestPart).join("");
+      if (!routePrefetch || normalizedRequestContent.includes("Not sleeping")) {
+        appRequests.push(request.url());
+      }
     });
 
     await page.goto("/safety-plan");
