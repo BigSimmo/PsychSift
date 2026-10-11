@@ -602,7 +602,7 @@ export const appModeDefinitions = [
   {
     id: "psychiatry",
     label: "Psychiatry",
-    description: "Diagnosis, specifiers, formulation, therapy and Mental Health Act forms in one place",
+    description: "Diagnosis, specifiers, formulation, therapy, forms, rating scales and the dictionary in one place",
     href: "/psychiatry",
     search: {
       // Psychiatry is a landing page that gathers existing modes; it has no
@@ -629,8 +629,8 @@ export const appModeDefinitions = [
   },
   {
     id: "medicines",
-    label: "Medicines & tools",
-    description: "Medication, calculators, clinical tools, factsheets and the dictionary in one place",
+    label: "Medicines",
+    description: "Medication, factsheets, statewide charts and outside references in one place",
     href: "/medicines",
     search: {
       // Like Psychiatry, a landing page that gathers existing modes, each of
@@ -642,10 +642,10 @@ export const appModeDefinitions = [
       submitBusyLabel: "Medicines",
       submitAriaLabel: "Open a medicines or tools section",
       emptyTitle: "Choose a section",
-      readyTitle: "Medication, calculators, tools and reference",
+      readyTitle: "Medication, factsheets and references",
       progressLabel: "Opening the section.",
       resultKind: "tools",
-      resultHeading: "Medicines & tools",
+      resultHeading: "Medicines",
       // No results page. `/medicines` is a dashboard of links to the sections
       // it gathers, as `/psychiatry` is.
       resultsSurface: "none",

@@ -36,7 +36,7 @@ import { useOnlineStatus } from "@/lib/use-online-status";
 import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
- * The Medicines & tools hub (modes review, phase 3; Medicines mock-up of
+ * The Medicines hub (modes review, phase 3; Medicines mock-up of
  * 5 Oct 2026): a front door, not clinical content.
  *
  * Flat, quiet groups (mock-up v6): the question and search field, the last
@@ -52,13 +52,10 @@ import { PageTitleUnderBand, WithoutModeBand } from "@/components/mode-band/mode
 
 export interface MedicinesSectionCounts {
   readonly medications: number;
-  readonly calculators: number;
-  readonly tools: number;
   readonly factsheets: number;
-  readonly dictionary: number;
 }
 
-/** The sections, read from the menu's Medicines & tools group so the hub and the menu never list different ones. */
+/** The sections, read from the menu's Medicines group so the hub and the menu never list different ones. */
 const SECTION_MODE_IDS: readonly AppModeId[] = (
   phoneModeGroups.find((group) => group.id === "care")?.modeIds ?? []
 ).filter((modeId) => modeId !== "medicines");
@@ -81,14 +78,8 @@ function sectionCountLine(modeId: AppModeId, counts: MedicinesSectionCounts): st
   switch (modeId) {
     case "prescribing":
       return plural(counts.medications, "medicine", "medicines");
-    case "calculators":
-      return plural(counts.calculators, "calculator", "calculators");
-    case "tools":
-      return plural(counts.tools, "tool", "tools");
     case "factsheets":
       return plural(counts.factsheets, "factsheet", "factsheets");
-    case "dictionary":
-      return plural(counts.dictionary, "term", "terms");
     default:
       return null;
   }
@@ -322,7 +313,7 @@ const NO_VISITS: readonly MedicineVisit[] = [];
 function SectionsGroup({ counts }: { readonly counts: MedicinesSectionCounts }) {
   return (
     <Group title="Sections" testId="medicines-card-sections">
-      <ul role="list" aria-label="Medicines and tools sections" className={hairlineList}>
+      <ul role="list" aria-label="Medicines sections" className={hairlineList}>
         {SECTION_MODE_IDS.map((modeId) => {
           const mode = appModeDefinition(modeId);
           const countLine = sectionCountLine(modeId, counts);
@@ -470,8 +461,23 @@ function ReferencesGroup({ online }: { readonly online: boolean }) {
   );
 }
 
+// Calculators and the Dictionary moved to Psychiatry (usefulness and layout
+// audit, 11 Oct 2026, item 8), so they are signposted here for anyone who
+// still looks for them beside the medicines.
 const SIGNPOSTS = [
   { label: "Safety plan", href: "/safety-plan", icon: ShieldCheck, testId: "medicines-signpost-safety-plan" },
+  {
+    label: "Calculators",
+    href: appModeHomeHref("calculators"),
+    icon: appModeIcons.calculators,
+    testId: "medicines-signpost-calculators",
+  },
+  {
+    label: "Dictionary",
+    href: appModeHomeHref("dictionary"),
+    icon: appModeIcons.dictionary,
+    testId: "medicines-signpost-dictionary",
+  },
   {
     label: "Psychiatry",
     href: appModeHomeHref("psychiatry"),
@@ -514,7 +520,7 @@ export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSecti
             <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{today ? LONG_DATE.format(today) : null}</p>
           </WithoutModeBand>
           <PageTitleUnderBand className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
-            Medicines &amp; tools
+            Medicines
           </PageTitleUnderBand>
         </header>
         {online ? null : <OfflineNote />}

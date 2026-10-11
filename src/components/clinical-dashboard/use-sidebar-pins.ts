@@ -14,11 +14,15 @@ export const defaultSidebarPinnedModeIds = [
   "answer",
   "documents",
   "services",
+  "psychiatry",
   "prescribing",
   "factsheets",
-  "tools",
 ] as const satisfies readonly AppModeId[];
 
+// Tools left the menu (usefulness and layout audit, 11 Oct 2026, item 8): a
+// stored "tools" pin is dropped by `normalizePinnedModeIds`, and Psychiatry,
+// which now holds the calculators and the dictionary, takes its default slot.
+// `/tools` itself still opens for old links.
 export const pinnableSidebarModeIds = [
   ...defaultSidebarPinnedModeIds,
   "forms",
@@ -32,7 +36,6 @@ export const pinnableSidebarModeIds = [
   "on-call",
   "cme",
   "teaching",
-  "psychiatry",
   "my-work",
   "roster",
   "open-shifts",
