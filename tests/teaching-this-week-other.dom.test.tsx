@@ -42,6 +42,7 @@ const HOST = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const CLUB = "22222222-2222-4222-8222-222222222222";
 const ROUNDS = "33333333-3333-4333-8333-333333333333";
 const WHATS_ON = "/api/teaching/whats-on?weekStart=2026-09-28";
+const WEEK = "/api/teaching?view=week&from=2026-09-28&to=2026-10-04";
 
 function row(overrides: Partial<WhatsOnRowRead> = {}): WhatsOnRowRead {
   return {
@@ -141,7 +142,7 @@ describe("Week: Other services", () => {
 
   it("opens on Other services from ?view=other, and adds and removes exactly as What's on did", async () => {
     const posted: Record<string, unknown>[] = [];
-    serve([club], (body) => {
+    const fetchMock = serve([club], (body) => {
       posted.push(body);
       return json(200, { inMyWeek: body.action === "week_add.set" });
     });
@@ -155,6 +156,20 @@ describe("Week: Other services", () => {
       { action: "week_add.set", occurrenceId: CLUB },
       { action: "week_add.unset", occurrenceId: CLUB },
     ]);
+    // Whole service lists added sessions too, so each change reads the week again.
+    await waitFor(() => expect(fetchCalls(fetchMock, WEEK)).toBe(3));
+  });
+
+  it("keeps ?view=other in the address only while Other services is chosen", async () => {
+    window.history.replaceState(null, "", "/teaching/week?view=other");
+    serve([club]);
+    render(<TeachingThisWeek demoMode={false} view="other" />);
+    await screen.findByTestId(`teaching-week-other-row-${CLUB}`);
+    fireEvent.click(screen.getByRole("button", { name: "Whole service" }));
+    expect(window.location.search).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Other services" }));
+    expect(window.location.search).toBe("?view=other");
+    window.history.replaceState(null, "", "/");
   });
 
   it("puts the plus back and says why when the add fails", async () => {

@@ -273,6 +273,7 @@ function TodayBody({
               ]
                 .filter(Boolean)
                 .join(" · ")}
+              // The count is for this Monday's week; on a Sunday Week would otherwise open the coming one.
               href={`/teaching/week?view=other&week=${mondayOf(today)}`}
             />
           ) : null}

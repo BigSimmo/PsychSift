@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Network } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -124,7 +123,15 @@ function storedFilter(): ThisWeekFilter | null {
   return rememberedFilter;
 }
 
-function storeFilter(value: ThisWeekFilter | null) {
+/** The address says Other services only while it is the chosen filter, so a reload opens what was showing. */
+function syncViewParam(value: ThisWeekFilter) {
+  const url = new URL(window.location.href);
+  if (value === "other") url.searchParams.set("view", OTHER_SERVICES_VIEW);
+  else url.searchParams.delete("view");
+  if (url.href !== window.location.href) window.history.replaceState(null, "", url);
+}
+
+function storeFilter(value: ThisWeekFilter) {
   rememberedFilter = value;
 }
 
@@ -250,7 +257,6 @@ function ThisWeekBody({
   /** The address asked for Other services (`?view=other`). */
   openOther: boolean;
 }) {
-  const router = useRouter();
   const [team, setTeam] = useState(ALL_TEAMS);
   const [chosenFilter, setChosenFilter] = useState<ThisWeekFilter | null>(() => {
     if (openOther) storeFilter("other");
@@ -264,9 +270,6 @@ function ThisWeekBody({
     if (openOther) {
       setChosenFilter("other");
       storeFilter("other");
-    } else {
-      setChosenFilter(null);
-      storeFilter(null);
     }
   }
   const weekAdd = useWeekAdd(whatsOnSample, view.retry);
@@ -299,11 +302,7 @@ function ThisWeekBody({
   function chooseFilter(value: ThisWeekFilter) {
     setChosenFilter(value);
     storeFilter(value);
-    const params = new URLSearchParams(window.location.search);
-    if (value === "other") params.set("view", OTHER_SERVICES_VIEW);
-    else params.delete("view");
-    const query = params.toString();
-    router.replace(`/teaching/week${query ? `?${query}` : ""}`, { scroll: false });
+    syncViewParam(value);
   }
 
   // The card under the week switches the filter in place, and brings the week's own card into view.
@@ -344,14 +343,14 @@ function ThisWeekBody({
   const sessions = filter === "presenting" ? mineSessions(everything) : everything;
   const context = { teams: week.teams, attendance: week.attendance, showTeam, now };
   const otherRows = whatsOn ? otherServiceSessions(whatsOn.sessions) : [];
-  const localWhatsOn = whatsOn
-    ? { sessions: whatsOn.sessions.map((row) => ({ ...row, inMyWeek: weekAdd.added(row) })) }
-    : null;
   // The dates and the day strip follow what the list shows, so Other services' weekend shows when it has one.
   const shown = filter === "other" ? otherRows : sessions;
   const days = weekDayKeys(monday, shown);
   const partial = week.relocatedUnavailable;
-  const others = localWhatsOn ? openFromOtherServices(localWhatsOn.sessions) : null;
+  // The count under the week follows adds and removes made here before the next read.
+  const others = whatsOn
+    ? openFromOtherServices(whatsOn.sessions.map((row) => ({ ...row, inMyWeek: weekAdd.added(row) })))
+    : null;
   const otherNames = whatsOn
     ? [...new Set(whatsOn.sessions.filter((row) => !row.own).map((row) => row.teamName))].join(", ")
     : "";
