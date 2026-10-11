@@ -91,6 +91,7 @@ describe("Open shifts, signed-out preview", () => {
     render(<OpenShiftsBrowsePage />);
     const context = screen.getByTestId("open-shifts-sample-context");
     expect(within(context).getByRole("link", { name: "Back to My Day" }).getAttribute("href")).toBe("/my-day");
-    expect(context.textContent).toContain("example roster as of Mon 5 Oct");
+    expect(context.textContent).toContain("roster as of Mon 5 Oct");
+    expect(context.textContent).not.toMatch(/example/i);
   });
 });

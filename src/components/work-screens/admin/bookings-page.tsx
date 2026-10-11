@@ -226,7 +226,7 @@ function OpenView({ state, today }: { readonly state: BookingsState; readonly to
           <WorkIconRow
             icon={Users}
             title={sample ? "The organiser's side" : "Courses you post"}
-            sub={sample ? "Example, to see how posting works" : "Post, edit and see who is booked"}
+            sub={"Post, edit and see who is booked"}
             href={ADMIN_WORK_SCREEN_HREFS.courses}
             testId="admin-bookings-organiser-link"
           />

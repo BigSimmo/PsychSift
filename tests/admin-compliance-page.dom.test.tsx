@@ -142,7 +142,7 @@ describe("AdminCompliancePage", () => {
     expect(screen.getByTestId("admin-compliance-failed")).not.toHaveTextContent("offline");
   });
 
-  it("asks a signed-out reader to sign in and says the example records are made up in demo", () => {
+  it("asks a signed-out reader to sign in, and never labels demo records as made up", () => {
     storeState.signedOut = true;
     const { unmount } = render(<AdminCompliancePage now={NOW} />);
     fireEvent.click(within(screen.getByTestId("admin-compliance-signed-out")).getByRole("button", { name: "Sign in" }));
@@ -151,6 +151,6 @@ describe("AdminCompliancePage", () => {
     storeState.signedOut = false;
     storeState.demoMode = true;
     render(<AdminCompliancePage now={NOW} />);
-    expect(screen.getByTestId("admin-compliance-demo-notice")).toBeTruthy();
+    expect(screen.queryByTestId("admin-compliance-demo-notice")).toBeNull();
   });
 });

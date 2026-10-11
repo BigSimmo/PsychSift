@@ -23,7 +23,6 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { modeModuleSurface, modePressable } from "@/components/mode-kit/recipes";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Sheet } from "@/components/ui/sheet";
@@ -350,8 +349,6 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     to: maxDate(shownRange.to, addDaysToDate(today, ROSTER_AHEAD_DAYS)),
   };
   const shifts = useRosterShifts(teamRange);
-  // The frame's example data banner already says these are examples.
-  const exampleBanner = useRosterSignedOutSample();
   const teams = useRosterTeams();
   const enabledTeams = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).filter((team) => team.enabled);
   const oneTeamId = enabledTeams.length === 1 ? enabledTeams[0]!.serviceId : null;
@@ -507,9 +504,6 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
 
     const notices = (
       <>
-        {shifts.demoMode && !exampleBanner ? (
-          <ModeNotice>Example only. Sign in to add your own shifts.</ModeNotice>
-        ) : null}
         {notice ? <ModeNotice tone={notice.tone}>{notice.text}</ModeNotice> : null}
         {shifts.teamMessage ? <ModeNotice tone="warning">{shifts.teamMessage}</ModeNotice> : null}
       </>

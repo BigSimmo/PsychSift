@@ -77,12 +77,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("AdminTodayPage", () => {
-  it("says when the dates on screen are the example corpus", () => {
+  it("draws no example notice over the example corpus (owner decision 10 Oct 2026)", () => {
     state.demoMode = true;
     render(<AdminTodayPage now={NOW} />);
-    expect(screen.getByTestId("admin-today-demo-notice")).toHaveTextContent(
-      "Example records. These dates are made up, and nothing here is your own.",
-    );
+    expect(screen.queryByTestId("admin-today-demo-notice")).toBeNull();
+    expect(screen.queryByText(/made up/)).toBeNull();
   });
 
   it("leads to Contract end, the Leave wallet and the starter pack from a Work and leave group", () => {

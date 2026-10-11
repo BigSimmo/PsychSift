@@ -682,18 +682,14 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             ) : null}
 
             {/* One notice at the top at most; the quieter context is one line of small print here. */}
-            {demoNote || notYet.length > 0 ? (
+            {notYet.length > 0 ? (
               <p
                 className="m-0 max-w-reading px-1 text-xs text-[color:var(--text-muted)]"
                 data-testid="my-day-small-print"
               >
-                {demoNote ? <span data-testid="my-day-demo-notice">Example data: made up to look around.</span> : null}
-                {demoNote && notYet.length > 0 ? " " : null}
-                {notYet.length > 0 ? (
-                  <span data-testid="my-day-unavailable-notice">
-                    {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
-                  </span>
-                ) : null}
+                <span data-testid="my-day-unavailable-notice">
+                  {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
+                </span>
               </p>
             ) : null}
           </div>

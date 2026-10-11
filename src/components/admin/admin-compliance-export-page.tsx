@@ -9,7 +9,6 @@ import { focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageBreadcrumbs } from "@/components/information-page-shell";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkButton, WorkChip, WorkDock, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { announce } from "@/components/ui/live-announcer";
@@ -31,7 +30,6 @@ import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { buildXlsx, XLSX_MIME } from "@/lib/admin/xlsx-lite";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import { useExampleData } from "@/lib/example-data/store";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { guardExampleAction } from "@/lib/example-data/guards";
 
@@ -68,8 +66,6 @@ const RANGE_OPTIONS = [
  */
 export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  // The example data banner already says these are example records; this notice is for the demo build.
-  const examplesBanner = useExampleData("admin").active;
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
   const today = perthCalendarDate(now);
@@ -155,12 +151,6 @@ export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {})
         </>
       ) : (
         <div className="grid min-w-0 gap-5" data-testid="admin-compliance-export-ready">
-          {state.demoMode && !examplesBanner ? (
-            <ModeNotice testId="admin-compliance-export-demo-notice">
-              Example records. These dates are made up, and nothing here is your own.
-            </ModeNotice>
-          ) : null}
-
           <section className={cn("work-card", adminStyles.exportFile)} aria-labelledby="export-preview">
             <div className="work-row">
               <WorkIconCircle icon={FileSpreadsheet} />

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import { ExampleTag } from "@/components/example-data/example-tag";
 import {
   WorkBody,
   WorkButton,
@@ -251,7 +250,6 @@ function HubView({
       <HospitalHeading title={TITLE} eyebrow={hospital?.name} />
 
       <div className="flex flex-wrap items-center gap-1.5" data-testid="admin-hospital-roles">
-        {example ? <ExampleTag /> : null}
         <ul className="contents" aria-label="Your roles">
           {roles.map((role) => (
             <li key={role} className="inline-flex">

@@ -658,7 +658,8 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 }
 
-/* Round glass buttons: a 48px tap, a 44px glass circle. */
+/* Round glass buttons: a 48px glass circle, the same size as the clinical
+   header's round buttons (Josh, 10 Oct 2026). */
 .universal-header[data-work-frame] .universal-header-icon-control {
   position: relative;
   isolation: isolate;
@@ -671,7 +672,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 .universal-header[data-work-frame] .universal-header-icon-control::before {
   content: "";
   position: absolute;
-  inset: 2px;
+  inset: 0;
   z-index: var(--work-z-under);
   border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
@@ -747,22 +748,23 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   outline-offset: 2px;
 }
 
-/* The mode pill: glass, a flat mode-colour badge, page over area. */
+/* The mode pill: glass, a flat mode-colour badge, page over area. The same
+   48px height as the clinical pill (Josh, 10 Oct 2026), and like it the pill
+   hugs its name with the chevron right after it, leaving no empty space
+   (Josh, 10 Oct 2026). A long name grows the pill up to its limit. */
 .universal-header[data-work-frame] .universal-header-mode-button {
   position: relative;
   isolation: isolate;
   width: auto;
   min-width: 0;
-  /* Room for the longest area name ("Assessments") beside two round
-     buttons on a 390px phone, without truncating it, and for a short one
-     ("Roster") at 320px now the pill names the area only. Never narrower than
-     a tap, so at large text sizes the badge still shows when the name cannot. */
+  /* Never narrower than a tap, so at large text sizes the badge still shows
+     when the name cannot. */
   max-width: max(var(--spacing-tap, 3rem), min(15rem, calc(100vw - 11rem)));
   /* The name's track sizes to the name itself, so a name that fits is never
      cut short by rounding; it shortens only once the pill reaches its limit. */
   grid-template-columns: auto minmax(0, max-content) auto;
-  gap: calc(var(--spacing) * 1.75);
-  padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1.5);
+  gap: calc(var(--spacing) * 2);
+  padding: 0 calc(var(--spacing) * 2.5);
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -770,14 +772,16 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 
 @media (min-width: 640px) {
   .universal-header[data-work-frame] .universal-header-mode-button {
+    width: auto;
     max-width: 18rem;
+    padding-right: calc(var(--spacing) * 3);
   }
 }
 
 .universal-header[data-work-frame] .universal-header-mode-button::before {
   content: "";
   position: absolute;
-  inset: 0.25rem 0;
+  inset: 0;
   z-index: var(--work-z-under);
   border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
@@ -851,6 +855,8 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
     .universal-header[data-work-frame] .universal-header-mode-button {
       grid-template-columns: auto minmax(0, 1fr);
       gap: calc(var(--spacing) * 0.5);
+      width: auto;
+      min-width: 0;
       max-width: 100%;
       height: auto;
       min-height: 48px;

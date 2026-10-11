@@ -305,11 +305,11 @@ describe("MyDayPage", () => {
   });
 
   // Demo data is shown only in a local demo build with no sign-in ("unconfigured").
-  it("says when the data is example data, in a local demo build", () => {
+  it("draws no example notice in a local demo build", () => {
     auth.status = "unconfigured";
     setState({ demoMode: true, items: [item("a", "soon")] });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-demo-notice")).toBeNull();
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
@@ -325,7 +325,7 @@ describe("MyDayPage", () => {
       ),
     });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-small-print").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-small-print")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-notice")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-other-notice")).toBeNull();
   });

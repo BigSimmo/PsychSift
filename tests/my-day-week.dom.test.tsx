@@ -354,7 +354,7 @@ describe("MyDayWeekPage", () => {
     expect(screen.getByTestId("my-day-week-sample-notice")).toBeTruthy();
   });
 
-  it("shows example shifts with a demo notice in demo mode", () => {
+  it("shows example shifts with no example notice in demo mode", () => {
     setShifts({
       sample: true,
       demoMode: true,
@@ -362,7 +362,7 @@ describe("MyDayWeekPage", () => {
     });
     render(<MyDayWeekPage now={NOW} />);
     expect(screen.getByTestId("my-day-week-shift-ex")).toBeTruthy();
-    expect(screen.getByTestId("my-day-week-demo-notice")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-week-demo-notice")).toBeNull();
   });
 
   it("shows a skeleton while any source is loading, not empty days", () => {
