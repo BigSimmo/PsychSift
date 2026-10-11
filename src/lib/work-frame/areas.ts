@@ -963,7 +963,7 @@ const cpd: WorkArea = {
         {
           id: "setup",
           label: "End of year",
-          sub: "Check, tidy, hand in",
+          sub: "Hand in your year",
           icon: "check-list",
           href: "/cme/check",
           paths: ["/cme/check", "/cme/evidence", "/cme/export", "/cme/cpd-home"],
@@ -1003,7 +1003,7 @@ const cpd: WorkArea = {
       ],
     },
     {
-      label: "Settings",
+      label: "Help",
       items: [
         // Customise is reached from Summary's own button, and Set up is the same page as Targets, so neither
         // is listed here (11 Oct 2026 audit).
