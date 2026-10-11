@@ -3,17 +3,14 @@
 import dynamic from "next/dynamic";
 import { useState, type ComponentProps } from "react";
 
+import { LazyWorkSideCounts } from "@/components/work-frame/lazy-work-side-counts";
+
 const loadWorkSideMenu = () => import("@/components/work-frame/work-side-menu").then((module) => module.WorkSideMenu);
 const LazyMenu = dynamic(loadWorkSideMenu, { ssr: false });
 
 const loadTwoPaneSideMenu = () =>
   import("@/components/work-frame/two-pane-side-menu").then((module) => module.TwoPaneSideMenu);
 const LazyTwoPane = dynamic(loadTwoPaneSideMenu, { ssr: false });
-
-const LazyCounts = dynamic(
-  () => import("@/components/work-frame/work-side-counts-reader").then((module) => module.WorkSideCountsReader),
-  { ssr: false },
-);
 
 /** Warms the side menu's chunk when the menu button is about to be pressed. */
 export function prefetchWorkSideMenu() {
@@ -42,10 +39,7 @@ export function LazyTwoPaneSideMenu(props: ComponentProps<typeof LazyTwoPane>) {
   return opened ? <LazyTwoPane {...props} /> : null;
 }
 
-/** The side menu and rail's counts, read only while one of them is on screen. */
-export function LazyWorkSideCounts({ active }: { readonly active: boolean }) {
-  return active ? <LazyCounts /> : null;
-}
+export { LazyWorkSideCounts };
 
 /**
  * The two-pane side menu with its own counts reader, for a page that has no

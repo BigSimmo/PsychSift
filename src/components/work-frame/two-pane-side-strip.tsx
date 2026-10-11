@@ -30,6 +30,7 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import type { ThemePreference } from "@/lib/theme";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 
 /**
  * The strip shared by the two-pane side menu and its tablet rail. On a phone the strip lives inside the menu. From 768 px the same
@@ -64,7 +65,11 @@ export function useThemeCycle() {
 export function useOpenReminders(): () => void {
   const router = useRouter();
   return () => {
-    if (!workFrameActionHandler("my-day-reminders")) router.push("/my-day");
+    if (!workFrameActionHandler("my-day-reminders")) {
+      // An unsaved page (the safety plan) may keep the reader where they are.
+      if (!confirmShellNavigation()) return;
+      router.push("/my-day");
+    }
     requestWorkFrameAction("my-day-reminders");
   };
 }
