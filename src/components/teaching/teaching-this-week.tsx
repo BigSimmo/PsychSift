@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Network } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -263,11 +264,14 @@ function ThisWeekBody({
     return storedFilter();
   });
   // A later link to ?view=other while Week is already open (Today's "Open from other services") switches
-  // to it too: the address changed, so the page follows it, during render rather than in an effect.
-  const [seenOpenOther, setSeenOpenOther] = useState(openOther);
-  if (openOther !== seenOpenOther) {
-    setSeenOpenOther(openOther);
-    if (openOther) {
+  // to it too: the address changed, so the page follows it, during render rather than in an effect. The
+  // live address is read, not only the server's prop, because choosing a filter rewrites it in place.
+  const liveView = useSearchParams()?.get("view");
+  const openOtherNow = liveView === undefined ? openOther : liveView === OTHER_SERVICES_VIEW;
+  const [seenOpenOther, setSeenOpenOther] = useState(openOtherNow);
+  if (openOtherNow !== seenOpenOther) {
+    setSeenOpenOther(openOtherNow);
+    if (openOtherNow) {
       setChosenFilter("other");
       storeFilter("other");
     }
