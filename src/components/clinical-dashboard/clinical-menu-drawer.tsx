@@ -221,9 +221,7 @@ export function ClinicalMenuWorkAreas({
                 <span className="work-side-menu__tile" aria-hidden="true">
                   <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
                 </span>
-                <span className={cn("work-side-menu__name", current && "dark:!text-[color:var(--mode-identity)]")}>
-                  {entry.label}
-                </span>
+                <span className="work-side-menu__name">{entry.label}</span>
                 <RowCount count={counts?.areas[entry.id]} />
               </Link>
             </li>

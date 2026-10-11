@@ -2601,6 +2601,10 @@ html[data-work-frame] .app-toast-region {
   color: var(--text-muted);
 }
 
+.clinical-menu-drawer__row {
+  min-height: 2.75rem;
+}
+
 .work-side-menu__row {
   display: flex;
   align-items: center;
@@ -2646,6 +2650,12 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu__row[aria-current="true"] .work-side-menu__name {
   font-weight: 750;
   color: var(--mode-identity-deep, var(--mode-identity));
+}
+
+/* In dark themes the deep identity is too dark to read on the drawer, and the
+   identity itself is the light tint, so the current row uses it there. */
+.dark .work-side-menu__row[aria-current="true"] .work-side-menu__name {
+  color: var(--mode-identity);
 }
 
 .work-side-menu__count {

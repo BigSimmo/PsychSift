@@ -861,7 +861,8 @@ export function ClinicalSidebarContent({
   const moreModesActive =
     (pinnableSidebarModeIds as readonly AppModeId[]).includes(activeMode) && !pinnedModeIds.includes(activeMode);
   const accountLabel = accountProfileLabel(identity);
-  const rowItem = drawer ? sidebarItem.replace("min-h-tap", "min-h-11") : sidebarItem;
+  // Drawer rows are 44px, the same as the Work list, from one CSS rule.
+  const rowItem = drawer ? sidebarItem.replace("min-h-tap", "clinical-menu-drawer__row") : sidebarItem;
   // One heading rhythm for every list heading in the drawer: a 36px row whose
   // 48px Edit target overhangs it invisibly, so the gaps above each heading match.
   const sectionHeading = drawer
