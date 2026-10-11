@@ -1153,4 +1153,81 @@ describe("provider-safe test environment", () => {
       expect(processResult.stderr).toContain("Unrecognized Vitest reporter(s): basic");
     });
   });
+
+  describe("vitest test file validation safety (#GQG3NV)", () => {
+    it("identifies explicit test files and ignores flags and globs", async () => {
+      const { isExplicitTestFile, extractExplicitTestFiles } = await import("../scripts/run-vitest.mjs");
+      expect(isExplicitTestFile("tests/example.test.ts")).toBe(true);
+      expect(isExplicitTestFile("tests/example.test.tsx")).toBe(true);
+      expect(isExplicitTestFile("tests/example.spec.ts")).toBe(true);
+      expect(isExplicitTestFile("tests/example.dom.test.tsx")).toBe(true);
+      expect(isExplicitTestFile("tests/example.live.test.ts")).toBe(true);
+      expect(isExplicitTestFile("--passWithNoTests")).toBe(false);
+      expect(isExplicitTestFile("run")).toBe(false);
+      expect(isExplicitTestFile("tests/owner-scope*.test.ts")).toBe(false);
+      expect(isExplicitTestFile("tests/**/test.ts")).toBe(false);
+      expect(isExplicitTestFile("tests/test-?.test.ts")).toBe(false);
+      expect(isExplicitTestFile("tests/[a-z].test.ts")).toBe(false);
+
+      expect(
+        extractExplicitTestFiles([
+          "run",
+          "--reporter=dot",
+          "-t",
+          "some-test",
+          "tests/a.test.ts",
+          "tests/b*.test.ts",
+          "tests/c.spec.ts",
+        ]),
+      ).toEqual(["tests/a.test.ts", "tests/c.spec.ts"]);
+    });
+
+    it("validates test files exist on disk and reports missing files", async () => {
+      const { validateTestFiles } = await import("../scripts/run-vitest.mjs");
+      const existing = validateTestFiles(["tests/test-runner-safety.test.ts"]);
+      expect(existing.valid).toBe(true);
+      expect(existing.missingFiles).toEqual([]);
+
+      const missing = validateTestFiles(["tests/does-not-exist.test.ts"]);
+      expect(missing.valid).toBe(false);
+      expect(missing.missingFiles).toEqual(["tests/does-not-exist.test.ts"]);
+      expect(missing.error).toContain("Requested test file does not exist: tests/does-not-exist.test.ts");
+
+      const mixed = validateTestFiles(["tests/test-runner-safety.test.ts", "tests/does-not-exist.test.ts"]);
+      expect(mixed.valid).toBe(false);
+      expect(mixed.missingFiles).toEqual(["tests/does-not-exist.test.ts"]);
+    });
+
+    it("fails with exit code 1 when an explicit requested test file does not exist", () => {
+      const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+      const result = spawnSync(process.execPath, ["scripts/run-vitest.mjs", "tests/does-not-exist.test.ts"], {
+        cwd: projectRoot,
+        encoding: "utf8",
+      });
+      expect(childProcessExitCode(result)).toBe(1);
+      expect(result.stderr).toContain("Requested test file does not exist: tests/does-not-exist.test.ts");
+    });
+
+    it("fails multi-file runs with exit code 1 if any requested test file does not exist", () => {
+      const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+      const result = spawnSync(
+        process.execPath,
+        ["scripts/run-vitest.mjs", "tests/test-runner-safety.test.ts", "tests/does-not-exist.test.ts"],
+        { cwd: projectRoot, encoding: "utf8" },
+      );
+      expect(childProcessExitCode(result)).toBe(1);
+      expect(result.stderr).toContain("Requested test file does not exist: tests/does-not-exist.test.ts");
+    });
+
+    it("fails with exit code 1 even when --passWithNoTests is specified if an explicit file is missing", () => {
+      const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+      const result = spawnSync(
+        process.execPath,
+        ["scripts/run-vitest.mjs", "--passWithNoTests", "tests/does-not-exist.test.ts"],
+        { cwd: projectRoot, encoding: "utf8" },
+      );
+      expect(childProcessExitCode(result)).toBe(1);
+      expect(result.stderr).toContain("Requested test file does not exist: tests/does-not-exist.test.ts");
+    });
+  });
 });

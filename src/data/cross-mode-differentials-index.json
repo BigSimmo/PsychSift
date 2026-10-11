@@ -1044,12 +1044,12 @@
       "titleAliases": ["Mania / Hypomania / Mixed States"]
     },
     {
-      "id": "substance-intoxication",
+      "id": "presentation-substance-intoxication",
       "title": "Substance Intoxication",
       "subtitle": "Significant intoxication can cause airway compromise, hyperthermia or trauma and needs immediate ABC and toxidrome assessment."
     },
     {
-      "id": "substance-withdrawal",
+      "id": "presentation-substance-withdrawal",
       "title": "Substance Withdrawal",
       "subtitle": "Alcohol and benzodiazepine withdrawal can progress to seizures and delirium tremens within hours."
     },
@@ -1083,7 +1083,7 @@
       "titleAliases": ["Disorganised Behaviour / Disorganised Thought or Speech"]
     },
     {
-      "id": "depression",
+      "id": "presentation-depression",
       "title": "Depression",
       "subtitle": "Depression"
     },

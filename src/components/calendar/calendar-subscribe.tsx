@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { cardSurface } from "@/components/card-recipes";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useCopyToast } from "@/components/ui/toast";
 import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
 
 /**
@@ -46,6 +47,7 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
   const [message, setMessage] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"reset" | "off" | null>(null);
   const [copied, setCopied] = useState(false);
+  const showToast = useCopyToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -101,11 +103,13 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
     }
   }
 
-  async function copy() {
+  async function handleCopy() {
     if (!links) return;
     try {
       await navigator.clipboard.writeText(links.https);
       setCopied(true);
+      showToast("Copied calendar URL");
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       setMessage("Could not copy. Press and hold the link below to copy it.");
     }
@@ -168,7 +172,7 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
             >
               Apple Calendar
             </a>
-            <Button variant="secondary" size="sm" icon={Copy} onClick={copy} testId={`${testId}-copy`}>
+            <Button variant="secondary" size="sm" icon={Copy} onClick={handleCopy} testId={`${testId}-copy`}>
               {copied ? "Copied" : "Copy link"}
             </Button>
           </div>

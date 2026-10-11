@@ -288,8 +288,9 @@ describe("incompleteBudgetEvidence — completeness derived from what is graded"
 });
 
 describe("isBimodalRunnerVarianceRun", () => {
-  it("matches only the calibrated desktop-root and documents-search run ids", () => {
+  it("matches only the calibrated desktop-root, mobile-root, and documents-search run ids", () => {
     expect(isBimodalRunnerVarianceRun("desktop-root")).toBe(true);
+    expect(isBimodalRunnerVarianceRun("mobile-root")).toBe(true);
     expect(isBimodalRunnerVarianceRun("mobile-documents-search")).toBe(true);
     expect(isBimodalRunnerVarianceRun("desktop-documents-search")).toBe(true);
     expect(BIMODAL_RUNNER_TOLERANCE_FLOORS.lcpMs).toBe(200);
@@ -300,7 +301,7 @@ describe("isBimodalRunnerVarianceRun", () => {
     expect(isBimodalRunnerVarianceRun("mobile-documents")).toBe(false);
     expect(isBimodalRunnerVarianceRun("mobile-documents-upload")).toBe(false);
     expect(isBimodalRunnerVarianceRun("documents")).toBe(false);
-    expect(isBimodalRunnerVarianceRun("mobile-root")).toBe(false);
+    expect(isBimodalRunnerVarianceRun("mobile-dsm")).toBe(false);
     expect(isBimodalRunnerVarianceRun("")).toBe(false);
     expect(isBimodalRunnerVarianceRun(null as unknown as string)).toBe(false);
   });
@@ -315,10 +316,11 @@ describe("gradeRun", () => {
     const baseline = { lcpMs: 786, cls: 0, tbtMs: 100 };
     // +175ms clears default minAbsolute(100) + pct but stays under bimodal floor(200)
     expect(gradeRun(row("desktop-root", { lcpMs: 961 }), baseline)).toEqual([]);
+    expect(gradeRun(row("mobile-root", { lcpMs: 961 }), baseline)).toEqual([]);
     expect(gradeRun(row("desktop-documents-search", { lcpMs: 961 }), baseline)).toEqual([]);
     // Unintended documents* name must still flag — closes false-green path
     expect(gradeRun(row("desktop-documents", { lcpMs: 961 }), baseline)).toHaveLength(1);
-    expect(gradeRun(row("mobile-root", { lcpMs: 961 }), baseline)).toHaveLength(1);
+    expect(gradeRun(row("mobile-dsm", { lcpMs: 961 }), baseline)).toHaveLength(1);
   });
 
   it("ignores an improvement", () => {
@@ -360,7 +362,7 @@ describe("gradeRun", () => {
     // Spread the defaults so this overrides one metric rather than dropping the others.
     const strict = { ...DEFAULT_TOLERANCE, lcpMs: { pct: 1, minAbsolute: 1 } };
 
-    expect(gradeRun(row("mobile-root", { lcpMs: 1100 }), { lcpMs: 1000 }, strict)).toHaveLength(1);
+    expect(gradeRun(row("mobile-dsm", { lcpMs: 1100 }), { lcpMs: 1000 }, strict)).toHaveLength(1);
   });
 });
 

@@ -251,6 +251,73 @@ describe("differentials API routes", () => {
     }
   });
 
+  it.each([
+    [
+      "/api/differentials/presentations/presentation-depression",
+      "../src/app/api/differentials/presentations/[slug]/route",
+      "presentation-depression",
+    ],
+    [
+      "/api/differentials/presentations/depression",
+      "../src/app/api/differentials/presentations/[slug]/route",
+      "depression",
+    ],
+    [
+      "/api/differentials/presentation-depression?kind=presentation",
+      "../src/app/api/differentials/[slug]/route",
+      "presentation-depression",
+    ],
+  ] as const)(
+    "%s falls back to a hosted publication still under the legacy presentation slug",
+    async (path, modulePath, slug) => {
+      const workflow = {
+        id: "depression",
+        title: "Hosted legacy presentation",
+        subtitle: "Hosted",
+        criteria: [],
+        candidates: [],
+        reviewChecklist: [],
+      };
+      const client = createSupabaseMock();
+      const lookups: unknown[] = [];
+      client.rpc.mockImplementation(async (name: string, args?: { p_slug?: string | null }) => {
+        if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") {
+          return ok([
+            {
+              limited: false,
+              limit_value: 120,
+              remaining: 119,
+              retry_after_seconds: 60,
+              reset_at: new Date().toISOString(),
+            },
+          ]);
+        }
+        if (args && "p_slug" in args) lookups.push(args.p_slug);
+        return ok(
+          args?.p_slug === "depression"
+            ? [
+                {
+                  initialized: true,
+                  record: { sourceStatus: "current", validationStatus: "approved" },
+                  render_payload: workflow,
+                  snapshot: { state: "current" },
+                },
+              ]
+            : [{ initialized: true, record: null, render_payload: null, snapshot: { state: "current" } }],
+        );
+      });
+      mockRuntime(client);
+      const { GET } = (await import(/* @vite-ignore */ modulePath)) as {
+        GET: (request: Request, context: { params: Promise<{ slug: string }> }) => Promise<Response>;
+      };
+      const response = await GET(request(path), { params: Promise.resolve({ slug }) });
+      const body = JSON.stringify(await response.json());
+      expect(response.status).toBe(200);
+      expect(body).toContain("Hosted legacy presentation");
+      expect(lookups.slice(0, 2)).toEqual(["presentation-depression", "depression"]);
+    },
+  );
+
   it("does not expose an authenticated owner's unpublished diagnosis row", async () => {
     const diagnosis = {
       slug: "owner-diagnosis",

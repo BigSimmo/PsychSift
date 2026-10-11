@@ -1,20 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonFaceClass } from "@/components/ui/button-face";
-import { cn } from "@/components/ui-primitives";
 
 export const metadata: Metadata = {
   title: "Document Search - PsychSift",
   description: "Search indexed clinical documents and review matching evidence.",
 };
-
-// Primary buttons wear the area colour, never the shared near-black command
-// fill (design pass, October 2026). Re-pointing the command tokens on the
-// button itself keeps Button's hover and pressed states and leaves every other
-// control on the page alone. In forced colours the accent becomes LinkText,
-// which ButtonText cannot sit on, so the native button pair comes back.
-const clinicalPrimaryAccent =
-  "[--command:var(--clinical-accent)] [--command-hover:var(--clinical-accent-hover)] [--command-active:var(--clinical-accent-active)] [--command-contrast:var(--clinical-accent-contrast)] forced-colors:[--command:ButtonFace] forced-colors:[--command-hover:ButtonFace] forced-colors:[--command-active:ButtonFace]";
 
 // The empty screen's line drawing: two stacked documents and a magnifier, in
 // the area colour. It repeats what the heading says, so it is hidden from
@@ -82,10 +73,7 @@ export default function DocumentsSearchRoute() {
         matching page and passage.
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <Link
-          href="/?mode=documents&focus=1"
-          className={cn(buttonFaceClass({ variant: "primary" }), clinicalPrimaryAccent)}
-        >
+        <Link href="/?mode=documents&focus=1" className={buttonFaceClass({ variant: "primary" })}>
           Open Documents search
         </Link>
       </div>

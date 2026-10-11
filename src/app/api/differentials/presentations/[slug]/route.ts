@@ -11,6 +11,8 @@ import { loadDifferentialSnapshot } from "@/lib/differential-seed";
 import {
   getDifferentialRecord,
   getPresentationWorkflow,
+  presentationLookupSlugs,
+  resolvePresentationSlug,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
 } from "@/lib/differentials";
@@ -53,7 +55,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const snapshot = loadDifferentialSnapshot();
-      const workflow = getPresentationWorkflow(normalizedSlug);
+      const workflow = getPresentationWorkflow(resolvePresentationSlug(normalizedSlug));
       if (!workflow) return notFoundResponse(normalizedSlug);
       const governance = deriveGovernanceFromSnapshot(snapshot);
       const candidates = workflow.candidates.flatMap((candidate) => {
@@ -90,29 +92,37 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
     const snapshot = loadDifferentialSnapshot();
     const seedGovernance = deriveGovernanceFromSnapshot(snapshot);
-    const seedWorkflow = getPresentationWorkflow(normalizedSlug);
-    const presentation = await readCanonicalSiteContentRecords({
-      supabase,
-      kind: "presentation",
-      slug: normalizedSlug,
-      seeds: seedWorkflow
-        ? [
-            {
-              workflow: seedWorkflow,
-              governance: {
-                sourceStatus: seedGovernance.source_status,
-                validationStatus: seedGovernance.validation_status,
-                lastReviewedAt: null,
-                reviewDueAt: null,
+    const canonicalSlug = resolvePresentationSlug(normalizedSlug);
+    const seedWorkflow = getPresentationWorkflow(canonicalSlug);
+    const lookupSlugs = presentationLookupSlugs(normalizedSlug);
+    const readPresentation = (lookupSlug: string) =>
+      readCanonicalSiteContentRecords({
+        supabase,
+        kind: "presentation",
+        slug: lookupSlug,
+        seeds: seedWorkflow
+          ? [
+              {
+                workflow: seedWorkflow,
+                governance: {
+                  sourceStatus: seedGovernance.source_status,
+                  validationStatus: seedGovernance.validation_status,
+                  lastReviewedAt: null,
+                  reviewDueAt: null,
+                },
               },
-            },
-          ]
-        : [],
-      mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
-        workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
-        governance: canonicalSiteContentGovernance(canonicalRecord),
-      }),
-    });
+            ]
+          : [],
+        mapRecord: ({ canonicalRecord, finalRenderPayload }) => ({
+          workflow: scopePresentationWorkflow(finalRenderPayload as unknown as DifferentialPresentationWorkflow),
+          governance: canonicalSiteContentGovernance(canonicalRecord),
+        }),
+      });
+    let presentation = await readPresentation(lookupSlugs[0]);
+    for (const fallbackSlug of lookupSlugs.slice(1)) {
+      if (presentation.records.length > 0) break;
+      presentation = await readPresentation(fallbackSlug);
+    }
     const payload = presentation.records[0];
     if (!payload) return notFoundResponse(normalizedSlug);
     const diagnosisPopulation = await readCanonicalSiteContentRecords({

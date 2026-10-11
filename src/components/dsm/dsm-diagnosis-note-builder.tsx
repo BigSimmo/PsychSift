@@ -119,15 +119,18 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
     }
   }
 
-  async function copyNote() {
+  async function copyNote(): Promise<boolean> {
+    let copied = false;
     try {
       await copyTextToClipboard(note);
       setCopyState("copied");
+      copied = true;
     } catch {
       setCopyState("failed");
     }
     if (copyTimer.current) window.clearTimeout(copyTimer.current);
     copyTimer.current = window.setTimeout(() => setCopyState("idle"), COPY_RESET_MS);
+    return copied;
   }
 
   const assessedCount = criteria.filter(
@@ -257,12 +260,7 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
               {note}
             </pre>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <CopyButton
-                label="Copy note"
-                copied={copyState === "copied"}
-                onClick={() => void copyNote()}
-                testId="dsm-note-copy"
-              />
+              <CopyButton label="Copy note" copied={copyState === "copied"} onClick={copyNote} testId="dsm-note-copy" />
               <Button type="button" variant="secondary" onClick={resetBuilder} icon={RotateCcw}>
                 Start over
               </Button>

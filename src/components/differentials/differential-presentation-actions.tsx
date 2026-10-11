@@ -19,11 +19,11 @@ export function CopyAfterReviewButton({
   const [copied, setCopied] = useState(false);
   const showToast = useCopyToast();
 
-  async function copyText() {
+  async function handleCopy() {
     try {
       await copyTextToClipboard(text);
       setCopied(true);
-      showToast("Copied to clipboard");
+      showToast("Copied presentation");
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
       setCopied(false);
@@ -33,7 +33,8 @@ export function CopyAfterReviewButton({
   return (
     <button
       type="button"
-      onClick={copyText}
+      onClick={handleCopy}
+      aria-label={label}
       className={cn(
         "inline-flex min-h-tap items-center justify-center gap-2 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent)] px-4 text-sm font-bold text-[color:var(--clinical-accent-contrast)] shadow-[var(--e2)] hover:bg-[color:var(--primary-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
         className,

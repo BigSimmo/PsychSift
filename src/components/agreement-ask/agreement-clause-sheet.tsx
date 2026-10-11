@@ -50,6 +50,7 @@ export function AgreementClauseSheet({
               ariaLabel={`Copy clause ${clause.clause}`}
               copied={copied}
               onClick={onCopy}
+              toastOnSuccess={false}
               className="w-full"
               testId="agreement-copy-clause"
             />

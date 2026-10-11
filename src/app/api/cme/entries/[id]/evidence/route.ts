@@ -110,8 +110,9 @@ export async function POST(request: Request, { params }: Context) {
     const evidenceId = randomUUID();
     const storagePath = `${user.id}/${id}/${evidenceId}`;
     try {
-      const upload = await client.storage
-        .from(CME_EVIDENCE_BUCKET)
+      // Only the Storage transfer may outlast the default deadline.
+      const upload = await createAdminClient({ timeoutMs: null })
+        .storage.from(CME_EVIDENCE_BUCKET)
         .upload(storagePath, bytes, { contentType: file.type, cacheControl: "0", upsert: false });
       if (upload.error) throw new Error();
     } catch {

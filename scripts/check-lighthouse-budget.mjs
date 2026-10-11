@@ -61,8 +61,8 @@ export const DEFAULT_TOLERANCE = Object.freeze({
 
 /**
  * Runner tolerance floors for bimodal variance on high-variance routes.
- * Scoped to exact intended run ids only: desktop root ("desktop-root") and the
- * documents-search strategy runs ("mobile-documents-search", "desktop-documents-search").
+ * Scoped to exact intended run ids only: desktop root ("desktop-root"), mobile root ("mobile-root"),
+ * and the documents-search strategy runs ("mobile-documents-search", "desktop-documents-search").
  * Do NOT match bare "documents" substrings — that would raise the LCP floor on
  * unintended future /documents/* routes and false-green real regressions.
  * Headless Chromium runner scheduling exhibits ~150-180ms LCP jitter between runs
@@ -73,7 +73,12 @@ export const BIMODAL_RUNNER_TOLERANCE_FLOORS = {
 };
 
 /** Exact run ids that receive BIMODAL_RUNNER_TOLERANCE_FLOORS — keep this set narrow. */
-const BIMODAL_RUNNER_VARIANCE_RUNS = new Set(["desktop-root", "mobile-documents-search", "desktop-documents-search"]);
+const BIMODAL_RUNNER_VARIANCE_RUNS = new Set([
+  "desktop-root",
+  "mobile-root",
+  "mobile-documents-search",
+  "desktop-documents-search",
+]);
 
 export function isBimodalRunnerVarianceRun(runName) {
   if (!runName || typeof runName !== "string") return false;
@@ -544,6 +549,11 @@ export function selfTest() {
   const bimodalIgnored = gradeRun({ run: "desktop-root", lcpMs: 961 }, { lcpMs: 786, cls: 0, tbtMs: 100 });
   if (bimodalIgnored.length !== 0) throw new Error("selfTest failed: bimodal runner variance was not accommodated");
 
+  const bimodalMobileRootIgnored = gradeRun({ run: "mobile-root", lcpMs: 961 }, { lcpMs: 786, cls: 0, tbtMs: 100 });
+  if (bimodalMobileRootIgnored.length !== 0) {
+    throw new Error("selfTest failed: mobile-root bimodal runner variance was not accommodated");
+  }
+
   const bimodalDocsSearchIgnored = gradeRun(
     { run: "desktop-documents-search", lcpMs: 961 },
     { lcpMs: 786, cls: 0, tbtMs: 100 },
@@ -563,8 +573,8 @@ export function selfTest() {
   if (nonBimodalDocuments.length === 0) {
     throw new Error("selfTest failed: unintended documents* run got bimodal LCP floor (false-green path)");
   }
-  if (isBimodalRunnerVarianceRun("mobile-root")) {
-    throw new Error("selfTest failed: mobile-root incorrectly treated as bimodal");
+  if (isBimodalRunnerVarianceRun("mobile-dsm")) {
+    throw new Error("selfTest failed: mobile-dsm incorrectly treated as bimodal");
   }
 
   const comparison = compareToLighthouseBudget(sampleRows, { ...sampleBudget, baseline: staleBaseline });

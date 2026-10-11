@@ -119,6 +119,11 @@
   --command: var(--work-primary);
   --command-hover: var(--mode-identity-deep, var(--work-primary));
   --command-contrast: var(--work-primary-text);
+  /* The shared primary Button (button-face.ts) reads these; outside a work frame it falls back to Clinical blue. */
+  --action: var(--command);
+  --action-hover: var(--command-hover);
+  --action-active: var(--mode-identity-deep, var(--work-primary));
+  --action-contrast: var(--command-contrast);
 }
 
 /* Glass fallback. Blur is the costliest paint in the frame: on an older or
