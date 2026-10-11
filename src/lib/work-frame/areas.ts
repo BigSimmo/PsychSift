@@ -188,6 +188,9 @@ const myDay: WorkArea = {
   id: "day",
   name: "My Day",
   identity: "my-day",
+  // Usefulness audit (11 Oct 2026): Calendar is the one month view, so it is a tab; Hours is
+  // checked now and then, so it sits in More with a line on Week; the setup pages that apply
+  // to all of Work mode are reached from the side menu (Work profile, Help) and Help (Set up Work).
   tabs: [
     { id: "my-day-today", label: "Today", sub: "Your day", icon: "sun", href: "/my-day", title: "Today" },
     {
@@ -198,7 +201,13 @@ const myDay: WorkArea = {
       href: "/my-day/week",
       title: "This week",
     },
-    { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
+    {
+      id: "my-day-calendar",
+      label: "Calendar",
+      sub: "Everything dated",
+      icon: "calendar",
+      href: "/my-day/calendar",
+    },
   ],
   groups: [
     {
@@ -215,13 +224,7 @@ const myDay: WorkArea = {
           // The new work mode reads this list in Notifications (the address redirects there).
           gate: "classic-work-mode",
         },
-        {
-          id: "my-day-calendar",
-          label: "Calendar",
-          sub: "Everything dated",
-          icon: "calendar",
-          href: "/my-day/calendar",
-        },
+        { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
         {
           id: "my-day-favourites",
           label: "Favourites",
@@ -267,16 +270,16 @@ const myDay: WorkArea = {
       ],
     },
     {
-      label: "Set up",
+      label: "Settings",
       items: [
         {
-          id: "my-day-setup",
-          label: "Set up Work",
-          sub: "Walkthrough",
-          icon: "compass",
-          href: "/my-day/setup",
-          // The walkthrough and the help centre draw their own Back in the top bar.
-          band: false,
+          // Its Privacy tab is part of the same page, so one entry covers both.
+          id: "my-day-profile",
+          label: "Work profile",
+          short: "Profile",
+          sub: "Stage, workplaces, privacy",
+          icon: "user",
+          href: "/my-day/profile",
         },
         {
           id: "my-day-help",
@@ -284,15 +287,8 @@ const myDay: WorkArea = {
           sub: "How each area works",
           icon: "help",
           href: "/my-day/help",
+          // The help centre draws its own Back in the top bar.
           band: false,
-        },
-        {
-          id: "my-day-profile",
-          label: "Work profile",
-          short: "Profile",
-          sub: "Stage, workplaces",
-          icon: "user",
-          href: "/my-day/profile",
         },
         {
           id: "my-day-alerts",
@@ -302,15 +298,6 @@ const myDay: WorkArea = {
           href: "/my-day/alerts",
           // The new work mode keeps these settings under Notifications (the address redirects there).
           gate: "classic-work-mode",
-        },
-        {
-          id: "my-day-privacy",
-          label: "Privacy",
-          sub: "What is kept where",
-          icon: "shield",
-          href: "/my-day/profile?tab=privacy",
-          paths: ["/my-day/profile"],
-          query: { tab: "privacy" },
         },
         {
           id: "my-day-customise",

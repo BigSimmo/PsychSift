@@ -1553,14 +1553,10 @@ export function NeedsYouCard({
     body = (
       <div data-testid="my-day-empty" className="grid gap-0.5 px-3.5 py-3">
         {checked.length > 0 ? (
-          <>
-            <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">
-              {incomplete ? "Nothing found in the sources that loaded" : "Nothing needs you right now"}
-            </p>
-            <p className="m-0 text-2xs text-[color:var(--text-muted)]">
-              {`Checked ${listNames(checked)}${checkedAt ? ` at ${checkedAt}` : ""}.`}
-            </p>
-          </>
+          // The stamp under the card already says what was checked and when, so it is not repeated here.
+          <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">
+            {incomplete ? "Nothing found in the sources that loaded" : "Nothing needs you right now"}
+          </p>
         ) : (
           <>
             <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">Couldn&apos;t check your day</p>
