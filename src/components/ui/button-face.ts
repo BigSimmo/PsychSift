@@ -16,7 +16,7 @@ export type ButtonSize = "sm" | "md" | "lg";
 // mean "important" — importance is `primary`.
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
-    "[--command:var(--action,var(--clinical-accent))] [--command-hover:var(--action-hover,var(--clinical-accent-hover))] [--command-active:var(--action-active,var(--clinical-accent-active))] [--command-contrast:var(--action-contrast,var(--clinical-accent-contrast))] forced-colors:[--command:ButtonFace] forced-colors:[--command-hover:ButtonFace] forced-colors:[--command-active:ButtonFace] bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--command-hover)] hover:shadow-[var(--e3)] active:bg-[color:var(--command-active)]",
+    "[--command:var(--action,var(--clinical-accent))] [--command-hover:var(--action-hover,var(--clinical-accent-hover))] [--command-active:var(--action-active,var(--clinical-accent-active))] [--command-contrast:var(--action-contrast,var(--clinical-accent-contrast))] forced-colors:[--command:ButtonFace] forced-colors:[--command-hover:ButtonFace] forced-colors:[--command-active:ButtonFace] forced-colors:[--command-contrast:ButtonText] bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--command-hover)] hover:shadow-[var(--e3)] active:bg-[color:var(--command-active)]",
   secondary:
     "border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-inset)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)]",
   toolbar:
