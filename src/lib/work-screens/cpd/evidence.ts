@@ -160,20 +160,28 @@ export function evidenceRowLine(row: EvidenceRow): string {
 export function needsEvidenceEmpty(view: EvidenceView, filtered: boolean): { title: string; body?: string } {
   if (view.unknown > 0) {
     return {
-      title: "None known to need evidence",
+      title: "None found missing yet",
       body:
         view.unknown === 1
-          ? "Evidence was not counted for 1 activity. Open it to check."
-          : `Evidence was not counted for ${view.unknown} activities. Open each to check.`,
+          ? "Evidence was not checked for 1 activity. Open it to check."
+          : `Evidence was not checked for ${view.unknown} activities. Open each to check.`,
     };
   }
   if (filtered) return { title: "Nothing here needs evidence", body: "Try another type to see the rest." };
   return { title: "Every activity has evidence" };
 }
 
+/**
+ * True when no activity in the year had its evidence checked (the demo, the sample). The page then says
+ * so once, plainly, instead of showing zero counts and an empty "Needs evidence" that read as all clear.
+ */
+export function evidenceUnchecked(view: EvidenceView): boolean {
+  return view.total > 0 && view.unknown === view.total;
+}
+
 /** "1 file", "3 files". */
 export function fileCountWords(files: number | null): string {
-  if (files === null) return "Not counted";
+  if (files === null) return "Not checked";
   return files === 1 ? "1 file" : `${files} files`;
 }
 

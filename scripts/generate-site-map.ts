@@ -215,9 +215,9 @@ const routeDescriptions: Record<string, string> = {
   "/on-call/whos-on/roster": "Who is on today from the team roster, names and shift kind only, with no phone numbers.",
   "/cme/cpd-home":
     "Prepare the year's CPD log to add to AMA CPD Home by file or copy. The CPD Home import format has not been checked.",
-  "/cme/applications":
+  "/admin/applications":
     "Job applications season: the doctor's own applications, typed season dates and referee status, kept on the device.",
-  "/cme/applications/cv": "A CV draft built from the doctor's CPD, teaching and terms, to copy or print.",
+  "/admin/applications/cv": "A CV draft built from the doctor's CPD, teaching and terms, to copy or print.",
   "/my-day/profile/agreement":
     "Ask the agreement: rest and hours questions answered with the verified clause 15 text of the WA Health AMA agreement, not yet signed off. Anything else is marked not checked.",
   "/teaching/term/folder":

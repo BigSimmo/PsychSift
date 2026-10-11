@@ -66,7 +66,7 @@ function featureGroups(own: FeatureSearchOwn | null): FeatureSearchGroup[] {
     { area: "admin", icon: "check-list", records: readySearchRecords() },
     { area: "cpd", icon: "upload", records: cpdHomeSearchRecords() },
     ...(applications
-      ? [{ area: "cpd" as const, icon: "flag" as const, records: applicationsSearchRecords(applications) }]
+      ? [{ area: "admin" as const, icon: "flag" as const, records: applicationsSearchRecords(applications) }]
       : []),
     { area: "teach", icon: "folder", records: termFolderSearchEntries() },
     // Pages only: the two made-up sample views hold no real records. Signed out only, like the

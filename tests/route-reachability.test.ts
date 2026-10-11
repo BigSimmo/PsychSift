@@ -34,6 +34,20 @@ const srcRoot = path.join(repoRoot, "src");
 
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
+  // CPD tidy, owner approval 11 Oct 2026: the CPD menu was cut to seven entries.
+  [
+    "/cme/evidence",
+    "Reached from End of year step 2 (a CmeTextLink with the year in its address) and Log's evidence link, which this Link-only scan does not model.",
+  ],
+  [
+    "/cme/export",
+    "Reached from End of year step 3 (a CmeTextLink with the year in its address), which this Link-only scan does not model.",
+  ],
+  [
+    "/cme/applications",
+    "Kept for old links only: redirects to /admin/applications, where Job applications now lives in the Admin menu.",
+  ],
+  ["/cme/applications/cv", "Kept for old links only: redirects to /admin/applications/cv."],
   // Alerts work, owner approval 7 Oct 2026.
   [
     "/my-day/alerts/earlier",

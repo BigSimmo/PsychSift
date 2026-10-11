@@ -514,6 +514,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/applications",
+        "file": "src/app/(search-app)/admin/applications/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/therapy-recommend-popup-dossier",
         "file": "src/app/mockups/therapy-recommend-popup-dossier/page.tsx",
         "area": "mockup"
@@ -561,6 +566,11 @@
       {
         "path": "/roster/settings",
         "file": "src/app/(search-app)/roster/settings/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/applications/cv",
+        "file": "src/app/(search-app)/admin/applications/cv/page.tsx",
         "area": "product"
       },
       {
@@ -1124,11 +1134,6 @@
         "area": "product"
       },
       {
-        "path": "/cme/applications",
-        "file": "src/app/(search-app)/cme/applications/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/mockups/development/corpus-health",
         "file": "src/app/mockups/development/corpus-health/page.tsx",
         "area": "mockup"
@@ -1181,11 +1186,6 @@
       {
         "path": "/formulation/[slug]",
         "file": "src/app/(search-app)/formulation/[slug]/page.tsx",
-        "area": "product"
-      },
-      {
-        "path": "/cme/applications/cv",
-        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
         "area": "product"
       },
       {
@@ -1799,6 +1799,16 @@
         "path": "/applications",
         "file": "src/app/applications/route.ts",
         "target": "/tools"
+      },
+      {
+        "path": "/cme/applications",
+        "file": "src/app/(search-app)/cme/applications/page.tsx",
+        "target": "/admin/applications"
+      },
+      {
+        "path": "/cme/applications/cv",
+        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
+        "target": "/admin/applications/cv"
       },
       {
         "path": "/dictionary/browse",
@@ -4579,6 +4589,16 @@
       {
         "path": "docs/prompts/rag-coverage-gate-extraction.md",
         "section": "prompts",
+        "catalogued": true
+      },
+      {
+        "path": "docs/design-system/ADOPTION.md",
+        "section": "design-system",
+        "catalogued": true
+      },
+      {
+        "path": "docs/design-system/ADOPTION.md",
+        "section": "design-system",
         "catalogued": true
       },
       {
