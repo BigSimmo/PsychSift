@@ -162,9 +162,10 @@ describe("Roster Month tab", () => {
     ]);
     render(<RosterMonthPage now={NOW} />);
     const rows = within(screen.getByTestId("roster-month-coming")).getAllByTestId("roster-month-coming-shift");
-    // The lead card shows Thu 8, so the run starts on the second row and runs past the third.
-    expect(rows).toHaveLength(3);
+    // The lead card shows Thu 8, so the run starts on the second row; its later nights are not listed again.
+    expect(rows).toHaveLength(2);
     expect(rows[1]).toHaveTextContent("Nights · 3 in a row");
+    expect(rows.filter((row) => /\bNight\b/.test(row.textContent ?? ""))).toHaveLength(0);
   });
 
   it("lists leave in date order with the shifts", () => {

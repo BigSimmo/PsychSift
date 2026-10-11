@@ -456,13 +456,22 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     const runListed = nightRun
       ? upcoming.filter((item) => item.kind === "night" && nightRun.dates.includes(perthDateOf(item.startsAt))).length
       : 0;
+    // A run of nights that starts in the list but runs past it shows once, as one row.
+    const runShown = nightRun && nightRun.count > runListed && upcoming.some((item) => item.id === nightRun.first.id);
+    const listed = runShown
+      ? upcoming.filter(
+          (item) =>
+            item.id === nightRun.first.id ||
+            !(item.kind === "night" && nightRun.dates.includes(perthDateOf(item.startsAt))),
+        )
+      : upcoming;
     // Shifts, a later run of nights and leave, merged in date order.
-    const rows: { date: string; node: ReactNode }[] = upcoming.map((item) => {
+    const rows: { date: string; node: ReactNode }[] = listed.map((item) => {
       const date = perthDateOf(item.startsAt);
       const shown = byId.get(item.id);
       const place = shown ? (shown.workplace ?? shown.location) : null;
       // A run of nights that starts here but runs past the shifts listed keeps its length on this row.
-      const run = nightRun && nightRun.first.id === item.id && nightRun.count > runListed ? nightRun : null;
+      const run = runShown && nightRun.first.id === item.id ? nightRun : null;
       return {
         date,
         node: (
