@@ -2,6 +2,8 @@
 
 This repo uses one shared search experience across the global shell, dashboard result pages, and document-detail/source routes. Keep the behaviour page-aware but predictable.
 
+Work-area tabs remain in page flow and follow their universal header's hide/reveal state. Their sticky hook batches scroll and geometry notifications into animation frames and rechecks compositor motion on completion rather than polling layout throughout the animation. Focus changes also recheck the sticky position. Work action docks keep their sticky page-flow placement; their focus clearance applies to both the document and `#main-content`, so installed phones receive the same clearance as browser tabs. Assessment browser and installed-layout regression coverage lives in `tests/ui-phone-scroll-assessments.spec.ts`; emulation does not establish physical iPhone acceptance.
+
 ## Page ownership model
 
 | Page state                                                   | Composer placement                                                                                                                                | Reserve owner                                                                               |

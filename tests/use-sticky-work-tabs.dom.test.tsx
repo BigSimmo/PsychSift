@@ -27,6 +27,80 @@ function rectAt(top: number): DOMRect {
 afterEach(() => vi.restoreAllMocks());
 
 describe("useStickyWorkTabs", () => {
+  it("coalesces scroll bursts and does not poll geometry while a compositor animation runs", () => {
+    let nextId = 0;
+    const frames = new Map<number, FrameRequestCallback>();
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      frames.set(++nextId, callback);
+      return nextId;
+    });
+    vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+      frames.delete(id);
+    });
+    const flush = () => {
+      const pending = [...frames.values()];
+      frames.clear();
+      act(() => pending.forEach((callback) => callback(0)));
+    };
+    const { getByTestId, unmount } = render(<Band />);
+    flush();
+    const band = getByTestId("band");
+    const rect = vi.spyOn(band, "getBoundingClientRect").mockReturnValue(rectAt(16));
+    Object.defineProperty(band, "getAnimations", {
+      configurable: true,
+      value: () => [{ playState: "running" }],
+    });
+    act(() => {
+      for (let i = 0; i < 20; i++) document.dispatchEvent(new Event("scroll"));
+    });
+    expect(frames.size).toBe(1);
+    flush();
+    expect(rect).toHaveBeenCalledTimes(1);
+    expect(frames.size).toBe(0);
+    expect(band.hasAttribute("data-stuck")).toBe(true);
+
+    document.dispatchEvent(new Event("scroll"));
+    expect(frames.size).toBe(1);
+    unmount();
+    expect(frames.size).toBe(0);
+  });
+
+  it("follows its header owner but ignores unrelated footer visibility mutations", async () => {
+    const collapse = document.createElement("div");
+    collapse.dataset.testid = "universal-header-collapse";
+    collapse.innerHTML = '<header class="universal-header"></header>';
+    const footer = document.createElement("div");
+    document.body.append(collapse, footer);
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    const { getByTestId, unmount } = render(<Band />);
+    const band = getByTestId("band");
+    const rect = vi.spyOn(band, "getBoundingClientRect").mockReturnValue(rectAt(16));
+    try {
+      await act(async () => {
+        footer.dataset.scrollHidden = "true";
+        await Promise.resolve();
+      });
+      expect(rect).not.toHaveBeenCalled();
+      await act(async () => {
+        collapse.dataset.scrollHidden = "true";
+        await Promise.resolve();
+      });
+      expect(band.hasAttribute("data-bar-hidden")).toBe(true);
+      await act(async () => {
+        delete collapse.dataset.scrollHidden;
+        await Promise.resolve();
+      });
+      expect(band.hasAttribute("data-bar-hidden")).toBe(false);
+    } finally {
+      unmount();
+      collapse.remove();
+      footer.remove();
+    }
+  });
+
   it("marks the band stuck against where the CSS holds it now, not at the last measure", () => {
     // Run each frame at once; returning 0 leaves no frame pending.
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
