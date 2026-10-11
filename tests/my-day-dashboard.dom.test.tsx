@@ -414,7 +414,8 @@ describe("MyDayDashboard cards", () => {
     render(
       <MyDayDashboard
         {...props({
-          items: [item("a", "soon")],
+          // Info, so the flag card (overdue or soon only) leaves the one row in Needs you to count.
+          items: [item("a", "info")],
           sources: {
             ...EMPTY_SOURCES,
             roster: { status: "failed", shifts: [], sample: false },
@@ -470,8 +471,8 @@ describe("MyDayDashboard cards", () => {
 
 describe("Needs you", () => {
   const five = [
-    item("a", "overdue", { detail: "Routine due" }),
-    item("b", "overdue"),
+    item("a", "overdue"),
+    item("b", "overdue", { detail: "Routine due" }),
     item("c", "soon"),
     item("d", "soon"),
     item("e", "info"),
@@ -484,13 +485,15 @@ describe("Needs you", () => {
     const rows = [...card.querySelectorAll('[data-testid^="my-day-item-"]')].map((row) =>
       row.getAttribute("data-testid"),
     );
-    expect(rows).toEqual(["my-day-item-a", "my-day-item-b", "my-day-item-c"]);
+    // "a" leads the flag card above, so Needs you starts at the next overdue row.
+    expect(rows).toEqual(["my-day-item-b", "my-day-item-c", "my-day-item-d"]);
     // Two lines a row (design review item 8): the detail line only repeated the state.
     expect(within(card).queryByText("Routine due")).toBeNull();
     // The row's one action opens the item, carrying the way back to My Day.
-    expect(screen.getByTestId("my-day-open-a").getAttribute("href")).toBe("/admin/a?from=my-day");
-    expect(screen.getByTestId("my-day-open-a").textContent).toBe("Open");
-    expect(card.textContent).toContain("Needs you3 of 5");
+    expect(screen.getByTestId("my-day-open-b").getAttribute("href")).toBe("/admin/b?from=my-day");
+    expect(screen.getByTestId("my-day-open-b").textContent).toBe("Open");
+    // The count describes the rows below (the flagged one is not counted twice); All N still opens all five.
+    expect(card.textContent).toContain("Needs you3 of 4");
     fireEvent.click(within(card).getByRole("button", { name: "See all 5" }));
     expect(onShowAll).toHaveBeenCalledTimes(1);
   });
@@ -499,30 +502,32 @@ describe("Needs you", () => {
     render(<MyDayDashboard {...props({ items: five })} />);
     // axe target-size (WCAG 2.5.8): Later's 48px box is pulled up under the pill, so the
     // pill is raised over it and its tap layer ends at its own bottom edge.
-    const pill = screen.getByTestId("my-day-open-a");
+    const pill = screen.getByTestId("my-day-open-b");
     expect(pill.className).toContain("z-10");
     expect(pill.className).toContain("before:bottom-0");
-    expect(screen.getByRole("button", { name: "Later: Title a" }).className).toContain("min-h-12");
+    expect(screen.getByRole("button", { name: "Later: Title b" }).className).toContain("min-h-12");
   });
 
   it("moves a row to tomorrow on this device with Later, and Undo brings it back", () => {
     render(<MyDayDashboard {...props({ items: five })} />);
-    fireEvent.click(screen.getByRole("button", { name: "Later: Title a" }));
-    expect(screen.queryByTestId("my-day-item-a")).toBeNull();
+    // "a" is in the flag card, so Later acts on Needs you's first row, "b".
+    fireEvent.click(screen.getByRole("button", { name: "Later: Title b" }));
+    expect(screen.queryByTestId("my-day-item-b")).toBeNull();
     // The next row moves up so the card still shows three.
-    expect(screen.getByTestId("my-day-item-d")).toBeTruthy();
+    expect(screen.getByTestId("my-day-item-e")).toBeTruthy();
     // work-mode redesign, owner request 6 Oct 2026: the note under Needs you reads "1 hidden until tomorrow" over the item's title.
     expect(screen.getByRole("status").textContent).toContain("1 hidden until tomorrow");
-    expect(screen.getByRole("status").textContent).toContain("Title a");
-    expect(JSON.parse(window.localStorage.getItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY)!)).toEqual({ a: "2026-10-04" });
+    expect(screen.getByRole("status").textContent).toContain("Title b");
+    expect(JSON.parse(window.localStorage.getItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY)!)).toEqual({ b: "2026-10-04" });
 
     fireEvent.click(screen.getByRole("button", { name: "Undo" }));
-    expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
+    expect(screen.getByTestId("my-day-item-b")).toBeTruthy();
     expect(window.localStorage.getItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY)).toBeNull();
   });
 
   it("never says nothing else needs you when every row is hidden but a source failed", () => {
-    render(<MyDayDashboard {...props({ items: [item("a", "soon")], incomplete: true })} />);
+    // Info, so no flag card takes the one row out of Needs you.
+    render(<MyDayDashboard {...props({ items: [item("a", "info")], incomplete: true })} />);
     fireEvent.click(screen.getByRole("button", { name: "Later: Title a" }));
     expect(screen.getByTestId("my-day-needs-you-snoozed").textContent).toBe(
       "Nothing else found in the sources that loaded. 1 hidden until tomorrow.",
@@ -531,12 +536,34 @@ describe("Needs you", () => {
 
   it("shows a moved row again from the day it comes back", () => {
     window.localStorage.setItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY, JSON.stringify({ a: "2026-10-04" }));
-    render(<MyDayDashboard {...props({ items: [item("a", "overdue")] })} />);
+    // Info, so on its return day the row comes back to Needs you rather than to the flag card.
+    render(<MyDayDashboard {...props({ items: [item("a", "info")] })} />);
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
     expect(screen.getByTestId("my-day-needs-you-snoozed").textContent).toContain("1 hidden until tomorrow");
     cleanup();
-    render(<MyDayDashboard {...props({ items: [item("a", "overdue")], today: "2026-10-04" })} />);
+    render(<MyDayDashboard {...props({ items: [item("a", "info")], today: "2026-10-04" })} />);
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
+  });
+
+  it("leaves the flagged item out of Needs you while the flag shows, and lists it again when the flag is hidden", () => {
+    render(<MyDayDashboard {...props({ items: five })} />);
+    expect(within(screen.getByTestId("my-day-card-flag")).getByText(/Title a/)).toBeTruthy();
+    let card = screen.getByTestId("my-day-card-needs-you");
+    expect(within(card).queryByTestId("my-day-item-a")).toBeNull();
+    // Still counted: All N matches the full list it opens.
+    expect(within(card).getByRole("button", { name: "See all 5" })).toBeTruthy();
+    cleanup();
+
+    window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["flag"]));
+    render(<MyDayDashboard {...props({ items: five })} />);
+    expect(screen.queryByTestId("my-day-card-flag")).toBeNull();
+    card = screen.getByTestId("my-day-card-needs-you");
+    const rows = [...card.querySelectorAll('[data-testid^="my-day-item-"]')].map((row) =>
+      row.getAttribute("data-testid"),
+    );
+    expect(rows).toEqual(["my-day-item-a", "my-day-item-b", "my-day-item-c"]);
+    expect(card.textContent).toContain("Needs you3 of 5");
+    expect(within(card).getByRole("button", { name: "See all 5" })).toBeTruthy();
   });
 
   it("changes nothing on the server: Later and Undo make no request", () => {
@@ -609,7 +636,8 @@ describe("Customise", () => {
   it("forgets hidden cards and moved rows at an account transition", () => {
     window.localStorage.setItem(MY_DAY_HIDDEN_CARDS_STORAGE_KEY, JSON.stringify(["quick-actions"]));
     window.localStorage.setItem(MY_DAY_SNOOZED_ITEMS_STORAGE_KEY, JSON.stringify({ a: "2026-10-04" }));
-    render(<MyDayDashboard {...props({ items: [item("a", "overdue")] })} />);
+    // Info, so once the move is forgotten the row returns to Needs you rather than to the flag card.
+    render(<MyDayDashboard {...props({ items: [item("a", "info")] })} />);
     expect(screen.queryByTestId("my-day-card-quick-actions")).toBeNull();
     expect(screen.queryByTestId("my-day-item-a")).toBeNull();
 

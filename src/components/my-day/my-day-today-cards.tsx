@@ -1503,6 +1503,7 @@ export function NeedsYouCard({
   shown,
   waiting,
   total,
+  flagged = false,
   checked,
   checkedAt,
   incomplete = false,
@@ -1521,6 +1522,8 @@ export function NeedsYouCard({
   readonly shown: readonly MyDayNeedsYouItem[];
   readonly waiting: number;
   readonly total: number;
+  /** The flag card above shows one waiting item, so it is counted here but not listed again. */
+  readonly flagged?: boolean;
   readonly checked: readonly string[];
   /** When the sources were last checked, "14:05". */
   readonly checkedAt?: string | null;
@@ -1577,7 +1580,7 @@ export function NeedsYouCard({
         className="m-0 px-3.5 py-3 text-xs font-semibold text-[color:var(--text-muted)]"
         data-testid="my-day-needs-you-snoozed"
       >
-        {`${incomplete ? "Nothing else found in the sources that loaded." : "Nothing else needs you today."} ${total - waiting} hidden until tomorrow.`}
+        {`${incomplete ? "Nothing else found in the sources that loaded." : "Nothing else needs you today."}${total > waiting ? ` ${total - waiting} hidden until tomorrow.` : ""}`}
       </p>
     );
   } else {
@@ -1590,12 +1593,10 @@ export function NeedsYouCard({
     );
   }
   const atLeast = incomplete ? "at least " : "";
+  // The count describes the rows below, so the item already in the flag is not counted twice.
+  const listed = flagged ? Math.max(waiting - 1, 0) : waiting;
   const count =
-    waiting === 0
-      ? undefined
-      : waiting > shown.length
-        ? `${atLeast}${shown.length} of ${waiting}`
-        : `${atLeast}${waiting}`;
+    listed === 0 ? undefined : listed > shown.length ? `${atLeast}${shown.length} of ${listed}` : `${atLeast}${listed}`;
   const stampTone = checked.length === 0 ? "off" : incomplete ? "warn" : "ok";
   const stamp =
     checked.length === 0

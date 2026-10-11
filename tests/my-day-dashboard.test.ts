@@ -92,6 +92,19 @@ describe("selectNeedsYou", () => {
     expect(moved).toMatchObject({ waiting: 4, total: 5 });
     expect(selectNeedsYou(items, { a: "2026-10-04" }, "2026-10-04").shown[0]?.id).toBe("a");
   });
+
+  it("leaves the flagged item out of the rows but still counts it", () => {
+    const items = [item("a", "overdue"), item("b", "overdue"), item("c", "soon"), item("d"), item("e")];
+    const flagged = selectNeedsYou(items, {}, TODAY, undefined, "a");
+    expect(flagged.shown.map((row) => row.id)).toEqual(["b", "c", "d"]);
+    expect(flagged).toMatchObject({ waiting: 5, total: 5 });
+    // A moved row and the flagged one both stay out; the moved one alone leaves waiting.
+    const moved = selectNeedsYou(items, { b: "2026-10-04" }, TODAY, undefined, "a");
+    expect(moved.shown.map((row) => row.id)).toEqual(["c", "d", "e"]);
+    expect(moved).toMatchObject({ waiting: 4, total: 5 });
+    // No flag: the rows are unchanged.
+    expect(selectNeedsYou(items, {}, TODAY, undefined, undefined).shown.map((row) => row.id)).toEqual(["a", "b", "c"]);
+  });
 });
 
 describe("selectUpNext", () => {
