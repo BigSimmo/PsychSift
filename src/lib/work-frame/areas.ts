@@ -656,7 +656,7 @@ const teaching: WorkArea = {
       label: "Sessions",
       items: [
         { id: "teach", label: "Presenting", sub: "Your next talk", icon: "board", href: "/teaching/teach" },
-        { id: "whats-on", label: "What's on", sub: "Other services", icon: "grid", href: "/teaching/whats-on" },
+        // What's on became Week's "Other services" filter (owner decision, 11 Oct 2026).
         { id: "term", label: "Term", sub: "Dates and goals", icon: "layers", href: "/teaching/term" },
         {
           id: "resources",

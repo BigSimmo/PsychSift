@@ -90,6 +90,14 @@ const staticRouteRedirects: Record<string, string> = {
   // reader with an old folder link lands on Term too, not on a 404. A `?term=`
   // query travels but Term always shows the current term.
   "/teaching/term/folder": "/teaching/term",
+  // What's on became Week's Other services filter (owner decision, 11 Oct 2026);
+  // the redirect below also sets `view=other` so the filter opens.
+  "/teaching/whats-on": "/teaching/week",
+};
+
+/** Query values a redirect adds to the target, for pages that became a filter. */
+const staticRouteRedirectParams: Record<string, Record<string, string>> = {
+  "/teaching/whats-on": { view: "other" },
 };
 
 /**
@@ -280,6 +288,9 @@ export async function proxy(request: NextRequest) {
   if (redirectTarget) {
     const url = request.nextUrl.clone();
     url.pathname = redirectTarget;
+    for (const [key, value] of Object.entries(staticRouteRedirectParams[pathname] ?? {})) {
+      url.searchParams.set(key, value);
+    }
     return withCsp(NextResponse.redirect(url));
   }
 

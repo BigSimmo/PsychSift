@@ -517,6 +517,15 @@ describe("Admin mode redirects", () => {
     expect(response.headers.get("content-security-policy")).toBeTruthy();
   });
 
+  it("sends What's on to Week with the Other services filter chosen", async () => {
+    const response = await proxy(requestFor("/teaching/whats-on?from=bookmark"));
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/teaching/week");
+    expect(location.searchParams.get("view")).toBe("other");
+    expect(location.searchParams.get("from")).toBe("bookmark");
+  });
+
   it("leaves the pages On Call keeps where they are", async () => {
     for (const path of ["/on-call/orientation", "/on-call/who-is-who", "/on-call/check"]) {
       expect((await proxy(requestFor(path))).headers.get("location")).toBeNull();

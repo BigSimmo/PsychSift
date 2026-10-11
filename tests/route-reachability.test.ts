@@ -125,6 +125,10 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "/on-call/education",
     "Retired On Call teaching calendar. It redirects to /teaching/week (proxy fast path plus a page backstop), so in-app navigation links Teaching Week directly; the page stays only for existing bookmarks.",
   ],
+  [
+    "/teaching/whats-on",
+    "Retired Teaching What's on page, now Week's Other services filter. It redirects to /teaching/week?view=other (proxy fast path plus a page backstop), so in-app navigation links the filter directly; the page stays only for existing bookmarks.",
+  ],
 ]);
 
 function isMockupPath(relPosix: string) {

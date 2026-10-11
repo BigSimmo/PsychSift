@@ -75,8 +75,13 @@ describe("This week", () => {
     );
     const first = render(<TeachingThisWeek demoMode={false} />);
     const list = await screen.findByTestId("teaching-week-list");
-    const buttons = screen.getAllByRole("button", { name: /^(Mine|Whole service)$/ });
-    expect(buttons.map((b) => b.textContent)).toEqual(["Mine", "Whole service"]);
+    // Other services (the third filter) has its own file: teaching-this-week-other.dom.test.tsx.
+    const buttons = screen.getAllByRole("button", { name: /^(Mine|Whole service|Other services)$/ });
+    expect(buttons.map((b) => b.getAttribute("aria-label") ?? b.textContent)).toEqual([
+      "Mine",
+      "Whole service",
+      "Other services",
+    ]);
     expect(buttons[0]).toHaveAttribute("aria-pressed", "true");
     expect(within(list).queryByText("Grand rounds")).toBeNull();
     fireEvent.click(buttons[1]);

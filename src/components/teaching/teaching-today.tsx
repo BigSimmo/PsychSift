@@ -273,7 +273,7 @@ function TodayBody({
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              href="/teaching/whats-on"
+              href="/teaching/week?view=other"
             />
           ) : null}
         </T5List>

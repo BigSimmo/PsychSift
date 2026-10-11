@@ -37,6 +37,8 @@ import {
   defaultWeekFilter,
   mineSessions,
   openFromOtherServices,
+  otherServiceMeta,
+  otherServiceSessions,
   sessionsOn,
   stripDays,
   weekCountLabel,
@@ -47,6 +49,7 @@ import {
 import {
   ALL_TEAMS,
   relocatedEntryId,
+  sessionHref,
   sessionsForTeam,
   teamInCalendar,
   type WeekFilter,
@@ -62,6 +65,7 @@ import {
   useTeachingSignedOut,
 } from "@/components/teaching/use-teaching-sample";
 import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/use-teaching-week";
+import { useWeekAdd, WeekAddNotice, WeekToggle } from "@/components/teaching/week-add-toggle";
 import { cn } from "@/components/ui-primitives";
 import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -75,38 +79,51 @@ const OnCallEntryEditor = dynamic(
 
 /*
  * Week (work-mode redesign, owner request 6 Oct 2026): the week's calendar card (the dates with
- * previous and next, a day rail, and Mine or Whole service), then every session day by day with a
- * tag for what matters (checked in, you present, moved, a roster clash), then sessions other
- * services opened to you, your On Call teaching list and your service handbook's teaching. The
+ * previous and next, a day rail, and Mine, Whole service or Other services), then every session day
+ * by day with a tag for what matters (checked in, you present, moved, a roster clash), then sessions
+ * other services opened to you, your On Call teaching list and your service handbook's teaching. The
  * session on now and the next one for you live on Today.
+ *
+ * Other services (owner-approved mock-up, Oct 2026) took over the separate What's on page: the same
+ * read of sessions other services opened to the reader, listed under Week's own dates and day strip,
+ * each with the plus that adds it to the reader's week. `/teaching/week?view=other` opens on it, and
+ * `/teaching/whats-on` forwards there.
  *
  * Roster clashes (ideas 12) read the reader's own shifts through Roster's hook, read only, when
  * signed in; the demo and the signed-out sample never call it.
  *
  * Nothing of the week is kept on the phone. If the connection drops after the week has loaded, the
  * page keeps showing that read and says the time it loaded, rather than pretending to be current.
- * Nothing is kept on the phone at all: the Mine or Whole service choice lasts for this visit only.
+ * Nothing is kept on the phone at all: the Mine, Whole service or Other services choice lasts for
+ * this visit only.
  */
 
 // "Mine" comes first. Sessions carry no training-level field (only What's on rows do), so Mine is the
-// sessions the reader presents; see `mineSessions`.
-const FILTERS = [
+// sessions the reader presents; see `mineSessions`. Below 390px the longer two shorten, so all three
+// fit a 320px phone; their full words stay the buttons' names.
+type ThisWeekFilter = WeekFilter | "other";
+const FILTERS: readonly { value: ThisWeekFilter; label: string; short?: string }[] = [
   { value: "presenting", label: "Mine" },
-  { value: "all", label: "Whole service" },
-] as const;
+  { value: "all", label: "Whole service", short: "Service" },
+  { value: "other", label: "Other services", short: "Others" },
+];
+
+/** `?view=other` on /teaching/week opens on Other services; What's on's old address forwards to it. */
+const OTHER_SERVICES_VIEW = "other";
 
 /**
- * The last Mine or Whole service choice, kept in memory for this visit only, so it survives moving
- * between Teaching pages. It is never written to the device: Teaching allows one device key only
- * (What's on's level, see teaching-search-privacy.test.ts), and a convenience is not worth a second.
+ * The last Mine, Whole service or Other services choice, kept in memory for this visit only, so it
+ * survives moving between Teaching pages. It is never written to the device: Teaching allows one
+ * device key only (What's on's level, see teaching-search-privacy.test.ts), and a convenience is not
+ * worth a second.
  */
-let rememberedFilter: WeekFilter | null = null;
+let rememberedFilter: ThisWeekFilter | null = null;
 
-function storedFilter(): WeekFilter | null {
+function storedFilter(): ThisWeekFilter | null {
   return rememberedFilter;
 }
 
-function storeFilter(value: WeekFilter) {
+function storeFilter(value: ThisWeekFilter) {
   rememberedFilter = value;
 }
 
@@ -120,17 +137,27 @@ const NO_CLASHES: ReadonlyMap<string, RosterClash> = new Map();
 export function TeachingThisWeek({
   demoMode: serverDemoMode,
   week = null,
+  view = null,
 }: {
   demoMode: boolean;
   /** A Perth date (YYYY-MM-DD) whose week opens first, so a link to a later session lands on it. */
   week?: string | null;
+  /** `?view=` from the address: "other" opens on Other services. Anything else is ignored. */
+  view?: string | null;
 }) {
   const auth = useAuthSession();
   const demoMode = useTeachingDemoMode(serverDemoMode);
-  return <ThisWeekScreen key={`${auth.authEpoch}:${demoMode}`} demoMode={demoMode} week={week} />;
+  return (
+    <ThisWeekScreen
+      key={`${auth.authEpoch}:${demoMode}`}
+      demoMode={demoMode}
+      week={week}
+      openOther={view === OTHER_SERVICES_VIEW}
+    />
+  );
 }
 
-function ThisWeekScreen({ demoMode, week }: { demoMode: boolean; week: string | null }) {
+function ThisWeekScreen({ demoMode, week, openOther }: { demoMode: boolean; week: string | null; openOther: boolean }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
@@ -168,6 +195,8 @@ function ThisWeekScreen({ demoMode, week }: { demoMode: boolean; week: string | 
             whatsOn={whatsOn.status === "ready" ? whatsOn.data : null}
             whatsOnFailed={whatsOn.status === "error" || whatsOn.status === "offline" || whatsOn.status === "setup"}
             retryWhatsOn={whatsOn.retry}
+            whatsOnSample={signedOut}
+            openOther={openOther}
           />
         ) : (
           <ModeModuleSkeleton rows={4} twoLine eyebrow />
@@ -202,6 +231,8 @@ function ThisWeekBody({
   whatsOn,
   whatsOnFailed,
   retryWhatsOn,
+  whatsOnSample,
+  openOther,
 }: {
   view: TeachingWeekState;
   loaded: LoadedWeek | null;
@@ -213,9 +244,27 @@ function ThisWeekBody({
   whatsOn: WhatsOnRead | null;
   whatsOnFailed: boolean;
   retryWhatsOn: () => void;
+  /** The signed-out sample: its plus says the sample saves nothing instead of writing. */
+  whatsOnSample: boolean;
+  /** The address asked for Other services (`?view=other`). */
+  openOther: boolean;
 }) {
   const [team, setTeam] = useState(ALL_TEAMS);
-  const [chosenFilter, setChosenFilter] = useState<WeekFilter | null>(() => storedFilter());
+  const [chosenFilter, setChosenFilter] = useState<ThisWeekFilter | null>(() => {
+    if (openOther) storeFilter("other");
+    return storedFilter();
+  });
+  // A later link to ?view=other while Week is already open (Today's "Open from other services") switches
+  // to it too: the address changed, so the page follows it, during render rather than in an effect.
+  const [seenOpenOther, setSeenOpenOther] = useState(openOther);
+  if (openOther !== seenOpenOther) {
+    setSeenOpenOther(openOther);
+    if (openOther) {
+      setChosenFilter("other");
+      storeFilter("other");
+    }
+  }
+  const weekAdd = useWeekAdd(whatsOnSample);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [editor, setEditor] = useState<{ entry: OnCallEntry | null } | null>(null);
   const [editorMounted, setEditorMounted] = useState(false);
@@ -242,7 +291,21 @@ function ThisWeekBody({
       return <TeachingStateNotice state={view.status} onRetry={view.retry} />;
     return <ModeModuleSkeleton rows={4} twoLine eyebrow />;
   }
+  function chooseFilter(value: ThisWeekFilter) {
+    setChosenFilter(value);
+    storeFilter(value);
+  }
+
+  // The card under the week switches the filter in place, and brings the week's own card into view.
+  function showOtherServices() {
+    chooseFilter("other");
+    document.getElementById("teaching-week-card")?.scrollIntoView?.({ block: "start" });
+  }
+
+  // A reader in no teaching service has nothing under Mine or Whole service, but other services may
+  // still have opened sessions to them, so Other services stays one tap away.
   if (
+    chosenFilter !== "other" &&
     week.teams.length === 0 &&
     week.relocated.length === 0 &&
     week.sessions.length === 0 &&
@@ -255,7 +318,7 @@ function ThisWeekBody({
           <T5Row
             lead={<T5Icon icon={Network} />}
             title="Sessions open to you from other services"
-            href="/teaching/whats-on"
+            onClick={showOtherServices}
             testId="teaching-week-whats-on"
           />
         </T5List>
@@ -270,7 +333,10 @@ function ThisWeekBody({
   const filter = remembered ?? defaultWeekFilter(everything);
   const sessions = filter === "presenting" ? mineSessions(everything) : everything;
   const context = { teams: week.teams, attendance: week.attendance, showTeam, now };
-  const days = weekDayKeys(monday, sessions);
+  const otherRows = whatsOn ? otherServiceSessions(whatsOn.sessions) : [];
+  // The dates and the day strip follow what the list shows, so Other services' weekend shows when it has one.
+  const shown = filter === "other" ? otherRows : sessions;
+  const days = weekDayKeys(monday, shown);
   const partial = week.relocatedUnavailable;
   const others = whatsOn ? openFromOtherServices(whatsOn.sessions) : null;
   const otherNames = whatsOn
@@ -284,10 +350,85 @@ function ThisWeekBody({
     view.retry();
   }
 
-  function chooseFilter(value: WeekFilter) {
-    setChosenFilter(value);
-    storeFilter(value);
-  }
+  const otherList = (
+    <>
+      <WeekAddNotice notice={weekAdd.notice} />
+      <T5Section
+        label={
+          whatsOn
+            ? weekCountLabel(otherRows, false, current ? "This week" : "That week")
+            : current
+              ? "This week"
+              : "That week"
+        }
+        right={otherRows.length > 0 ? "Tap plus to add to your week" : undefined}
+        testId="teaching-week-other"
+      >
+        {whatsOn === null ? (
+          whatsOnFailed ? (
+            <T5List>
+              <T5Row
+                lead={<T5Icon icon={Network} />}
+                title="Sessions open to you from other services"
+                meta="Could not check just now"
+                end={<T5Link onClick={retryWhatsOn}>Try again</T5Link>}
+              />
+            </T5List>
+          ) : (
+            <ModeModuleSkeleton rows={3} twoLine />
+          )
+        ) : otherRows.length === 0 ? (
+          <T5Empty>{`No other service has opened a session to you for ${weekTitle(days[0], days[days.length - 1])}.`}</T5Empty>
+        ) : (
+          days.map((key) => {
+            const onDay = sessionsOn(otherRows, key);
+            if (onDay.length === 0) return null;
+            return (
+              <div key={key} id={`day-${key}`} tabIndex={-1} className="grid scroll-mt-32 gap-y-2.25">
+                <h3
+                  className={cn("work-label m-0 min-h-5 px-0.5", key === today && "text-[color:var(--mode-identity)]!")}
+                >
+                  {dayHeading(key, today)}
+                </h3>
+                <T5List testId="teaching-week-other-list">
+                  {onDay.map((row) => {
+                    const cancelled = row.status === "cancelled";
+                    const live =
+                      !cancelled && Date.parse(row.startsAt) <= now.getTime() && now.getTime() < Date.parse(row.endsAt);
+                    const past = Date.parse(row.endsAt) <= now.getTime();
+                    return (
+                      <T5Row
+                        key={row.occurrenceId}
+                        lead={<T5Time time={row.allDay ? "All day" : perthTime(row.startsAt)} past={past} />}
+                        title={cancelled ? <s>{row.title}</s> : row.title}
+                        meta={
+                          <>
+                            {live ? <T5LiveDot /> : null}
+                            {otherServiceMeta(row, now)}
+                          </>
+                        }
+                        href={sessionHref(row)}
+                        past={past}
+                        testId={`teaching-week-other-row-${row.occurrenceId}`}
+                        end={
+                          <WeekToggle
+                            title={row.title}
+                            added={weekAdd.added(row)}
+                            onToggle={() => void weekAdd.toggle(row)}
+                          />
+                        }
+                      />
+                    );
+                  })}
+                </T5List>
+              </div>
+            );
+          })
+        )}
+      </T5Section>
+      <T5Note>Organisers of each session see who checked in</T5Note>
+    </>
+  );
 
   const list = (clashes: ReadonlyMap<string, RosterClash>) => {
     const clashCount = sessions.filter(
@@ -382,7 +523,7 @@ function ThisWeekBody({
           </span>
         </div>
       ) : null}
-      <div className="work-card grid gap-1 px-1.5 pt-1 pb-1.5">
+      <div id="teaching-week-card" className="work-card grid scroll-mt-32 gap-1 px-1.5 pt-1 pb-1.5">
         <WeekHeader
           first={days[0]}
           last={days[days.length - 1]}
@@ -391,16 +532,22 @@ function ThisWeekBody({
           onNext={() => onMonday(addDays(monday, 7))}
           onThisWeek={() => onMonday(null)}
         />
-        <DayStrip days={stripDays(days, sessions, today)} today={today} />
+        <DayStrip days={stripDays(days, shown, today)} today={today} />
         <T5Segments value={filter} options={FILTERS} onChange={chooseFilter} label="Show" />
       </div>
-      {live && !stale ? <RosterClashRead sessions={sessions}>{list}</RosterClashRead> : list(NO_CLASHES)}
-      {sessions.length === 0 && !current ? (
+      {filter === "other" ? (
+        otherList
+      ) : live && !stale ? (
+        <RosterClashRead sessions={sessions}>{list}</RosterClashRead>
+      ) : (
+        list(NO_CLASHES)
+      )}
+      {shown.length === 0 && !current && (filter !== "other" || whatsOn !== null) ? (
         <T5List>
           <T5Row lead={<T5Icon icon={CalendarDays} />} title="Back to this week" onClick={() => onMonday(null)} />
         </T5List>
       ) : null}
-      {others !== null && others > 0 ? (
+      {filter === "other" ? null : others !== null && others > 0 ? (
         <T5List>
           <T5Row
             lead={<T5Icon icon={Network} />}
@@ -410,7 +557,7 @@ function ThisWeekBody({
                 : `${withUnit(others, "sessions")} from other services are open to you`
             }
             meta={otherNames}
-            href="/teaching/whats-on"
+            onClick={showOtherServices}
             testId="teaching-week-whats-on"
           />
         </T5List>
