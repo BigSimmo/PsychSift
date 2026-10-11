@@ -760,7 +760,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   /* Never narrower than a tap, so at large text sizes the badge still shows
      when the name cannot. */
   max-width: max(var(--spacing-tap, 3rem), min(15rem, calc(100vw - 11rem)));
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, max-content) auto;
   gap: calc(var(--spacing) * 2);
   padding: 0 calc(var(--spacing) * 2.5);
   border-color: transparent;
@@ -890,7 +890,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 
   .universal-header[data-work-frame] .universal-header-mode-button[data-area-only] {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, max-content);
     gap: calc(var(--spacing) * 1);
     padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1);
   }
