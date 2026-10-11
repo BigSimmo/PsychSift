@@ -15,12 +15,13 @@ import {
 } from "@/lib/mode-secondary-navigation";
 import { ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
 
-/** Nine modes intentionally register no destinations at all — see `emptyRegistryModes`. */
+/** Eight modes intentionally register no destinations at all — see `emptyRegistryModes`. */
 const expectedLabels: Record<AppModeId, string[]> = {
   answer: [],
   documents: [],
   services: [],
-  forms: [],
+  // Owner audit item 7 (Oct 2026): the forms list, the MHA clock and the Act, one tap apart.
+  forms: ["Forms", "Clock", "Act"],
   favourites: [],
   differentials: ["Search", "Diagnoses", "Presentations", "Compare"],
   dsm: ["Search", "Compare"],
@@ -124,7 +125,6 @@ const emptyRegistryModes = [
   "answer",
   "documents",
   "services",
-  "forms",
   "favourites",
   "prescribing",
   "tools",
@@ -182,6 +182,48 @@ describe("mode secondary navigation registry", () => {
     ] as const) {
       expect(activeModeSecondaryNavigationId("cme", pathname)).toBe(page);
     }
+  });
+
+  it("gives Clinical Forms three tabs, Forms, Clock and Act, current on their own pages only", () => {
+    expect(modeSecondaryNavigationRegistry.forms.map(({ id, label, href }) => [id, label, href])).toEqual([
+      ["forms-list", "Forms", "/forms/search"],
+      ["forms-clock", "Clock", "/forms/clock"],
+      ["forms-act", "Act", "/forms/act"],
+    ]);
+    for (const [pathname, tab] of [
+      ["/forms/search", "forms-list"],
+      ["/forms/clock", "forms-clock"],
+      ["/forms/act", "forms-act"],
+      // A form record is not one of the tabs, and the bare home redirects.
+      ["/forms/transport-crisis-form", null],
+      ["/forms", null],
+    ] as const) {
+      expect(activeModeSecondaryNavigationId("forms", pathname), pathname).toBe(tab);
+    }
+    // The shell draws the bar on the list; Clock and Act are information pages that mount it themselves.
+    expect(
+      isModeSecondaryNavigationRoute({ modeId: "forms", pathname: "/forms/search", hasSubmittedSearch: false }),
+    ).toBe(true);
+    expect(isInformationPage("/forms/clock")).toBe(true);
+    expect(isInformationPage("/forms/act")).toBe(true);
+    expect(isInformationPage("/forms/search")).toBe(false);
+    // The list tab keeps a submitted query, so tapping the tab you are on never clears it.
+    expect(
+      modeSecondaryNavigationHref({
+        modeId: "forms",
+        itemId: "forms-list",
+        href: "/forms/search",
+        currentSearchParams: new URLSearchParams("q=3A&run=1"),
+      }),
+    ).toBe("/forms/search?q=3A&run=1");
+    expect(
+      modeSecondaryNavigationHref({
+        modeId: "forms",
+        itemId: "forms-clock",
+        href: "/forms/clock",
+        currentSearchParams: new URLSearchParams("q=3A&run=1"),
+      }),
+    ).toBe("/forms/clock");
   });
 
   it("registers Psychiatry's Ask, Tools and Saved as the band's tabs, Ask current on the hub", () => {
@@ -497,6 +539,7 @@ describe("mode secondary navigation registry", () => {
       "differentials",
       "dsm",
       "factsheets",
+      "forms",
       "formulation",
       "sources",
       "specifiers",

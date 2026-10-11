@@ -3355,6 +3355,7 @@
         "src/app/(search-app)/first-nations/talking/page.tsx",
         "src/app/(search-app)/forms/[slug]/page.tsx",
         "src/app/(search-app)/forms/act/page.tsx",
+        "src/app/(search-app)/forms/clock/page.tsx",
         "src/app/(search-app)/forms/page.tsx",
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
@@ -4230,6 +4231,16 @@
         },
         {
           "file": "src/app/(search-app)/forms/act/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/(search-app)/forms/clock/page.tsx",
           "exists": true,
           "imports": [],
           "importedFamilies": [],
@@ -6424,6 +6435,7 @@
       "src/app/(search-app)/first-nations/talking/page.tsx",
       "src/app/(search-app)/forms/[slug]/page.tsx",
       "src/app/(search-app)/forms/act/page.tsx",
+      "src/app/(search-app)/forms/clock/page.tsx",
       "src/app/(search-app)/forms/page.tsx",
       "src/app/(search-app)/forms/search/page.tsx",
       "src/app/(search-app)/formulation/[slug]/page.tsx",
@@ -6647,6 +6659,7 @@
       "src/app/(search-app)/first-nations/talking/page.tsx",
       "src/app/(search-app)/forms/[slug]/page.tsx",
       "src/app/(search-app)/forms/act/page.tsx",
+      "src/app/(search-app)/forms/clock/page.tsx",
       "src/app/(search-app)/forms/page.tsx",
       "src/app/(search-app)/forms/search/page.tsx",
       "src/app/(search-app)/formulation/[slug]/page.tsx",
@@ -6786,7 +6799,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 228,
+    "inheritedCkbV2RootCount": 229,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 14,
     "declaredV2SurfaceCount": 14
@@ -6795,8 +6808,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 229,
-    "productionRouteCount": 221,
-    "nextUiEntryCount": 330
+    "rootCount": 230,
+    "productionRouteCount": 222,
+    "nextUiEntryCount": 331
   }
 }

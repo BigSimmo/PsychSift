@@ -15,10 +15,10 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
+import { MHA_TIMELINE_AWAITING_REVIEW, MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
 import { MhaClockPage, mhaClockHandoverText, type MhaClockForm } from "@/components/psychiatry/mha-clock-page";
 import { PsychiatryHome } from "@/components/psychiatry/psychiatry-home";
-import { mhaTimers } from "@/lib/on-call/mha-timers";
+import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
   clearAccountScopedBrowserStorage,
   PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY,
@@ -228,21 +228,96 @@ describe("MhaClockPage", () => {
     expect(screen.getByTestId("mha-clock-undo")).toHaveTextContent("Form 3A clock put back");
   });
 
-  it("copies the form and made-at time only for handover, with the reference line", () => {
+  it("copies each form, its name, when it was made and the limits the page shows, for handover", async () => {
     addMhaClock("2", new Date("2026-10-04T15:40:00Z")); // Sun 23:40 Perth
     addMhaClock("3A", new Date("2026-10-04T17:55:00Z")); // Mon 01:55 Perth
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     render(<MhaClockPage forms={forms} now={now} />);
-    fireEvent.click(screen.getByTestId("mha-clock-handover-copy"));
-    expect(writeText).toHaveBeenCalledWith(
-      [
-        "As at Mon 5 Oct 2026, 18:00 (Perth time)",
-        "Form 2 · made Sun 4 Oct 2026, 23:40 (Perth time)",
-        "Form 3A · made Mon 5 Oct 2026, 01:55 (Perth time)",
-        MHA_TIMELINE_REFERENCE_NOTE,
-      ].join("\n"),
+    const copyButton = screen.getByTestId("mha-clock-handover-copy");
+    expect(copyButton).toHaveTextContent("Copy for handover");
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    const [text] = writeText.mock.calls[0] as unknown as [string];
+    const lines = text.split("\n");
+    expect(lines[0]).toBe("As at Mon 5 Oct 2026, 18:00 (Perth time)");
+    expect(lines).toContain(
+      "Form 2 (Order to detain voluntary inpatient in authorised hospital for assessment) · made Sun 4 Oct 2026, 23:40 (Perth time)",
     );
+    expect(lines).toContain("Form 3A (Detention order) · made Mon 5 Oct 2026, 01:55 (Perth time)");
+    expect(lines.at(-1)).toBe(MHA_TIMELINE_REFERENCE_NOTE);
+    // Every limit line is one the page itself shows for that clock, indented under its form. No
+    // time left or running time: those go out of date once pasted.
+    const limitLines = lines.filter((line) => line.startsWith("  "));
+    expect(limitLines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line).not.toMatch(/\b(left|running|ago)\b/);
+    expect(screen.getByTestId("mha-clock-handover-status")).toHaveTextContent("Copied.");
+  });
+
+  it("says the browser would not copy, and leaves the lines on screen to copy by hand", async () => {
+    addMhaClock("2", new Date("2026-10-04T15:40:00Z"));
+    const writeText = vi.fn(() => Promise.reject(new Error("denied")));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<MhaClockPage forms={forms} now={now} />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mha-clock-handover-copy"));
+    });
+    expect(screen.getByTestId("mha-clock-handover-status")).toHaveTextContent("This browser would not copy.");
+    expect(screen.getByTestId("mha-clock-handover-lines")).toHaveTextContent("Form 2");
+  });
+
+  it("puts a signed-off limit's end time on the handover as a Perth time, never as time left", () => {
+    const clock = { id: "abcdefgh-1", formCode: "3A", madeAt: new Date("2026-10-04T17:55:00Z").getTime() };
+    const entry = { trigger: "Detention" } as MhaTimerItem["entry"];
+    const base = { timerId: clock.id, entry, occurrence: 1, repeatsEveryHours: null } as const;
+    const running: MhaTimerItem = {
+      ...base,
+      kind: "countdown",
+      deadline: new Date("2026-10-05T17:55:00Z"),
+      remainingMs: 1,
+      expired: false,
+    };
+    const passed: MhaTimerItem = {
+      ...base,
+      kind: "countdown",
+      deadline: new Date("2026-10-05T05:55:00Z"),
+      remainingMs: -1,
+      expired: true,
+    };
+    const review: MhaTimerItem = { timerId: clock.id, entry, kind: "quote-only", reason: "awaiting-review" };
+    const text = mhaClockHandoverText([clock], now.getTime(), false, {
+      formTitle: (code) => (code === "3A" ? "Detention order" : undefined),
+      items: [running, passed, review, { ...running, timerId: "another-clock" }],
+    });
+    expect(text.split("\n")).toEqual([
+      "As at Mon 5 Oct 2026, 18:00 (Perth time)",
+      "Form 3A (Detention order) · made Mon 5 Oct 2026, 01:55 (Perth time)",
+      "  Detention: time limit Tue 6 Oct 2026, 01:55 (Perth time)",
+      "  Detention: time limit passed Mon 5 Oct 2026, 13:55 (Perth time)",
+      `  Detention: ${MHA_TIMELINE_AWAITING_REVIEW}`,
+      MHA_TIMELINE_REFERENCE_NOTE,
+    ]);
+    // Without details, a clock is its form code and made-at time only, as before.
+    expect(mhaClockHandoverText([clock], now.getTime()).split("\n")[1]).toBe(
+      "Form 3A · made Mon 5 Oct 2026, 01:55 (Perth time)",
+    );
+  });
+
+  it("names Forms as the breadcrumb parent on the Forms mode's Clock tab, Psychiatry otherwise", () => {
+    const { unmount } = render(<MhaClockPage forms={forms} now={now} />);
+    expect(screen.getByRole("link", { name: /Psychiatry/ })).toHaveAttribute("href", "/psychiatry");
+    unmount();
+    render(<MhaClockPage forms={forms} now={now} home={{ label: "Forms", href: "/forms/search" }} />);
+    expect(screen.getByRole("link", { name: /Forms/ })).toHaveAttribute("href", "/forms/search");
+  });
+
+  it("draws Start as the Clinical primary button, not the ink fill", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    const start = screen.getByTestId("mha-clock-start");
+    expect(start.className).toContain("var(--clinical-accent)");
+    expect(start.className).not.toContain("bg-[color:var(--dash-ink)]");
+    expect(start.className).toContain("min-h-tap");
   });
 
   it("says when clocks could not be read, never that there are none", () => {

@@ -43,8 +43,17 @@ export const modeSecondaryNavigationRegistry = {
   answer: [],
   documents: [],
   services: [],
-  forms: [],
   favourites: [],
+  // Clinical Forms: the forms list, the MHA clock and the Act summaries, one tap
+  // apart (owner audit item 7, Oct 2026). The clock is the same page the
+  // Psychiatry hub links to at /psychiatry/mha-clock; both addresses stay. Act
+  // and Clock are information pages, so the shell never draws this bar on them
+  // and each mounts `FormsModeNav` itself, as the presentation workflow does.
+  forms: [
+    { id: "forms-list", label: "Forms", href: "/forms/search" },
+    { id: "forms-clock", label: "Clock", href: "/forms/clock" },
+    { id: "forms-act", label: "Act", href: "/forms/act" },
+  ],
   differentials: [
     { id: "search", label: "Search", href: appModeHomeHref("differentials", { focus: true }) },
     { id: "diagnoses", label: "Diagnoses", href: "/differentials/diagnoses" },
@@ -301,6 +310,7 @@ export type RoutedModeSecondaryNavigationId = Extract<RegistryEntry, { href: str
  */
 export const MODE_NAV_ADOPTED_MODES = [
   "dsm",
+  "forms",
   "specifiers",
   "formulation",
   "differentials",
@@ -400,6 +410,13 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
       return "compare";
     }
     if (pathname === "/differentials" || pathname.startsWith("/differentials?")) return "search";
+    return null;
+  }
+  if (modeId === "forms") {
+    // Exact paths: `/forms/<slug>` is a form record, never one of these tabs.
+    if (pathname === "/forms/search") return "forms-list";
+    if (pathname === "/forms/clock") return "forms-clock";
+    if (pathname === "/forms/act") return "forms-act";
     return null;
   }
   if (modeId === "dsm") {
@@ -553,6 +570,9 @@ export function isModeSecondaryNavigationRoute(params: {
     );
   }
   if (modeId === "dsm") return pathname === "/dsm/search" || pathname === "/dsm/compare";
+  // Only the list is drawn by the shell. Clock and Act are information pages,
+  // which return before this, and mount the bar themselves (`FormsModeNav`).
+  if (modeId === "forms") return pathname === "/forms/search";
   if (modeId === "specifiers") {
     return (
       pathname === "/specifiers/search" ||
@@ -755,6 +775,16 @@ export function modeSecondaryNavigationHref(params: {
       ...(query ? ([["q", query]] as const) : []),
       ...selections.map((value) => ["mechanism", value] as const),
       ...templateEntry,
+    ]);
+  }
+
+  if (modeId === "forms") {
+    // The list keeps its query, as Factsheets' Search does, so tapping the tab
+    // you are on never clears the results. Clock and Act read neither param.
+    if (itemId !== "forms-list") return href;
+    return navigationHrefWithParams(href, [
+      ...(query ? ([["q", query]] as const) : []),
+      ...(query && currentSearchParams.get("run") === "1" ? ([["run", "1"]] as const) : []),
     ]);
   }
 

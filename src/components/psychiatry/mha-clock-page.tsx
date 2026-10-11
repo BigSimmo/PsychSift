@@ -13,7 +13,6 @@ import {
 } from "@/components/forms/mha-timeline-panel";
 import { InformationPageBreadcrumbs, InformationPageShell } from "@/components/information-page-shell";
 import {
-  flatButton,
   flatSecondaryButton,
   flatLink,
   FlatLabel,
@@ -23,6 +22,7 @@ import {
   FlatRow,
   FlatTag,
 } from "@/components/psychiatry/psychiatry-flat";
+import { buttonFaceClass } from "@/components/ui/button-face";
 import { cn } from "@/components/ui-primitives";
 import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { toAwstParts } from "@/lib/caring-contacts/clock";
@@ -77,7 +77,7 @@ const UNDO_MS = 8_000;
 export const MHA_CLOCK_RETENTION_NOTE =
   "Only on this phone, not on your other devices. Kept until you remove it or you are signed out. A clock holds the form and the time only.";
 export const MHA_CLOCK_HANDOVER_NOTE =
-  "Copies the form and made-at time only. No names, and no running times, because those go out of date once pasted.";
+  "Copies each form, when it was made and its time limits as this page shows them. No names, and no running times, because those go out of date once pasted.";
 
 function subscribeMinute(listener: () => void): () => void {
   const timer = window.setInterval(listener, 30_000);
@@ -121,13 +121,54 @@ export function mhaClockDuration(ms: number): string {
   return minutes === 0 ? `${hours} h` : `${hours} h ${minutes} min`;
 }
 
-/** The plain lines the handover copy puts on the clipboard. Exported for tests. */
-export function mhaClockHandoverText(clocks: readonly MhaClock[], nowMs: number, unreadable = false): string {
+/**
+ * `MHA_TIMELINE_NOT_CALCULABLE` for pasted text: the page's line points to "the quoted Act words
+ * below", which a pasted handover does not carry, so it points to the Act instead.
+ */
+export const MHA_CLOCK_HANDOVER_NOT_CALCULABLE =
+  "Time not calculated — this limit can also end earlier, as the Act explains";
+
+/**
+ * One handover line per time limit the page already shows for a clock. Nothing is worked out
+ * here: a countdown's end time is the one `mhaTimers` gave the page (a limit signed off while the
+ * countdown switch is on), and every other limit carries the page's own "not calculated" line.
+ * Times are absolute Perth times, never "time left", so a pasted line does not go out of date.
+ */
+function handoverLimitLine(item: MhaTimerItem): string {
+  const trigger = item.entry.trigger;
+  if (item.kind !== "countdown") {
+    return `  ${trigger}: ${item.reason === "not-calculable" ? MHA_CLOCK_HANDOVER_NOT_CALCULABLE : MHA_TIMELINE_AWAITING_REVIEW}`;
+  }
+  const label = item.expired ? "time limit passed" : "time limit";
+  return `  ${trigger}: ${label} ${formatPerthDateTime(item.deadline)}`;
+}
+
+/**
+ * The plain lines the handover copy puts on the clipboard. Exported for tests.
+ *
+ * `details` adds each form's name and the limits the page shows for each clock (`items`, already
+ * narrowed by the page to the next deadline of each). Without it, each clock is its form code and
+ * made-at time only.
+ */
+export function mhaClockHandoverText(
+  clocks: readonly MhaClock[],
+  nowMs: number,
+  unreadable = false,
+  details?: {
+    readonly formTitle?: (code: string) => string | undefined;
+    readonly items?: readonly MhaTimerItem[];
+  },
+): string {
   return [
     `As at ${formatPerthDateTime(new Date(nowMs))}`,
     // A pasted list must never look complete when some clocks could not be read.
     ...(unreadable ? [`${MHA_CLOCK_UNREADABLE} Check the others against the paperwork.`] : []),
-    ...clocks.map((clock) => `Form ${clock.formCode} · made ${formatPerthDateTime(new Date(clock.madeAt))}`),
+    ...clocks.flatMap((clock) => {
+      const title = details?.formTitle?.(clock.formCode);
+      const form = title ? `Form ${clock.formCode} (${title})` : `Form ${clock.formCode}`;
+      const limits = (details?.items ?? []).filter((item) => item.timerId === clock.id).map(handoverLimitLine);
+      return [`${form} · made ${formatPerthDateTime(new Date(clock.madeAt))}`, ...limits];
+    }),
     MHA_TIMELINE_REFERENCE_NOTE,
   ].join("\n");
 }
@@ -248,7 +289,13 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
           {message ? <TriangleAlert aria-hidden="true" className="mt-px size-icon-xs shrink-0" /> : null}
           <span>{message ?? "Perth time. Only forms with time limits in the app are listed."}</span>
         </p>
-        <button type="submit" data-testid="mha-clock-start" className={cn(flatButton, "w-full sm:w-auto")}>
+        {/* The page's one primary action, so it wears the shared primary face: Clinical blue
+            (button-face.ts), not the near-black ink fill. */}
+        <button
+          type="submit"
+          data-testid="mha-clock-start"
+          className={cn(buttonFaceClass({ variant: "primary" }), "w-full sm:w-auto")}
+        >
           <Plus aria-hidden="true" className="size-icon-sm" />
           Start
         </button>
@@ -482,13 +529,17 @@ function HandoverCopy({
   clocks,
   nowMs,
   unreadable,
+  formTitle,
+  items,
 }: {
   readonly clocks: readonly MhaClock[];
   readonly nowMs: number;
   readonly unreadable: boolean;
+  readonly formTitle: (code: string) => string | undefined;
+  readonly items: readonly MhaTimerItem[];
 }) {
   const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
-  const text = mhaClockHandoverText(clocks, nowMs, unreadable);
+  const text = mhaClockHandoverText(clocks, nowMs, unreadable, { formTitle, items });
   const lines = text.split("\n");
   const copy = () => {
     // Clear first, so a second Copy is announced again.
@@ -508,11 +559,18 @@ function HandoverCopy({
       <div className={flatPanelPadded}>
         <div className="grid gap-0.5" data-testid="mha-clock-handover-lines">
           <p className="nums text-xs text-[color:var(--dash-muted)]">{lines[0]}</p>
-          {lines.slice(1, -1).map((line, index) => (
-            <p key={`${index}:${line}`} className="nums text-sm text-[color:var(--dash-ink)]">
-              {line}
-            </p>
-          ))}
+          {lines.slice(1, -1).map((line, index) =>
+            // A limit line is indented under its form in the pasted text; on screen it is inset.
+            line.startsWith("  ") ? (
+              <p key={`${index}:${line}`} className="nums pl-3 text-xs text-[color:var(--dash-muted)]">
+                {line.trim()}
+              </p>
+            ) : (
+              <p key={`${index}:${line}`} className="nums text-sm text-[color:var(--dash-ink)]">
+                {line}
+              </p>
+            ),
+          )}
           <p className="text-xs text-[color:var(--dash-muted)]">{lines.at(-1)}</p>
         </div>
         <p className="text-xs text-[color:var(--dash-muted)]">{MHA_CLOCK_HANDOVER_NOTE}</p>
@@ -530,7 +588,7 @@ function HandoverCopy({
           </p>
           <button type="button" onClick={copy} data-testid="mha-clock-handover-copy" className={flatSecondaryButton}>
             <Copy aria-hidden="true" className="size-icon-sm" />
-            Copy
+            Copy for handover
           </button>
         </div>
       </div>
@@ -539,6 +597,8 @@ function HandoverCopy({
 }
 
 type UndoHold = "focus" | "pointer";
+
+const PSYCHIATRY_HOME = { label: "Psychiatry", href: "/psychiatry" } as const;
 
 function UndoBar({
   removed,
@@ -663,9 +723,12 @@ function useUndo() {
 export function MhaClockPage({
   forms,
   now: nowProp,
+  home = PSYCHIATRY_HOME,
 }: {
   readonly forms: readonly MhaClockForm[];
   readonly now?: Date;
+  /** The breadcrumb's parent: Psychiatry by default, Forms on the Forms mode's Clock tab. */
+  readonly home?: { readonly label: string; readonly href: string };
 }) {
   const now = useNow(nowProp);
   const { clocks, unreadable } = useMhaClockState();
@@ -688,7 +751,7 @@ export function MhaClockPage({
   return (
     <InformationPageShell testId="mha-clock-page">
       <div className={cn("mx-auto grid w-full max-w-3xl gap-3", dashSurface)}>
-        <InformationPageBreadcrumbs home={{ label: "Psychiatry", href: "/psychiatry" }} current="MHA clock" />
+        <InformationPageBreadcrumbs home={home} current="MHA clock" />
         <header className="grid min-w-0 gap-0.5">
           <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{now ? `${hhmm(now)} Perth time` : null}</p>
           <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
@@ -794,7 +857,15 @@ export function MhaClockPage({
           </ul>
         ) : null}
 
-        {clocks.length > 0 && now ? <HandoverCopy clocks={clocks} nowMs={nowMs} unreadable={unreadable} /> : null}
+        {clocks.length > 0 && now ? (
+          <HandoverCopy
+            clocks={clocks}
+            nowMs={nowMs}
+            unreadable={unreadable}
+            formTitle={(code) => formByCode.get(code)?.title}
+            items={items}
+          />
+        ) : null}
 
         <AddClock forms={forms} now={now} />
 
