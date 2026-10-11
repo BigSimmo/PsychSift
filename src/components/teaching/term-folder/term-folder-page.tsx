@@ -403,7 +403,6 @@ function NoTerm() {
 
 function TermFolderContent({ demoMode, termId }: { demoMode: boolean; termId: string | null }) {
   const view = useTermFolder(demoMode, termId);
-  // The shared example banner already says the records are made up, so this note shows only without it.
   let body;
   if (view.kind === "signed-out") body = <TeachingSignInNotice />;
   else if (view.kind === "loading") body = <ModeModuleSkeleton rows={4} />;

@@ -676,7 +676,6 @@ function Meeting({ term, today, update }: { term: TermRecord; today: string; upd
 /* ---------- the page ---------- */
 
 function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
-  // The shared example banner already says the records are made up, so the demo note shows only without it.
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const sample = useMemo(() => (demoMode && today ? sampleTermTracker(today) : null), [demoMode, today]);

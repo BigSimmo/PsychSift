@@ -272,12 +272,11 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
   }, [signedOut, exampleOn, examplesSignedIn, sample, now]);
 
   const onCallStatus = adminLoadState(onCall);
-  // On Call and Admin: the entry store already swaps in the switch's examples where those screens show them
-  // (`onCall.sample`), so search lists exactly what On Call lists. Otherwise only real entries.
+  // Search lists only real entries; example entries stay confined to their clearly labelled area screens.
   const liveEntries = useMemo(
     () =>
       enabled && onCallStatus === "ready"
-        ? entryItems(onCall.sample ? onCall.entries : withoutExampleRecords(onCall.entries))
+        ? entryItems(onCall.sample ? withoutExampleRecords(onCall.entries) : withoutExampleRecords(onCall.entries))
         : [],
     [enabled, onCallStatus, onCall.entries, onCall.sample],
   );
@@ -364,7 +363,13 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
     const cme = area("cme");
     const anySample = Boolean(roster.sample || teaching.sample || cme.sample || onCall.demoMode);
     return {
-      items: [...roster.items, ...teaching.items, ...cme.items, ...numberItems],
+      // Example-area records are shown on their area pages, but never presented as the reader's commitments here.
+      items: [
+        ...(roster.sample ? [] : roster.items),
+        ...(teaching.sample ? [] : teaching.items),
+        ...(cme.sample ? [] : cme.items),
+        ...numberItems,
+      ],
       entries: liveEntries,
       areas: [
         { area: "roster", status: roster.status, sample: roster.sample },
@@ -374,7 +379,7 @@ export function useWorkSearchRecords(now: number): WorkSearchRecords {
         { area: "on-call", status: entryStatus, sample: onCall.demoMode },
       ],
       // CPD's built-in answer reads the example year while CPD shows it.
-      cpd: showsExamples.cme ? (sample?.cpd ?? null) : (current?.cpd ?? null),
+      cpd: showsExamples.cme ? null : (current?.cpd ?? null),
       pages,
       sample: false,
       anySample,

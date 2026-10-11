@@ -109,7 +109,6 @@ function HelpRow() {
 export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
   const state = useOnCallEntries();
-  // The example data banner already says these are example records; this notice is for the demo build.
   const { isAuthenticated } = useAccountData();
   const [tick, setTick] = useState(() => new Date());
   const now = nowProp ?? tick;

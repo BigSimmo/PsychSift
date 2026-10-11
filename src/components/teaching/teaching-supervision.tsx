@@ -772,7 +772,6 @@ function SupervisionBody({
 }
 
 function SupervisionPage({ demoMode }: { demoMode: boolean }) {
-  // The shared example banner already says the records are made up, so the demo note shows only without it.
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const resource = useTeachingResource<{ pairings: SupervisionPairingView[] }>(
