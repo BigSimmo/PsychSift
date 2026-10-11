@@ -7,6 +7,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { useRosterNow } from "@/components/roster/roster-format";
@@ -83,6 +84,7 @@ function MiniBars({ counts }: { readonly counts: readonly number[] }) {
 export function RosterStaffingPage({ now: pinnedNow }: { readonly now?: Date } = {}) {
   // The example team's counts never leave the app: Copy opens the "can't be exported" sheet instead.
   const { active: example } = useExampleData("rost");
+  useModeBandHeading({ eyebrow: "Plan leave with the team in view", title: "Team staffing" });
   const now = useRosterNow(pinnedNow);
   const today = perthDateOf(now);
   const search = useSyncExternalStore(subscribeSearch, searchSnapshot, serverSearchSnapshot);
