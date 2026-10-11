@@ -16,6 +16,7 @@ export const IMMUTABLE_HISTORICAL_SHA256 = "39a5f310f2207aed473b92128dd414d4fd89
 
 const GUARDED_EXACT_PATHS = new Set([
   "AGENTS.md",
+  "PROJECT-INSTRUCTIONS-CONTINUATION.md",
   "package.json",
   "supabase/schema.sql",
   "supabase/roles.sql",

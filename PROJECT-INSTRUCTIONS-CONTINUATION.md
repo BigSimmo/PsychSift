@@ -4,12 +4,13 @@ At task start, read [task lifecycle and receipt handoff](docs/task-receipts.md) 
 
 Native loading: the core stays below the 24,000-byte per-file rule limit. Linked policy is mandatory when its topic applies. Antigravity loads the same canonical modules through `.agents/rules/project-*.md`; these wrappers contain references, not policy copies. Inspect fresh native context before claiming complete loading.
 
-This file is the always-loaded core. It carries the boundaries that prevent irreversible harm, and
-the sections a committed gate parses by exact text. Every other rule keeps its heading here and its
-full text — verbatim, nothing dropped — in a named reference file. Open the file before acting in
-its area.
+`AGENTS.md` is the always-loaded core; this file is its required continuation, read before any
+repository write or publication. `AGENTS.md` carries the boundaries that prevent irreversible harm,
+and the sections a committed gate parses by exact text. Every other rule keeps its heading in
+`AGENTS.md` and its full text — verbatim, nothing dropped — in this continuation or a named
+reference file. Open the file before acting in its area.
 
-**Read these first; they prevent damage that cannot be undone, and their full text is below:**
+**Read these first in `AGENTS.md`; they prevent damage that cannot be undone, and their full text is there:**
 `# Supabase project safety` (merging a migration reaches the live clinical database within
 seconds, with no deploy step in between), `# RAG ranking protection`, `# Railway project safety`,
 `# API and provider confirmation boundary`, and `# Local server safety`.

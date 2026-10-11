@@ -42,7 +42,7 @@ const phoneScrollConsumerSpecs = [
 ];
 
 const patterns = {
-  docs: [/^docs\//, /^AGENTS\.md$/],
+  docs: [/^docs\//, /^AGENTS\.md$/, /^PROJECT-INSTRUCTIONS-CONTINUATION\.md$/],
   infrastructure: [
     /^package(?:-lock)?\.json$/,
     /^scripts\/(?:check-installed-lock-parity|phone-chrome-plan|playwright-browser-preflight|run-playwright|verify-phone-chrome)\.mjs$/,
