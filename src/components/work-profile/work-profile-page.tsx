@@ -456,7 +456,7 @@ export function WorkProfileFrame({ children }: { readonly children: ReactNode })
   return (
     <BandLineContext.Provider value={setLine}>
       <InformationPageShell testId="work-profile-main" width="bleed" className="bg-[color:var(--work-wash)]">
-        <div className={PAGE_WIDTH}>
+        <div className={PAGE_WIDTH} data-page-width="wide" data-page-padded="">
           <header className={bandShown ? "sr-only" : "grid gap-1"} data-testid="work-profile-header">
             {bandShown ? null : (
               <ContextualBackLink

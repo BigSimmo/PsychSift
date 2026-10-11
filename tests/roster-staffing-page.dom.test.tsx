@@ -58,6 +58,14 @@ vi.mock("@/lib/copy-to-clipboard", () => ({ copyTextToClipboard: (text: string) 
 
 import { RosterStaffingPage } from "@/components/roster/staffing/roster-staffing-page";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 const NOW = new Date("2026-10-06T11:30:00Z"); // Tue 6 Oct, 19:30 Perth
 const ME = "5e000000-0000-4000-8000-000000000001";
 const SERVICE = "5e000000-0000-4000-8000-000000000003";
@@ -129,15 +137,18 @@ it("shows the next three weeks, each day read out in words, and says no safe num
   expect(screen.queryByTestId("staffing-plan")).toBeNull();
 });
 
-it("has a visible way back to Roster, and the span sits on its own line under the head", () => {
+it("has one way back to Roster in the top bar, and the span sits on its own line under the head", () => {
+  const removeSlot = addHeaderBackSlot();
   render(<RosterStaffingPage now={NOW} />);
   const back = screen.getByTestId("roster-staffing-back");
   expect(back.getAttribute("href")).toBe("/roster");
-  expect(back.textContent).toBe("Roster");
+  expect(back.getAttribute("aria-label")).toBe("Back to Roster");
+  expect(back.closest("#universal-header-leading")).not.toBeNull();
   const meta = screen.getByTestId("staffing-meta");
   expect(meta.textContent).toContain("Next 3 weeks");
   expect(meta.textContent).toContain("Rechecked");
   expect(meta.closest("h2")).toBeNull();
+  removeSlot();
 });
 
 it("typed dates show your leave, the fewest on, other dates and a Plan this leave hand-off", async () => {
