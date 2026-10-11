@@ -211,7 +211,7 @@ export function OpenShiftsMinePage() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts">
+    <div className="mx-auto w-full max-w-reading pb-10" data-mode-identity="open-shifts" data-page-width="wide">
       <PageTitleUnderBand className="px-3 pt-4 text-xl font-semibold text-[color:var(--text-heading)]">
         My shifts
       </PageTitleUnderBand>

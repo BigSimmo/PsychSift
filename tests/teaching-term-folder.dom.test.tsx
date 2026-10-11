@@ -19,6 +19,14 @@ import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 import { authState } from "./helpers/teaching-auth";
 import { NOW, json, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 // eslint-disable-next-line react-hooks/rules-of-hooks
 useTeachingTestClock(NOW);
 
@@ -180,10 +188,12 @@ describe("term evidence folder page", () => {
     );
   });
 
-  it("has a visible way back to Term", async () => {
+  it("has one way back to Term, in the top bar", async () => {
+    const removeSlot = addHeaderBackSlot();
     render(<TermFolderPage demoMode termId={null} />);
     expect(await screen.findByTestId("term-folder-back")).toHaveAttribute("href", "/teaching/term");
-    expect(screen.getByRole("link", { name: "Term" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to Term" })).toBeVisible();
+    removeSlot();
   });
 
   it("says in the copied demo summary that it is made up", async () => {

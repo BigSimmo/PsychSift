@@ -76,6 +76,18 @@ export function staffWorkBellVisible(modeId: AppModeId, pathname: string | null 
   return !STAFF_WORK_BELL_EXCLUDED_PATHS.some((root) => withinPath(path, root));
 }
 
+/**
+ * Whether a clinical page shows the bell on a tablet or desktop (11 Oct 2026
+ * usefulness and layout audit, Josh's go-ahead): the big-screen Clinical header
+ * matches Work's, so the bell sits there too. Phones keep the clinical header
+ * as it is. First Nations stays without it (its own governed header), and the
+ * staff work modes use `staffWorkBellVisible`.
+ */
+export function clinicalWideBellVisible(modeId: AppModeId, pathname: string | null | undefined): boolean {
+  if (!pathname || STAFF_WORK_BELL_MODES.has(modeId) || modeId === "first-nations") return false;
+  return true;
+}
+
 /** True on the Notifications page or anything below it. */
 export function isNotificationsPath(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
