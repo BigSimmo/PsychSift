@@ -1,16 +1,15 @@
 "use client";
 
-import { Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
+import { Clock, FileUp, Phone, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import {
-  WorkBody,
   WorkButton,
   WorkCard,
   WorkDateRow,
@@ -49,6 +48,7 @@ import {
   monthTotals,
   nextLeave,
   nextNights,
+  nextShifts,
   rosterDays,
   runWords,
   type MonthShift,
@@ -290,7 +290,15 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         cues.get(shift.id)?.warning,
     )
     .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt))[0];
-  const nights = nextNights(monthShifts, now);
+  // Coming up: the next three shifts after the one the lead card already shows.
+  const leadShown = !shifts.teamLoading && leadDisplay ? leadDisplay.id : null;
+  const upcoming = nextShifts(monthShifts, now, 3, leadShown);
+  // A run of nights still gets its own row when it starts after the shifts listed.
+  const nightRun = nextNights(monthShifts, now);
+  const nights =
+    nightRun && !upcoming.some((item) => item.id === nightRun.first.id) && nightRun.first.id !== leadShown
+      ? nightRun
+      : null;
   const leave = nextLeave(monthShifts, now);
   const leaveShift = leave ? byId.get(leave.shift.id) : null;
 
@@ -395,6 +403,15 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           <WorkCard>
             {leadRow}
             {restRow}
+            {/* Today's two buttons, folded into Month with the Today page (owner decision, 11 Oct 2026). */}
+            <div className="flex flex-wrap gap-2 px-4 pb-3.5 pt-1" data-testid="roster-month-lead-actions">
+              <WorkButton variant="secondary" icon={Users} href="/roster/team">
+                Who is on
+              </WorkButton>
+              <WorkButton variant="secondary" icon={Phone} href="/on-call/contacts">
+                Phone numbers
+              </WorkButton>
+            </div>
           </WorkCard>
         ) : null}
         {waitingSwap ? (
@@ -434,41 +451,98 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
   function comingUp() {
     const edges = comingEntryEdges(calendar.entries, today);
-    if (!nights && !leave && !edges.length) return null;
+    if (!upcoming.length && !nights && !leave && !edges.length) return null;
+    const runListed = nightRun
+      ? upcoming.filter((item) => item.kind === "night" && nightRun.dates.includes(perthDateOf(item.startsAt))).length
+      : 0;
+    // A run of nights that starts in the list but runs past it shows once, as one row.
+    const runShown = nightRun && nightRun.count > runListed && upcoming.some((item) => item.id === nightRun.first.id);
+    const listed = runShown
+      ? upcoming.filter(
+          (item) =>
+            item.id === nightRun.first.id ||
+            !(item.kind === "night" && nightRun.dates.includes(perthDateOf(item.startsAt))),
+        )
+      : upcoming;
+    // Shifts, a later run of nights and leave, merged in date order.
+    const rows: { date: string; node: ReactNode }[] = listed.map((item) => {
+      const date = perthDateOf(item.startsAt);
+      const shown = byId.get(item.id);
+      const place = shown ? (shown.workplace ?? shown.location) : null;
+      // A run of nights that starts here but runs past the shifts listed keeps its length on this row.
+      const run = runShown && nightRun.first.id === item.id ? nightRun : null;
+      return {
+        date,
+        node: (
+          <li key={item.id}>
+            <WorkDateRow
+              month={monthShort(date)}
+              day={Number(date.slice(8, 10))}
+              title={run ? `Nights · ${run.count} in a row` : SHIFT_KIND_LABEL[item.kind]}
+              sub={[
+                run
+                  ? `${runWords(run.dates, dayWords)} · ${clockSpan(item)}`
+                  : `${dayWords(date)} · ${clockSpan(item)}`,
+                place,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              end={<RosterShiftChip kind={item.kind} />}
+              onClick={() => {
+                setMonth(monthKeyOf(date));
+                openDay(date);
+              }}
+              testId="roster-month-coming-shift"
+            />
+          </li>
+        ),
+      };
+    });
+    if (nights)
+      rows.push({
+        date: nights.dates[0]!,
+        node: (
+          <li key="nights">
+            <WorkDateRow
+              month={monthShort(nights.dates[0]!)}
+              day={Number(nights.dates[0]!.slice(8, 10))}
+              title={nights.count > 1 ? `Nights · ${nights.count} in a row` : "Night"}
+              sub={`${runWords(nights.dates, dayWords)} · ${clockSpan(nights.first)}`}
+              end={<RosterShiftChip kind="night" />}
+              onClick={() => {
+                setMonth(monthKeyOf(nights.dates[0]!));
+                openDay(nights.dates[0]!);
+              }}
+            />
+          </li>
+        ),
+      });
+    if (leave)
+      rows.push({
+        date: leave.from,
+        node: (
+          <li key="leave">
+            <WorkDateRow
+              month={monthShort(leave.from)}
+              day={Number(leave.from.slice(8, 10))}
+              title={leaveShift?.title || SHIFT_KIND_LABEL.leave}
+              sub={`${leave.from === leave.to ? formatPerthDay(leave.from) : `${dayWords(leave.from)} to ${formatPerthDay(leave.to)}`} · ${leave.days} ${leave.days === 1 ? "day" : "days"}`}
+              end={<RosterShiftChip kind="leave" />}
+              onClick={() => {
+                setMonth(monthKeyOf(leave.from));
+                openDay(leave.from);
+              }}
+            />
+          </li>
+        ),
+      });
+    // Stable sort: on the same day, a shift stays ahead of the leave that follows it.
+    rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
     return (
       <>
         <WorkSectionLabel>Coming up</WorkSectionLabel>
         <WorkCard as="ul" testId="roster-month-coming">
-          {nights ? (
-            <li>
-              <WorkDateRow
-                month={monthShort(nights.dates[0]!)}
-                day={Number(nights.dates[0]!.slice(8, 10))}
-                title={nights.count > 1 ? `Nights · ${nights.count} in a row` : "Night"}
-                sub={`${runWords(nights.dates, dayWords)} · ${clockSpan(nights.first)}`}
-                end={<RosterShiftChip kind="night" />}
-                onClick={() => {
-                  setMonth(monthKeyOf(nights.dates[0]!));
-                  openDay(nights.dates[0]!);
-                }}
-              />
-            </li>
-          ) : null}
-          {leave ? (
-            <li>
-              <WorkDateRow
-                month={monthShort(leave.from)}
-                day={Number(leave.from.slice(8, 10))}
-                title={leaveShift?.title || SHIFT_KIND_LABEL.leave}
-                sub={`${leave.from === leave.to ? formatPerthDay(leave.from) : `${dayWords(leave.from)} to ${formatPerthDay(leave.to)}`} · ${leave.days} ${leave.days === 1 ? "day" : "days"}`}
-                end={<RosterShiftChip kind="leave" />}
-                onClick={() => {
-                  setMonth(monthKeyOf(leave.from));
-                  openDay(leave.from);
-                }}
-              />
-            </li>
-          ) : null}
+          {rows.map((row) => row.node)}
           {edges.map((edge) => (
             <li key={`${edge.entry.id}:${edge.edge}`}>
               <RosterEntryEdgeRow edge={edge} />
@@ -560,53 +634,59 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
 
     const thisMonth = monthKeyOf(today);
     return (
-      <div className="grid gap-2.25">
-        {notices}
-        {shifts.teamLoading ? null : statusCards()}
-        <RosterRotationBand entries={monthRotations(calendar.entries, month, today)} month={month} />
-        <WorkCard padded testId="roster-month-calendar">
-          <RosterMonthGrid
-            month={month}
-            today={today}
-            selected={selected}
-            days={days}
-            holidays={holidays}
-            loadedFrom={loadedFrom}
-            onSelect={openDay}
-            onMonthChange={changeMonth}
-            previousDisabled={`${month}-01` <= loadedFrom}
-          />
-          <RosterMonthLegend
-            swapAsked={waiting.length > 0 || asked.length > 0}
-            starts={[...days].some(([date, day]) => date.startsWith(month) && Boolean(day.starts?.length))}
-          />
-          {month !== thisMonth ? (
-            <div className="mt-1 grid justify-items-center">
-              <WorkButton
-                variant="quiet"
-                onClick={() => {
-                  setMonth(thisMonth);
-                  setSelected(null);
-                }}
-              >
-                Back to this month
-              </WorkButton>
-            </div>
-          ) : null}
-        </WorkCard>
-        {comingUp()}
-        <MonthTotalsCard totals={totals} partial={partial} month={month} />
-        {shifts.sample ? null : (
-          <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
-            Your copy of the roster. Check official changes with your service.
+      // Phone and upright tablet: one column in this order. From 1024px the calendar and what is happening now sit
+      // on the left, and what comes next and the month's totals beside them, so the month reads at a glance.
+      <div className="grid gap-2.25 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)] lg:items-start lg:gap-x-5">
+        <div className="grid min-w-0 gap-2.25">
+          {notices}
+          {shifts.teamLoading ? null : statusCards()}
+          <RosterRotationBand entries={monthRotations(calendar.entries, month, today)} month={month} />
+          <WorkCard padded testId="roster-month-calendar">
+            <RosterMonthGrid
+              month={month}
+              today={today}
+              selected={selected}
+              days={days}
+              holidays={holidays}
+              loadedFrom={loadedFrom}
+              onSelect={openDay}
+              onMonthChange={changeMonth}
+              previousDisabled={`${month}-01` <= loadedFrom}
+            />
+            <RosterMonthLegend
+              swapAsked={waiting.length > 0 || asked.length > 0}
+              starts={[...days].some(([date, day]) => date.startsWith(month) && Boolean(day.starts?.length))}
+            />
+            {month !== thisMonth ? (
+              <div className="mt-1 grid justify-items-center">
+                <WorkButton
+                  variant="quiet"
+                  onClick={() => {
+                    setMonth(thisMonth);
+                    setSelected(null);
+                  }}
+                >
+                  Back to this month
+                </WorkButton>
+              </div>
+            ) : null}
+          </WorkCard>
+        </div>
+        <div className="grid min-w-0 gap-2.25">
+          {comingUp()}
+          <MonthTotalsCard totals={totals} partial={partial} month={month} />
+          {shifts.sample ? null : (
+            <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
+              Your copy of the roster. Check official changes with your service.
+            </p>
+          )}
+          <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">
+            WA public holidays, wa.gov.au, read 25 Sep 2026.{" "}
+            <Link href="/roster/shifts" className="font-semibold text-[color:var(--mode-identity)]">
+              Week by week
+            </Link>
           </p>
-        )}
-        <p className="m-0 -mt-1 px-1 text-center text-2xs text-[color:var(--text-muted)]">
-          WA public holidays, wa.gov.au, read 25 Sep 2026.{" "}
-          <Link href="/roster/shifts" className="font-semibold text-[color:var(--mode-identity)]">
-            Week by week
-          </Link>
-        </p>
+        </div>
       </div>
     );
   }
@@ -614,7 +694,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   return (
     // The page's main landmark, so "Skip to main content" and screen-reader landmarks land on the month.
     <main className="min-w-0">
-      <WorkBody testId="roster-month-main">
+      {/* A calendar page: from 1024px the frame takes its wide column (work-mode.css, "page widths"). */}
+      <div className="work-body" data-page-width="wide" data-page-padded="" data-testid="roster-month-main">
         <h1 className="sr-only">Roster, month</h1>
         {canEdit ? (
           <ModeBandAction>
@@ -696,7 +777,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
             return failure;
           }}
         />
-      </WorkBody>
+      </div>
     </main>
   );
 }

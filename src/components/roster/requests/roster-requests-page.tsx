@@ -148,7 +148,7 @@ function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () 
   return <WorkStateNotice kind="error" title={children} onRetry={onRetry} />;
 }
 
-/** Dates I can't work, leave and shifts I can't make. Swaps and open shifts live on the Swaps page. */
+/** Sick for tomorrow, dates I can't work, leave and shifts I can't make. Swaps and open shifts live on the Swaps tab. */
 export function RosterRequestsPage() {
   const now = useRosterNow();
   // The band's words (mockup `rost_requests`); the page heading "Requests" stays under it.
@@ -410,14 +410,17 @@ export function RosterRequestsPage() {
           </RosterNote>
         ) : null}
         <RosterSentBar receipt={sent} clear={clearSent} />
-        <RosterList>
-          <RosterRow
-            href="/roster/swaps"
-            lead={<RosterIconLead icon={ArrowLeftRight} />}
-            title="Swaps and open shifts"
-            sub="Answer a swap, follow one you sent, or take an open shift"
-          />
-        </RosterList>
+        {/* Swaps have their own tab, so the first row here is the one urgent request: sick for tomorrow. */}
+        <NewWorkModeOnly>
+          <RosterList>
+            <RosterRow
+              href="/roster/sick"
+              lead={<RosterIconLead icon={Thermometer} />}
+              title="Sick for tomorrow"
+              sub="Tell your team you can't come in. No reason needed."
+            />
+          </RosterList>
+        </NewWorkModeOnly>
 
         <section aria-labelledby="roster-requests-leave" className="grid min-w-0 gap-3">
           <RosterSectionHead

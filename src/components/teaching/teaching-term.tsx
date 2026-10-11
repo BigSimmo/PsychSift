@@ -1,8 +1,8 @@
 "use client";
 
 import { withUnit } from "@/components/teaching/teaching-number";
-import { Award, CalendarDays, Check, Clock, ExternalLink } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Award, Check, Clock, ExternalLink } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -29,14 +29,27 @@ import {
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { TeachingUndoBar } from "@/components/teaching/teaching-row";
-import { NoPatientDetailsMark, TermAddItem, TermRemoveButton } from "@/components/teaching/teaching-term-kit";
-import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
+import {
+  DeviceOnlyNotice,
+  NoPatientDetailsMark,
+  TermAddItem,
+  TermRemoveButton,
+} from "@/components/teaching/teaching-term-kit";
+import {
+  FolderCard,
+  FolderEarlierTerms,
+  FolderNotKept,
+  FolderPartsSection,
+  FolderPrivacyNote,
+  FolderStatusNotes,
+} from "@/components/teaching/term-folder/term-folder-page";
+import { useTermFolderFor } from "@/components/teaching/term-folder/use-term-folder";
 import { milestoneRows, overdueNote, termPanel } from "@/components/teaching/term-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 import { TextField } from "@/components/ui/text-field";
 import { cn, textMuted } from "@/components/ui-primitives";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import {
   currentTerm,
   dayOfMonth,
@@ -567,7 +580,18 @@ function MeetingForm({ term, update, onDone }: { term: TermRecord; update: Updat
   );
 }
 
-function Meeting({ term, today, update }: { term: TermRecord; today: string; update: Update }) {
+function Meeting({
+  term,
+  today,
+  update,
+  notice,
+}: {
+  term: TermRecord;
+  today: string;
+  update: Update;
+  /** "Saved on this phone only", shown directly above the goals it is about. */
+  notice?: ReactNode;
+}) {
   const [editing, setEditing] = useState(false);
   const meeting = term.meeting;
   const upcoming = meeting && meeting.on >= today;
@@ -598,6 +622,7 @@ function Meeting({ term, today, update }: { term: TermRecord; today: string; upd
         </T5List>
       )}
 
+      {notice}
       <T5Sub>Goals from the start of term</T5Sub>
       {term.goals.length === 0 ? <T5Meta className="pb-1">Add the goals you agreed.</T5Meta> : null}
       <T5List ruled>
@@ -673,6 +698,91 @@ function Meeting({ term, today, update }: { term: TermRecord; today: string; upd
   );
 }
 
+/* ---------- the term's own sections, shared by both work modes ---------- */
+
+type TermSectionsProps = {
+  state: TermTrackerState;
+  term: TermRecord;
+  today: string;
+  update: Update;
+  notice: ReactNode;
+};
+
+/** Term assessments, EPAs, then the supervisor meeting with goals and things to raise. */
+function TermSections({ state, term, today, update, notice, between }: TermSectionsProps & { between?: ReactNode }) {
+  return (
+    <>
+      <Milestones term={term} today={today} update={update} />
+      <Epas state={state} term={term} today={today} update={update} />
+      {between}
+      {/* Personal notes, not evidence: a printout of the term stays status and counts only. */}
+      <div data-print-hide className="contents">
+        <Meeting term={term} today={today} update={update} notice={notice} />
+      </div>
+    </>
+  );
+}
+
+/*
+ * The term and its evidence folder on one page (owner-approved mock-up, 11 Oct 2026). The folder card heads
+ * the page in place of the term summary, with Export, Print and Copy summary and the term's own Edit; the
+ * folder's attendance and supervision rows sit between EPAs and the supervisor meeting; its privacy line and
+ * "Not kept here" close the page. The folder reads this page's own tracker, so an edit here moves its meter.
+ */
+function TermWithFolder({
+  demoMode,
+  onEdit,
+  onNew,
+  ...shared
+}: TermSectionsProps & { demoMode: boolean; onEdit: () => void; onNew: () => void }) {
+  const view = useTermFolderFor(demoMode, shared.state, null);
+  const { term, today } = shared;
+  if (view.kind !== "ready")
+    return (
+      <>
+        <TermSummary term={term} today={today} onEdit={onEdit} onNew={onNew} />
+        <TermSections {...shared} />
+      </>
+    );
+  const finished = termPanel(term, today).finished;
+  return (
+    <>
+      <FolderStatusNotes view={view} />
+      <FolderCard
+        view={view}
+        demoMode={demoMode}
+        actions={
+          <T5Link onClick={onEdit} quiet label="Edit this term" testId="teaching-term-edit-open">
+            Edit
+          </T5Link>
+        }
+      />
+      {finished ? (
+        <T5Actions className="mt-2">
+          <T5Button type="button" variant="primary" onClick={onNew}>
+            Start the next term
+          </T5Button>
+        </T5Actions>
+      ) : null}
+      <TermSections
+        {...shared}
+        between={
+          <FolderPartsSection
+            view={view}
+            ids={["attendance", "supervision"]}
+            label="Supervision and attendance"
+            testId="teaching-term-supervision"
+          />
+        }
+      />
+      <FolderNotKept />
+      {/* A finished term's folder still opens, and exports, on its own page. */}
+      <FolderEarlierTerms view={view} />
+      <FolderPrivacyNote folder={view.folder} />
+    </>
+  );
+}
+
 /* ---------- the page ---------- */
 
 function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
@@ -681,6 +791,7 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
   const sample = useMemo(() => (demoMode && today ? sampleTermTracker(today) : null), [demoMode, today]);
   const store = useTermTrackerStore(sample);
   const [mode, setMode] = useState<"view" | "edit" | "new">("view");
+  const newWorkMode = useNewWorkMode();
   const state = store.state;
   const term = state ? currentTerm(state) : null;
 
@@ -716,31 +827,40 @@ function TeachingTermContent({ demoMode }: { demoMode: boolean }) {
         <TermForm term={term} onSave={saveTerm} onCancel={() => setMode("view")} />
       </T5Panel>
     );
-  else
-    body = (
+  else {
+    const notice = (
+      <DeviceOnlyNotice
+        section="teachingTermTracker"
+        data={state}
+        fileName={`term-goals-${today}.json`}
+        demoMode={demoMode}
+        className="mt-2"
+      />
+    );
+    const shared = { state, term, today, update: store.update, notice };
+    body = newWorkMode ? (
+      <TermWithFolder {...shared} demoMode={demoMode} onEdit={() => setMode("edit")} onNew={() => setMode("new")} />
+    ) : (
       <>
         <TermSummary term={term} today={today} onEdit={() => setMode("edit")} onNew={() => setMode("new")} />
-        <Milestones term={term} today={today} update={store.update} />
-        <Epas state={state} term={term} today={today} update={store.update} />
-        <Meeting term={term} today={today} update={store.update} />
-        <T5List ruled className="mt-4.5">
-          <T5Row
-            title="My exam prep"
-            meta="Countdown, study days and topics"
-            lead={<T5Icon icon={CalendarDays} />}
-            href="/teaching/exam-prep"
-          />
-        </T5List>
-        <NewWorkModeOnly>
-          <TermFolderEntryLink />
-        </NewWorkModeOnly>
+        <TermSections {...shared} />
       </>
     );
+  }
 
   return (
     <InformationPageShell width="narrow" gap={false} testId="teaching-term">
       <T5Page>
         <h1 className="sr-only">This term</h1>
+        {/* In the term's own view the notice sits above the goals it is about (inside Supervisor meeting). */}
+        {today && state && !(demoMode && !sample) && !(term && mode === "view") ? (
+          <DeviceOnlyNotice
+            section="teachingTermTracker"
+            data={state}
+            fileName={`term-goals-${today}.json`}
+            demoMode={demoMode}
+          />
+        ) : null}
         {body}
       </T5Page>
     </InformationPageShell>

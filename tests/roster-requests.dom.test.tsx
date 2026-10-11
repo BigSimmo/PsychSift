@@ -176,13 +176,15 @@ it("opens an Ask dates handoff with Prefer off already selected", async () => {
   expect(await screen.findByRole("button", { name: `${day}: Prefer off` })).toBeTruthy();
 });
 
-it("no longer lists swaps or open shifts, and points to the Swaps page", () => {
+it("no longer lists swaps or open shifts, and opens with Sick for tomorrow instead", () => {
   reads.requests.openShifts = [open];
   render(<RosterRequestsPage />);
   expect(screen.queryByRole("button", { name: "Review" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Take it" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Swap a shift" })).toBeNull();
-  expect(screen.getByRole("link", { name: /Swaps and open shifts/ }).getAttribute("href")).toBe("/roster/swaps");
+  // Swaps have their own tab, so the page no longer repeats it.
+  expect(screen.queryByRole("link", { name: /Swaps and open shifts/ })).toBeNull();
+  expect(screen.getByRole("link", { name: /Sick for tomorrow/ }).getAttribute("href")).toBe("/roster/sick");
 });
 
 it("still opens I can't make my shift from the New menu", async () => {

@@ -48,7 +48,8 @@ import {
 
 const MAX_TOPICS = 5;
 const STATUS_LABELS = { pending: "Awaiting confirmation", confirmed: "Confirmed" } as const;
-const RECENT = 5;
+/** How many past sessions show before "Show all" opens the rest, so the page stays short on a phone. */
+const RECENT = 3;
 const MIN_MINUTES = 15;
 const MAX_MINUTES = 240;
 type SessionType = "individual" | "group";
@@ -190,7 +191,8 @@ function TopicChips({
         <span>{legend}</span>
         <small className="shrink-0 whitespace-nowrap font-bold text-[color:var(--text-muted)] tabular-nums">{`${withUnit(value.length, "of")} ${MAX_TOPICS}`}</small>
       </legend>
-      <div className="work-chips">
+      {/* The chips wrap onto more lines, so every topic is on screen at 320px. */}
+      <div className="flex min-w-0 flex-wrap gap-x-1.5">
         {supervisionTopics.map((topic) => {
           const pressed = value.includes(topic);
           return (
@@ -511,7 +513,6 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
   const [minutes, setMinutes] = useState("60");
   const [type, setType] = useState<SessionType>("individual");
   const [topics, setTopics] = useState<SupervisionTopic[]>([]);
-  const [target, setTarget] = useState(pairing.targetHours === null ? "" : String(pairing.targetHours));
   const inert = sender.inert;
   const max = today < pairing.endsOn ? today : pairing.endsOn;
   const id = pairing.pairingId;
@@ -554,41 +555,80 @@ function LogForm({ pairing, today, sender }: { pairing: SupervisionPairingView; 
           Sends after 10 seconds, with Undo.
         </AssessNote>
       </form>
-      <form
-        className="work-card work-card--pad grid grid-cols-[minmax(0,1fr)] gap-3"
-        aria-label="Your personal target"
-        onSubmit={(event) => {
-          event.preventDefault();
+      <TargetForm pairing={pairing} sender={sender} />
+    </>
+  );
+}
+
+/**
+ * The personal target, folded to one line until Edit opens the form, so the page stays short on a
+ * phone. A successful save closes it again; a refused or failed save keeps it open with what was typed.
+ */
+function TargetForm({ pairing, sender }: { pairing: SupervisionPairingView; sender: Sender }) {
+  const [editing, setEditing] = useState(false);
+  const [awaiting, setAwaiting] = useState(false);
+  const [target, setTarget] = useState(pairing.targetHours === null ? "" : String(pairing.targetHours));
+  const inert = sender.inert;
+  // Close only once the save has finished and not failed, so a refused save keeps what was typed.
+  if (awaiting && !sender.busy) {
+    setAwaiting(false);
+    if (!sender.message?.failed) setEditing(false);
+  }
+  const id = pairing.pairingId;
+  if (!editing)
+    return (
+      <div className="work-card work-card--pad flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="m-0 min-w-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
+          {pairing.targetHours === null
+            ? "No personal target set"
+            : `Your personal target: ${withUnit(pairing.targetHours, "h")}`}
+        </p>
+        <WorkButton variant="quiet" disabled={inert} onClick={() => setEditing(true)}>
+          Edit <span className="sr-only">your personal target</span>
+        </WorkButton>
+      </div>
+    );
+  return (
+    <form
+      className="work-card work-card--pad grid grid-cols-[minmax(0,1fr)] gap-3"
+      aria-label="Your personal target"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (
           sender.save(pairing.serviceId, {
             action: "supervision.target.set",
             pairingId: id,
             targetHours: target === "" ? null : Number(target),
-          });
-        }}
-      >
-        <div className="assess-field">
-          <label htmlFor={`sup-target-${id}`} className="assess-field__label">
-            <span>Your personal target (hours, optional)</span>
-          </label>
-          <input
-            id={`sup-target-${id}`}
-            className="assess-txt"
-            type="number"
-            inputMode="decimal"
-            min="1"
-            max="500"
-            step="0.1"
-            value={target}
-            disabled={inert}
-            onChange={(event) => setTarget(event.target.value)}
-          />
-        </div>
-        <AssessNote icon={Lock}>Only you see your target.</AssessNote>
-        <WorkButton type="submit" variant="secondary" size="wide" disabled={inert}>
-          Save my target
-        </WorkButton>
-      </form>
-    </>
+          })
+        )
+          setAwaiting(true);
+      }}
+    >
+      <div className="assess-field">
+        <label htmlFor={`sup-target-${id}`} className="assess-field__label">
+          <span>Your personal target (hours, optional)</span>
+        </label>
+        <input
+          id={`sup-target-${id}`}
+          className="assess-txt"
+          type="number"
+          inputMode="decimal"
+          min="1"
+          max="500"
+          step="0.1"
+          value={target}
+          disabled={inert}
+          onChange={(event) => setTarget(event.target.value)}
+        />
+      </div>
+      <AssessNote icon={Lock}>Only you see your target.</AssessNote>
+      <WorkButton type="submit" variant="secondary" size="wide" disabled={inert}>
+        Save my target
+      </WorkButton>
+      <WorkButton variant="quiet" disabled={inert} onClick={() => setEditing(false)}>
+        Cancel
+      </WorkButton>
+    </form>
   );
 }
 

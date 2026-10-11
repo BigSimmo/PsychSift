@@ -335,6 +335,8 @@ export function RosterSwapsPage() {
   }
 
   const ready = !!serviceId && !!actorId && requests.status === "ready";
+  // With no team there is nothing to swap: the page shows only the No team card and its Join a team button.
+  const noTeam = teams.status === "ready" && !enabled.length;
   // The band's eyebrow and the Swaps tab count (mockup `rost_swaps`), only from loaded swaps.
   const answerWords = needsYou.length ? `${needsYou.length} to answer` : "Nothing to answer";
   const sentWords = sentSwaps.length ? ` · ${sentSwaps.length} sent` : "";
@@ -348,32 +350,38 @@ export function RosterSwapsPage() {
         eyebrow="Roster"
         title="Swaps"
         subtitle={
-          <>
-            Swaps and open shifts. To start a swap, tap one of your shifts on the{" "}
-            <Link href="/roster/team" className="work-hit underline underline-offset-2">
-              Team calendar
-            </Link>
-            .
-          </>
+          noTeam ? (
+            "Swaps and open shifts."
+          ) : (
+            <>
+              Swaps and open shifts. To start a swap, tap one of your shifts on the{" "}
+              <Link href="/roster/team" className="work-hit underline underline-offset-2">
+                Team calendar
+              </Link>
+              .
+            </>
+          )
         }
         actions={
-          <RosterNewButton
-            entries={[
-              ...(enabled.length > 0
-                ? [
-                    {
-                      id: "swap",
-                      label: "Swap or give away",
-                      description: "Pick the shift on the Team calendar",
-                      icon: ArrowLeftRight,
-                      href: "/roster/team?view=week",
-                    } as const,
-                  ]
-                : []),
-              { id: "leave", label: "Plan leave", icon: Plane, href: "/roster/requests?start=leave" },
-              { id: "dates", label: "Dates I can't work", icon: CalendarOff, href: "/roster/requests?start=dates" },
-            ]}
-          />
+          noTeam ? undefined : (
+            <RosterNewButton
+              entries={[
+                ...(enabled.length > 0
+                  ? [
+                      {
+                        id: "swap",
+                        label: "Swap or give away",
+                        description: "Pick the shift on the Team calendar",
+                        icon: ArrowLeftRight,
+                        href: "/roster/team?view=week",
+                      } as const,
+                    ]
+                  : []),
+                { id: "leave", label: "Plan leave", icon: Plane, href: "/roster/requests?start=leave" },
+                { id: "dates", label: "Dates I can't work", icon: CalendarOff, href: "/roster/requests?start=dates" },
+              ]}
+            />
+          )
         }
       />
       <div className="grid min-w-0 gap-3" data-mode-identity="roster">
@@ -411,7 +419,7 @@ export function RosterSwapsPage() {
           </ModeNotice>
         ) : null}
         {teams.status === "error" ? <TryAgainNote onRetry={teams.reload}>{teams.message}</TryAgainNote> : null}
-        {teams.status === "ready" && !enabled.length ? (
+        {noTeam ? (
           <WorkCard testId="roster-swaps-no-team">
             <WorkEmpty
               icon={Users}

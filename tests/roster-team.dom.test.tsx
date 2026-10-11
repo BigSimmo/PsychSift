@@ -216,6 +216,8 @@ describe("Roster team journey", () => {
     const empty = await screen.findByTestId("roster-team-no-team");
     expect(empty.textContent).toContain("No team yet");
     expect(empty.querySelector('a[href="/roster/join"]')?.textContent).toContain("Join a team");
+    // One Join a team on the page: the card's button, not a second row below it.
+    expect(screen.getAllByRole("link", { name: /Join a team/ })).toHaveLength(1);
     expect(vi.mocked(fetch).mock.calls.every(([url]) => url === "/api/roster/team")).toBe(true);
   });
   it("lists who is on with you later today, and only when a shift of yours starts later today", async () => {

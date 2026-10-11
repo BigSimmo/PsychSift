@@ -117,14 +117,69 @@ describe("Roster Month tab", () => {
     expect(within(grid).getByRole("button", { name: "Thu 8 Oct: Day" })).toHaveAttribute("tabindex", "-1");
   });
 
-  it("leads with the next shift and lists the next nights and leave", () => {
+  it("leads with the next shift and lists the next three shifts, then leave", () => {
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("On call tonight");
     const coming = screen.getByTestId("roster-month-coming");
-    expect(coming).toHaveTextContent("Nights · 2 in a row");
-    expect(coming).toHaveTextContent("Fri 16 and Sat 17 · 21:00 to 08:30");
+    // Days and nights alike, in date order, each with its date and time; the lead shift is not repeated.
+    const rows = within(coming).getAllByTestId("roster-month-coming-shift");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Thu 8 · 08:00 to 16:30"),
+      expect.stringContaining("Fri 16 · 21:00 to 08:30"),
+      expect.stringContaining("Sat 17 · 21:00 to 08:30"),
+    ]);
+    expect(rows[0]).toHaveTextContent("Day");
+    expect(rows[1]).toHaveTextContent("Night");
+    expect(coming).not.toHaveTextContent("On call");
+    // The nights are already listed, so no separate run row.
+    expect(coming).not.toHaveTextContent("in a row");
     expect(coming).toHaveTextContent("Annual leave");
     expect(coming).toHaveTextContent("2 days");
+  });
+
+  it("still names a later run of nights after the next three shifts", () => {
+    ready([
+      shift("d7", "2026-10-07", "day"),
+      shift("d8", "2026-10-08", "day"),
+      shift("d9", "2026-10-09", "day"),
+      shift("d12", "2026-10-12", "day"),
+      shift("n16", "2026-10-16", "night", "21:00", "08:30", "2026-10-17"),
+      shift("n17", "2026-10-17", "night", "21:00", "08:30", "2026-10-18"),
+    ]);
+    render(<RosterMonthPage now={NOW} />);
+    const coming = screen.getByTestId("roster-month-coming");
+    expect(within(coming).getAllByTestId("roster-month-coming-shift")).toHaveLength(3);
+    expect(coming).toHaveTextContent("Nights · 2 in a row");
+  });
+
+  it("keeps a run of nights' length when it starts among the next three shifts but runs past them", () => {
+    ready([
+      shift("d8", "2026-10-08", "day"),
+      shift("d9", "2026-10-09", "day"),
+      shift("n16", "2026-10-16", "night", "21:00", "08:30", "2026-10-17"),
+      shift("n17", "2026-10-17", "night", "21:00", "08:30", "2026-10-18"),
+      shift("n18", "2026-10-18", "night", "21:00", "08:30", "2026-10-19"),
+    ]);
+    render(<RosterMonthPage now={NOW} />);
+    const rows = within(screen.getByTestId("roster-month-coming")).getAllByTestId("roster-month-coming-shift");
+    // The lead card shows Thu 8, so the run starts on the second row; its later nights are not listed again.
+    expect(rows).toHaveLength(2);
+    expect(rows[1]).toHaveTextContent("Nights · 3 in a row");
+    expect(rows.filter((row) => /\bNight\b/.test(row.textContent ?? ""))).toHaveLength(0);
+  });
+
+  it("lists leave in date order with the shifts", () => {
+    ready([
+      shift("al", "2026-10-07", "leave", "00:00", "00:00", "2026-10-09"),
+      shift("d12", "2026-10-12", "day"),
+      shift("d13", "2026-10-13", "day"),
+      shift("d14", "2026-10-14", "day"),
+    ]);
+    render(<RosterMonthPage now={NOW} />);
+    const items = within(screen.getByTestId("roster-month-coming")).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Annual leave");
+    // Mon 12 leads the page, so the listed shifts start on Tue 13.
+    expect(items[1]).toHaveTextContent("Tue 13");
   });
 
   it("counts the month, with days off and public holidays worked", () => {

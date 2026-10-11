@@ -228,16 +228,28 @@ describe("Roster Settings", () => {
     render(<RosterSettingsPage />);
     const reminder = await screen.findByRole("switch", { name: "Remind me the evening before" });
     expect(reminder).toBeDisabled();
-    expect(screen.getByText("Turn on Calendar link first")).toBeInTheDocument();
+    expect(
+      screen.getByText("This reminder is an alarm on your calendar link, so it needs that link turned on."),
+    ).toBeInTheDocument();
 
-    const calendar = screen.getByRole("switch", { name: "Shifts on my calendar link" });
-    await waitFor(() => expect(calendar).toBeEnabled());
-    fireEvent.click(calendar);
+    // The button beside the reminder turns the calendar link on, just as the switch above does.
+    const turnOn = screen.getByRole("button", { name: "Turn on calendar link" });
+    await waitFor(() => expect(turnOn).toBeEnabled());
+    fireEvent.click(turnOn);
     await waitFor(() => expect(fetchCalls("/api/roster/settings", "PUT")).toHaveLength(1));
     expect(JSON.parse(String(fetchCalls("/api/roster/settings", "PUT")[0]?.[1]?.body))).toEqual({
       calendarShifts: true,
     });
     await waitFor(() => expect(screen.getByRole("switch", { name: "Remind me the evening before" })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "Turn on calendar link" })).toBeNull();
+  });
+
+  it("keeps your calendar link and the calendars Roster reads from in one Calendar section", async () => {
+    mockShifts([]);
+    render(<RosterSettingsPage />);
+    const section = (await screen.findByTestId("roster-settings-calendar")).closest("section")!;
+    expect(section).toContainElement(screen.getByTestId("roster-settings-links"));
+    expect(screen.queryByRole("heading", { name: "Roster calendar links" })).toBeNull();
   });
 
   it("lists calendar links by host only, and refreshes or removes one", async () => {

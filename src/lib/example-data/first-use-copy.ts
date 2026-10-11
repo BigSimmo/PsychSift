@@ -66,7 +66,7 @@ export const FIRST_USE: Readonly<Record<WorkAreaId, FirstUseCopy>> = {
     // entered under "Join with invitation" on the service page, which is where
     // Teaching's own "How to join a service" sheet sends people.
     primary: { label: "Join with a code", href: "/on-call/service" },
-    secondary: { label: "Browse what's on", href: "/teaching/whats-on" },
+    secondary: { label: "See other services", href: "/teaching/week?view=other" },
   },
   assess: {
     icon: "pen",
