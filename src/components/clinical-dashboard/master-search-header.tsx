@@ -112,10 +112,11 @@ import {
 } from "@/lib/app-modes";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import {
-  desktopComposerSlotReadyAttr,
   isDesktopComposerSlotReady,
+  observeDesktopComposerSlots,
   phoneHeaderCollapseAddonSlotId,
   setModeHomeComposerReservePending,
+  syncHydratedComposerReserve,
   universalHeaderTrailingSlotId,
   type PhoneDockAddonKind,
 } from "@/lib/mode-home-composer";
@@ -1583,10 +1584,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // The page's first client render still expects its SSR reserve attribute.
     // Every mutation, including phone/suppression/fallback clears, must wait
     // for the owning segment's hydration, just like portal adoption does.
-    const syncReserve = (pending: boolean) => {
-      const slot = composerSlotId ? document.getElementById(composerSlotId) : null;
-      if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, pending);
-    };
+    const syncReserve = (pending: boolean) => syncHydratedComposerReserve(composerSlotId, pending);
 
     if (!composerSlotId || !searchComposerVisible) {
       // No page-owned slot at this route, or the shell suppressed the composer:
@@ -1594,15 +1592,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       // Deferred to a microtask (not requestAnimationFrame) so it stays off the
       // synchronous effect body without being frame-gated — headless CI can starve rAF.
       let cancelled = false;
-      const observer = new MutationObserver(() => syncReserve(false));
-      if (composerSlotId) {
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: [desktopComposerSlotReadyAttr],
-        });
-      }
+      const observer = composerSlotId ? observeDesktopComposerSlots(() => syncReserve(false)) : null;
       queueMicrotask(() => {
         if (cancelled) return;
         syncReserve(false);
@@ -1613,7 +1603,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       });
       return () => {
         cancelled = true;
-        observer.disconnect();
+        observer?.disconnect();
       };
     }
 
@@ -1713,13 +1703,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       }
     };
 
-    const observer = new MutationObserver(syncTarget);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: [desktopComposerSlotReadyAttr],
-    });
+    const observer = observeDesktopComposerSlots(syncTarget);
     syncTarget();
     mediaQuery.addEventListener("change", syncTarget);
     return () => {
@@ -1737,8 +1721,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         // Hydration readiness is observed by the effect body, so its pending
         // clear still runs once the owning segment is safe to mutate. A real
         // unmount takes the slot element with it.
-        const slot = document.getElementById(composerSlotId);
-        if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, false);
+        syncHydratedComposerReserve(composerSlotId, false);
       }
       setDesktopComposerPortalActive(false);
       setDesktopComposerPortalHost(null);
