@@ -145,9 +145,11 @@ export function SpecifierMatchCard({ record, isTopMatch }: { record: SpecifierRe
               </div>
             </div>
 
+            {/* A tinted well rather than a bordered card: the result is
+                already the card, and a box inside it was a card in a card. */}
             <div
               data-specifier-card-signal
-              className="rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]/55 p-3.5 sm:mt-0.5"
+              className="rounded-lg bg-[color:var(--clinical-accent-soft)] p-3.5 sm:mt-0.5"
             >
               <p className={eyebrowText}>Deciding signal</p>
               <p className="mt-1.5 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">

@@ -134,12 +134,15 @@ export default function OnCallNowSignedOutExample() {
         </p>
         <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
           <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-          <ExampleNumber value={example.emergency.mobile} />
+          {/* The crisis lines' number size, so the two blocks share one type scale. */}
+          <span className="text-sm">
+            <ExampleNumber value={example.emergency.mobile} />
+          </span>
           <span className={modeSecondaryText}>from your mobile</span>
         </p>
         <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
           <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-          <span className={cn(modeNumberText, "text-[color:var(--text-heading)]")}>
+          <span className={cn(modeNumberText, "text-sm text-[color:var(--text-heading)]")}>
             {`Dial ${example.emergency.wardCode}`}
           </span>
           <span className={modeSecondaryText}>from a ward phone</span>
@@ -151,7 +154,8 @@ export default function OnCallNowSignedOutExample() {
           Right now · after hours
         </h2>
         <div className="grid gap-0.5">
-          <p className="text-xl font-semibold text-[color:var(--text-heading)]">{example.rightNow.role}</p>
+          {/* The same size as every other heading on Now, so the role reads as one of them, not a banner. */}
+          <p className="text-base-minus font-semibold text-[color:var(--text-heading)]">{example.rightNow.role}</p>
           <p className={cn(modeSecondaryText, "flex items-center gap-1.5")}>
             <Clock aria-hidden="true" strokeWidth={1.5} className="size-icon-xs shrink-0" />
             {`${example.rightNow.name} · ${example.rightNow.until}`}

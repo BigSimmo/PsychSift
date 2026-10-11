@@ -144,6 +144,7 @@ import {
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
 import {
+  clinicalBandAttribute,
   modeMenuSideForMode,
   modeMenuSides,
   orderModesForSide,
@@ -2533,13 +2534,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     <header
       id="search"
       data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
-      // The work-mode frame's round glass buttons and glass pill (work-mode.css).
-      // Decided from the mode and address alone, so it is in the server HTML.
+      // Work frame (glass buttons and pill) and band tints, decided from the mode and
+      // address alone so they are in the server HTML (work-mode.css, mode-band.css).
       data-work-frame={routeWorkArea?.id}
-      // A framed page's top bar wears its band's tint from the first paint,
-      // before the band has published it on <html> (work-mode.css).
       data-work-band={routeWorkFramed ? "" : undefined}
       data-mode-identity={routeWorkFrame?.area.identity}
+      data-clinical-band={clinicalBandAttribute(selectedAppMode.id, currentPathname, Boolean(routeWorkArea))}
       className={cn(
         // No backdrop-filter on the header itself: it would form a backdrop
         // root and starve the .edge-glass-header-backdrop scrim (the single

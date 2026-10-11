@@ -87,10 +87,11 @@ describe("Open shifts, signed-out preview", () => {
     expect(Number(matches()?.[1])).toBeGreaterThan(before);
   });
 
-  it("offers a way back to My Day and says how fresh the example is", () => {
+  it("says how fresh the example is, leaving the way back to the header's Back", () => {
     render(<OpenShiftsBrowsePage />);
     const context = screen.getByTestId("open-shifts-sample-context");
-    expect(within(context).getByRole("link", { name: "Back to My Day" }).getAttribute("href")).toBe("/my-day");
+    // One way back: the header shows Back, so the page adds no second "My Day" link.
+    expect(screen.queryByRole("link", { name: "Back to My Day" })).toBeNull();
     expect(context.textContent).toContain("roster as of Mon 5 Oct");
     expect(context.textContent).not.toMatch(/example/i);
   });

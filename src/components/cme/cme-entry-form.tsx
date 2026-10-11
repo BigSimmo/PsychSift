@@ -805,7 +805,7 @@ export function CmeEntryForm({
       <FormField
         label="Reflection"
         id="cme-entry-reflection"
-        hint="In your own words — this is the part an audit actually reads."
+        hint="In your own words. This is the part an audit actually reads."
       >
         {(field) => (
           <textarea

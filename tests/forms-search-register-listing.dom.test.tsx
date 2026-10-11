@@ -70,7 +70,12 @@ describe("forms search with no query", () => {
 
     const table = screen.getByTestId("form-search-results");
     expect(within(table).getByRole("heading", { name: "All forms" })).toBeInTheDocument();
-    expect(within(table).getByText(`${formRecords.length} forms · by form code`)).toBeInTheDocument();
+    // The count is stated once, in the band's status line; the table heading
+    // only says how the list is ordered.
+    expect(within(table).getByText("By form code")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("status").some((node) => node.textContent?.includes(`${formRecords.length} forms`)),
+    ).toBe(true);
     expect(within(table).getAllByRole("article")).toHaveLength(formRecords.length);
     expect(within(table).queryByText(/content match/i)).not.toBeInTheDocument();
     // Already the whole register: no "View all forms" link pointing back at itself.
@@ -79,7 +84,7 @@ describe("forms search with no query", () => {
 
     const mobile = screen.getByTestId("form-search-mobile-results");
     expect(within(mobile).getByRole("heading", { name: "All forms" })).toBeInTheDocument();
-    expect(within(mobile).getByText(`${formRecords.length} forms`)).toBeInTheDocument();
+    expect(within(mobile).queryByText(`${formRecords.length} forms`)).not.toBeInTheDocument();
     expect(screen.queryByText(/No matches for/)).not.toBeInTheDocument();
   });
 

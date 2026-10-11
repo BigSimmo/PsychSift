@@ -711,11 +711,14 @@ describe("AdminRenewalsPage — readable timeline, wrapping chips, short Not rec
     expect(list.textContent).toMatch(/Working with Children Check: 3 Sep 2026.*Date passed/);
   });
 
-  it("wraps the kind chips instead of scrolling them sideways", () => {
+  // Design pass, October 2026: chip rows stay on one line and scroll sideways
+  // with an edge fade (the shared `.work-chips` row), instead of wrapping and
+  // leaving one chip alone on a second line.
+  it("keeps the kind chips on one shared sideways-scrolling row", () => {
     renderPage();
     const chips = screen.getByTestId("admin-renewals-kind");
-    expect(chips.className).toContain("flex-wrap");
-    expect(chips.className).not.toContain("overflow-x-auto");
+    expect(chips.className).toContain("work-chips");
+    expect(chips.className).not.toContain("flex-wrap");
   });
 
   it("marks unconfirmed rules with Rule to confirm in the list", () => {

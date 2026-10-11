@@ -27,14 +27,18 @@ export function PathwayListRail({ pathways, activeSlug, onSelect }: PathwayListR
   return (
     <div className="therapy-pathway-list hidden border-r border-[color:var(--border)] p-4 sm:block">
       <div className="mb-3.5 text-base-minus font-semibold text-[color:var(--text-heading)]">Pathways</div>
-      <div className="flex flex-col gap-2.5">
+      {/* Divided rows, not a stack of cards: the rail already sits inside the
+          pathway card, and a card per pathway put boxes inside a box. The
+          chosen pathway is a soft tint of the area colour, with no side bar. */}
+      <div className="flex flex-col border-y border-[color:var(--border)]">
         {pathways.map((pathway) => {
           const active = pathway.slug === activeSlug;
           const reviewed = pathway.reviewStatus === "reviewed";
           return (
             <InteractiveRow
               key={pathway.slug}
-              variant="card"
+              variant="table-row"
+              className="items-start gap-3.5 px-2 py-3.5 aria-[current=true]:bg-[color:var(--clinical-accent-soft)]"
               active={active}
               aria-label={pathwayRowAccessibleName(pathway, active)}
               onClick={() => onSelect(pathway.slug)}

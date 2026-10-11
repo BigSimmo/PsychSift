@@ -262,16 +262,13 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId, work
       root.style.setProperty("--mode-band-surface", getComputedStyle(band).backgroundColor);
       root.dataset.modeBand = modeId;
       if (workArea) {
-        // The work frame repaints the top bar above it (round glass buttons, the
-        // glass pill, the band's dot texture), and lines the band's dots up
-        // with the top bar's so the two read as one surface.
+        // The work frame repaints the top bar above it (round glass buttons and
+        // the glass pill), so the bar and the band read as one surface.
         root.dataset.workFrame = workArea;
         // Sheets, toasts and the work search portal out of the page, so the
         // area's palette also rides on <body> while the frame is up (not on
         // <html>, where `.dark [data-mode-identity]` could not match it).
         if (identity) document.body.dataset.modeIdentity = identity;
-        const top = band.getBoundingClientRect().top + window.scrollY;
-        band.style.setProperty("--work-band-offset", `${-Math.round(top)}px`);
       }
     };
     publish();
