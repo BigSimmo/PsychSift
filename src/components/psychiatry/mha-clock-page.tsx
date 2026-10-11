@@ -29,6 +29,7 @@ import { toAwstParts } from "@/lib/caring-contacts/clock";
 import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
 import { formatPerthDateTime, parsePerthDateTimeInput } from "@/lib/mha-timeline";
 import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
+import type { MhaClockForm } from "@/lib/psychiatry-hub/mha-clock-forms";
 import {
   addMhaClock,
   keepReadableMhaClocks,
@@ -58,11 +59,9 @@ import {
  * is otherwise kept for source status.
  */
 
-export interface MhaClockForm {
-  readonly code: string;
-  readonly title: string;
-  readonly slug: string;
-}
+// The form shape lives with its server-side producer, so src/lib never imports
+// from components; it is re-exported here for the page's callers and tests.
+export type { MhaClockForm };
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;

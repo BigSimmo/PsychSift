@@ -1,6 +1,12 @@
-import type { MhaClockForm } from "@/components/psychiatry/mha-clock-page";
 import { formCatalogDetails, formRecords } from "@/lib/forms";
 import { hasMhaTimeline } from "@/lib/mha-timeline";
+
+/** One form the MHA clock can track. */
+export interface MhaClockForm {
+  readonly code: string;
+  readonly title: string;
+  readonly slug: string;
+}
 
 /**
  * The forms the MHA clock offers: only forms with time limits in the governed
