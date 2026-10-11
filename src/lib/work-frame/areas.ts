@@ -1194,7 +1194,7 @@ const onCall: WorkArea = {
           id: "starting-here",
           label: "Starting here",
           short: "Starting",
-          sub: "Before you start, first night",
+          sub: "Before you start, orientation, checklist, first week, first night",
           icon: "flag",
           href: "/on-call/first-week",
           paths: ["/on-call/first-week", "/on-call/first-night", "/on-call/orientation"],
@@ -1231,6 +1231,14 @@ const onCall: WorkArea = {
                 href: "/on-call/whos-on/roster",
               } as const,
             ]),
+        {
+          id: "pulse",
+          label: "Shift pulse",
+          sub: "Breaks and workload",
+          icon: "pulse",
+          href: "/on-call/pulse",
+          band: false,
+        },
         {
           id: "check",
           label: "Check these",
