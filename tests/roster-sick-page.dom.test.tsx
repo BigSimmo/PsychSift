@@ -32,6 +32,14 @@ vi.mock("@/components/ui/live-announcer", () => ({ announce: mocks.announce }));
 
 import { RosterSickPage } from "@/components/roster/sick/roster-sick-page";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 // Tue 6 Oct 2026, 19:30 in Perth.
 const NOW = new Date("2026-10-06T11:30:00Z");
 const ME = "5e000000-0000-4000-8000-000000000001";
@@ -335,11 +343,14 @@ it("the example team refuses to send and says to phone", async () => {
   expect(mocks.post).not.toHaveBeenCalled();
 });
 
-it("has a visible way back to Roster", async () => {
+it("has one way back to Roster, in the top bar", async () => {
+  const removeSlot = addHeaderBackSlot();
   await renderPage();
   const back = screen.getByTestId("roster-sick-back");
   expect(back.getAttribute("href")).toBe("/roster");
-  expect(back.textContent).toBe("Roster");
+  expect(back.getAttribute("aria-label")).toBe("Back to Roster");
+  expect(back.closest("#universal-header-leading")).not.toBeNull();
+  removeSlot();
 });
 
 it("the personal leave link sits on its own line under the text", async () => {

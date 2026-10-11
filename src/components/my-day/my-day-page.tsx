@@ -527,7 +527,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <InformationPageShell testId="my-day-main" width="bleed" className="bg-[color:var(--work-wash)]">
       <LazyMyDayNeedsYouReader clock={now} read={feedRead} onChange={setNeedsYou} />
-      <div className={PAGE_BODY} data-testid="my-day-body">
+      <div className={PAGE_BODY} data-testid="my-day-body" data-page-width="wide" data-page-padded="">
         {/* The band names the page; this title is for screen readers and the document outline. */}
         <div data-testid="my-day-header" className="contents">
           <PageTitleUnderBand className="sr-only">My Day</PageTitleUnderBand>
