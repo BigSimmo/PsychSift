@@ -64,6 +64,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-overlap.spec.ts": 39.4,
     "tests/ui-patient-number-field.spec.ts": 9.3,
     "tests/ui-phone-motion.spec.ts": 18.0,
+    // Estimated (new assessment scrolling coverage; re-measure after the first release timing).
+    "tests/ui-phone-scroll-assessments.spec.ts": 70.0,
     "tests/ui-phone-scroll-document-rail.spec.ts": 4.4,
     "tests/ui-phone-scroll-page-owned.spec.ts": 49.2,
     "tests/ui-phone-scroll-routes.spec.ts": 162.5,
@@ -113,6 +115,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-overlap.spec.ts": 47.2,
     "tests/ui-patient-number-field.spec.ts": 17.1,
     "tests/ui-phone-motion.spec.ts": 19.6,
+    // Estimated (new assessment scrolling coverage; re-measure after the first release timing).
+    "tests/ui-phone-scroll-assessments.spec.ts": 85.0,
     "tests/ui-phone-scroll-document-rail.spec.ts": 9.1,
     "tests/ui-phone-scroll-page-owned.spec.ts": 81.5,
     "tests/ui-phone-scroll-routes.spec.ts": 186.0,
@@ -162,6 +166,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-overlap.spec.ts": 65.8,
     "tests/ui-patient-number-field.spec.ts": 44.0,
     "tests/ui-phone-motion.spec.ts": 45.8,
+    // Estimated (new assessment scrolling coverage; re-measure after the first release timing).
+    "tests/ui-phone-scroll-assessments.spec.ts": 90.0,
     "tests/ui-phone-scroll-document-rail.spec.ts": 18.3,
     "tests/ui-phone-scroll-page-owned.spec.ts": 146.2,
     "tests/ui-phone-scroll-routes.spec.ts": 217.1,
@@ -211,6 +217,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-overlap.spec.ts": 69.9,
     "tests/ui-patient-number-field.spec.ts": 37.7,
     "tests/ui-phone-motion.spec.ts": 43.6,
+    // Estimated (new assessment scrolling coverage; re-measure after the first release timing).
+    "tests/ui-phone-scroll-assessments.spec.ts": 90.0,
     "tests/ui-phone-scroll-document-rail.spec.ts": 15.5,
     "tests/ui-phone-scroll-page-owned.spec.ts": 127.3,
     "tests/ui-phone-scroll-routes.spec.ts": 199.8,
@@ -265,6 +273,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-overlap.spec.ts": 71.2,
     "tests/ui-patient-number-field.spec.ts": 19.8,
     "tests/ui-phone-motion.spec.ts": 19.9,
+    // Estimated (new assessment scrolling coverage; re-measure after the first release timing).
+    "tests/ui-phone-scroll-assessments.spec.ts": 90.0,
     "tests/ui-phone-scroll-document-rail.spec.ts": 11.6,
     "tests/ui-phone-scroll-page-owned.spec.ts": 99.4,
     "tests/ui-phone-scroll-routes.spec.ts": 244.6,
