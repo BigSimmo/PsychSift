@@ -59,7 +59,8 @@ describe("nothing from Admin goes to search or the AI", () => {
   });
 
   it("reads no CPD data: only the pure Perth date helper, and a plain link to /cme/check (spec review 20)", () => {
-    for (const file of adminFiles) {
+    // Job applications moved here from CPD (11 Oct 2026) and builds its CV from the doctor's own CPD log.
+    for (const file of adminFiles.filter((f) => !f.includes(join("admin", "applications")))) {
       const source = readFileSync(file, "utf8");
       expect(source, file).not.toMatch(/\/api\/cme/);
       expect(source, file).not.toMatch(/@\/lib\/cme\/(?!cpd-year")/);
