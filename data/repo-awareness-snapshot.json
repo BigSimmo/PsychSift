@@ -2917,6 +2917,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/agents/shared-context-and-memory.md",
+        "section": "agents",
+        "catalogued": false
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-20-rag-australian-source-governance.md",
         "section": "superpowers",
         "catalogued": true
