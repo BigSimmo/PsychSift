@@ -165,9 +165,10 @@ describe("favourites auth gate DOM", () => {
       { name: "Answer", href: "/?mode=answer" },
       { name: "Documents", href: "/?mode=documents" },
       { name: "Services", href: "/?mode=services" },
+      // Psychiatry takes the retired Tools pin (audit item 8, 11 Oct 2026).
+      { name: "Psychiatry", href: "/psychiatry" },
       { name: "Medication", href: "/?mode=prescribing" },
       { name: "Factsheets", href: "/?mode=factsheets" },
-      { name: "Tools", href: "/tools" },
     ]);
     expect(screen.queryByRole("link", { name: "Favourites" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Guide & help$/ })).toBeNull();

@@ -340,7 +340,13 @@ describe("shared-search route ownership", () => {
     expect(slotSource).toContain("desktopComposerSlotReadyAttr");
     expect(slotSource).toContain("useEffect");
     expect(headerSource).toContain("isDesktopComposerSlotReady(slot)");
-    expect(headerSource).toContain("attributeFilter: [desktopComposerSlotReadyAttr]");
+    expect(headerSource).toContain("observeDesktopComposerSlots(syncTarget)");
+    expect(headerSource).toContain("syncHydratedComposerReserve(composerSlotId, pending)");
+    const composerSource = readFileSync(resolve(process.cwd(), "src/lib/mode-home-composer.ts"), "utf8");
+    expect(composerSource).toContain("attributeFilter: [desktopComposerSlotReadyAttr]");
+    expect(composerSource).toContain(
+      "if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, pending)",
+    );
     expect(headerSource).toContain("setModeHomeComposerReservePending");
     expect(headerSource).toContain("searchComposerVisible");
     expect(composerLibSource).toContain('modeHomeComposerReserveAttr = "data-composer-reserve"');

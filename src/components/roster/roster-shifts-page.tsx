@@ -839,7 +839,20 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
           }}
         />
       ) : (
-        <div className="grid min-w-0 gap-3 pb-20">{body()}</div>
+        <div className="grid min-w-0 gap-3 pb-20">
+          {body()}
+          {/* Rest and hours questions come up while reading a roster (usefulness audit, 11 Oct 2026).
+              A plain text link, not the agreement card, to keep this route inside its bundle budget. */}
+          <NewWorkModeOnly>
+            <Link
+              href="/my-day/profile/agreement"
+              data-testid="agreement-entry-link"
+              className={cn(focusRing, "inline-flex min-h-12 items-center justify-self-start text-sm font-medium")}
+            >
+              Ask the agreement about breaks and hours
+            </Link>
+          </NewWorkModeOnly>
+        </div>
       )}
 
       <ConfirmDialog
