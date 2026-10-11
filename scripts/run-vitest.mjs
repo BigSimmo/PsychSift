@@ -122,6 +122,7 @@ export function isExplicitTestFile(arg) {
   if (typeof arg !== "string") return false;
   if (arg.startsWith("-")) return false;
   if (GLOB_WILDCARD_PATTERN.test(arg)) return false;
+  if (!path.isAbsolute(arg) && !arg.includes(path.sep) && !arg.includes("/")) return false;
   return EXPLICIT_TEST_FILE_PATTERN.test(arg);
 }
 
