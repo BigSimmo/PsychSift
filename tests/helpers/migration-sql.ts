@@ -9,6 +9,8 @@
  * about the same file.
  */
 
+import { scanPostgresTokens } from "../../scripts/pr-policy.mjs";
+
 /**
  * PostgreSQL token pattern covering:
  * - Group 1: Single-quoted string literals with SQL ('') and backslash (\.) escapes.
@@ -16,6 +18,9 @@
  * - Group 3: Dollar-quoted string constants ($tag$...$tag$ or $$...$$), where Group 4 captures the tag.
  * - Group 5: Multi-line / block comments (/* ... * /).
  * - Group 6: Single-line comments (-- ...).
+ *
+ * Kept for callers that match individual tokens; stripping uses `scanPostgresTokens`, because
+ * this pattern ends a nested block comment at its first `* /`.
  */
 export const POSTGRES_TOKEN_PATTERN =
   /('(?:''|\\.|[^'\\])*')|("(?:""|\\.|[^"\\])*")|(\$([A-Za-z_][A-Za-z0-9_]*)?\$[\s\S]*?\$\4\$)|(\/\*[\s\S]*?\*\/)|(--[^\r\n]*)/g;
@@ -40,12 +45,11 @@ export interface StripSqlCommentsOptions {
  */
 export function stripSqlComments(sql: string, options: StripSqlCommentsOptions = {}): string {
   const replacement = options.commentReplacement ?? " ";
-  const stripped = String(sql ?? "").replace(POSTGRES_TOKEN_PATTERN, (match, sQuote, dQuote, dollarQuote) => {
-    if (sQuote || dQuote || dollarQuote) {
-      return match;
-    }
-    return replacement;
-  });
+  // One tokenizer for both contracts: the PR policy's scanner nests block comments the way
+  // PostgreSQL does, which the single-regex POSTGRES_TOKEN_PATTERN above cannot.
+  const stripped = (scanPostgresTokens(sql) as Array<{ kind: string; text: string }>)
+    .map((token) => (token.kind === "comment" ? replacement : token.text))
+    .join("");
 
   if (options.collapseWhitespace) {
     return stripped.replace(/\s+/g, " ").trim();

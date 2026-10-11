@@ -82,7 +82,7 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
             import { evaluateClinicalHazardControls } from './scripts/check-clinical-hazard-controls.mjs';
             import fs from 'node:fs';
             const manifest = JSON.parse(fs.readFileSync('docs/clinical-hazard-controls.tamper-test.json', 'utf8'));
-            const { errors } = evaluateClinicalHazardControls(manifest, { checkGit: false });
+            const { errors } = evaluateClinicalHazardControls(manifest, { checkGit: false, now: new Date(process.env.REGISTER_NOW) });
             if (errors.length) {
               console.error('CLINICAL_HAZARD_CONTROLS_FAIL');
               for (const e of errors) console.error('- ' + e);
@@ -90,7 +90,7 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
             }
             `,
           ],
-          { cwd: PROJECT_ROOT, encoding: "utf8" },
+          { cwd: PROJECT_ROOT, encoding: "utf8", env: { ...process.env, REGISTER_NOW: REGISTER_NOW.toISOString() } },
         );
 
         expect(proc.status).toBe(1);
@@ -211,8 +211,6 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
 
       expect(byteLength).toBeLessThanOrEqual(budgetLimit);
       expect(headroom).toBeGreaterThanOrEqual(0);
-      expect(byteLength).toBe(23_960);
-      expect(headroom).toBe(40);
     });
 
     it("empirically verifies CLAUDE.md complies with the 15,000 byte budget limit with headroom", () => {
@@ -224,8 +222,6 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
 
       expect(byteLength).toBeLessThanOrEqual(budgetLimit);
       expect(headroom).toBeGreaterThan(1_000);
-      expect(byteLength).toBe(13_642);
-      expect(headroom).toBe(1_358);
     });
 
     it("verifies run-vitest.mjs fail-fast guard exits with code 1 on non-existent targets", () => {

@@ -362,6 +362,16 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       const stringIndex = validGuardBase + "\nPERFORM format('CREATE INDEX %I ON %I', 'idx_t', 't');";
       expect(isValidationGuardSql(stringIndex)).toBe(true);
 
+      // 4b. Comments and string pins inside a DO body are ignored; the body itself is still code.
+      const doBodyPins =
+        validGuardBase +
+        "\nDO $migration$ BEGIN\n  -- CREATE INDEX idx_t ON t(id);\n  PERFORM 'CREATE INDEX idx_t ON t(id)';\nEND $migration$;";
+      expect(isValidationGuardSql(doBodyPins)).toBe(true);
+
+      // 4c. A nested block comment hides CREATE INDEX entirely, as in PostgreSQL.
+      const nestedComment = validGuardBase + "\n/* outer /* inner */ CREATE INDEX idx_t ON t(id); */";
+      expect(isValidationGuardSql(nestedComment)).toBe(true);
+
       // 5. CREATE INDEX inside a dollar quote still counts: dollar-quoted bodies (DO blocks,
       // EXECUTE) run as code, so the guard fails closed rather than trusting them.
       const dollarIndex = validGuardBase + "\nPERFORM $dyn$CREATE INDEX idx_t ON t(id);$dyn$;";
@@ -601,6 +611,20 @@ describe("Challenger M3-2 Empirical Stress Test: Lighthouse Budget & Bimodal Run
       expect(result.breaches).toHaveLength(1);
       expect(result.breaches[0].run).toBe("mobile-root");
       expect(result.breaches[0].delta).toBe(250);
+    });
+  });
+
+  describe("nested block comments (PostgreSQL nests /* */)", () => {
+    const sql = "/* outer /* nested */ CREATE FUNCTION public.match_document_chunks() */ SELECT 1;";
+    it("strips the whole nested comment in the migration helper", () => {
+      expect(stripMigrationSql(sql)).toBe("SELECT 1;");
+      expect(stripMigrationSql("/* a /* b */ c */")).toBe("");
+    });
+    it("strips the whole nested comment in the PR policy", () => {
+      expect(prStripSqlComments(sql, { collapseWhitespace: true })).toBe("SELECT 1;");
+    });
+    it("still keeps comment markers inside literals", () => {
+      expect(stripMigrationSql("SELECT '/* not a comment' AS a; -- tail")).toBe("SELECT '/* not a comment' AS a;");
     });
   });
 });
