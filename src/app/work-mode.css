@@ -235,6 +235,11 @@ body {
   gap: calc(var(--spacing) * 2.25);
 }
 
+/* A column with nothing in it takes no gap; a dock spans every column. */
+.work-columns > :empty {
+  display: none;
+}
+
 @media (min-width: 1024px) {
   .work-split {
     grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
@@ -258,6 +263,32 @@ body {
 
   .work-columns[data-columns="3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Keep a remaining dock in the first column when the right column is empty. */
+  .work-columns:has(> :nth-child(2):empty) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The CPD log's filter column (from 1024px, desktop layout audit 11 Oct 2026):
+   it holds every filter, so the chip row over the list steps aside, the
+   column's chips wrap rather than cut off mid-word, and the Log button sits
+   over the list instead of across the column. */
+@media (min-width: 1024px) {
+  [data-filter-column] .work-chips {
+    flex-wrap: wrap;
+    row-gap: calc(var(--spacing) * 1.5);
+    overflow-x: visible;
+    mask-image: none;
+  }
+
+  .work-chips[data-beside-filters] {
+    display: none;
+  }
+
+  .work-dock[data-beside-filters] {
+    margin-inline-start: calc(var(--spacing) * 72);
   }
 }
 

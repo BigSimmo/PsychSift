@@ -29,7 +29,7 @@ import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
 import { CmeBandAction, CmeKvCard, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
 import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
-import { WorkBody } from "@/components/mode-kit/work";
+import { WorkColumns } from "@/components/work-frame/work-desktop-layout";
 import { Button } from "@/components/ui/button";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { addDays, expandEvents } from "@/lib/calendar/calendar-event";
@@ -607,15 +607,15 @@ export function CmeDashboard({
       />,
     );
   }
-  // "What's left" carries the only other link to the Report; when it is hidden this row keeps the
-  // Report (exports, closing the year, Customise) one tap away.
+  // "What's left" carries the only other link to End of year; when it is hidden this row keeps
+  // End of year (what is missing, evidence, handing it in) one tap away.
   if (!showWhatsLeft) {
     aboutRows.push(
       <CmeFlatRow
         key="check"
         testId="cme-about-year-check"
-        title="Report"
-        subtitle="The year check, exports and closing the year"
+        title="End of year"
+        subtitle="What is missing, evidence to tidy, and handing it in"
         href={`/cme/check?year=${set.year}`}
       />,
     );
@@ -660,20 +660,26 @@ export function CmeDashboard({
     <main className="w-full" data-testid="cme-year-page">
       <div className="contents">{status}</div>
       <div data-mode-identity="cme" data-testid="cme-year-body" className="min-w-0">
-        <WorkBody>
-          {summary}
-          {nextStepNode}
-          {toLog}
-          {whatsLeft}
-          {chipsNode}
-          <NewWorkModeOnly>
-            <ApplicationsTodayCard today={today} />
-          </NewWorkModeOnly>
-          {byCategory}
-          {alsoForYou}
-          {about}
+        {/* One column on a phone, in this order. From 1024px the year and what is left sit on the left, and
+            the dates and the year's details on the right (11 Oct 2026 layout audit). */}
+        <WorkColumns>
+          <div>
+            {summary}
+            {nextStepNode}
+            {toLog}
+            {whatsLeft}
+            {chipsNode}
+          </div>
+          <div>
+            <NewWorkModeOnly>
+              <ApplicationsTodayCard today={today} />
+            </NewWorkModeOnly>
+            {byCategory}
+            {alsoForYou}
+            {about}
+          </div>
           {dock}
-        </WorkBody>
+        </WorkColumns>
       </div>
 
       <CmeTodayDetailSheet

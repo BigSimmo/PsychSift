@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   useEffect,
   useRef,
@@ -60,13 +61,24 @@ import {
   ClinicalMenuWorkAreas,
   clinicalMenuTabId,
 } from "@/components/clinical-dashboard/clinical-menu-drawer";
-import { LazyWorkSideCounts } from "@/components/work-frame/lazy-work-side-nav";
 import { useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { needsYouBellVisibleForAuth } from "@/lib/needs-you/homes";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import { useAuthSession } from "@/lib/supabase/client";
 import type { WorkAreaId } from "@/lib/work-frame/areas";
+
+// The counts reader is loaded straight from its own file. Going through
+// work-frame/lazy-work-side-nav would pull in the two-pane menu, which imports
+// this file back and makes an import cycle.
+const LazyCountsReader = dynamic(
+  () => import("@/components/work-frame/work-side-counts-reader").then((module) => module.WorkSideCountsReader),
+  { ssr: false },
+);
+
+function LazyWorkSideCounts({ active }: { readonly active: boolean }) {
+  return active ? <LazyCountsReader /> : null;
+}
 
 export type SidebarIdentity = {
   displayName: string;
