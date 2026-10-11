@@ -522,7 +522,7 @@ export function PwaLifecycle() {
       broadcastChannel.addEventListener("message", (event) => {
         if (event.data === "sw-updated" && !cancelled) {
           const controller = navigator.serviceWorker.controller;
-          if (controller) void exposeUpdate(controller, true);
+          if (controller) void exposeActivatedUpdate(controller);
           else pendingActivatedUpdate = true;
         }
       });
@@ -554,6 +554,12 @@ export function PwaLifecycle() {
       }
       setWaitingWorker(activated ? null : worker);
       setActivatedUpdateReady(activated);
+    };
+
+    const exposeActivatedUpdate = async (controller: ServiceWorker) => {
+      await exposeUpdate(controller, true);
+      const waiting = registrationRef.current?.waiting;
+      if (!cancelled && waiting && waiting !== controller) await exposeUpdate(waiting, false);
     };
 
     const watchInstallingWorker = (registration: ServiceWorkerRegistration) => {
@@ -589,7 +595,7 @@ export function PwaLifecycle() {
       const controller = navigator.serviceWorker.controller;
       if (!cancelled && controller && (wasPreviouslyControlled || pendingActivatedUpdate)) {
         pendingActivatedUpdate = false;
-        void exposeUpdate(controller, true);
+        void exposeActivatedUpdate(controller);
         try {
           broadcastChannel?.postMessage("sw-updated");
         } catch {
