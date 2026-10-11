@@ -378,7 +378,8 @@ const roster: WorkArea = {
     {
       label: "My roster",
       items: [
-        { id: "today", label: "Today", sub: "Your shift today", icon: "sun", href: "/roster/today" },
+        // Today folded into Month (owner decision, 11 Oct 2026): its Who is on and Phone numbers buttons
+        // sit on Month's top card, and /roster/today opens Month in this work mode.
         { id: "shifts", label: "My shifts", sub: "Week by week", icon: "layers", href: "/roster/shifts" },
         {
           id: "requests",

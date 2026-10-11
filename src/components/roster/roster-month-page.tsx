@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
+import { Clock, FileUp, Phone, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -404,6 +404,15 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           <WorkCard>
             {leadRow}
             {restRow}
+            {/* Today's two buttons, folded into Month with the Today page (owner decision, 11 Oct 2026). */}
+            <div className="flex flex-wrap gap-2 px-4 pb-3.5 pt-1" data-testid="roster-month-lead-actions">
+              <WorkButton variant="secondary" icon={Users} href="/roster/team">
+                Who is on
+              </WorkButton>
+              <WorkButton variant="secondary" icon={Phone} href="/on-call/contacts">
+                Phone numbers
+              </WorkButton>
+            </div>
           </WorkCard>
         ) : null}
         {waitingSwap ? (
