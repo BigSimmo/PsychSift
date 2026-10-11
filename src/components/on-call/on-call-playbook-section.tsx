@@ -239,7 +239,7 @@ function PlaybookCard({
       <summary
         className={cn(
           focusRing,
-          "flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-[inherit] px-4 py-3 [&::-webkit-details-marker]:hidden",
+          "flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 [&::-webkit-details-marker]:hidden",
         )}
         data-testid={`on-call-playbook-toggle-${entry.slug}`}
       >
