@@ -368,6 +368,12 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
         "\nDO $migration$ BEGIN\n  -- CREATE INDEX idx_t ON t(id);\n  PERFORM 'CREATE INDEX idx_t ON t(id)';\nEND $migration$;";
       expect(isValidationGuardSql(doBodyPins)).toBe(true);
 
+      // 4d. A trailing backslash ends an ordinary string; it only escapes inside E'...'.
+      const trailingBackslash = validGuardBase + "\nPERFORM 'C:\\';\nCREATE INDEX idx_t ON t(id);";
+      expect(isValidationGuardSql(trailingBackslash)).toBe(false);
+      const escapeString = validGuardBase + "\nPERFORM E'it\\'s CREATE INDEX idx_t ON t(id)';";
+      expect(isValidationGuardSql(escapeString)).toBe(true);
+
       // 4c. A nested block comment hides CREATE INDEX entirely, as in PostgreSQL.
       const nestedComment = validGuardBase + "\n/* outer /* inner */ CREATE INDEX idx_t ON t(id); */";
       expect(isValidationGuardSql(nestedComment)).toBe(true);

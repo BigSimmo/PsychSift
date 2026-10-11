@@ -498,10 +498,13 @@ export function scanPostgresTokens(sql) {
     code = "";
     tokens.push({ kind, text: value, ...extra });
   };
+  // Backslash escapes exist only in E'...' strings. Standard-conforming strings and
+  // double-quoted identifiers treat a backslash as an ordinary character.
   const quoted = (quote) => {
+    const escapes = quote === "'" && /[Ee]/.test(text[i - 1] ?? "") && !/[A-Za-z0-9_$]/.test(text[i - 2] ?? "");
     let j = i + 1;
     while (j < text.length) {
-      if (text[j] === "\\") j += 2;
+      if (escapes && text[j] === "\\") j += 2;
       else if (text[j] === quote && text[j + 1] === quote) j += 2;
       else if (text[j] === quote) return j + 1;
       else j += 1;
