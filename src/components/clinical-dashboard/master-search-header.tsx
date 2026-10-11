@@ -954,10 +954,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   }
 
   function selectAppMode(mode: (typeof appModeDefinitions)[number]) {
-    setModeMenuOpen(false);
     const standaloneHref = standaloneModeHomeHref(mode.id as AppModeId);
+    if (standaloneHref && !confirmShellNavigation()) return;
+    setModeMenuOpen(false);
     if (standaloneHref) {
-      if (!confirmShellNavigation()) return;
       // Dedicated modes navigate to their canonical standalone homes
       // instead of retargeting the shared-home composer.
       // Persist the selection here rather than via onSearchModeChange: that

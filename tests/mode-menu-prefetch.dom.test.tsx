@@ -11,6 +11,7 @@ import { LAST_APP_MODE_STORAGE_KEY } from "@/components/clinical-dashboard/use-l
 import { appModeSelectionHref, visibleAppModeDefinitionsForSession, type AppModeId } from "@/lib/app-modes";
 import { modeMenuSideForMode, orderModesForSide } from "@/lib/phone-mode-groups";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 
 /**
  * The destination URL the mode picker itself will open for `modeId`.
@@ -206,6 +207,26 @@ describe("mode menu destination prefetch", () => {
     expect(router.push).toHaveBeenCalledWith("/psychiatry");
     expect(onSearchModeChange).not.toHaveBeenCalled();
     expect(window.localStorage.getItem(LAST_APP_MODE_STORAGE_KEY)).toBe("psychiatry");
+  });
+
+  it("keeps the mode menu open when a page with unsaved work says stay", async () => {
+    // The safety plan registers a guard like this while it holds entries.
+    const guard = vi.fn(() => false);
+    const unregister = registerNavigationGuard(guard);
+    try {
+      const user = userEvent.setup();
+      render(<MasterSearchHeader {...headerProps()} />);
+      await user.click(screen.getByRole("button", { name: /Mode Answer/i }));
+      const menu = within(await screen.findByRole("menu", { name: "Choose app mode" }));
+      await user.click(menu.getByRole("menuitemradio", { name: /^Psychiatry\b/i }));
+
+      expect(guard).toHaveBeenCalledTimes(1);
+      expect(router.push).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem(LAST_APP_MODE_STORAGE_KEY)).toBeNull();
+      expect(screen.getByRole("menu", { name: "Choose app mode" })).toBeInTheDocument();
+    } finally {
+      unregister();
+    }
   });
 
   it("warms a mode again after Next invalidates its cached payload", async () => {
