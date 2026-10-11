@@ -239,8 +239,8 @@ export function TwoPaneSideMenu({
   const visibleAreas = workAvailable ? WORK_SIDE_AREAS.filter((entry) => routeVisible(entry.href)) : [];
 
   const openReminders = () => {
+    if (!runReminders()) return;
     close();
-    runReminders();
   };
 
   const needle = find.trim().toLowerCase();

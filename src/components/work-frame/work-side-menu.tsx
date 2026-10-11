@@ -84,12 +84,11 @@ export function WorkSideMenu({
   const close = () => onOpenChange(false);
 
   const openReminders = () => {
-    close();
     // Only a page that offers Reminders can open it; anywhere else goes to My Day first.
-    if (!workFrameActionHandler("my-day-reminders")) {
-      if (!confirmShellNavigation()) return;
-      router.push("/my-day");
-    }
+    const handled = workFrameActionHandler("my-day-reminders");
+    if (!handled && !confirmShellNavigation()) return;
+    close();
+    if (!handled) router.push("/my-day");
     requestWorkFrameAction("my-day-reminders");
   };
 

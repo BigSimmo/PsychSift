@@ -62,15 +62,17 @@ export function useThemeCycle() {
 }
 
 /** Opens Reminders. Only a page that offers it can open it; anywhere else goes to My Day first. */
-export function useOpenReminders(): () => void {
+export function useOpenReminders(): () => boolean {
   const router = useRouter();
   return () => {
-    if (!workFrameActionHandler("my-day-reminders")) {
+    const handled = workFrameActionHandler("my-day-reminders");
+    if (!handled) {
       // An unsaved page (the safety plan) may keep the reader where they are.
-      if (!confirmShellNavigation()) return;
+      if (!confirmShellNavigation()) return false;
       router.push("/my-day");
     }
     requestWorkFrameAction("my-day-reminders");
+    return true;
   };
 }
 
