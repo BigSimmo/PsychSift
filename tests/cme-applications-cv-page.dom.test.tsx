@@ -13,7 +13,7 @@ import * as clipboard from "@/lib/copy-to-clipboard";
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh }),
-  usePathname: () => "/cme/applications/cv",
+  usePathname: () => "/admin/applications/cv",
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -271,7 +271,7 @@ describe("CV that fills itself", () => {
 
   it("goes back to Job applications, its parent", () => {
     renderCv();
-    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/applications");
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/admin/applications");
     expect(screen.getByTestId("cpd-feature-back").textContent).toContain("Job applications");
   });
 
