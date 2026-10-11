@@ -40,11 +40,7 @@ import {
 import { cn } from "@/components/ui-primitives";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import type { HealthServiceCode } from "@/lib/teaching/model";
-import {
-  useSignedOutSampleRead,
-  useTeachingDemoMode,
-  useTeachingSignedOut,
-} from "@/components/teaching/use-teaching-sample";
+import { useSignedOutSampleRead, useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
 
 /*
  * What's on (spec §5a): the reader's health service's week, "On now" first
@@ -59,14 +55,7 @@ import {
  */
 type WhatsOnRead = { healthServices: HealthServiceCode[]; sessions: WhatsOnRowRead[] };
 
-export function TeachingWhatsOn({
-  demoMode: serverDemoMode,
-  sampleData: serverSample,
-}: {
-  demoMode: boolean;
-  sampleData?: WhatsOnRead;
-}) {
-  const demoMode = useTeachingDemoMode(serverDemoMode);
+export function TeachingWhatsOn({ sampleData: serverSample }: { demoMode: boolean; sampleData?: WhatsOnRead }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
@@ -127,9 +116,6 @@ export function TeachingWhatsOn({
           <p className="text-sm-minus font-bold text-[color:var(--text-heading)]">
             {whatsOnHeading(read.data.healthServices)}
           </p>
-          {demoMode ? (
-            <span className="shrink-0 text-xs text-[color:var(--text-muted)]">Example · made-up people</span>
-          ) : null}
         </div>
         {live.length > 0 ? (
           <div className="grid gap-y-2.25" data-testid="teaching-whats-on-now">

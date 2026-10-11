@@ -23,27 +23,6 @@
   --assess-leading-1-45: 1.45;
 }
 
-/* -------------------------------------------------------- sample line */
-.assess-sample {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: calc(var(--spacing) * 2);
-  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
-  border-radius: var(--radius-lg);
-  background: var(--work-wash);
-  font-size: 0.71875rem;
-  font-weight: 600;
-  line-height: var(--assess-leading-1-35);
-  color: var(--work-ink-muted);
-}
-.assess-sample > svg {
-  width: 0.875rem;
-  height: 0.875rem;
-  flex: none;
-  color: var(--mode-identity);
-}
-
 /* ---------------------------------------------- segmented control (seg) */
 .assess-seg-control {
   display: flex;

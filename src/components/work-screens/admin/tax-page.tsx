@@ -19,7 +19,6 @@ import {
   WorkSectionLabel,
 } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
-import { ExampleTag } from "@/components/example-data/example-tag";
 import { cn, fieldLabel } from "@/components/ui-primitives";
 import { KeptWhere } from "@/components/work-sync/kept-where";
 import {
@@ -40,7 +39,7 @@ import {
 import { downloadTextFile } from "@/lib/admin/download-file";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
-import { guardExampleAction, isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
+import { guardExampleAction, withoutExampleRecords } from "@/lib/example-data/guards";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   dropRecord,
@@ -193,7 +192,6 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
           <WorkCard padded testId="admin-tax-total">
             <p className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
               Work expenses you added
-              {year.expenses.some(isExampleRecord) ? <ExampleTag /> : null}
             </p>
             <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
               <b className="nums text-2xl font-semibold text-[color:var(--text-heading)]">
@@ -296,7 +294,7 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
                       month={MONTHS[Number(expense.on.slice(5, 7)) - 1]!}
                       day={Number(expense.on.slice(8))}
                       title={expense.title}
-                      sub={`${isExampleRecord(expense) ? "Example · " : ""}${expenseLine(expense)}`}
+                      sub={expenseLine(expense)}
                       end={<b className="nums text-sm">{formatCents(expense.cents)}</b>}
                     />
                   </div>
@@ -319,11 +317,6 @@ export function AdminTaxPage({ now: pinned }: { now?: Date } = {}) {
 
           {totals.byKind.length > 0 ? (
             <WorkCard padded testId="admin-tax-by-kind">
-              {year.expenses.some(isExampleRecord) ? (
-                <p className="mb-2">
-                  <ExampleTag />
-                </p>
-              ) : null}
               <dl className="grid gap-1 text-sm">
                 {totals.byKind.map((row) => (
                   <div key={row.kind} className="flex justify-between gap-3">

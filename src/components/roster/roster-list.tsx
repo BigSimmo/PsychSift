@@ -327,5 +327,5 @@ export const rosterFilledButton = cn(
 export const rosterOutlineButton = cn(
   focusRing,
   modePressable,
-  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 text-balance rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-2.5 text-center text-sm font-bold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
+  "inline-flex min-h-12 min-w-0 items-center justify-center gap-1.5 text-balance rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-2.5 py-2 text-center text-sm font-semibold text-[color:var(--text-heading)] no-underline disabled:text-[color:var(--disabled)]",
 );

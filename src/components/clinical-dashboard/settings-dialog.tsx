@@ -1736,9 +1736,7 @@ function ExampleDataField() {
     <SettingsToggleField
       icon={Layers}
       label="Example data"
-      description={
-        on ? exampleAreasLine(activeAreas.length) : "Made-up data in every work area, marked Example. Nothing is saved."
-      }
+      description={on ? exampleAreasLine(activeAreas.length) : "Made-up data in every work area. Nothing is saved."}
       checked={on}
       onChange={(next) => (next ? turnOn() : turnOff())}
     />

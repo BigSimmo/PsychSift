@@ -385,9 +385,6 @@ function CalendarBody({
         label="Show the month or a list"
         testId="my-day-calendar-view"
       />
-      {example ? (
-        <ModeNotice testId="my-day-calendar-demo-notice">Example data: these items are made up.</ModeNotice>
-      ) : null}
       {failed.length > 0 ? (
         <div className="grid gap-2" data-testid="my-day-calendar-failed-notice">
           <ModeNotice tone="warning">{`Couldn't load: ${listNames(failed)}. Showing the rest.`}</ModeNotice>
@@ -469,7 +466,6 @@ function CalendarBody({
         month={month}
         // The whole month, whatever areas are hidden on screen.
         items={all.filter((item) => item.start <= to && item.end >= from)}
-        example={example}
         updating={loading}
         onDownload={(events) => {
           if (loading || !guardExampleAction(example, "export")) return;
@@ -930,13 +926,11 @@ function MonthList({
 function CalendarExport({
   month,
   items,
-  example,
   updating,
   onDownload,
 }: {
   readonly month: string;
   readonly items: readonly MainCalendarItem[];
-  readonly example: boolean;
   /** True while the shown month is still loading, so a download can't miss part of it. */
   readonly updating: boolean;
   readonly onDownload: (events: ReturnType<typeof calendarExportEvents>) => void;
@@ -969,9 +963,6 @@ function CalendarExport({
             {`Download ${monthTitle(month)}`}
           </Button>
         </div>
-        {example ? (
-          <p className="m-0 text-xs text-[color:var(--text-muted)]">Example data can&apos;t be exported.</p>
-        ) : null}
       </div>
       <CalendarSubscribe testId="my-day-calendar-subscribe" />
     </section>
