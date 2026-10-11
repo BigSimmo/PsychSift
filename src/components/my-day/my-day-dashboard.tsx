@@ -414,7 +414,6 @@ export function MyDayDashboard({
   // ---------------------------------------------------------------- items
   // The feed hides what Later moved by the snoozes kept on this device, so Needs you reads the same ones.
   const needsYouDevice = needsYouList === items ? device : stored;
-  const needsYou = selectNeedsYou(needsYouList, needsYouDevice.snoozes, today);
   // The flag repeats only what Needs you lists, so it never shows an item the bell leaves out.
   const flagItems = useMemo(() => {
     const listed = new Set(needsYouList.map((item) => item.id));
@@ -423,6 +422,9 @@ export function MyDayDashboard({
       (id) => isSnoozed(needsYouDevice.snoozes, id, today),
     );
   }, [items, needsYouList, needsYouDevice.snoozes, today]);
+  // The item the flag shows is not listed again straight below it; with the flag hidden, Needs you keeps it.
+  const flaggedId = !device.hidden.has("flag") ? flagItems[0]?.id : undefined;
+  const needsYou = selectNeedsYou(needsYouList, needsYouDevice.snoozes, today, undefined, flaggedId);
   const tomorrow = addDaysToDate(today, 1);
   // The next rostered day, offered by Later only when it is not tomorrow (and only from a roster that loaded).
   const workingDay = useMemo(
@@ -716,6 +718,7 @@ export function MyDayDashboard({
             shown={needsYou.shown}
             waiting={needsYou.waiting}
             total={needsYou.total}
+            flagged={flaggedId !== undefined}
             checked={checked}
             checkedAt={checkedAt}
             incomplete={incomplete}

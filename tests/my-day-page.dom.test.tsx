@@ -160,7 +160,8 @@ describe("MyDayPage", () => {
 
   it("runs the sources in a local demo build with no sign-in configured", () => {
     auth.status = "unconfigured";
-    setState({ items: [item("a", "soon")] });
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
+    setState({ items: [item("a", "info")] });
     render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
     expect(screen.queryByTestId("my-day-signed-out")).toBeNull();
@@ -276,8 +277,9 @@ describe("MyDayPage", () => {
   });
 
   it("names failed sources, keeps the rest, and retries on click", () => {
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
     setState({
-      items: [item("a", "soon")],
+      items: [item("a", "info")],
       sources: readySources.map((source) =>
         source.mode === "roster" || source.mode === "cme" ? { ...source, status: "failed" as const } : source,
       ),
@@ -307,7 +309,8 @@ describe("MyDayPage", () => {
   // Demo data is shown only in a local demo build with no sign-in ("unconfigured").
   it("draws no example notice in a local demo build", () => {
     auth.status = "unconfigured";
-    setState({ demoMode: true, items: [item("a", "soon")] });
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
+    setState({ demoMode: true, items: [item("a", "info")] });
     render(<MyDayPage now={NOW} />);
     expect(screen.queryByTestId("my-day-demo-notice")).toBeNull();
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
@@ -333,7 +336,8 @@ describe("MyDayPage", () => {
   it("never shows a signed-in reader items from a source that answered with sample data", () => {
     setState({
       demoMode: true,
-      items: [item("a", "soon", { mode: "cme" }), item("b", "soon")],
+      // "b" is info, so the flag card (overdue or soon only) leaves it in Needs you.
+      items: [item("a", "soon", { mode: "cme" }), item("b", "info")],
       sources: readySources.map((source) => (source.mode === "cme" ? { ...source, sample: true } : source)),
     });
     const { rerender } = render(<MyDayPage now={NOW} />);
@@ -347,12 +351,15 @@ describe("MyDayPage", () => {
   // Design review 2026-10-03, item 1: the full list has its own address, so the
   // phone's Back returns to the dashboard instead of leaving My Day.
   it("opens the full list at its own address and steps back to the dashboard", () => {
-    setState({ items: [item("a", "overdue"), item("b", "soon"), item("c", "soon"), item("d", "info")] });
+    // "a" leads the flag card, so Needs you lists b, c and e, and d is only in the full list.
+    setState({
+      items: [item("a", "overdue"), item("b", "soon"), item("c", "soon"), item("e", "soon"), item("d", "info")],
+    });
     const { rerender } = render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
     expect(screen.queryByTestId("my-day-item-d")).toBeNull();
     const before = window.history.length;
-    openAll("See all 4", rerender);
+    openAll("See all 5", rerender);
     expect(window.history.length).toBe(before + 1);
     expect(screen.getByTestId("my-day-full-list")).toBeTruthy();
     expect(screen.getByTestId("my-day-item-d")).toBeTruthy();
@@ -460,7 +467,8 @@ describe("MyDayPage", () => {
           },
         ]),
       );
-      setState({ items: [item("a", "soon")] });
+      // Info, so the flag card (overdue or soon only) leaves "a" in Needs you beside the reminder.
+      setState({ items: [item("a", "info")] });
       render(<MyDayPage now={NOW} />);
       const card = screen.getByTestId("my-day-card-needs-you");
       expect(within(card).getByTestId("my-day-item-remind:r1").textContent).toContain("Reminders");
@@ -499,7 +507,8 @@ describe("MyDayPage", () => {
   // so My Day never says nothing needs you before the feed has looked.
   it("keeps the skeleton until Needs you's feed has answered", () => {
     readerLoaded.current = false;
-    setState({ items: [item("a", "soon")] });
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
+    setState({ items: [item("a", "info")] });
     const { rerender } = render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-loading")).toBeTruthy();
     expect(screen.queryByTestId("my-day-ready")).toBeNull();

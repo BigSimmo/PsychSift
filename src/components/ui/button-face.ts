@@ -3,7 +3,12 @@ import { cn, controlBase } from "@/components/ui-primitives";
 export type ButtonVariant = "primary" | "secondary" | "toolbar" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
-// One filled `--command` button per surface (register #12). `secondary` is the
+// One filled primary button per surface (register #12). It takes the area's
+// colour (C8 rule 3): Clinical blue by default, and a Work area's own colour
+// where its frame sets `--action` (work-mode.css). The button re-points the
+// command tokens on itself, so hover and pressed states follow and nothing else
+// on the page changes. High-contrast mode keeps the native button pair, since
+// the blue there is LinkText and ButtonText cannot sit on it. `secondary` is the
 // default for everything that is not the single primary action on screen.
 //
 // `danger` is the ONLY home for `--danger-solid` (register #13): a destructive
@@ -11,7 +16,7 @@ export type ButtonSize = "sm" | "md" | "lg";
 // mean "important" — importance is `primary`.
 const VARIANT: Record<ButtonVariant, string> = {
   primary:
-    "bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--command-hover)] hover:shadow-[var(--e3)] active:bg-[color:var(--command-active)]",
+    "[--command:var(--action,var(--clinical-accent))] [--command-hover:var(--action-hover,var(--clinical-accent-hover))] [--command-active:var(--action-active,var(--clinical-accent-active))] [--command-contrast:var(--action-contrast,var(--clinical-accent-contrast))] forced-colors:[--command:ButtonFace] forced-colors:[--command-hover:ButtonFace] forced-colors:[--command-active:ButtonFace] bg-[color:var(--command)] text-[color:var(--command-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--command-hover)] hover:shadow-[var(--e3)] active:bg-[color:var(--command-active)]",
   secondary:
     "border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-inset)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)]",
   toolbar:
