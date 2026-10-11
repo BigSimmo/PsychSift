@@ -11,6 +11,7 @@ import { loadDifferentialSnapshot } from "@/lib/differential-seed";
 import {
   getDifferentialRecord,
   getPresentationWorkflow,
+  resolvePresentationSlug,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
 } from "@/lib/differentials";
@@ -53,7 +54,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
     if (isDemoMode() || isLocalNoAuthMode()) {
       const snapshot = loadDifferentialSnapshot();
-      const workflow = getPresentationWorkflow(normalizedSlug);
+      const workflow = getPresentationWorkflow(resolvePresentationSlug(normalizedSlug));
       if (!workflow) return notFoundResponse(normalizedSlug);
       const governance = deriveGovernanceFromSnapshot(snapshot);
       const candidates = workflow.candidates.flatMap((candidate) => {
@@ -90,11 +91,12 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
     const snapshot = loadDifferentialSnapshot();
     const seedGovernance = deriveGovernanceFromSnapshot(snapshot);
-    const seedWorkflow = getPresentationWorkflow(normalizedSlug);
+    const canonicalSlug = resolvePresentationSlug(normalizedSlug);
+    const seedWorkflow = getPresentationWorkflow(canonicalSlug);
     const presentation = await readCanonicalSiteContentRecords({
       supabase,
       kind: "presentation",
-      slug: normalizedSlug,
+      slug: canonicalSlug,
       seeds: seedWorkflow
         ? [
             {

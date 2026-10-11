@@ -13,6 +13,7 @@ import {
   getDifferentialDetailContext,
   getDifferentialRecord,
   getPresentationWorkflow,
+  resolvePresentationSlug,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
 } from "@/lib/differentials";
@@ -71,7 +72,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       const snapshot = loadDifferentialSnapshot();
       const governance = deriveGovernanceFromSnapshot(snapshot);
       if (kind === "presentation") {
-        const workflow = getPresentationWorkflow(normalizedSlug);
+        const workflow = getPresentationWorkflow(resolvePresentationSlug(normalizedSlug));
         if (!workflow) return notFoundResponse(normalizedSlug);
         return differentialResponse(
           {
@@ -114,7 +115,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     const snapshot = loadDifferentialSnapshot();
     const seedGovernance = deriveGovernanceFromSnapshot(snapshot);
     if (kind === "presentation") {
-      const seedWorkflow = getPresentationWorkflow(normalizedSlug);
+      const seedWorkflow = getPresentationWorkflow(resolvePresentationSlug(normalizedSlug));
       const canonical = await readCanonicalSiteContentRecords({
         supabase,
         kind: "presentation",
