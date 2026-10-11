@@ -32,7 +32,7 @@ import { useTherapyFavourite } from "./use-therapy-favourite";
  * the one filled `--command` slot (COMPONENTS.md §9.1). A featured top match
  * is that page-level primary, so only `featured` promotes Open.
  */
-const cardActionButton = "min-w-0 px-2 text-xs sm:px-4 sm:text-sm-minus";
+const cardActionButton = "min-w-0 px-2 text-xs sm:px-4 sm:text-sm-minus md:w-auto";
 
 /** Large search-result card with why-matched / avoid / best-fit columns. */
 export function ResultCard({
@@ -98,7 +98,13 @@ export function ResultCard({
     <article
       data-therapy-result-card
       data-therapy-result-featured={featured ? "" : undefined}
-      className={cn(featured ? heroCard : cardSurface, "relative overflow-hidden")}
+      className={cn(
+        featured ? heroCard : cardSurface,
+        "relative overflow-hidden",
+        // The whole card opens the record (the Open link is stretched across it), so on a
+        // pointer-sized screen the card itself answers hover rather than three wide buttons.
+        !featured && "transition-colors md:hover:border-[color:var(--border-strong)]",
+      )}
     >
       {/*
         Icon-only action. The accessible name is the `sr-only` label rather than an
@@ -177,7 +183,14 @@ export function ResultCard({
           {notice}
         </p>
       ) : null}
-      <div data-therapy-result-actions className="grid grid-cols-3 gap-2 px-4 py-3.5 sm:px-5 sm:pb-4 md:pt-0">
+      {/*
+        Phone: three equal buttons in one row. Desktop: the card is the open target, so the
+        actions shrink to their own width at the row's end instead of spanning the card.
+      */}
+      <div
+        data-therapy-result-actions
+        className="grid grid-cols-3 gap-2 px-4 py-3.5 sm:px-5 sm:pb-4 md:flex md:justify-end md:pt-0"
+      >
         {/*
           A link rather than a `Button` with `router.push`. `b.workspaceHref`
           builds the same URL `b.open` pushes, so the destination is unchanged,

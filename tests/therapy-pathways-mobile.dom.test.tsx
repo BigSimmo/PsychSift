@@ -146,6 +146,18 @@ describe("Therapy pathways on a phone", () => {
     expect(screen.getByTestId("therapy-pathway-caution")).toBeInTheDocument();
   });
 
+  it("says once, at the top, what the Incomplete tag means", () => {
+    renderPathways();
+    expect(screen.getByTestId("therapy-pathways-incomplete-note")).toHaveTextContent(
+      "Incomplete means clinician review has not yet confirmed the order of the steps.",
+    );
+  });
+
+  it("counts only steps that link to a therapy record as linked steps", () => {
+    renderPathways();
+    expect(screen.getByText("3 linked steps")).toBeInTheDocument();
+  });
+
   it("keeps step open-record actions in the accessibility tree", () => {
     renderPathways();
     const steps = within(screen.getByTestId("therapy-pathway-steps"));

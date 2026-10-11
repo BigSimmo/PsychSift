@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Check, Copy, FileText, ListChecks, TriangleAlert, Waypoints } from "lucide-react";
+import { Check, Copy, FileText, Info, ListChecks, ShieldCheck, TriangleAlert, Waypoints } from "lucide-react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { Chip } from "@/components/ui/chip";
@@ -14,13 +14,18 @@ import { LoadingState } from "../ui";
 import { useClipboard } from "../use-clipboard";
 import { PathwayMobileBar, PathwayListRail } from "../pathway-picker-sheet";
 import { PathwayDetailHeader, PathwayStepStack } from "../pathway-step-stack";
-import { pathwayReviewBadgeClass, pathwayReviewLabel } from "../pathway-review-label";
+import { pathwayLinkedStepCount, pathwayReviewBadgeClass, pathwayReviewLabel } from "../pathway-review-label";
 
 export function PathwaysScreen() {
   const b = useTcBindings();
   const bySlug = useMemo(() => new Map(b.therapies.map((t) => [t.slug, t])), [b.therapies]);
   const pathway = b.selectedPathway;
-  const linkedStepCount = useMemo(() => b.pathways.reduce((total, p) => total + p.steps.length, 0), [b.pathways]);
+  // Counts the steps that link to a therapy record, the same count each pathway row shows.
+  const linkedStepCount = useMemo(
+    () => b.pathways.reduce((total, p) => total + pathwayLinkedStepCount(p), 0),
+    [b.pathways],
+  );
+  const anyIncomplete = b.pathways.some((p) => pathwayReviewLabel(p) === "Incomplete");
   const { copied, copy } = useClipboard();
 
   if (b.loading || !pathway) return <LoadingState label="Loading pathways…" />;
@@ -58,6 +63,21 @@ export function PathwaysScreen() {
         }
       />
 
+      {anyIncomplete ? (
+        // What the amber tag means, in the words the pathway data already uses for it
+        // ("Marked incomplete until clinician review confirms sequencing").
+        <p
+          data-testid="therapy-pathways-incomplete-note"
+          className="mb-4 flex items-start gap-2 text-sm-minus leading-snug text-[color:var(--text-muted)]"
+        >
+          <Info aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0" />
+          <span>
+            <strong className="font-semibold text-[color:var(--text)]">Incomplete</strong> means clinician review has
+            not yet confirmed the order of the steps.
+          </span>
+        </p>
+      ) : null}
+
       <PathwayMobileBar pathways={b.pathways} activePathway={pathway} onSelect={b.selectPathway} />
 
       <div className={cn(cardSurface, "grid grid-cols-1 sm:grid-cols-[320px_minmax(0,_1fr)] gap-4")}>
@@ -74,7 +94,11 @@ export function PathwaysScreen() {
                     pathwayReviewBadgeClass(reviewed),
                   )}
                 >
-                  <TriangleAlert aria-hidden="true" size={14} strokeWidth={1.8} />
+                  {reviewed ? (
+                    <ShieldCheck aria-hidden="true" size={14} strokeWidth={1.8} />
+                  ) : (
+                    <TriangleAlert aria-hidden="true" size={14} strokeWidth={1.8} />
+                  )}
                   {pathwayReviewLabel(pathway)}
                 </span>
               }
