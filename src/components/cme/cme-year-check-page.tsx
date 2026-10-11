@@ -275,8 +275,12 @@ export function CmeYearCheckPage({
     : evidenceUnchecked
       ? "Evidence not checked yet"
       : evidence.missing
-        ? `${activities(evidence.missing)} ${evidence.missing === 1 ? "has" : "have"} no certificate`
-        : "Every activity has evidence";
+        ? `${activities(evidence.missing)} ${evidence.missing === 1 ? "has" : "have"} no certificate${
+            evidence.unknown ? ` · Evidence not checked for ${activities(evidence.unknown)}` : ""
+          }`
+        : evidence.unknown
+          ? `Evidence not checked for ${activities(evidence.unknown)}`
+          : "Every activity has evidence";
 
   const openTargets = targets.filter((row) => !row.ready).length;
   const openRecords = records.filter((row) => !row.ready).length;
@@ -390,15 +394,17 @@ export function CmeYearCheckPage({
             </CmeFlatList>
             <p className="flex flex-wrap items-center gap-x-4 text-xs text-[color:var(--text-muted)]">
               <span>Check every file is free of patient details first.</span>
-              <CmeTextLink
-                href={`/cme/evidence?year=${set.year}`}
-                testId="cme-year-end-evidence-all"
-                className="min-h-0"
-              >
-                {evidence.needs.length > EVIDENCE_PREVIEW
-                  ? `All ${evidence.needs.length}`
-                  : "Every activity's evidence"}
-              </CmeTextLink>
+              <NewWorkModeOnly>
+                <CmeTextLink
+                  href={`/cme/evidence?year=${set.year}`}
+                  testId="cme-year-end-evidence-all"
+                  className="min-h-0"
+                >
+                  {evidence.needs.length > EVIDENCE_PREVIEW
+                    ? `All ${evidence.needs.length}`
+                    : "Every activity's evidence"}
+                </CmeTextLink>
+              </NewWorkModeOnly>
             </p>
           </YearEndStep>
 
