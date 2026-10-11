@@ -105,7 +105,7 @@ describe("Week: Other services", () => {
       "Whole service",
       "Other services",
     ]);
-    expect(screen.getByRole("button", { name: "Other services" })).toHaveTextContent("Others");
+    expect(screen.getByRole("button", { name: "Other services" })).toHaveTextContent("Other");
     expect(screen.getByRole("button", { name: "Whole service" })).toHaveTextContent("Service");
   });
 

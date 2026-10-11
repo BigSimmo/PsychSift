@@ -105,7 +105,7 @@ type ThisWeekFilter = WeekFilter | "other";
 const FILTERS: readonly { value: ThisWeekFilter; label: string; short?: string }[] = [
   { value: "presenting", label: "Mine" },
   { value: "all", label: "Whole service", short: "Service" },
-  { value: "other", label: "Other services", short: "Others" },
+  { value: "other", label: "Other services", short: "Other" },
 ];
 
 /** `?view=other` on /teaching/week opens on Other services; What's on's old address forwards to it. */
