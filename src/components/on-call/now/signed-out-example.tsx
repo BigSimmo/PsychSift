@@ -152,6 +152,16 @@ export default function OnCallNowSignedOutExample() {
             </p>
           </div>
 
+          <OnCallGroupedList eyebrow="Your usual" testId="on-call-now-example-usual">
+            {example.usual.map((label) => (
+              <OnCallRow
+                key={label}
+                title={label}
+                leading={<Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
+              />
+            ))}
+          </OnCallGroupedList>
+
           <section aria-labelledby="on-call-now-example-right-now" className="grid min-w-0 gap-2 px-3">
             <h2 id="on-call-now-example-right-now" className={eyebrowText}>
               Right now · after hours
@@ -185,16 +195,6 @@ export default function OnCallNowSignedOutExample() {
               </span>
             </div>
           </section>
-
-          <OnCallGroupedList eyebrow="Your usual" testId="on-call-now-example-usual">
-            {example.usual.map((label) => (
-              <OnCallRow
-                key={label}
-                title={label}
-                leading={<Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
-              />
-            ))}
-          </OnCallGroupedList>
 
           <OnCallGroupedList eyebrow="Also on tonight" testId="on-call-now-example-also-on">
             {example.alsoOn.map((row) => (

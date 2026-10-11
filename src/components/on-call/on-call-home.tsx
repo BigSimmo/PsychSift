@@ -5,7 +5,7 @@ import { currentCover, handbookLadders } from "@/lib/on-call/service-availabilit
 import { ChevronRight } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import { TodayShell } from "@/components/mode-kit/today/today-shell";
@@ -275,13 +275,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   // ladder that exists, never an invented situation. The reminder's ladder
   // stays on the Escalation ladder page.
   const pinnedReminder = useMemo(() => selectPinnedPlaybookEntry(entries), [entries]);
-  const playbookHref = useCallback(
-    (ladderId: string) => {
-      const entry = ladderEntries.find((candidate) => candidate.id === ladderId);
-      return entry ? onCallEntryHref(entry) : `/on-call/playbook#hospital-ladder-${ladderId}`;
-    },
-    [ladderEntries],
-  );
   const situations = useMemo<OnCallSituation[]>(
     () =>
       ladders
@@ -289,10 +282,12 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
         .map((ladder) => ({
           id: ladder.id,
           title: ladder.title,
-          // Each opens its own entry in the Playbook, the one home for "who do I call" (usefulness audit, 11 Oct 2026).
-          href: playbookHref(ladder.id),
+          // The time-aware page: it puts the rungs that apply at this hour first and labels the
+          // rest "At other times". The Playbook lists every rung in recorded order, so a chip
+          // must not land there at 3 am with an in-hours contact on top.
+          href: `/on-call/now?situation=${encodeURIComponent(ladder.id)}`,
         })),
-    [ladders, pinnedReminder, playbookHref],
+    [ladders, pinnedReminder],
   );
   const ladderEntry = needs ? ladderEntries.find((entry) => entry.id === needs.ladderId) : undefined;
 
