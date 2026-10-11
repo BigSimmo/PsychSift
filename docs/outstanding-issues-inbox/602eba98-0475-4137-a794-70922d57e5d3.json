@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "602eba98-0475-4137-a794-70922d57e5d3",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#81A3YJ",
+    "outcome": "Replaced naive SQL comment stripping regex with PostgreSQL tokenizing parser in tests/helpers/migration-sql.ts and scripts/pr-policy.mjs to preserve string literals containing --",
+    "baseRowFingerprint": "61d89eee0abf5ac159213b56a1890d6f074eebd8b645bf4f646f5c44127efd74"
+  }
+}

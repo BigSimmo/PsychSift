@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "c0292ca2-95d9-4b10-9c53-c49706ffc247",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#383YXX",
+    "outcome": "Added post-merge narrow tolerance retry to scripts/check-lighthouse-budget.mjs to eliminate bimodal post-merge CI flakiness",
+    "baseRowFingerprint": "a46e50f534d4abb68f22dfa1fa6b5f61743d6de2027b7519ba25ae655e27ff29"
+  }
+}

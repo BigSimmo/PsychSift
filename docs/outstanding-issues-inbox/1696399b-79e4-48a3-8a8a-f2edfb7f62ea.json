@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "1696399b-79e4-48a3-8a8a-f2edfb7f62ea",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#33346A",
+    "outcome": "Completed root-cause investigation of Gecko pointer event dispatch and animation settlement in docs/investigations/firefox-click-state-failures.md",
+    "baseRowFingerprint": "ebf4ec566a1219201343cc8adb6ebbbf4ed68777b9c8c008babf9229729cb17d"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "bf33b91b-1b38-474e-93b6-c1de89d09714",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#HWYCPF",
+    "outcome": "Adopted global ToastProvider and useCopyToast across bedside sheet, on-call copy number, calendar subscribe, and differential presentation actions; verified with 48 DOM tests",
+    "baseRowFingerprint": "394202b958fa3d1d7e8a9a57432d69b75557fc76bd2cae904a21a347d230da8b"
+  }
+}

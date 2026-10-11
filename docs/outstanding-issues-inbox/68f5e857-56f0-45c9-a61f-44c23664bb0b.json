@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "68f5e857-56f0-45c9-a61f-44c23664bb0b",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#HNJF5X",
+    "outcome": "Namespaced differential presentation workflow slugs with presentation- prefix in data files and added route alias resolution in differentials.ts to prevent ID collisions",
+    "baseRowFingerprint": "d85eae642fd17fde682dd8f188ecfe4659ffcf114ff2431c33a11133be2ad759"
+  }
+}
