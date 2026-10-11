@@ -150,6 +150,7 @@ export function SearchResultsHeaderBand({
   resultNoun: resultNounOverride,
   hideEmptyQuery = false,
   emptyQueryLabel,
+  emptyQuerySubject,
   catalogueDegraded = false,
   className,
 }: {
@@ -229,6 +230,12 @@ export function SearchResultsHeaderBand({
   /** Accessible region name used when `hideEmptyQuery` omits the subject. */
   emptyQueryLabel?: string;
   /**
+   * The section name shown as the heading when nothing has been typed, in place
+   * of "All". A browse list is the whole section in A to Z order, not a search
+   * that picked something, so it is titled by what it is ("DSM diagnoses").
+   */
+  emptyQuerySubject?: string;
+  /**
    * What this count counted, when the mode registry's noun is not specific
    * enough to be true.
    *
@@ -244,9 +251,14 @@ export function SearchResultsHeaderBand({
   className?: string;
 }) {
   const trimmedQuery = query.trim();
-  const displayQuery = trimmedQuery || "All";
-  const showQuerySubject = Boolean(trimmedQuery) || !hideEmptyQuery;
-  const regionLabel = showQuerySubject ? `Search results for ${displayQuery}` : (emptyQueryLabel ?? "Catalogue");
+  const browseSubject = trimmedQuery ? undefined : emptyQuerySubject?.trim() || undefined;
+  const displayQuery = trimmedQuery || browseSubject || "All";
+  const showQuerySubject = Boolean(trimmedQuery) || Boolean(browseSubject) || !hideEmptyQuery;
+  const regionLabel = browseSubject
+    ? `Browse ${browseSubject}`
+    : showQuerySubject
+      ? `Search results for ${displayQuery}`
+      : (emptyQueryLabel ?? "Catalogue");
   // `status` wins when both are passed; `loading` is the deprecated shim.
   const resolvedStatus: SearchResultsBandStatus = status ?? (loading ? "loading" : "ready");
   // The clinical invariant, expressed once: a search that failed has no count to

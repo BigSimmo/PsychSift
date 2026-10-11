@@ -31,7 +31,17 @@ const MAX_CARDS = 24;
 export function SearchScreen() {
   const b = useTcBindings();
   const q = b.search.query;
-  const results = b.searchResults;
+  // Nothing typed is browsing, not a search: show the list A to Z with no
+  // "Best match" or "Why matched", so it never reads as the app having picked
+  // something for this patient. Display-only; the search library is untouched.
+  const browsing = !q.trim();
+  const results = useMemo(
+    () =>
+      browsing
+        ? [...b.searchResults].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }))
+        : b.searchResults,
+    [b.searchResults, browsing],
+  );
   const shown = results.slice(0, MAX_CARDS);
   // An empty query gives every record the same baseline score and then sorts
   // alphabetically, so only call out a best match when the scorer had real
@@ -166,6 +176,7 @@ export function SearchScreen() {
       <SearchResultsHeaderBand
         modeId="therapy-compass"
         query={q}
+        emptyQuerySubject="Therapies"
         matchCount={results.length}
         status={b.error ? "error" : b.loading ? "loading" : "ready"}
         faultBody={b.error ?? undefined}
@@ -216,7 +227,12 @@ export function SearchScreen() {
           ) : (
             <div className="flex flex-col gap-3.5">
               {shown.map((t, index) => (
-                <ResultCard key={t.slug} therapy={t} featured={hasRankedQuery && index === 0} />
+                <ResultCard
+                  key={t.slug}
+                  therapy={t}
+                  featured={!browsing && hasRankedQuery && index === 0}
+                  browsing={browsing}
+                />
               ))}
             </div>
           )}

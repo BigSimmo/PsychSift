@@ -648,7 +648,10 @@ test.describe("PsychSift accessibility coverage", () => {
       page.getByRole("navigation", { name: "Therapy pages" }).getByRole("link", { name: "Search", exact: true }),
     ).toHaveAttribute("aria-current", "page");
     const therapyRibbon = page.getByTestId("search-query-ribbon");
-    await expect(therapyRibbon.getByRole("heading", { name: "All", level: 1 })).toBeVisible({ timeout: 60_000 });
+    // Browsing with nothing typed is titled by the section, never "All".
+    await expect(therapyRibbon.getByRole("heading", { name: "Therapies", level: 1 })).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(therapyRibbon.getByRole("group", { name: "Filter therapy results" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "Search therapies" })).toHaveCount(0);
     // Topics and availability used to be two native `<select>`s faking

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useId, useMemo, useState, useSyncExternalStore } from "react";
-import { BookOpenCheck, Check, ChevronRight, CircleAlert, GitCompareArrows, SearchX } from "lucide-react";
+import { BookOpenCheck, Check, ChevronDown, ChevronRight, CircleAlert, GitCompareArrows, SearchX } from "lucide-react";
 
 import {
   SearchResultsHeaderBand,
@@ -29,6 +29,48 @@ import { readResultFilterValues, replaceResultFilterUrl, writeResultFilterValues
 const dsmCardSelected =
   "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] shadow-[var(--e2)]";
 
+/**
+ * Browse order with nothing typed: A to Z by title, with the generic template
+ * entries ("[Substance] intoxication / withdrawal …") after the named
+ * diagnoses. Display-only — query-ranked results never pass through here.
+ */
+export function compareDsmBrowseTitles(left: { title: string }, right: { title: string }) {
+  const leftTemplate = left.title.trimStart().startsWith("[");
+  const rightTemplate = right.title.trimStart().startsWith("[");
+  if (leftTemplate !== rightTemplate) return leftTemplate ? 1 : -1;
+  return left.title.localeCompare(right.title, "en", { sensitivity: "base" });
+}
+
+/**
+ * Groups browse rows by DSM chapter, in the order the catalogue lists its
+ * chapters, rows A to Z inside each. Chapters with no rows are left out.
+ */
+export function groupDsmBrowseByChapter(
+  categories: readonly DsmCategory[],
+  results: readonly DsmDiagnosisSummary[],
+): Array<{ key: string; label: string; items: DsmDiagnosisSummary[] }> {
+  const byKey = new Map<string, DsmDiagnosisSummary[]>();
+  for (const result of results) {
+    const bucket = byKey.get(result.category.key);
+    if (bucket) bucket.push(result);
+    else byKey.set(result.category.key, [result]);
+  }
+  const groups: Array<{ key: string; label: string; items: DsmDiagnosisSummary[] }> = [];
+  const seen = new Set<string>();
+  for (const category of categories) {
+    const items = byKey.get(category.key);
+    if (!items?.length) continue;
+    seen.add(category.key);
+    groups.push({ key: category.key, label: category.label, items: [...items].sort(compareDsmBrowseTitles) });
+  }
+  // A record whose chapter is missing from the category list still has to show.
+  for (const [key, items] of byKey) {
+    if (seen.has(key)) continue;
+    groups.push({ key, label: items[0]?.category.label ?? key, items: [...items].sort(compareDsmBrowseTitles) });
+  }
+  return groups;
+}
+
 function compareHref(slugs: string[]) {
   const params = new URLSearchParams({ ids: slugs.join(",") });
   return `/dsm/compare?${params.toString()}`;
@@ -38,10 +80,13 @@ function DsmSearchResultCard({
   result,
   isSelected,
   onToggle,
+  compact = false,
 }: {
   result: DsmDiagnosisSummary;
   isSelected: boolean;
   onToggle: () => void;
+  /** Browse rows: one line on a phone (title and ICD code); summary and chapter return at `sm`. */
+  compact?: boolean;
 }) {
   return (
     <article
@@ -79,24 +124,47 @@ function DsmSearchResultCard({
         aria-label={`Open ${result.title}`}
         className={cn("group min-w-0 rounded-md", focusRing, stretchedRowLinkClass)}
       >
-        <div className="flex min-w-0 items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-extrabold leading-5 text-[color:var(--text-heading)] group-hover:text-[color:var(--clinical-accent)] sm:text-base-minus">
-              {result.title}
-            </h3>
-            <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
-              {result.summary}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className={metadataPill}>{result.category.label}</span>
-              <span className={cn(metadataPill, codeText)}>{result.icd_code}</span>
+        {compact ? (
+          <div className="flex min-h-12 min-w-0 items-center gap-2 sm:items-start">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h3 className="min-w-0 flex-1 truncate text-sm font-extrabold leading-5 text-[color:var(--text-heading)] group-hover:text-[color:var(--clinical-accent)] sm:whitespace-normal sm:text-base-minus">
+                  {result.title}
+                </h3>
+                <span className={cn(metadataPill, codeText, "shrink-0")}>{result.icd_code}</span>
+              </div>
+              <p className="mt-1.5 hidden text-xs font-medium leading-5 text-[color:var(--text-muted)] sm:line-clamp-2">
+                {result.summary}
+              </p>
+              <div className="mt-2 hidden flex-wrap gap-2 sm:flex">
+                <span className={metadataPill}>{result.category.label}</span>
+              </div>
             </div>
+            <ChevronRight
+              className="h-5 w-5 shrink-0 text-[color:var(--decoration-soft)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--clinical-accent)] motion-reduce:transform-none sm:mt-0.5"
+              aria-hidden
+            />
           </div>
-          <ChevronRight
-            className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--decoration-soft)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--clinical-accent)] motion-reduce:transform-none"
-            aria-hidden
-          />
-        </div>
+        ) : (
+          <div className="flex min-w-0 items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-extrabold leading-5 text-[color:var(--text-heading)] group-hover:text-[color:var(--clinical-accent)] sm:text-base-minus">
+                {result.title}
+              </h3>
+              <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
+                {result.summary}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className={metadataPill}>{result.category.label}</span>
+                <span className={cn(metadataPill, codeText)}>{result.icd_code}</span>
+              </div>
+            </div>
+            <ChevronRight
+              className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--decoration-soft)] transition group-hover:translate-x-0.5 group-hover:text-[color:var(--clinical-accent)] motion-reduce:transform-none"
+              aria-hidden
+            />
+          </div>
+        )}
       </Link>
     </article>
   );
@@ -168,6 +236,13 @@ export function DsmSearchPage({
       return true;
     });
   const results = filterDiagnoses(selectedCategories, selectedSupport);
+  // Nothing typed: this is the whole catalogue, not a search, so it reads as the
+  // chapter list a psychiatrist looks things up by rather than a ranked list.
+  const browsing = query.trim().length === 0;
+  const browseGroups = browsing ? groupDsmBrowseByChapter(categories, results) : [];
+  // Chapters start closed so the phone opens on a chapter index; a chapter filter
+  // (or a list that is only one chapter) opens them.
+  const openChapters = selectedCategories.size > 0 || browseGroups.length === 1;
   const activeFilterCount = selectedCategories.size + selectedSupport.size;
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const canCompare = selected.length >= 2;
@@ -277,6 +352,7 @@ export function DsmSearchPage({
         <SearchResultsHeaderBand
           modeId="dsm"
           query={query}
+          emptyQuerySubject="DSM diagnoses"
           matchCount={results.length}
           headingLevel={1}
           filterLabel="Filter diagnoses by category"
@@ -331,16 +407,65 @@ export function DsmSearchPage({
 
         {results.length ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-            <section aria-label="DSM diagnosis results" className="grid gap-3">
-              {results.map((result) => (
-                <DsmSearchResultCard
-                  key={result.slug}
-                  result={result}
-                  isSelected={selectedSet.has(result.slug)}
-                  onToggle={() => toggleDiagnosis(result.slug)}
-                />
-              ))}
-            </section>
+            {browsing ? (
+              <section aria-label="DSM diagnoses by chapter, A to Z" className="grid gap-3">
+                {browseGroups.map((group) => (
+                  <details
+                    // Re-mount when the chapter filter changes so a newly narrowed list opens.
+                    key={`${group.key}:${openChapters ? "open" : "closed"}`}
+                    open={openChapters || undefined}
+                    data-testid="dsm-browse-chapter"
+                    className="group/chapter grid gap-2"
+                  >
+                    <summary
+                      className={cn(
+                        cardSurface,
+                        "flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 [&::-webkit-details-marker]:hidden",
+                        focusRing,
+                      )}
+                    >
+                      <h2 className="min-w-0 flex-1 truncate text-sm font-extrabold text-[color:var(--text-heading)]">
+                        {group.label}
+                      </h2>
+                      <span className={cn(metadataPill, "shrink-0 tabular-nums")}>
+                        {group.items.length}
+                        <span className="sr-only">{group.items.length === 1 ? " diagnosis" : " diagnoses"}</span>
+                      </span>
+                      <ChevronDown
+                        className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open/chapter:rotate-180 motion-reduce:transition-none"
+                        aria-hidden
+                      />
+                    </summary>
+                    <div className="mt-2 grid gap-2">
+                      {group.items.map((result) => (
+                        <DsmSearchResultCard
+                          key={result.slug}
+                          result={result}
+                          compact
+                          isSelected={selectedSet.has(result.slug)}
+                          onToggle={() => toggleDiagnosis(result.slug)}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                ))}
+                <p className="flex items-start gap-2 px-1 text-xs font-medium leading-5 text-[color:var(--text-muted)] lg:hidden">
+                  <BookOpenCheck className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
+                  Reference content only. Confirm criteria, exclusions, and clinical context before use.
+                </p>
+              </section>
+            ) : (
+              <section aria-label="DSM diagnosis results" className="grid gap-3">
+                {results.map((result) => (
+                  <DsmSearchResultCard
+                    key={result.slug}
+                    result={result}
+                    isSelected={selectedSet.has(result.slug)}
+                    onToggle={() => toggleDiagnosis(result.slug)}
+                  />
+                ))}
+              </section>
+            )}
 
             <aside className="hidden gap-3 lg:sticky lg:top-20 lg:grid" aria-label="Comparison selection">
               <section className={cn(cardSurface, "rounded-xl p-4")}>

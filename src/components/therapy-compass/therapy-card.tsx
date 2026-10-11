@@ -41,12 +41,18 @@ export function ResultCard({
   featured = false,
   query,
   whyMatched: whyMatchedOverride,
+  browsing = false,
 }: {
   therapy: Therapy;
   rank?: number;
   featured?: boolean;
   query?: string;
   whyMatched?: string;
+  /**
+   * Nothing typed: the card is one row of an A to Z list, not a search result,
+   * so the first column is labelled for what it holds rather than "Why matched".
+   */
+  browsing?: boolean;
 }) {
   const b = useTcBindings();
   const sheetUnavailableId = useId();
@@ -68,7 +74,7 @@ export function ResultCard({
     whyMatchedOverride ||
     cardPreviewText(therapy.bestUsedFor, { exclude: therapy.name }) ||
     cardPreviewText(therapy.indications, { exclude: therapy.name }) ||
-    "Relevant to the current search.";
+    (browsing ? "See record for indications." : "Relevant to the current search.");
   const avoidModify =
     summarise(therapy.contraindicationsOrCautions, 1) || "Check source and review status before clinical use.";
   const rankedBestFit = [therapy.setting, therapy.timeRequired, therapy.patientPopulation]
@@ -152,7 +158,12 @@ export function ResultCard({
           data-therapy-result-evidence
           className="-mx-4 grid grid-cols-1 gap-px overflow-hidden border-y border-[color:var(--border)] bg-[color:var(--border)] sm:mx-0 sm:grid-cols-3 sm:rounded-lg sm:border"
         >
-          <CardCell icon={Target} eyebrow="Why matched" tone="accent" text={whyMatched} />
+          <CardCell
+            icon={Target}
+            eyebrow={browsing ? "Best used for" : "Why matched"}
+            tone="accent"
+            text={whyMatched}
+          />
           <CardCell icon={TriangleAlert} eyebrow="Avoid / modify" tone="warning" text={avoidModify} />
           <CardCell icon={Clock} eyebrow="Best fit" tone="muted" text={bestFit} />
         </div>

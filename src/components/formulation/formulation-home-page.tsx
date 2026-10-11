@@ -97,20 +97,31 @@ function FormulationResults({ query }: { query: string }) {
   // exists to remove.
   const pendingRanking = Boolean(query.trim()) && !deferredQuery.trim();
   const searchQuery = query.trim() ? deferredQuery : "";
+  // Nothing typed is browsing, not a search: the list is A to Z with no "Top
+  // match", so it never reads as the app having picked something for a patient.
+  // The sort is display-only; the search library's ranking is untouched.
+  const browsing = !query.trim();
   const results = useMemo(() => {
     // Cleared live query should restore the full browse catalogue immediately.
-    if (!query.trim()) return searchFormulationMechanismIndex("", { domains });
+    if (!query.trim())
+      return [...searchFormulationMechanismIndex("", { domains })].sort((left, right) =>
+        left.mechanism.name.localeCompare(right.mechanism.name, "en", { sensitivity: "base" }),
+      );
     // Empty deferred while live query has text would score every mechanism —
     // treat that lag as "no results yet" instead of dumping the full catalogue.
     if (!deferredQuery.trim()) return [];
     return searchFormulationMechanismIndex(deferredQuery, { domains, interpretNaturalLanguage: true });
   }, [domains, deferredQuery, query]);
-  const hasUniqueTopMatch = results.length > 0 && (results.length < 2 || results[0].score !== results[1].score);
+  const hasUniqueTopMatch =
+    !browsing && results.length > 0 && (results.length < 2 || results[0].score !== results[1].score);
   // Contextual factors rank separately and always sit below the mechanisms, so
   // a housing or delirium record can never displace a mechanism from the top of
   // the list the mode is named for. Empty query browses the whole set.
   const conceptResults = useMemo(() => {
-    if (!query.trim()) return searchFormulationConcepts("", { domains });
+    if (!query.trim())
+      return [...searchFormulationConcepts("", { domains })].sort((left, right) =>
+        left.concept.title.localeCompare(right.concept.title, "en", { sensitivity: "base" }),
+      );
     if (!deferredQuery.trim()) return [];
     return searchFormulationConcepts(deferredQuery, { domains, interpretNaturalLanguage: true });
   }, [domains, deferredQuery, query]);
@@ -195,6 +206,7 @@ function FormulationResults({ query }: { query: string }) {
       <SearchResultsHeaderBand
         modeId="formulation"
         query={query}
+        emptyQuerySubject="Formulation mechanisms"
         // Both halves: the domain filter narrows mechanisms and contextual
         // concepts alike, so a count of mechanisms alone would shrink by less
         // than the list the reader is looking at.
@@ -276,7 +288,10 @@ function FormulationResults({ query }: { query: string }) {
       {results.length === 0 && conceptResults.length === 0 && rankingReady ? (
         <EmptySearchResults query={query} />
       ) : results.length === 0 ? null : (
-        <section aria-label="Mechanism matches" className="grid gap-4 sm:gap-5">
+        <section
+          aria-label={browsing ? "Formulation mechanisms, A to Z" : "Mechanism matches"}
+          className="grid gap-4 sm:gap-5"
+        >
           {results.map(({ mechanism }, index) => (
             <article
               key={mechanism.id}
