@@ -185,7 +185,7 @@ describe("TeachingWhatsOn", () => {
     render(<TeachingWhatsOn demoMode />);
     const list = await waitFor(() => byId("teaching-whats-on-list"));
     expect(within(list).getByText("Demo case conference")).toBeInTheDocument();
-    expect(screen.getByText("Example · made-up people")).toBeInTheDocument();
+    expect(screen.queryByText(/made-up/)).toBeNull();
     expect(fetchCalls(fetchMock, "/api/teaching/whats-on")).toBe(1);
   });
 

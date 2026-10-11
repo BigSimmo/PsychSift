@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Sparkles,
   TriangleAlert,
-  Users,
   WifiOff,
   X,
   type LucideIcon,
@@ -34,13 +33,12 @@ import {
   type RefObject,
 } from "react";
 
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import {
   mayRecordRecentSearches,
   readAppPreferences,
   subscribeAppPreferences,
 } from "@/components/clinical-dashboard/use-app-preferences";
-import { WorkButton, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
+import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
 import { AnswerCard } from "@/components/work-search/work-search-answer-card";
@@ -435,7 +433,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   /** "Cleared what you typed", shown until the next keystroke. */
   const [clearedNotice, setClearedNotice] = useState(() => clearedNoticeOwed(epoch));
   const [offline, setOffline] = useState(isOffline);
-  const [signInOpen, setSignInOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -1093,22 +1090,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               testId="work-search-cleared"
             />
           ) : null}
-          {records.sample && !typed ? (
-            <Notice
-              icon={Users}
-              title="Sample records, not yours"
-              body="Sign in to see your own."
-              action={
-                <button type="button" onClick={() => setSignInOpen(true)} className="work-button" data-variant="tinted">
-                  Sign in
-                </button>
-              }
-            />
-          ) : records.anySample && !records.sample && !patient ? (
-            <p role="note" className="m-0 px-1 text-2xs font-semibold text-[color:var(--text-muted)]">
-              Some of what&apos;s shown here is sample data, not yours.
-            </p>
-          ) : null}
           {patient ? null : (
             <AreaNotices areas={records.areas} missing={answer?.missing} offline={offline} onRetry={retryAll} />
           )}
@@ -1200,10 +1181,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 </div>
               ) : nextUp.length > 0 || loading ? (
                 <section className="grid gap-2">
-                  <SectionLabel id="work-search-next">
-                    Next up
-                    {records.sample ? <WorkTag tone="neutral">Sample</WorkTag> : null}
-                  </SectionLabel>
+                  <SectionLabel id="work-search-next">Next up</SectionLabel>
                   {nextUp.length > 0 ? (
                     <ListCard labelledBy="work-search-next" onKeyDown={(event) => moveFocus(event, inputRef)}>
                       {nextUp.map((item) => (
@@ -1380,7 +1358,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
           </div>
         </div>
       </div>
-      <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
     </Sheet>
   );
 }

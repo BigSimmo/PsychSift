@@ -131,7 +131,7 @@ export function WorkRolesPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="min-w-0 flex-1 text-sm text-[var(--work-ink)]">
               {example.mode === "on"
-                ? "On. Every area shows example records, marked as examples, and nothing can be sent or exported."
+                ? "On. Every area shows example records, and nothing can be sent or exported."
                 : "Off. Areas show only your own records."}
             </p>
             <WorkChip

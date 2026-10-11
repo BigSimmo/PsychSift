@@ -179,9 +179,6 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
 
   const notices = (
     <>
-      {items.demoMode || shifts.demoMode ? (
-        <ModeNotice testId="my-day-week-demo-notice">Example data: these items are made up.</ModeNotice>
-      ) : null}
       {failed.length > 0 ? (
         <div className="grid gap-2" data-testid="my-day-week-failed-notice">
           <ModeNotice tone="warning">{`Couldn't load: ${listNames(failed)}. Showing the rest.`}</ModeNotice>
