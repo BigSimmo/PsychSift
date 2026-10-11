@@ -5444,7 +5444,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(shortlist.getByRole("button", { name: "Compare" })).toBeDisabled();
     await expect(currentStage).toHaveText("Shortlist");
 
-    await addButtons.nth(1).click();
+    // The first card's button now reads "Remove … from shortlist", so the second
+    // open card's button is the only "Add" match left.
+    await addButtons.first().click();
     await expect(shortlist).toContainText("2 shortlisted");
     await shortlist.getByRole("button", { name: "Compare" }).click();
     await expect(navigator.getByTestId("services-comparison")).toBeVisible();
