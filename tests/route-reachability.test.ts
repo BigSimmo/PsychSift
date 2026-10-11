@@ -87,7 +87,7 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   ],
   [
     "/admin/sharing",
-    "Merged into Requests as its Send a pack view (audit 11 Oct 2026). It redirects to /admin/requests#send; the page stays only for existing bookmarks.",
+    "Merged into Requests as its Send a pack view (audit 11 Oct 2026). It redirects to /admin/requests?view=send; the page stays only for existing bookmarks.",
   ],
   [
     "/admin/compliance",

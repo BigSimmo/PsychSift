@@ -186,6 +186,28 @@ describe("Admin Requests", () => {
     expect((stored()?.requests as unknown[]).length).toBe(1);
   });
 
+  it("opens Send a pack from Sharing's old address, and follows the address while open", () => {
+    search.params = new URLSearchParams("view=send");
+    const view = withToasts(<AdminRequestsPage now={NOW} />);
+    expect(screen.getByTestId("admin-requests-tab-send").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("admin-sharing")).toBeTruthy();
+    search.params = new URLSearchParams();
+    view.rerender(
+      <ToastProvider>
+        <AdminRequestsPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.queryByTestId("admin-sharing")).toBeNull();
+    fireEvent.click(screen.getByTestId("admin-requests-tab-done"));
+    search.params = new URLSearchParams("view=send");
+    view.rerender(
+      <ToastProvider>
+        <AdminRequestsPage now={NOW} />
+      </ToastProvider>,
+    );
+    expect(screen.getByTestId("admin-sharing")).toBeTruthy();
+  });
+
   it("sends a health reason to Staff Health only", () => {
     withToasts(<AdminRequestsPage now={NOW} />);
     fireEvent.click(screen.getByTestId("admin-requests-new"));

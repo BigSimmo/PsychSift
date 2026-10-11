@@ -2,7 +2,7 @@
 export const ADMIN_WORK_SCREEN_HREFS = {
   requests: "/admin/requests",
   // Sharing is Requests' "Send a pack" view since 11 Oct 2026.
-  sharing: "/admin/requests#send",
+  sharing: "/admin/requests?view=send",
   documents: "/admin/documents",
   pay: "/admin/pay",
   tax: "/admin/tax",

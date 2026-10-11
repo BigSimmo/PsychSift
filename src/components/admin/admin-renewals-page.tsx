@@ -160,12 +160,14 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   // Soonest ("checklist"), By group (Compliance, merged in 11 Oct 2026) or Personal. `?view=group` opens
   // By group, which is where the old Compliance address now lands.
   const [tab, setTab] = useState<RenewalsView>(() => (searchParams?.get("view") === "group" ? "group" : "checklist"));
-  // A later link to `?view=group` while the page is open (Compliance's old address, New job's signpost).
+  // A later link to `?view=group` while the page is open (Compliance's old address, New job's signpost),
+  // or the plain Renewals link after it, which opens Soonest as a fresh visit would.
   const viewParam = searchParams?.get("view") ?? null;
   const [seenView, setSeenView] = useState(viewParam);
   if (viewParam !== seenView) {
     setSeenView(viewParam);
     if (viewParam === "group") setTab("group");
+    else if (seenView === "group") setTab("checklist");
   }
   const [kindFilter, setKindFilter] = useState<ChecklistKindFilter>("all");
   const [glance, setGlance] = useState<ComplianceBucket | null>(null);

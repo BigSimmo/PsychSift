@@ -1,7 +1,8 @@
 "use client";
 
 import { CalendarClock, ClipboardList, Copy, Inbox, Mail, Plus, Send, Trash2 } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 
 import { AdminStatusWord } from "@/components/admin/admin-status-word";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
@@ -47,6 +48,7 @@ import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { guardExampleAction, isExampleRecord, type ExampleBlockedAction } from "@/lib/example-data/guards";
+import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { firstAdminPatientProblem } from "@/lib/work-screens/admin/patient-check";
 import {
   dropRecord,
@@ -121,15 +123,6 @@ function requestProblem(request: AdminRequest) {
 
 const PATIENT_NOT_SENT = "This request may hold a patient detail, so nothing was copied or sent. Edit it first.";
 
-function subscribeHash(onChange: () => void): () => void {
-  window.addEventListener("hashchange", onChange);
-  return () => window.removeEventListener("hashchange", onChange);
-}
-
-function readHashIsSend(): boolean {
-  return window.location.hash === "#send";
-}
-
 export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   usePaperworkHeading("Requests", "You send them, PsychSift keeps track");
   const page = usePaperworkPage("admin.requests");
@@ -137,10 +130,23 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
   const say = usePaperworkSay();
   const now = useMemo(() => pinned ?? new Date(), [pinned]);
   const today = perthDateOf(now);
-  // "send" is Sharing, merged into Requests on 11 Oct 2026: its old address lands on `#send`.
-  const landedOnSend = useSyncExternalStore(subscribeHash, readHashIsSend, () => false);
-  const [chosenTab, setTab] = useState<"open" | "done" | "send" | null>(null);
-  const tab = chosenTab ?? (landedOnSend ? "send" : "open");
+  // "send" is Sharing, merged into Requests on 11 Oct 2026: its old address lands on `?view=send`.
+  const router = useRouter();
+  const pathname = usePathname();
+  const viewParam = useSearchParams()?.get("view") ?? null;
+  const [tab, setChosenTab] = useState<"open" | "done" | "send">(() => (viewParam === "send" ? "send" : "open"));
+  const [seenView, setSeenView] = useState(viewParam);
+  if (viewParam !== seenView) {
+    setSeenView(viewParam);
+    if (viewParam === "send") setChosenTab("send");
+    else if (seenView === "send") setChosenTab("open");
+  }
+  function setTab(next: "open" | "done" | "send") {
+    setChosenTab(next);
+    // Leaving Send drops its address, so a refresh or a later Sharing link lands where it should.
+    if (next !== "send" && viewParam === "send")
+      router.replace(pathname ?? ADMIN_WORK_SCREEN_HREFS.requests, { scroll: false });
+  }
   const [draft, setDraft] = useState<{ value: Draft; editing: string | null } | null>(null);
   const [answering, setAnswering] = useState<AdminRequest | null>(null);
   const [failed, setFailed] = useState(false);
@@ -269,7 +275,11 @@ export function AdminRequestsPage({ now: pinned }: { now?: Date } = {}) {
         Requests
       </PageTitleUnderBand>
       {signedOut ? (
-        <PaperworkSampleNotice what="requests" testId="admin-requests-signed-out" examples={page.examplesShown} />
+        <PaperworkSampleNotice
+          what={tab === "send" ? "sharing choices" : "requests"}
+          testId="admin-requests-signed-out"
+          examples={page.examplesShown}
+        />
       ) : null}
       {page.demo ? <PaperworkDemoNotice testId="admin-requests-demo" /> : null}
       {!online ? (
