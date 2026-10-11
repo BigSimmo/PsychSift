@@ -206,7 +206,7 @@ function YearEndStep({
             <span className="sr-only">Step {step}: </span>
             {title}
           </h2>
-          <p className="m-0 text-sm leading-5 text-[color:var(--text-muted)]">{sub}</p>
+          <p className="m-0 text-sm-minus leading-5 text-[color:var(--text-muted)]">{sub}</p>
         </div>
       </div>
       {children}
