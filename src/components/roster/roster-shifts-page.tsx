@@ -349,7 +349,6 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
     to: maxDate(shownRange.to, addDaysToDate(today, ROSTER_AHEAD_DAYS)),
   };
   const shifts = useRosterShifts(teamRange);
-  // The frame's example data banner already says these are examples.
   const teams = useRosterTeams();
   const enabledTeams = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).filter((team) => team.enabled);
   const oneTeamId = enabledTeams.length === 1 ? enabledTeams[0]!.serviceId : null;

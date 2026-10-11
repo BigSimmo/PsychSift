@@ -322,7 +322,6 @@ function FirstUse({ overview, canEdit }: { readonly overview: ComplianceOverview
  */
 export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  // The example data banner already says these are example records; this notice is for the demo build.
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
   const today = perthCalendarDate(now);

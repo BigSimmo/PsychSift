@@ -389,7 +389,6 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
   const { zone } = useWorkTimeZone();
   const now = useRosterNow(pinnedNow);
   const shifts = useRosterShifts();
-  // The frame's example data banner already says these are examples.
   const teams = useRosterTeams();
   const hasTeam = (Array.isArray(teams.data?.teams) ? teams.data.teams : []).some((team) => team.enabled);
   const links = useRosterLinks();

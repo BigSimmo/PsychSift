@@ -43,7 +43,6 @@ export function TeachingDepthPage<T>({
   ready: boolean;
   children: ReactNode;
 }) {
-  // The shared example banner already says the records are made up, so this note shows only without it.
   let body = children;
   if (!demoMode && resource.status === "signed-out") body = <TeachingSignInNotice />;
   else if (!demoMode && ["offline", "error", "setup"].includes(resource.status))

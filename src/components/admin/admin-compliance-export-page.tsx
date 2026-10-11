@@ -66,7 +66,6 @@ const RANGE_OPTIONS = [
  */
 export function AdminComplianceExportPage({ now: nowProp }: { now?: Date } = {}) {
   const state = useOnCallEntries();
-  // The example data banner already says these are example records; this notice is for the demo build.
   const mountedAt = useMemo(() => new Date(), []);
   const now = nowProp ?? mountedAt;
   const today = perthCalendarDate(now);

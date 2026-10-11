@@ -89,7 +89,6 @@ export function TeachingPresenting({ demoMode, talkId = null }: { demoMode: bool
  * check can be done ahead for any booked talk; tapping a later talk does the same in place.
  */
 function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId?: string | null }) {
-  // The shared example banner already says the records are made up, so the demo note shows only without it.
   const [selectedId, setSelectedId] = useState<string | null>(talkId);
   const [allTalks, setAllTalks] = useState(false);
   const now = useTeachingNow();
