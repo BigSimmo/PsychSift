@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { factsheetsTopicsHref } from "@/lib/app-modes";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 import {
   desktopComposerSlotReadyAttr,
   desktopComposerSlotReadyValue,
@@ -204,6 +205,24 @@ describe("MasterSearchHeader DOM", () => {
     await user.click(screen.getByRole("button", { name: "Browse all sheets" }));
 
     expect(router.push).toHaveBeenCalledWith(factsheetsTopicsHref);
+  });
+
+  it("asks a page with unsaved work before a shell option routes away", async () => {
+    // The safety plan registers a guard like this while it holds entries.
+    const guard = vi.fn(() => false);
+    const unregister = registerNavigationGuard(guard);
+    try {
+      const user = userEvent.setup();
+      render(<MasterSearchHeader {...defaultHeaderProps()} searchMode="factsheets" />);
+
+      await user.click(screen.getByRole("button", { name: "Open factsheets options" }));
+      await user.click(screen.getByRole("button", { name: "Browse all sheets" }));
+
+      expect(guard).toHaveBeenCalledTimes(1);
+      expect(router.push).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
   });
 
   describe("#WJDQ0X - privacy notice landmark / role=group wrapping", () => {
