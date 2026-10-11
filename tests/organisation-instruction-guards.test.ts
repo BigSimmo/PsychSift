@@ -174,6 +174,7 @@ describe("retired rules: the list itself", () => {
 
   it("keeps the scope to live instruction files", () => {
     expect(isInstructionFile("AGENTS.md")).toBe(true);
+    expect(isInstructionFile("PROJECT-INSTRUCTIONS-CONTINUATION.md")).toBe(true);
     expect(isInstructionFile("docs/agents/pull-request-workflow.md")).toBe(true);
     expect(isInstructionFile(".claude/skills/handoff/SKILL.md")).toBe(true);
     expect(isInstructionFile(".github/pull_request_template.md")).toBe(true);

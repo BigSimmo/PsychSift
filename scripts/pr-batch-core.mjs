@@ -17,7 +17,7 @@ export const validTaskReference = (value) =>
 export function protectedPath(path) {
   const segments = path.split(/[\\/]/u);
   return (
-    /^(?:\.github\/|\.codex\/|\.claude\/|\.agents\/|AGENTS\.md$|CLAUDE\.md$|supabase\/|Dockerfile|railway[./]|\.env(?:\.|$)|docs\/agents\/|docs\/codex-review-protocol\.md$|scripts\/(?:pr-batch|check-github-action|check-codex|pr-policy|guard-push|sync.*pr))/i.test(
+    /^(?:\.github\/|\.codex\/|\.claude\/|\.agents\/|AGENTS\.md$|PROJECT-INSTRUCTIONS-CONTINUATION\.md$|CLAUDE\.md$|supabase\/|Dockerfile|railway[./]|\.env(?:\.|$)|docs\/agents\/|docs\/codex-review-protocol\.md$|scripts\/(?:pr-batch|check-github-action|check-codex|pr-policy|guard-push|sync.*pr))/i.test(
       path,
     ) ||
     segments.some((segment) =>

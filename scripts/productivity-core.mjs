@@ -46,6 +46,7 @@ const RISK_PATTERNS = {
   dependency: ["package.json", "package-lock.json", ".npmrc"],
   workflow: [
     "AGENTS.md",
+    "PROJECT-INSTRUCTIONS-CONTINUATION.md",
     // The rules AGENTS.md used to carry inline now live in docs/agents/**; they
     // stay workflow-scoped rather than dropping to docs-only.
     "docs/agents",
