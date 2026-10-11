@@ -15,7 +15,7 @@ import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
  * The signed-out sample never writes: it says so instead. Demo mode does ask, and the server's refusal
  * shows as the same notice a real refusal would.
  */
-export function useWeekAdd(sample: boolean) {
+export function useWeekAdd(sample: boolean, onSuccess?: () => void) {
   const [inWeek, setInWeek] = useState<Record<string, boolean>>({});
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -38,6 +38,7 @@ export function useWeekAdd(sample: boolean) {
         occurrenceId: id,
       });
       setInWeek((current) => ({ ...current, [id]: result.inMyWeek }));
+      onSuccess?.();
     } catch (cause) {
       setInWeek((current) => ({ ...current, [id]: !next }));
       setNotice(teachingErrorMessage(cause));
