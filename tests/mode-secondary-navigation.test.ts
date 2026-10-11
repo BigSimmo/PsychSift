@@ -573,11 +573,6 @@ describe("mode secondary navigation registry", () => {
         }),
       ).toEqual(modeSecondaryNavigationEntries(modeId));
     }
-    // Therapy's sign-off queue is staff work: hidden from everyone else (audit 11 Oct 2026).
-    const therapy = modeSecondaryNavigationEntries("therapy-compass");
-    expect(visibleModeSecondaryNavigationEntries(therapy, { isEditor: false }).map((entry) => entry.id)).not.toContain(
-      "review",
-    );
   });
 
   it("names the right On Call page in the pill, including the two editors and the picker", () => {

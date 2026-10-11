@@ -84,8 +84,9 @@ export const modeSecondaryNavigationRegistry = {
     { id: "recommend", label: "Recommend", href: "/therapy-compass/recommend" },
     { id: "compare", label: "Compare", href: "/therapy-compass/compare" },
     { id: "pathways", label: "Pathways", href: "/therapy-compass/pathways" },
-    // The qualified-clinician sign-off queue: staff work, not a reader's page.
-    { id: "review", label: "Review", href: "/therapy-compass/review", audience: "administrators" },
+    // The qualified-clinician sign-off queue. It becomes `audience: "administrators"` once the owner's
+    // account carries the site administrator role; until then hiding it would hide it from the owner too.
+    { id: "review", label: "Review", href: "/therapy-compass/review" },
   ],
   // Two genuinely distinct surfaces: `/factsheets/search` (query + filters +
   // result rows) and `/factsheets/topics` (category browse). Search leads, the
