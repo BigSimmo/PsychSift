@@ -86,6 +86,14 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "Compatibility redirect to /teaching/assessments?view=record (or ?view=all) for older links. In-app navigation (More's Doctor record) links the view directly.",
   ],
   [
+    "/admin/sharing",
+    "Not live, so it left Admin's menu (audit 11 Oct 2026). Reached from the Requests and Documents rows through ADMIN_WORK_SCREEN_HREFS.sharing, which this literal-href scan does not model.",
+  ],
+  [
+    "/admin/workforce",
+    "Retired Workforce sample (audit 11 Oct 2026). It redirects to /admin/hospital, whose Medical Workforce section is the live version, so in-app navigation links Hospital directly; the page stays only for existing bookmarks.",
+  ],
+  [
     "/cme/programme",
     "Retired CPD Programme screen. It redirects to /cme/setup, which now owns both the read view and the editor, so in-app navigation links /cme/setup directly; the page stays only for existing bookmarks.",
   ],

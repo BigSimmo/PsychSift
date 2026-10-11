@@ -6,6 +6,8 @@ import { ModeNav, type ModeNavItem } from "@/components/mode-nav/mode-nav";
 import { iconByItemId } from "@/components/mode-nav/mode-nav-icons";
 import { type ModeNavDensityProfile } from "@/components/mode-nav/mode-nav-bands";
 import { appModeDefinition } from "@/lib/app-modes";
+import { isAdministratorUser } from "@/lib/authorization";
+import { useAuthIfAvailable } from "@/lib/example-data/store";
 import {
   modeSecondaryNavigationEntries,
   modeSecondaryNavigationHref,
@@ -57,6 +59,7 @@ export function RegistryModeNav({
   searchParamString?: string;
 }) {
   const pathname = usePathname();
+  const isAdministrator = isAdministratorUser(useAuthIfAvailable()?.session?.user);
   const embeddedPresentationOnCompare =
     pathname === "/differentials/compare" || pathname.startsWith("/differentials/compare/");
   // The ad-hoc compare workspace reuses DifferentialPresentationWorkflowPage,
@@ -67,8 +70,9 @@ export function RegistryModeNav({
   const currentSearchParams = new URLSearchParams(searchParamString);
   // Action-only entries are dropped, not adapted: `ModeNavItem` takes an href
   // by design so deep links, back and prefetch keep working.
+  // A staff-only tab shows to the site administrator, and on its own page so the bar still marks where you are.
   const items = modeSecondaryNavigationEntries(modeId).flatMap<ModeNavItem>((entry) =>
-    entry.href
+    entry.href && (entry.audience !== "administrators" || isAdministrator || entry.id === activeId)
       ? [
           {
             id: entry.id,

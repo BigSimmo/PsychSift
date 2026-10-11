@@ -19,6 +19,7 @@ import {
   useJuniorNow,
 } from "@/components/admin/junior/junior-shared";
 import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-entry-link";
+import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { cardSurface, focusRing } from "@/components/card-recipes";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -259,16 +260,20 @@ export function ReadyForDayOnePage({ now: nowProp }: { now?: Date } = {}) {
             })}
 
             <JuniorNotice
-              title="Medical Workforce sees this only if you share it"
+              title="Medical Workforce sees your progress only if you share it"
               testId="admin-ready-workforce-note"
               action={
-                <Link href="/admin/sharing" className={juniorTextLinkClass} data-testid="admin-ready-sharing-link">
-                  Share with Medical Workforce
+                <Link
+                  href={ADMIN_PAGE_HREFS.newJob}
+                  className={juniorTextLinkClass}
+                  data-testid="admin-ready-sharing-link"
+                >
+                  Turn on sharing in New job
                   <JuniorLinkChevron />
                 </Link>
               }
             >
-              Or copy the status and send it yourself.
+              The switch is in New job. Or copy the status and send it yourself.
             </JuniorNotice>
           </>
         )}

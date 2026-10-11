@@ -564,12 +564,20 @@ describe("mode secondary navigation registry", () => {
     expect(editor).toContain("whoson");
     expect(reader).not.toContain("service");
     expect(editor).toContain("service");
-    // Every other mode is untouched by the filter.
+    // Every other mode is untouched by the editor filter (the site administrator sees every entry).
     for (const modeId of appModeIds.filter((id) => id !== "on-call")) {
       expect(
-        visibleModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId), { isEditor: false }),
+        visibleModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId), {
+          isEditor: false,
+          isAdministrator: true,
+        }),
       ).toEqual(modeSecondaryNavigationEntries(modeId));
     }
+    // Therapy's sign-off queue is staff work: hidden from everyone else (audit 11 Oct 2026).
+    const therapy = modeSecondaryNavigationEntries("therapy-compass");
+    expect(visibleModeSecondaryNavigationEntries(therapy, { isEditor: false }).map((entry) => entry.id)).not.toContain(
+      "review",
+    );
   });
 
   it("names the right On Call page in the pill, including the two editors and the picker", () => {

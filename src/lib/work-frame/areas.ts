@@ -103,8 +103,8 @@ export type WorkFrameGate =
   | "signed-in"
   /**
    * Hospital-side roles: the site administrator, Medical Workforce or the DCT, from
-   * `useWorkRoles`. Also open while example data is switched on or the reader is signed
-   * out, so the example hospital can be looked around. The page checks again on the server.
+   * `useWorkRoles`. Also open while example data is switched on, so the example hospital can
+   * be looked around. Signed out it stays hidden. The page checks again on the server.
    */
   | "hospital-role"
   /** The Hospital screen: everyone "hospital-role" lets in, plus supervisors and roster managers. */
@@ -1089,7 +1089,6 @@ const admin: WorkArea = {
           gate: "course-organiser",
         },
         { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
-        { id: "admin-sharing", label: "Sharing", sub: "Not live yet", icon: "send", href: "/admin/sharing" },
         {
           id: "admin-documents",
           label: "Documents",
@@ -1178,14 +1177,6 @@ const admin: WorkArea = {
           icon: "users",
           href: "/admin/people",
           gate: "hospital-role",
-        },
-        {
-          id: "admin-workforce",
-          label: "Workforce",
-          sub: "Their view, sample",
-          icon: "layers",
-          href: "/admin/workforce",
-          band: false,
         },
       ],
     },
