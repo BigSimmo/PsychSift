@@ -491,14 +491,14 @@ export function nudgeMessage(referee: Referee, today: string): string {
 
 /* ---------------------------------------------------------------- hooks for other areas */
 
-export const APPLICATIONS_HREF = "/cme/applications";
-export const APPLICATIONS_CV_HREF = "/cme/applications/cv";
+export const APPLICATIONS_HREF = "/admin/applications";
+export const APPLICATIONS_CV_HREF = "/admin/applications/cv";
 
 export type ApplicationsNeedsYouItem = {
   readonly id: string;
   readonly title: string;
   readonly dueOn: string | null;
-  readonly area: "cpd";
+  readonly area: "admin";
   readonly href: string;
   readonly kind: "action" | "update";
 };
@@ -519,7 +519,7 @@ export function applicationsNeedsYouItems(state: ApplicationsState, today: strin
       id: `cpd:applications:date:${date.stage}`,
       title: days === 0 ? `${label} today` : days === 1 ? `${label} tomorrow` : `${label} in ${days} days`,
       dueOn: date.on,
-      area: "cpd",
+      area: "admin",
       href: APPLICATIONS_HREF,
       kind: "action",
     });
@@ -529,7 +529,7 @@ export function applicationsNeedsYouItems(state: ApplicationsState, today: strin
       id: `cpd:applications:referee:${referee.id}`,
       title: `${referee.name} has not replied in ${days} days`,
       dueOn: today,
-      area: "cpd",
+      area: "admin",
       href: APPLICATIONS_HREF,
       kind: "action",
     });
@@ -539,7 +539,7 @@ export function applicationsNeedsYouItems(state: ApplicationsState, today: strin
 
 export type ApplicationsSearchRecord = {
   readonly title: string;
-  readonly area: "cpd";
+  readonly area: "admin";
   readonly keywords: readonly string[];
   readonly href: string;
 };
@@ -548,13 +548,13 @@ export function applicationsSearchRecords(state: ApplicationsState): Application
   const records: ApplicationsSearchRecord[] = [
     {
       title: "Job applications",
-      area: "cpd",
+      area: "admin",
       keywords: ["jobs", "applications", "recruitment", "season", "referees", "references", "interview", "rotation"],
       href: APPLICATIONS_HREF,
     },
     {
       title: "CV from your records",
-      area: "cpd",
+      area: "admin",
       keywords: ["cv", "resume", "curriculum vitae", "job application"],
       href: APPLICATIONS_CV_HREF,
     },
@@ -562,14 +562,14 @@ export function applicationsSearchRecords(state: ApplicationsState): Application
   for (const date of state.dates)
     records.push({
       title: `${stageLabel(date.stage)}, ${shortDate(date.on)}`,
-      area: "cpd",
+      area: "admin",
       keywords: ["jobs", "applications", "date", stageLabel(date.stage).toLowerCase()],
       href: APPLICATIONS_HREF,
     });
   for (const referee of state.referees)
     records.push({
       title: `${referee.name}, referee`,
-      area: "cpd",
+      area: "admin",
       keywords: ["referee", "reference", refereeStatusLabel(referee.status).toLowerCase()],
       href: APPLICATIONS_HREF,
     });

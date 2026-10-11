@@ -80,9 +80,11 @@ describe("Send to AMA CPD Home", () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it("says first that CPD Home's import format is not checked, and draws the hand-off", () => {
+  it("says in one line that CPD Home's import format is not confirmed, and draws the hand-off", () => {
     renderPage();
-    expect(screen.getByTestId("cpd-home-format").textContent).toContain("Format to be confirmed with AMA CPD Home");
+    expect(screen.getByTestId("cpd-home-format").textContent).toContain(
+      "What AMA CPD Home can import is not confirmed yet.",
+    );
     expect(screen.getByTestId("cpd-home-handoff").getAttribute("aria-label")).toBe(
       "Your log of 3 activities goes into a CSV file. What AMA CPD Home can import is not checked yet.",
     );

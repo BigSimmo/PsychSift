@@ -945,25 +945,26 @@ const cpd: WorkArea = {
     {
       label: "Your year",
       items: [
-        { id: "setup", label: "Report", sub: "Year check", icon: "check-list", href: "/cme/check" },
+        // One End of year page with three steps (11 Oct 2026 audit). Evidence, Export and AMA CPD Home are the
+        // detail pages its steps open, so they leave the menu and keep End of year current.
+        {
+          id: "setup",
+          label: "End of year",
+          sub: "Hand it in",
+          icon: "check-list",
+          href: "/cme/check",
+          paths: ["/cme/check", "/cme/evidence", "/cme/export", "/cme/cpd-home"],
+        },
         { id: "plan", label: "Plan", sub: "Your goals", icon: "target", href: "/cme/plan" },
         {
           id: "targets",
           label: "Targets",
-          sub: "Your confirmed numbers",
+          sub: "Your numbers",
           icon: "flag",
           href: "/cme/setup",
           paths: ["/cme/setup", "/cme/programme"],
         },
         { id: "training", label: "Training", sub: "Registrar record", icon: "layers", href: "/cme/training" },
-        {
-          id: "applications",
-          label: "Jobs",
-          sub: "Season dates, referees, CV",
-          icon: "flag",
-          href: "/cme/applications",
-          paths: ["/cme/applications", "/cme/applications/cv"],
-        },
       ],
     },
     {
@@ -986,45 +987,13 @@ const cpd: WorkArea = {
           href: "/cme/routines",
           paths: [],
         },
-        { id: "cpd-evidence", label: "Evidence", sub: "Certificates to add", icon: "file", href: "/cme/evidence" },
-        {
-          id: "cpd-export",
-          label: "Export",
-          sub: "CSV and printable",
-          icon: "download",
-          href: "/cme/export",
-        },
-        {
-          id: "cpd-home",
-          label: "AMA CPD Home",
-          short: "CPD Home",
-          sub: "Send your year",
-          icon: "send",
-          href: "/cme/cpd-home",
-          paths: ["/cme/cpd-home"],
-        },
       ],
     },
     {
-      label: "Settings",
+      label: "Help",
       items: [
-        {
-          id: "customise",
-          label: "Customise",
-          sub: "Summary sections",
-          icon: "sliders",
-          href: "/cme/customise",
-          band: false,
-        },
-        {
-          id: "setup-edit",
-          label: "Set up",
-          sub: "Home and total",
-          icon: "settings",
-          href: "/cme/setup?edit=1",
-          paths: ["/cme/setup"],
-          query: { edit: "1" },
-        },
+        // Customise is reached from Summary's own button, and Set up is the same page as Targets, so neither
+        // is listed here (11 Oct 2026 audit).
         { id: "cpd-help", label: "Help", sub: "How CPD works", icon: "help", action: "work-help" },
       ],
     },
@@ -1114,6 +1083,16 @@ const admin: WorkArea = {
           sub: "New to WA hospitals",
           icon: "compass",
           href: "/admin/new-job/starter",
+        },
+        // Career admin, beside New job and Contract (moved from CPD, 11 Oct 2026 audit).
+        {
+          id: "applications",
+          label: "Job applications",
+          short: "Jobs",
+          sub: "Season dates, referees, CV",
+          icon: "flag",
+          href: "/admin/applications",
+          paths: ["/admin/applications", "/admin/applications/cv"],
         },
         {
           id: "admin-ready",

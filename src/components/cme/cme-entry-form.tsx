@@ -183,6 +183,8 @@ export type CmeEntryFormProps = {
   initialDraft?: CmeDraftPayload;
   /** Extra draft controls shown beside "Save as draft" (who the draft is waiting on). */
   draftControls?: ReactNode;
+  /** Rarely used options shown after the main fields, before saving (a replaced missed session). */
+  afterFields?: ReactNode;
 };
 
 /**
@@ -221,6 +223,7 @@ export function CmeEntryForm({
   onSaveDraft,
   initialDraft,
   draftControls,
+  afterFields,
 }: CmeEntryFormProps) {
   const formId = useId();
   // Bumped after every successful save to remount CmeAllocationField, which
@@ -923,6 +926,8 @@ export function CmeEntryForm({
           </FormField>
         </div>
       </details>
+
+      {afterFields}
 
       {onSaveDraft ? (
         <div

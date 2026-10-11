@@ -39,6 +39,7 @@ export function CpdFeaturePage({
   title,
   testId,
   back,
+  identity = "cme",
   children,
 }: {
   readonly eyebrow: string;
@@ -50,11 +51,13 @@ export function CpdFeaturePage({
    * is one and falls back to `href`, so it never dead-ends.
    */
   readonly back?: CpdFeatureBack;
+  /** The area colour. Job applications lives in Admin, so it takes Admin's colour. */
+  readonly identity?: "cme" | "my-work";
   readonly children: ReactNode;
 }) {
   useModeBandHeading({ eyebrow, title });
   return (
-    <main data-mode-identity="cme" data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
+    <main data-mode-identity={identity} data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
       <WorkBody>
         {back ? (
           <ContextualBackLink

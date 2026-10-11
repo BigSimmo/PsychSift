@@ -216,3 +216,28 @@ describe("work page stars: resolving to real pages", () => {
     expect(day?.items.every((item) => typeof item.href === "string")).toBe(true);
   });
 });
+
+describe("work page stars: pages that moved", () => {
+  it("reads old saved keys under the page that replaced them, merged into one", () => {
+    seed([
+      { areaId: "cpd", itemId: "cpd-export", starredAt: 50, pinnedAt: 55 },
+      { areaId: "cpd", itemId: "cpd-evidence", starredAt: 40, openedAt: 60 },
+      { areaId: "cpd", itemId: "applications", starredAt: 70 },
+    ]);
+    expect(stars.loadWorkPageStars()).toEqual([
+      { areaId: "cpd", itemId: "setup", starredAt: 40, pinnedAt: 55, openedAt: 60 },
+      { areaId: "admin", itemId: "applications", starredAt: 70, pinnedAt: null, openedAt: null },
+    ]);
+  });
+
+  it("lets a moved favourite be opened, unpinned and removed by its new key", () => {
+    seed([{ areaId: "cpd", itemId: "cpd-export", starredAt: 50, pinnedAt: 55 }]);
+    stars.recordWorkPageOpened("cpd:setup", 90);
+    expect(stars.loadWorkPageStars()[0]).toMatchObject({ itemId: "setup", openedAt: 90 });
+    stars.setWorkPageStarsPinned(new Set(["cpd:setup"]), false);
+    expect(stars.loadWorkPageStars()[0]).toMatchObject({ pinnedAt: null });
+    stars.removeWorkPageStars(new Set(["cpd:setup"]));
+    expect(stars.loadWorkPageStars()).toEqual([]);
+    expect(stored()).toEqual([]);
+  });
+});
