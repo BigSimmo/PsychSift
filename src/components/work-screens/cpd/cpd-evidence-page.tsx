@@ -402,7 +402,7 @@ export function CpdEvidencePage({
                 </li>
               ) : null}
               <li className="min-w-0">
-                <WorkIconRow icon={FileText} title="Year check" sub="Every target and record check" href="/cme/check" />
+                <WorkIconRow icon={FileText} title="End of year" sub="Check, tidy, hand in" href="/cme/check" />
               </li>
             </WorkCard>
           </>

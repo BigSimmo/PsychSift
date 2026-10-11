@@ -244,17 +244,36 @@ export function resetWorkPageStarsForTesting(): void {
  * reader on the classic work mode, where it 404s. The entry stays stored, so
  * it is back when the new work mode is.
  */
+/**
+ * Pages that left an area's menu, and the menu page that now holds them, so a page saved before the move
+ * still opens (CPD tidy-up, 11 Oct 2026: Evidence, Export and AMA CPD Home are steps of End of year, Set up
+ * is Targets, and Job applications moved to Admin).
+ */
+const MOVED_WORK_PAGES: Readonly<Record<string, { areaId: WorkAreaId; itemId: string }>> = {
+  "cpd:cpd-evidence": { areaId: "cpd", itemId: "setup" },
+  "cpd:cpd-export": { areaId: "cpd", itemId: "setup" },
+  "cpd:cpd-home": { areaId: "cpd", itemId: "setup" },
+  "cpd:setup-edit": { areaId: "cpd", itemId: "targets" },
+  "cpd:applications": { areaId: "admin", itemId: "applications" },
+};
+
 export function resolveWorkPageStars(
   stars: readonly WorkPageStar[],
   routeVisible: (href: string) => boolean = () => true,
 ): ResolvedWorkPageStar[] {
   const out: ResolvedWorkPageStar[] = [];
-  for (const star of stars) {
+  const seen = new Set<string>();
+  for (const saved of stars) {
+    const moved = MOVED_WORK_PAGES[workPageStarKey(saved.areaId, saved.itemId)];
+    const star = moved ? { ...saved, ...moved } : saved;
     const area = WORK_AREAS[star.areaId];
     if (!area) continue;
     const item = workAreaItems(area).find((candidate) => candidate.id === star.itemId);
     if (!item?.href || !routeVisible(item.href)) continue;
-    out.push({ ...star, key: workPageStarKey(star.areaId, star.itemId), area, item: { ...item, href: item.href } });
+    const key = workPageStarKey(star.areaId, star.itemId);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...star, key, area, item: { ...item, href: item.href } });
   }
   return out;
 }

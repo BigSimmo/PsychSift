@@ -958,7 +958,16 @@ const cpd: WorkArea = {
     {
       label: "Your year",
       items: [
-        { id: "setup", label: "Report", sub: "Year check", icon: "check-list", href: "/cme/check" },
+        // One End of year page with three steps (11 Oct 2026 audit). Evidence, Export and AMA CPD Home are the
+        // detail pages its steps open, so they leave the menu and keep End of year current.
+        {
+          id: "setup",
+          label: "End of year",
+          sub: "Check, tidy, hand in",
+          icon: "check-list",
+          href: "/cme/check",
+          paths: ["/cme/check", "/cme/evidence", "/cme/export", "/cme/cpd-home"],
+        },
         { id: "plan", label: "Plan", sub: "Your goals", icon: "target", href: "/cme/plan" },
         {
           id: "targets",
@@ -990,23 +999,6 @@ const cpd: WorkArea = {
           icon: "repeat",
           href: "/cme/routines",
           paths: [],
-        },
-        { id: "cpd-evidence", label: "Evidence", sub: "Certificates to add", icon: "file", href: "/cme/evidence" },
-        {
-          id: "cpd-export",
-          label: "Export",
-          sub: "CSV and printable",
-          icon: "download",
-          href: "/cme/export",
-        },
-        {
-          id: "cpd-home",
-          label: "AMA CPD Home",
-          short: "CPD Home",
-          sub: "Send your year",
-          icon: "send",
-          href: "/cme/cpd-home",
-          paths: ["/cme/cpd-home"],
         },
       ],
     },

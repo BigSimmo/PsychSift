@@ -96,7 +96,8 @@ describe("workFrameCurrentItem", () => {
   });
 
   it("draws the band on the two Export pages, which have no header of their own", () => {
-    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("Export");
+    // CPD's Export is a step of End of year, so End of year stays current there; the page names itself.
+    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("End of year");
     expect(workFrameForRoute("teaching", "/teaching/assessments/export")?.page.label).toBe("Export");
   });
 });
