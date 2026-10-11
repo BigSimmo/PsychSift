@@ -339,7 +339,7 @@ export function FormulationBuilderPage({
 
               <div className="grid gap-4 p-4 sm:p-5">
                 {selectedMechanisms.length ? (
-                  <div className="rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]/45 p-3">
+                  <div className="rounded-lg bg-[color:var(--clinical-accent-soft)] p-3">
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className={eyebrowText}>Selected hypotheses</p>
@@ -374,7 +374,7 @@ export function FormulationBuilderPage({
                   </div>
                 ) : (
                   <div className="grid min-h-36 place-items-center rounded-xl border border-dashed border-[color:var(--border-strong)] bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:32px_32px] p-5 text-center">
-                    <div className="rounded-xl bg-[color:var(--surface)]/95 px-6 py-4 shadow-[var(--e1)]">
+                    <div className="px-6 py-4">
                       <Network className="mx-auto h-6 w-6 text-[color:var(--clinical-accent)]" aria-hidden />
                       <h3 className="mt-2 text-base font-extrabold text-[color:var(--text-heading)]">
                         No mechanisms selected
@@ -412,17 +412,22 @@ export function FormulationBuilderPage({
                   noun="mechanism"
                 />
 
-                <div className="grid gap-2 sm:grid-cols-2" aria-label="Available mechanisms">
+                {/* Divided rows bleeding to the step card's edges, not a grid of
+                    small cards inside it: the step card is the one box. */}
+                <div
+                  className="-mx-4 grid divide-y divide-[color:var(--border)] border-y border-[color:var(--border)] sm:-mx-5"
+                  aria-label="Available mechanisms"
+                >
                   {visibleMechanisms.map((mechanism) => {
                     const checked = selectedIds.includes(mechanism.id);
                     return (
                       <label
                         key={mechanism.id}
                         className={cn(
-                          "group grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg border p-3.5 transition",
+                          "group grid min-h-12 cursor-pointer grid-cols-[2rem_minmax(0,1fr)] gap-3 px-4 py-3.5 transition-colors sm:px-5",
                           checked
-                            ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]/55"
-                            : "border-[color:var(--border)] bg-[color:var(--surface)] hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-subtle)]",
+                            ? "bg-[color:var(--clinical-accent-soft)]"
+                            : "bg-[color:var(--surface)] hover:bg-[color:var(--surface-subtle)]",
                         )}
                       >
                         <input
@@ -457,7 +462,7 @@ export function FormulationBuilderPage({
                   })}
                 </div>
 
-                <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-4">
+                <div className="rounded-lg bg-[color:var(--surface-subtle)] p-4">
                   <p className={eyebrowText}>Formulation language</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
                     {selectedMechanisms.length
@@ -478,7 +483,7 @@ export function FormulationBuilderPage({
               />
               <div className="grid gap-5 p-4 sm:p-5">
                 <div
-                  className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+                  className="-mx-4 grid divide-y divide-[color:var(--border)] border-y border-[color:var(--border)] sm:-mx-5"
                   role="radiogroup"
                   aria-label="Formulation framework"
                 >
@@ -493,10 +498,10 @@ export function FormulationBuilderPage({
                       <label
                         key={template.id}
                         className={cn(
-                          "grid cursor-pointer grid-cols-[2rem_minmax(0,1fr)] gap-3 rounded-lg border p-3.5",
+                          "grid min-h-12 cursor-pointer grid-cols-[2rem_minmax(0,1fr)] items-center gap-3 px-4 py-3 sm:px-5",
                           active
-                            ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]"
-                            : "border-[color:var(--border)] bg-[color:var(--surface)] hover:bg-[color:var(--surface-subtle)]",
+                            ? "bg-[color:var(--clinical-accent-soft)]"
+                            : "bg-[color:var(--surface)] hover:bg-[color:var(--surface-subtle)]",
                         )}
                         // Controlled `sr-only` radios can miss native label activation after
                         // large scroll-into-view (Production UI shard flake on PR #1788). Drive
@@ -534,14 +539,13 @@ export function FormulationBuilderPage({
                   })}
                 </div>
 
-                <div className="grid gap-3">
+                {/* Each framework section is a divided block of the step card,
+                    not a card nested inside it. */}
+                <div className="-mx-4 -mt-5 grid divide-y divide-[color:var(--border)] border-b border-[color:var(--border)] sm:-mx-5">
                   {activeSections.map((section) => {
                     const suggestions = suggestionsForFormulationSection(selectedMechanisms, section.id);
                     return (
-                      <article
-                        key={section.id}
-                        className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4"
-                      >
+                      <article key={section.id} className="px-4 py-4 sm:px-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <h3 className="text-sm font-extrabold text-[color:var(--text-heading)]">{section.label}</h3>
@@ -595,7 +599,8 @@ export function FormulationBuilderPage({
                 title="Challenge the working hypothesis"
                 body="A useful formulation remains provisional. Record what supports it, what competes with it, and what would change your mind."
               />
-              <div className="grid gap-3 p-4 sm:p-5 sm:grid-cols-2">
+              {/* Divided blocks of the step card, not cards inside it. */}
+              <div className="grid divide-y divide-[color:var(--border)]">
                 {formulationQualityPrompts.map((prompt, index) => {
                   const starter =
                     prompt.id === "quality-evidence"
@@ -604,10 +609,7 @@ export function FormulationBuilderPage({
                         ? selectedMechanisms.map((mechanism) => mechanism.treatmentLeverage).slice(0, 2)
                         : selectedMechanisms.flatMap((mechanism) => mechanism.poorFitIndicators).slice(0, 2);
                   return (
-                    <article
-                      key={prompt.id}
-                      className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4"
-                    >
+                    <article key={prompt.id} className="px-4 py-4 sm:px-5">
                       <div className="flex items-start gap-3">
                         <span className="nums grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-soft)] text-xs font-extrabold text-[color:var(--clinical-accent)]">
                           {index + 1}

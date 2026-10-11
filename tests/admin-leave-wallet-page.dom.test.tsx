@@ -74,7 +74,8 @@ describe("LeaveWalletPage", () => {
     expect(screen.getByTestId("admin-leave-sign-off").textContent).toContain("Figures from your agreement");
     expect(screen.queryByTestId("admin-leave-agreement-end")).toBeNull();
     expect(screen.getByTestId("admin-leave-agreement").getAttribute("href")).toMatch(/^https:\/\//);
-    expect(screen.getByTestId("admin-leave-back").getAttribute("href")).toBe("/admin");
+    // One way back: the band's Today tab is Admin Today, so the page adds no second link to it.
+    expect(screen.queryByTestId("admin-leave-back")).toBeNull();
   });
 
   it("opens a card on top, with the rest as a thin pile", () => {

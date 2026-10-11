@@ -193,21 +193,6 @@ html[data-work-frame] main {
   }
 }
 
-/* The dot texture, lined up with the top bar's so the two read as one. */
-.work-band::before,
-html[data-work-frame] .universal-header[data-work-frame]::after,
-.universal-header[data-work-band]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: var(--work-z-under);
-  pointer-events: none;
-  background-image: radial-gradient(var(--mode-identity-border) 0.7px, transparent 0.8px);
-  background-size: 12px 12px;
-  background-position: 0 var(--work-band-offset, 0);
-  opacity: 0.55;
-}
-
 /* The faint line drawing, cropped by its own box at the band's corner. */
 .work-band__mark {
   position: absolute;
@@ -219,12 +204,13 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   background: var(--mode-identity);
   mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
   -webkit-mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
-  opacity: 0.11;
+  /* Fainter since the 11 Oct design review: colour says where you are, the drawing only adds a hint. */
+  opacity: 0.08;
   pointer-events: none;
 }
 
 .dark .work-band__mark {
-  opacity: 0.14;
+  opacity: 0.11;
 }
 
 /* Pinned tabs (owner request 8 Oct 2026). Once the title has scrolled under
@@ -1670,16 +1656,68 @@ a.work-hero:focus-visible {
 }
 
 /* Chips: filters and choices. A 30px shape inside a 48px tap. */
+/* Chip rows stay on one line and scroll sideways (design pass, October 2026):
+   wrapping left one chip alone on a second line. Where scroll-driven
+   animations exist, a soft fade appears only at an edge with more chips past
+   it, and only while the row actually overflows. Elsewhere (older iPhone
+   Safari) there is no fade at all, so no chip is ever dimmed. The tab swipe
+   already ignores a row that scrolls sideways. */
 .work-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0 calc(var(--spacing) * 1.5);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
 
-.work-chips[data-scroll] {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
+.work-chips::-webkit-scrollbar {
+  display: none;
+}
+
+@property --work-chips-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --work-chips-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes work-chips-fade {
+  from {
+    --work-chips-fade-start: 0px;
+    --work-chips-fade-end: 1.75rem;
+  }
+  1% {
+    --work-chips-fade-start: 1.75rem;
+  }
+  99% {
+    --work-chips-fade-end: 1.75rem;
+  }
+  to {
+    --work-chips-fade-start: 1.75rem;
+    --work-chips-fade-end: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .work-chips {
+    /* A row that does not overflow has an inactive timeline, so both fades
+       stay at 0px and nothing is masked. */
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--work-chips-fade-start),
+      black calc(100% - var(--work-chips-fade-end)),
+      transparent
+    );
+    animation: work-chips-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
 }
 
 .work-chip {

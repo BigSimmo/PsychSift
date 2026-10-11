@@ -20,9 +20,9 @@ export function checklistKindLabel(kind: ChecklistKindFilter): string {
 /**
  * The kind filter row (Josh's locked mockup): "All, Registration, Checks,
  * Health, Training, Job" as the work kit's chips. `aria-pressed`, not a radio
- * group: a chip narrows the list rather than replacing it. The chips wrap onto
- * a second line on a phone rather than scrolling sideways, so none is ever
- * hidden off the edge (and a sideways drag here never fights the tab swipe).
+ * group: a chip narrows the list rather than replacing it. Like every chip
+ * row, they stay on one line and scroll sideways, with an edge fade showing
+ * there is more; the tab swipe ignores a row that scrolls sideways.
  */
 export function ChecklistKindChips({
   active,
@@ -34,7 +34,7 @@ export function ChecklistKindChips({
   readonly testId?: string;
 }) {
   return (
-    <div role="group" aria-label="Filter the checklist by kind" data-testid={testId} className="work-chips flex-wrap">
+    <div role="group" aria-label="Filter the checklist by kind" data-testid={testId} className="work-chips">
       {CHECKLIST_KIND_FILTERS.map((kind) => (
         <WorkChip
           key={kind}

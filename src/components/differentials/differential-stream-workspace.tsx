@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "rea
 import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, Check, FileText, GitCompareArrows, ShieldAlert } from "lucide-react";
 
+import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
 import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
 
 import {
@@ -70,8 +71,11 @@ function statusLabel(status: DifferentialStreamItem["status"]) {
 }
 
 function statusTone(status: DifferentialStreamItem["status"]) {
+  // Emergent stays red because it is a genuine urgency, but as a tag rather
+  // than a solid red block: most pathways carry it, and a wall of solid red
+  // stops reading as a warning (design pass, October 2026).
   if (status === "emergent") {
-    return "border-transparent bg-[color:var(--danger-solid)] text-[color:var(--danger-solid-contrast)]";
+    return "border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] text-[color:var(--danger)]";
   }
   if (status === "urgent") {
     return "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning)]";
@@ -178,14 +182,17 @@ function StreamCard({
 }) {
   const isPresentation = stream === "presentations";
   const hasConnections = isPresentation ? item.relatedPathways.length > 0 : true;
+  // Each pathway is a divided row inside the list's one hairline card, so the
+  // highlight is a background wash only: a coloured border would fight the
+  // dividers and read as a card inside a card.
   const cardTone =
     highlight === "match"
-      ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] shadow-[var(--shadow-inset)]"
+      ? "bg-[color:var(--clinical-accent-soft)]"
       : highlight === "related"
-        ? "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] shadow-[var(--shadow-inset)]"
+        ? "bg-[color:var(--warning-soft)]"
         : highlight === "dim"
-          ? "border-[color:var(--border)] bg-[color:var(--surface)] opacity-45"
-          : "border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--shadow-inset)]";
+          ? "opacity-45"
+          : "";
 
   return (
     <article
@@ -194,7 +201,7 @@ function StreamCard({
       data-highlight={highlight}
       data-match={item.isMatch ? "true" : "false"}
       data-status={item.status}
-      className={`relative rounded-lg border p-4 transition ${cardTone}`}
+      className={`relative p-4 transition ${cardTone}`}
       onFocus={onFocus}
     >
       <div className="flex items-start justify-between gap-3">
@@ -667,7 +674,11 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
 
   function renderCardGrid(items: DifferentialStreamItem[]): ReactNode {
     return (
-      <div className="grid gap-3 sm:grid-cols-2">
+      // One hairline card per group with divided rows (no cards inside cards).
+      // From the two-column width each row draws its own bottom and inner
+      // right hairline; the -mb-px tucks the last row's bottom line under the
+      // card's clipped edge so it is never doubled.
+      <div className="grid divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] sm:grid-cols-2 sm:divide-y-0 sm:[&>*]:-mb-px sm:[&>*]:border-b sm:[&>*]:border-[color:var(--border)] sm:[&>*:nth-child(odd)]:border-r">
         {items.map((item) => (
           <StreamCard
             key={item.id}
@@ -696,11 +707,9 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
       className="min-h-0 overflow-x-clip bg-[color:var(--background)] px-4 py-5 text-[color:var(--text)] sm:grow sm:px-6 sm:py-6 lg:px-8"
     >
       <div className="mx-auto grid w-full max-w-6xl gap-4">
-        <header data-testid="differentials-stream-header" className="grid gap-1 px-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-[color:var(--text-heading)] sm:text-3xl">
-            {copy.heading}
-          </h1>
-          <p className="max-w-2xl text-sm leading-6 text-[color:var(--text-muted)]">{copy.description}</p>
+        <header data-testid="differentials-stream-header" className="grid gap-1.5 px-1">
+          <h1 className={pageHeadingTitleClass}>{copy.heading}</h1>
+          <p className={pageHeadingDescriptionClass}>{copy.description}</p>
         </header>
 
         <SearchResultsHeaderBand
@@ -805,9 +814,12 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
         {!hasQuery && safetyItems.length > 0 ? (
           <section
             data-testid="differentials-stream-safety-shelf"
-            className="grid gap-2 rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] p-3"
+            // A neutral hairline card with a small area-coloured label. These are
+            // jump links to pathways listed below, not alerts, so they are not
+            // red (red is kept for overdue, lapsed or urgent states).
+            className="grid gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3"
           >
-            <div className="flex items-center gap-2 text-sm font-extrabold text-[color:var(--danger)]">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-eyebrow text-[color:var(--clinical-accent)]">
               <ShieldAlert className="h-4 w-4" aria-hidden />
               {isPresentation ? "High-priority presentation pathways" : "Must-check / emergent shelf"}
             </div>
@@ -817,7 +829,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
                   key={`safety-${item.id}`}
                   type="button"
                   onClick={() => scrollToSlug(item.slug)}
-                  className="inline-flex min-h-12 items-center rounded-lg border border-[color:var(--danger-border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--danger)]"
+                  className="inline-flex min-h-12 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:border-[color:var(--clinical-accent-border)] hover:text-[color:var(--clinical-accent)]"
                 >
                   {item.title}
                 </button>

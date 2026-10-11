@@ -63,13 +63,17 @@ export const favouritePressed = cn(controlPressed, "aria-pressed:[&_svg]:fill-cu
  * family does this card belong to". This edge answers a different question —
  * "this is the principal panel on the screen" — and a therapy screen has only
  * one category to begin with, so the top edge would say nothing the page does
- * not already say. The side is the only thing therapy keeps; the colour comes
- * through the shared `--cat-accent`, which `:root` aliases to
- * `--clinical-accent`, so this renders exactly as the private token did while
- * remaining remappable per category, per theme and under forced colors.
+ * not already say. The colour comes through the shared category tokens, which
+ * `:root` aliases to the clinical accent, so it stays remappable per category,
+ * per theme and under forced colors.
  *
  * The two hero cards used to be two independent literals. They are one now.
+ *
+ * October 2026 design pass: coloured side bars are retired in both modes (one
+ * card per group, no bars). Prominence is now the whole hairline in the area's
+ * tint, through the same remappable `--cat-border`, rather than a thick left
+ * stripe that read as an alert rail.
  */
-export const heroAccentEdge = "border-l-[3px] border-l-[color:var(--cat-accent)]";
+export const heroAccentEdge = "border-[color:var(--cat-border)]";
 
 export const heroCard = cn(cardSurface, heroAccentEdge);

@@ -92,7 +92,12 @@ export function NowRightNow({
         ) : (
           <>
             <div className="grid min-w-0 gap-1">
-              <p className={cn(modeHeadingText, "break-words text-xl leading-7 text-[color:var(--text-heading)]")}>
+              <p
+                className={cn(
+                  modeHeadingText,
+                  "break-words text-base-minus leading-6 text-[color:var(--text-heading)]",
+                )}
+              >
                 {title}
               </p>
               {cover ? (

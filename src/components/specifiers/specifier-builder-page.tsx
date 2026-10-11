@@ -52,6 +52,13 @@ import {
 } from "@/lib/specifiers";
 import { copyButton, errorCopy, specifierBuilderCopy } from "@/lib/ui-copy";
 
+// Primary buttons wear the area colour, never the shared near-black command
+// fill (design pass, October 2026). Re-pointing the command tokens on the
+// button itself keeps Button's hover and pressed states and leaves every other
+// control on the page alone.
+const clinicalPrimaryAccent =
+  "[--command:var(--clinical-accent)] [--command-hover:var(--clinical-accent-hover)] [--command-active:var(--clinical-accent-active)] [--command-contrast:var(--clinical-accent-contrast)]";
+
 const specifierFamilyOrder: Record<SpecifierFamily, number> = {
   "episode-features": 0,
   "course-onset": 1,
@@ -813,7 +820,7 @@ export function SpecifierBuilderPage({ initialSpecifiers = [] }: { initialSpecif
                 </p>
               </div>
               <div className="grid gap-4 p-4 sm:p-5">
-                <div className="rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]/45 p-4">
+                <div className="rounded-lg bg-[color:var(--clinical-accent-soft)] p-4">
                   <p className={eyebrowText}>Completed wording</p>
                   <p
                     data-testid="specifier-completed-wording"
@@ -823,7 +830,9 @@ export function SpecifierBuilderPage({ initialSpecifiers = [] }: { initialSpecif
                   </p>
                 </div>
 
-                <div className="grid gap-2">
+                {/* One divided list bleeding to the review card's edges, not a
+                    bordered card per step nested inside the review card. */}
+                <div className="-mx-4 grid divide-y divide-[color:var(--border)] border-y border-[color:var(--border)] sm:-mx-5">
                   {steps.map((step) => {
                     let value: string = specifierBuilderCopy.review.notSpecified;
                     if (step.kind === "base") {
@@ -838,7 +847,7 @@ export function SpecifierBuilderPage({ initialSpecifiers = [] }: { initialSpecif
                     return (
                       <div
                         key={step.id}
-                        className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2.5"
+                        className="grid min-h-12 min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2.5 sm:px-5"
                       >
                         <div className="min-w-0">
                           <p className="text-2xs font-bold uppercase tracking-wide text-[color:var(--text-muted)]">
@@ -873,6 +882,7 @@ export function SpecifierBuilderPage({ initialSpecifiers = [] }: { initialSpecif
                   <Button
                     type="button"
                     variant="primary"
+                    className={clinicalPrimaryAccent}
                     onClick={() => void copyWording()}
                     icon={copyState === "copied" ? Check : ClipboardCopy}
                   >
@@ -922,7 +932,13 @@ export function SpecifierBuilderPage({ initialSpecifiers = [] }: { initialSpecif
                 <ChevronLeft className="h-4 w-4" aria-hidden />
                 {specifierBuilderCopy.navigation.previous}
               </button>
-              <Button type="button" variant="primary" onClick={() => move(1)} trailingIcon={ArrowRight}>
+              <Button
+                type="button"
+                variant="primary"
+                className={clinicalPrimaryAccent}
+                onClick={() => move(1)}
+                trailingIcon={ArrowRight}
+              >
                 {continueLabelFor(steps, activeIndex)}
               </Button>
             </div>

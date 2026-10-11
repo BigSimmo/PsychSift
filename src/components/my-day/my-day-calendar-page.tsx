@@ -193,7 +193,9 @@ export function MyDayCalendarPage({ now }: { now?: Date } = {}) {
         title: "Sign in to see your calendar",
         body: "Your shifts, leave, rotations, courses, teaching, CPD and Admin dates show here together once you sign in.",
       }}
-      subtitle={(at) => monthTitle(shownMonth ?? zonedDateOf(at, zone).slice(0, 7))}
+      // The month heading under the band already names the month shown, so the band carries today's date,
+      // as the other My Day pages do, rather than the same month twice.
+      subtitle={(at) => formatZonedLongDay(zonedDateOf(at, zone))}
     >
       {(at) => <CalendarBody key={accountKey} now={at} shownMonth={shownMonth} onMonth={setShownMonth} />}
     </MyDayFrame>

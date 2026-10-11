@@ -433,3 +433,39 @@ html[data-mode-band] [data-testid="chrome-safe-area-top"] {
 :is(div, header):has(> div:only-child > [data-under-band]:only-child) {
   display: contents;
 }
+
+/* The clinical band (owner design review, 11 Oct 2026). Every Clinical page
+   but the shared home tints its top bar with the mode's soft colour, and a
+   mode with its own pages (Dictionary, Differentials, Sources and the rest)
+   tints its tab bar to match, with the band's hairline under it, so the two
+   read as one band the way a work page's top bar and band do. The tab bar
+   stays in the top bar's collapse track, so it still hides and reveals with
+   the top bar exactly as before. The round header buttons are already white
+   circles, which the tint now shows. The header marks the page in its server
+   HTML (`data-clinical-band`), so the tint is there from the first paint. A
+   page under a mode band (Medicines, Psychiatry) keeps the band's own colour. */
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) {
+  --clinical-band-bg: var(--mode-identity-soft);
+  --clinical-band-line: var(--mode-identity-border);
+}
+
+html.dark:not([data-mode-band]):has(.universal-header[data-clinical-band]) {
+  --clinical-band-bg: color-mix(in srgb, var(--mode-identity) 11%, var(--background));
+  --clinical-band-line: color-mix(in srgb, var(--mode-identity) 26%, var(--background));
+}
+
+html:not([data-mode-band]) .universal-header[data-clinical-band],
+html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-clinical-band],
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) #phone-header-collapse-addon-slot .mode-nav-rail {
+  background: var(--clinical-band-bg);
+}
+
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) #phone-header-collapse-addon-slot .mode-nav-rail {
+  border-bottom-color: var(--clinical-band-line);
+}
+
+/* A tinted top bar with no tab bar under it ends on the band's hairline. */
+html:not([data-mode-band])
+  .universal-header[data-clinical-band]:not(:has(~ #phone-header-collapse-addon-slot .mode-nav-rail)) {
+  box-shadow: inset 0 -1px 0 var(--clinical-band-line);
+}
