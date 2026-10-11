@@ -34,6 +34,11 @@ const srcRoot = path.join(repoRoot, "src");
 
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
+  // Usefulness audit, 11 Oct 2026: Set up Work left My Day's More menu.
+  [
+    "/my-day/setup",
+    "Reached from Help and the setup prompt card through WORK_SETUP_HREF and workSetupStepHref, which this literal-href scan cannot see.",
+  ],
   // CPD tidy, owner approval 11 Oct 2026: the CPD menu was cut to seven entries.
   [
     "/cme/evidence",

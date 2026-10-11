@@ -66,9 +66,10 @@ describe("workFrameCurrentItem", () => {
     for (const item of supervisorLinks) expect(supervise?.items).toContain(item);
   });
 
-  it("ticks Privacy on the profile's privacy tab and Work profile elsewhere", () => {
+  it("ticks Work profile on the profile and its privacy tab", () => {
     const day = WORK_AREAS.day;
-    expect(workFrameCurrentItem(day, "/my-day/profile", "?tab=privacy")?.id).toBe("my-day-privacy");
+    // Privacy is a tab of Work profile, so one More entry covers both (usefulness audit, 11 Oct 2026).
+    expect(workFrameCurrentItem(day, "/my-day/profile", "?tab=privacy")?.id).toBe("my-day-profile");
     expect(workFrameCurrentItem(day, "/my-day/profile", "")?.id).toBe("my-day-profile");
   });
 

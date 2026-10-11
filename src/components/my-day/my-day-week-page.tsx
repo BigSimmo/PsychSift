@@ -1,9 +1,9 @@
 "use client";
 
-import { CalendarDays, ChevronRight, Info, TriangleAlert } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, Info, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, type ReactNode } from "react";
 
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { focusRing } from "@/components/card-recipes";
@@ -13,7 +13,7 @@ import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { listNames } from "@/components/my-day/my-day-page-parts";
 import { clashWithShifts } from "@/components/my-day/my-day-clash";
 import { AreaIcon, DateBlock, QuietFoot, quietCard } from "@/components/my-day/my-day-quiet";
-import { MonthView, MyDaySegmented, StripDay, type DayDetail } from "@/components/my-day/my-day-today-cards";
+import { hoursText, MonthView, MyDaySegmented, StripDay, type DayDetail } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { kindOf } from "@/components/roster/roster-format";
@@ -29,12 +29,12 @@ import { appModeDefinition } from "@/lib/app-modes";
 import type { CmeRoutine } from "@/lib/cme/routines";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
 import { dueCountsByDate } from "@/lib/my-day/dashboard";
-import { addMonths, kindsByDate as kindsByDateOf, monthTitle } from "@/lib/my-day/figures";
+import { hoursBars, kindsByDate as kindsByDateOf, mondayIndex } from "@/lib/my-day/figures";
 import { duePerthDate, mergeMyDayItems } from "@/lib/my-day/merge";
 import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figures";
 import { myDayItemWeekDate, myDayWeekDates, myDayWeekDayLabel, myDayWeekRangeLabel } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
-import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
+import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
@@ -52,17 +52,11 @@ const MyDayWeekSample = dynamic(
  * A shift belongs to the day it starts, as on a printed roster.
  */
 export function MyDayWeekPage({ now }: { now?: Date } = {}) {
-  const [view, setView] = useState<WeekView>("week");
-  const [shownMonth, setShownMonth] = useState<string | null>(null);
-  const showView = (next: WeekView) => {
-    setView(next);
-    // A return to Month starts on this month again, as the calendar does.
-    setShownMonth(null);
-  };
-  const viewProps = { view, onView: showView, shownMonth, onMonth: setShownMonth };
+  // Week is the list; the month lives in Calendar, one tab along, so there is one month view, not two
+  // (usefulness audit, 11 Oct 2026). The page links to Calendar under the week.
   return (
     <MyDayFrame
-      title={view === "month" ? "This month" : "This week"}
+      title="This week"
       testId="my-day-week"
       now={now}
       signedOutSample={{
@@ -70,7 +64,6 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
           <MyDayWeekSample now={at} testId="my-day-week-ready">
             {(sample) => (
               <MyDayWeekDays
-                {...viewProps}
                 now={at}
                 shifts={sample.sources.roster.shifts}
                 sessions={sample.sources.teaching.ahead ?? []}
@@ -83,13 +76,9 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
           </MyDayWeekSample>
         ),
       }}
-      subtitle={(at) =>
-        view === "month"
-          ? monthBandLine(shownMonth ?? perthDateOf(at).slice(0, 7), perthDateOf(at).slice(0, 7))
-          : myDayWeekRangeLabel(perthDateOf(at))
-      }
+      subtitle={(at) => myDayWeekRangeLabel(perthDateOf(at))}
     >
-      {(at) => <MyDayWeekBody now={at} {...viewProps} />}
+      {(at) => <MyDayWeekBody now={at} />}
     </MyDayFrame>
   );
 }
@@ -104,14 +93,6 @@ interface WeekViewProps {
   readonly onMonth: (month: string) => void;
 }
 
-/** "October 2026", or "November 2026 · next month" once the calendar has moved on. */
-function monthBandLine(month: string, current: string): string {
-  if (month === current) return monthTitle(month);
-  if (month === addMonths(current, 1)) return `${monthTitle(month)} · next month`;
-  if (month === addMonths(current, -1)) return `${monthTitle(month)} · last month`;
-  return monthTitle(month);
-}
-
 /** The last day of a month ("2026-10" to "2026-10-31"). */
 function monthEnd(month: string): string {
   const [year, monthNumber] = month.split("-").map(Number);
@@ -119,19 +100,20 @@ function monthEnd(month: string): string {
   return `${month}-${String(days).padStart(2, "0")}`;
 }
 
-function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
+function MyDayWeekBody({ now }: { now: Date }) {
   const { zone } = useWorkTimeZone();
   const today = zonedDateOf(now, zone);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
-  const month = viewProps.view === "month" ? (viewProps.shownMonth ?? today.slice(0, 7)) : null;
-  // The month view reads the whole month shown, as well as the seven days.
-  const from = month && `${month}-01` < today ? `${month}-01` : today;
-  const to = month && monthEnd(month) > lastDate ? monthEnd(month) : lastDate;
-  const range = useMemo(() => ({ from, to }), [from, to]);
+  const range = useMemo(() => ({ from: today, to: lastDate }), [today, lastDate]);
+  // Shifts from this Monday, so the hours line totals the same Monday-to-Sunday week as Hours.
+  const rosterRange = useMemo(
+    () => ({ from: addDaysToDate(today, -mondayIndex(today)), to: lastDate }),
+    [today, lastDate],
+  );
 
   const items = useMyDayItems({ enabled: true, now });
-  const shifts = useRosterShifts(range);
+  const shifts = useRosterShifts(rosterRange);
   const teaching = useTeachingWeek(range, { demoMode: false }, now);
   const reminders = useAppPreferences().preferences.reminders;
 
@@ -205,7 +187,6 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
   return (
     <div className="grid gap-2.5" data-testid="my-day-week-ready">
       <MyDayWeekDays
-        {...viewProps}
         notices={notices}
         now={now}
         shifts={showShifts ? shifts.shifts : []}
@@ -214,6 +195,7 @@ function MyDayWeekBody({ now, ...viewProps }: { now: Date } & WeekViewProps) {
         cmeRoutines={items.cmeRoutines}
         reminders={reminders}
         rosterKnown={showShifts}
+        hoursPartial={Boolean(shifts.teamMessage) || Boolean(shifts.teamRefreshing)}
       />
       {/* The one calendar is on for everyone, with no preview or launch gate. */}
       <Link
@@ -468,6 +450,7 @@ export function MyDayWeekDays({
   cmeRoutines,
   reminders,
   rosterKnown,
+  hoursPartial = false,
   view = "week",
   onView,
   shownMonth = null,
@@ -482,6 +465,8 @@ export function MyDayWeekDays({
   readonly reminders: ReminderSettings;
   /** False when the roster did not load: the strip shows no false "off" and empty days say why. */
   readonly rosterKnown: boolean;
+  /** Team shifts failed or are still refreshing: a partial roster cannot support an honest hours total. */
+  readonly hoursPartial?: boolean;
   /** Notices drawn under the Week and Month switch. */
   readonly notices?: ReactNode;
 } & Partial<WeekViewProps>) {
@@ -511,6 +496,17 @@ export function MyDayWeekDays({
     [shifts],
   );
   const dueByDate = useMemo(() => dueCountsByDate(merged), [merged]);
+  // The same rule as Hours (Roster's own summary): worked shifts only, never pay.
+  const rosteredHours = useMemo(
+    () =>
+      // The Hours page's own week figure, so the two always agree.
+      hoursBars(
+        shifts.map((shift) => ({ startsAt: shift.startsAt, endsAt: shift.endsAt, kind: kindOf(shift) })),
+        today,
+        "week",
+      ).totalHours,
+    [shifts, today],
+  );
   // An overnight shift that started the day before: an empty day says when it ends.
   const endsOn = (date: string): MyShift | undefined =>
     shifts.find(
@@ -619,6 +615,27 @@ export function MyDayWeekDays({
             })}
           </ul>
 
+          {rosterKnown && !hoursPartial ? (
+            // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same Monday-to-Sunday week as Hours.
+            <Link
+              href="/my-day/hours"
+              data-testid="my-day-week-hours"
+              className={cn(
+                quietCard,
+                focusRing,
+                "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
+              )}
+            >
+              <AreaIcon mode="my-day" icon={Clock} />
+              <span className="grid min-w-0 flex-1">
+                <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
+                  {`${hoursText(rosteredHours)} h rostered this week`}
+                </span>
+                <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
+              </span>
+              <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+            </Link>
+          ) : null}
           <Link
             href="/roster"
             aria-label="Open Roster: all your shifts, swaps, leave and your team"
