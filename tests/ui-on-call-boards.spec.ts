@@ -242,8 +242,8 @@ test.describe("01 Home", () => {
     const modules = [
       "on-call-now-hospital",
       "on-call-now-emergency",
-      "on-call-now-right-now",
       "on-call-home-recent",
+      "on-call-now-right-now",
       "on-call-now-team",
       "on-call-now-footer",
     ];
@@ -253,7 +253,7 @@ test.describe("01 Home", () => {
 
     // Top to bottom in the drawn order. A module that renders in the wrong
     // place still passes a presence check, and the order is the safety order:
-    // hospital, its emergency route, Right now, Your usual, Your team, footer.
+    // hospital, its emergency route, Your usual (usefulness audit, 11 Oct 2026), Right now, Your team, footer.
     const tops = await Promise.all(
       modules.map(async (id) => (await visibleByTestId(page, id).boundingBox())?.y ?? Number.NaN),
     );
@@ -262,12 +262,12 @@ test.describe("01 Home", () => {
     }
   });
 
-  test("leads with Who do I call now, which opens the escalation steps with call buttons", async ({ page }) => {
+  // Usefulness audit, 11 Oct 2026: the Playbook is the one home for "who do I call", its first problem open.
+  test("leads with Who do I call now, which opens the Playbook's escalation steps", async ({ page }) => {
     await openBoard(page, ROUTES.home);
     await visibleByTestId(page, "on-call-home-call-now").click();
-    await expect(page).toHaveURL(/\/on-call\/now$/);
-    await expect(page.getByTestId("on-call-now-ladder")).toBeVisible();
-    await expect(page.getByTestId("on-call-now-steps").getByRole("listitem").first()).toBeVisible();
+    await expect(page).toHaveURL(/\/on-call\/playbook$/);
+    await expect(page.locator('[data-testid^="on-call-playbook-step-"]').first()).toBeVisible();
   });
 
   test("answers Right now with the hospital's switchboard, and reaches all roles in one tap", async ({ page }) => {
@@ -296,7 +296,7 @@ test.describe("01 Home", () => {
     // at its right. The literal href is what the route-reachability guard reads;
     // the click test above proves the destination actually renders.
     const who = visibleByTestId(page, "on-call-now-who");
-    await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
+    await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/playbook");
   });
 
   test("does not put a page-menu ellipsis in the header; AI Search stays", async ({ page }) => {

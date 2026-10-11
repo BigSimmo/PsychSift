@@ -43,8 +43,8 @@ export function NowWhoToCall({
           Who do I call now?
         </h2>
         {/* A literal href: the route-reachability guard reads literal hrefs only. */}
-        <Link href="/on-call/now" data-testid="on-call-home-call-now" className={cn(onCallActionLink, focusRing)}>
-          Escalation ladder
+        <Link href="/on-call/playbook" data-testid="on-call-home-call-now" className={cn(onCallActionLink, focusRing)}>
+          Playbook
         </Link>
       </div>
       {reminder ? (

@@ -59,6 +59,7 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
       title="This week"
       testId="my-day-week"
       now={now}
+      wide
       signedOutSample={{
         render: (at) => (
           <MyDayWeekSample now={at} testId="my-day-week-ready">
@@ -343,7 +344,7 @@ function AgendaRow({ entry, done }: { readonly entry: AgendaEntry; readonly done
         data-done={done ? "" : undefined}
         className={cn(
           focusRing,
-          "grid min-h-12 min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-baseline gap-x-2 rounded-md py-1.5 no-underline",
+          "grid min-h-12 min-w-0 grid-cols-[2.75rem_minmax(0,1fr)] items-baseline gap-x-2 rounded-md py-1.5 no-underline lg:grid-cols-1",
         )}
       >
         <span className="text-xs font-bold text-[color:var(--work-ink)] nums">{entry.time}</span>
@@ -549,7 +550,8 @@ export function MyDayWeekDays({
         />
       ) : (
         <>
-          <ol role="list" className="grid grid-cols-7 gap-1 text-center" data-testid="my-day-week-strip">
+          {/* From 1024px the agenda below is seven day columns with their own dates, so the strip would repeat them. */}
+          <ol role="list" className="grid grid-cols-7 gap-1 text-center lg:hidden" data-testid="my-day-week-strip">
             {dates.map((date) => (
               <StripDay
                 key={date}
@@ -564,7 +566,12 @@ export function MyDayWeekDays({
           <ul
             role="list"
             data-testid="my-day-week-agenda"
-            className={cn(quietCard, "grid min-w-0 px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]")}
+            className={cn(
+              quietCard,
+              "grid min-w-0 px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
+              // Desktop (usefulness audit, 11 Oct 2026): the week as seven day columns, not one long list.
+              "lg:grid-cols-7 lg:px-0 lg:[&>li+li]:border-t-0 lg:[&>li+li]:border-l",
+            )}
           >
             {dates.map((date) => {
               const entries = entriesByDay.get(date) ?? [];
@@ -577,7 +584,7 @@ export function MyDayWeekDays({
                 <li
                   key={date}
                   data-testid={`my-day-week-day-${date}`}
-                  className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 py-2"
+                  className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 py-2 lg:grid-cols-1 lg:content-start lg:gap-y-1 lg:px-2 lg:py-3"
                 >
                   <h2 className="sr-only">{myDayWeekDayLabel(date, today)}</h2>
                   <span className="pt-1">
@@ -615,46 +622,48 @@ export function MyDayWeekDays({
             })}
           </ul>
 
-          {rosterKnown && !hoursPartial ? (
-            // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same Monday-to-Sunday week as Hours.
+          <div className="grid min-w-0 gap-2.5 lg:grid-cols-2">
+            {rosterKnown && !hoursPartial ? (
+              // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same Monday-to-Sunday week as Hours.
+              <Link
+                href="/my-day/hours"
+                data-testid="my-day-week-hours"
+                className={cn(
+                  quietCard,
+                  focusRing,
+                  "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
+                )}
+              >
+                <AreaIcon mode="my-day" icon={Clock} />
+                <span className="grid min-w-0 flex-1">
+                  <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
+                    {`${hoursText(rosteredHours)} h rostered this week`}
+                  </span>
+                  <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
+                </span>
+                <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+              </Link>
+            ) : null}
             <Link
-              href="/my-day/hours"
-              data-testid="my-day-week-hours"
+              href="/roster"
+              aria-label="Open Roster: all your shifts, swaps, leave and your team"
+              data-testid="my-day-week-footer"
               className={cn(
                 quietCard,
                 focusRing,
                 "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
               )}
             >
-              <AreaIcon mode="my-day" icon={Clock} />
+              <AreaIcon mode="roster" icon={CalendarDays} />
               <span className="grid min-w-0 flex-1">
-                <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
-                  {`${hoursText(rosteredHours)} h rostered this week`}
+                <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">
+                  All your shifts are in Roster
                 </span>
-                <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
+                <span className="text-2xs text-[color:var(--text-muted)]">Swaps, leave and your team</span>
               </span>
               <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
             </Link>
-          ) : null}
-          <Link
-            href="/roster"
-            aria-label="Open Roster: all your shifts, swaps, leave and your team"
-            data-testid="my-day-week-footer"
-            className={cn(
-              quietCard,
-              focusRing,
-              "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
-            )}
-          >
-            <AreaIcon mode="roster" icon={CalendarDays} />
-            <span className="grid min-w-0 flex-1">
-              <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">
-                All your shifts are in Roster
-              </span>
-              <span className="text-2xs text-[color:var(--text-muted)]">Swaps, leave and your team</span>
-            </span>
-            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
-          </Link>
+          </div>
           <div className="px-1">
             <QuietFoot icon={Info}>
               From Roster, Teaching, CPD and Admin. Each item opens the page that owns it.

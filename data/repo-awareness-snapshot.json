@@ -264,11 +264,6 @@
         "area": "product"
       },
       {
-        "path": "/teaching/whats-on",
-        "file": "src/app/(search-app)/teaching/whats-on/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/mockups/services-filter-options",
         "file": "src/app/mockups/services-filter-options/page.tsx",
         "area": "mockup"
@@ -936,11 +931,6 @@
       {
         "path": "/admin/bookings",
         "file": "src/app/(search-app)/admin/bookings/page.tsx",
-        "area": "product"
-      },
-      {
-        "path": "/roster/today",
-        "file": "src/app/(search-app)/roster/today/page.tsx",
         "area": "product"
       },
       {
@@ -1746,6 +1736,11 @@
         "target": "/?mode=factsheets"
       },
       {
+        "path": "/teaching/whats-on",
+        "file": "src/app/(search-app)/teaching/whats-on/page.tsx",
+        "target": "/teaching/week?view=other"
+      },
+      {
         "path": "/mockups/medication-prescribing",
         "file": "src/app/mockups/medication-prescribing/page.tsx",
         "target": "/medications/acamprosate"
@@ -1794,6 +1789,11 @@
         "path": "/on-call/education",
         "file": "src/app/(search-app)/on-call/education/page.tsx",
         "target": "/teaching/week"
+      },
+      {
+        "path": "/roster/today",
+        "file": "src/app/(search-app)/roster/today/page.tsx",
+        "target": "/roster"
       },
       {
         "path": "/applications",

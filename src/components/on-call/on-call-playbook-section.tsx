@@ -5,12 +5,11 @@ import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { OnCallCopyNumber } from "@/components/on-call/on-call-copy-number";
 import { onCallTelHref } from "@/lib/on-call/home-modules";
 
-import { ClipboardList, FileText, ListChecks, Pencil, Phone, Search } from "lucide-react";
+import { ChevronDown, ClipboardList, FileText, ListChecks, Pencil, Phone, Search } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-import { cardInteractive, cardSurface } from "@/components/card-recipes";
-import { OnCallHeroLink } from "@/components/on-call/kit/hero-link";
+import { cardInteractive, cardSurface, focusRing } from "@/components/card-recipes";
 import { OnCallEntryRow } from "@/components/on-call/on-call-entry-row";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { OnCallStaleFlag } from "@/components/on-call/on-call-freshness-badge";
@@ -205,10 +204,13 @@ function PlaybookCard({
   documents,
   documentsLoading,
   now,
+  defaultOpen = false,
   onEditEntry,
   onVerified,
 }: {
   entry: OnCallEntry;
+  /** The first problem opens on arrival, so the most common ladder is still one glance away. */
+  defaultOpen?: boolean;
   documents: Readonly<Record<string, OnCallLinkedDocument>>;
   documentsLoading: boolean;
   now: Date;
@@ -219,90 +221,112 @@ function PlaybookCard({
   const freshness = onCallEntryFreshness(entry, now);
   const steps = details ? [...details.escalationSteps].sort((a, b) => a.order - b.order) : [];
   const showVerify = freshness.state === "stale" && Boolean(onVerified);
+  // Read once: when linked guidance resolves and a different problem becomes first, the one the
+  // reader already has open must not snap shut under them.
+  const [initiallyOpen] = useState(defaultOpen);
 
   return (
-    <article
+    // One problem per row, opening to its steps (usefulness audit, 11 Oct 2026): at 3 am the reader
+    // scans a short list of problems instead of scrolling past every ladder. Structure only; the
+    // steps, numbers and wording are exactly as recorded. A link to this card's anchor opens it.
+    <details
       id={onCallEntryAnchorId(entry.id)}
       tabIndex={-1}
+      open={initiallyOpen || undefined}
       // The shared recipe, not a hand-rolled copy of it: these three had every
       // class right except `forced-colors:border`, so in Windows High Contrast
       // the card edge disappeared.
-      className={cn(cardSurface, "grid grid-cols-[minmax(0,1fr)] gap-3 p-4")}
+      className={cn(cardSurface, "group/playbook grid grid-cols-[minmax(0,1fr)] p-0")}
       data-testid={`on-call-playbook-card-${entry.slug}`}
     >
-      <header className="flex items-start justify-between gap-3">
+      <summary
+        className={cn(
+          focusRing,
+          "flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 [&::-webkit-details-marker]:hidden",
+        )}
+        data-testid={`on-call-playbook-toggle-${entry.slug}`}
+      >
         <div className="min-w-0">
           <h3 className="break-words text-sm font-semibold text-[color:var(--text)]">{entry.title}</h3>
-          {details?.trigger ? <p className={cn("mt-0.5 text-xs", textMuted)}>{details.trigger}</p> : null}
+          {details?.trigger ? <span className={cn("mt-0.5 block text-xs", textMuted)}>{details.trigger}</span> : null}
         </div>
-        {/* Sibling to the card, never nested inside a link: the escalation
-            steps below are individually `tel:` rows, and a `<button>` inside
-            an `<a>` is invalid, duplicate-interactive markup — this header is
-            not itself a link, but the same edit/verify controls stay a
-            sibling of the row content for consistency with every other
-            section. */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <span className="flex shrink-0 items-center gap-1.5">
           <OnCallStaleFlag freshness={freshness} />
-          {showVerify && onVerified ? <OnCallVerifyButton entry={entry} onVerified={onVerified} /> : null}
-          {onEditEntry ? (
-            <button
-              type="button"
-              onClick={() => onEditEntry(entry)}
-              aria-label={`Edit ${entry.title}`}
-              data-testid={`on-call-playbook-edit-${entry.slug}`}
-              className={cn(toolbarButton, "shrink-0")}
-            >
-              <Pencil aria-hidden className="h-4 w-4" />
-            </button>
-          ) : null}
-        </div>
-      </header>
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "size-icon-sm transition-transform group-open/playbook:rotate-180 motion-reduce:transition-none",
+              textMuted,
+            )}
+          />
+        </span>
+      </summary>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 px-4 pb-4">
+        {/* Controls sit inside the card body, never in the summary: a button inside a summary is
+          duplicate-interactive markup. */}
+        {showVerify || onEditEntry ? (
+          <div className="flex items-center justify-end gap-1.5">
+            {showVerify && onVerified ? <OnCallVerifyButton entry={entry} onVerified={onVerified} /> : null}
+            {onEditEntry ? (
+              <button
+                type="button"
+                onClick={() => onEditEntry(entry)}
+                aria-label={`Edit ${entry.title}`}
+                data-testid={`on-call-playbook-edit-${entry.slug}`}
+                className={cn(toolbarButton, "shrink-0")}
+              >
+                <Pencil aria-hidden className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
-        <h4 className={eyebrowText}>Escalation steps</h4>
-        {steps.length > 0 ? (
-          <ol className="grid grid-cols-[minmax(0,1fr)] gap-2">
-            {steps.map((step) => (
-              <li key={step.order} className="flex min-w-0 items-start gap-2">
-                <OnCallEntryRow
-                  icon={onCallTelHref(step.phone) ? Phone : undefined}
-                  title={`${step.order}. ${step.whoToCall}`}
-                  subtitle={step.when}
-                  href={onCallTelHref(step.phone)}
-                  onActivate={() => recordOnCallRecent({ id: entry.id, title: entry.title })}
-                  testId={`on-call-playbook-step-${entry.slug}-${step.order}`}
-                >
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
+          <h4 className={eyebrowText}>Escalation steps</h4>
+          {steps.length > 0 ? (
+            <ol className="grid grid-cols-[minmax(0,1fr)] gap-2">
+              {steps.map((step) => (
+                <li key={step.order} className="flex min-w-0 items-start gap-2">
+                  <OnCallEntryRow
+                    icon={onCallTelHref(step.phone) ? Phone : undefined}
+                    title={`${step.order}. ${step.whoToCall}`}
+                    subtitle={step.when}
+                    href={onCallTelHref(step.phone)}
+                    onActivate={() => recordOnCallRecent({ id: entry.id, title: entry.title })}
+                    testId={`on-call-playbook-step-${entry.slug}-${step.order}`}
+                  >
+                    {step.phone ? (
+                      <span className="break-words text-xs">
+                        {onCallTelHref(step.phone)
+                          ? step.phone
+                          : `Recorded number: ${step.phone} — use the hospital phone or switchboard`}
+                      </span>
+                    ) : null}
+                  </OnCallEntryRow>
                   {step.phone ? (
-                    <span className="break-words text-xs">
-                      {onCallTelHref(step.phone)
-                        ? step.phone
-                        : `Recorded number: ${step.phone} — use the hospital phone or switchboard`}
-                    </span>
+                    <OnCallCopyNumber value={step.phone} label={`Copy number for ${step.whoToCall}`} />
                   ) : null}
-                </OnCallEntryRow>
-                {step.phone ? (
-                  <OnCallCopyNumber value={step.phone} label={`Copy number for ${step.whoToCall}`} />
-                ) : null}
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p className={cn("text-sm", textMuted)}>No escalation steps recorded yet.</p>
-        )}
-      </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className={cn("text-sm", textMuted)}>No escalation steps recorded yet.</p>
+          )}
+        </div>
 
-      <ReferencedForms entry={entry} />
+        <ReferencedForms entry={entry} />
 
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
-        <h4 className={eyebrowText}>Local guidance</h4>
-        <LinkedGuidance
-          linkedDocumentIds={entry.linkedDocumentIds}
-          documents={documents}
-          documentsLoading={documentsLoading}
-          slug={entry.slug}
-        />
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
+          <h4 className={eyebrowText}>Local guidance</h4>
+          <LinkedGuidance
+            linkedDocumentIds={entry.linkedDocumentIds}
+            documents={documents}
+            documentsLoading={documentsLoading}
+            slug={entry.slug}
+          />
+        </div>
       </div>
-    </article>
+    </details>
   );
 }
 
@@ -325,19 +349,12 @@ export function OnCallPlaybookSection({
   onVerified,
 }: OnCallPlaybookSectionProps) {
   const playbookEntries = entries.filter((entry) => entry.section === "playbook");
-
-  // The question the Playbook exists to answer, first, whether or not any
-  // scenario is filed yet. A raised hairline card rather than the command fill,
-  // which inverts to a bright block in dark mode (standard §10); the tinted
-  // `featured` form is kept for Now alone.
-  const whoDoICall = (
-    <OnCallHeroLink href="/on-call/now" title="Who do I call now?" testId="on-call-playbook-who-do-i-call" />
-  );
+  // Now's problem buttons link here with the problem's anchor: open that one and bring it into view.
+  useOpenPlaybookFromHash();
 
   if (playbookEntries.length === 0) {
     return (
       <div className="grid gap-5">
-        {whoDoICall}
         <OnCallEmptyState
           icon={ListChecks}
           title="No playbook scenarios yet"
@@ -361,10 +378,14 @@ export function OnCallPlaybookSection({
   const linked = sorted.filter(isLinked);
   const unlinked = sorted.filter((entry) => !isLinked(entry));
 
+  // Chosen from entry order and the recorded links alone, never from how the lookup resolved:
+  // a card that moves group remounts, and must come back open if it was the open one.
+  const first = sorted.find((entry) => entry.linkedDocumentIds.length > 0) ?? sorted[0];
   const card = (entry: OnCallEntry) => (
     <PlaybookCard
       key={entry.id}
       entry={entry}
+      defaultOpen={entry === first}
       documents={documents}
       documentsLoading={documentsLoading}
       now={now}
@@ -375,7 +396,6 @@ export function OnCallPlaybookSection({
 
   return (
     <div data-testid={testId} className="grid gap-5">
-      {whoDoICall}
       {/* Two groups or one flat list, and the headings only exist in the first
           case. A single heading over the whole page is furniture — the same
           rule `onCallEntryGroups` applies everywhere else in this mode, and the
@@ -469,4 +489,58 @@ function PlaybookGroup({
  */
 function hasResolvedGuidance(entry: OnCallEntry, documents: Readonly<Record<string, OnCallLinkedDocument>>): boolean {
   return entry.linkedDocumentIds.some((id) => Boolean(documents[id]));
+}
+
+/**
+ * Opens the problem a link points at (`/on-call/playbook#<anchor>`), on arrival and whenever the
+ * hash changes, and scrolls it into view. A personal entry is a disclosure and is opened; a
+ * hospital ladder is a plain section and is only scrolled to. Either can arrive after the page
+ * does (the entries and the handbook load separately), so a missing target is watched for.
+ */
+function useOpenPlaybookFromHash() {
+  useEffect(() => {
+    let observer: MutationObserver | null = null;
+    let giveUp: number | undefined;
+    const stopWatching = () => {
+      observer?.disconnect();
+      observer = null;
+      window.clearTimeout(giveUp);
+    };
+    const reveal = (target: HTMLElement) => {
+      if (target instanceof HTMLDetailsElement) target.open = true;
+      target.scrollIntoView({ block: "start" });
+      target.focus({ preventScroll: true });
+    };
+    const open = () => {
+      stopWatching();
+      let id: string;
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {
+        // A damaged bookmark opens nothing rather than breaking the page.
+        return;
+      }
+      if (!id) return;
+      const target = document.getElementById(id);
+      if (target) {
+        reveal(target);
+        return;
+      }
+      observer = new MutationObserver(() => {
+        const arrived = document.getElementById(id);
+        if (!arrived) return;
+        stopWatching();
+        reveal(arrived);
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      // Stop watching once loading is long over, so a stale anchor never yanks the page later.
+      giveUp = window.setTimeout(stopWatching, 15_000);
+    };
+    open();
+    window.addEventListener("hashchange", open);
+    return () => {
+      stopWatching();
+      window.removeEventListener("hashchange", open);
+    };
+  }, []);
 }

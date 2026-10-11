@@ -155,7 +155,8 @@ describe("Resources", () => {
       "href",
       "https://example.org/mcq",
     );
-    expect(screen.getByRole("link", { name: /^My exam prep/ })).toHaveAttribute("href", "/teaching/exam-prep");
+    // My exam prep has its own page; Resources does not repeat it.
+    expect(screen.queryByRole("link", { name: /^My exam prep/ })).toBeNull();
     expect(screen.getByRole("link", { name: /WA courses and modules are in CPD/ })).toHaveAttribute(
       "href",
       "/cme/learning",

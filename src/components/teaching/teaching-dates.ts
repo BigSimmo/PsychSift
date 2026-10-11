@@ -46,6 +46,15 @@ export function mondayOf(dateKey: string): string {
   return addDays(dateKey, -((fromKey(dateKey).getUTCDay() + 6) % 7));
 }
 
+/**
+ * The Monday of the week Teaching's Week page opens on. On a Sunday the week that is ending has almost
+ * nothing left in it, so the page opens on the coming Monday-to-Sunday week instead; any other day it
+ * is the week `dateKey` is in.
+ */
+export function openingMondayOf(dateKey: string): string {
+  return fromKey(dateKey).getUTCDay() === 0 ? addDays(dateKey, 1) : mondayOf(dateKey);
+}
+
 export function dayParts(dateKey: string): { weekday: string; day: string; month: string } {
   const date = fromKey(dateKey);
   return {

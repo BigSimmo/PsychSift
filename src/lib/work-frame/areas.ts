@@ -365,7 +365,8 @@ const roster: WorkArea = {
     {
       label: "My roster",
       items: [
-        { id: "today", label: "Today", sub: "Your shift today", icon: "sun", href: "/roster/today" },
+        // Today folded into Month (owner decision, 11 Oct 2026): its Who is on and Phone numbers buttons
+        // sit on Month's top card, and /roster/today opens Month in this work mode.
         { id: "shifts", label: "My shifts", sub: "Week by week", icon: "layers", href: "/roster/shifts" },
         {
           id: "requests",
@@ -379,6 +380,29 @@ const roster: WorkArea = {
           // The page is Leave and requests (swaps, dates and shift changes too), so the band
           // names it that from the first paint, not only once the page sets its heading.
           title: "Leave and requests",
+        },
+        // Where an unwell doctor looks (usability audit, 11 Oct 2026): Roster's More and the Leave page,
+        // not only My Day's card. The page keeps its own header, so the band stays off it.
+        {
+          id: "sick",
+          // "Sick for tomorrow" cut off at 390 px in More, so the tile says what it does.
+          label: "Report sick",
+          short: "Sick",
+          sub: "For tomorrow",
+          title: "Sick for tomorrow",
+          icon: "heart",
+          href: "/roster/sick",
+          band: false,
+        },
+        // Moved from Open shifts (audit, 11 Oct 2026): it adds a shift to your own roster, not one on offer.
+        {
+          id: "log-shift",
+          label: "Log a shift",
+          short: "Log",
+          sub: "Add one by hand",
+          icon: "calendar-plus",
+          href: "/open-shifts/log",
+          band: false,
         },
         {
           id: "hours",
@@ -430,15 +454,9 @@ const roster: WorkArea = {
     {
       label: "Set up",
       items: [
-        {
-          id: "calendar",
-          label: "Teaching and expiries",
-          sub: "Add to your calendar",
-          icon: "link",
-          href: "/roster/calendar",
-          band: false,
-        },
-        { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
+        // "Teaching and expiries" (On Call's calendar page) left Roster: it holds no shifts, and On Call's
+        // menu still opens it. "Join a team" left More too: Month, Team, Swaps and My shifts offer it
+        // wherever there is no team yet (audit, 11 Oct 2026).
         { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
         { id: "rost-help", label: "Help", sub: "How Roster works", icon: "help", action: "work-help" },
       ],
@@ -498,14 +516,6 @@ const openShifts: WorkArea = {
           icon: "grid",
           href: "/open-shifts/board",
           gate: "open-shifts-poster",
-          band: false,
-        },
-        {
-          id: "open-shifts-log",
-          label: "Log a shift",
-          sub: "Offered to you",
-          icon: "pen",
-          href: "/open-shifts/log",
           band: false,
         },
         { id: "open-shifts-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
@@ -633,7 +643,7 @@ const teaching: WorkArea = {
       label: "Sessions",
       items: [
         { id: "teach", label: "Presenting", sub: "Your next talk", icon: "board", href: "/teaching/teach" },
-        { id: "whats-on", label: "What's on", sub: "Other services", icon: "grid", href: "/teaching/whats-on" },
+        // What's on became Week's "Other services" filter (owner decision, 11 Oct 2026).
         { id: "term", label: "Term", sub: "Dates and goals", icon: "layers", href: "/teaching/term" },
         {
           id: "resources",
@@ -641,6 +651,16 @@ const teaching: WorkArea = {
           sub: "Slides, papers",
           icon: "folder",
           href: "/teaching/resources",
+        },
+        // On Call's calendar page, moved here from Roster's More (audit, 11 Oct 2026): it holds teaching
+        // sessions and expiry dates, no shifts. The page keeps its own header.
+        {
+          id: "calendar",
+          label: "Add to calendar",
+          sub: "Sync to your phone",
+          icon: "link",
+          href: "/roster/calendar",
+          band: false,
         },
       ],
     },
@@ -650,15 +670,7 @@ const teaching: WorkArea = {
         { id: "feedback", label: "Feedback", sub: "Rate a session", icon: "star", href: "/teaching/feedback" },
         { id: "review", label: "Log to CPD", sub: "Weekly review", icon: "award", href: "/teaching/review" },
         { id: "exam-prep", label: "Exam prep", sub: "Your plan", icon: "pen", href: "/teaching/exam-prep" },
-        {
-          id: "term-folder",
-          label: "Evidence folder",
-          // CPD has its own "Evidence" page, so the short name says which one this is.
-          short: "Term folder",
-          sub: "Your term in one place",
-          icon: "folder",
-          href: "/teaching/term/folder",
-        },
+        // Evidence folder merged into Term (owner decision, 11 Oct 2026); /teaching/term/folder redirects there.
       ],
     },
     {
@@ -1172,18 +1184,15 @@ const onCall: WorkArea = {
         { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
         { id: "whoswho", label: "Who's who", sub: "Roles and teams", icon: "users", href: "/on-call/who-is-who" },
         {
-          id: "orientation",
-          label: "Orientation",
-          sub: "Checklists",
-          icon: "check-list",
-          href: "/on-call/orientation",
-        },
-        {
-          id: "first-week",
-          label: "First week",
-          sub: "Starting out",
+          // One entry for the three pages a doctor new to a hospital needs; a chip row on each
+          // moves between them (usefulness audit, 11 Oct 2026).
+          id: "starting-here",
+          label: "Starting here",
+          short: "Starting",
+          sub: "Before you start, first night",
           icon: "flag",
           href: "/on-call/first-week",
+          paths: ["/on-call/first-week", "/on-call/first-night", "/on-call/orientation"],
         },
         { id: "card", label: "Pocket card", sub: "To print", icon: "card", href: "/on-call/card" },
         // The area's last group (Service) is for editors only, so Help sits with the reference pages.
@@ -1191,16 +1200,11 @@ const onCall: WorkArea = {
       ],
     },
     {
+      // Trimmed (usefulness audit, 11 Oct 2026): "Who to call now" is the Playbook's job, so it opens
+      // there from Now; Shift pulse shows on Now once it has a pattern; Who's on links to the roster
+      // names; Teaching and Renewals are in the side menu.
       label: "Tonight tools",
       items: [
-        {
-          id: "call-now",
-          label: "Who to call now",
-          short: "Call now",
-          sub: "Pick a problem",
-          icon: "phone",
-          href: "/on-call/now",
-        },
         ...(ON_CALL_WHOS_ON_ENABLED
           ? [
               {
@@ -1209,39 +1213,25 @@ const onCall: WorkArea = {
                 sub: "Tonight's team",
                 icon: "users",
                 href: "/on-call/whos-on",
+                paths: ["/on-call/whos-on", "/on-call/whos-on/roster"],
               } as const,
             ]
-          : []),
-        {
-          id: "whoson-roster",
-          label: "From the roster",
-          short: "Roster",
-          sub: "Your team's roster",
-          icon: "calendar",
-          href: "/on-call/whos-on/roster",
-        },
-        {
-          id: "pulse",
-          label: "Shift pulse",
-          sub: "How it is going",
-          icon: "pulse",
-          href: "/on-call/pulse",
-          band: false,
-        },
+          : [
+              {
+                id: "whoson-roster",
+                label: "From the roster",
+                short: "Roster",
+                sub: "Your team's roster",
+                icon: "calendar",
+                href: "/on-call/whos-on/roster",
+              } as const,
+            ]),
         {
           id: "check",
           label: "Check these",
           sub: "Before you leave",
           icon: "check-list",
           href: "/on-call/check",
-          band: false,
-        },
-        {
-          id: "first-night",
-          label: "First night",
-          sub: "New to this site",
-          icon: "star",
-          href: "/on-call/first-night",
           band: false,
         },
         {
@@ -1252,35 +1242,12 @@ const onCall: WorkArea = {
           href: "/on-call/handover",
           band: false,
         },
-      ],
-    },
-    {
-      label: "Other areas",
-      items: [
-        {
-          id: "teaching",
-          label: "Teaching",
-          sub: "This week",
-          icon: "board",
-          href: "/teaching",
-          paths: [],
-          leadsTo: "teaching",
-        },
         {
           id: "logistics",
           label: "Numbers",
           sub: "Crisis lines first",
           icon: "phone",
           href: ON_CALL_ADMIN_ROWS_HREF,
-          paths: [],
-          leadsTo: "my-work",
-        },
-        {
-          id: "compliance",
-          label: "Renewals",
-          sub: "Dates to act on",
-          icon: "repeat",
-          href: "/admin/renewals",
           paths: [],
           leadsTo: "my-work",
         },

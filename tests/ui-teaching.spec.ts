@@ -106,7 +106,8 @@ test("Teaching's tabs and More reach Logbook, Presenting and Resources", async (
     ["Presenting", "/teaching/teach", "teaching-presenting"],
     ["Resources", "/teaching/resources", "teaching-resources"],
   ] as const) {
-    const tab = visibleByTestId(page, "mode-band-tabs").locator(`a[href="${path}"]`);
+    // A tab that does not fit the width stays in the band but hidden (data-fit="out"), and More lists it instead.
+    const tab = visibleByTestId(page, "mode-band-tabs").locator(`a[href="${path}"]`).filter({ visible: true });
     if ((await tab.count()) > 0) {
       await tab.click();
     } else {

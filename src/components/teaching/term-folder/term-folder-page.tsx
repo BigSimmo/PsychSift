@@ -2,7 +2,7 @@
 
 import { CalendarDays, Check, Copy, Download, ExternalLink, Folder, Printer, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -38,18 +38,24 @@ import {
   folderIsEarly,
   folderTermTitle,
   TERM_FOLDER_PATH,
+  type FolderPartId,
   type TermFolder,
 } from "@/lib/teaching/term-folder";
 import { dayMonth, weekdayDayMonth } from "@/lib/teaching/term-tracker";
 import { perthTime } from "@/lib/teaching/time";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
+import type { TermRecord } from "@/lib/teaching/term-tracker";
 import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /*
- * Term evidence folder, /teaching/term/folder (feature 12, mock-up nf_teach_acc). The doctor's own term
- * in one standing folder: a folder tab, a completeness meter with one segment per part, then the parts
- * that need action first. It fills itself from records PsychSift already holds and saves nothing new.
+ * Term evidence folder (feature 12, mock-up nf_teach_acc). Since 11 Oct 2026 (owner-approved mock-up) the
+ * folder is part of the Term page: /teaching/term heads itself with FolderCard and borrows the pieces exported
+ * here, and /teaching/term/folder forwards to it. TermFolderPage below is the former standalone page, kept
+ * until the 30-day rule for deleting code allows its removal.
+ *
+ * The doctor's own term in one standing folder: a folder tab, a completeness meter with one segment per part,
+ * then the parts that need action first. It fills itself from records PsychSift already holds and saves nothing new.
  * Download CSV and Print hand it to a supervisor or an accreditation visit; Copy summary is for an email.
  * Status and counts only: assessment content is never here.
  */
@@ -184,8 +190,19 @@ function FolderActions({
   );
 }
 
-/** The signature: a folder with its tab, the term, the meter and the export controls. */
-function FolderCard({ view, demoMode }: { view: Extract<TermFolderView, { kind: "ready" }>; demoMode: boolean }) {
+/**
+ * The signature: a folder with its tab, the term, the meter and the export controls. The Term page heads
+ * itself with it and passes its own term controls (Edit, Start the next term) as `actions`.
+ */
+export function FolderCard({
+  view,
+  demoMode,
+  actions,
+}: {
+  view: Extract<TermFolderView, { kind: "ready" }>;
+  demoMode: boolean;
+  actions?: ReactNode;
+}) {
   const { folder } = view;
   const tab = folder.phase === "during" ? "Now" : folder.phase === "ended" ? "Ended" : "Coming up";
   const toast = useOptionalToast();
@@ -201,11 +218,18 @@ function FolderCard({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
         {`${folder.title} · ${tab}`}
       </span>
       <div className="grid gap-3.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 forced-colors:border-[CanvasText]">
-        <div className="grid gap-0.5">
-          <h2 id="term-folder-title" className="text-base font-semibold text-[color:var(--text-heading)]">
-            {folder.title}
-          </h2>
-          <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{folder.dates}</p>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="grid min-w-0 gap-0.5">
+            <h2 id="term-folder-title" className="text-base font-semibold break-words text-[color:var(--text-heading)]">
+              {folder.title}
+            </h2>
+            <p className="nums text-sm font-normal text-[color:var(--text-muted)]">{folder.dates}</p>
+          </div>
+          {actions ? (
+            <div className="flex shrink-0 items-center gap-3" data-print-hide data-testid="term-folder-card-actions">
+              {actions}
+            </div>
+          ) : null}
         </div>
         <div className="grid gap-1.5">
           <p className="text-sm font-medium text-[color:var(--text-heading)]">
@@ -261,11 +285,11 @@ export function folderFooter(view: Pick<Extract<TermFolderView, { kind: "ready" 
   return updatedAt ? `Fills itself · updated ${updatedAt}` : "Fills itself from your records";
 }
 
-function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: "ready" }>; demoMode: boolean }) {
+type ReadyView = Extract<TermFolderView, { kind: "ready" }>;
+
+/** What sits above the folder card: the printout's own heading, and any part that did not load. */
+export function FolderStatusNotes({ view }: { view: ReadyView }) {
   const { folder } = view;
-  const sections = folderSections(folder);
-  const early = folderIsEarly(view.term, view.today);
-  const coming = folderComingUp(view.term, view.today);
   return (
     <>
       <p className="hidden text-sm print:block">{`${folder.title} evidence folder, printed ${dayMonth(view.today)}`}</p>
@@ -282,6 +306,84 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
           <T5Link onClick={view.retry}>Try again</T5Link>
         </T5Note>
       ) : null}
+    </>
+  );
+}
+
+/** Some of the folder's parts as one short list, each row with its status tag and its link. */
+export function FolderPartsSection({
+  view,
+  ids,
+  label,
+  testId,
+}: {
+  view: ReadyView;
+  ids: readonly FolderPartId[];
+  label: string;
+  testId?: string;
+}) {
+  const parts = view.folder.parts.filter((part) => ids.includes(part.id));
+  if (parts.length === 0) return null;
+  return (
+    <T5Section label={label} testId={testId}>
+      <T5List ruled>
+        {parts.map((part) => (
+          <T5Row
+            key={part.id}
+            title={part.label}
+            meta={part.detail}
+            lead={<FolderIconCircle icon={FOLDER_ICONS[part.icon]} status={part.status} />}
+            href={part.href}
+            end={<FolderTag status={part.status} />}
+            testId={`term-folder-part-${part.id}`}
+          />
+        ))}
+      </T5List>
+    </T5Section>
+  );
+}
+
+/** Where assessment forms live (not here). */
+export function FolderNotKept() {
+  return (
+    <T5Section label="Not kept here" testId="term-folder-not-kept">
+      <T5List ruled>
+        <T5Row
+          title="Assessment forms"
+          meta={FOLDER_NOT_KEPT_LINE}
+          lead={<FolderIconCircle icon={ShieldCheck} status="not_started" />}
+          href={FOLDER_CLA_URL}
+          external
+          end={<ExternalLink aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />}
+        />
+      </T5List>
+    </T5Section>
+  );
+}
+
+/** The privacy line, and what goes into the CSV. */
+export function FolderPrivacyNote({ folder }: { folder: TermFolder }) {
+  return (
+    <>
+      <T5Note icon="shield" className="mt-4" testId="term-folder-privacy">
+        {`${FOLDER_PRIVACY_LINE} Built from your check-ins, supervision logs and the term you keep on this phone. Nothing new is saved.`}
+      </T5Note>
+      {/* Indented to the note's text, past its shield icon and gap, so the two lines read as one block. */}
+      <T5Meta className="mt-1 pl-5.5 text-xs">
+        {`${withUnit(folder.sessions.length, folder.sessions.length === 1 ? "session" : "sessions")} and ${withUnit(folder.supervision.length, folder.supervision.length === 1 ? "supervision entry" : "supervision entries")} go into the CSV.`}
+      </T5Meta>
+    </>
+  );
+}
+
+function FolderBody({ view, demoMode }: { view: ReadyView; demoMode: boolean }) {
+  const { folder } = view;
+  const sections = folderSections(folder);
+  const early = folderIsEarly(view.term, view.today);
+  const coming = folderComingUp(view.term, view.today);
+  return (
+    <>
+      <FolderStatusNotes view={view} />
       <FolderCard view={view} demoMode={demoMode} />
       {early && folder.counts.to_fix === 0 ? (
         <T5Note icon="shield" className="mt-3" testId="term-folder-early">
@@ -322,52 +424,41 @@ function FolderBody({ view, demoMode }: { view: Extract<TermFolderView, { kind: 
           </T5List>
         </T5Section>
       ) : null}
-      <T5Section label="Not kept here" testId="term-folder-not-kept">
-        <T5List ruled>
-          <T5Row
-            title="Assessment forms"
-            meta={FOLDER_NOT_KEPT_LINE}
-            lead={<FolderIconCircle icon={ShieldCheck} status="not_started" />}
-            href={FOLDER_CLA_URL}
-            external
-            end={<ExternalLink aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />}
-          />
-        </T5List>
-      </T5Section>
-      {view.earlier.length > 0 ? (
-        <T5Section label="Other terms" testId="term-folder-earlier">
-          <ul role="list" className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2" data-print-hide>
-            {view.earlier.map((term) => (
-              <li key={term.id} className="min-w-0">
-                <Link
-                  href={`${TERM_FOLDER_PATH}?term=${encodeURIComponent(term.id)}`}
-                  className={cn(
-                    "flex min-h-12 items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 no-underline",
-                  )}
-                >
-                  <Folder aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
-                  <span className="grid min-w-0">
-                    <span className="truncate text-sm font-medium text-[color:var(--text-heading)]">
-                      {folderTermTitle(term)}
-                    </span>
-                    <span className="nums truncate text-xs font-normal text-[color:var(--text-muted)]">
-                      {`${dayMonth(term.startsOn)} to ${dayMonth(term.endsOn)} ${term.startsOn.slice(0, 4)}`}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </T5Section>
-      ) : null}
-      <T5Note icon="shield" className="mt-4">
-        {`${FOLDER_PRIVACY_LINE} Built from your check-ins, supervision logs and the term you keep on this phone. Nothing new is saved.`}
-      </T5Note>
-      {/* Indented to the note's text, past its shield icon and gap, so the two lines read as one block. */}
-      <T5Meta className="mt-1 pl-5.5 text-xs">
-        {`${withUnit(folder.sessions.length, folder.sessions.length === 1 ? "session" : "sessions")} and ${withUnit(folder.supervision.length, folder.supervision.length === 1 ? "supervision entry" : "supervision entries")} go into the CSV.`}
-      </T5Meta>
+      <FolderNotKept />
+      <FolderEarlierTerms view={view} />
+      <FolderPrivacyNote folder={folder} />
     </>
+  );
+}
+
+/** Links to each earlier term's folder, so a finished term can still be opened and exported. */
+export function FolderEarlierTerms({ view }: { view: { readonly earlier: readonly TermRecord[] } }) {
+  if (view.earlier.length === 0) return null;
+  return (
+    <T5Section label="Other terms" testId="term-folder-earlier">
+      <ul role="list" className="grid grid-cols-1 gap-2 min-[26rem]:grid-cols-2" data-print-hide>
+        {view.earlier.map((term) => (
+          <li key={term.id} className="min-w-0">
+            <Link
+              href={`${TERM_FOLDER_PATH}?term=${encodeURIComponent(term.id)}`}
+              className={cn(
+                "flex min-h-12 items-center gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 py-2 no-underline",
+              )}
+            >
+              <Folder aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--mode-identity)]" />
+              <span className="grid min-w-0">
+                <span className="truncate text-sm font-medium text-[color:var(--text-heading)]">
+                  {folderTermTitle(term)}
+                </span>
+                <span className="nums truncate text-xs font-normal text-[color:var(--text-muted)]">
+                  {`${dayMonth(term.startsOn)} to ${dayMonth(term.endsOn)} ${term.startsOn.slice(0, 4)}`}
+                </span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </T5Section>
   );
 }
 

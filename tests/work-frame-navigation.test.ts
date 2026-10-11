@@ -102,7 +102,7 @@ describe("work frame navigation", () => {
 
   it("offers the next plain pages from More as extra tabs for wider screens", () => {
     const labels = (id: keyof typeof WORK_AREAS) => workFrameExtraTabs(WORK_AREAS[id]).map((item) => item.label);
-    expect(labels("rost").slice(0, 3)).toEqual(["Today", "My shifts", "Leave"]);
+    expect(labels("rost").slice(0, 3)).toEqual(["My shifts", "Leave", "Hours and rest"]);
     // Pages with their own header, inner areas and links into other areas never become tabs.
     expect(labels("rost")).not.toContain("Calendar sync");
     expect(labels("rost")).not.toContain("Open shifts");

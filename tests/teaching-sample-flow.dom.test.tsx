@@ -14,7 +14,7 @@ vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 
 import ResourcesRoute from "@/app/(search-app)/teaching/resources/page";
 import CollectionRoute from "@/app/(search-app)/teaching/resources/[collectionId]/page";
-import WhatsOnRoute from "@/app/(search-app)/teaching/whats-on/page";
+import { TeachingThisWeek } from "@/components/teaching/teaching-this-week";
 import { teachingSampleEntryHref } from "@/lib/teaching/sample-paths";
 import { authState } from "./helpers/teaching-auth";
 import { NOW, apiError, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
@@ -44,10 +44,11 @@ describe("signed-out Teaching sample in production", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("reads What's on without an API request and refuses personal writes locally", async () => {
+  // What's on became Week's Other services filter (`/teaching/week?view=other`); its old route forwards there.
+  it("reads Week's Other services without an API request and refuses personal writes locally", async () => {
     authState.status = "signed_out";
     const fetchMock = serveFetch(() => apiError(401, "authentication_required"));
-    render(await WhatsOnRoute());
+    render(<TeachingThisWeek demoMode={false} view="other" />);
     const add = await screen.findAllByRole("button", { name: /^Add .* to my week$/ });
     fireEvent.click(add[0]);
     await waitFor(() => expect(screen.getByText("The sample doesn’t save changes.")).toBeInTheDocument());

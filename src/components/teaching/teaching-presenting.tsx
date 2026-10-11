@@ -1,6 +1,5 @@
 "use client";
 
-import { Users } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -11,15 +10,12 @@ import {
   T5BigFigure,
   T5Check,
   T5Date,
-  T5Done,
   T5Empty,
   T5Heading,
-  T5Icon,
   T5Kicker,
   T5Link,
   T5List,
   T5Meta,
-  T5Meter,
   T5Note,
   T5Page,
   T5Pair,
@@ -37,8 +33,6 @@ import {
   presentingItemLabels,
   readinessAction,
   readinessCount,
-  supervisionLabel,
-  supervisionSummary,
   talkKicker,
   talkMeta,
   upcomingTalkMeta,
@@ -50,15 +44,13 @@ import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
-import { demoFeedbackTotals, demoSupervision, demoTeach, type DemoTeachSession } from "@/lib/teaching/depth-demo";
+import { demoFeedbackTotals, demoTeach, type DemoTeachSession } from "@/lib/teaching/depth-demo";
 import {
   readinessItems,
-  supervisionTypeLabels,
   teachingDepthUrl,
   type FeedbackTotals,
   type Readiness,
   type SessionRef,
-  type SupervisionPairingView,
   type TeachRead,
 } from "@/lib/teaching/depth-model";
 
@@ -67,8 +59,8 @@ const AFTER_SHOWN = 3;
 
 /*
  * Presenting (mock-up v5 screen 02): your next talk and whether it is ready, the talks after it, how
- * past talks landed, and your supervision hours. It replaces Teach and the Supervision landing; the
- * full Supervision page (logging, confirming, corrections) stays one tap away.
+ * past talks landed. It replaces Teach and the Supervision landing. Supervision hours live on their
+ * own Supervision page (logging, confirming, corrections), so they are not repeated here.
  *
  * Feedback is counts only: pace and usefulness, shown 7 days after a talk once 5 or more people have
  * answered (the server's rule in `feedback.totals`), never a name or an individual answer.
@@ -94,17 +86,10 @@ function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const teach = useTeachingResource<TeachRead>(demoMode ? null : "/api/teaching/depth?view=teach");
-  const supervision = useTeachingResource<{ pairings: SupervisionPairingView[] }>(
-    demoMode ? null : "/api/teaching/depth?view=supervision",
-  );
   // The demo talk moves to tomorrow once today's has ended (14:45 Perth), so the demo reads the clock too.
   const teachData = useMemo<{ upcoming: DemoTeachSession[]; taught: SessionRef[] } | null>(
     () => (demoMode && today && now ? demoTeach(today, now) : teach.data),
     [demoMode, today, now, teach.data],
-  );
-  const pairings = useMemo(
-    () => (demoMode && today ? demoSupervision(today, { supervising: false }) : (supervision.data?.pairings ?? null)),
-    [demoMode, today, supervision.data],
   );
 
   let body;
@@ -176,12 +161,6 @@ function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId
           </T5Section>
         ) : null}
         <TaughtBefore taught={teachData.taught} demoMode={demoMode} />
-        <Supervision
-          pairings={pairings}
-          today={today}
-          status={demoMode ? "ready" : supervision.status}
-          retry={supervision.retry}
-        />
       </>
     );
   }
@@ -544,79 +523,5 @@ function FeedbackBlock({
         </>
       )}
     </div>
-  );
-}
-
-function Supervision({
-  pairings,
-  today,
-  status,
-  retry,
-}: {
-  pairings: readonly SupervisionPairingView[] | null;
-  today: string;
-  status: string;
-  retry: () => void;
-}) {
-  const summary = pairings ? supervisionSummary(pairings) : null;
-  return (
-    <T5Section
-      id="supervision"
-      label={pairings ? supervisionLabel(pairings, today) : "Supervision"}
-      right={<T5Link href="/teaching/supervision">Log supervision</T5Link>}
-      testId="teaching-supervision-summary"
-    >
-      {!summary ? (
-        status === "loading" || status === "idle" ? (
-          <ModeModuleSkeleton rows={2} />
-        ) : (
-          <T5Empty>
-            Supervision could not load. <T5Link onClick={retry}>Try again</T5Link>
-          </T5Empty>
-        )
-      ) : summary.mine === null && summary.toConfirm === 0 ? (
-        <T5Empty>No supervision pairing yet. Your organiser sets one up, then you log hours here.</T5Empty>
-      ) : (
-        <>
-          {summary.mine ? (
-            <div className="grid gap-2 border-t border-[color:var(--border)] pt-2.5 pb-1">
-              <div className="flex items-baseline justify-between gap-2.5">
-                <span>
-                  <T5BigFigure value={summary.mine.confirmed} unit={summary.mine.targetLine ?? "confirmed"} />
-                </span>
-                {summary.mine.toGo ? (
-                  <span className="text-sm text-[color:var(--text-muted)]">{summary.mine.toGo}</span>
-                ) : null}
-              </div>
-              {summary.mine.percent !== null ? (
-                <T5Meter percent={summary.mine.percent} label={`${summary.mine.percent}% of your target`} />
-              ) : null}
-            </div>
-          ) : null}
-          <T5List>
-            {summary.entries.map((entry) => (
-              <T5Row
-                key={entry.entryId}
-                lead={<T5Icon icon={Users} />}
-                title={supervisionTypeLabels[entry.type]}
-                meta={entry.meta}
-                end={entry.status === "confirmed" ? <T5Done label="Confirmed" /> : undefined}
-              />
-            ))}
-            {summary.toConfirm > 0 ? (
-              <T5Row
-                title={
-                  summary.toConfirm === 1
-                    ? "1 entry or correction to confirm"
-                    : `${summary.toConfirm} entries or corrections to confirm`
-                }
-                meta="You supervise"
-                href="/teaching/supervision"
-              />
-            ) : null}
-          </T5List>
-        </>
-      )}
-    </T5Section>
   );
 }

@@ -75,7 +75,7 @@ export function stripDays(keys: readonly string[], sessions: readonly SessionSum
 }
 
 /** The sessions on one day, in time order. */
-export function sessionsOn(sessions: readonly SessionSummaryRead[], dateKey: string): SessionSummaryRead[] {
+export function sessionsOn<T extends SessionSummaryRead>(sessions: readonly T[], dateKey: string): T[] {
   return sessions.filter((s) => perthDateKey(s.startsAt) === dateKey).sort(byStart);
 }
 
@@ -257,6 +257,32 @@ export function nextForYouMeta(session: SessionSummaryRead, today: string): stri
 /** Sessions other services have opened to this reader that are not already in their week. */
 export function openFromOtherServices(rows: readonly { own: boolean; inMyWeek: boolean; status: string }[]): number {
   return rows.filter((row) => !row.own && !row.inMyWeek && row.status !== "cancelled").length;
+}
+
+/**
+ * Week's "Other services" filter: the sessions other services have opened to the reader this week, in
+ * time order, whether or not the reader has added them yet. The reader's own service's sessions are
+ * left out, because Mine and Whole service already list them.
+ */
+export function otherServiceSessions<T extends SessionSummaryRead & { own: boolean }>(rows: readonly T[]): T[] {
+  return rows.filter((row) => !row.own).sort(byStart);
+}
+
+/** "Hospital C psychiatry · Library", "… · Online", with "On now" or "Cancelled" first when it applies. */
+export function otherServiceMeta(
+  row: SessionSummaryRead & { teamName: string; joinUrl: string | null },
+  now: Date,
+): string {
+  const time = now.getTime();
+  const cancelled = row.status === "cancelled";
+  const live = !cancelled && Date.parse(row.startsAt) <= time && time < Date.parse(row.endsAt);
+  return [
+    cancelled ? "Cancelled" : live && "On now",
+    row.teamName,
+    !cancelled && (row.venue ?? (row.joinUrl ? "Online" : null)),
+  ]
+    .filter((p): p is string => Boolean(p))
+    .join(" · ");
 }
 
 /**

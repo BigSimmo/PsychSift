@@ -360,6 +360,12 @@ describe("SwapProgressLine", () => {
 });
 
 describe("Swaps page with no confirmed team", () => {
+  it("with a team keeps the New button and the tap hint", () => {
+    render(<RosterSwapsPage />);
+    expect(screen.getByRole("button", { name: "New" })).toBeTruthy();
+    expect(screen.getByText(/tap one of your shifts/)).toBeTruthy();
+  });
+
   it("says there is no team yet and offers Join a team instead of empty sections", () => {
     const saved = teamsState.data.teams.splice(0);
     try {
@@ -372,6 +378,10 @@ describe("Swaps page with no confirmed team", () => {
           .getAttribute("href"),
       ).toBe("/roster/join");
       expect(screen.queryByRole("heading", { name: "Waiting on you" })).toBeNull();
+      // Nothing to start without a team: no New button and no "tap one of your shifts" hint.
+      expect(screen.queryByRole("button", { name: "New" })).toBeNull();
+      expect(screen.queryByText(/tap one of your shifts/)).toBeNull();
+      expect(screen.getAllByRole("link", { name: /Join a team/ })).toHaveLength(1);
     } finally {
       teamsState.data.teams.push(...saved);
     }
