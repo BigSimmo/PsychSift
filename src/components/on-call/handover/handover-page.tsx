@@ -520,12 +520,23 @@ function useNightShift(): boolean {
   return Number.isFinite(at) && new Date().getTime() - at < ON_CALL_SHIFT_PICK_TTL_MS;
 }
 
+/** Where the frame turns into the desktop layout (tablet on its side, and up). */
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
 export function OnCallHandoverPage() {
   const view = useOnCallHandover();
   const patients = useMemo(() => view?.patients ?? [], [view]);
   const night = useNightShift();
   const [mode, setMode] = useState<"form" | "table">("form");
   const hasPatients = patients.length > 0;
+  // On a computer the handover opens as the table when it already holds patients, since rows of
+  // patients and columns of fields is what a wide screen is for (usefulness audit, 11 Oct 2026).
+  // Decided once, when this device's handover first loads; a phone keeps opening on the form.
+  const [openingChosen, setOpeningChosen] = useState(false);
+  if (!openingChosen && view !== null) {
+    setOpeningChosen(true);
+    if (hasPatients && typeof window !== "undefined" && window.matchMedia?.(DESKTOP_QUERY).matches) setMode("table");
+  }
   useEffect(() => {
     // A failed prefetch is not an error: the tap that needs the table loads it again.
     if (hasPatients) void handoverTable.preload().catch(() => undefined);
@@ -761,13 +772,19 @@ export function OnCallHandoverPage() {
           )}
 
           {tableOpen ? (
-            <OnCallHandoverTable
-              patients={patients}
-              heading={{ dates, shift: night ? "Night to day" : null }}
-              clearsAt={clearsAt}
-              toTeam={night ? "Day team" : null}
-              onEdit={pick}
-            />
+            <>
+              {/* The table is where a desktop opens, so it carries the same privacy line as the form. */}
+              <div className="print:hidden">
+                <PrivacyBand expiresAt={view.expiresAt} />
+              </div>
+              <OnCallHandoverTable
+                patients={patients}
+                heading={{ dates, shift: night ? "Night to day" : null }}
+                clearsAt={clearsAt}
+                toTeam={night ? "Day team" : null}
+                onEdit={pick}
+              />
+            </>
           ) : (
             <>
               <PrivacyBand expiresAt={view.expiresAt} />

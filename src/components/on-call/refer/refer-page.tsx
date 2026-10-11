@@ -11,7 +11,7 @@ import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows"
 import { handbookFirstLine, OnCallHandbookItemRow } from "@/components/on-call/find/handbook-item-row";
 import { onCallActionLink, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
 import { modeSecondaryText } from "@/components/mode-kit/type";
@@ -100,7 +100,7 @@ export function OnCallReferPage() {
       lead={handbook.hospitals.length > 1 ? <OnCallHospitalLine handbook={handbook} /> : null}
     >
       <OnCallHandbookState handbook={handbook} page="refer" />
-      {ready ? null : <OnCallCrisisLines />}
+      {ready ? null : <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} />}
 
       {ready || !signedOut ? (
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)]" data-testid="on-call-refer-search">

@@ -89,11 +89,10 @@ describe("On Call hub routes", () => {
 });
 
 describe("Playbook", () => {
-  it("opens with the Who do I call now? link, as a raised card and never the command fill", () => {
+  // Usefulness audit, 11 Oct 2026: the Playbook is the one home for "who do I call", so it no longer
+  // links out to a separate page; each problem is a row that opens to its steps.
+  it("has no link out to a separate Who do I call now page", () => {
     render(<OnCallPlaybookSection entries={[]} />);
-    const link = screen.getByTestId("on-call-playbook-who-do-i-call");
-    expect(link).toHaveAttribute("href", "/on-call/now");
-    expect(link).toHaveTextContent("Who do I call now?");
-    expect(link.className).not.toMatch(/--command/);
+    expect(screen.queryByTestId("on-call-playbook-who-do-i-call")).toBeNull();
   });
 });

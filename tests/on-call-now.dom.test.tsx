@@ -89,7 +89,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Now: the safety order", () => {
-  it("leads with the hospital, then its emergency route, then Right now, your usual, your team and the footer", () => {
+  it("leads with the hospital, then its emergency route, then your usual, Right now, your team and the footer", () => {
     handbook.state = readyHandbook(
       handbookItems([
         { id: "em", title: "Emergency: Synthetic emergency code", phone: "55", kind: "clinical" },
@@ -100,8 +100,9 @@ describe("Now: the safety order", () => {
     order([
       "on-call-now-hospital",
       "on-call-now-emergency",
-      "on-call-now-right-now",
+      // Your own numbers first, straight under the header (usefulness audit, 11 Oct 2026).
       "on-call-home-recent",
+      "on-call-now-right-now",
       "on-call-now-team",
       "on-call-now-footer",
     ]);
@@ -492,7 +493,8 @@ describe("Now: the footer group", () => {
     render(<OnCallHome now={IN_HOURS} />);
     const who = screen.getByTestId("on-call-now-who");
     expect(within(who).getByRole("heading", { name: "Who do I call now?" })).toBeInTheDocument();
-    expect(within(who).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
+    // The Playbook is the one home for "who do I call" (usefulness audit, 11 Oct 2026).
+    expect(within(who).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/playbook");
     order(["on-call-now-who", "on-call-now-footer"]);
     const footer = screen.getByTestId("on-call-now-footer");
     expect(within(footer).getByRole("heading", { name: "More for this shift" })).toBeInTheDocument();
@@ -547,9 +549,6 @@ describe("Who do I call now: the pinned reminder", () => {
     expect(reminder.tagName).toBe("P");
     expect(reminder).toHaveTextContent("You are expected to wake the consultant.");
     expect(reminder.closest("a, button, li")).toBeNull();
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "Escalation ladder",
-      "Systems unavailable",
-    ]);
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Playbook", "Systems unavailable"]);
   });
 });
