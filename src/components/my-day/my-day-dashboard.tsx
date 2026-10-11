@@ -977,7 +977,9 @@ function FirstSteps() {
 }
 
 /** Today's left column on a computer; the rest go on the right. */
-const TODAY_LEFT: ReadonlySet<MyDayCardId> = new Set(["up-next", "flag", "needs-you"]);
+// CPD sits under Needs you on the left so the two columns end near each other (usefulness audit,
+// 11 Oct 2026: at 1440 px the left column stopped after Needs you while the right ran about 1,000 px on).
+const TODAY_LEFT: ReadonlySet<MyDayCardId> = new Set(["up-next", "flag", "needs-you", "cpd"]);
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
 

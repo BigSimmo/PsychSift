@@ -31,7 +31,7 @@ import {
 } from "@/components/on-call/kit/calm";
 import { OnCallDialRow, toHandbookDial } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
 import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -452,7 +452,7 @@ export function OnCallCallPage() {
       </div>
 
       <OnCallHandbookState handbook={handbook} page="call" />
-      {showCrisis ? <OnCallCrisisLines /> : null}
+      {showCrisis ? <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} /> : null}
 
       <div id="on-call-people-list" className="grid min-w-0 gap-5">
         {searching && resultCount === 0 ? (
@@ -465,7 +465,15 @@ export function OnCallCallPage() {
         {showHospital && ready && !searching ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
 
         {showHospital && ready && hospitalCount + cover.length > 0 ? (
-          <div id={onCallGroupAnchorId("hospital")} className="grid min-w-0 scroll-mt-32 gap-5">
+          <div
+            id={onCallGroupAnchorId("hospital")}
+            className={cn(
+              "grid min-w-0 scroll-mt-32 gap-5",
+              // Desktop (usefulness audit, 11 Oct 2026): Emergency and the cover on now beside the
+              // departments, rather than one list stretched across the screen. One column below 1024px.
+              (emergencyGroup || cover.length > 0) && departmentGroups.length > 0 && "lg:grid-cols-2 lg:items-start",
+            )}
+          >
             {emergencyGroup ? (
               <div className="grid min-w-0 gap-5">
                 {hospitalGroup(emergencyGroup, false)}

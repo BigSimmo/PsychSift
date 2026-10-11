@@ -1,5 +1,6 @@
 "use client";
 
+import { OnCallStartingHereChips } from "@/components/on-call/starting-here-chips";
 import { BookOpen, CalendarPlus, CloudOff, Copy, Eye, ListChecks, RotateCcw, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useId, useState } from "react";
@@ -10,7 +11,7 @@ import { FirstWeekPackCard } from "@/components/on-call/first-week/first-week-pa
 import { FirstWeekSectionView } from "@/components/on-call/first-week/first-week-section-view";
 import { useFirstWeekPack } from "@/components/on-call/first-week/use-first-week-pack";
 import { flatQuietAction } from "@/components/on-call/flat-recipes";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
 import { WorkBody, WorkButton, WorkCard, WorkEmpty, WorkIconCircle, WorkIconRow } from "@/components/mode-kit/work";
@@ -211,7 +212,9 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
   const handbookState = (
     <>
       <OnCallHandbookState handbook={handbook} page="find" />
-      {ready || handbook.status === "loading" ? null : <OnCallCrisisLines now={now} />}
+      {ready || handbook.status === "loading" ? null : (
+        <OnCallCrisisLines now={now} compact={onCallCrisisLinesCompact(handbook.status)} />
+      )}
     </>
   );
 
@@ -332,6 +335,7 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
       <WorkBody>
         {/* The pack card's visible title is the page's h1, so no hidden copy is read twice. */}
         {/* One way back: the band's Now tab is On Call, so the page adds no second link to it. */}
+        <OnCallStartingHereChips />
         {/* Mark all (or Start again) sits on the hospital line that heads the pack, not loose under it. */}
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3">
           <OnCallHospitalLine handbook={handbook} testId="on-call-first-week-hospital" />

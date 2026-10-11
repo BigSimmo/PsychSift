@@ -84,7 +84,8 @@ describe("workFrameCurrentItem", () => {
   it("names the features' pages as their own items, not a tab", () => {
     expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/applications/cv", "")?.id).toBe("applications");
     expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/new-job/ready", "")?.id).toBe("admin-ready");
-    expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson-roster");
+    // Who's on covers its roster names page since More was trimmed (usefulness audit, 11 Oct 2026).
+    expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson");
     expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term/folder", "")?.id).toBe("term-folder");
   });
 
