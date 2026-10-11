@@ -111,12 +111,13 @@ describe("release-browser-matrix duration shards", () => {
   });
 
   it("keeps the committed leg counts within the measured balance", () => {
-    // The matrix keeps firefox 3, webkit 2 and five legs per iPhone project.
+    // The matrix keeps firefox 3, webkit 3, five legs per iPhone project and tablet 4.
     const expectedMaxMinutes = {
       firefox: [3, 9],
-      webkit: [2, 20],
+      webkit: [3, 14],
       "mobile-webkit": [5, 12],
       "mobile-pwa-standalone": [5, 10],
+      tablet: [4, 13],
     };
     for (const [project, [count, minutes]] of Object.entries(expectedMaxMinutes)) {
       const slowest = Math.max(...releaseShardGroups(project, count).map((group) => group.seconds));
