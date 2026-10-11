@@ -10,6 +10,14 @@ import { CPD_APPLICATIONS_STORAGE_KEY, TEACHING_TERM_TRACKER_STORAGE_KEY } from 
 import type { CmeEntry } from "@/lib/cme/types";
 import * as clipboard from "@/lib/copy-to-clipboard";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh }),
@@ -269,10 +277,12 @@ describe("CV that fills itself", () => {
     expect(stored.hiddenCvLines).toEqual(["talk:o1"]);
   });
 
-  it("goes back to Job applications, its parent", () => {
+  it("goes back to Job applications, its parent, from the top bar", () => {
+    const removeSlot = addHeaderBackSlot();
     renderCv();
     expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/applications");
-    expect(screen.getByTestId("cpd-feature-back").textContent).toContain("Job applications");
+    expect(screen.getByTestId("cpd-feature-back").getAttribute("aria-label")).toBe("Back to Job applications");
+    removeSlot();
   });
 
   it("narrows to this year", () => {

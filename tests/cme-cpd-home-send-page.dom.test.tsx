@@ -10,6 +10,14 @@ import { CPD_HOME_SEND_STORAGE_KEY, clearAccountScopedBrowserStorage } from "@/l
 import type { CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
 import * as clipboard from "@/lib/copy-to-clipboard";
 
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
+
 const announcer = vi.hoisted(() => ({ announce: vi.fn() }));
 vi.mock("@/components/ui/live-announcer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/components/ui/live-announcer")>()),
@@ -299,11 +307,13 @@ describe("Send to AMA CPD Home", () => {
   });
 
   it("goes back to the CPD summary, where its link lives, even with nothing to send", () => {
+    const removeSlot = addHeaderBackSlot();
     const { unmount } = renderPage();
     expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
     unmount();
     renderPage({ entries: [] });
     expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+    removeSlot();
   });
 
   it("says the import format is not confirmed, with its source pending", () => {
