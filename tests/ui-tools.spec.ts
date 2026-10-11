@@ -3408,7 +3408,17 @@ test.describe("Responsive layout guards", () => {
       // typed text, is.
       const url = new URL(request.url());
       const routePrefetch = request.method() === "GET" && url.searchParams.has("_rsc");
-      if (!routePrefetch || `${request.url()}${request.postData() ?? ""}`.includes("Not sleeping")) {
+      const normalizeRequestPart = (content: string) => {
+        const formDecodedContent = content.replace(/\+/g, " ");
+        try {
+          return decodeURIComponent(formDecodedContent);
+        } catch {
+          // Keep the raw content if a request contains an incomplete escape sequence.
+          return formDecodedContent;
+        }
+      };
+      const normalizedRequestContent = [request.url(), request.postData() ?? ""].map(normalizeRequestPart).join("");
+      if (!routePrefetch || normalizedRequestContent.includes("Not sleeping")) {
         appRequests.push(request.url());
       }
     });
