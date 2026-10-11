@@ -578,7 +578,7 @@ function TargetForm({ pairing, sender }: { pairing: SupervisionPairingView; send
   if (!editing)
     return (
       <div className="work-card work-card--pad flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <p className="m-0 min-w-0 text-sm text-[color:var(--text-heading)] tabular-nums">
+        <p className="m-0 min-w-0 text-sm font-normal text-[color:var(--text-heading)] tabular-nums">
           {pairing.targetHours === null
             ? "No personal target set"
             : `Your personal target: ${withUnit(pairing.targetHours, "h")}`}
