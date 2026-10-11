@@ -498,7 +498,7 @@ export type ApplicationsNeedsYouItem = {
   readonly id: string;
   readonly title: string;
   readonly dueOn: string | null;
-  readonly area: "cpd";
+  readonly area: "admin";
   readonly href: string;
   readonly kind: "action" | "update";
 };
@@ -519,7 +519,7 @@ export function applicationsNeedsYouItems(state: ApplicationsState, today: strin
       id: `cpd:applications:date:${date.stage}`,
       title: days === 0 ? `${label} today` : days === 1 ? `${label} tomorrow` : `${label} in ${days} days`,
       dueOn: date.on,
-      area: "cpd",
+      area: "admin",
       href: APPLICATIONS_HREF,
       kind: "action",
     });
@@ -529,7 +529,7 @@ export function applicationsNeedsYouItems(state: ApplicationsState, today: strin
       id: `cpd:applications:referee:${referee.id}`,
       title: `${referee.name} has not replied in ${days} days`,
       dueOn: today,
-      area: "cpd",
+      area: "admin",
       href: APPLICATIONS_HREF,
       kind: "action",
     });
