@@ -152,12 +152,7 @@ test.describe("Header element overlap coverage", () => {
 
       if (width >= 768) {
         await expect(page.getByRole("button", { name: "Start a new chat" })).toHaveCount(0);
-      }
-      if (width >= 1024) {
         await expect(page.getByRole("button", { name: "New chat", exact: true })).toBeVisible();
-      } else if (width >= 768) {
-        // The two-pane side menu's strip stands in for the clinical icon rail on tablets.
-        await expect(page.getByTestId("two-pane-rail")).toBeVisible();
       }
     });
   }
