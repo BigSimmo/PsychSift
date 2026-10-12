@@ -196,7 +196,7 @@ export function SegmentedControl<T extends string>({
             {checked ? (
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] shadow-sm forced-colors:outline forced-colors:outline-2 forced-colors:[outline-color:Highlight]"
+                className="pointer-events-none absolute inset-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] shadow-[var(--e1)] forced-colors:outline forced-colors:outline-2 forced-colors:[outline-color:Highlight]"
               />
             ) : null}
             {Icon ? <Icon aria-hidden="true" className="relative size-icon-sm shrink-0" /> : null}
