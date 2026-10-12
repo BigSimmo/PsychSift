@@ -2593,7 +2593,10 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("desktop docks a cited source beside the answer instead of over it", async ({ page }) => {
+  test("desktop docks a cited source beside the answer instead of over it", async ({ page, isMobile, viewport }) => {
+    // A phone never reaches the 1024px dock width, so forcing an iPhone profile
+    // to 1440px measures a layout no reader can see. Tablets keep the check.
+    test.skip(isMobile && (viewport?.width ?? 0) < 600, "phones never reach the desktop dock width");
     // From 1024px the source drawer is a panel docked beside the answer
     // (answer-source-docked-panel.tsx). It is not a dialog, so this pins what
     // replaces the dialog's guarantees: a named landmark that takes focus, a

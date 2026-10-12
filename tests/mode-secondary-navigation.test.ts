@@ -415,7 +415,8 @@ describe("mode secondary navigation registry", () => {
     ).toBe("/differentials/presentations?q=confusion&ids=delirium%2Cdementia");
 
     // Search restores the last query and re-opens results even when the prior
-    // tab URL did not carry run=1 (e.g. Diagnoses / Presentations browse).
+    // tab URL did not carry run=1 (e.g. Diagnoses / Presentations browse). It
+    // names the results route itself rather than a home that redirects there.
     expect(
       modeSecondaryNavigationHref({
         modeId: "differentials",
@@ -423,7 +424,7 @@ describe("mode secondary navigation registry", () => {
         href: "/differentials?focus=1",
         currentSearchParams: new URLSearchParams("q=confusion&ids=delirium"),
       }),
-    ).toBe("/differentials?focus=1&q=confusion&run=1&ids=delirium");
+    ).toBe("/differentials/search?q=confusion&focus=1&run=1&ids=delirium");
 
     // Search is the CURRENT tab on /factsheets/search, so its own link must not
     // reset what you are looking at. `run` is carried with the query because

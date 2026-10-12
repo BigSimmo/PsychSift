@@ -677,11 +677,20 @@ export function modeSecondaryNavigationHref(params: {
   }
 
   if (modeId === "differentials") {
+    // A carried query goes straight to the results route. Linking the shared
+    // home (`/?mode=differentials&q=…&run=1`) only bounced there through a
+    // server redirect, which Safari on a phone could leave unfinished.
+    if (itemId === "search" && query) {
+      const ids = currentSearchParams.get("ids");
+      return navigationHrefWithParams(
+        appModeHomeHref("differentials", { query, focus: true, run: true }),
+        ids ? [["ids", ids]] : [],
+      );
+    }
     const entries: Array<readonly [string, string]> = query ? [["q", query]] : [];
     // Returning to Search with a carried query must reopen the results view
     // (`run=1`), not the empty mode home — even when the previous tab lacked run.
-    if (itemId === "search" && query) entries.push(["run", "1"]);
-    else if (itemId === "search" && currentSearchParams.get("run") === "1") entries.push(["run", "1"]);
+    if (itemId === "search" && currentSearchParams.get("run") === "1") entries.push(["run", "1"]);
     // Compare (and other in-mode tabs) reuse URL-backed selection so ticks on
     // search survive ModeNav handoff without a second client store.
     if (currentSearchParams.get("ids")) {
