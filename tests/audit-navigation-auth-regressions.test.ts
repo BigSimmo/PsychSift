@@ -317,7 +317,9 @@ describe("audit navigation and auth regressions", () => {
       'if (modeId === "answer" && currentGroups.length === 0) return null;',
     );
     // Not drawn while pending, and not drawn when nothing matched: one gate for both.
-    expect(universalAlsoMatchesSource).toContain("const stripShown = currentGroups.length > 0 && !searchPending;");
+    expect(universalAlsoMatchesSource).toMatch(
+      /const stripShown =\s*submissionActive && viewportReady && trimmedQuery\.length >= 2 && currentGroups\.length > 0 && !searchPending;/,
+    );
     // The live region is mounted empty through the lookup and filled once, so the count is
     // announced as a change rather than lost as a region's starting text.
     expect(universalAlsoMatchesSource).toContain('{stripShown ? panelStatus : ""}');

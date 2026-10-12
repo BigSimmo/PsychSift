@@ -168,8 +168,6 @@ export function UniversalSearchAlsoMatches({
       "No other matches"
     );
 
-  if (!submissionActive) return null;
-  if (!viewportReady || trimmedQuery.length < 2) return null;
   // At every width now, not just from sm up: the phone lookup is eager, so a
   // header that would open onto nothing is dropped instead of offered.
   //
@@ -179,12 +177,14 @@ export function UniversalSearchAlsoMatches({
   // secondary to the results the search asked for, so it now fills in quietly underneath
   // them once it has something to show, and never holds or competes with the main list.
   // Streamed groups arrive one mode at a time, so a partial count is never shown either.
-  const stripShown = currentGroups.length > 0 && !searchPending;
+  const stripShown =
+    submissionActive && viewportReady && trimmedQuery.length >= 2 && currentGroups.length > 0 && !searchPending;
 
-  // The live region is mounted from the moment the search is submitted, empty while the
-  // lookup runs, and only then filled with the count. Screen readers announce a change to a
-  // live region that is already on the page, not the starting text of one that appears with
-  // its message already in it, so mounting it together with the strip would silence the count.
+  // The live region is always mounted, empty until the strip is drawn, and only then filled
+  // with the count; a cached lookup can be complete on the very render a search is submitted.
+  // Screen readers announce a change to a live region that is already on the page, not the
+  // starting text of one that appears with its message already in it, so mounting it together
+  // with the strip would silence the count.
   // It stays outside the collapsible panel for the same reason (see the note below).
   const liveStatus = (
     <span className="sr-only" role="status">
