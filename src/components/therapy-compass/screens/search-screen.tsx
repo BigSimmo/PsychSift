@@ -52,7 +52,8 @@ export function SearchScreen() {
   // Filters highlight, never hide: therapies the filters pick come first, and
   // every other therapy matching the query stays listed under "Not matching".
   // `b.queryMatches` is the query-only set, before any filter.
-  const highlightFilterActive = b.search.tags.length > 0 || b.search.reviewedOnly || b.search.briefOnly;
+  const highlightFilterActive =
+    b.search.tags.length > 0 || b.search.reviewedOnly || b.search.briefOnly || b.search.sheetOnly;
   const outside = useMemo(() => {
     if (!highlightFilterActive) return [];
     const picked = new Set(b.searchResults.map((therapy) => therapy.slug));
@@ -61,7 +62,9 @@ export function SearchScreen() {
       ? rest.sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }))
       : rest;
   }, [highlightFilterActive, b.searchResults, b.queryMatches, browsing]);
-  const outsideShown = outside.slice(0, MAX_CARDS);
+  // Unlike the primary result list, outside-filter results are explicitly
+  // promised as reachable by the "Not matching" shelf, so do not cap them.
+  const outsideShown = outside;
   const scopeCount = highlightFilterActive ? results.length + outside.length : results.length;
   // An empty query gives every record the same baseline score and then sorts
   // alphabetically, so only call out a best match when the scorer had real
@@ -73,7 +76,8 @@ export function SearchScreen() {
   // trigger badge is labelled "N filters active" and a search term is not a
   // filter. Counting it there makes the control announce a state the page is
   // not in, which is the exact defect this screen's sheet was built to fix.
-  const activeFilterCount = b.search.tags.length + Number(b.search.reviewedOnly) + Number(b.search.briefOnly);
+  const activeFilterCount =
+    b.search.tags.length + Number(b.search.reviewedOnly) + Number(b.search.briefOnly) + Number(b.search.sheetOnly);
   // Topics and availability both narrow the same list, so both belong on the
   // shelf. The query is deliberately absent: it is stated in the composer and
   // removing it is not a filter operation.
@@ -89,6 +93,9 @@ export function SearchScreen() {
       : []),
     ...(b.search.briefOnly
       ? [{ id: "brief", groupLabel: "Availability", valueLabel: "Brief available", onRemove: b.toggleBriefOnly }]
+      : []),
+    ...(b.search.sheetOnly
+      ? [{ id: "sheet", groupLabel: "Availability", valueLabel: "Patient sheet available", onRemove: b.toggleSheetOnly }]
       : []),
   ];
   const filterPanelId = useId();
