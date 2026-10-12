@@ -67,9 +67,9 @@ export function entryStartsByDate(
   return starts;
 }
 
-/** Starts and ends from today, for Coming up. At most three. */
+/** Starts and ends from today, for Coming up. The caller caps the combined rows. */
 export function comingEntryEdges(entries: readonly WorkCalendarEntry[], today: string): WorkCalendarEdge[] {
-  return entryEdges(entries, today, addDaysToDate(today, ROSTER_ENTRY_AHEAD_DAYS)).slice(0, 3);
+  return entryEdges(entries, today, addDaysToDate(today, ROSTER_ENTRY_AHEAD_DAYS));
 }
 
 /** The band above the grid (mockup `.rp-band`): a soft tinted bar, a dot, the rotation and its term. */
