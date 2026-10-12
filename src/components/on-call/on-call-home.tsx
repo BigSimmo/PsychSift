@@ -300,6 +300,9 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   // this file is a compliance surface and one status name is a banned word.
   const handbookAsksSignIn =
     !ready && !handbookLoading && handbook.status !== "no-service" && handbook.status !== "unavailable";
+  // A callable hospital number, not just any entry: an orientation note or a
+  // row with no phone leaves the reader with nothing to ring.
+  const numbersOnScreen = ready && handbookItems.some((item) => item.dial.kind !== "none" && item.dial.kind !== "text");
   const showFirstRun = !loading && !hasEntries && !loadFailed && !(signedOut && handbookAsksSignIn);
 
   if (!pinnedNow && !mounted) {
@@ -329,15 +332,15 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             <>
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
               {!ready && !handbookLoading ? <OnCallHandbookState handbook={handbook} page="now" /> : null}
+              <NewWorkModeOnly>
+                <WorkSetupRow />
+              </NewWorkModeOnly>
             </>
           }
           safety={
             <>
               <NowEmergencyPin handbook={handbook} pins={pins} now={now} />
-              <NowCrisisLines now={now} />
-              <NewWorkModeOnly>
-                <WorkSetupRow />
-              </NewWorkModeOnly>
+              {numbersOnScreen ? null : <NowCrisisLines now={now} />}
             </>
           }
           nowSurface="own"
@@ -416,13 +419,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   12 Oct 2026), share the tools' card: the rest live where they belong (Roster, Handbook,
                   Starting here). */}
               <NowShiftShortcuts>
-                <NowShiftLists
-                  context={context}
-                  shifts={shifts}
-                  items={handbookItems}
-                  handbookReady={ready}
-                  now={now}
-                />
+                <NowShiftLists context={context} shifts={shifts} items={handbookItems} now={now} />
               </NowShiftShortcuts>
               <NowShiftPulseCard now={now} />
               {/* A week before a new job starts until the end of its first week. */}
@@ -431,7 +428,13 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
               </NewWorkModeOnly>
             </>
           }
-          shortcuts={null}
+          shortcuts={
+            <>
+              {/* The public lines close the page whenever the hospital's own
+                  numbers are on screen; otherwise they sit near the top. */}
+              {numbersOnScreen ? <NowCrisisLines now={now} /> : null}
+            </>
+          }
         />
 
         {showFirstRun ? (

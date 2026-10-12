@@ -116,13 +116,11 @@ export function NowShiftLists({
   context,
   shifts,
   items,
-  handbookReady,
   now,
 }: {
   readonly context: OnCallShiftContext;
   readonly shifts: RosterShiftsState;
   readonly items: readonly HandbookItem[];
-  readonly handbookReady: boolean;
   readonly now: Date;
 }) {
   const [open, setOpen] = useState(false);
@@ -204,11 +202,7 @@ export function NowShiftLists({
           {lists.map((list) => (
             <TickList key={list.key} list={list} ticked={ticked} onToggle={toggle} />
           ))}
-          {!handbookReady ? (
-            <WorkEmptyLine className="px-3" testId="on-call-now-checklists-unavailable">
-              Shift lists are unavailable until the service handbook loads.
-            </WorkEmptyLine>
-          ) : hasLists ? null : (
+          {hasLists ? null : (
             <WorkEmptyLine
               className="px-3"
               testId="on-call-now-checklists-empty"
