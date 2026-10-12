@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { useAccountData } from "@/components/account-data-provider";
-import { ModeHomeStartGroup, ModeHomeStartRow } from "@/components/mode-home-start-list";
+import { ModeHomeStartGroup, ModeHomeStartRow } from "@/components/mode-home-start-parts";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import type { AppModeId } from "@/lib/app-modes";
 
