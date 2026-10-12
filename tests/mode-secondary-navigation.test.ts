@@ -55,7 +55,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   // work-mode redesign, owner request 6 Oct 2026: CPD, Teaching, Admin and My Day list the frame's three pinned tabs.
   cme: ["Summary", "Log", "Learning"],
   teaching: ["Today", "Week", "Logbook"],
-  psychiatry: ["Ask", "Tools", "Saved"],
+  psychiatry: ["Home", "Saved"],
   medicines: [],
   "my-work": ["Today", "Renewals", "New job"],
   roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
@@ -133,6 +133,12 @@ const emptyRegistryModes = [
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
+  // Psychiatry is the one sanctioned exception to "no Home item": the owner's
+  // design review of 12 Oct 2026 folded its Ask and Tools pages into a single
+  // page the mockup names Home, beside Saved. Every other mode leaves Home to the
+  // global switch.
+  const homeTabModes: readonly AppModeId[] = ["psychiatry"];
+
   it("covers all 26 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
     expect(appModeIds).toHaveLength(26);
@@ -140,7 +146,9 @@ describe("mode secondary navigation registry", () => {
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
       expect(labels).toEqual(expectedLabels[modeId]);
-      expect(labels.map((label) => label.toLowerCase())).not.toContain("home");
+      if (!homeTabModes.includes(modeId)) {
+        expect(labels.map((label) => label.toLowerCase())).not.toContain("home");
+      }
     }
   });
 
