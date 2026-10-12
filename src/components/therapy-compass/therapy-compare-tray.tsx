@@ -33,6 +33,10 @@ export function TherapyCompareTray() {
       // The same URL `goCompare` pushes, as a real link.
       compareHref={b.workspaceHref(therapyScreenHref("compare"))}
       onClear={() => b.clearCompare()}
+      onRemove={(index) => {
+        const therapy = b.compareTherapies[index];
+        if (therapy) b.removeCompare(therapy.slug);
+      }}
       noun="therapies"
       phonePlacement={{ dockSlotId: therapyCompareAddonSlotId }}
       testId="therapy-compare-tray"

@@ -47,6 +47,8 @@ export type SharedCompareTrayProps = {
   /** For a compare page reached through app state rather than a URL. */
   onCompare?: () => void;
   onClear: () => void;
+  /** Remove one selected record without clearing the complete selection. */
+  onRemove?: (index: number) => void;
   /** Plural noun for announcements and the reason text, e.g. "diagnoses". */
   noun: string;
   phonePlacement: SharedCompareTrayPhonePlacement;
@@ -77,6 +79,7 @@ export function SharedCompareTray({
   compareHref,
   onCompare,
   onClear,
+  onRemove,
   noun,
   phonePlacement,
   testId = "shared-compare-tray",
@@ -123,7 +126,21 @@ export function SharedCompareTray({
         </span>
         {nameLine ? (
           <span className="block truncate text-xs text-[color:var(--text-muted)]" title={nameLine}>
-            {nameLine}
+            {onRemove
+              ? names?.map((name, index) => (
+                  <span key={`${name}-${index}`}>
+                    {index > 0 ? " · " : ""}
+                    <button
+                      type="button"
+                      className="underline decoration-transparent underline-offset-2 hover:decoration-current focus-visible:decoration-current"
+                      onClick={() => onRemove(index)}
+                      aria-label={`Remove ${name} from comparison`}
+                    >
+                      {name}
+                    </button>
+                  </span>
+                ))
+              : nameLine}
           </span>
         ) : null}
       </p>
