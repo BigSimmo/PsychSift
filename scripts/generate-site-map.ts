@@ -302,8 +302,7 @@ const routeDescriptions: Record<string, string> = {
     "The activities done on a regular schedule, such as monthly or by term, and when each is next due. A Log control opens the new-entry form prefilled from the routine.",
   "/cme/training":
     "The trainee's own training timeline: stages, rotations and breaks they enter themselves, where they are now, the training clock in FTE months (half-time counts half, breaks pause it) and the next milestone due. Nothing is preloaded, and it never changes CPD targets.",
-  "/cme/plan":
-    "The yearly development plan: your goals for the year and how the year's hours fall across them.",
+  "/cme/plan": "The yearly development plan: your goals for the year and how the year's hours fall across them.",
   "/cme/learning":
     "A curated list of upcoming Western Australian courses and events, read from a checked-in data file. Past events drop off by today's Perth date, items with unconfirmed dates sit in their own section, and each item links to the organiser and to a prefilled Log as CPD form.",
   "/cme/programme":
