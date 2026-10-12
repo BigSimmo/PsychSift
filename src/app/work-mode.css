@@ -167,9 +167,16 @@ html[data-bright]:not(.dark) [data-work-frame],
 html[data-bright]:not(.dark) .work-band,
 html[data-bright]:not(.dark) .work-more-sheet,
 html[data-bright]:not(.dark) .universal-header[data-work-frame] {
-  /* Bright light (globals.css) wears the same solid glass. */
   --work-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
   --work-glass-blur: none !important;
+}
+html[data-bright]:not(.dark)[data-work-frame],
+html[data-bright]:not(.dark) [data-work-frame],
+html[data-bright]:not(.dark) .work-band,
+html[data-bright]:not(.dark) .work-more-sheet,
+html[data-bright]:not(.dark) .universal-header[data-work-frame] {
+  /* Bright light (reading-aids.css) is fully solid: nothing shows through. */
+  --work-glass-fill: var(--surface-raised) !important;
 }
 
 /* Work pages sit on crisp white, under the tinted band. The page shell and
@@ -3012,10 +3019,13 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
   letter-spacing: -0.02em;
 }
 
-/* One shape per status. The word is plain grey ink; only the glyph carries
-   colour: triangle overdue, filled dot due soon, tick done, dashed ring not
-   recorded. Colour is never the only signal. */
-.work-tag {
+/* One shape per status. On a status tag the word is plain grey ink and only
+   the glyph carries colour: triangle red, filled dot amber, tick green.
+   Colour is never the only signal. Neutral and mode tags are labels, not
+   statuses ("Met", "Sending", "In your week"), so they carry no glyph. */
+.work-tag[data-tone="red"],
+.work-tag[data-tone="amber"],
+.work-tag[data-tone="green"] {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing) * 1);
@@ -3023,37 +3033,28 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
   color: var(--work-ink-muted);
   box-shadow: var(--work-edge-inset) var(--work-line);
 }
-.work-tag::before {
+.work-tag[data-tone="red"]::before,
+.work-tag[data-tone="amber"]::before,
+.work-tag[data-tone="green"]::before {
   content: "";
   flex: none;
   width: 0.75em;
   height: 0.75em;
   border-radius: var(--radius-pill);
-  background: var(--mode-identity);
+  background: var(--warning, var(--warning-text));
 }
 .work-tag[data-tone="red"]::before {
   border-radius: 0;
   background: var(--danger-text);
   clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
 }
-.work-tag[data-tone="amber"]::before {
-  background: var(--warning, var(--warning-text));
-}
 .work-tag[data-tone="green"]::before {
   border-radius: 0;
   background: var(--success-text);
   clip-path: polygon(8% 52%, 22% 38%, 40% 56%, 80% 14%, 94% 28%, 40% 84%);
 }
-.work-tag[data-tone="neutral"]::before {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--decoration-soft);
-}
-.work-tag[data-tone="red"],
-.work-tag[data-tone="amber"],
-.work-tag[data-tone="green"],
 .work-tag[data-tone="neutral"] {
-  background: var(--work-wash);
-  color: var(--work-ink-muted);
+  box-shadow: var(--work-edge-inset) var(--work-line);
 }
 
 /* A late line on My Day: dark words with the status shape in front, a red

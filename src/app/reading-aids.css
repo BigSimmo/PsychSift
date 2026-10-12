@@ -6,15 +6,24 @@
    contrast (opacity multiplies against whatever sits behind it). Put
    `data-dim` on the row or cell; status colours inside it go quiet too. */
 [data-dim] {
-  --text-heading: var(--text-muted);
-  --text: var(--text-muted);
-  --work-ink: var(--text-muted);
-  --clinical-accent: var(--text-muted);
-  --danger-text: var(--text-muted);
+  --dim-ink: var(--text-muted);
+  --text-heading: var(--dim-ink);
+  --text: var(--dim-ink);
+  --work-ink: var(--dim-ink);
+  --clinical-accent: var(--dim-ink);
+  --mode-identity: var(--dim-ink);
+  --mode-identity-soft: var(--surface-subtle);
+  --mode-identity-border: var(--border);
+  --mode-identity-contrast: var(--surface);
+  --success: var(--dim-ink);
+  --success-text: var(--dim-ink);
+  --warning: var(--dim-ink);
+  --info: var(--dim-ink);
+  --danger-text: var(--dim-ink);
   --danger-bg: var(--surface-subtle);
-  --warning-text: var(--text-muted);
+  --warning-text: var(--dim-ink);
   --warning-bg: var(--surface-subtle);
-  color: var(--text-muted);
+  color: var(--dim-ink);
 }
 
 /* Bright light (Settings, App preferences): for glare on a ward or in sun.
@@ -29,6 +38,11 @@ html.ckb-v2.ckb-v2[data-bright]:not(.dark) {
   --neutral-300: var(--neutral-400);
   --text-muted: var(--text);
   --decoration-soft: var(--neutral-500);
+}
+html.ckb-v2.ckb-v2[data-bright]:not(.dark) [data-dim] {
+  /* Bright light makes secondary text full strength, so a fade needs its
+     own paler ink to stay distinct. */
+  --dim-ink: var(--neutral-500);
 }
 html[data-bright]:not(.dark) body {
   font-weight: 500;
