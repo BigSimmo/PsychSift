@@ -386,9 +386,9 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
               )}
             >
               <RosterShiftChip kind={kind} />
-              <span className="min-w-0 flex-1 text-sm-minus break-words">
-                <span className="font-bold">{title}</span>
-                <span className="nums text-[color:var(--text-muted)]">{` · ${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
+              <span className="grid min-w-0 flex-1">
+                <span className="text-sm-minus font-bold">{title}</span>
+                <span className="nums text-2xs text-[color:var(--text-muted)]">{`${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
               </span>
               <span className="nums shrink-0 text-2xs font-bold text-[color:var(--mode-identity)]">{tag}</span>
               <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />

@@ -1294,6 +1294,16 @@ export function ThisWeekCard({
   const [view, setView] = useState<"week" | "month">("week");
   const codes = kindsByDate ? week.map((date) => dayCode(kindsByDate.get(date) ?? [])) : [];
   const key = kindsByDate ? codeKey(codes) : "";
+  // The letters under each day are the key, so there is no separate key row (Work mode simplify
+  // plan, 12 Oct 2026). The spoken key stays for screen readers, beside the one Open week link.
+  const openWeek = (
+    <>
+      <span className="sr-only">{key}</span>
+      <QuietTextLink href={withMyDayReturn("/my-day/week")} testId="my-day-open-week">
+        Open week
+      </QuietTextLink>
+    </>
+  );
   return (
     <section aria-label="This week" data-testid="my-day-card-this-week" className="relative grid min-w-0 gap-2.25">
       <div className={cn(quietCard, "grid gap-2.25 px-3 py-3")}>
@@ -1332,16 +1342,7 @@ export function ThisWeekCard({
             ))}
           </WeekStrip>
         ) : null}
-        {view === "week" ? (
-          // The letters under each day are the key, so there is no separate key row
-          // (Work mode simplify plan, 12 Oct 2026). The spoken key stays for screen readers.
-          <div className="-mt-3 -mb-2 flex min-w-0 justify-end">
-            <span className="sr-only">{key}</span>
-            <QuietTextLink href={withMyDayReturn("/my-day/week")} testId="my-day-open-week">
-              Open week
-            </QuietTextLink>
-          </div>
-        ) : null}
+        {view === "week" && rows.length === 0 ? <div className="-mt-3 -mb-2 flex justify-end">{openWeek}</div> : null}
       </div>
       {view === "week" ? (
         <>
@@ -1361,6 +1362,7 @@ export function ThisWeekCard({
                   );
                 })}
               </QuietList>
+              <div className="flex justify-end border-t border-[color:var(--work-line)] px-3.5">{openWeek}</div>
             </div>
           ) : null}
         </>
@@ -1554,13 +1556,13 @@ export function NeedsYouCard({
           aria-hidden="true"
           className="size-1.75 shrink-0 rounded-full bg-[color:var(--success-text)] forced-colors:bg-[CanvasText]"
         />
-        <p className="m-0 min-w-0 flex-1 text-sm-minus font-bold text-[color:var(--work-ink)]">
+        <p className="m-0 min-w-0 grow basis-auto text-sm-minus font-bold text-[color:var(--work-ink)]">
           Nothing needs you right now
         </p>
         <p
           data-testid="my-day-stamp"
           data-tone="ok"
-          className="m-0 text-2xs font-semibold text-[color:var(--text-muted)]"
+          className="m-0 ml-auto text-2xs font-semibold text-[color:var(--text-muted)]"
         >
           {`Checked ${checkedAt ?? "just now"}`}
           <span className="sr-only">{` · ${checked.join(", ")}`}</span>
