@@ -3004,11 +3004,8 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
 .work-mring__figure,
 .work-date__day,
 .work-label__count,
-.work-row__end,
 .work-chip__count,
 .work-week__num,
-.cpd-hero-big > b,
-[class*="countFigure"],
 [data-testid="roster-month-totals"] dd,
 [data-figure] {
   font-family: var(--font-mono);
@@ -3058,8 +3055,4 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
 .work-tag[data-tone="neutral"] {
   background: var(--work-wash);
   color: var(--work-ink-muted);
-}
-.work-row__end .work-tag {
-  font-family: inherit;
-  letter-spacing: 0.06em;
 }
