@@ -166,8 +166,13 @@ html[data-glass="flat"] .universal-header[data-work-frame] {
   --work-glass-blur: none !important;
 }
 
-/* Work pages sit on crisp white, under the tinted band. */
+/* Work pages sit on crisp white, under the tinted band. The page shell and
+   the root take it too, so a short page fills the screen in one surface
+   instead of stopping at its last card over the darker app background
+   (plain to see in dark mode on a desktop). */
+html[data-work-frame],
 html[data-work-frame] body,
+html[data-work-frame] .phone-viewport-shell,
 html[data-work-frame] main {
   background-color: var(--surface-raised);
 }
@@ -1207,11 +1212,15 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-more-tile__sub {
+  /* Two lines before it shortens, so a two-column tile on a phone reads
+     "Saved pages and items" in full rather than "Saved pages and ite…". */
+  display: -webkit-box;
   overflow: hidden;
   font-size: 0.6875rem;
   color: var(--work-ink-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .work-more-tile__tick {
@@ -2800,6 +2809,28 @@ html[data-work-frame] .app-toast-region {
   margin-bottom: calc(var(--spacing) * 3);
 }
 
+/* Signed in: initials on a calm grey disc, not a solid black (or, in dark
+   mode, glaring white) one. Signed out: the same soft "G" as the Clinical
+   rail and the side menu, so the account spot looks the same in every mode. */
+.work-rail__avatar[data-signed-in="true"] {
+  background: var(--text-muted);
+  color: var(--surface-raised);
+}
+
+.work-rail__avatar[data-signed-in="false"] {
+  border: 1px solid color-mix(in srgb, var(--clinical-accent-border) 60%, transparent);
+  background: var(--clinical-accent-soft);
+  color: var(--clinical-accent);
+  font-size: 0.75rem;
+}
+
+/* Rail glyphs at the header-control size (20 px), so the 84 px rail reads
+   like a tab bar rather than a column of specks. Both rails share it. */
+.work-rail__pill > svg {
+  width: var(--spacing-icon-lg);
+  height: var(--spacing-icon-lg);
+}
+
 .work-rail__list {
   display: grid;
   gap: calc(var(--spacing) * 1);
@@ -2844,6 +2875,11 @@ html[data-work-frame] .app-toast-region {
   overflow: hidden;
   font-size: 0.6875rem;
   font-weight: 650;
+  /* One fixed line, held as a floor too: the label clips (overflow hidden),
+     so as a grid item its minimum height is otherwise zero, and inside the
+     Clinical rail's scrolling column "More" was squeezed and cut off. */
+  min-height: calc(var(--spacing) * 4);
+  line-height: calc(var(--spacing) * 4);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

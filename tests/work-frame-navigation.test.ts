@@ -40,11 +40,12 @@ describe("work frame navigation", () => {
     }
   });
 
-  it("names the crisis lines page Numbers in Admin and On Call, apart from How it works", () => {
+  it("names the crisis lines page Numbers in Admin, apart from How it works", () => {
     const adminNumbers = workAreaItems(WORK_AREAS.admin).find((item) => item.href === "/admin/help");
     expect(adminNumbers?.label).toBe("Numbers");
-    const callNumbers = workAreaItems(WORK_AREAS.call).find((item) => item.href === "/admin/help");
-    expect(callNumbers?.label).toBe("Numbers");
+    // On Call's More no longer links Admin's copy (Work mode simplify plan, 12 Oct 2026): Now itself
+    // carries the public crisis lines.
+    expect(workAreaItems(WORK_AREAS.call).some((item) => item.href === "/admin/help")).toBe(false);
     for (const area of areas)
       for (const item of workAreaItems(area))
         if (item.label === "Help" && item.href !== "/my-day/help")
@@ -120,6 +121,9 @@ describe("work frame navigation", () => {
     expect(manage.length).toBeGreaterThan(0);
     for (const page of manage) expect(page.gates?.length, page.id).toBeGreaterThan(0);
     expect(searchWorkPages("locum")[0]?.page.href).toBe("/open-shifts");
+    // Refer, Who's who and the Pocket card folded into Contacts and the Handbook, and their search words with them.
+    expect(searchWorkPages("referrals")[0]?.page.href).toBe("/on-call/refer");
+    expect(searchWorkPages("pocket card")[0]?.page.href).toBe("/on-call/find");
   });
 
   it("puts the reader's chosen tabs first, then the area's own, then the rest by width", () => {

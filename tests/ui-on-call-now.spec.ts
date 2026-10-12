@@ -42,7 +42,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         "tel:0855500000,55",
       );
       const tops = await Promise.all(
-        ["on-call-now-hospital", "on-call-now-emergency", "on-call-now-right-now", "on-call-now-footer"].map(
+        ["on-call-now-hospital", "on-call-now-emergency", "on-call-now-right-now", "on-call-now-shift-tools"].map(
           async (id) => (await visibleByTestId(page, id).boundingBox())?.y ?? Number.NaN,
         ),
       );
