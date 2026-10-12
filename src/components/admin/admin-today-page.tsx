@@ -9,20 +9,17 @@ import { AdminLoadAlert, AdminPage, AdminRow, AdminSkeleton, adminStyles } from 
 import { AdminQuickAddSheet } from "@/components/admin/admin-quick-add-sheet";
 import { AdminSetupSheet } from "@/components/admin/admin-setup-sheet";
 import { ADMIN_PAGE_HREFS } from "@/components/admin/admin-page-sections";
-import { AdminWorkAndLeaveGroup } from "@/components/admin/junior/work-and-leave-group";
-import { TodayAtAGlance } from "@/components/admin/today/today-at-a-glance";
 import { TodayComingUpModule } from "@/components/admin/today/today-coming-up-module";
 import { TodayNeedsYouModule } from "@/components/admin/today/today-needs-you-module";
 import { TodayNewJobModule } from "@/components/admin/today/today-new-job-module";
 import { TodayRenewNextCard } from "@/components/admin/today/today-renew-next-card";
-import { TodayOvertimeRow, TodayRequirementsModule } from "@/components/admin/today/today-requirements-module";
+import { TodayRequirementsModule } from "@/components/admin/today/today-requirements-module";
 import { TodayStarred } from "@/components/admin/today/today-starred";
 import { PageTitleUnderBand, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
 import { todayStateCopy } from "@/components/mode-kit/today/today-copy";
 import { WorkButton, WorkCard, WorkDock, WorkIconCircle } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { buildAdminHelpItems } from "@/lib/admin/help-items";
 import { renewalsShowCounts } from "@/lib/admin/renewals-filters";
@@ -70,16 +67,12 @@ function TodayLoadingSkeleton() {
           <AdminSkeleton className="h-3 w-24" />
           <AdminSkeleton className="h-28" />
         </div>
-        <div className="grid grid-cols-3 gap-2" data-testid="admin-today-loading-at-a-glance">
-          {[0, 1, 2].map((index) => (
-            <AdminSkeleton key={index} className="h-17" />
-          ))}
-        </div>
       </div>
       <div className={adminStyles.column} aria-hidden="true">
+        {/* Coming up carries the three counts at its top (12 Oct 2026), so they load here too. */}
         <div className="grid gap-2" data-testid="admin-today-loading-coming-up">
           <AdminSkeleton className="h-3 w-24" />
-          <AdminSkeleton className="h-52" />
+          <AdminSkeleton className="h-64" />
         </div>
       </div>
     </div>
@@ -192,18 +185,12 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
           <div className={adminStyles.column} data-today-column="act">
             {renewNext ? <TodayRenewNextCard item={renewNext} ownEntries={own} today={today} /> : null}
             {needsYou ? <TodayNeedsYouModule needsYou={needsYou} today={today} /> : null}
-            <TodayAtAGlance counts={showCounts} />
           </div>
           <div className={adminStyles.column} data-today-column="ahead">
-            <TodayComingUpModule comingUp={comingUp} today={today} />
+            <TodayComingUpModule comingUp={comingUp} today={today} counts={showCounts} />
             {newJobProgress ? <TodayNewJobModule progress={newJobProgress} today={today} /> : null}
             <TodayStarred items={helpItems} testId="admin-today-pinned" />
             <TodayRequirementsModule summary={requirementsSummary} />
-            {/* Every row in it leads to a new work mode screen, so the classic work mode keeps none of it. */}
-            <NewWorkModeOnly>
-              <AdminWorkAndLeaveGroup />
-            </NewWorkModeOnly>
-            <TodayOvertimeRow />
           </div>
         </div>
       )}
