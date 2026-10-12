@@ -155,8 +155,18 @@ export function UniversalSearchAlsoMatches({
       ? `${withCatalogueDegradedNotice(`${matchCountLabel(matchCount)} also match this search`, catalogueDegraded)}.`
       : emptyMessage;
   // No pending arm. The strip is not drawn at all while this query's lookup is running (see
-  // the gate below), so a "Searching…" here could never show.
-  const headerMeta = matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";
+  // the gate below), so a "Searching…" here could never show. Below 360px the 12px type floor
+  // leaves no room for "related", so the closed header reads "3 modes"; the full count is
+  // still announced by the status node above.
+  const headerMeta =
+    matchCount > 0 ? (
+      <>
+        {matchCount} <span className="max-[359px]:hidden">related </span>
+        {matchCount === 1 ? "mode" : "modes"}
+      </>
+    ) : (
+      "No other matches"
+    );
 
   if (!submissionActive) return null;
   if (!viewportReady || trimmedQuery.length < 2) return null;
@@ -205,7 +215,7 @@ export function UniversalSearchAlsoMatches({
           // This header used to go inert from sm up because the panel was always
           // open there, which put a grid of cross-mode suggestions between the
           // composer and the results the search actually asked for.
-          "flex min-h-tap w-full items-center gap-2.5 rounded-xl px-2 text-left transition-colors",
+          "flex min-h-tap w-full items-center gap-1.5 rounded-xl px-2 text-left transition-colors min-[360px]:gap-2.5",
           "hover:bg-[color:var(--surface)]",
           focusRing,
         )}
@@ -240,7 +250,10 @@ export function UniversalSearchAlsoMatches({
             what lets the count sit at the far edge at every width without a
             second line, and it replaces the phone's old stacked subtitle plus a
             tinted count badge that said the same number twice. */}
-        <span className="h-px min-w-3 flex-1 bg-[color:var(--border)] forced-colors:bg-[CanvasText]" aria-hidden />
+        <span
+          className="h-px min-w-0 flex-1 bg-[color:var(--border)] min-[360px]:min-w-3 forced-colors:bg-[CanvasText]"
+          aria-hidden
+        />
         {/* Visual cue only — the button's name stays the title, so a screen
             reader is not read a count that the sr-only status node already
             announces properly. */}

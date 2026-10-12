@@ -115,7 +115,7 @@
 }
 
 .notify-seg__count {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--work-ink-muted);
@@ -251,7 +251,7 @@
 
 .notify-row__hint {
   margin: 0;
-  font-size: 0.71875rem;
+  font-size: var(--text-xs);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
@@ -314,7 +314,7 @@
 }
 
 .notify-oncall [data-testid="on-call-notifications-list"] a > span:first-child > span:last-child {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
@@ -392,7 +392,7 @@
 }
 
 .notify-note__text small {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
@@ -406,7 +406,7 @@
   align-items: center;
   gap: calc(var(--spacing) * 1.75);
   margin: calc(var(--spacing) * 0.5) 0 0;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   color: var(--work-ink-muted);
 }
@@ -428,7 +428,7 @@
   align-items: flex-start;
   gap: calc(var(--spacing) * 1.75);
   margin: 0;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }

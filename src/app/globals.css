@@ -236,11 +236,11 @@
      `eyebrowText` in ui-primitives.tsx for the uppercase eyebrow treatment
      (`--text-2xs` used to bake that tracking in; it is now the neutral 11px
      step and the tracking lives at the recipe/call site instead).
-       3xs         10px  micro floor: dense metadata, legend labels, count
-                         bubbles. An 8px `4xs` step existed here and is retired
-                         — unreadable at any density in a clinical product, so
-                         nothing below 10px is a legal step. ≤9px snaps here.
-       2xs         11px  Chip `compact` / secondary labels (most common small size)
+       3xs         12px  legacy name, now an alias of xs. 12px is the floor for
+                         every word on screen (owner decision, 12 Oct 2026, from
+                         the Ward Flow review): the old 10px and 8px steps were
+                         too small to read on a phone in a clinical product.
+       2xs         12px  legacy name, now an alias of xs (was 11px)
        (xs 12 · sm 14 · base 16 come from Tailwind's default scale —
         Chip `standard` uses xs / 12px; see docs/design-system/TOKENS.md)
        sm-minus    13px  one notch under sm — dense body/labels bigger than xs
@@ -248,8 +248,8 @@
        (lg 18 · xl 20 · 2xl 24 come from Tailwind's default scale)
        lg-minus    17px  one notch under lg — display titles a shade under 18
        2xl-minus   22px  one notch under 2xl — wide-screen nowrap headings */
-  --text-3xs: 0.625rem;
-  --text-2xs: 0.6875rem;
+  --text-3xs: 0.75rem; /* alias of xs, see above */
+  --text-2xs: 0.75rem; /* alias of xs, see above */
   --text-sm-minus: 0.8125rem;
   --text-base-minus: 0.9375rem;
   --text-lg-minus: 1.0625rem;

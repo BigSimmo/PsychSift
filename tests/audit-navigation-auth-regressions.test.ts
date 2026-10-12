@@ -306,10 +306,9 @@ describe("audit navigation and auth regressions", () => {
     // survives only in the comment above the searchActive gate, which is why this
     // pins the expression rather than searching for the string. The pending arm
     // ("Searching…") went on 2026-10-12: the strip is no longer drawn until this
-    // query's matches are in, so it fills in quietly under the main results instead
-    // of announcing a search over an empty page.
-    expect(universalAlsoMatchesSource).toContain(
-      'const headerMeta = matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";',
+    // query's matches are in. The count arm is JSX so "related" can drop below 360px.
+    expect(universalAlsoMatchesSource).toMatch(
+      /const headerMeta =\s*matchCount > 0 \? \([\s\S]*?\) : \(\s*"No other matches"\s*\);/,
     );
     expect(universalAlsoMatchesSource).not.toContain('searchPending ? "Searching…"');
     expect(universalAlsoMatchesSource).toContain("enabled: trimmedQuery.length >= 2 && searchActive");
