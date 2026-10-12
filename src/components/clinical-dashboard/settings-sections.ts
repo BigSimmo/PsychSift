@@ -115,6 +115,12 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "theme dark mode light mode night colour color system contrast",
   },
   {
+    id: "settings-row-bright-light",
+    section: "app-preferences",
+    label: "Bright light",
+    keywords: "glare sunlight sun outdoors high contrast bold darker lines readability ward",
+  },
+  {
     id: "settings-row-interface-density",
     section: "app-preferences",
     label: "Interface density",

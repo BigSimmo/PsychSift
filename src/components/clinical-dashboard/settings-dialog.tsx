@@ -1197,6 +1197,16 @@ export function SettingsDialog({
                       options={APPEARANCE_OPTIONS}
                     />
                   </SettingsField>
+                  <SettingsToggleField
+                    icon={Sun}
+                    label="Bright light"
+                    description="For glare on a ward or in sun: solid screens, darker lines and heavier text. Uses light mode."
+                    checked={preferences.brightLight}
+                    onChange={(next) => {
+                      setPreference("brightLight", next);
+                      if (next) setThemePreference("light");
+                    }}
+                  />
                   {/* The label stays "Interface density" — it is the accessible
                     name pinned by the DOM and Playwright suites. What was
                     missing is that this is also the app's text-size control: it

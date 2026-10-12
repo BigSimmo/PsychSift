@@ -202,15 +202,15 @@ describe("AdminRenewalsPage — the checklist", () => {
   });
 
   // Amended for the work-mode redesign, owner request 6 Oct 2026: red (date
-  // passed) and amber (start renewing) are allowed, but only through the one
+  // passed, triangle) and amber (start renewing, dot) are allowed, but only through the one
   // shared status mark, which always carries its shape and word too.
   it("draws urgency as shapes and words, colouring only through the shared status mark", () => {
     renderPage();
     expect(screen.getAllByText("Date passed").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Start renewing").length).toBeGreaterThan(0);
     expect(document.body.innerHTML).not.toMatch(/--danger|--warning/);
-    expect(document.querySelector('[data-admin-status="date-passed"] [data-mark="diamond"]')).not.toBeNull();
-    expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="triangle"]')).not.toBeNull();
+    expect(document.querySelector('[data-admin-status="date-passed"] [data-mark="triangle"]')).not.toBeNull();
+    expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="dot"]')).not.toBeNull();
   });
 
   it("marks the timeline by shape, not shade: a diamond for a passed date, a triangle otherwise (M8)", () => {
