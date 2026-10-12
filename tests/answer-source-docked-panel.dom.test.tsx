@@ -72,18 +72,21 @@ async function openDocked(user: ReturnType<typeof userEvent.setup>, index = 0) {
 describe("answer source docked panel (from 1024px)", () => {
   it("opens beside the answer as a named landmark, not a dialog, and takes focus", async () => {
     installMatchMediaStub(true);
+    // jsdom has no layout; give the panel the 26rem width it has from 1280px.
+    const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(416);
     const user = setupUser();
     render(<RailAndDrawer />);
 
     const { panel } = await openDocked(user);
+    width.mockRestore();
     expect(panel).toHaveAttribute("data-testid", "answer-source-drawer");
     expect(panel).toHaveAccessibleDescription("Check the answer against the cited passage.");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(panel).not.toHaveAttribute("aria-modal");
     await waitFor(() => expect(document.activeElement).toBe(panel));
     expect(document.body.dataset.sourceDocked).toBe("true");
-    // The answer column's reserve comes from the panel's measured edge.
-    expect(document.body.style.getPropertyValue("--source-dock-reserve")).toMatch(/^\d+px$/);
+    // The answer column's reserve is the panel's width, its right offset and a gutter.
+    expect(document.body.style.getPropertyValue("--source-dock-reserve")).toMatch(/^4\d\dpx$/);
     expect(screen.getByRole("button", { name: "Close source detail" })).toBeVisible();
   });
 

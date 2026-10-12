@@ -77,9 +77,15 @@ export function AnswerSourceDockedPanel({
     // second copy of its width in CSS. Safari at desktop width on a touch device
     // kept the 1024px reserve while the panel took its 1280px width, so the
     // panel covered the prose; one measurement keeps the two in step.
+    // Width plus the CSS right offset, not the on-screen box: the box moves while
+    // the panel animates in, and an early read left the answer no room at all.
     const reserve = () => {
-      const room = document.documentElement.clientWidth - node.getBoundingClientRect().left + 16;
-      document.body.style.setProperty("--source-dock-reserve", `${Math.max(0, Math.round(room))}px`);
+      const room = node.offsetWidth + (parseFloat(getComputedStyle(node).right) || 0) + 16;
+      if (Number.isFinite(room) && node.offsetWidth > 0) {
+        document.body.style.setProperty("--source-dock-reserve", `${Math.round(room)}px`);
+      } else {
+        document.body.style.removeProperty("--source-dock-reserve");
+      }
     };
     reserve();
     const observer = typeof ResizeObserver === "function" ? new ResizeObserver(reserve) : null;

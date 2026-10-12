@@ -404,10 +404,9 @@ describe("shared-search route ownership", () => {
     expect(dictionaryCatalogueSource).not.toContain("Clinical terms");
     expect(dictionaryCatalogueSource).not.toContain("Clinical dictionary");
     // Equal-layout padding and tracking grow at `sm`. `sm:w-72` clips
-    // "Abbreviations" on mobile-webkit (scrollWidth 63 vs clientWidth 56), and
-    // `sm:w-80` clipped it the same way at 768px on 12 Oct 2026.
+    // "Abbreviations" on mobile-webkit (scrollWidth 63 vs clientWidth 56).
     expect(dictionaryCatalogueSource).toContain(
-      'data-testid="dictionary-scope-toggle" className="w-56 shrink-0 min-[360px]:w-64 sm:w-88"',
+      'data-testid="dictionary-scope-toggle" className="w-56 shrink-0 min-[360px]:w-64 sm:w-80"',
     );
 
     // Desktop page composer slot in GlobalSearchShell reserves height to avoid 0.118 CLS layout jump

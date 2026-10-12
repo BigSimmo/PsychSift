@@ -2593,10 +2593,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("desktop docks a cited source beside the answer instead of over it", async ({ page, isMobile, viewport }) => {
-    // A phone never reaches the 1024px dock width, so forcing an iPhone profile
-    // to 1440px measures a layout no reader can see. Tablets keep the check.
-    test.skip(isMobile && (viewport?.width ?? 0) < 600, "phones never reach the desktop dock width");
+  test("desktop docks a cited source beside the answer instead of over it", async ({ page }) => {
     // From 1024px the source drawer is a panel docked beside the answer
     // (answer-source-docked-panel.tsx). It is not a dialog, so this pins what
     // replaces the dialog's guarantees: a named landmark that takes focus, a
@@ -2631,7 +2628,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     const proseBox = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
     const panelBox = await panel.boundingBox();
     expect(proseBox && panelBox).toBeTruthy();
-    expect(proseBox!.x + proseBox!.width).toBeLessThanOrEqual(panelBox!.x);
+    // The message records what the answer column was given, so a browser that
+    // lays it out differently says why rather than only by how much.
+    const reserveState = await page.evaluate(() => ({
+      docked: document.body.dataset.sourceDocked ?? null,
+      reserve: document.body.style.getPropertyValue("--source-dock-reserve"),
+      mainPaddingRight: getComputedStyle(document.getElementById("main-content")!).paddingRight,
+      mainWidth: document.getElementById("main-content")!.getBoundingClientRect().width,
+    }));
+    expect(proseBox!.x + proseBox!.width, JSON.stringify(reserveState)).toBeLessThanOrEqual(panelBox!.x);
     await expectNoPageHorizontalOverflow(page);
 
     // Escape closes it and focus goes back to the citation that opened it.
