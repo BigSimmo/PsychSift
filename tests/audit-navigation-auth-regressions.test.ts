@@ -312,16 +312,22 @@ describe("audit navigation and auth regressions", () => {
     );
     expect(universalAlsoMatchesSource).not.toContain('searchPending ? "Searching…"');
     expect(universalAlsoMatchesSource).toContain("enabled: trimmedQuery.length >= 2 && searchActive");
-    expect(universalAlsoMatchesSource).toContain('if (modeId === "answer" && currentGroups.length === 0) return null;');
+    // Answer mode needs no gate of its own now: with no groups the strip is simply not drawn.
+    expect(universalAlsoMatchesSource).not.toContain(
+      'if (modeId === "answer" && currentGroups.length === 0) return null;',
+    );
     // Not drawn while pending, and not drawn when nothing matched: one gate for both.
-    expect(universalAlsoMatchesSource).toContain("if (currentGroups.length === 0 || searchPending) return null;");
+    expect(universalAlsoMatchesSource).toContain("const stripShown = currentGroups.length > 0 && !searchPending;");
+    // The live region is mounted empty through the lookup and filled once, so the count is
+    // announced as a change rather than lost as a region's starting text.
+    expect(universalAlsoMatchesSource).toContain('{stripShown ? panelStatus : ""}');
     expect(universalAlsoMatchesSource).not.toContain("if (!searchPending && currentGroups.length === 0) return null;");
     expect(universalAlsoMatchesSource).toContain("const [viewportReady, setViewportReady] = useState(false);");
     expect(universalAlsoMatchesSource).toContain("setViewportReady(true);");
-    // The panel status is a three-way now — pending / a count / nothing found —
-    // because one fixed string announced "No additional matches" over a grid of
-    // populated mode cards. The pending arm is the one this contract is about.
-    expect(universalAlsoMatchesSource).toMatch(/const panelStatus = searchPending\s*\n?\s*\? "Searching other modes"/);
+    // The panel status is a count or nothing found, because one fixed string announced
+    // "No additional matches" over a grid of populated mode cards. Its pending arm went
+    // on 2026-10-12: the region stays empty while the lookup runs.
+    expect(universalAlsoMatchesSource).not.toContain('"Searching other modes"');
     // Since #3PW9TY the empty message has two arms, and the contract is about which one
     // speaks. "No additional matches" is a claim about the catalogue's contents; a catalogue
     // that could not be read has no contents to report, and saying there are none is the
