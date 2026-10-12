@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 import { OverlayPortal } from "@/components/ui/overlay-root";
@@ -55,7 +55,22 @@ export function AnswerSourceDockedPanel({
 }: AnswerSourceDockedPanelProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const panelRef = useRef<HTMLElement>(null);
+  // The element that had focus when the panel opened: the citation or source card.
+  const openerRef = useRef<HTMLElement | null>(null);
+  // Focus moves in when the panel reaches the page. A callback ref rather than
+  // the open effect, because the overlay host can arrive a render after `open`
+  // (OverlayPortal's fallback host), and the effect would find no panel yet.
+  const focusOnAttach = useCallback((node: HTMLElement | null) => {
+    if (!node) return;
+    const active = document.activeElement;
+    // The ref can attach again while focus is already inside the panel (React's
+    // development double-invoke, or the overlay host re-portalling it): keep
+    // the real opener rather than recording the panel as its own opener.
+    if (!(active instanceof HTMLElement && active.closest("[data-source-dock-panel]"))) {
+      openerRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
+    }
+    node.focus({ preventScroll: true });
+  }, []);
   const onCloseRef = useRef(onClose);
   const resolveReturnRef = useRef(resolveReturnFocusTarget);
 
@@ -66,9 +81,7 @@ export function AnswerSourceDockedPanel({
 
   useEffect(() => {
     if (!open) return undefined;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.dataset.sourceDocked = "true";
-    panelRef.current?.focus({ preventScroll: true });
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
@@ -83,13 +96,17 @@ export function AnswerSourceDockedPanel({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       delete document.body.dataset.sourceDocked;
+      // Read now, while it still describes the source the panel was showing;
+      // by the next frame the drawer has re-rendered with nothing open.
+      const resolveReturn = resolveReturnRef.current;
+      const opener = openerRef.current;
       // After React removes the panel, focus that was inside it has fallen to
       // <body>. Only then hand it back: a reader who clicked into the answer or
       // the search box while the panel was open keeps their place.
       window.requestAnimationFrame(() => {
         const active = document.activeElement;
         if (active && active !== document.body && active.isConnected) return;
-        const target = [resolveReturnRef.current?.() ?? null, opener].find((candidate): candidate is HTMLElement =>
+        const target = [resolveReturn?.() ?? null, opener].find((candidate): candidate is HTMLElement =>
           Boolean(candidate?.isConnected),
         );
         if (target && canRestoreFocusTo(target)) target.focus({ preventScroll: true });
@@ -102,15 +119,19 @@ export function AnswerSourceDockedPanel({
   return (
     <OverlayPortal layer="overlay" name={title}>
       <aside
-        ref={panelRef}
+        ref={focusOnAttach}
         tabIndex={-1}
+        // The overlay layer's wrapper sets `pointer-events: none` inline so the
+        // page stays usable around the panel; the panel itself takes pointer
+        // input again, inline to match.
+        style={{ pointerEvents: "auto" }}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         data-testid={testId}
         data-source-dock-panel=""
         className={cn(
           // Under the app header, above the bottom search box.
-          "pointer-events-auto fixed bottom-[8.5rem] right-4 top-[calc(var(--shell-header-h)+1rem)] flex w-[22rem] flex-col overflow-hidden",
+          "fixed bottom-[8.5rem] right-4 top-[calc(var(--shell-header-h)+1rem)] flex w-[22rem] flex-col overflow-hidden",
           "rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-elevated)]",
           "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
           "motion-safe:animate-fade-up motion-reduce:animate-none xl:right-6 xl:w-[26rem]",

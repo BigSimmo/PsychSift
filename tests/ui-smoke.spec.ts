@@ -2593,6 +2593,59 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
+  test("desktop docks a cited source beside the answer instead of over it", async ({ page }) => {
+    // From 1024px the source drawer is a panel docked beside the answer
+    // (answer-source-docked-panel.tsx). It is not a dialog, so this pins what
+    // replaces the dialog's guarantees: a named landmark that takes focus, a
+    // visible close button and Escape, focus back on the citation, and an answer
+    // column that the panel never covers. The phone drawer is the test above.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await mockDemoApi(page);
+    await gotoApp(page, "/");
+    await waitForDemoDashboardReady(page);
+
+    const questionInput = await fillVisibleQuestionInput(
+      page,
+      "What clozapine monitoring items are shown in the table image?",
+    );
+    await expect(questionInput).toBeVisible();
+    await visibleAnswerSubmitButton(page).click();
+    const plainAnswer = page.getByTestId("plain-answer-response");
+    await expect(plainAnswer).toBeVisible();
+    const marks = plainAnswer.getByTestId("answer-source-mark");
+    await expect(marks.first()).toBeVisible();
+
+    await marks.first().click();
+    const panel = page.getByTestId("answer-source-drawer");
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute("data-source-dock-panel", "");
+    await expect(page.getByRole("complementary", { name: await panel.locator("h2").innerText() })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(panel).toBeFocused();
+    await expect(panel.getByTestId("answer-source-drawer-passage")).toBeVisible();
+
+    // Beside the answer, never over it: the prose ends before the panel starts.
+    const proseBox = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
+    const panelBox = await panel.boundingBox();
+    expect(proseBox && panelBox).toBeTruthy();
+    expect(proseBox!.x + proseBox!.width).toBeLessThanOrEqual(panelBox!.x);
+    await expectNoPageHorizontalOverflow(page);
+
+    // Escape closes it and focus goes back to the citation that opened it.
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(marks.first()).toBeFocused();
+
+    // The visible close button does the same from a source card.
+    const firstRailRow = page.getByTestId("answer-source-rail").getByTestId("answer-source-rail-row").first();
+    await firstRailRow.click();
+    await expect(panel).toBeVisible();
+    await expect(panel).toBeFocused();
+    await panel.getByRole("button", { name: "Close source detail" }).click();
+    await expect(panel).toHaveCount(0);
+    await expect(firstRailRow).toBeFocused();
+  });
+
   for (const viewport of [
     { name: "desktop", width: 1280, height: 900 },
     { name: "390x844 mobile", width: 390, height: 844 },
