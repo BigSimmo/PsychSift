@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { SharedSearchAppShell } from "@/components/clinical-dashboard/shared-search-app-shell";
+import { LastPlace } from "@/components/last-place/last-place";
 import { PsychiatryVisitRecorder } from "@/components/psychiatry/psychiatry-visit-recorder";
 import { WorkModeLaunchProvider } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { clinicalAskModeEnabled } from "@/lib/clinical-ask/authority-registry";
@@ -28,6 +29,8 @@ export default async function SearchAppLayout({ children }: { children: ReactNod
         {children}
         <PsychiatryVisitRecorder />
       </SharedSearchAppShell>
+      {/* Outside the shell: on `/` the shell draws the dashboard in place of its children. */}
+      <LastPlace />
     </WorkModeLaunchProvider>
   );
 }

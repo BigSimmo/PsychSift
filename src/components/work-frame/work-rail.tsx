@@ -8,7 +8,8 @@ import type { SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSi
 import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { appModeIcons } from "@/lib/app-mode-icons";
-import type { AppModeId } from "@/lib/app-modes";
+import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
+import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { modeMenuSideForMode } from "@/lib/phone-mode-groups";
 import { WORK_AREAS, workAreaFor, type WorkAreaId } from "@/lib/work-frame/areas";
 import { WORK_SIDE_AREAS, workSideAreaId, workSideBadgeText, workSideCountLabel } from "@/lib/work-frame/side-nav";
@@ -48,6 +49,31 @@ export function useWorkRailShown(): boolean {
 }
 
 /**
+ * The way back to Clinical (site recommendations, 12 Oct 2026, item 1): the
+ * Clinical rail has My Day near its top, so the work rail has Clinical in the
+ * same place. It opens the Clinical mode used last, with that mode's icon.
+ */
+function WorkRailClinical() {
+  const [lastMode] = useLastAppMode();
+  const Icon = appModeIcons[lastMode];
+  return (
+    <Link
+      href={appModeHomeHref(lastMode)}
+      className="work-rail__item"
+      aria-label={`Clinical, ${appModeDefinition(lastMode).label}`}
+      data-testid="work-rail-clinical"
+    >
+      <span className="work-rail__pill" aria-hidden="true">
+        <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+      </span>
+      <span className="work-rail__label" aria-hidden="true">
+        Clinical
+      </span>
+    </Link>
+  );
+}
+
+/**
  * The tablet rail (owner pick "Burger and rail", 7 Oct 2026): from 768 px a
  * narrow column down the left edge with your initial, the seven work areas
  * with what is waiting in each, then Favourites and Settings. The menu button
@@ -76,6 +102,7 @@ export function WorkRail({
       >
         <span aria-hidden="true">{identity.initials}</span>
       </Link>
+      <WorkRailClinical />
       <ul className="work-rail__list">
         {WORK_SIDE_AREAS.filter((entry) => routeVisible(entry.href)).map((entry) => {
           const current = entry.id === currentArea;
