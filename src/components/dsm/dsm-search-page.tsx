@@ -185,6 +185,12 @@ function DsmSearchResultCard({
   );
 }
 
+/** A readable stand-in for a ticked diagnosis that arrived by link and is not in the results. */
+function humaniseDsmSlug(slug: string): string {
+  const words = slug.split("-").filter(Boolean).join(" ");
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : slug;
+}
+
 export function DsmSearchPage({
   query,
   categories,
@@ -319,7 +325,15 @@ export function DsmSearchPage({
     }),
   ];
 
+  // Titles are remembered when a row is ticked, so the tray keeps naming a
+  // diagnosis after a new search drops it from the current results.
+  const [tickedTitles, setTickedTitles] = useState<Readonly<Record<string, string>>>({});
+  const trayName = (slug: string) =>
+    queryResults.find((result) => result.slug === slug)?.title ?? tickedTitles[slug] ?? humaniseDsmSlug(slug);
+
   function toggleDiagnosis(slug: string) {
+    const title = queryResults.find((result) => result.slug === slug)?.title;
+    if (title) setTickedTitles((current) => (current[slug] === title ? current : { ...current, [slug]: title }));
     setSelected((current) => {
       if (current.includes(slug)) return current.filter((item) => item !== slug);
       if (current.length >= 3) return [...current.slice(1), slug];
@@ -549,7 +563,7 @@ export function DsmSearchPage({
 
       <SharedCompareTray
         count={selected.length}
-        names={selected.map((slug) => queryResults.find((result) => result.slug === slug)?.title ?? slug)}
+        names={selected.map(trayName)}
         max={3}
         compareHref={compareHref(selected)}
         onClear={() => setSelected([])}

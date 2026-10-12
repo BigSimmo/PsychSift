@@ -149,3 +149,21 @@ describe("DsmSearchPage empty state", () => {
     expect(strip).not.toMatch(/\b(?:pl|pr)-safe\b/);
   });
 });
+
+describe("DsmSearchPage compare tray names", () => {
+  it("names a ticked diagnosis that is not in the current results instead of showing its slug", async () => {
+    render(
+      <DsmSearchPage
+        query="zzzznotadiagnosis"
+        categories={categories}
+        results={[]}
+        totalCount={0}
+        initialIds={["major-depressive-disorder", "panic-disorder"]}
+      />,
+    );
+
+    const tray = await screen.findByTestId("dsm-compare-tray");
+    expect(tray).toHaveTextContent("Major depressive disorder · Panic disorder");
+    expect(tray).not.toHaveTextContent("major-depressive-disorder");
+  });
+});
