@@ -274,10 +274,14 @@ export function useMedicationCatalog(
     if (fields) params.set("fields", fields);
     const suffix = params.toString();
     const url = suffix ? `/api/medications?${suffix}` : "/api/medications";
+    // While sign-in is still resolving, keep the typing pause and don't count the request as
+    // the first: a quick sign-in cancels this anonymous timer, and the authenticated request
+    // that follows still goes at once rather than waiting a debounce.
+    const authResolving = authStatus === "loading";
 
     const timer = window.setTimeout(
       () => {
-        requestSentRef.current = true;
+        if (!authResolving) requestSentRef.current = true;
         fetchJson(url, authorizationHeader, controller.signal, parseMedicationCatalogResponse)
           .then((data) => {
             if (!controller.signal.aborted && isCurrentRequest()) setState({ data, loading: false, error: null });
@@ -303,7 +307,7 @@ export function useMedicationCatalog(
             });
           });
       },
-      requestSentRef.current ? debounceMs : 0,
+      requestSentRef.current || authResolving ? debounceMs : 0,
     );
 
     return () => {
@@ -311,7 +315,7 @@ export function useMedicationCatalog(
       controller.abort();
       registration.release();
     };
-  }, [trimmed, enabled, fields, debounceMs, authIdentity, authorizationHeader, requestLifecycle]);
+  }, [trimmed, enabled, fields, debounceMs, authIdentity, authorizationHeader, authStatus, requestLifecycle]);
 
   return state;
 }

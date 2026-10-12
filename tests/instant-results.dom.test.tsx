@@ -22,7 +22,7 @@ const authSession = vi.hoisted(() => ({
   authorizationHeader: undefined as Record<string, string> | undefined,
   markSessionExpired: vi.fn(),
   session: null,
-  status: "signed_out" as const,
+  status: "signed_out" as "signed_out" | "loading" | "authenticated",
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -72,6 +72,26 @@ describe("medication catalogue request timing", () => {
     await act(async () => vi.advanceTimersByTimeAsync(100));
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/medications?q=lithium+le");
+  });
+});
+
+describe("medication catalogue request while sign-in resolves", () => {
+  afterEach(() => {
+    authSession.status = "signed_out";
+  });
+
+  it("waits out the pause while sign-in is loading, then sends the resolved request at once", async () => {
+    vi.useFakeTimers();
+    authSession.status = "loading";
+    const { rerender } = renderHook(() => useMedicationCatalog("lithium"));
+    await act(async () => vi.advanceTimersByTimeAsync(100));
+    // No anonymous zero-delay request while the session is still resolving.
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    authSession.status = "signed_out";
+    rerender();
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 
