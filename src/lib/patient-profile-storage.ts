@@ -187,8 +187,8 @@ export function patientProfileHasContent(profile: PatientProfile): boolean {
     profile.qtc !== null ||
     profile.pregnant ||
     profile.breastfeeding ||
-    profile.allergies.length > 0 ||
-    profile.medications.length > 0
+    (profile.allergies?.length ?? 0) > 0 ||
+    (profile.medications?.length ?? 0) > 0
   );
 }
 
