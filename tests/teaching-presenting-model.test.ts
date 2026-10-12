@@ -75,6 +75,14 @@ describe("Presenting's made-up presenter", () => {
     }
   });
 
+  it("keeps today's talk as yours while the session is still running (14:50 Perth)", () => {
+    const during = new Date("2026-10-06T06:50:00Z");
+    const talk = demoTeach(TODAY, during).upcoming[0];
+    const club = demoTeachingSessions({ from: TODAY, to: "2026-10-31" }, during).filter((row) => row.isPresenter);
+    expect(talk.startsAt.slice(0, 10)).toBe(TODAY);
+    expect(club.map((row) => row.startsAt)).toEqual([talk.startsAt]);
+  });
+
   it("moves the talk to the next journal club once today's has ended", () => {
     const evening = new Date("2026-10-06T07:00:00Z"); // 15:00 Perth
     expect(talkKicker(demoTeach(TODAY, evening).upcoming[0], evening, TODAY)).toBe("Your next talk · Tue 13 Oct 14:00");

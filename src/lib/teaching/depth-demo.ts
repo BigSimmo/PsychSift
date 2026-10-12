@@ -140,7 +140,7 @@ function shortDate(dateKey: string): string {
 /**
  * The made-up presenter (mock-up v5, Presenting): the programme's next journal club at 14:00 with three
  * of four items done and the patient-details check already confirmed, three later talks, and six talks
- * given. Every other date is relative to today. Once that talk's 14:45 has passed (Perth), it moves to
+ * given. Every other date is relative to today. Once that talk's 15:00 end has passed (Perth), it moves to
  * the following journal club so it is never shown as next after it has ended.
  */
 export function demoTeach(today: string, now?: Date): { upcoming: DemoTeachSession[]; taught: SessionRef[] } {
@@ -179,7 +179,7 @@ export function demoTeach(today: string, now?: Date): { upcoming: DemoTeachSessi
         serviceId: DEMO_TEACHING_SERVICE_ID,
         title: "Journal club",
         startsAt: perthInstant(talkDay, "14:00"),
-        endsAt: perthInstant(talkDay, "14:45"),
+        endsAt: perthInstant(talkDay, "15:00"),
         venue: "Library meeting room",
         status: "scheduled",
         items: ["reading_list", "aims", "slides_link"],

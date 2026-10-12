@@ -437,7 +437,7 @@ const FEEDBACK_OPEN_DAYS = 7;
 
 /**
  * The date of the made-up viewer's next talk: the first journal club on or after `today`, or the one
- * after it once that day's talk is over (14:45 Perth, when `now` is known). The programme's "You
+ * after it once that day's session is over (its programme end, 15:00 Perth, when `now` is known). The programme's "You
  * present" flag and Presenting's example talk (`demoTeach`) both read it, so Teaching's Needs you,
  * its hero and My Day always name the same day (Work mode simplify plan, 12 Oct 2026).
  */
@@ -445,7 +445,8 @@ export function demoPresentingDate(today: string, now?: Date): string {
   const series = seriesByKey(PRESENTING_KEY)!;
   const next = (from: string) => nextTeachingOccurrence(anchorOf(series, from), series.frequency, from) ?? from;
   const club = next(today);
-  return now && now.getTime() >= Date.parse(perthInstant(club, "14:45")) ? next(addDays(club, 1)) : club;
+  const ends = Date.parse(perthInstant(club, series.startTime)) + series.minutes * 60_000;
+  return now && now.getTime() >= ends ? next(addDays(club, 1)) : club;
 }
 
 function seriesByKey(key: number): DemoSeries | undefined {
