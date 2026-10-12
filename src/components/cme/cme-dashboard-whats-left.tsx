@@ -272,6 +272,9 @@ function Row({
   );
 }
 
+/** How many open items the Year page lists before "See all in End of year". */
+const WHATS_LEFT_SHOWN = 3;
+
 export function CmeWhatsLeft({
   set,
   statuses,
@@ -295,6 +298,9 @@ export function CmeWhatsLeft({
     .filter((row) => !row.ready)
     .sort((a, b) => Number(b.id === nextStepRowId) - Number(a.id === nextStepRowId));
   const done = rows.filter((row) => row.ready);
+  // The first three only (12 Oct 2026 simplify plan); End of year lists every item.
+  const shown = left.slice(0, WHATS_LEFT_SHOWN);
+  const hidden = left.length - shown.length;
   const label: ReactNode = left.length > 0 ? `What's left · ${left.length}` : "What's left";
 
   return (
@@ -314,10 +320,24 @@ export function CmeWhatsLeft({
             Everything in the year check is done.
           </li>
         ) : null}
-        {left.map((row) => (
+        {shown.map((row) => (
           <Row key={row.id} row={row} isNext={row.id === nextStepRowId} year={set.year} onOpenDetail={onOpenDetail} />
         ))}
-        {done.length > 0 ? (
+        {hidden > 0 ? (
+          <li className="flex min-w-0 items-center">
+            <Link
+              href={`/cme/check?year=${set.year}`}
+              data-testid="cme-whats-left-see-all"
+              className="work-row min-h-tap min-w-0 flex-1"
+            >
+              <span className="work-row__text">
+                <span className="work-row__title">{`See all ${left.length} in End of year`}</span>
+                <span className="work-row__sub">{`${hidden} more, plus evidence and handing it in`}</span>
+              </span>
+              <ChevronRight aria-hidden="true" className="work-row__chev" />
+            </Link>
+          </li>
+        ) : hidden === 0 && done.length > 0 ? (
           <li className="min-w-0">
             <details data-testid="cme-requirements-done" className="group">
               <summary className="work-row cursor-pointer list-none text-xs font-semibold text-[color:var(--text-muted)] [&::-webkit-details-marker]:hidden">

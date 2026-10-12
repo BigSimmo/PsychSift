@@ -278,6 +278,8 @@ export type CmeYearSummaryProps = {
   readonly onOpenGap: () => void;
   /** The empty variant's one action ("Log your first activity"). */
   readonly firstLogAction?: ReactNode;
+  /** Hours logged today, added to the kicker when above zero ("· 1 h today"): it replaced "About this year" (12 Oct 2026). */
+  readonly todayHours?: number;
 };
 
 /**
@@ -295,7 +297,7 @@ export type CmeYearSummaryProps = {
  */
 export function CmeYearSummary(props: CmeYearSummaryProps) {
   const { year, today, loggedHours, targetHours, categoryHours, plan, weeklyHours, entries, closed, onOpenGap } = props;
-  const { firstLogAction } = props;
+  const { firstLogAction, todayHours = 0 } = props;
 
   if (!(targetHours > 0)) {
     return (
@@ -363,6 +365,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
         <div className="min-w-0">
           <div data-testid="cme-year-label" className="cpd-hero-kicker nums">
             {label}
+            {todayHours > 0 ? <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span> : null}
           </div>
           {/* Read as one sentence: "32.5 of 50 hours logged, 65 percent". */}
           <p data-testid="cme-total-hours" className="cpd-hero-big m-0" role="img" aria-label={spoken}>

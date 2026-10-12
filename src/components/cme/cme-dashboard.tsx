@@ -301,7 +301,9 @@ export function CmeDashboard({
   const nextStepRowId = !offerYearEnd && showWhatsLeft ? nextStep.rowId : null;
   // Before anything is logged only the drafts chip can say something true, so it alone still shows.
   const yearChips = hasTarget ? buildCmeYearChips({ year: set.year, yearCheck, draftsToFinish }) : [];
-  const chips = nothingLogged ? yearChips.filter((chip) => chip.id === "drafts") : yearChips;
+  // Only the drafts chip says something "What's left" does not (12 Oct 2026 simplify plan: the copy and
+  // reflection chips repeated its rows).
+  const chips = yearChips.filter((chip) => chip.id === "drafts");
 
   const { nextDate, catchUp, weeklyPace, gapScenarios } = derived;
   const totalGap = catchUp.hoursToGo;
@@ -378,6 +380,7 @@ export function CmeDashboard({
       closed={Boolean(set.closedAt)}
       onOpenGap={() => setDetail("gap")}
       firstLogAction={nothingLogged ? logLink("Log your first activity", "work-button min-h-tap mt-2") : undefined}
+      todayHours={shows("audited-today") ? loggedTodayHours : 0}
     />
   );
 
@@ -565,74 +568,20 @@ export function CmeDashboard({
       )
     );
 
-  const home = readCpdHome(set.confirmedSource);
-  const targetsLine = set.confirmedOn
-    ? `You confirmed ${home.kind === "ranzcp" ? "the RANZCP starting set" : describeConfirmedSource(set.confirmedSource)} on ${formatCalendarDateShort(set.confirmedOn)}.${nothingLogged ? "" : " A personal record, not independent certification."}`
-    : "No targets confirmed yet. Set them up whenever you like.";
-
-  const aboutFacts: { label: string; value: string; testId: string }[] = [];
-  if (shows("year-dates")) {
-    aboutFacts.push({
-      label: "Year",
-      value: `1 Jan to 31 Dec${inRequestedYear && !nothingLogged ? ` · ${daysRemainingInCpdYear(now, set.year)} days left` : ""}`,
-      testId: "cme-year-dates",
-    });
-  }
-  if (set.confirmedOn && (home.kind === "ranzcp" || home.name)) {
-    aboutFacts.push({
-      label: "CPD home",
-      value: home.kind === "ranzcp" ? "RANZCP" : home.name,
-      testId: "cme-cpd-home",
-    });
-  }
-  if (!nothingLogged && shows("audited-today")) {
-    aboutFacts.push({
-      label: "Today",
-      value:
-        loggedToday.length > 0
-          ? `${loggedToday.length} ${loggedToday.length === 1 ? "activity" : "activities"}, ${formatCmeHours(loggedTodayHours)} h`
-          : "Nothing logged yet",
-      testId: "cme-audited-today",
-    });
-  }
-  const aboutRows: ReactNode[] = [];
-  if (shows("provenance")) {
-    aboutRows.push(
-      <CmeFlatRow
-        key="targets"
-        testId="cme-provenance"
-        title="Targets"
-        subtitle={targetsLine}
-        href={`/cme/setup?year=${set.year}`}
-      />,
-    );
-  }
   // "What's left" carries the only other link to End of year; when it is hidden this row keeps
   // End of year (what is missing, evidence, handing it in) one tap away.
-  if (!showWhatsLeft) {
-    aboutRows.push(
-      <CmeFlatRow
-        key="check"
-        testId="cme-about-year-check"
-        title="End of year"
-        subtitle="What is missing, evidence to tidy, and handing it in"
-        href={`/cme/check?year=${set.year}`}
-      />,
-    );
-  }
-  const about =
-    aboutFacts.length > 0 || aboutRows.length > 0 || trainingLink ? (
-      <CmeGroup label="About this year" testId="cme-about-year">
-        {aboutFacts.length > 0 ? (
-          <CmeKvCard
-            label="This year"
-            rows={aboutFacts.map((fact) => ({ label: fact.label, value: fact.value, testId: fact.testId }))}
-          />
-        ) : null}
-        {aboutRows.length > 0 ? <CmeFlatList>{aboutRows}</CmeFlatList> : null}
-        {trainingLink}
-      </CmeGroup>
-    ) : null;
+  const endOfYearRow = !showWhatsLeft ? (
+    <CmeGroup label="End of year" testId="cme-about-year">
+      <CmeFlatList>
+        <CmeFlatRow
+          testId="cme-about-year-check"
+          title="End of year"
+          subtitle="What is missing, evidence to tidy, and handing it in"
+          href={`/cme/check?year=${set.year}`}
+        />
+      </CmeFlatList>
+    </CmeGroup>
+  ) : null;
 
   const byCategory = !hasTarget ? (
     <CmeGroup label="Logged by category" testId="cme-logged-by-category">
@@ -676,7 +625,8 @@ export function CmeDashboard({
             </NewWorkModeOnly>
             {byCategory}
             {alsoForYou}
-            {about}
+            {endOfYearRow}
+            {trainingLink}
           </div>
           {dock}
         </WorkColumns>
