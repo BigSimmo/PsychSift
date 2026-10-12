@@ -315,7 +315,7 @@ describe("audit navigation and auth regressions", () => {
     expect(universalAlsoMatchesSource).toContain("enabled: trimmedQuery.length >= 2 && searchActive");
     expect(universalAlsoMatchesSource).toContain('if (modeId === "answer" && currentGroups.length === 0) return null;');
     // Not drawn while pending, and not drawn when nothing matched: one gate for both.
-    expect(universalAlsoMatchesSource).toContain("if (currentGroups.length === 0) return null;");
+    expect(universalAlsoMatchesSource).toContain("if (currentGroups.length === 0 || searchPending) return null;");
     expect(universalAlsoMatchesSource).not.toContain("if (!searchPending && currentGroups.length === 0) return null;");
     expect(universalAlsoMatchesSource).toContain("const [viewportReady, setViewportReady] = useState(false);");
     expect(universalAlsoMatchesSource).toContain("setViewportReady(true);");
