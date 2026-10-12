@@ -13,10 +13,14 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import "@/components/pwa-offline-line.css";
+
 import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
+import { savedLine } from "@/lib/offline-line";
 
 const INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-install-dismissed-at";
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
@@ -316,6 +320,12 @@ export function PwaLifecycle() {
   const [connectionRestored, setConnectionRestored] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [offlineNoticeDismissed, setOfflineNoticeDismissed] = useState(false);
+  // When the page on screen was last opened while online. What an offline page
+  // still shows was loaded then or later, so naming this time can understate how
+  // fresh it is but never overstate it.
+  const pathname = usePathname();
+  const shownOnlineAtRef = useRef<number | null>(null);
+  const [offlineSavedAt, setOfflineSavedAt] = useState<number | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
@@ -335,6 +345,7 @@ export function PwaLifecycle() {
     const handleOffline = () => {
       if (restoredTimer) window.clearTimeout(restoredTimer);
       setConnectionRestored(false);
+      setOfflineSavedAt(shownOnlineAtRef.current);
     };
     const handleOnline = () => {
       if (restoredTimer) window.clearTimeout(restoredTimer);
@@ -353,6 +364,10 @@ export function PwaLifecycle() {
       window.removeEventListener("online", handleOnline);
     };
   }, []);
+
+  useEffect(() => {
+    if (navigator.onLine) shownOnlineAtRef.current = Date.now();
+  }, [pathname]);
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");
@@ -571,11 +586,9 @@ export function PwaLifecycle() {
             <NoticeIcon icon={WifiOff} tone="warning" />
             <div className="pwa-notice-body min-w-0">
               <p id="pwa-offline-title" className="text-sm font-bold text-[color:var(--text-heading)]">
-                You’re offline
+                {savedLine({ reason: "offline", savedAt: offlineSavedAt })}
               </p>
-              <p className="pwa-notice-copy mt-1 text-sm leading-6 text-[color:var(--text-muted)]">
-                Clinical search and private features need a connection.
-              </p>
+              <p className="pwa-notice-copy sr-only">Clinical search and private features need a connection.</p>
               <button
                 type="button"
                 className={`${secondaryButtonClassName} pwa-notice-retry mt-3`}

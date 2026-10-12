@@ -207,12 +207,23 @@ describe("PwaLifecycle", () => {
 
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     fireEvent.offline(window);
-    expect(await screen.findByRole("region", { name: "You’re offline" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /^Offline, showing what was saved/ })).toBeInTheDocument();
     expect(screen.getByText("Clinical search and private features need a connection.")).toBeInTheDocument();
 
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     fireEvent.online(window);
     expect(await screen.findByText("Connection restored")).toBeInTheDocument();
+  });
+
+  it("names the work-clock time the page on screen was opened online", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    render(<PwaLifecycle />);
+
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    fireEvent.offline(window);
+    expect(
+      await screen.findByRole("region", { name: /^Offline, showing what was saved at \d{2}:\d{2}$/ }),
+    ).toBeInTheDocument();
   });
 
   it("dismisses the offline notice per episode and re-surfaces it on the next connectivity drop", async () => {
@@ -221,16 +232,16 @@ describe("PwaLifecycle", () => {
 
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     fireEvent.offline(window);
-    expect(await screen.findByRole("region", { name: "You’re offline" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /^Offline, showing what was saved/ })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Dismiss offline notice" }));
-    expect(screen.queryByRole("region", { name: "You’re offline" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /^Offline, showing what was saved/ })).not.toBeInTheDocument();
 
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     fireEvent.online(window);
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     fireEvent.offline(window);
-    expect(await screen.findByRole("region", { name: "You’re offline" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: /^Offline, showing what was saved/ })).toBeInTheDocument();
   });
 
   it("shows install UI only after browser eligibility and invokes the deferred prompt from a user action", async () => {
@@ -727,7 +738,7 @@ describe("notice-stack swap settling", () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     try {
       render(<PwaLifecycle />);
-      await screen.findByRole("region", { name: "You’re offline" });
+      await screen.findByRole("region", { name: /^Offline, showing what was saved/ });
 
       await act(async () => {
         Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
@@ -737,7 +748,7 @@ describe("notice-stack swap settling", () => {
       // Immediately after the commit that clears the offline card, the stack
       // must be fully empty — not already showing connection-restored — or
       // the swap resizes an already-visible fixed element.
-      expect(screen.queryByRole("region", { name: "You’re offline" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /^Offline, showing what was saved/ })).not.toBeInTheDocument();
       expect(screen.queryByText("Connection restored")).not.toBeInTheDocument();
 
       await screen.findByText("Connection restored");
@@ -777,7 +788,7 @@ describe("notice stack waits out the app-shell gap", () => {
     const shell = mountAppShell();
     try {
       render(<PwaLifecycle />);
-      await screen.findByRole("region", { name: "You\u2019re offline" });
+      await screen.findByRole("region", { name: /^Offline, showing what was saved/ });
 
       // The hydration gap. `document.readyState` is already "complete" here,
       // which is exactly why a bare readyState fallback does not hold: it
@@ -786,12 +797,12 @@ describe("notice stack waits out the app-shell gap", () => {
       await act(async () => {
         shell.remove();
       });
-      expect(screen.queryByRole("region", { name: "You\u2019re offline" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /^Offline, showing what was saved/ })).not.toBeInTheDocument();
 
       await act(async () => {
         mountAppShell();
       });
-      await screen.findByRole("region", { name: "You\u2019re offline" });
+      await screen.findByRole("region", { name: /^Offline, showing what was saved/ });
     } finally {
       document.getElementById("main-content")?.remove();
       Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
