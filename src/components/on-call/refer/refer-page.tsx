@@ -57,10 +57,48 @@ function matchesNote(entry: { title: string; subtitle?: string | null }, query: 
 export function OnCallReferPage() {
   const handbook = useHospitalHandbook();
   const entries = useOnCallEntries();
+  const [query, setQuery] = useState("");
+  const ready = handbook.status === "ready";
+  const signedOut = entries.signedOut || handbook.status === "signed-out";
+
+  return (
+    <OnCallHubPageFrame
+      page="refer"
+      // The group eyebrow names the hospital; the line stays only to offer "Change".
+      lead={handbook.hospitals.length > 1 ? <OnCallHospitalLine handbook={handbook} /> : null}
+    >
+      <OnCallHandbookState handbook={handbook} page="refer" />
+      {ready ? null : <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} />}
+
+      {ready || !signedOut ? (
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)]" data-testid="on-call-refer-search">
+          <SearchField
+            label="Search referrals and services"
+            placeholder="Search referrals and services"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            clearLabel="Clear the referral search"
+            autoComplete="off"
+          />
+        </div>
+      ) : null}
+      <OnCallReferSections query={query} />
+    </OnCallHubPageFrame>
+  );
+}
+
+/**
+ * Refer's lists without its frame or search box: the hospital's routes, the Services directory link
+ * and the reader's own notes, filtered by `query`. Contacts shows them as its Refer tab (Work mode
+ * simplify plan, owner approval 12 Oct 2026), so one search box covers numbers and referrals.
+ */
+export function OnCallReferSections({ query }: { readonly query: string }) {
+  const handbook = useHospitalHandbook();
+  const entries = useOnCallEntries();
   const hospitalPhone = useOnCallHospitalPhone();
   const [team, setTeam] = useState(ALL_TEAMS);
   const [teamsOpen, setTeamsOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
   const ready = handbook.status === "ready";
   const hospitalName = handbook.siteName ?? handbook.serviceName;
@@ -94,30 +132,10 @@ export function OnCallReferPage() {
   const resultCount = shown.length + (signedOut ? 0 : mineShown.length);
 
   return (
-    <OnCallHubPageFrame
-      page="refer"
-      // The group eyebrow names the hospital; the line stays only to offer "Change".
-      lead={handbook.hospitals.length > 1 ? <OnCallHospitalLine handbook={handbook} /> : null}
-    >
-      <OnCallHandbookState handbook={handbook} page="refer" />
-      {ready ? null : <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} />}
-
-      {ready || !signedOut ? (
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)]" data-testid="on-call-refer-search">
-          <SearchField
-            label="Search referrals and services"
-            placeholder="Search referrals and services"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onClear={() => setQuery("")}
-            clearLabel="Clear the referral search"
-            autoComplete="off"
-          />
-          <p role="status" aria-live="polite" className="sr-only">
-            {searching ? `${resultCount} ${resultCount === 1 ? "result" : "results"} here` : ""}
-          </p>
-        </div>
-      ) : null}
+    <div className="grid min-w-0 gap-5" data-testid="on-call-refer-sections">
+      <p role="status" aria-live="polite" className="sr-only">
+        {searching ? `${resultCount} ${resultCount === 1 ? "referral" : "referrals"} here` : ""}
+      </p>
 
       {ready && (shown.length > 0 || !searching) && referrals.length > 0 ? (
         <OnCallGroupedList
@@ -255,6 +273,6 @@ export function OnCallReferPage() {
           </>
         )}
       </OnCallGroupedList>
-    </OnCallHubPageFrame>
+    </div>
   );
 }

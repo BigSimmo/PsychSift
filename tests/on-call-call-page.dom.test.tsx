@@ -59,7 +59,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 /** People's Hospital / Outside lines / Mine switch. */
-const showTab = (name: "Hospital" | "Outside lines" | "Mine") => userEvent.click(screen.getByRole("radio", { name }));
+const showTab = (name: "Hospital" | "Refer" | "Outside" | "Mine") =>
+  userEvent.click(screen.getByRole("radio", { name }));
 
 /** "Didn't connect" is marked from the number's own sheet: open the row's sheet, then tap the mark. */
 async function markDidntConnect(rowTestId: string, id: string) {
@@ -89,7 +90,7 @@ describe("Call page", () => {
     expect(document.getElementById("on-call-group-external")).toBeNull();
     expect(document.getElementById("on-call-group-mine")).toBeNull();
 
-    await showTab("Outside lines");
+    await showTab("Outside");
     expect(document.getElementById("on-call-group-external")).not.toBeNull();
     expect(document.getElementById("on-call-group-hospital")).toBeNull();
 
@@ -101,6 +102,16 @@ describe("Call page", () => {
       within(document.getElementById("on-call-group-mine")!).getByRole("link", { name: "Your own numbers" }),
     ).toHaveAttribute("href", "/on-call/contacts");
     expect(screen.queryByText(/being built/i)).toBeNull();
+  });
+
+  it("holds Refer as a tab, so one Contacts page covers numbers and referrals", async () => {
+    handbook.state = ready(items([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]));
+    render(<OnCallCallPage />);
+    expect(screen.queryByTestId("on-call-refer-sections")).toBeNull();
+    await showTab("Refer");
+    expect(screen.getByTestId("on-call-refer-sections")).toBeInTheDocument();
+    expect(screen.getByTestId("on-call-refer-services-link")).toHaveAttribute("href", "/services/search");
+    expect(document.getElementById("on-call-group-hospital")).toBeNull();
   });
 
   it("orders Emergency, then departments, then Wards, then General with Switchboard first", () => {
@@ -208,7 +219,7 @@ describe("Call page", () => {
 
   it("shows every outside line in the outside form, with its area, and its source and date one tap away", async () => {
     render(<OnCallCallPage />);
-    await showTab("Outside lines");
+    await showTab("Outside");
     const external = document.getElementById("on-call-group-external")!;
     // One quiet line names every source with its https link, so no outside number shows without one.
     const sources = within(external).getByTestId("on-call-call-external-sources");
@@ -277,7 +288,7 @@ describe("Call page", () => {
     entries.list = [personalContact("p1", "My consultant", "0400 000 111")];
     render(<OnCallCallPage />);
     for (const [tab, rowTestId, id] of [
-      ["Outside lines", "on-call-call-external-wa-mherl", "wa-mherl"],
+      ["Outside", "on-call-call-external-wa-mherl", "wa-mherl"],
       ["Mine", "on-call-call-mine-p1", "p1"],
     ] as const) {
       await showTab(tab);
@@ -301,7 +312,7 @@ describe("Call page", () => {
     );
     render(<OnCallCallPage />);
     expect(screen.getAllByRole("searchbox")).toHaveLength(1);
-    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Search numbers, wards, roles");
+    expect(screen.getByRole("searchbox")).toHaveAttribute("placeholder", "Search numbers, referrals, roles");
     expect(screen.queryByRole("button", { name: /voice|microphone|dictat/i })).toBeNull();
     await userEvent.type(screen.getByRole("searchbox"), "icu");
     expect(screen.queryByText("Switchboard")).toBeNull();
@@ -463,12 +474,13 @@ describe("Call page", () => {
     expect(within(screen.getByTestId("on-call-call-group-wards")).getAllByRole("listitem")).toHaveLength(10);
   });
 
-  it("links Who's who, Pocket card and Numbers to check, counting only what Check these lists", () => {
+  it("links Numbers to check, counting only what Check these lists; Who's who and the Pocket card live in the Handbook", () => {
     const never = { ...personalContact("p1", "Never checked", "0400 000 111"), lastVerifiedAt: null } as OnCallEntry;
     entries.list = [never, personalContact("p2", "Checked", "0400 000 222")];
     render(<OnCallCallPage />);
-    expect(screen.getByTestId("on-call-call-whos-who")).toHaveAttribute("href", "/on-call/who-is-who");
-    expect(screen.getByTestId("on-call-call-pocket-card")).toHaveAttribute("href", "/on-call/card");
+    // Moved to the Handbook (Work mode simplify plan, owner approval 12 Oct 2026).
+    expect(screen.queryByTestId("on-call-call-whos-who")).toBeNull();
+    expect(screen.queryByTestId("on-call-call-pocket-card")).toBeNull();
     const check = screen.getByTestId("on-call-call-check");
     expect(check).toHaveAttribute("href", "/on-call/check");
     expect(check).toHaveTextContent("1 due for a check");

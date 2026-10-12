@@ -40,11 +40,12 @@ describe("work frame navigation", () => {
     }
   });
 
-  it("names the crisis lines page Numbers in Admin and On Call, apart from How it works", () => {
+  it("names the crisis lines page Numbers in Admin, apart from How it works", () => {
     const adminNumbers = workAreaItems(WORK_AREAS.admin).find((item) => item.href === "/admin/help");
     expect(adminNumbers?.label).toBe("Numbers");
-    const callNumbers = workAreaItems(WORK_AREAS.call).find((item) => item.href === "/admin/help");
-    expect(callNumbers?.label).toBe("Numbers");
+    // On Call's More no longer links Admin's copy (Work mode simplify plan, 12 Oct 2026): Now itself
+    // carries the public crisis lines.
+    expect(workAreaItems(WORK_AREAS.call).some((item) => item.href === "/admin/help")).toBe(false);
     for (const area of areas)
       for (const item of workAreaItems(area))
         if (item.label === "Help" && item.href !== "/my-day/help")

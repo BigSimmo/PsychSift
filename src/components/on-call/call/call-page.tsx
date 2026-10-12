@@ -2,7 +2,7 @@
 
 import { currentCover } from "@/lib/on-call/service-availability";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
-import { ListChecks, Phone, Plus, Printer, Shield, Users } from "lucide-react";
+import { ListChecks, Phone, Plus, Shield } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,6 +38,7 @@ import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes"
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
+import { OnCallReferSections } from "@/components/on-call/refer/refer-page";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
@@ -71,13 +72,23 @@ export const ON_CALL_OLD_HANDOVER_HASH = "#on-call-handover-heading";
 
 const noSubscription = () => () => {};
 
-type PeopleTab = "hospital" | "outside" | "mine";
+type PeopleTab = "hospital" | "refer" | "outside" | "mine";
 
+// Contacts holds Refer as a tab (Work mode simplify plan, owner approval 12 Oct 2026): one place for
+// "who and where", with one search box across numbers and referrals. Short labels fit four at 320px.
 const PEOPLE_TABS: readonly { value: PeopleTab; label: string }[] = [
   { value: "hospital", label: "Hospital" },
-  { value: "outside", label: "Outside lines" },
+  { value: "refer", label: "Refer" },
+  { value: "outside", label: "Outside" },
   { value: "mine", label: "Mine" },
 ];
+
+/** The tab an address asks for: `/on-call/call?show=refer` opens Refer (the old Refer page lands there). */
+function initialPeopleTab(): PeopleTab {
+  if (typeof window === "undefined") return "hospital";
+  const asked = new URLSearchParams(window.location.search).get("show");
+  return PEOPLE_TABS.some((option) => option.value === asked) ? (asked as PeopleTab) : "hospital";
+}
 
 function hospitalName(handbook: HospitalHandbookState): string | null {
   return handbook.siteName ?? handbook.serviceName;
@@ -265,6 +276,9 @@ export function OnCallCallPage() {
   const hospitalPhone = useOnCallHospitalPhone();
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<PeopleTab>("hospital");
+  // Read after hydration, so the server and the first client render agree.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setTab(initialPeopleTab()), []);
   const [adding, setAdding] = useState(false);
   const [clock, setClock] = useState(() => new Date());
   // The time in "Cover as of 21:40" is drawn after hydration only, so the server's minute never mismatches the phone's.
@@ -409,7 +423,7 @@ export function OnCallCallPage() {
         <div data-testid="on-call-call-search">
           <SearchField
             label="Search people"
-            placeholder="Search numbers, wards, roles"
+            placeholder="Search numbers, referrals, roles"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
@@ -457,7 +471,7 @@ export function OnCallCallPage() {
       <div id="on-call-people-list" className="grid min-w-0 gap-5">
         {searching && resultCount === 0 ? (
           <p className={cn(modeSecondaryText, "break-words px-3")} data-testid="on-call-call-nothing-found">
-            {`Nothing matches "${query.trim()}".`}
+            {`No numbers match "${query.trim()}".`}
             {ready ? "" : " The hospital's numbers have not loaded, so only outside lines and your own were searched."}
           </p>
         ) : null}
@@ -549,6 +563,8 @@ export function OnCallCallPage() {
             <OnCallRow href="/on-call/contacts" title="Your own numbers" testId="on-call-call-mine-link" />
           </OnCallGroupedList>
         ) : null}
+
+        {searching || tab === "refer" ? <OnCallReferSections query={query} /> : null}
       </div>
 
       {searching ? null : (
@@ -559,20 +575,6 @@ export function OnCallCallPage() {
           </NewWorkModeOnly>
           <ul role="list" className="work-card min-w-0">
             <OnCallIsobarRow />
-            <OnCallRow
-              href="/on-call/who-is-who"
-              title="Who's who"
-              subtitle="What the short role names mean"
-              leading={<Users aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
-              testId="on-call-call-whos-who"
-            />
-            <OnCallRow
-              href="/on-call/card"
-              title="Pocket card"
-              subtitle="The numbers flagged for it, to print"
-              leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
-              testId="on-call-call-pocket-card"
-            />
             <OnCallRow
               href="/on-call/check"
               title="Numbers to check"

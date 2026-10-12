@@ -75,6 +75,9 @@ export function NowWhoToCall({
 }
 
 /**
+ * Unused since 12 Oct 2026: Now dropped this list (Work mode simplify plan, owner approval) and kept
+ * only the shift lists, in the shift tools card. Kept under the 30-day dead-code rule.
+ *
  * "More for this shift" (mock-up v10 Now): the shift lists with their bar,
  * Systems down, First night with its real tick count, and the one-line On site
  * link to Admin. Handover and Shift pulse moved up the page as their own
