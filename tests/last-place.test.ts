@@ -14,6 +14,8 @@ const cold: ColdLandingFacts = {
   navigationType: "navigate",
   cameFromApp: false,
   landingPreferenceSet: false,
+  standalone: false,
+  historyLength: 1,
 };
 
 describe("lastPlaceToRemember", () => {
@@ -70,6 +72,12 @@ describe("isColdHomeOpen", () => {
     expect(isColdHomeOpen({ ...cold, navigationType: "back_forward" })).toBe(false);
     expect(isColdHomeOpen({ ...cold, cameFromApp: true })).toBe(false);
     expect(isColdHomeOpen({ ...cold, landingPreferenceSet: true })).toBe(false);
+  });
+
+  it("moves only a fresh tab or the installed app, not a tab that has been somewhere", () => {
+    expect(isColdHomeOpen({ ...cold, historyLength: 2 })).toBe(true);
+    expect(isColdHomeOpen({ ...cold, historyLength: 3 })).toBe(false);
+    expect(isColdHomeOpen({ ...cold, historyLength: 3, standalone: true })).toBe(true);
   });
 });
 

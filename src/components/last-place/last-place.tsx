@@ -95,6 +95,10 @@ function coldHomeOpen(): boolean {
     navigationType,
     cameFromApp,
     landingPreferenceSet: landingModeForPreference(readAppPreferences().landing) !== null,
+    standalone:
+      (typeof window.matchMedia === "function" && window.matchMedia("(display-mode: standalone)").matches) ||
+      (navigator as Navigator & { standalone?: boolean }).standalone === true,
+    historyLength: window.history.length,
   });
 }
 

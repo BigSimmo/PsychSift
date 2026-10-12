@@ -18,6 +18,9 @@ export const ON_SHIFT_LANDING_PATH = "/my-day";
 
 const MAX_PATH_LENGTH = 160;
 
+/** A fresh tab: its own start page (or about:blank) plus this page. */
+const FRESH_TAB_HISTORY = 2;
+
 /** Plain path segments only: letters, digits and the usual URL-safe marks. */
 const SAFE_PATH = /^(?:\/[A-Za-z0-9._~-]+)+$/;
 
@@ -58,12 +61,20 @@ export type ColdLandingFacts = {
   readonly cameFromApp: boolean;
   /** Settings "Default landing view" is set: that explicit choice wins. */
   readonly landingPreferenceSet: boolean;
+  /** The installed app's own window (display-mode standalone). */
+  readonly standalone: boolean;
+  /**
+   * window.history.length: 1 or 2 for a fresh tab or window (a new tab's own start
+   * page counts as one), more once this tab has been round the app.
+   */
+  readonly historyLength: number;
 };
 
 /**
- * Whether this load of `/` is a cold open that may be sent elsewhere. Any query
- * (`?mode=`, `?q=`, `?focus=`), any hash, a reload, Back/Forward, or arriving
- * from inside the app keeps today's behaviour exactly.
+ * Whether this load of `/` is a cold open that may be sent elsewhere: the
+ * installed app opening, or a fresh tab or window. Any query (`?mode=`, `?q=`,
+ * `?focus=`), any hash, a reload, Back/Forward, arriving from inside the app, or
+ * a tab that has already been somewhere keeps today's behaviour exactly.
  */
 export function isColdHomeOpen(facts: ColdLandingFacts): boolean {
   if (facts.entry.pathname !== "/") return false;
@@ -72,7 +83,7 @@ export function isColdHomeOpen(facts: ColdLandingFacts): boolean {
   if (facts.navigationType !== null && facts.navigationType !== "navigate") return false;
   if (facts.cameFromApp) return false;
   if (facts.landingPreferenceSet) return false;
-  return true;
+  return facts.standalone || facts.historyLength <= FRESH_TAB_HISTORY;
 }
 
 /**
