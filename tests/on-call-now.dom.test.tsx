@@ -535,7 +535,7 @@ describe("Now: what is not on it", () => {
 describe("Who do I call now: the pinned reminder", () => {
   it("reads the pinned reminder as plain words, not a chip that looks like a choice", () => {
     // Work-mode redesign, owner request 6 Oct 2026 (phone check): the pinned Playbook
-    // reminder is a statement, so it is a line of text and only real situations are chips.
+    // reminder is a statement, so it is a line of text and only real situations are rows.
     render(
       <NowWhoToCall
         reminder="You are expected to wake the consultant."
