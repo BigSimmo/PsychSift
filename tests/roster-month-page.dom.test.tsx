@@ -38,6 +38,8 @@ vi.mock("@/components/roster/use-roster-team", () => ({
       : { status: serviceId ? "loading" : "idle", data: null, message: null, reload: vi.fn(), readAt: null };
   },
 }));
+// The Open shifts row reads every team's list; its own tests cover it.
+vi.mock("@/components/open-shifts/open-shifts-fit-line", () => ({ OpenShiftsFitLine: () => null }));
 vi.mock("@/components/work-calendar/use-work-calendar-entries", () => ({
   useWorkCalendarEntries: () => ({ entries: state.entries }),
 }));
