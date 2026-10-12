@@ -117,7 +117,8 @@ const routeDescriptions: Record<string, string> = {
   "/differentials/presentations/[slug]": "Presentation comparison workflow.",
   "/documents": "Documents mode home and source document library surface.",
   "/documents/[id]": "Document viewer/detail page.",
-  "/documents/search": "Documents search command centre.",
+  "/documents/search":
+    "Documents search entry. Opened bare it shows a short prompt; a submitted search (`?q=…&run=1`) shows its results in the shared search shell.",
   "/documents/source": "Compatibility redirect to the canonical live document viewer when a valid id is supplied.",
   "/documents/source/evidence": "Compatibility redirect sharing the canonical live document viewer handoff.",
   "/dsm": "DSM-5 Diagnosis home.",
@@ -302,13 +303,13 @@ const routeDescriptions: Record<string, string> = {
   "/cme/training":
     "The trainee's own training timeline: stages, rotations and breaks they enter themselves, where they are now, the training clock in FTE months (half-time counts half, breaks pause it) and the next milestone due. Nothing is preloaded, and it never changes CPD targets.",
   "/cme/plan":
-    "The yearly development plan screen. Not yet built in this phase — the page says so plainly, and offers logging the time spent writing the plan as an activity so the hours still count toward the year.",
+    "The yearly development plan: your goals for the year and how the year's hours fall across them.",
   "/cme/learning":
     "A curated list of upcoming Western Australian courses and events, read from a checked-in data file. Past events drop off by today's Perth date, items with unconfirmed dates sit in their own section, and each item links to the organiser and to a prefilled Log as CPD form.",
   "/cme/programme":
-    "The requirement targets confirmed for this year — hours required in each category — and the source document they were confirmed against.",
+    "Bookmark only: forwards to Set up, which shows and edits the year's requirement targets (the year carries across).",
   "/cme/setup":
-    "The one-time setup checklist: confirm this year's requirement targets, set up routines, and the other steps this phase has not built yet.",
+    "Set up: the few things to do once so the mode runs itself, including confirming this year's requirement targets (hours required in each category) and their source. Also serves the old Programme bookmark.",
   "/cme/customise":
     "Choose which modules show on the CPD dashboard below the hours, pace and next-action rows, and reorder them with up/down controls that work as well from a keyboard as from a pointer.",
   "/tools": "Clinical tools and applications launcher directory.",
@@ -767,7 +768,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("roster"),
       search: appModeHomeHref("roster"),
       detail:
-        'No results page — `resultsSurface: "none"`, like On Call. `/roster` Today dashboard, `/roster/shifts` full schedule and month calendar, `/roster/calendar` feed subscribe, and `/roster/settings`.',
+        'No results page — `resultsSurface: "none"`, like On Call. `/roster` Shifts, `/roster/shifts` full schedule and month calendar, `/roster/swaps` Swaps & leave (with `/roster/requests`), `/roster/team`, `/roster/settings` and `/roster/today` Today dashboard; plus `/roster/manage` (managers only), `/roster/join` (invite), `/roster/rotations`, `/roster/staffing`, `/roster/sick`, and `/roster/calendar` (teaching sessions and expiry dates, shown by the On Call calendar page under this address).',
     },
     {
       mode: "Open shifts",
@@ -805,7 +806,7 @@ function renderDocumentFlowIndex() {
     bullet(DOCUMENTS_MODE_HOME_ROUTE, "Redirects to the shared home with Documents preselected (consolidated mode)."),
     bullet(
       documentsSearchHref({ query: "clozapine monitoring table", focus: true, run: true }),
-      "Documents search command centre used after submitting a search in Documents mode.",
+      "Documents search results, shown in the shared search shell after a search is submitted in Documents mode.",
     ),
     bullet(
       "/documents/source?id=11111111-1111-4111-8111-111111111111&page=12&chunk=monitoring-table",
