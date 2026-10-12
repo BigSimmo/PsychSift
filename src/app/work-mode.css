@@ -3019,17 +3019,17 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
 .work-tag {
   display: inline-flex;
   align-items: center;
-  gap: 0.375em;
+  gap: calc(var(--spacing) * 1);
   background: var(--work-wash);
   color: var(--work-ink-muted);
-  box-shadow: inset 0 0 0 1px var(--work-line);
+  box-shadow: var(--work-edge-inset) var(--work-line);
 }
 .work-tag::before {
   content: "";
   flex: none;
   width: 0.75em;
   height: 0.75em;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   background: var(--mode-identity);
 }
 .work-tag[data-tone="red"]::before {

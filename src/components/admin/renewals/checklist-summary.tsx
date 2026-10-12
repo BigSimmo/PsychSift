@@ -51,7 +51,7 @@ const percent = (offset: number) => `${((offset / 12) * 100).toFixed(2)}%`;
 /**
  * "Next 12 months" (Josh's locked mockup, work-mode redesign 6 Oct 2026): one
  * row per item due for action, its name and date at the left and a track at
- * the right with a mark at its date (a diamond once passed, a triangle while
+ * the right with a mark at its date (a triangle once passed, a dot while
  * still ahead) in its status colour, a line at today in the mode colour, and
  * month initials under the tracks.
  *
