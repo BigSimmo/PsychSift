@@ -133,10 +133,13 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
     });
 
     it("verifies icon sizing domain separation in globals.css", () => {
-      // Icon boxes are sized from the icon scale. The recent-searches chip icon that
-      // used --spacing-icon-xs went with the chips (recent questions are now a list).
-      expect(globalsCss).toMatch(/width: var\(--spacing-icon-[a-z0-9]+\);/);
-      expect(globalsCss).toMatch(/height: var\(--spacing-icon-[a-z0-9]+\);/);
+      // Icon boxes are sized from the icon scale, never the type scale. The
+      // recent-searches chip icon (--spacing-icon-xs) went with the chips, since recent
+      // questions are now a list, so this pins the composer glyphs that remain.
+      expect(globalsCss).toMatch(
+        /\.chat-composer-icon-button svg,\s*\.chat-send-button svg \{\s*height: var\(--spacing-icon-lg\);\s*width: var\(--spacing-icon-lg\);/,
+      );
+      expect(globalsCss).not.toContain(".home-recent-searches .answer-suggestion-chip-icon");
       expect(globalsCss).not.toContain("width: var(--text-2xs);");
     });
 
