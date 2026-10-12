@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { PointerEventsCheckLevel } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { installMatchMediaStub } from "./setup/jsdom.setup";
@@ -55,6 +55,13 @@ function RailAndDrawer() {
   );
 }
 
+// jsdom loads no stylesheet, so the panel's `pointer-events-auto` class cannot
+// undo the overlay wrapper's inline `pointer-events: none` here as it does in a
+// browser (the Playwright desktop specs cover real pointer input).
+function setupUser() {
+  return userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+}
+
 async function openDocked(user: ReturnType<typeof userEvent.setup>, index = 0) {
   const railRow = screen.getAllByTestId("answer-source-rail-row")[index];
   await user.click(railRow);
@@ -65,7 +72,7 @@ async function openDocked(user: ReturnType<typeof userEvent.setup>, index = 0) {
 describe("answer source docked panel (from 1024px)", () => {
   it("opens beside the answer as a named landmark, not a dialog, and takes focus", async () => {
     installMatchMediaStub(true);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<RailAndDrawer />);
 
     const { panel } = await openDocked(user);
@@ -80,7 +87,7 @@ describe("answer source docked panel (from 1024px)", () => {
 
   it("closes on Escape and returns focus to the source that opened it", async () => {
     installMatchMediaStub(true);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<RailAndDrawer />);
 
     const { railRow } = await openDocked(user);
@@ -94,7 +101,7 @@ describe("answer source docked panel (from 1024px)", () => {
 
   it("closes from its close button and returns focus to the row it was last showing", async () => {
     installMatchMediaStub(true);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<RailAndDrawer />);
 
     const { panel } = await openDocked(user);
@@ -108,7 +115,7 @@ describe("answer source docked panel (from 1024px)", () => {
 
   it("leaves focus where the reader moved it while the panel was open", async () => {
     installMatchMediaStub(true);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<RailAndDrawer />);
 
     await openDocked(user);
@@ -125,7 +132,7 @@ describe("answer source docked panel (from 1024px)", () => {
 
   it("keeps the shared Sheet dialog below 1024px", async () => {
     installMatchMediaStub(false);
-    const user = userEvent.setup();
+    const user = setupUser();
     render(<RailAndDrawer />);
 
     await user.click(screen.getAllByTestId("answer-source-rail-row")[0]);

@@ -121,15 +121,14 @@ export function AnswerSourceDockedPanel({
       <aside
         ref={focusOnAttach}
         tabIndex={-1}
-        // The overlay layer's wrapper sets `pointer-events: none` inline so the
-        // page stays usable around the panel; the panel itself takes pointer
-        // input again, inline to match.
-        style={{ pointerEvents: "auto" }}
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         data-testid={testId}
         data-source-dock-panel=""
+        // The overlay layer's wrapper sets `pointer-events: none` so the page stays
+        // usable around the panel; the panel itself takes pointer input again.
         className={cn(
+          "pointer-events-auto",
           // Under the app header, above the bottom search box.
           "fixed bottom-[8.5rem] right-4 top-[calc(var(--shell-header-h)+1rem)] flex w-[22rem] flex-col overflow-hidden",
           "rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-elevated)]",
