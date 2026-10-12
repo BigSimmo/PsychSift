@@ -7,6 +7,7 @@ import { iconByItemId } from "@/components/mode-nav/mode-nav-icons";
 import { type ModeNavDensityProfile } from "@/components/mode-nav/mode-nav-bands";
 import { appModeDefinition } from "@/lib/app-modes";
 import {
+  groupModeSecondaryNavigationEntries,
   modeSecondaryNavigationEntries,
   modeSecondaryNavigationHref,
   type ModeNavAdoptedMode,
@@ -69,31 +70,36 @@ export function RegistryModeNav({
 
   const currentSearchParams = new URLSearchParams(searchParamString);
   // Action-only entries are dropped, not adapted: `ModeNavItem` takes an href
-  // by design so deep links, back and prefetch keep working.
-  const items = modeSecondaryNavigationEntries(modeId).flatMap<ModeNavItem>((entry) =>
-    entry.href
-      ? [
-          {
-            id: entry.id,
-            label: entry.label,
-            href: modeSecondaryNavigationHref({
-              modeId,
-              itemId: entry.id,
-              href: entry.href,
-              currentSearchParams,
-            }),
-            // The accessor widens `id` to `string`; the guarantee lives on the
-            // map's key type above, which is derived from the registry literal.
-            icon: iconByItemId[entry.id as RoutedModeSecondaryNavigationId],
-          },
-        ]
-      : [],
+  // by design so deep links, back and prefetch keep working. Grouped ("tools",
+  // "more") entries stay off the tabs, as they do on `ModeBand`.
+  const items = groupModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId)).main.flatMap<ModeNavItem>(
+    (entry) =>
+      entry.href
+        ? [
+            {
+              id: entry.id,
+              label: entry.label,
+              href: modeSecondaryNavigationHref({
+                modeId,
+                itemId: entry.id,
+                href: entry.href,
+                currentSearchParams,
+              }),
+              // The accessor widens `id` to `string`; the guarantee lives on the
+              // map's key type above, which is derived from the registry literal.
+              icon: iconByItemId[entry.id as RoutedModeSecondaryNavigationId],
+            },
+          ]
+        : [],
   );
 
   return (
     <ModeNav
       items={items}
       label={`${appModeDefinition(modeId).label} pages`}
+      // The mode's name over its tabs on a mode page; a record route keeps the
+      // bar alone, because the record's own title follows straight after.
+      title={activeId === null ? undefined : appModeDefinition(modeId).label}
       densityProfile={registryModeNavDensityProfiles[modeId]}
       activeId={activeId}
     />

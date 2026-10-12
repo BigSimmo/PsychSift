@@ -193,7 +193,7 @@ describe("audit navigation and auth regressions", () => {
     const focusLeaveContract = sourceSegment(
       masterSearchHeaderSource,
       "ref={modeMenuRef}",
-      'className="relative z-[60]',
+      'className="universal-header-mode relative z-[60]',
       { label: "master mode-menu focus boundary" },
     );
 

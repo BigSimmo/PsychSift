@@ -2,7 +2,7 @@
 
 import { Building2, CircleCheck, CircleHelp, Clock, Lock, Scale, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
@@ -249,6 +249,104 @@ export function RequestSheet({
   );
 }
 
+/**
+ * Taking back a request that still waits for approval (owner decision 12 Oct 2026). The shift goes
+ * straight back on the list; an approved shift is on the roster, so it is given away through Roster.
+ */
+function WithdrawSheet({
+  listing,
+  open,
+  onClose,
+  onWithdrawn,
+  onStale,
+}: {
+  listing: OpenShiftListing;
+  open: boolean;
+  onClose: () => void;
+  onWithdrawn: () => void;
+  /** The request was decided before it could be taken back, so the page reads it again. */
+  onStale: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Set once the request turns out decided, so it can't be retried against the old listing.
+  const [stale, setStale] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) {
+      setError(null);
+      setStale(false);
+    }
+  }
+  async function withdraw() {
+    setBusy(true);
+    setError(null);
+    const result = await postRosterAction(listing.serviceId, {
+      action: "open.withdraw",
+      openShiftId: listing.id,
+    } as RosterAction);
+    setBusy(false);
+    if (!result.ok) {
+      if (result.code === "roster_conflict" || result.code === "roster_not_found") {
+        setStale(true);
+        onStale();
+      }
+      setError(
+        result.code === "roster_conflict"
+          ? "It can't be taken back now. Your roster manager has decided, or the shift has started. Check My shifts."
+          : result.code === "roster_not_found"
+            ? "This request can't be found any more. Check My shifts."
+            : `Not taken back. ${result.message}`,
+      );
+      return;
+    }
+    onWithdrawn();
+  }
+  return (
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Take back your request?"
+      testId="open-shifts-withdraw"
+      footer={
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="primary"
+            block
+            busy={busy}
+            busyLabel="Taking back"
+            disabled={stale}
+            onClick={() => void withdraw()}
+          >
+            Yes, take it back
+          </Button>
+          <Button variant="ghost" block onClick={onClose}>
+            Keep my request
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="rounded-md bg-[color:var(--surface-subtle)] px-4 py-3 text-sm">
+          <p className="font-semibold text-[color:var(--text-heading)]">{shiftTitle(listing)}</p>
+          <p className="nums text-[color:var(--text)]">{`${formatDayLong(perthDateOf(listing.startsAt))}, ${formatShiftTimes(listing.startsAt, listing.endsAt)}`}</p>
+          <p className="text-[color:var(--text-muted)]">{listing.siteName ?? listing.teamName}</p>
+        </div>
+        <p className="text-sm text-[color:var(--text-muted)]">
+          The shift goes back on the list for everyone, and your roster manager no longer needs to decide. You can ask
+          again while it&apos;s still open.
+        </p>
+        {error ? (
+          <p role="alert" className="text-sm font-medium text-[color:var(--danger-text)]">
+            {error}
+          </p>
+        ) : null}
+      </div>
+    </Sheet>
+  );
+}
+
 export function OpenShiftsAdvertPage({
   serviceId,
   openShiftId,
@@ -265,7 +363,23 @@ export function OpenShiftsAdvertPage({
   const [sheetOpen, setSheetOpen] = useState(false);
   // Kept mounted after the first open so closing hands focus back to "Request this shift".
   const [sheetLoaded, setSheetLoaded] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [sentState, setSent] = useState<string | null>(null);
+  // When the request was sent, so a later read that no longer shows it as this doctor's
+  // (declined or cancelled since) lets this visit's record of sending it lapse.
+  const [sentReadAt, setSentReadAt] = useState<number | null>(null);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawLoaded, setWithdrawLoaded] = useState(false);
+  // The shift whose waiting request was taken back, so the page drops it before the reload lands.
+  const [withdrawnKey, setWithdrawnKey] = useState<string | null>(null);
+  // The read the take-back was made against. Only that read is overridden: a newer read is the truth,
+  // so a request made again from another tab or device shows as waiting.
+  const [withdrawnReadAt, setWithdrawnReadAt] = useState<number | null>(null);
+  const withdrawnNoticeRef = useRef<HTMLParagraphElement>(null);
+  // The button that opened the take-back is gone, so keyboard focus lands on the result instead,
+  // once per take-back rather than on every re-render.
+  useEffect(() => {
+    if (withdrawnKey) withdrawnNoticeRef.current?.focus();
+  }, [withdrawnKey]);
   const [autoOpened, setAutoOpened] = useState(false);
   const listing = state.listings.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
 
@@ -315,14 +429,21 @@ export function OpenShiftsAdvertPage({
   const timeText = endsNextDay(listing.startsAt, listing.endsAt)
     ? `${perthTimeOf(listing.startsAt)}–${perthTimeOf(listing.endsAt)} next day`
     : formatShiftTimes(listing.startsAt, listing.endsAt);
-  const alreadyMine = listing.claimedByMe || sent !== null;
+  const withdrawnHere = withdrawnKey === `${listing.serviceId}:${listing.id}`;
+  const withdrawn = withdrawnHere && (state.readAt?.getTime() ?? null) === withdrawnReadAt;
+  const sent = listing.claimedByMe || (state.readAt?.getTime() ?? null) === sentReadAt ? sentState : null;
+  const alreadyMine = (listing.claimedByMe && !withdrawn) || sent !== null;
+  const approved = sent === "approved" || listing.status === "approved";
+  // A started shift can no longer be claimed, so the server refuses to reopen it.
+  const started = Date.parse(listing.startsAt) <= now.getTime();
+  const canWithdraw = alreadyMine && !approved && !started && state.sample === null && !state.offline;
   const sample = state.sample !== null;
   // A deep link or a list read earlier can still name a shift nobody can ask for now.
   const closed: string | null = alreadyMine
     ? listing.status === "cancelled" && sent === null
       ? "cancelled"
       : null
-    : isBrowsable(listing, now)
+    : isBrowsable(listing, now) || (withdrawn && listing.claimedByMe && Date.parse(listing.startsAt) > now.getTime())
       ? null
       : listing.mine
         ? "own"
@@ -423,6 +544,18 @@ export function OpenShiftsAdvertPage({
         </p>
       </div>
 
+      {withdrawnHere && !alreadyMine ? (
+        <p
+          role="status"
+          ref={withdrawnNoticeRef}
+          tabIndex={-1}
+          className="mx-3 mt-4 text-sm font-medium text-[color:var(--text-heading)]"
+        >
+          {listing.claimedByMe || listing.status === "open"
+            ? "Request taken back. The shift is open again."
+            : "Request taken back."}
+        </p>
+      ) : null}
       {signedOut ? (
         <SignInAction label="Sign in to request shifts" />
       ) : closed ? (
@@ -476,7 +609,7 @@ export function OpenShiftsAdvertPage({
             role="status"
             className="flex items-start gap-3 rounded-lg border border-[color:var(--border)] px-4 py-3"
           >
-            {sent === "approved" || listing.status === "approved" ? (
+            {approved ? (
               <CircleCheck
                 aria-hidden="true"
                 strokeWidth={1.6}
@@ -490,7 +623,7 @@ export function OpenShiftsAdvertPage({
               />
             )}
             <p className="text-sm text-[color:var(--text)]">
-              {sent === "approved" || listing.status === "approved" ? (
+              {approved ? (
                 <>
                   <b className="block font-semibold text-[color:var(--text-heading)]">Approved</b>It&apos;s on your
                   roster now.
@@ -509,6 +642,18 @@ export function OpenShiftsAdvertPage({
           >
             Go to My shifts
           </Link>
+          {canWithdraw ? (
+            <Button
+              variant="ghost"
+              block
+              onClick={() => {
+                setWithdrawLoaded(true);
+                setWithdrawOpen(true);
+              }}
+            >
+              Take back my request
+            </Button>
+          ) : null}
         </FootAction>
       ) : state.offline ? (
         <FootAction note="Nothing has been sent. Try again when you're back online.">
@@ -561,8 +706,29 @@ export function OpenShiftsAdvertPage({
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
           onSent={(status) => {
+            setWithdrawnKey(null);
             setSent(status);
+            setSentReadAt(state.readAt?.getTime() ?? null);
             setSheetOpen(false);
+            state.reload();
+          }}
+        />
+      ) : null}
+      {withdrawLoaded ? (
+        <WithdrawSheet
+          listing={listing}
+          open={withdrawOpen}
+          onClose={() => setWithdrawOpen(false)}
+          onStale={() => {
+            // The request was decided elsewhere, so this visit's own record of sending it no longer holds.
+            setSent(null);
+            state.reload();
+          }}
+          onWithdrawn={() => {
+            setSent(null);
+            setWithdrawnKey(`${listing.serviceId}:${listing.id}`);
+            setWithdrawnReadAt(state.readAt?.getTime() ?? null);
+            setWithdrawOpen(false);
             state.reload();
           }}
         />

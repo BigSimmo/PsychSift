@@ -104,10 +104,18 @@ async function openPatientStrip(page: Page): Promise<void> {
   // The panel's open state is React-controlled. A tap before hydration toggles
   // the native <details> without React's onToggle, so React's state and the
   // DOM can disagree and the field may never show.
-  await clickWhenHydrated(panel.locator("summary").first());
+  // A streamed page can replace the panel after the tap, and the replacement mounts closed, so
+  // tap again whenever the panel is closed rather than trusting the first tap. Reading the
+  // panel's own open state never re-taps an open panel whose fields are still painting.
   const crcl = page.getByTestId("patient-crcl");
-  await expect(crcl).toBeVisible({ timeout: 15_000 });
-  await waitForHydratedField(crcl);
+  await expect(async () => {
+    const open = await panel.evaluate((element) => (element as HTMLDetailsElement).open);
+    if (!open) await clickWhenHydrated(panel.locator("summary").first());
+    await expect(crcl).toBeVisible({ timeout: 5_000 });
+    await waitForHydratedField(crcl);
+    // A replacement that lands after the field first painted mounts closed; this retries it.
+    await expect(crcl).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 /**

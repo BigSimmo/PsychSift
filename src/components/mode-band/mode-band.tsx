@@ -592,6 +592,8 @@ function ModeBandHeader({
       aria-label={modeName}
       className="mode-band"
       data-testid="mode-band"
+      // Lets a mode's band take its page's column (clinical-mode.css).
+      data-mode={modeId}
       data-mode-identity={IDENTITY_MODES.has(modeId) ? modeId : undefined}
     >
       <ModeMark Icon={Icon} />

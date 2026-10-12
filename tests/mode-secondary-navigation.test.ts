@@ -55,7 +55,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   // work-mode redesign, owner request 6 Oct 2026: CPD, Teaching, Admin and My Day list the frame's three pinned tabs.
   cme: ["Summary", "Log", "Learning"],
   teaching: ["Today", "Week", "Logbook"],
-  psychiatry: ["Ask", "Tools", "Saved"],
+  psychiatry: ["Home", "Saved"],
   medicines: [],
   "my-work": ["Today", "Renewals", "New job"],
   roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
@@ -133,6 +133,12 @@ const emptyRegistryModes = [
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
+  // Psychiatry is the one sanctioned exception to "no Home item": the owner's
+  // design review of 12 Oct 2026 folded its Ask and Tools pages into a single
+  // page the mockup names Home, beside Saved. Every other mode leaves Home to the
+  // global switch.
+  const homeTabModes: readonly AppModeId[] = ["psychiatry"];
+
   it("covers all 26 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
     expect(appModeIds).toHaveLength(26);
@@ -140,7 +146,9 @@ describe("mode secondary navigation registry", () => {
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
       expect(labels).toEqual(expectedLabels[modeId]);
-      expect(labels.map((label) => label.toLowerCase())).not.toContain("home");
+      if (!homeTabModes.includes(modeId)) {
+        expect(labels.map((label) => label.toLowerCase())).not.toContain("home");
+      }
     }
   });
 
@@ -242,11 +250,10 @@ describe("mode secondary navigation registry", () => {
     ).toBe("/forms/clock");
   });
 
-  it("registers Psychiatry's Ask, Tools and Saved as the band's tabs, Ask current on the hub", () => {
-    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, href }) => [id, href])).toEqual([
-      ["psychiatry-ask", "/psychiatry"],
-      ["psychiatry-tools", "/psychiatry?page=tools"],
-      ["psychiatry-saved", "/psychiatry?page=saved"],
+  it("registers Psychiatry's Home and Saved as the band's tabs, Home current on the hub", () => {
+    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, label, href }) => [id, label, href])).toEqual([
+      ["psychiatry-ask", "Home", "/psychiatry"],
+      ["psychiatry-saved", "Saved", "/psychiatry?page=saved"],
     ]);
     expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry")).toBe("psychiatry-ask");
     expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry/mha-clock")).toBeNull();
@@ -408,7 +415,8 @@ describe("mode secondary navigation registry", () => {
     ).toBe("/differentials/presentations?q=confusion&ids=delirium%2Cdementia");
 
     // Search restores the last query and re-opens results even when the prior
-    // tab URL did not carry run=1 (e.g. Diagnoses / Presentations browse).
+    // tab URL did not carry run=1 (e.g. Diagnoses / Presentations browse). It
+    // names the results route itself rather than a home that redirects there.
     expect(
       modeSecondaryNavigationHref({
         modeId: "differentials",
@@ -416,7 +424,7 @@ describe("mode secondary navigation registry", () => {
         href: "/differentials?focus=1",
         currentSearchParams: new URLSearchParams("q=confusion&ids=delirium"),
       }),
-    ).toBe("/differentials?focus=1&q=confusion&run=1&ids=delirium");
+    ).toBe("/differentials/search?q=confusion&focus=1&run=1&ids=delirium");
 
     // Search is the CURRENT tab on /factsheets/search, so its own link must not
     // reset what you are looking at. `run` is carried with the query because
@@ -607,10 +615,11 @@ describe("mode secondary navigation registry", () => {
     ]);
   });
 
-  it("leaves every other mode ungrouped", () => {
+  it("leaves every other mode ungrouped, except Therapy's Review queue kept off the tabs", () => {
     for (const modeId of appModeIds.filter((id) => id !== "on-call")) {
       const { tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId));
-      expect([...tools, ...more], modeId).toEqual([]);
+      const grouped = [...tools, ...more].map((entry) => entry.id);
+      expect(grouped, modeId).toEqual(modeId === "therapy-compass" ? ["review"] : []);
     }
   });
 
