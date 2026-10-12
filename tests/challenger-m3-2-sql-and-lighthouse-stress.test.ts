@@ -396,21 +396,21 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       const largeSql = statements.join("\n");
       expect(largeSql.length).toBeGreaterThan(150000);
 
-      // Keep the fastest of several runs. Catastrophic backtracking makes every run slow, while a
-      // single cold run under coverage on a busy CI runner can cross 100 ms on its own (about
-      // 102 ms on 12 Oct, against about 25 ms once warm).
+      // Warm up once to avoid measuring cold-start noise, then require every measured run to
+      // remain below the limit. This catches regressions that a fastest-run statistic could hide.
+      stripMigrationSql(largeSql);
       let stripped = "";
-      let duration = Number.POSITIVE_INFINITY;
+      const durations: number[] = [];
       for (let run = 0; run < 5; run++) {
         const start = performance.now();
         stripped = stripMigrationSql(largeSql);
-        duration = Math.min(duration, performance.now() - start);
+        durations.push(performance.now() - start);
       }
 
       expect(stripped).toContain("https://example.com/item--1999");
       expect(stripped).toContain("Note with ''quotes'' and -- dashes");
       expect(stripped).not.toContain("trailing comment");
-      expect(duration).toBeLessThan(100); // Must be very fast, well below 100ms
+      expect(Math.max(...durations)).toBeLessThan(100); // Every warm run must be very fast
     });
 
     it("handles long unclosed comment or string safely without catastrophic backtracking", () => {
