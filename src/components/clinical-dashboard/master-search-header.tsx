@@ -54,7 +54,6 @@ import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-d
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
-import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
@@ -2617,30 +2616,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           >
             <Menu aria-hidden="true" className="size-icon-lg" />
           </button>
-          {sharedHomeIdentity ? (
-            <div data-testid="shared-home-brand" className="hidden min-w-0 items-center gap-3 lg:flex">
-              <BrandMark tone="emphasis" className="h-10 w-10" />
-              <span className="min-w-0">
-                {/* The name leads and the strapline supports, which is a weight and a
-                    colour apart, not just a size. The wordmark takes the display
-                    tracking the rest of the interface's headings use — at 20px/800 the
-                    untracked default reads loose. The strapline drops from 600 to 500:
-                    at 600 it sat almost level with the name and the two lines competed.
-                    The colour stays --text-muted and the size stays 12px, both measured
-                    rather than chosen — on this surface --text-soft composites to
-                    #8894a6 and gives 3.07:1 against the header, under the 4.5:1 floor,
-                    and 11px made the block bottom-light for no gain. Tracking stays on
-                    the ladder's zero step; positive tracking belongs to uppercase
-                    labels, and this is a sentence. */}
-                <span className="block truncate text-lg font-extrabold leading-5 tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
-                  PsychSift
-                </span>
-                <span className="block truncate text-xs font-medium text-[color:var(--text-muted)]">
-                  From question to source
-                </span>
-              </span>
-            </div>
-          ) : isServicesMode ? (
+          {/* The shared home draws no wordmark here (owner design review, 12 Oct
+              2026): the side rail already carries the PsychSift mark on every
+              desktop page, so a second lockup in the header showed the logo twice. */}
+          {sharedHomeIdentity ? null : isServicesMode ? (
             <div className="hidden min-w-0 items-center gap-3 lg:flex">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
                 <ShieldCheck className="h-5 w-5" aria-hidden />

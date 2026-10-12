@@ -3348,7 +3348,10 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   --smart-search-phone-ticker-vertical-padding: 0.375rem;
 
   min-height: var(--spacing-tap);
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  /* "Try this" and the example, centred under the hero. The example takes
+     only the room it needs, and shortens only once the line is full. */
+  grid-template-columns: auto minmax(0, max-content);
+  justify-content: center;
   align-items: center;
   gap: var(--smart-search-phone-ticker-gap);
   overflow: hidden;
@@ -3366,11 +3369,11 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   align-items: center;
   --smart-search-phone-ticker-kicker-gap: 0.25rem;
   gap: var(--smart-search-phone-ticker-kicker-gap);
-  color: var(--clinical-accent);
+  /* A quiet sentence-case lead-in (12 Oct 2026), so the example carries the line. */
+  color: var(--text-muted);
   font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .smart-search-phone-ticker-query {
@@ -3381,13 +3384,6 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   --smart-search-phone-ticker-line-height: 1.1rem;
   line-height: var(--smart-search-phone-ticker-line-height);
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.smart-search-phone-ticker-action {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -3687,66 +3683,6 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Home history is a quiet convenience rather than a second set of primary
-   actions. Keep the shared chip behaviour and touch target, but use a compact
-   rectangular treatment that takes up less visual and vertical space. */
-.home-recent-searches {
-  gap: calc(var(--spacing-icon-xs) / 2) var(--radius-md);
-  padding-inline: 0;
-}
-
-.home-recent-searches .answer-suggestion-label {
-  color: var(--text-heading);
-  font-size: var(--text-xs);
-  font-weight: 650;
-  letter-spacing: 0.025em;
-}
-
-.home-recent-searches .answer-suggestion-chips {
-  justify-content: center;
-  gap: calc(var(--spacing-icon-xs) / 2);
-}
-
-.home-recent-searches .answer-suggestion-chip {
-  min-height: calc(var(--spacing-tap) * 7 / 12);
-  border-color: color-mix(in srgb, var(--border) 58%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-inset) 42%, transparent);
-  box-shadow: none;
-  padding-inline: var(--radius-md);
-  color: color-mix(in srgb, var(--text-muted) 90%, transparent);
-  font-size: var(--text-xs);
-  font-weight: 550;
-}
-
-.home-recent-searches .answer-suggestion-chip-icon {
-  width: var(--spacing-icon-xs);
-  height: var(--spacing-icon-xs);
-  margin-right: var(--radius-xs);
-}
-
-.home-recent-searches .answer-suggestion-chip:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--clinical-accent-border) 68%, transparent);
-  background: color-mix(in srgb, var(--clinical-accent-soft) 52%, transparent);
-}
-
-@media (pointer: coarse) {
-  .home-recent-searches .answer-suggestion-chip {
-    min-height: var(--spacing-tap);
-  }
-}
-
-@media (max-width: 639px) {
-  .home-recent-searches {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .home-recent-searches .answer-suggestion-chips {
-    justify-content: flex-start;
-  }
 }
 
 .answer-footer-search-edge .answer-suggestion-row {
