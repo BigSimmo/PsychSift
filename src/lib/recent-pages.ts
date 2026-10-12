@@ -1,4 +1,5 @@
 import { RECENT_PAGES_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
+import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * "Recent pages": the last few pages this reader opened, across Work and
@@ -159,7 +160,7 @@ const WORK_PRIVATE_TABS: Readonly<Record<string, ReadonlySet<string>>> = {
   "on-call": new Set(["call", "handover", "refer", "referrals", "find"]),
   cme: new Set(["new", "applications", "log"]),
   teaching: new Set(["c", "feedback", "import", "review", "assessments"]),
-  roster: new Set(["sick", "join"]),
+  roster: new Set(["sick", "join", "requests"]),
   admin: new Set(["applications", "requests", "new-job", "hospital"]),
   "open-shifts": new Set(["post", "log"]),
   "my-day": new Set(["setup"]),
@@ -195,9 +196,11 @@ export function recentPageTarget(
 
   const rule = CLINICAL_RECORD_RULES.find((candidate) => candidate.root === root);
   if (!rule || !second) return null;
+  // A record sits at one exact depth: anything below it (a therapy's brief or
+  // patient sheet, whose choices live in the query) cannot be brought back by a bare path.
   if (rule.via) {
-    if (!rule.via.includes(second) || !third) return null;
-  } else if (rule.notRecords?.includes(second)) {
+    if (!rule.via.includes(second) || !third || segments.length !== 3) return null;
+  } else if (rule.notRecords?.includes(second) || segments.length !== 2) {
     return null;
   }
   return { path, mode: "clinical", section: rule.section };
@@ -262,7 +265,7 @@ export function normaliseRecentPages(raw: unknown, now: number): RecentPage[] {
 }
 
 const EMPTY: readonly RecentPage[] = [];
-let cache: { raw: string | null; value: readonly RecentPage[] } | null = null;
+let cache: { raw: string | null; value: readonly RecentPage[]; expiresAt: number } | null = null;
 
 /** The stored list, newest first. Blocked or unreadable storage reads as no history. */
 export function readRecentPages(now = Date.now()): readonly RecentPage[] {
@@ -273,16 +276,32 @@ export function readRecentPages(now = Date.now()): readonly RecentPage[] {
   } catch {
     return EMPTY;
   }
-  if (cache && cache.raw === raw) return cache.value;
+  if (cache && cache.raw === raw && now < cache.expiresAt) return cache.value;
   let value: readonly RecentPage[] = EMPTY;
+  let storedCount = 0;
   if (raw) {
     try {
-      value = normaliseRecentPages(JSON.parse(raw), now);
+      const parsed: unknown = JSON.parse(raw);
+      storedCount = Array.isArray(parsed) ? parsed.length : 1;
+      value = normaliseRecentPages(parsed, now);
     } catch {
       value = EMPTY;
+      storedCount = 1;
     }
   }
-  cache = { raw, value };
+  // Expired or unreadable entries are removed from the device, not only hidden.
+  if (raw && value.length < storedCount) {
+    try {
+      if (value.length === 0) window.localStorage.removeItem(RECENT_PAGES_STORAGE_KEY);
+      else window.localStorage.setItem(RECENT_PAGES_STORAGE_KEY, JSON.stringify(value));
+      raw = value.length === 0 ? null : JSON.stringify(value);
+    } catch {
+      // Blocked storage: the list read is still filtered.
+    }
+  }
+  // The cached list holds only until its oldest entry expires.
+  const oldest = value.reduce((min, page) => Math.min(min, page.at), Infinity);
+  cache = { raw, value, expiresAt: oldest === Infinity ? Infinity : oldest + RECENT_PAGES_TTL_MS + 1 };
   return value;
 }
 
@@ -299,6 +318,7 @@ function notify() {
 subscribeAccountTransition(() => {
   cache = null;
   announcedTitles.clear();
+  generation += 1;
   notify();
 });
 
@@ -308,14 +328,37 @@ subscribeAccountTransition(() => {
  * memory only, until the recorder reads them; never stored apart from the list.
  */
 const announcedTitles = new Map<string, string>();
+const ANNOUNCED_TITLES_KEPT = 20;
+
+/**
+ * Bumped whenever the list is cleared or the account changes, so a page still
+ * settling its title from before then can never write itself back.
+ */
+let generation = 0;
+export function recentPagesGeneration(): number {
+  return generation;
+}
+
+/** A title that could name a patient is never kept (a document title is free text someone typed). */
+function safeRecentTitle(title: string): string | null {
+  const name = title.trim();
+  if (!name || name.length > 120 || looksLikePatientDetail(name)) return null;
+  return name;
+}
 export const recentPageTitleAnnouncedEvent = "psychsift:recent-page-title";
 
 /** A page names itself for Recent pages. Ignored for any path the list may not hold. */
 export function announceRecentPageTitle(pathname: string, title: string): void {
   const target = recentPageTarget(pathname);
-  const name = title.trim();
-  if (!target || !name || name.length > 120) return;
+  const name = safeRecentTitle(title);
+  if (!target || !name) return;
+  announcedTitles.delete(target.path);
   announcedTitles.set(target.path, name);
+  while (announcedTitles.size > ANNOUNCED_TITLES_KEPT) {
+    const oldestKey = announcedTitles.keys().next().value;
+    if (oldestKey === undefined) break;
+    announcedTitles.delete(oldestKey);
+  }
   if (typeof window !== "undefined") window.dispatchEvent(new Event(recentPageTitleAnnouncedEvent));
 }
 
@@ -333,8 +376,8 @@ export function announcedRecentPageTitle(pathname: string): string | null {
 export function recordRecentPage(pathname: string, title: string, at: number = Date.now()): void {
   if (typeof window === "undefined") return;
   const target = recentPageTarget(pathname);
-  const name = title.trim();
-  if (!target || !name || name.length > 120) return;
+  const name = safeRecentTitle(title);
+  if (!target || !name) return;
   const page: RecentPage = { ...target, title: name, at };
   const current = readRecentPages(at);
   const next = normaliseRecentPages([page, ...current.filter((existing) => existing.path !== page.path)], at);
@@ -368,6 +411,8 @@ export function clearRecentPages(): void {
     // Nothing stored that we can reach; nothing to clear.
   }
   cache = null;
+  announcedTitles.clear();
+  generation += 1;
   notify();
 }
 

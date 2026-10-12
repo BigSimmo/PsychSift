@@ -15,11 +15,14 @@ import {
   normaliseRecentPages,
   pickRecentPages,
   readRecentPages,
+  recentPagesGeneration,
   RECENT_PAGES_LIMIT,
   RECENT_PAGES_TTL_MS,
   recentPageTarget,
   recentPageTitle,
   recordRecentPage,
+  announceRecentPageTitle,
+  announcedRecentPageTitle,
 } from "@/lib/recent-pages";
 
 afterEach(() => {
@@ -162,5 +165,40 @@ describe("the stored list", () => {
       "B",
       "Roster",
     ]);
+  });
+});
+
+describe("privacy guards (review fixes)", () => {
+  it("never keeps a title that could name a patient", () => {
+    recordRecentPage("/documents/doc-1", "Discharge summary Mr Testpatient");
+    expect(readRecentPages()).toEqual([]);
+    announceRecentPageTitle("/documents/doc-2", "Jane Citizen MRN 1234567");
+    expect(announcedRecentPageTitle("/documents/doc-2")).toBeNull();
+    recordRecentPage("/documents/doc-3", "Lithium monitoring guideline");
+    expect(readRecentPages().map((page) => page.title)).toEqual(["Lithium monitoring guideline"]);
+  });
+
+  it("never records roster requests or anything below a record", () => {
+    expect(recentPageTarget("/roster/requests")).toBeNull();
+    expect(recentPageTarget("/therapy-compass/cbt/brief")).toBeNull();
+    expect(recentPageTarget("/therapy-compass/cbt/sheet")).toBeNull();
+    expect(recentPageTarget("/dsm/diagnoses/major-depressive-disorder/extra")).toBeNull();
+    expect(recentPageTarget("/therapy-compass/cbt")).not.toBeNull();
+  });
+
+  it("drops entries that expire while cached, and removes them from the device", () => {
+    const at = Date.now();
+    recordRecentPage("/medications/lithium", "Lithium", at);
+    expect(readRecentPages(at)).toHaveLength(1);
+    expect(readRecentPages(at + RECENT_PAGES_TTL_MS + 10)).toEqual([]);
+    expect(window.localStorage.getItem(RECENT_PAGES_STORAGE_KEY)).toBeNull();
+  });
+
+  it("moves to a new generation on clear and at an account transition", () => {
+    const before = recentPagesGeneration();
+    clearRecentPages();
+    expect(recentPagesGeneration()).toBe(before + 1);
+    clearAccountScopedBrowserStorage();
+    expect(recentPagesGeneration()).toBeGreaterThan(before + 1);
   });
 });

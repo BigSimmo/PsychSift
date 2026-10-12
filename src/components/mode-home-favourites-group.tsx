@@ -25,6 +25,10 @@ export function ModeHomeFavouritesGroup({
   modeId: AppModeId;
   favouriteType: "differentials" | "therapies";
 }) {
+  // While an account's favourites are loading (including straight after a switch
+  // of account), the previous account's list is still in memory: show nothing.
+  const { ready } = useAccountData();
+  if (!ready) return null;
   return favouriteType === "therapies" ? (
     <TherapyFavourites modeId={modeId} />
   ) : (

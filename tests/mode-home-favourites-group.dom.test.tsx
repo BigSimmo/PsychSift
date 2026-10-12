@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ModeHomeFavouritesGroup } from "@/components/mode-home-favourites-group";
 
 const saved = vi.hoisted(() => ({
+  ready: true,
   favourites: { service: ["crisis-line"], form: ["form-1a"], differential: ["akathisia"], therapy: ["cbt"] },
 }));
 const therapyLookups = vi.hoisted(() => ({ count: 0 }));
@@ -56,5 +57,15 @@ describe("mode home favourites", () => {
       "/therapy-compass/cbt",
     );
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("shows nothing while the account's favourites are loading, as after a change of account", () => {
+    saved.ready = false;
+    try {
+      render(<ModeHomeFavouritesGroup modeId="differentials" favouriteType="differentials" />);
+      expect(screen.queryByTestId("mode-home-favourites")).toBeNull();
+    } finally {
+      saved.ready = true;
+    }
   });
 });

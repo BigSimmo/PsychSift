@@ -8,6 +8,7 @@ import {
   announcedRecentPageTitle,
   recentPageTarget,
   recentPageTitle,
+  recentPagesGeneration,
   recentPageTitleAnnouncedEvent,
   recordRecentPage,
 } from "@/lib/recent-pages";
@@ -68,8 +69,11 @@ function RecordRecentPage({ pathname, startTitle }: { readonly pathname: string;
     // A page opened with a search in its address is a search, not a page to come back to.
     if (/[?&](q|query)=/.test(window.location.search)) return undefined;
     const at = Date.now();
+    // A clear or a change of account after this open began ends it: nothing is written back.
+    const startGeneration = recentPagesGeneration();
     let lastTitle: string | null = null;
     const record = () => {
+      if (recentPagesGeneration() !== startGeneration) return;
       if (!mayRecordRecentSearches() || !samePath(window.location.pathname, pathname)) return;
       const title = recentPageTitleForOpen(pathname, startTitle);
       if (!title || title === lastTitle) return;

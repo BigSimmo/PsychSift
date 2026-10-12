@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useMemo, useSyncExternalStore } from "react";
 
+import { readAppPreferences, subscribeAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import {
   pickRecentPages,
   readNoRecentPages,
@@ -11,6 +12,10 @@ import {
   type RecentPage,
   type RecentPageSection,
 } from "@/lib/recent-pages";
+
+const NO_PAGES: readonly RecentPage[] = [];
+const readSaveRecentSearches = () => readAppPreferences().saveRecentSearches;
+const readNotAllowed = () => false;
 
 /**
  * The newest "Recent pages" on this device, leaving out the page being looked
@@ -25,9 +30,12 @@ export function useRecentPages({
   readonly section?: RecentPageSection;
 }): readonly RecentPage[] {
   const pages = useSyncExternalStore(subscribeRecentPages, readRecentPages, readNoRecentPages);
+  // "Save recent searches" off hides the list however it was turned off (Settings,
+  // Work profile or another device), as AI Search's own recents do.
+  const allowed = useSyncExternalStore(subscribeAppPreferences, readSaveRecentSearches, readNotAllowed);
   const pathname = usePathname();
   return useMemo(
-    () => pickRecentPages(pages, { limit, section, exceptPath: pathname }),
-    [pages, limit, section, pathname],
+    () => (allowed ? pickRecentPages(pages, { limit, section, exceptPath: pathname }) : NO_PAGES),
+    [allowed, pages, limit, section, pathname],
   );
 }
