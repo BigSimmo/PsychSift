@@ -85,14 +85,12 @@ describe("Recent pages recorder", () => {
       "Panic disorder",
     );
   });
+
   it("does not trust the title on screen when it first loads after the reader has already moved on", async () => {
-    // The document was loaded on /roster; the reader moved to a diagnosis before this recorder loaded.
-    vi.spyOn(performance, "getEntriesByType").mockReturnValue([
-      { name: "http://localhost/roster", type: "navigate" } as unknown as PerformanceEntry,
-    ]);
+    // The reader moved to a diagnosis before this recorder loaded; the tab still shows Roster.
     goTo("/dsm/diagnoses/panic-disorder");
     document.title = "Roster | PsychSift";
-    render(<RecentPagesRecorder />);
+    render(<RecentPagesRecorder navigatedBeforeLoad />);
     act(() => {
       vi.advanceTimersByTime(1000);
     });
@@ -105,6 +103,5 @@ describe("Recent pages recorder", () => {
     expect(readRecentPages().map((page) => [page.path, page.title])).toEqual([
       ["/dsm/diagnoses/panic-disorder", "Panic disorder"],
     ]);
-    vi.restoreAllMocks();
   });
 });
