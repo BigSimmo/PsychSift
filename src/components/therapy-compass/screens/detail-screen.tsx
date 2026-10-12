@@ -31,6 +31,9 @@ import { useTherapyFavourite } from "../use-therapy-favourite";
  * the record landed below the fold and below four buttons. Those facts are now
  * the strip directly under the title, the navigation is in the header, and what
  * is left in the column is the record itself, in reading order.
+ *
+ * From 1024px the list of therapies sits in a column beside that reading
+ * column (`ClinicalSplit`); below 1024px it is not drawn at all.
  */
 export function DetailScreen() {
   const b = useTcBindings();
@@ -84,6 +87,9 @@ export function DetailScreen() {
         <ClinicalSplit
           listLabel="Therapies"
           testId="therapy-detail-split"
+          // The record's pinned header carries its tabs (about 8.25rem), so
+          // the list sticks below that rather than at the default 5rem.
+          className="[--clinical-split-top:9.25rem]"
           list={<DesktopSplitList heading="Therapies by category" groups={splitGroups} />}
           detail={
             <>

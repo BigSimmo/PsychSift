@@ -271,12 +271,14 @@ body {
   }
 
   /* Sticks under the record's own nav header, which pins at the top once the
-     app header scrolls away: the same 5rem the DSM record's summary column uses. */
+     app header scrolls away: by default the same 5rem the DSM record's summary
+     column uses. A page whose pinned header is taller (Therapy's carries its
+     tabs) sets `--clinical-split-top` on the split. */
   .clinical-split__list {
     display: block;
     position: sticky;
-    top: calc(var(--spacing) * 20);
-    max-height: calc(100dvh - var(--spacing) * 24);
+    top: var(--clinical-split-top, calc(var(--spacing) * 20));
+    max-height: calc(100dvh - var(--clinical-split-top, calc(var(--spacing) * 20)) - var(--spacing) * 4);
     overflow-y: auto;
     overscroll-behavior: contain;
     border: 1px solid var(--border);
