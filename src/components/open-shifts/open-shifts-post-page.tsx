@@ -217,8 +217,14 @@ export function OpenShiftsPostPage() {
   async function post(): Promise<string | null> {
     if (!team || !times) return "Choose a team, date and times.";
     // A post that got no answer for a team that couldn't be read just now: wait, rather than let the form
-    // fall back to another team and post there instead.
-    if (Object.values(unanswered).some((entry) => !state.teams.some((row) => row.serviceId === entry.serviceId))) {
+    // fall back to another team and post there instead. A team the manager picked themselves still posts.
+    const fellBack = team.serviceId !== serviceId;
+    if (
+      fellBack &&
+      Object.entries(unanswered).some(
+        ([key, entry]) => !(key in done) && !state.teams.some((row) => row.serviceId === entry.serviceId),
+      )
+    ) {
       state.reload();
       return "Still checking whether an earlier post went live. Try again in a moment.";
     }
@@ -277,6 +283,8 @@ export function OpenShiftsPostPage() {
     setProgress(null);
     setDone(nowDone);
     setUnanswered(nowUnanswered);
+    // Pin the team a post with no answer went to, so a re-read that misses it can't quietly switch the form.
+    if (Object.keys(nowUnanswered).length > Object.keys(unanswered).length) setServiceId(team.serviceId);
     const { failed } = splitAttempts(attempts);
     // Read the team's shifts again, so a retry sees any date whose answer was lost but did go live.
     if (failed.length > 0) state.reload();
