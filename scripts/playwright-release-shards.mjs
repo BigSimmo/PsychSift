@@ -73,6 +73,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-phone-scroll.spec.ts": 215.0,
     "tests/ui-pwa.spec.ts": 1.8,
     "tests/ui-roster-team.spec.ts": 13.5,
+    // Estimated (one stale take-back test, new 12 Oct 2026; re-measure after the first release timing).
+    "tests/ui-open-shifts-withdraw.spec.ts": 5.0,
     "tests/ui-route-coverage.spec.ts": 26.7,
     "tests/ui-smoke.spec.ts": 266.8,
     "tests/ui-sources.spec.ts": 16.5,
@@ -124,6 +126,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-phone-scroll.spec.ts": 241.3,
     "tests/ui-pwa.spec.ts": 5.5,
     "tests/ui-roster-team.spec.ts": 22.9,
+    // Estimated (one stale take-back test, new 12 Oct 2026; re-measure after the first release timing).
+    "tests/ui-open-shifts-withdraw.spec.ts": 5.0,
     "tests/ui-route-coverage.spec.ts": 47.3,
     "tests/ui-smoke.spec.ts": 407.7,
     "tests/ui-sources.spec.ts": 24.1,
@@ -175,6 +179,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-phone-scroll.spec.ts": 358.3,
     "tests/ui-pwa.spec.ts": 6.3,
     "tests/ui-roster-team.spec.ts": 25.2,
+    // Estimated (one stale take-back test, new 12 Oct 2026; re-measure after the first release timing).
+    "tests/ui-open-shifts-withdraw.spec.ts": 5.0,
     "tests/ui-route-coverage.spec.ts": 61.4,
     "tests/ui-smoke.spec.ts": 674.0,
     "tests/ui-sources.spec.ts": 32.9,
@@ -226,6 +232,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-phone-scroll.spec.ts": 315.1,
     "tests/ui-pwa.spec.ts": 5.6,
     "tests/ui-roster-team.spec.ts": 21.1,
+    // Estimated (one stale take-back test, new 12 Oct 2026; re-measure after the first release timing).
+    "tests/ui-open-shifts-withdraw.spec.ts": 5.0,
     "tests/ui-route-coverage.spec.ts": 50.4,
     "tests/ui-smoke.spec.ts": 550.2,
     "tests/ui-sources.spec.ts": 37.2,
@@ -284,6 +292,8 @@ export const releaseSpecSeconds = Object.freeze({
     "tests/ui-pwa.spec.ts": 6.3,
     // Estimated from mobile-webkit (not reached before the timeout).
     "tests/ui-roster-team.spec.ts": 25.2,
+    // Estimated (one stale take-back test, new 12 Oct 2026; re-measure after the first release timing).
+    "tests/ui-open-shifts-withdraw.spec.ts": 5.0,
     // Estimated from mobile-webkit (not reached before the timeout).
     "tests/ui-route-coverage.spec.ts": 61.4,
     // Estimated from mobile-webkit (not reached before the timeout).
