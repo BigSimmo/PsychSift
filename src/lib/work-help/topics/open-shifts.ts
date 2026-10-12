@@ -10,7 +10,7 @@ export const openShiftsTopic: WorkHelpTopic = {
     {
       id: "request-shift",
       q: "How do I pick up an extra shift?",
-      a: "In Roster, open the Open shifts tab. Tap Request beside a shift that fits your roster, or tap any shift and choose Request this shift. You confirm before anything is sent. Your roster manager decides, unless your team approves same-level requests automatically.",
+      a: "In Roster, open the Open shifts tab. Tap Request beside a shift that fits your roster, or tap any shift and choose Request this shift. You confirm before anything is sent. Your roster manager decides. If your team approves same-level requests automatically, a request at exactly the shift's level for a shift at least a week away can be approved straight away.",
       link: { label: "Shifts to pick up", href: "/open-shifts" },
     },
     {
@@ -40,7 +40,7 @@ export const openShiftsTopic: WorkHelpTopic = {
     {
       id: "post-shift",
       q: "How do I post a shift that needs cover?",
-      a: "Roster managers can post one from Post a shift in Roster's More, on one date or several. It goes live straight away for team members at the right level, and a roster manager approves whoever asks, unless the team approves same-level requests automatically. A posted shift shows who in the team could do it, and Post again copies it.",
+      a: "Roster managers can post one from Post a shift in Roster's More, on one date or several. It goes live straight away for team members at the right level, and a roster manager approves whoever asks. If the team approves same-level requests automatically, that only covers a request at exactly the shift's level for a shift at least a week away. A posted shift shows who in the team could do it, and Post again copies it.",
       link: { label: "Post a shift", href: "/open-shifts/post" },
     },
   ],

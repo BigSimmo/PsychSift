@@ -218,6 +218,19 @@ describe("who could do this", () => {
     expect(result.cantWork).toBe(1);
   });
 
+  it("doesn't count the next day for a shift that ends at exactly midnight", () => {
+    const result = whoCouldDoThis({
+      shift: { startsAt: at("2026-10-14", "16:00"), endsAt: at("2026-10-15", "00:00"), minGrade: null, postedBy: null },
+      members: [ash, bo],
+      assignments: [],
+      unavailability: [{ userId: bo.userId, date: "2026-10-15", kind: "cant" }],
+      leave: null,
+      actorId: null,
+    });
+    expect(result.people.map((person) => person.name)).toEqual(["Dr Ash Example", "Dr Bo Example"]);
+    expect(result.cantWork).toBe(0);
+  });
+
   it("matches levels as Roster does", () => {
     expect(meetsLevel("consultant", "registrar")).toBe(true);
     expect(meetsLevel("resident", "registrar")).toBe(false);

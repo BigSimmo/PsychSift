@@ -31,14 +31,18 @@ export function OpenShiftsFitLine() {
     [state.status, state.listings, state.roster, state.rosterStatus, now],
   );
   if (count === 0) return null;
-  // A list that is offline, or missing a team that couldn't be read, may hold more.
-  const partial = state.offline || state.failedTeams.length > 0;
+  // An old list (offline, or a refresh that failed) may be out of date either way.
+  const stale = state.offline || state.refreshFailed;
+  // A current list missing a team that couldn't be read may hold more.
+  const partial = !stale && state.failedTeams.length > 0;
   return (
     <WorkCard testId="roster-month-open-shifts">
       <WorkIconRow
         icon={Hand}
         title={`${partial ? "At least " : ""}${count} open ${count === 1 ? "shift fits" : "shifts fit"} your roster`}
-        sub={`Posted by your teams · next ${WINDOW_DAYS / 7} weeks`}
+        sub={
+          stale ? "From the last list read, may be out of date" : `Posted by your teams · next ${WINDOW_DAYS / 7} weeks`
+        }
         href={OPEN_SHIFTS_HREF}
       />
     </WorkCard>

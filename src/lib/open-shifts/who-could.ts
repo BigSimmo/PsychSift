@@ -76,7 +76,8 @@ export function whoCouldDoThis(input: {
 }): WhoCould {
   const { shift, members, assignments, unavailability, leave, actorId } = input;
   const day = perthDateOf(shift.startsAt);
-  const lastDay = perthDateOf(shift.endsAt);
+  // The last Perth day the shift actually covers: one ending at exactly 00:00 doesn't touch the next day.
+  const lastDay = perthDateOf(new Date(Date.parse(shift.endsAt) - 1));
   const away = new Set(
     (leave ?? []).filter((row) => row.startsOn <= lastDay && row.endsOn >= day).map((row) => row.userId),
   );
