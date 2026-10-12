@@ -307,6 +307,11 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
         <div data-testid="cme-year-label" className={LABEL}>
           {year}
         </div>
+        {todayHours > 0 ? (
+          <p data-testid="cme-audited-today" className="m-0 text-sm-minus text-[color:var(--text-muted)]">
+            {`${formatHours(todayHours)} h logged today`}
+          </p>
+        ) : null}
         <p data-testid="cme-total-hours" className="m-0 flex items-baseline gap-1.5">
           {loggedHours > 0 ? (
             <>
@@ -341,7 +346,10 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
           <span aria-hidden="true" className="work-empty__badge">
             <Award aria-hidden="true" strokeWidth={2} />
           </span>
-          <span data-testid="cme-year-label" className="sr-only">
+          <span
+            data-testid="cme-year-label"
+            className={showTimeLeft ? "text-sm-minus text-[color:var(--text-muted)]" : "sr-only"}
+          >
             {label}
           </span>
           <p data-testid="cme-total-hours" className="work-empty__title">
