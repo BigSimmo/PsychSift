@@ -1,11 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
 
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
-import { kindOf } from "@/components/roster/roster-format";
-import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import {
   LAST_PLACE_STORAGE_KEY,
@@ -14,7 +13,14 @@ import {
   lastPlaceToRemember,
   readLastPlace,
 } from "@/lib/last-place";
-import { summariseToday } from "@/lib/roster/today";
+
+/**
+ * The roster read is only needed on a cold open of the home, so it loads then and never
+ * weighs on every other page of the app.
+ */
+const ShiftNowProbe = dynamic(() => import("@/components/last-place/shift-now-probe").then((m) => m.ShiftNowProbe), {
+  ssr: false,
+});
 
 /** How long a cold open waits for the roster before going to the last page instead. */
 const SHIFT_CHECK_WAIT_MS = 2_500;
@@ -100,36 +106,6 @@ function coldHomeOpen(): boolean {
       (navigator as Navigator & { standalone?: boolean }).standalone === true,
     historyLength: window.history.length,
   });
-}
-
-/**
- * Reads the doctor's own roster once, and reports whether a real shift (not
- * the example roster) is running right now. The same roster read and the same
- * "on now" rule My Day uses for its hero.
- */
-function ShiftNowProbe({ onResult }: { readonly onResult: (onShiftNow: boolean) => void }) {
-  const roster = useRosterShifts();
-  const reported = useRef(false);
-  useEffect(() => {
-    if (reported.current) return;
-    if (roster.status === "loading" || (roster.status === "ready" && roster.teamLoading)) return;
-    reported.current = true;
-    if (roster.status !== "ready" || roster.sample || roster.demoMode) {
-      onResult(false);
-      return;
-    }
-    const today = summariseToday(
-      roster.shifts.map((shift) => ({
-        id: shift.id,
-        startsAt: shift.startsAt,
-        endsAt: shift.endsAt,
-        kind: kindOf(shift),
-      })),
-      new Date(),
-    );
-    onResult(today.lead.state === "on_now");
-  }, [roster.status, roster.teamLoading, roster.sample, roster.demoMode, roster.shifts, onResult]);
-  return null;
 }
 
 /**

@@ -5,10 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PwaLifecycle } from "@/components/pwa-lifecycle";
 
-const navigationState = vi.hoisted(() => ({ pathname: "/" }));
+const navigationState = vi.hoisted(() => ({ pathname: "/", search: "" }));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   usePathname: () => navigationState.pathname,
+  useSearchParams: () => new URLSearchParams(navigationState.search),
 }));
 
 type MockWorker = ServiceWorker & { postMessage: ReturnType<typeof vi.fn> };
@@ -254,6 +255,23 @@ describe("PwaLifecycle", () => {
 
     // The next page comes from a saved copy of unknown age, so no time is claimed for it.
     navigationState.pathname = "/my-day";
+    rerender(<PwaLifecycle />);
+    expect(await screen.findByRole("region", { name: "Offline, showing what was saved earlier" })).toBeInTheDocument();
+    navigationState.pathname = "/";
+  });
+
+  it("forgets the saved time when the same page switches view by query while offline", async () => {
+    navigationState.pathname = "/roster";
+    navigationState.search = "view=hours";
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    const { rerender } = render(<PwaLifecycle />);
+
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    fireEvent.offline(window);
+    await screen.findByRole("region", { name: /^Offline, showing what was saved at \d{2}:\d{2}$/ });
+
+    // Roster's month view reads its shifts again, so the Hours view's time does not hold for it.
+    navigationState.search = "";
     rerender(<PwaLifecycle />);
     expect(await screen.findByRole("region", { name: "Offline, showing what was saved earlier" })).toBeInTheDocument();
     navigationState.pathname = "/";

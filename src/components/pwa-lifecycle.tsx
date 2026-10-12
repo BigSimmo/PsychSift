@@ -13,8 +13,8 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import "@/components/pwa-offline-line.css";
 
 import { BrandMark } from "@/components/clinical-dashboard/brand";
@@ -315,6 +315,17 @@ function useSettledNoticeSignature(signature: string | null): string | null {
  * `?pwa-dev=0` (local hosts only) unregisters that worker and deletes the
  * owned caches again.
  */
+/**
+ * Reports the query string, so a page whose views switch by query alone
+ * (Roster's ?view=hours) counts as a different page for the offline time. Its
+ * own Suspense boundary keeps the query read from making the app tree client-only.
+ */
+function QueryWatcher({ onQuery }: { readonly onQuery: (query: string) => void }) {
+  const query = useSearchParams().toString();
+  useEffect(() => onQuery(query), [query, onQuery]);
+  return null;
+}
+
 export function PwaLifecycle() {
   const isOnline = useConnectivityStore();
   const [connectionRestored, setConnectionRestored] = useState(false);
@@ -324,14 +335,18 @@ export function PwaLifecycle() {
   // still shows was loaded then or later, so naming this time can understate how
   // fresh it is but never overstate it.
   const pathname = usePathname();
-  const shownOnlineRef = useRef<{ at: number; pathname: string | null } | null>(null);
-  const [offlineSaved, setOfflineSaved] = useState<{ at: number; pathname: string | null } | null>(null);
+  // Null until the query has been read, which never matches a saved page.
+  const [query, setQuery] = useState<string | null>(null);
+  const page = query === null ? null : query ? `${pathname}?${query}` : pathname;
+  const shownOnlineRef = useRef<{ at: number; page: string | null } | null>(null);
+  const [offlineSaved, setOfflineSaved] = useState<{ at: number; page: string | null } | null>(null);
   // A page reached after the signal dropped came from a saved copy of unknown
-  // age, so the time only holds for the page that was on screen when it dropped.
+  // age, so the time only holds for the page (path and query) that was on screen
+  // when it dropped.
   // The Clinical home "/" switches what it shows by query (?mode=…) without a new
   // path, so there a matching path proves nothing and the line says "saved earlier".
   const offlineSavedAt =
-    offlineSaved && pathname !== "/" && offlineSaved.pathname === pathname ? offlineSaved.at : null;
+    offlineSaved && page !== null && pathname !== "/" && offlineSaved.page === page ? offlineSaved.at : null;
   const [showIosHint, setShowIosHint] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
@@ -372,8 +387,8 @@ export function PwaLifecycle() {
   }, []);
 
   useEffect(() => {
-    shownOnlineRef.current = navigator.onLine ? { at: Date.now(), pathname } : null;
-  }, [pathname]);
+    shownOnlineRef.current = navigator.onLine && page !== null ? { at: Date.now(), page } : null;
+  }, [page]);
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");
@@ -565,8 +580,14 @@ export function PwaLifecycle() {
   // while that element is absent — including the hydration gap where it briefly
   // stops existing — means being restyled a moment later. See useAppShellReady.
   const appShellReady = useAppShellReady();
-  if (!appShellReady) return null;
-  if (settledSignature === null || settledSignature !== desiredSignature) return null;
+  // Always mounted, notices or not, so the page is known before the signal drops.
+  const queryWatcher = (
+    <Suspense fallback={null}>
+      <QueryWatcher onQuery={setQuery} />
+    </Suspense>
+  );
+  if (!appShellReady) return queryWatcher;
+  if (settledSignature === null || settledSignature !== desiredSignature) return queryWatcher;
   const showOffline = wantsOffline;
   const showUpdate = wantsUpdate;
   const showInstall = wantsInstall;
@@ -574,6 +595,7 @@ export function PwaLifecycle() {
 
   return (
     <div className="pwa-notice-stack">
+      {queryWatcher}
       {showOffline ? (
         <section
           className={`${cardClassName} pwa-lifecycle-card pwa-offline-card`}
@@ -594,7 +616,9 @@ export function PwaLifecycle() {
               <p id="pwa-offline-title" className="text-sm font-bold text-[color:var(--text-heading)]">
                 {savedLine({ reason: "offline", savedAt: offlineSavedAt })}
               </p>
-              <p className="pwa-notice-copy sr-only">Clinical search and private features need a connection.</p>
+              <p className="pwa-notice-copy mt-1 text-sm leading-6 text-[color:var(--text-muted)]">
+                Clinical search and private features need a connection.
+              </p>
               <button
                 type="button"
                 className={`${secondaryButtonClassName} pwa-notice-retry mt-3`}
