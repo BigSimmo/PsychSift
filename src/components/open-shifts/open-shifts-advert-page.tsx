@@ -649,7 +649,11 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           listing={listing}
           open={withdrawOpen}
           onClose={() => setWithdrawOpen(false)}
-          onStale={state.reload}
+          onStale={() => {
+            // The request was decided elsewhere, so this visit's own record of sending it no longer holds.
+            setSent(null);
+            state.reload();
+          }}
           onWithdrawn={() => {
             setSent(null);
             setWithdrawn(true);
