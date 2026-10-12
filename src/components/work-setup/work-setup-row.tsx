@@ -52,7 +52,7 @@ export function WorkSetupRow({ testId = "work-setup-row" }: { readonly testId?: 
         data-testid={`${testId}-open`}
         className={cn(
           focusRing,
-          "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-[inherit] pl-3 text-left no-underline",
+          "flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-md pl-3 text-left no-underline",
         )}
       >
         <Compass
@@ -75,7 +75,7 @@ export function WorkSetupRow({ testId = "work-setup-row" }: { readonly testId?: 
         data-testid={`${testId}-dismiss`}
         className={cn(
           focusRing,
-          "inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-[inherit] text-[color:var(--text-muted)]",
+          "inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-md text-[color:var(--text-muted)]",
         )}
       >
         <X aria-hidden="true" strokeWidth={2} className="size-icon-sm" />
