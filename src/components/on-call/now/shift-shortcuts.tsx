@@ -2,7 +2,7 @@
 
 import { Copy, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import {
@@ -33,7 +33,7 @@ function countLine(count: number | null, one: string, many: (n: number) => strin
  * counts are tonight's calls and the patients drafted, both read from this
  * phone only, and both left out until the phone has been read.
  */
-export function NowShiftShortcuts({ children }: { readonly children?: React.ReactNode } = {}) {
+export function NowShiftShortcuts({ children }: { readonly children?: ReactNode } = {}) {
   const [open, setOpen] = useState(false);
   // Opened from #log-a-call there is no opener in focus, so closing returns to the button.
   const buttonRef = useRef<HTMLButtonElement>(null);

@@ -145,7 +145,8 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
   );
   const chosen = teams.includes(team) ? team : ALL_TEAMS;
   const byTeam = chosen === ALL_TEAMS ? referrals : referrals.filter((item) => item.parsed.team === chosen);
-  const shown = searching ? searchHandbookItems(byTeam, query) : byTeam;
+  // A search covers every team, so it matches what Contacts counts; the team filter is for browsing.
+  const shown = searching ? searchHandbookItems(referrals, query) : byTeam;
   const hasDeskOnly = referrals.some((item) => item.dial.kind === "extension");
 
   const signedOut = entries.signedOut || handbook.status === "signed-out";
@@ -170,7 +171,7 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
         <OnCallGroupedList
           eyebrow={hospitalName ? `At ${hospitalName}` : "At this hospital"}
           action={
-            teams.length >= 2
+            teams.length >= 2 && !searching
               ? {
                   label: chosen,
                   onClick: () => setTeamsOpen((open) => !open),
@@ -182,7 +183,7 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
           id={onCallGroupAnchorId("hospital")}
           testId="on-call-refer-hospital"
         >
-          {teams.length >= 2 && (teamsOpen || chosen !== ALL_TEAMS) ? (
+          {teams.length >= 2 && !searching && (teamsOpen || chosen !== ALL_TEAMS) ? (
             <li className="min-w-0 px-1 pb-1">
               <OnCallFilterChips
                 options={[ALL_TEAMS, ...teams]}
