@@ -496,6 +496,16 @@ describe("Now: the footer group", () => {
     );
   });
 
+  it("treats a reader with no service as not set up, with the handbook action, not as an outage", async () => {
+    handbook.state = readyHandbook([], { status: "no-service" });
+    render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Not set up for this hospital");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Your service has not added shift lists for this hospital yet.",
+    );
+  });
+
   it("keeps no ticks: a tick lives on the page only", async () => {
     handbook.state = readyHandbook(
       handbookItems([{ id: "o1", title: "Collect the pager", section: "orientation", phase: "first_shift" }]),

@@ -425,7 +425,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   shifts={shifts}
                   items={handbookItems}
                   now={now}
-                  handbookReady={ready}
+                  handbookReady={ready || handbook.status === "no-service"}
                 />
               </NowShiftShortcuts>
               <NowShiftPulseCard now={now} />
