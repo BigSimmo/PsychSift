@@ -8,6 +8,8 @@ import { WorkCard, WorkDateRow, WorkEmpty } from "@/components/mode-kit/work";
 import { TextLink } from "@/components/ui/link";
 import { formatRecordedDate, formatRelativeDate } from "@/lib/admin/renewal-dates";
 import type { ComingUp, ComingUpGroup } from "@/lib/admin/today-selectors";
+import type { RenewalsShowFilter } from "@/lib/admin/renewals-filters";
+import { TodayAtAGlance } from "@/components/admin/today/today-at-a-glance";
 import { onCallTeachingDateParts } from "@/lib/on-call/teaching-schedule";
 
 function GroupHeading({ group }: { group: ComingUpGroup }) {
@@ -28,7 +30,16 @@ function GroupHeading({ group }: { group: ComingUpGroup }) {
  * it says so plainly instead of disappearing, because an absent list would
  * read as "nothing is due".
  */
-export function TodayComingUpModule({ comingUp, today }: { comingUp: ComingUp; today: string }) {
+export function TodayComingUpModule({
+  comingUp,
+  today,
+  counts,
+}: {
+  comingUp: ComingUp;
+  today: string;
+  /** The three Renewals counts, drawn as the card's top strip (12 Oct 2026 simplify plan). */
+  counts?: Record<RenewalsShowFilter, number>;
+}) {
   const more = comingUp.total > comingUp.shown;
   return (
     <AdminSection
@@ -38,6 +49,7 @@ export function TodayComingUpModule({ comingUp, today }: { comingUp: ComingUp; t
     >
       {comingUp.groups.length === 0 ? (
         <WorkCard testId="admin-today-coming-up-empty">
+          {counts ? <TodayAtAGlance counts={counts} /> : null}
           <WorkEmpty
             icon={CalendarDays}
             title="No recorded dates in the next 12 months"
@@ -50,6 +62,7 @@ export function TodayComingUpModule({ comingUp, today }: { comingUp: ComingUp; t
         </WorkCard>
       ) : (
         <WorkCard>
+          {counts ? <TodayAtAGlance counts={counts} /> : null}
           {comingUp.groups.map((group) => (
             <div key={group.key} data-group-kind={group.kind}>
               <GroupHeading group={group} />
