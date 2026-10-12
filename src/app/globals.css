@@ -3321,15 +3321,16 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
 /* END mode-home prompt rail one-line */
 
 /* BEGIN tablet mode-home composer geometry */
-/* Across 640-1279px the settled one-line surface is 160px: example ticker
-   line (24px), composer, gaps, and prompt rail. Every mode home renders that
-   same stack. Pre-reserve that exact height in this bounded band. The portal
+/* Across 640-1279px the settled one-line surface is 128px: composer, gap and
+   prompt rail. The 24px "Try …" line above it left on 12 Oct 2026 (the Prompts
+   rail already offers the same examples), taking 32px of stack with it. Every
+   mode home renders that same stack. Pre-reserve that exact height in this bounded band. The portal
    host's pending/non-empty selectors remain the owner, so a hidden composer
    still reserves zero. At 1280px+ the existing 88px default remains
    deliberately unchanged because measured CLS stays below 0.01. */
 @media (min-width: 640px) and (max-width: 1279.98px) {
   :root {
-    --spacing-mode-home-composer-wide: 10rem;
+    --spacing-mode-home-composer-wide: 8rem;
   }
 }
 /* END tablet mode-home composer geometry */

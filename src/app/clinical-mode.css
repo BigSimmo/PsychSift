@@ -198,8 +198,13 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
   display: none;
 }
 
-.mode-nav-rail .mode-nav__ink {
-  font-size: var(--text-base-minus, 0.9375rem);
+/* Work's 15px tab words once the bar has room for them. Below 28rem the
+   density profiles size each band for the base 14px words, and a 15px word
+   clips by 1-3px in the four-slot bands of a 368-447px phone. */
+@container mode-nav (min-width: 28rem) {
+  .mode-nav-rail .mode-nav__ink {
+    font-size: var(--text-base-minus, 0.9375rem);
+  }
 }
 
 @media (min-width: 1024px) {

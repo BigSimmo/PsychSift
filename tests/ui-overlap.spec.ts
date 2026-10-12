@@ -119,13 +119,13 @@ async function collectHeaderOverlaps(page: Page): Promise<OverlapReport> {
   });
 }
 
-// The settled mode-home stack is 160px for a mouse or trackpad. On a touch screen the prompt chips
+// The settled mode-home stack is 128px for a mouse or trackpad. On a touch screen the prompt chips
 // meet the 48px tap floor instead of 32px (`@media (pointer: coarse)` on `.answer-suggestion-chip`
 // in globals.css), so the same one-row stack is 16px taller. The iPhone projects run these wide
-// viewports with a touch pointer, which is why they measured 176 and failed against a bare 160.
+// viewports with a touch pointer, which is why they measure 144 rather than 128.
 async function expectedModeHomeStackHeight(page: Page) {
   const coarsePointer = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);
-  return coarsePointer ? 176 : 160;
+  return coarsePointer ? 144 : 128;
 }
 
 test.describe("Header element overlap coverage", () => {
@@ -339,9 +339,10 @@ test.describe("Header element overlap coverage", () => {
         expect(geometry, `${label}: home composer and prompt rail must render`).not.toBeNull();
         expect(geometry!.chipCount, `${label}: the rail must carry prompts to be worth measuring`).toBeGreaterThan(1);
         expect(geometry!.chipRows, `${label}: prompt chips must share one row`).toBe(1);
-        // 160px is the settled stack every mode home shares: 24px ticker line,
-        // the pill, gaps, the one-line rail and the privacy line.
-        expect(geometry!.composerHeight, `${label}: home composer must be the shared 160px stack`).toBe(
+        // 128px is the settled stack every mode home shares: the pill, gaps,
+        // the one-line rail and the privacy line (the 24px "Try …" line left
+        // on 12 Oct 2026).
+        expect(geometry!.composerHeight, `${label}: home composer must be the shared 128px stack`).toBe(
           await expectedModeHomeStackHeight(page),
         );
       }
@@ -703,7 +704,7 @@ test.describe("Tablet usability regressions", () => {
     await expect(promptRow.getByTestId("answer-suggestion-scroll-back")).toBeVisible();
 
     // The contract the affordance had to be designed around: one row of chips,
-    // and a composer still the settled 160px with the control rendered.
+    // and a composer still the settled 128px with the control rendered.
     const chipGeometry = await rail.evaluate((chips) => ({
       chipRows: new Set([...chips.children].map((chip) => Math.round(chip.getBoundingClientRect().top))).size,
       chipCount: chips.children.length,
@@ -716,7 +717,7 @@ test.describe("Tablet usability regressions", () => {
     expect(geometry, "home composer and prompt rail must render").not.toBeNull();
     expect(geometry!.chipCount, "the rail must carry prompts to be worth measuring").toBeGreaterThan(1);
     expect(geometry!.chipRows, "prompt chips must still share one row").toBe(1);
-    expect(geometry!.composerHeight, "the control must not grow the shared 160px stack").toBe(
+    expect(geometry!.composerHeight, "the control must not grow the shared 128px stack").toBe(
       await expectedModeHomeStackHeight(page),
     );
   });
