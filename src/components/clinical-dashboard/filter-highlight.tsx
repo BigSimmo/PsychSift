@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { Button } from "@/components/ui/button";
+import { announce } from "@/components/ui/live-announcer";
 import { cn } from "@/components/ui-primitives";
 
 /**
@@ -11,10 +14,9 @@ import { cn } from "@/components/ui-primitives";
  * every other row stays below under a "Not …" heading in muted text. A
  * clinician filtering to Emergent can still see, and open, everything else.
  *
- * The note's wrapper is a polite live region that stays mounted whether or not
- * a filter is on, so turning a filter on, changing it, or clearing it is heard
- * by a screen reader (content inserted into an already-present region is
- * announced; a region mounted with its content often is not).
+ * The note is plain visible text. Turning a filter on, changing it, or clearing
+ * it is spoken through the app's shared announcer rather than a live region on
+ * the note itself, so a screen reader hears each change once.
  */
 export function FilterHighlightNote({
   active,
@@ -24,7 +26,7 @@ export function FilterHighlightNote({
   testId = "filter-highlight-note",
   className,
 }: {
-  /** False renders the empty live region only. */
+  /** False renders nothing. */
   active: boolean;
   highlighted: number;
   total: number;
@@ -33,30 +35,29 @@ export function FilterHighlightNote({
   testId?: string;
   className?: string;
 }) {
+  const message = active ? `${highlighted} of ${total} highlighted, all rows stay` : "";
+  useEffect(() => {
+    if (message) announce(message);
+  }, [message]);
+  if (!active) return null;
   return (
-    <div data-testid={testId} className={cn(active ? "flex flex-wrap items-center gap-x-2" : "contents", className)}>
-      <p role="status" aria-live="polite" className={active ? "m-0 text-sm text-[color:var(--text-muted)]" : "sr-only"}>
-        {active ? (
-          <>
-            <span data-testid={`${testId}-count`} className="nums font-bold text-[color:var(--text-heading)]">
-              {highlighted} of {total}
-            </span>{" "}
-            highlighted, all rows stay
-          </>
-        ) : null}
+    <div data-testid={testId} className={cn("flex flex-wrap items-center gap-x-2", className)}>
+      <p className="m-0 text-sm text-[color:var(--text-muted)]">
+        <span data-testid={`${testId}-count`} className="nums font-bold text-[color:var(--text-heading)]">
+          {highlighted} of {total}
+        </span>{" "}
+        highlighted, all rows stay
       </p>
-      {active ? (
-        // The shared Button keeps the 48px tap height and the focus ring.
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClear}
-          testId={`${testId}-clear`}
-          className="min-w-tap justify-center px-2 text-sm font-bold text-[color:var(--clinical-accent)] hover:text-[color:var(--clinical-accent)]"
-        >
-          Clear
-        </Button>
-      ) : null}
+      {/* The shared Button keeps the 48px tap height and the focus ring. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onClear}
+        testId={`${testId}-clear`}
+        className="min-w-tap justify-center px-2 text-sm font-bold text-[color:var(--clinical-accent)] hover:text-[color:var(--clinical-accent)]"
+      >
+        Clear
+      </Button>
     </div>
   );
 }

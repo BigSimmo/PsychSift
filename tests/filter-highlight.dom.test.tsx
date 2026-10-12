@@ -2,22 +2,30 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+const announce = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ui/live-announcer", () => ({ announce }));
+
 import { FilterHighlightNote, FilterNotMatchingHeading } from "@/components/clinical-dashboard/filter-highlight";
 
 describe("FilterHighlightNote", () => {
-  it("keeps an empty polite live region mounted while no filter is on, so turning one on is heard", () => {
+  it("shows nothing while no filter is on, and speaks each change through the shared announcer", () => {
+    announce.mockClear();
     const onClear = vi.fn();
-    const view = render(<FilterHighlightNote active={false} highlighted={0} total={10} onClear={onClear} />);
+    const view = render(
+      <FilterHighlightNote active={false} highlighted={0} total={10} onClear={onClear} testId="note" />,
+    );
 
-    const region = screen.getByRole("status");
-    expect(region).toHaveAttribute("aria-live", "polite");
-    expect(region).toBeEmptyDOMElement();
-    expect(screen.queryByRole("button", { name: "Clear" })).toBeNull();
+    expect(screen.queryByTestId("note")).toBeNull();
+    expect(announce).not.toHaveBeenCalled();
 
-    view.rerender(<FilterHighlightNote active highlighted={4} total={10} onClear={onClear} />);
-    // Same node, new content: the announcement path a screen reader follows.
-    expect(screen.getByRole("status")).toBe(region);
-    expect(region).toHaveTextContent("4 of 10 highlighted, all rows stay");
+    view.rerender(<FilterHighlightNote active highlighted={4} total={10} onClear={onClear} testId="note" />);
+    expect(screen.getByTestId("note")).toHaveTextContent("4 of 10 highlighted, all rows stay");
+    // The note is plain text: no live region of its own, so it is spoken once.
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(announce).toHaveBeenLastCalledWith("4 of 10 highlighted, all rows stay");
+
+    view.rerender(<FilterHighlightNote active highlighted={2} total={10} onClear={onClear} testId="note" />);
+    expect(announce).toHaveBeenLastCalledWith("2 of 10 highlighted, all rows stay");
   });
 
   it("offers a 48px Clear that clears only through its callback", async () => {

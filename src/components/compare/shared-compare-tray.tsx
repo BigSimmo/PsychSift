@@ -194,7 +194,7 @@ export function SharedCompareTray({
     <>
       <div aria-hidden="true" data-testid={`${testId}-spacer`} className="h-24" />
       {createPortal(
-        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[var(--z-chrome)] flex justify-center px-4 sm:pl-[5.25rem]">
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[var(--z-chrome)] flex justify-center px-4 sm:pl-21">
           {tray}
         </div>,
         document.body,

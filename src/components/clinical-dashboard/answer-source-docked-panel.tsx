@@ -131,7 +131,7 @@ export function AnswerSourceDockedPanel({
           "pointer-events-auto",
           // Under the app header, above the bottom search box.
           "fixed bottom-[8.5rem] right-4 top-[calc(var(--shell-header-h)+1rem)] flex w-[22rem] flex-col overflow-hidden",
-          "rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-elevated)]",
+          "rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--e4)]",
           "outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
           "motion-safe:animate-fade-up motion-reduce:animate-none xl:right-6 xl:w-[26rem]",
         )}

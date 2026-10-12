@@ -269,7 +269,7 @@ describe("therapy-compass search filter contract adoption", () => {
 
     const note = screen.getByTestId("therapy-highlight-note");
     expect(note).toHaveTextContent("1 of 2 highlighted, all rows stay");
-    expect(within(note).getByRole("status")).toHaveAttribute("aria-live", "polite");
+    expect(within(note).queryByRole("status")).toBeNull();
     expect(screen.getByTestId("therapy-outside-heading")).toHaveTextContent("Not matching · 1");
     await user.click(within(note).getByRole("button", { name: "Clear" }));
     expect(clearSearchFilters).toHaveBeenCalledTimes(1);

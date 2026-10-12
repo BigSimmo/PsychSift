@@ -143,12 +143,12 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
 
     .universal-header:not([data-work-frame]) .universal-header-mode-button {
       grid-template-columns: auto minmax(0, 1fr);
-      gap: 8px;
+      gap: calc(var(--spacing) * 2);
       width: 100%;
       max-width: 100%;
       height: auto;
       min-height: 48px;
-      padding: 4px 16px 4px 8px;
+      padding: calc(var(--spacing) * 1) calc(var(--spacing) * 4) calc(var(--spacing) * 1) calc(var(--spacing) * 2);
     }
 
     /* The chevron is decoration (the pill's name says it opens a menu); it
@@ -184,7 +184,7 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
   font-size: 1.5625rem;
   font-weight: 700;
   letter-spacing: -0.025em;
-  line-height: 1.12;
+  line-height: var(--text-hero--line-height);
   text-wrap: balance;
   color: var(--text-heading);
 }

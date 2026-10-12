@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId } from "react";
 import {
   ChevronRight,
   Clock,
@@ -19,6 +19,7 @@ import Link from "next/link";
 
 import { cardSurface, stretchedRowLinkClass } from "@/components/card-recipes";
 import { Button, buttonFaceClass } from "@/components/ui/button";
+import { announce } from "@/components/ui/live-announcer";
 import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { filterOutsideTitleClass } from "@/components/clinical-dashboard/filter-highlight";
 import { THERAPY_MAX_COMPARE, therapyRecordHref } from "@/lib/therapy-compass-navigation";
@@ -328,6 +329,11 @@ export function CompactResultRow({
   const sheetUnavailableId = `${baseId}-sheet`;
   const compareFullId = `${baseId}-compare-full`;
   const { notice, saved, toggleFavourite } = useTherapyFavourite(therapy.slug);
+  // The note is visible text; the shared announcer speaks it, so the row holds
+  // no live region of its own.
+  useEffect(() => {
+    if (notice) announce(notice);
+  }, [notice]);
   const inCompare = b.isInCompare(therapy.slug);
   // A full tray keeps its tab stop and states why, per the wiring convention.
   const compareFull = !inCompare && b.compareSlugs.length >= THERAPY_MAX_COMPARE;
@@ -488,11 +494,7 @@ export function CompactResultRow({
         </div>
       </div>
       {notice ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mb-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--text-muted)]"
-        >
+        <p className="mb-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--text-muted)]">
           {notice}
         </p>
       ) : null}

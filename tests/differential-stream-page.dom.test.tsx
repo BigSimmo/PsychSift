@@ -164,8 +164,8 @@ describe("DifferentialStreamPage", () => {
 
     const note = screen.getByTestId("differentials-stream-highlight-note");
     expect(note).toHaveTextContent(`${emergent} of ${total} highlighted, all rows stay`);
-    // A polite live region, so the note is heard.
-    expect(within(note).getByRole("status")).toHaveAttribute("aria-live", "polite");
+    // Spoken through the shared announcer, so the note holds no live region of its own.
+    expect(within(note).queryByRole("status")).toBeNull();
     expect(within(note).getByRole("button", { name: "Clear" })).toBeInTheDocument();
     expect(screen.getByTestId("differentials-stream-outside-heading")).toHaveTextContent(
       `Not emergent · ${total - emergent}`,
