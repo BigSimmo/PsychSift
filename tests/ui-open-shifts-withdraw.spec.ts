@@ -80,7 +80,10 @@ test("a stale take-back reports the decision and refreshes the real advert", asy
   await clickWhenHydrated(page.getByRole("button", { name: "Take back my request", exact: true }));
   await clickWhenHydrated(page.getByRole("button", { name: "Yes, take it back", exact: true }));
 
-  await expect(page.getByRole("alert")).toHaveText("This request can't be found any more. Check My shifts.");
+  // Next.js renders its own empty route announcer with role="alert", so match the notice by its text.
+  await expect(page.getByRole("alert").filter({ hasText: "This request can't be found any more." })).toHaveText(
+    "This request can't be found any more. Check My shifts.",
+  );
   await expect(page.getByText("Waiting for approval")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Take back my request", exact: true })).toHaveCount(0);
 });
