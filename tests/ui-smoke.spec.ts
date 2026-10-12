@@ -2593,6 +2593,139 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
+  test("desktop docks a cited source beside the answer instead of over it", async ({ page }) => {
+    // From 1024px the source drawer is a panel docked beside the answer
+    // (answer-source-docked-panel.tsx). It is not a dialog, so this pins what
+    // replaces the dialog's guarantees: a named landmark that takes focus, a
+    // visible close button and Escape, focus back on the citation, and an answer
+    // column that the panel never covers. The phone drawer is the test above.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await mockDemoApi(page);
+    await gotoApp(page, "/");
+    await waitForDemoDashboardReady(page);
+
+    const questionInput = await fillVisibleQuestionInput(
+      page,
+      "What clozapine monitoring items are shown in the table image?",
+    );
+    await expect(questionInput).toBeVisible();
+    await visibleAnswerSubmitButton(page).click();
+    const plainAnswer = page.getByTestId("plain-answer-response");
+    await expect(plainAnswer).toBeVisible();
+    const marks = plainAnswer.getByTestId("answer-source-mark");
+    await expect(marks.first()).toBeVisible();
+
+    await marks.first().click();
+    const panel = page.getByTestId("answer-source-drawer");
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute("data-source-dock-panel", "");
+    await expect(page.getByRole("complementary", { name: await panel.locator("h2").innerText() })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(panel).toBeFocused();
+    await expect(panel.getByTestId("answer-source-drawer-passage")).toBeVisible();
+
+    // Beside the answer, never over it: the prose ends before the panel starts.
+    const proseBox = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
+    const panelBox = await panel.boundingBox();
+    expect(proseBox && panelBox).toBeTruthy();
+    // The message records what the answer column was given, so a browser that
+    // lays it out differently says why rather than only by how much.
+    const reserveState = await page.evaluate(() => ({
+      docked: document.body.dataset.sourceDocked ?? null,
+      reserve: document.body.style.getPropertyValue("--source-dock-reserve"),
+      mainPaddingRight: getComputedStyle(document.getElementById("main-content")!).paddingRight,
+      mainWidth: document.getElementById("main-content")!.getBoundingClientRect().width,
+    }));
+    // Polled: a browser may lay the answer out again a frame after the panel lands.
+    await expect
+      .poll(
+        async () => {
+          const box = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
+          return box ? box.x + box.width : Number.POSITIVE_INFINITY;
+        },
+        { message: JSON.stringify(reserveState), timeout: 5_000 },
+      )
+      .toBeLessThanOrEqual(panelBox!.x);
+    await expectNoPageHorizontalOverflow(page);
+
+    // Escape closes it and focus goes back to the citation that opened it.
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(marks.first()).toBeFocused();
+
+    // The visible close button does the same from a source card.
+    const firstRailRow = page.getByTestId("answer-source-rail").getByTestId("answer-source-rail-row").first();
+    await firstRailRow.click();
+    await expect(panel).toBeVisible();
+    await expect(panel).toBeFocused();
+    await panel.getByRole("button", { name: "Close source detail" }).click();
+    await expect(panel).toHaveCount(0);
+    await expect(firstRailRow).toBeFocused();
+  });
+
+  test("clinical records open with their list beside them from 1024px only", async ({ page }) => {
+    // ClinicalSplit (work-desktop-layout.tsx): from 1024px a DSM diagnosis, a
+    // therapy record and the Act have a list in a column on the left; below that
+    // width the list is not drawn at all and the record is the phone column.
+    const pages = [
+      {
+        route: "/dsm/diagnoses/major-depressive-disorder",
+        list: "DSM diagnoses",
+        current: "Major depressive disorder",
+        currentState: "page",
+        beside: { level: 1, name: "Major depressive disorder" },
+      },
+      {
+        route: "/therapy-compass/cognitive-behavioural-therapy-cbt",
+        list: "Therapies",
+        current: "Cognitive Behavioural Therapy (CBT)",
+        currentState: "page",
+        beside: { level: 1, name: "Cognitive Behavioural Therapy (CBT)" },
+      },
+      {
+        route: "/forms/act",
+        list: "Act and Standards topics",
+        current: "Criteria for an involuntary treatment order",
+        currentState: "location",
+        beside: { level: 2, name: "Mental Health Act 2014 (WA)" },
+      },
+    ] as const;
+
+    for (const width of [1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const entry of pages) {
+        await gotoApp(page, entry.route);
+        const list = page.getByRole("navigation", { name: entry.list });
+        await expect(list).toBeVisible({ timeout: 30_000 });
+        const current = list.locator(`[aria-current="${entry.currentState}"]`);
+        await expect(current).toHaveCount(1);
+        await expect(current).toContainText(entry.current);
+        // Every row is a full 48px target, the current one included.
+        for (const row of await list.getByRole("link").all()) {
+          if (!(await row.isVisible())) continue;
+          const box = await row.boundingBox();
+          expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+        }
+        // Beside the record, not above it.
+        const listBox = await list.boundingBox();
+        const headingBox = await page
+          .getByRole("heading", { level: entry.beside.level, name: entry.beside.name, exact: true })
+          .boundingBox();
+        expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(headingBox!.x);
+        await expectNoPageHorizontalOverflow(page);
+      }
+    }
+
+    for (const width of [390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const entry of pages) {
+        await gotoApp(page, entry.route);
+        await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("navigation", { name: entry.list })).toHaveCount(0);
+      }
+    }
+  });
+
   for (const viewport of [
     { name: "desktop", width: 1280, height: 900 },
     { name: "390x844 mobile", width: 390, height: 844 },
@@ -3320,12 +3453,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
 
-    const recentChips = page.getByTestId("shared-home-recent-queries");
-    await expect(recentChips).toBeVisible();
-    await expect(recentChips).toContainText("Recent searches");
-    const chip = recentChips.getByRole("button", { name: recent });
-    await expect(chip).toBeVisible();
-    await chip.click();
+    // One grouped list since 12 Oct 2026: a "Recent" eyebrow over 48px rows.
+    const recentList = page.getByRole("region", { name: "Recent searches" });
+    await expect(recentList).toBeVisible();
+    await expect(recentList).toHaveAttribute("data-testid", "shared-home-recent-queries");
+    await expect(recentList).toContainText("Recent");
+    const row = recentList.getByRole("button", { name: recent });
+    await expect(row).toBeVisible();
+    await expectMinTouchTarget(row, 48);
+    await row.click();
 
     await expect(page.getByTestId("plain-answer-response")).toBeVisible();
     expect(answerRequests).toContain(recent);
@@ -3340,12 +3476,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     const homeRecentSearches = page.getByTestId("shared-home-recent-queries");
     await homeRecentSearches.scrollIntoViewIfNeeded();
     await expect(homeRecentSearches).toBeVisible();
-    const homeRecentDirection = await homeRecentSearches.evaluate((node) => getComputedStyle(node).flexDirection);
-    expect(homeRecentDirection, "home recent-searches should stack on phone width").toBe("column");
-
-    const chipsGroup = homeRecentSearches.locator(".answer-suggestion-chips");
-    const mobileJustify = await chipsGroup.evaluate((node) => getComputedStyle(node).justifyContent);
-    expect(mobileJustify, "phone home recent-search chips should align to flex-start").toBe("flex-start");
+    // On a phone each question keeps a full-width row of its own.
+    const phoneRow = homeRecentSearches.getByRole("button", { name: recent });
+    await expectMinTouchTarget(phoneRow, 48);
+    const [rowWidth, listWidth] = await Promise.all([
+      phoneRow.evaluate((node) => node.getBoundingClientRect().width),
+      homeRecentSearches.getByRole("list").evaluate((node) => node.getBoundingClientRect().width),
+    ]);
+    expect(Math.abs(rowWidth - listWidth), "phone recent rows span the list").toBeLessThanOrEqual(2);
+    await expectNoPageHorizontalOverflow(page);
   });
 
   test("legacy unscoped recent-query storage is purged and never displayed @critical", async ({ page }) => {

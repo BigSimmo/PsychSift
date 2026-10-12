@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { Check, History, Square } from "lucide-react";
+import { Check, ChevronRight, History, Square } from "lucide-react";
 
 import {
   answerProgressDisplayMessage,
@@ -15,7 +15,6 @@ import {
   visiblePreviewSourceLimit,
 } from "@/components/clinical-dashboard/answer-evidence-preview";
 import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
-import { AnswerSuggestionChips } from "@/components/clinical-dashboard/answer-suggestion-chips";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { ModeHomeStartList, modeHomeStartListConfig } from "@/components/mode-home-start-list";
 import { ModeHomeTemplate } from "@/components/mode-home-template";
@@ -58,7 +57,7 @@ export function SharedHomeEmptyState({
   recentQueries?: string[];
   onSelectRecent?: (query: string) => void;
 }) {
-  // Returning users get their prior questions back as one-tap chips so they can
+  // Returning users get their prior questions back as one-tap rows so they can
   // re-run without retyping. Capped for a calm surface; storage already dedupes.
   // Gated on the "Recent searches on home" preference so the settings toggle
   // actually controls this surface (2026-07-19 audit wiring).
@@ -100,15 +99,42 @@ export function SharedHomeEmptyState({
               and the card renders nothing at all until it has items. */}
           <LazyMyDayHomeCard />
           {recents.length > 0 && (
-            <AnswerSuggestionChips
-              testId="shared-home-recent-queries"
-              suggestions={recents}
-              onPick={(entry) => onSelectRecent?.(entry)}
-              label={sharedHomeEmptyState.recentLabel}
-              layout="wrap"
-              className="home-recent-searches justify-center"
-              icon={History}
-            />
+            // One grouped list with hairline rows, as Work draws its lists (owner
+            // design review, 12 Oct 2026), rather than loose chips: a question
+            // reads in full on one line and every row is a 48px tap.
+            <section
+              aria-label={sharedHomeEmptyState.recentLabel}
+              data-testid="shared-home-recent-queries"
+              className="mx-auto grid w-full max-w-reading gap-2 text-left"
+            >
+              <p
+                aria-hidden="true"
+                className="px-1 text-xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
+              >
+                Recent
+              </p>
+              <ul
+                role="list"
+                className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)]"
+              >
+                {recents.map((entry) => (
+                  <li key={entry}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectRecent?.(entry)}
+                      className="focus-ring-contained flex min-h-12 w-full items-center gap-3 px-4 py-2.5 text-left text-base-minus text-[color:var(--text-heading)] transition-colors motion-reduce:transition-none sm:hover:bg-[color:var(--surface-subtle)]"
+                    >
+                      <History aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
+                      <span className="min-w-0 flex-1 truncate">{entry}</span>
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="size-icon-sm shrink-0 text-[color:var(--text-muted)]"
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
       }

@@ -214,9 +214,9 @@ test("@critical keeps unsupported modes free of a Smart promise", async ({ page 
     const input = composer(page);
     await input.fill("Which document should I read for this presentation?");
     await expect(page.getByTestId("smart-search-intent-cue")).toHaveCount(0);
-    // The shared home ticker line may render, but it must read as an ordinary
-    // example search with no Smart wording in these dormant modes.
-    const ticker = page.getByTestId("search-example-ticker");
+    // The shared home's example ticker may render, but it must read as an
+    // ordinary example search with no Smart wording in these dormant modes.
+    const ticker = page.getByTestId("smart-search-phone-ticker");
     if (await ticker.count()) await expect(ticker).not.toContainText("Smart");
   }
 });

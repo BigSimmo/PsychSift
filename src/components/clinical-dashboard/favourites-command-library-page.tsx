@@ -1727,7 +1727,12 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                 2026-09-29 phone redesign keeps it that way: one compact title,
                 one summary line and a Select action, so the saved items stay
                 above the fold. The heading is not a hero. */}
-            <header data-testid="favourites-command-library" className="flex min-w-0 items-end justify-between gap-3">
+            {/* At large text the actions drop under the title rather than
+                squeezing it (320px, 12 Oct 2026). */}
+            <header
+              data-testid="favourites-command-library"
+              className="flex min-w-0 items-end justify-between gap-3 [html[data-large-text]_&]:flex-wrap"
+            >
               <div className="flex min-w-0 flex-col-reverse">
                 <h1
                   id="favourites-page-heading"
@@ -1835,6 +1840,10 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
               <SegmentedControl<FavouritesScope>
                 label="Show favourites"
                 layout="equal"
+                // At large text the three views wrap onto rows of their own
+                // once a row cannot hold them at 4rem each, so "Clinical" and
+                // its count read in full instead of shortening to "Clini…".
+                className="[html[data-large-text]_&]:flex-wrap [html[data-large-text]_&>button]:basis-16"
                 value={scope}
                 onChange={(next) => {
                   setScopeChoice(next);
@@ -1978,7 +1987,10 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                     {/* Nothing to order when the only work items are the numbers above. */}
                     {libraryItems.length > 0 &&
                     (clinicalItems.length + workItems.length > 0 || searching || activeFilterCount > 0) ? (
-                      <div className="flex min-w-0 items-center gap-2 pt-1">
+                      // At large text the switch takes the row's full width and
+                      // Filter drops beneath it, and each choice wraps onto its
+                      // own row once 4rem no longer fits, so no word is broken.
+                      <div className="flex min-w-0 items-center gap-2 pt-1 [html[data-large-text]_&]:flex-wrap">
                         <SegmentedControl<FavouritesView>
                           label="Organise favourites"
                           layout="equal"
@@ -1989,7 +2001,7 @@ export function FavouritesCommandLibraryPage({ query = "", demoMode }: { query?:
                             if (next !== "order" && mode === "reorder") setMode("browse");
                           }}
                           options={singleSetName ? viewOptions.set : viewOptions.all}
-                          className="min-w-0 flex-1"
+                          className="min-w-0 flex-1 [html[data-large-text]_&]:basis-full [html[data-large-text]_&]:flex-wrap [html[data-large-text]_&>button]:basis-16"
                         />
                         <span className="shrink-0">{filterTrigger}</span>
                       </div>

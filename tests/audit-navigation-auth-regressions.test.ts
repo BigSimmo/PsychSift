@@ -193,7 +193,7 @@ describe("audit navigation and auth regressions", () => {
     const focusLeaveContract = sourceSegment(
       masterSearchHeaderSource,
       "ref={modeMenuRef}",
-      'className="relative z-[60]',
+      'className="universal-header-mode relative z-[60]',
       { label: "master mode-menu focus boundary" },
     );
 
@@ -305,8 +305,9 @@ describe("audit navigation and auth regressions", () => {
     // The header now says pending / a count / nothing found. The "Tap to open"
     // arm it replaced survives only in the comment above the searchActive gate,
     // which is why this pins the expression rather than searching for the string.
-    expect(universalAlsoMatchesSource).toContain(
-      'const headerMeta = searchPending ? "Searching…" : matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";',
+    // The count arm is JSX so "related" can drop below 360px at the 12px floor.
+    expect(universalAlsoMatchesSource).toMatch(
+      /const headerMeta = searchPending \? \(\s*"Searching…"\s*\) : matchCount > 0 \? \([\s\S]*?\) : \(\s*"No other matches"\s*\);/,
     );
     expect(universalAlsoMatchesSource).toContain("enabled: trimmedQuery.length >= 2 && searchActive");
     expect(universalAlsoMatchesSource).toContain('if (modeId === "answer" && currentGroups.length === 0) return null;');

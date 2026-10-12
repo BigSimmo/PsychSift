@@ -1,4 +1,4 @@
-import { Diamond, Triangle } from "lucide-react";
+import { Circle, Triangle } from "lucide-react";
 
 import { adminStyles } from "@/components/admin/admin-kit";
 import { AdminStatusShape, adminStatusColour } from "@/components/admin/admin-status-tag";
@@ -51,7 +51,7 @@ const percent = (offset: number) => `${((offset / 12) * 100).toFixed(2)}%`;
 /**
  * "Next 12 months" (Josh's locked mockup, work-mode redesign 6 Oct 2026): one
  * row per item due for action, its name and date at the left and a track at
- * the right with a mark at its date (a diamond once passed, a triangle while
+ * the right with a mark at its date (a triangle once passed, a dot while
  * still ahead) in its status colour, a line at today in the mode colour, and
  * month initials under the tracks.
  *
@@ -95,7 +95,7 @@ function ChecklistTimeline({
         <div className={adminStyles.tlRows}>
           {items.map((row) => {
             const passed = row.expiresOn < today;
-            const Mark = passed ? Diamond : Triangle;
+            const Mark = passed ? Triangle : Circle;
             return (
               <div key={row.item.id} className={adminStyles.tlRow}>
                 <span className={adminStyles.tlName}>
@@ -112,8 +112,8 @@ function ChecklistTimeline({
                     className={adminStyles.tlTodayLine}
                     data-today-line="true"
                   />
-                  {/* Shape and colour together (M8): a triangle still ahead, a
-                      diamond already passed, the same shapes the list's tags carry. */}
+                  {/* Shape and colour together (M8): a triangle already passed, a
+                      dot still ahead, the same shapes the list's tags carry. */}
                   <svg x={percent(trackOffset(row.expiresOn, today))} y="0" overflow="visible">
                     <Mark
                       x={-4.5}
@@ -121,7 +121,7 @@ function ChecklistTimeline({
                       width={9}
                       height={9}
                       aria-hidden="true"
-                      data-mark={passed ? "diamond" : "triangle"}
+                      data-mark={passed ? "triangle" : "dot"}
                       strokeWidth={2}
                       {...adminStatusColour(passed ? "date-passed" : "start-renewing")}
                       fill="currentColor"

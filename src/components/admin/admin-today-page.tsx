@@ -183,7 +183,9 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
       ) : (
         <div className={cn(adminStyles.columns, "lg:grid-cols-2")} data-testid="admin-today-ready">
           <div className={adminStyles.column} data-today-column="act">
-            {renewNext ? <TodayRenewNextCard item={renewNext} ownEntries={own} today={today} /> : null}
+            {renewNext ? (
+              <TodayRenewNextCard item={renewNext} ownEntries={own} today={today} counts={showCounts} />
+            ) : null}
             {needsYou ? <TodayNeedsYouModule needsYou={needsYou} today={today} /> : null}
           </div>
           <div className={adminStyles.column} data-today-column="ahead">

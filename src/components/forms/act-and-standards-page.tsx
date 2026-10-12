@@ -6,6 +6,8 @@ import {
   InformationPageShell,
 } from "@/components/information-page-shell";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
+import { ActTopicList } from "@/components/forms/act-topic-list";
+import { ClinicalSplit } from "@/components/work-frame/work-desktop-layout";
 import type {
   ActReferenceGroup,
   ActReferenceSection,
@@ -62,11 +64,16 @@ function ActSectionItem({ entry }: { entry: ActReferenceSection }) {
   );
 }
 
+/** Where the desktop topic list jumps to. `scroll-mt-24` on each keeps it clear of the app header. */
+const groupAnchorId = (groupId: string) => `act-group-${groupId}`;
+const standardAnchorId = (standardId: string) => `act-standard-${standardId}`;
+const STANDARD_TITLE_LEAD_IN = /^Chief Psychiatrist's Standard for Clinical Care:\s*/;
+
 function ActGroup({ group }: { group: ActReferenceGroup }) {
-  const headingId = `act-group-${group.id}`;
+  const headingId = groupAnchorId(group.id);
   return (
     <section aria-labelledby={headingId} className="grid gap-2">
-      <h3 id={headingId} className="text-sm font-extrabold text-[color:var(--text-heading)]">
+      <h3 id={headingId} className="scroll-mt-24 text-sm font-extrabold text-[color:var(--text-heading)]">
         {group.title}
       </h3>
       <ul className="grid gap-2">
@@ -81,7 +88,11 @@ function ActGroup({ group }: { group: ActReferenceGroup }) {
 function StandardItem({ standard }: { standard: ChiefPsychiatristStandard }) {
   return (
     <li>
-      <details className={detailsCard} data-testid={`cp-standard-${standard.id}`}>
+      <details
+        id={standardAnchorId(standard.id)}
+        className={cn(detailsCard, "scroll-mt-24")}
+        data-testid={`cp-standard-${standard.id}`}
+      >
         <summary className={summaryRow}>
           <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
             {standard.title}
@@ -146,39 +157,65 @@ export function ActAndStandardsPage({
         service&apos;s procedure before clinical or legal use.
       </p>
 
-      <section aria-labelledby="act-heading" className="grid gap-4">
-        <div className="grid gap-1">
-          <h2 id="act-heading" className="text-base font-extrabold text-[color:var(--text-heading)]">
-            Mental Health Act 2014 (WA)
-          </h2>
-          <p className={cn("text-xs leading-5", textMuted)}>
-            {`${sectionCount} sections, written from version ${act.actVersion} as at ${act.actAsAt}.`}
-          </p>
-          <a className={externalLink} href={act.sourceUrl} target="_blank" rel="noopener noreferrer">
-            Read the Act on the WA legislation website
-            <ExternalLink className="h-4 w-4" aria-hidden />
-          </a>
-        </div>
-        {groups.map((group) => (
-          <ActGroup key={group.id} group={group} />
-        ))}
-      </section>
+      {/* From 1024px the topic list sits beside the text; below it the list is
+          not drawn and the two sections stay the phone column they were. */}
+      <ClinicalSplit
+        listLabel="Act and Standards topics"
+        testId="act-and-standards-split"
+        list={
+          <ActTopicList
+            actTopics={groups.map((group) => ({
+              targetId: groupAnchorId(group.id),
+              title: group.title,
+              count: group.sections.length,
+            }))}
+            standardTopics={(standards ?? []).map((standard) => ({
+              targetId: standardAnchorId(standard.id),
+              // The list's own heading already says "Chief Psychiatrist's
+              // Standards", so each row drops that shared lead-in; the page
+              // keeps every standard's full title.
+              title: standard.title.replace(STANDARD_TITLE_LEAD_IN, "") || standard.title,
+            }))}
+          />
+        }
+        detail={
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:gap-6">
+            <section aria-labelledby="act-heading" className="grid gap-4">
+              <div className="grid gap-1">
+                <h2 id="act-heading" className="text-base font-extrabold text-[color:var(--text-heading)]">
+                  Mental Health Act 2014 (WA)
+                </h2>
+                <p className={cn("text-xs leading-5", textMuted)}>
+                  {`${sectionCount} sections, written from version ${act.actVersion} as at ${act.actAsAt}.`}
+                </p>
+                <a className={externalLink} href={act.sourceUrl} target="_blank" rel="noopener noreferrer">
+                  Read the Act on the WA legislation website
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                </a>
+              </div>
+              {groups.map((group) => (
+                <ActGroup key={group.id} group={group} />
+              ))}
+            </section>
 
-      {standards?.length ? (
-        <section aria-labelledby="standards-heading" className="grid gap-3">
-          <div className="grid gap-1">
-            <p className={eyebrowText}>Office of the Chief Psychiatrist WA</p>
-            <h2 id="standards-heading" className="text-base font-extrabold text-[color:var(--text-heading)]">
-              Chief Psychiatrist&apos;s Standards for Clinical Care
-            </h2>
+            {standards?.length ? (
+              <section aria-labelledby="standards-heading" className="grid gap-3">
+                <div className="grid gap-1">
+                  <p className={eyebrowText}>Office of the Chief Psychiatrist WA</p>
+                  <h2 id="standards-heading" className="text-base font-extrabold text-[color:var(--text-heading)]">
+                    Chief Psychiatrist&apos;s Standards for Clinical Care
+                  </h2>
+                </div>
+                <ul className="grid gap-2">
+                  {standards.map((standard) => (
+                    <StandardItem key={standard.id} standard={standard} />
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </div>
-          <ul className="grid gap-2">
-            {standards.map((standard) => (
-              <StandardItem key={standard.id} standard={standard} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        }
+      />
     </InformationPageShell>
   );
 }

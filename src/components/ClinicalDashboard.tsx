@@ -228,6 +228,7 @@ import type {
 } from "@/lib/types";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import { DashboardDesktopResultComposerSlot } from "@/components/clinical-dashboard/dashboard-desktop-result-composer-slot";
+import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId, patientDetailsAddonSlotId } from "@/lib/mode-home-composer";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
 import { createQuoteFollowUp, type AnswerViewMode, shouldPollForUpdates } from "@/lib/ward-output";
@@ -2745,6 +2746,7 @@ function ClinicalDashboardContent({
     ],
   );
   const answerProgressCompleted = answerProgressEvents.at(-1)?.stage === "complete";
+  const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
   const {
     showAuthPanel,
     showDegradedNotice,
@@ -2770,6 +2772,7 @@ function ClinicalDashboardContent({
     activeModeResultKind,
     answer,
     answerFollowUpSuggestionCount: answerFollowUpSuggestions.length,
+    differentialsCompareHasSelection,
     answerLifecycleStatus: answerLifecycle.status,
     answerProgressCompleted,
     answerProgressEventCount: answerProgressEvents.length,

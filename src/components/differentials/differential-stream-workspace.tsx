@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { ArrowLeft, ArrowRight, Check, FileText, GitCompareArrows, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Network, ShieldAlert } from "lucide-react";
 
 import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
-import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 
 import {
   ResultFilterSheet,
@@ -31,7 +30,15 @@ import {
   writeResultFilterValues,
 } from "@/lib/result-filter-url";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
+import {
+  FilterHighlightNote,
+  FilterNotMatchingHeading,
+  filterOutsideTitleClass,
+} from "@/components/clinical-dashboard/filter-highlight";
+import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
+import { usePhoneMedia } from "@/components/compare/use-phone-media";
 import { differentialRouteWithQuery, differentialSelectedCompareHref } from "@/lib/differentials-navigation";
+import { usePublishDifferentialsCompareCount } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId } from "@/lib/mode-home-composer";
 import type {
   DifferentialStreamItem,
@@ -96,67 +103,6 @@ function likelihoodTone(likelihood: DifferentialLikelihood) {
   return "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)]";
 }
 
-function StreamMobileCompareBar({
-  selectedCount,
-  selectedIds,
-  query,
-}: {
-  selectedCount: number;
-  selectedIds: Set<string>;
-  query: string;
-}) {
-  const [host, setHost] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const phoneMediaQuery = window.matchMedia("(max-width: 1023px)");
-    const sync = () => {
-      setHost(phoneMediaQuery.matches ? document.getElementById(differentialsMobileCompareAddonSlotId) : null);
-    };
-    sync();
-    phoneMediaQuery.addEventListener("change", sync);
-    const observer = new MutationObserver(sync);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      phoneMediaQuery.removeEventListener("change", sync);
-      observer.disconnect();
-    };
-  }, []);
-
-  if (!host) return null;
-
-  const canCompare = selectedCount >= 2;
-
-  return createPortal(
-    <div aria-live="polite" className="differentials-mobile-compare-fab">
-      {canCompare ? (
-        <Link
-          href={differentialSelectedCompareHref(query, selectedIds)}
-          data-testid="differentials-stream-compare-mobile"
-          className="differentials-mobile-compare-fab__button"
-        >
-          <GitCompareArrows className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="truncate">Compare selected</span>
-          <span className="nums grid h-7 min-w-7 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-contrast)]/20 px-1.5 text-xs font-extrabold">
-            {selectedCount}
-          </span>
-        </Link>
-      ) : (
-        <p
-          data-testid="differentials-stream-compare-mobile"
-          className="differentials-mobile-compare-fab__button differentials-mobile-compare-fab__button--empty"
-          aria-disabled={selectedCount === 1 ? true : undefined}
-        >
-          <GitCompareArrows className="h-5 w-5 shrink-0 text-[color:var(--decoration-soft)]" aria-hidden />
-          <span className="truncate">
-            {selectedCount === 1 ? "Select one more to compare" : "Tick diagnoses to compare"}
-          </span>
-        </p>
-      )}
-    </div>,
-    host,
-  );
-}
-
 function StreamCard({
   item,
   stream,
@@ -165,6 +111,7 @@ function StreamCard({
   selected,
   showSelect,
   focusMode,
+  outsideFilter = false,
   onFocus,
   onToggleSelect,
   onShowConnections,
@@ -173,6 +120,8 @@ function StreamCard({
   stream: DifferentialStreamType;
   query: string;
   highlight: "match" | "related" | "dim" | "neutral";
+  /** Outside the active urgency/chapter filter: still listed, title muted by token. */
+  outsideFilter?: boolean;
   selected: boolean;
   showSelect: boolean;
   focusMode: boolean;
@@ -181,6 +130,12 @@ function StreamCard({
   onShowConnections: () => void;
 }) {
   const isPresentation = stream === "presentations";
+  const href = isPresentation ? differentialRouteWithQuery(item.href, query) : item.href;
+  // Diagnoses list their related diagnoses ONCE, as chips. The old card printed
+  // the first three again as a document-icon list above the chips; any label
+  // that list held and the chips lack (a related entry with no page of its own)
+  // is appended as a plain chip, so nothing the card used to show is lost.
+  const relatedChips = isPresentation ? [] : relatedDiagnosisChips(item);
   const hasConnections = isPresentation ? item.relatedPathways.length > 0 : true;
   // Each pathway is a divided row inside the list's one hairline card, so the
   // highlight is a background wash only: a coloured border would fight the
@@ -201,13 +156,35 @@ function StreamCard({
       data-highlight={highlight}
       data-match={item.isMatch ? "true" : "false"}
       data-status={item.status}
-      className={`relative p-4 transition ${cardTone}`}
+      data-outside-filter={outsideFilter ? "true" : undefined}
+      className={`relative p-4 transition ${outsideFilter ? "" : cardTone}`}
       onFocus={onFocus}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 grid gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-bold text-[color:var(--text-heading)]">{item.title}</h3>
+            {/* The title is the row's open control, stretched across the card,
+                so the separate full-width Open button is gone. */}
+            <h3
+              className={cn(
+                "text-sm font-bold",
+                outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+              )}
+            >
+              <Link
+                href={href}
+                onClick={onFocus}
+                data-testid={`differential-stream-open-${item.slug}`}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                  stretchedRowLinkClass,
+                )}
+              >
+                {item.title}
+                <ChevronRight className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" aria-hidden />
+                <span className="sr-only">{isPresentation ? ", open pathway" : ", open"}</span>
+              </Link>
+            </h3>
             <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-bold ${statusTone(item.status)}`}>
               {statusLabel(item.status)}
             </span>
@@ -261,40 +238,43 @@ function StreamCard({
         </p>
       ) : null}
 
-      {isPresentation && item.examples.length > 0 ? (
-        <p className="mt-2 text-xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">Safety cues</p>
-      ) : null}
-      <ul className="mt-1 flex flex-col gap-1 text-xs leading-6 text-[color:var(--text-muted)]">
-        {item.examples.map((example, index) => (
-          <li key={`${item.href}:${index}:${example}`} className="flex items-start gap-2">
-            <FileText className="mt-0.5 h-4 w-4 text-[color:var(--text-muted)]" aria-hidden />
-            {example}
-          </li>
-        ))}
-      </ul>
-
-      {item.related.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {item.related.slice(0, 4).map((node) => (
-            <span
-              key={`${item.id}:${node.slug}`}
-              className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold ${likelihoodTone(node.likelihood)}`}
-            >
-              {node.label}
-            </span>
-          ))}
-        </div>
+      {isPresentation ? (
+        <>
+          {item.examples.length > 0 ? (
+            <p className="mt-2 text-xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+              Safety cues
+            </p>
+          ) : null}
+          <ul className="mt-1 flex flex-col gap-1 text-xs leading-6 text-[color:var(--text-muted)]">
+            {item.examples.map((example, index) => (
+              <li key={`${item.href}:${index}:${example}`} className="flex items-start gap-2">
+                <FileText className="mt-0.5 h-4 w-4 text-[color:var(--text-muted)]" aria-hidden />
+                {example}
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Link
-          href={isPresentation ? differentialRouteWithQuery(item.href, query) : item.href}
-          onClick={onFocus}
-          className={`inline-flex min-h-12 items-center gap-1.5 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] px-3 text-xs font-extrabold text-[color:var(--clinical-accent)] hover:opacity-90 ${stretchedRowLinkClass}`}
-        >
-          {isPresentation ? "Open pathway" : "Open"}
-          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-        </Link>
+      <div className="mt-2.5 flex items-end gap-2">
+        {relatedChips.length > 0 ? (
+          <ul
+            className="flex min-w-0 flex-1 flex-wrap gap-1.5"
+            aria-label="Related diagnoses"
+            data-testid="differential-stream-related"
+          >
+            {relatedChips.map((chip) => (
+              <li
+                key={`${item.id}:${chip.key}`}
+                className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-semibold ${chip.tone}`}
+              >
+                {chip.label}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="flex-1" />
+        )}
         {hasConnections ? (
           <button
             type="button"
@@ -302,20 +282,36 @@ function StreamCard({
               onFocus();
               onShowConnections();
             }}
-            className="relative z-10 inline-flex min-h-12 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface)]"
+            className="relative z-10 -mr-2 -mb-2 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
-            {isPresentation
-              ? focusMode
-                ? "Pathways focused"
-                : "Related pathways"
-              : focusMode
-                ? "Family focused"
-                : "Show family"}
+            <Network className="size-icon-sm shrink-0" aria-hidden />
+            {/* Phones keep the icon only (the words stay the accessible name);
+                wider screens show the label beside it. */}
+            <span className={isPresentation ? undefined : "max-sm:sr-only"}>
+              {isPresentation
+                ? focusMode
+                  ? "Pathways focused"
+                  : "Related pathways"
+                : focusMode
+                  ? "Family focused"
+                  : "Show family"}
+            </span>
+            {isPresentation ? null : <span className="sr-only">: {item.title}</span>}
           </button>
         ) : null}
       </div>
     </article>
   );
+}
+
+function relatedDiagnosisChips(item: DifferentialStreamItem) {
+  const linked = item.related.slice(0, 4);
+  return [
+    ...linked.map((node) => ({ key: node.slug, label: node.label, tone: likelihoodTone(node.likelihood) })),
+    ...item.examples
+      .filter((label) => !linked.some((node) => node.label === label))
+      .map((label) => ({ key: `example:${label}`, label, tone: likelihoodTone("possible") })),
+  ];
 }
 
 function StreamGroupingControl({
@@ -470,6 +466,18 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
       return true;
     });
   const visibleItems = filterStreamItems(resultScope, presentationPriority, selectedChapterFilters, familyMode);
+  // Filters highlight, never hide: urgency and chapter filters pick the rows
+  // that come first; every other row in scope stays, listed after them under
+  // "Not emergent" (or "Not matching"). Search scope and the family view still
+  // define the set itself.
+  const highlightFilterActive = presentationPriority !== "all" || selectedChapterFilters.size > 0;
+  const scopeItems = filterStreamItems(resultScope, "all", new Set(), familyMode);
+  const visibleIds = new Set(visibleItems.map((item) => item.id));
+  const outsideItems = highlightFilterActive ? scopeItems.filter((item) => !visibleIds.has(item.id)) : [];
+  const outsideLabel =
+    presentationPriority !== "all" && selectedChapterFilters.size === 0
+      ? `Not ${statusLabel(presentationPriority).toLowerCase()}`
+      : "Not matching";
 
   const activeChapters =
     !hasQuery && model.stream === "diagnoses"
@@ -537,8 +545,13 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     .filter((item): item is DifferentialStreamItem => Boolean(item));
 
   const selectedCount = selectedIds.size;
+  usePublishDifferentialsCompareCount(selectedCount);
   const showSelect = model.stream === "diagnoses";
   const showBrowseGrouping = !hasQuery && model.stream === "diagnoses";
+  // One grouping control, placed by width: on phones it sits on its own row under
+  // the band, so the band line holds only the count and Filter and the count
+  // ("201 differentials") is never clipped to "20".
+  const phone = usePhoneMedia();
   const showConnectionFilter = Boolean(focusedItem && (!isPresentation || focusedItem.relatedPathways.length > 0));
   const mobileFilterGroups: ResultFilterGroup[] = [];
   if (filterOpen) {
@@ -672,7 +685,48 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     });
   }
 
-  function renderCardGrid(items: DifferentialStreamItem[]): ReactNode {
+  function clearHighlightFilters() {
+    replaceResultFilterUrl((params) => {
+      params.delete("priority");
+      params.delete("chapter");
+    });
+  }
+
+  function renderGrouped(items: DifferentialStreamItem[], outsideFilter: boolean): ReactNode {
+    if (items.length === 0) return null;
+    if (hasQuery || familyMode || activeChapters.length === 0) return renderCardGrid(items, outsideFilter);
+    const ids = new Set(items.map((item) => item.id));
+    return activeChapters.map((chapter) => {
+      const chapterItems = chapter.itemIds
+        .map((id) => itemById.get(id))
+        .filter((item): item is DifferentialStreamItem => Boolean(item))
+        .filter((item) => ids.has(item.id));
+      if (chapterItems.length === 0) return null;
+      const keyPrefix = outsideFilter ? "outside-" : "";
+      return (
+        <div
+          key={`${keyPrefix}${chapter.id}`}
+          data-testid={`differential-stream-chapter-${keyPrefix}${chapter.id}`}
+          className="grid gap-2"
+        >
+          <div className="pt-2">
+            <h3
+              className={cn(
+                "text-sm font-extrabold",
+                outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+              )}
+            >
+              {chapter.title}
+            </h3>
+            <p className="text-xs text-[color:var(--text-muted)]">{chapter.description}</p>
+          </div>
+          {renderCardGrid(chapterItems, outsideFilter)}
+        </div>
+      );
+    });
+  }
+
+  function renderCardGrid(items: DifferentialStreamItem[], outsideFilter = false): ReactNode {
     return (
       // One hairline card per group with divided rows (no cards inside cards).
       // From the two-column width each row draws its own bottom and inner
@@ -689,6 +743,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
             selected={selectedIds.has(item.slug)}
             showSelect={showSelect}
             focusMode={familyMode && focusedSlug === item.slug}
+            outsideFilter={outsideFilter}
             onFocus={() => setFocusedSlug(item.slug)}
             onToggleSelect={() => toggleSelected(item.slug)}
             onShowConnections={() => {
@@ -715,7 +770,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
         <SearchResultsHeaderBand
           modeId="differentials"
           query={hasQuery ? query : ""}
-          matchCount={visibleItems.length}
+          matchCount={scopeItems.length}
           headingLevel={2}
           filterLabel={isPresentation ? "Presentation pathway controls" : `${copy.heading} catalogue controls`}
           mobileControlsPlacement="inline"
@@ -730,7 +785,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
             />
           }
           utilityControls={
-            showBrowseGrouping ? (
+            showBrowseGrouping && !phone ? (
               <StreamGroupingControl browseGrouping={browseGrouping} onBrowseGroupingChange={setBrowseGrouping} />
             ) : undefined
           }
@@ -791,18 +846,31 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
           }}
         />
 
+        {showBrowseGrouping && phone ? (
+          <div className="-mt-1" data-testid="differentials-stream-grouping-phone">
+            <StreamGroupingControl browseGrouping={browseGrouping} onBrowseGroupingChange={setBrowseGrouping} />
+          </div>
+        ) : null}
+
         {!hasQuery && model.presets.length > 0 ? (
-          <section className="grid gap-2" aria-label="Scenario presets">
+          <section className="grid min-w-0 gap-2" aria-label="Scenario presets">
             <p className="text-xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
               Start from a scenario
             </p>
-            <div className="flex flex-wrap gap-2">
+            {/* One row that scrolls sideways instead of wrapping onto many lines.
+                The chips are buttons, so Tab reaches each one and the browser
+                scrolls it into view; the vertical padding keeps their focus
+                ring inside the scroller's clip. From lg the row wraps again. */}
+            <div
+              data-testid="differentials-stream-presets"
+              className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
+            >
               {model.presets.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset.query)}
-                  className="inline-flex min-h-12 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:border-[color:var(--clinical-accent-border)] hover:text-[color:var(--clinical-accent)]"
+                  className="inline-flex min-h-12 shrink-0 items-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold whitespace-nowrap text-[color:var(--text)] hover:border-[color:var(--clinical-accent-border)] hover:text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                 >
                   {preset.label}
                 </button>
@@ -811,7 +879,9 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
           </section>
         ) : null}
 
-        {!hasQuery && safetyItems.length > 0 ? (
+        {/* Presentations only. On Diagnoses this shelf repeated the Emergent
+            section, which the urgency grouping already lists first. */}
+        {!hasQuery && isPresentation && safetyItems.length > 0 ? (
           <section
             data-testid="differentials-stream-safety-shelf"
             // A neutral hairline card with a restrained danger cue on its label.
@@ -837,44 +907,16 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
           </section>
         ) : null}
 
-        {showSelect ? (
-          <section className="hidden items-center justify-between gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 lg:flex">
-            <p className="text-sm text-[color:var(--text-muted)]">
-              {selectedCount === 0
-                ? "Tick two or more diagnoses to open side-by-side compare."
-                : selectedCount === 1
-                  ? "Select one more diagnosis to enable compare."
-                  : `${selectedCount} diagnoses selected for compare.`}
-            </p>
-            {selectedCount >= 2 ? (
-              <Link
-                href={differentialSelectedCompareHref(query, selectedIds)}
-                data-testid="differentials-stream-compare-desktop"
-                className="inline-flex min-h-12 items-center gap-2 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-4 text-sm font-extrabold text-[color:var(--clinical-accent)]"
-              >
-                <GitCompareArrows className="h-4 w-4" aria-hidden />
-                Compare selected ({selectedCount})
-              </Link>
-            ) : (
-              <button
-                type="button"
-                aria-disabled="true"
-                onClick={ignoreUnavailableActivation}
-                aria-describedby="stream-compare-need-two"
-                className="inline-flex min-h-12 cursor-not-allowed items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-4 text-sm font-extrabold text-[color:var(--text-muted)] opacity-60"
-              >
-                <GitCompareArrows className="h-4 w-4" aria-hidden />
-                Compare selected
-              </button>
-            )}
-            <span id="stream-compare-need-two" className="sr-only">
-              Select at least two diagnoses before opening compare.
-            </span>
-          </section>
-        ) : null}
+        <FilterHighlightNote
+          active={highlightFilterActive && scopeItems.length > 0}
+          highlighted={visibleItems.length}
+          total={scopeItems.length}
+          onClear={clearHighlightFilters}
+          testId="differentials-stream-highlight-note"
+        />
 
         <section className="grid gap-3">
-          {visibleItems.length === 0 ? (
+          {scopeItems.length === 0 ? (
             <div
               data-testid="differentials-stream-empty-filter"
               className="grid justify-items-start gap-2 rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] p-4"
@@ -890,25 +932,21 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
                 Clear filters
               </button>
             </div>
-          ) : hasQuery || familyMode || activeChapters.length === 0 ? (
-            renderCardGrid(visibleItems)
           ) : (
-            activeChapters.map((chapter) => {
-              const chapterItems = chapter.itemIds
-                .map((id) => itemById.get(id))
-                .filter((item): item is DifferentialStreamItem => Boolean(item))
-                .filter((item) => visibleItems.some((visible) => visible.id === item.id));
-              if (chapterItems.length === 0) return null;
-              return (
-                <div key={chapter.id} data-testid={`differential-stream-chapter-${chapter.id}`} className="grid gap-2">
-                  <div className="pt-2">
-                    <h3 className="text-sm font-extrabold text-[color:var(--text-heading)]">{chapter.title}</h3>
-                    <p className="text-xs text-[color:var(--text-muted)]">{chapter.description}</p>
-                  </div>
-                  {renderCardGrid(chapterItems)}
+            <>
+              {renderGrouped(visibleItems, false)}
+              {outsideItems.length > 0 ? (
+                <div data-testid="differentials-stream-outside-filter" className="grid gap-3">
+                  <FilterNotMatchingHeading
+                    label={outsideLabel}
+                    count={outsideItems.length}
+                    level={2}
+                    testId="differentials-stream-outside-heading"
+                  />
+                  {renderGrouped(outsideItems, true)}
                 </div>
-              );
-            })
+              ) : null}
+            </>
           )}
         </section>
 
@@ -941,7 +979,15 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
       </div>
 
       {showSelect ? (
-        <StreamMobileCompareBar selectedCount={selectedCount} selectedIds={selectedIds} query={query} />
+        <SharedCompareTray
+          count={selectedCount}
+          names={[...selectedIds].map((slug) => itemBySlug.get(slug)?.title ?? slug)}
+          compareHref={differentialSelectedCompareHref(query, selectedIds)}
+          onClear={() => setSelectedIds(new Set())}
+          noun="diagnoses"
+          phonePlacement={{ dockSlotId: differentialsMobileCompareAddonSlotId }}
+          testId="differentials-compare-tray"
+        />
       ) : null}
     </main>
   );
