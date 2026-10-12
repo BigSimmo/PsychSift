@@ -312,11 +312,6 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
             <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
           ) : null}
         </div>
-        {todayHours > 0 ? (
-          <p data-testid="cme-audited-today" className="m-0 text-sm-minus text-[color:var(--text-muted)]">
-            {`${formatHours(todayHours)} h logged today`}
-          </p>
-        ) : null}
         <p data-testid="cme-total-hours" className="m-0 flex items-baseline gap-1.5">
           {loggedHours > 0 ? (
             <>
