@@ -341,8 +341,17 @@ async function expectIdlePhoneHomeCentered(page: Page, homeTestId: string) {
         mainOverflowY: main.scrollHeight - main.clientHeight,
       };
     }, homeTestId);
-  await expect.poll(readGeometry, { message: "the idle home, canvas and main must all render" }).not.toBeNull();
-  const geometry = await readGeometry();
+  // Keep the sample the poll accepted: a second read can land mid-swap and see null.
+  let geometry: Awaited<ReturnType<typeof readGeometry>> = null;
+  await expect
+    .poll(
+      async () => {
+        geometry = await readGeometry();
+        return geometry;
+      },
+      { message: "the idle home, canvas and main must all render" },
+    )
+    .not.toBeNull();
 
   expect(geometry).not.toBeNull();
   expect(geometry!.docOverflowY).toBeLessThanOrEqual(2);
