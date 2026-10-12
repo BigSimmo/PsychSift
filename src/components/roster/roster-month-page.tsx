@@ -374,25 +374,39 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
             ? `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`
             : `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
           // One slim line: My Day and On Call already show this shift in full (Work mode simplify plan,
-          // 12 Oct 2026). Tapping it opens the day, where Who is on and the details live.
+          // 12 Oct 2026). Tapping it opens the day; Who is on sits beside it, one tap from Team.
           return (
-            <button
-              type="button"
-              onClick={() => openDay(date)}
-              data-testid="roster-month-lead"
-              className={cn(
-                focusRing,
-                "flex min-h-12 w-full min-w-0 items-center gap-2.5 px-3.5 py-2 text-left text-[color:var(--text-heading)]",
-              )}
-            >
-              <RosterShiftChip kind={kind} />
-              <span className="grid min-w-0 flex-1">
-                <span className="text-sm-minus font-bold">{title}</span>
-                <span className="nums text-2xs text-[color:var(--text-muted)]">{`${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
-              </span>
-              <span className="nums shrink-0 text-2xs font-bold text-[color:var(--mode-identity)]">{tag}</span>
-              <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
-            </button>
+            <div className="flex min-w-0 items-stretch">
+              <button
+                type="button"
+                onClick={() => openDay(date)}
+                data-testid="roster-month-lead"
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 min-w-0 flex-1 items-center gap-2.5 px-3.5 py-2 text-left text-[color:var(--text-heading)]",
+                )}
+              >
+                <RosterShiftChip kind={kind} />
+                <span className="grid min-w-0 flex-1">
+                  <span className="truncate text-sm-minus font-bold">{title}</span>
+                  <span className="nums text-2xs text-[color:var(--text-muted)]">{`${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
+                </span>
+                <span className="nums shrink-0 text-2xs font-bold text-[color:var(--mode-identity)]">{tag}</span>
+                <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
+              </button>
+              <Link
+                href="/roster/team"
+                data-testid="roster-month-who"
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 shrink-0 items-center gap-1.5 border-l border-[color:var(--work-line)] px-3.5 text-xs font-bold text-[color:var(--mode-identity)]",
+                )}
+              >
+                <Users aria-hidden="true" className="size-icon-sm" />
+                {/* Icon only on the narrowest phones, so the shift line keeps to one line. */}
+                <span className="max-[23.75rem]:sr-only">Who is on</span>
+              </Link>
+            </div>
           );
         })()
       : null;

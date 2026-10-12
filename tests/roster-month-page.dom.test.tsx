@@ -120,6 +120,8 @@ describe("Roster Month tab", () => {
   it("leads with the next shift and lists only the next three shifts", () => {
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("On call tonight");
+    // Team stays one tap away from Month (Open shifts fold moved Team out of the tabs).
+    expect(screen.getByTestId("roster-month-who")).toHaveAttribute("href", "/roster/team");
     const coming = screen.getByTestId("roster-month-coming");
     // Days and nights alike, in date order, each with its date and time; the lead shift is not repeated.
     const rows = within(coming).getAllByTestId("roster-month-coming-shift");
