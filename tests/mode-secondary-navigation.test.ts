@@ -242,11 +242,10 @@ describe("mode secondary navigation registry", () => {
     ).toBe("/forms/clock");
   });
 
-  it("registers Psychiatry's Ask, Tools and Saved as the band's tabs, Ask current on the hub", () => {
-    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, href }) => [id, href])).toEqual([
-      ["psychiatry-ask", "/psychiatry"],
-      ["psychiatry-tools", "/psychiatry?page=tools"],
-      ["psychiatry-saved", "/psychiatry?page=saved"],
+  it("registers Psychiatry's Home and Saved as the band's tabs, Home current on the hub", () => {
+    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, label, href }) => [id, label, href])).toEqual([
+      ["psychiatry-ask", "Home", "/psychiatry"],
+      ["psychiatry-saved", "Saved", "/psychiatry?page=saved"],
     ]);
     expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry")).toBe("psychiatry-ask");
     expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry/mha-clock")).toBeNull();

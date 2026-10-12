@@ -3320,12 +3320,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
 
-    const recentChips = page.getByTestId("shared-home-recent-queries");
-    await expect(recentChips).toBeVisible();
-    await expect(recentChips).toContainText("Recent searches");
-    const chip = recentChips.getByRole("button", { name: recent });
-    await expect(chip).toBeVisible();
-    await chip.click();
+    // One grouped list since 12 Oct 2026: a "Recent" eyebrow over 48px rows.
+    const recentList = page.getByRole("region", { name: "Recent searches" });
+    await expect(recentList).toBeVisible();
+    await expect(recentList).toHaveAttribute("data-testid", "shared-home-recent-queries");
+    await expect(recentList).toContainText("Recent");
+    const row = recentList.getByRole("button", { name: recent });
+    await expect(row).toBeVisible();
+    await expectMinTouchTarget(row, 48);
+    await row.click();
 
     await expect(page.getByTestId("plain-answer-response")).toBeVisible();
     expect(answerRequests).toContain(recent);
@@ -3340,12 +3343,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     const homeRecentSearches = page.getByTestId("shared-home-recent-queries");
     await homeRecentSearches.scrollIntoViewIfNeeded();
     await expect(homeRecentSearches).toBeVisible();
-    const homeRecentDirection = await homeRecentSearches.evaluate((node) => getComputedStyle(node).flexDirection);
-    expect(homeRecentDirection, "home recent-searches should stack on phone width").toBe("column");
-
-    const chipsGroup = homeRecentSearches.locator(".answer-suggestion-chips");
-    const mobileJustify = await chipsGroup.evaluate((node) => getComputedStyle(node).justifyContent);
-    expect(mobileJustify, "phone home recent-search chips should align to flex-start").toBe("flex-start");
+    // On a phone each question keeps a full-width row of its own.
+    const phoneRow = homeRecentSearches.getByRole("button", { name: recent });
+    await expectMinTouchTarget(phoneRow, 48);
+    const [rowWidth, listWidth] = await Promise.all([
+      phoneRow.evaluate((node) => node.getBoundingClientRect().width),
+      homeRecentSearches.getByRole("list").evaluate((node) => node.getBoundingClientRect().width),
+    ]);
+    expect(Math.abs(rowWidth - listWidth), "phone recent rows span the list").toBeLessThanOrEqual(2);
+    await expectNoPageHorizontalOverflow(page);
   });
 
   test("legacy unscoped recent-query storage is purged and never displayed @critical", async ({ page }) => {

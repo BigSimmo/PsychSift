@@ -739,10 +739,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const sharedHome = visibleByTestId(page, "shared-home-empty-state");
     const searchInput = visibleGlobalSearchInput(page);
-    const sharedHomeBrand = page.getByTestId("shared-home-brand");
-    await expect(sharedHomeBrand).toBeVisible();
-    await expect(sharedHomeBrand).toContainText("PsychSift");
-    await expect(sharedHomeBrand).toContainText("From question to source");
+    // The rail carries the PsychSift mark, so the header does not repeat it
+    // (owner design review, 12 Oct 2026).
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Answers" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-sparkles\b/);
     await searchInput.fill("lithium draft");

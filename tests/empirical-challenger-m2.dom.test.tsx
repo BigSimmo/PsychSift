@@ -47,11 +47,6 @@ describe("Empirical Challenger M2-1: Stress-Testing Typography Floor, Icon Scali
       expect(kickerMatch).toBeTruthy();
       expect(kickerMatch![1].trim()).toBe("0.75rem");
 
-      // 6. Smart search phone ticker action
-      const actionMatch = globalsCss.match(/\.smart-search-phone-ticker-action\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(actionMatch).toBeTruthy();
-      expect(actionMatch![1].trim()).toBe("0.75rem");
-
       // 7. Answer suggestion label
       const suggLabelMatch = globalsCss.match(/\.answer-suggestion-label\s*\{[\s\S]*?font-size:\s*([^;]+);/);
       expect(suggLabelMatch).toBeTruthy();
@@ -61,19 +56,6 @@ describe("Empirical Challenger M2-1: Stress-Testing Typography Floor, Icon Scali
       const eyebrowMatch = globalsCss.match(/\.answer-suggestion-label-eyebrow\s*\{[\s\S]*?font-size:\s*([^;]+);/);
       expect(eyebrowMatch).toBeTruthy();
       expect(eyebrowMatch![1].trim()).toBe("0.75rem");
-
-      // 9. Home recent searches label & chip
-      const homeLabelMatch = globalsCss.match(
-        /\.home-recent-searches\s+\.answer-suggestion-label\s*\{[\s\S]*?font-size:\s*([^;]+);/,
-      );
-      expect(homeLabelMatch).toBeTruthy();
-      expect(homeLabelMatch![1].trim()).toBe("var(--text-xs)");
-
-      const homeChipMatch = globalsCss.match(
-        /\.home-recent-searches\s+\.answer-suggestion-chip\s*\{[\s\S]*?font-size:\s*([^;]+);/,
-      );
-      expect(homeChipMatch).toBeTruthy();
-      expect(homeChipMatch![1].trim()).toBe("var(--text-xs)");
 
       // 10. PWA install dismiss
       const pwaDismissMatch = globalsCss.match(/\.pwa-install-dismiss\s*\{[\s\S]*?font-size:\s*([^;]+);/);

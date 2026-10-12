@@ -1,6 +1,3 @@
-import { guestAnswerThreadOwnerId } from "@/lib/answer-thread-storage";
-import { demoRecentQueryOwnerId, recentQueryStorageKey } from "@/lib/recent-query-storage";
-
 /**
  * The cascade-layer inertness registry (ledger #094).
  *
@@ -193,15 +190,6 @@ export type StyleEffectContract = {
   readonly nonInert?: readonly string[];
 };
 
-const HOME_RECENT_QUERIES = ["clozapine monitoring schedule"] as const;
-const HOME_RECENT_QUERY_STORAGE_KEYS = [
-  `${recentQueryStorageKey}:${guestAnswerThreadOwnerId}`,
-  `${recentQueryStorageKey}:${demoRecentQueryOwnerId}`,
-] as const;
-const homeRecentQueriesContractBootstrap: StyleContractSessionBootstrap = {
-  sessionStorage: HOME_RECENT_QUERY_STORAGE_KEYS.map((key) => ({ key, value: HOME_RECENT_QUERIES })),
-};
-
 /**
  * Rendered-effect contracts, asserted in Chromium by `tests/ui-style-contract.spec.ts`.
  *
@@ -213,42 +201,6 @@ const homeRecentQueriesContractBootstrap: StyleContractSessionBootstrap = {
  * whole purpose is to beat a utility.
  */
 export const STYLE_EFFECT_CONTRACTS: readonly StyleEffectContract[] = [
-  {
-    className: "search-band-lead",
-    description: "search band accent lead rule is a live border",
-    route: "/services?q=CMHT&run=1",
-    // The mark moved inside the padding when the band collapsed to one line: a
-    // 2px line across the full width read as a divider between the composer and
-    // the results rather than as the band's own accent.
-    // Scoped to the accent tone. `2px solid` holds only while the band is
-    // healthy; if the live search on this route degrades to `partial`, the mark
-    // renders `data-tone="warning"` and `6px double`, and the contract would go
-    // red for a reason that has nothing to do with the cascade regression it
-    // exists to catch.
-    selector: '[data-testid="search-query-ribbon"]:visible .search-band-lead[data-tone="accent"]',
-    // The exact regression, unchanged in kind: the accent is an unlayered rule
-    // that has to beat Tailwind's utilities layer, and when it loses it degrades
-    // to something that still passes every class-presence assertion — before, a
-    // neutral 1px border; now, a zero-width box. Assert computed style.
-    computed: { borderLeftWidth: "2px", borderLeftStyle: "solid" },
-    nonInert: ["borderLeftColor"],
-    colorToken: { property: "borderLeftColor", token: "--clinical-accent" },
-    // Cross-element "accent ≠ card neutral border" lives in
-    // `ui-accessibility.spec.ts`. Same-element distinct pairs against this
-    // mark's own zero-width top border only proved it has no top border.
-    // Under forced colors the mark survives as stroke count, not hue:
-    // --clinical-accent resolves to LinkText and --warning is not remapped at
-    // all, so a healthy search is one stroke and a degraded one is two.
-    forcedColors: { borderLeftWidth: "2px", borderLeftStyle: "solid" },
-    // NOTE: an attribute-variant assertion (`[data-status="error"]` re-colours the
-    // rail via `--warning`) was written and removed again. It failed in CI and then
-    // reproduced locally, so it is NOT a timing race — the computed border colour
-    // simply does not change the way the stylesheet reads as though it should. That
-    // is either a real cascade fact worth understanding or a token that resolves to
-    // the same value, and neither was diagnosed. Shipping the assertion would have
-    // put an unexplained red in the required gate; shipping it silently weakened
-    // would have been worse. Recorded as a follow-up instead.
-  },
   {
     className: "mode-nav__rule",
     description: "mode nav overflow rule marks the page held in More",
@@ -282,18 +234,6 @@ export const STYLE_EFFECT_CONTRACTS: readonly StyleEffectContract[] = [
     colorToken: { property: "color", token: "--text-heading" },
   },
   {
-    className: "home-recent-searches",
-    description: "home recent-searches surface keeps compact desktop gap and phone-first mobile column flow",
-    route: "/",
-    selector: '[data-testid="shared-home-recent-queries"]',
-    bootstrap: homeRecentQueriesContractBootstrap,
-    computed: {
-      rowGap: "6px",
-      columnGap: "10px",
-      display: "flex",
-    },
-  },
-  {
     className: "answer-source-mark",
     description: "in-prose source mark renders as the raised bordered box, not bare text",
     // Demo mode answers this question with two cited sources, so the prose
@@ -321,13 +261,14 @@ export const STYLE_EFFECT_CONTRACTS: readonly StyleEffectContract[] = [
   },
   {
     className: "answer-suggestion-label",
-    description: "home recent-search labels use readable text contrast when nested under compact rail",
+    description: "the home Prompts label keeps its muted reading colour beside the chips",
     route: "/",
-    selector: '[data-testid="shared-home-recent-queries"] .answer-suggestion-label',
-    bootstrap: homeRecentQueriesContractBootstrap,
+    // The recent questions became a list on 12 Oct 2026 and no longer use the
+    // chip row, so the label is proved where it still draws: the Prompts row.
+    selector: '[data-testid="smart-search-prompt-row"] .answer-suggestion-label',
     computed: {},
     nonInert: ["color"],
-    colorToken: { property: "color", token: "--text-heading" },
+    colorToken: { property: "color", token: "--text-muted" },
   },
 ];
 
@@ -402,7 +343,6 @@ export const STYLE_CONTRACT_EXEMPTIONS: Readonly<Record<string, string>> = {
   "search-example-ticker-query": "home example ticker line — reduced-motion behaviour covered by ui-accessibility",
   "smart-search-phone-ticker": "smart-search ticker title line — no contract yet (#094)",
   "smart-search-phone-ticker-kicker": "smart-search ticker kicker — no contract yet (#094)",
-  "smart-search-phone-ticker-action": "smart-search ticker action chip — no contract yet (#094)",
   "smart-search-intent-cue": "server-gated Smart intent cue — state and accessibility covered by master-search-header",
   // Mode switcher.
   "mode-action-surface": "mode menu surface — dismissal/focus covered by ui-accessibility, effect not contracted",
@@ -435,6 +375,8 @@ export const STYLE_CONTRACT_EXEMPTIONS: Readonly<Record<string, string>> = {
   "therapy-compare-tray__names": "therapy compare tray name line — phone-only; no effect contract yet (#094)",
   "therapy-compare-tray__count": "therapy compare tray count line — phone-only; no effect contract yet (#094)",
   "search-band-count": "count weight/colour; the zero-result state needs a deterministic empty fixture first",
+  "search-band-lead":
+    "fault mark — drawn only for a failed or partial search; its computed double stroke, including forced colours, is asserted by ui-accessibility on an intercepted route",
   "search-band-rule": "gradient divider — forced-colors fallback covered by ui-accessibility",
 
   // PWA notices. `ui-pwa` deterministically raises the browser install event
