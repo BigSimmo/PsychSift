@@ -2040,7 +2040,7 @@ jobs:
           BROWSER_ENGINE: ${{ matrix.engine }}
         run: |
           if command -v sudo >/dev/null 2>&1; then
-            sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+            sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
             sudo mkdir -p /etc/apt/apt.conf.d
             sudo tee /etc/apt/apt.conf.d/99flaky-mirror-resilience >/dev/null << 'EOF'
           Acquire::Retries "3";
@@ -2048,6 +2048,9 @@ jobs:
           Acquire::https::Timeout "30";
           EOF
           fi
+          # The runner's apt sources resolve through the mirror list in apt-mirrors.txt, so
+          # rewriting only the sources files left apt waiting on the azure mirror until the
+          # attempt timed out.
           # `set -e`: without it a failed `install-deps` on a cache hit was masked by the
           # browser download that followed, so the attempt "passed" with apt libraries
           # missing and every WebKit test died at launch (libevent-2.1.so.7, main run
@@ -2068,9 +2071,14 @@ jobs:
               exit 0
             fi
             echo "Playwright browsers install attempt $attempt timed out or failed, retrying..." >&2
-            # A timeout can kill apt mid-install; finish any half-configured packages so
-            # the next attempt is not refused by an interrupted dpkg.
-            if command -v sudo >/dev/null 2>&1; then sudo dpkg --configure -a || true; fi
+            # `timeout` kills the attempt's shell but not the root apt-get it started, which
+            # then holds the apt lock and fails every retry (dispatch run 38234519037). Stop
+            # it, then finish any half-configured packages before the next attempt.
+            if command -v sudo >/dev/null 2>&1; then
+              sudo pkill -x apt-get || true
+              sleep 2
+              sudo dpkg --configure -a || true
+            fi
             sleep 5
           done
           exit 1

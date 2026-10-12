@@ -33,7 +33,7 @@ runs:
       shell: bash
       run: |
         if command -v sudo >/dev/null 2>&1; then
-          sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
           sudo mkdir -p /etc/apt/apt.conf.d
           sudo tee /etc/apt/apt.conf.d/99flaky-mirror-resilience >/dev/null << 'EOF'
         Acquire::Retries "3";
@@ -57,6 +57,8 @@ runs:
             exit 0
           fi
           echo "Chromium install attempt $attempt timed out or failed, retrying..." >&2
+          # A timed-out attempt can leave its root apt-get holding the apt lock.
+          if command -v sudo >/dev/null 2>&1; then sudo pkill -x apt-get || true; fi
           sleep 5
         done
         exit 1

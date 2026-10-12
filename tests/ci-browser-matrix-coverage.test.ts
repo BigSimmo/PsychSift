@@ -201,6 +201,10 @@ describe("release-browser-matrix engine coverage", () => {
     expect(script).toContain('require("playwright")[process.env.BROWSER_ENGINE].launch()');
     expect(script.indexOf("launch()")).toBeGreaterThan(script.indexOf('install --with-deps "$BROWSER_ENGINE"'));
     expect(script).toContain("sudo dpkg --configure -a || true");
+    // Dispatch run 38234519037: the azure mirror in apt-mirrors.txt stalled apt past the
+    // attempt timeout, and the orphaned apt-get then held the lock for every retry.
+    expect(script).toContain("/etc/apt/apt-mirrors.txt");
+    expect(script).toContain("sudo pkill -x apt-get || true");
   });
 
   it("reuses only the same run's matching production build, preserving the mockup build and no-producer fallback", () => {
