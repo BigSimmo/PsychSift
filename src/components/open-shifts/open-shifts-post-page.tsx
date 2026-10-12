@@ -77,6 +77,11 @@ function Field({
   );
 }
 
+/** When a post was tried, read in the click handler (never during render). */
+function attemptTime(): number {
+  return Date.now();
+}
+
 export function OpenShiftsPostPage() {
   const state = usePostedShifts();
   const router = useRouter();
@@ -101,7 +106,9 @@ export function OpenShiftsPostPage() {
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   // Dates whose post got no answer (the connection dropped), with the team's shift ids known before that
   // attempt. Only these are checked against the team's list on a retry: one that went live is not sent again.
-  const [unanswered, setUnanswered] = useState<Record<string, readonly string[]>>({});
+  const [unanswered, setUnanswered] = useState<
+    Record<string, { readonly ids: readonly string[]; readonly at: number }>
+  >({});
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);
@@ -165,7 +172,7 @@ export function OpenShiftsPostPage() {
    * still deliberately post a second opening for the same slot.
    */
   const lostAnswerMatch = (on: string) => {
-    const before = unanswered[signature(on)];
+    const before = unanswered[signature(on)]?.ids;
     const onTimes = gapTimes(on, start, end);
     if (!before || !onTimes || !team) return null;
     return (
@@ -215,6 +222,17 @@ export function OpenShiftsPostPage() {
     for (const [index, on] of toPost.entries()) {
       setProgress({ current: index + 1, total: toPost.length });
       const onTimes = gapTimes(on, start, end);
+      // A date whose earlier post got no answer waits for a fresh read of the team's shifts, so it is never sent
+      // twice just because the list hadn't caught up yet.
+      const pending = unanswered[signature(on)];
+      if (pending && (!state.readAt || state.readAt.getTime() <= pending.at || state.refreshFailed)) {
+        attempts.push({
+          date: on,
+          ok: false,
+          message: "Still checking whether this one went live. Try again in a moment.",
+        });
+        continue;
+      }
       const live = lostAnswerMatch(on);
       if (live) {
         attempts.push({ date: on, ok: true, openShiftId: live.id });
@@ -242,7 +260,7 @@ export function OpenShiftsPostPage() {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first.
         if (result.code === "roster_unavailable" && !(signature(on) in nowUnanswered)) {
-          nowUnanswered[signature(on)] = state.shifts.map((row) => row.id);
+          nowUnanswered[signature(on)] = { ids: state.shifts.map((row) => row.id), at: attemptTime() };
         }
       }
     }

@@ -103,8 +103,13 @@ describe("Posting a shift", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
     expect(mocks.state.reload).toHaveBeenCalledOnce();
 
+    // Tapping again before the team's shifts are read again holds the post rather than risk a second copy.
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Still checking/));
+    expect(mocks.post).toHaveBeenCalledOnce();
+
     // The re-read shows the post did go live before its answer was lost.
-    mocks.state = { ...mocks.state, shifts: [liveShift()] };
+    mocks.state = { ...mocks.state, shifts: [liveShift()], readAt: new Date(Date.now() + 1000) };
     view.rerender(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
@@ -128,6 +133,7 @@ describe("Posting a shift", () => {
     mocks.state = {
       ...mocks.state,
       shifts: [{ ...liveShift(), postedBy: "5e000000-0000-4000-8000-000000000002" }],
+      readAt: new Date(Date.now() + 1000),
     };
     view.rerender(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
