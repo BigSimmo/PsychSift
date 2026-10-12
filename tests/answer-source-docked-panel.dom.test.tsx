@@ -82,6 +82,8 @@ describe("answer source docked panel (from 1024px)", () => {
     expect(panel).not.toHaveAttribute("aria-modal");
     await waitFor(() => expect(document.activeElement).toBe(panel));
     expect(document.body.dataset.sourceDocked).toBe("true");
+    // The answer column's reserve comes from the panel's measured edge.
+    expect(document.body.style.getPropertyValue("--source-dock-reserve")).toMatch(/^\d+px$/);
     expect(screen.getByRole("button", { name: "Close source detail" })).toBeVisible();
   });
 
@@ -96,6 +98,7 @@ describe("answer source docked panel (from 1024px)", () => {
 
     expect(screen.queryByTestId("answer-source-drawer")).toBeNull();
     expect(document.body.dataset.sourceDocked).toBeUndefined();
+    expect(document.body.style.getPropertyValue("--source-dock-reserve")).toBe("");
     await waitFor(() => expect(document.activeElement).toBe(railRow));
   });
 

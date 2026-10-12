@@ -2,7 +2,7 @@
 
 import { GitCompareArrows, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { mobileComposerVisibleReserve } from "@/components/clinical-dashboard/mobile-composer-reserve";
@@ -14,6 +14,7 @@ import { usePhoneMedia } from "@/components/compare/use-phone-media";
 import { Button } from "@/components/ui/button";
 import { buttonFaceClass } from "@/components/ui/button-face";
 import { announce } from "@/components/ui/live-announcer";
+import { Sheet } from "@/components/ui/sheet";
 import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
 
 /**
@@ -47,7 +48,11 @@ export type SharedCompareTrayProps = {
   /** For a compare page reached through app state rather than a URL. */
   onCompare?: () => void;
   onClear: () => void;
-  /** Remove one selected record without clearing the complete selection. */
+  /**
+   * Remove one selected record without clearing the rest. When given, the
+   * names open a sheet that lists each selection with its own Remove button,
+   * so a record no longer in the results can still be taken out.
+   */
   onRemove?: (index: number) => void;
   /** Plural noun for announcements and the reason text, e.g. "diagnoses". */
   noun: string;
@@ -94,6 +99,10 @@ export function SharedCompareTray({
   const dockSlot = useDockSlot(phone && dockSlotId ? dockSlotId : null);
   const footerHidden = usePhoneFooterLayerScrollHidden();
   const reasonId = useId();
+  const sheetId = useId();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Removing the last record empties the tray; the sheet closes with it.
+  if (sheetOpen && count === 0) setSheetOpen(false);
   useSelectionAnnouncement(count, minToCompare, noun);
 
   if (!mounted || count === 0) return null;
@@ -102,6 +111,22 @@ export function SharedCompareTray({
   const countLabel = max ? `${count} of ${max} selected` : `${count} selected`;
   const nameLine = names && names.length > 0 ? names.join(" · ") : null;
   const compareClass = cn(buttonFaceClass({ variant: ready ? "primary" : "secondary", size: "sm" }), "shrink-0");
+
+  const summary = (
+    <>
+      <span
+        data-testid={`${testId}-count`}
+        className="block truncate text-sm font-semibold text-[color:var(--text-heading)]"
+      >
+        {countLabel}
+      </span>
+      {nameLine ? (
+        <span className="block truncate text-xs text-[color:var(--text-muted)]" title={nameLine}>
+          {nameLine}
+        </span>
+      ) : null}
+    </>
+  );
 
   const tray = (
     <div
@@ -117,33 +142,21 @@ export function SharedCompareTray({
       )}
     >
       <GitCompareArrows aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--clinical-accent)]" />
-      <p className="m-0 min-w-0 flex-1 pl-1.5">
-        <span
-          data-testid={`${testId}-count`}
-          className="block truncate text-sm font-semibold text-[color:var(--text-heading)]"
+      {onRemove ? (
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={sheetOpen}
+          aria-controls={sheetId}
+          data-testid={`${testId}-open`}
+          className="m-0 min-h-tap min-w-0 flex-1 rounded-lg pl-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--focus)]"
         >
-          {countLabel}
-        </span>
-        {nameLine ? (
-          <span className="block truncate text-xs text-[color:var(--text-muted)]" title={nameLine}>
-            {onRemove
-              ? names?.map((name, index) => (
-                  <span key={`${name}-${index}`}>
-                    {index > 0 ? " · " : ""}
-                    <button
-                      type="button"
-                      className="underline decoration-transparent underline-offset-2 hover:decoration-current focus-visible:decoration-current"
-                      onClick={() => onRemove(index)}
-                      aria-label={`Remove ${name} from comparison`}
-                    >
-                      {name}
-                    </button>
-                  </span>
-                ))
-              : nameLine}
-          </span>
-        ) : null}
-      </p>
+          {summary}
+        </button>
+      ) : (
+        <p className="m-0 min-w-0 flex-1 pl-1.5">{summary}</p>
+      )}
       <Button
         variant="ghost"
         size="sm"
@@ -181,12 +194,50 @@ export function SharedCompareTray({
     </div>
   );
 
+  const removeSheet = onRemove ? (
+    <Sheet
+      id={sheetId}
+      open={sheetOpen}
+      onClose={() => setSheetOpen(false)}
+      title="Compare selection"
+      description={`${countLabel}.`}
+      mobilePlacement="bottom"
+      testId={`${testId}-sheet`}
+    >
+      <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+        {(names ?? []).map((name, index) => (
+          <li
+            key={`${name}-${index}`}
+            className="flex items-center gap-2.5 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] py-1 pr-1 pl-3"
+          >
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[color:var(--text-heading)]">
+              {name}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={X}
+              className="min-w-tap shrink-0 justify-center"
+              onClick={() => onRemove(index)}
+              aria-label={`Remove ${name} from the comparison`}
+            >
+              <span className="sr-only">Remove</span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </Sheet>
+  ) : null;
+
   if (phone && dockSlotId) {
     // The shell claims the slot and owns the reserve; without a slot there is no
     // dock on this route, so there is nothing safe to sit above.
-    return dockSlot
-      ? createPortal(<div className="relative z-[var(--z-raised)] mb-2 w-full">{tray}</div>, dockSlot)
-      : null;
+    return dockSlot ? (
+      <>
+        {createPortal(<div className="relative z-[var(--z-raised)] mb-2 w-full">{tray}</div>, dockSlot)}
+        {removeSheet}
+      </>
+    ) : null;
   }
 
   if (phone) {
@@ -203,6 +254,7 @@ export function SharedCompareTray({
             {tray}
           </div>
         </PhoneFooterLayerPortal>
+        {removeSheet}
       </>
     );
   }
@@ -216,6 +268,7 @@ export function SharedCompareTray({
         </div>,
         document.body,
       )}
+      {removeSheet}
     </>
   );
 }

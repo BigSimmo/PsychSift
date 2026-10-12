@@ -64,6 +64,8 @@ export function DesktopSplitList({
   readonly groups: readonly DesktopSplitGroup[];
 }) {
   const currentRef = useRef<HTMLAnchorElement>(null);
+  // Moving between records keeps this list mounted, so re-run on each new current row.
+  const currentKey = groups.flatMap((group) => group.items).find((item) => item.current)?.key ?? null;
 
   useEffect(() => {
     const row = currentRef.current;
@@ -72,10 +74,10 @@ export function DesktopSplitList({
     if (!row || !column || column.clientHeight === 0) return;
     const rowBox = row.getBoundingClientRect();
     const columnBox = column.getBoundingClientRect();
-    // Already in view: leave the column at its top, with its heading showing.
-    if (rowBox.bottom <= columnBox.bottom - 16) return;
-    column.scrollTop = Math.max(0, rowBox.top - columnBox.top - columnBox.height / 3);
-  }, []);
+    // Already in view: leave the column where it is (at first load, its top, with its heading showing).
+    if (rowBox.top >= columnBox.top && rowBox.bottom <= columnBox.bottom - 16) return;
+    column.scrollTop = Math.max(0, column.scrollTop + rowBox.top - columnBox.top - columnBox.height / 3);
+  }, [currentKey]);
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-1 p-2">

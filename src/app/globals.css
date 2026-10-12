@@ -6489,15 +6489,16 @@ html.theme-transitioning *:after {
 /* A cited source docked beside the answer (answer-source-docked-panel.tsx,
    from 1024px only): the answer column moves left by the panel's width and
    gutter, so the panel never covers the prose. The panel is 22rem wide at
-   right 1rem, and 26rem at right 1.5rem from 1280px. */
+   right 1rem, and 26rem at right 1.5rem from 1280px. The panel measures its own
+   edge into --source-dock-reserve; these widths are only the fallback. */
 @media (min-width: 1024px) {
   body[data-source-docked] #main-content {
-    padding-right: calc(22rem + 1.5rem);
+    padding-right: var(--source-dock-reserve, calc(22rem + 1.5rem));
   }
 }
 
 @media (min-width: 1280px) {
   body[data-source-docked] #main-content {
-    padding-right: calc(26rem + 2.5rem);
+    padding-right: var(--source-dock-reserve, calc(26rem + 2.5rem));
   }
 }

@@ -95,7 +95,14 @@ export function SearchScreen() {
       ? [{ id: "brief", groupLabel: "Availability", valueLabel: "Brief available", onRemove: b.toggleBriefOnly }]
       : []),
     ...(b.search.sheetOnly
-      ? [{ id: "sheet", groupLabel: "Availability", valueLabel: "Patient sheet available", onRemove: b.toggleSheetOnly }]
+      ? [
+          {
+            id: "sheet",
+            groupLabel: "Availability",
+            valueLabel: "Patient sheet available",
+            onRemove: b.toggleSheetOnly,
+          },
+        ]
       : []),
   ];
   const filterPanelId = useId();

@@ -73,6 +73,23 @@ export function AnswerSourceDockedPanel({
       openerRef.current = active instanceof HTMLElement && active !== document.body ? active : null;
     }
     node.focus({ preventScroll: true });
+    // The answer column makes room from the panel's measured edge, not from a
+    // second copy of its width in CSS. Safari at desktop width on a touch device
+    // kept the 1024px reserve while the panel took its 1280px width, so the
+    // panel covered the prose; one measurement keeps the two in step.
+    const reserve = () => {
+      const room = document.documentElement.clientWidth - node.getBoundingClientRect().left + 16;
+      document.body.style.setProperty("--source-dock-reserve", `${Math.max(0, Math.round(room))}px`);
+    };
+    reserve();
+    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(reserve) : null;
+    observer?.observe(node);
+    window.addEventListener("resize", reserve);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", reserve);
+      document.body.style.removeProperty("--source-dock-reserve");
+    };
   }, []);
   const onCloseRef = useRef(onClose);
   const resolveReturnRef = useRef(resolveReturnFocusTarget);
@@ -181,12 +198,7 @@ export function AnswerSourceDockedPanel({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {headerActions}
-            <button
-              type="button"
-              onClick={requestClose}
-              aria-label={closeLabel}
-              className={toolbarButton}
-            >
+            <button type="button" onClick={requestClose} aria-label={closeLabel} className={toolbarButton}>
               <X aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>

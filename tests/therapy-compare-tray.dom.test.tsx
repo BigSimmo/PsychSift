@@ -12,6 +12,7 @@ const tc = vi.hoisted(() => ({
   compareSlugs: [] as string[],
   compareTherapies: [] as Therapy[],
   clearCompare: vi.fn(),
+  removeCompare: vi.fn(),
   pathname: "/therapy-compass/search",
 }));
 
@@ -24,6 +25,7 @@ vi.mock("@/components/therapy-compass/bindings", () => ({
     compareSlugs: tc.compareSlugs,
     compareTherapies: tc.compareTherapies,
     clearCompare: tc.clearCompare,
+    removeCompare: tc.removeCompare,
     workspaceHref: (href: string) => `${href}?compare=${tc.compareSlugs.join(",")}`,
   }),
 }));
@@ -60,6 +62,7 @@ beforeEach(() => {
 afterEach(() => {
   document.getElementById(therapyCompareAddonSlotId)?.remove();
   tc.clearCompare.mockReset();
+  tc.removeCompare.mockReset();
 });
 
 describe("Therapy compare tray (the shared Compare tray)", () => {
@@ -141,5 +144,19 @@ describe("Therapy compare tray (the shared Compare tray)", () => {
 
     await userEvent.click(screen.getByTestId("therapy-compare-tray-clear"));
     expect(tc.clearCompare).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists each selection in a sheet so one can be removed without clearing the rest", async () => {
+    const user = userEvent.setup();
+    mountDockSlot();
+    select(CBT, ACT);
+    render(<TherapyCompareTray />);
+
+    await user.click(screen.getByTestId("therapy-compare-tray-open"));
+    const sheet = await screen.findByTestId("therapy-compare-tray-sheet");
+    expect(sheet).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /Remove ACT from the comparison/ }));
+    expect(tc.removeCompare).toHaveBeenCalledWith("act");
+    expect(tc.clearCompare).not.toHaveBeenCalled();
   });
 });
