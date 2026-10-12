@@ -126,7 +126,7 @@ export function Tag({ tone = "neutral", children }: { readonly tone?: TagTone; r
 /** "Not checked" honesty marker, in the warning tint. */
 export function PendingTag({ children }: { readonly children: ReactNode }) {
   return (
-    <WorkTag tone="amber">
+    <WorkTag tone="amber" plain>
       <span className="inline-flex items-center gap-1">
         <Clock aria-hidden="true" strokeWidth={2.2} className="size-3" />
         {children}
