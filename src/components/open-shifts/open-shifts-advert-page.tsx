@@ -374,6 +374,7 @@ export function OpenShiftsAdvertPage({
       <OpenShiftsAdvertActions
         listing={listing}
         booked={(listing.claimedByMe && listing.status === "approved") || sent === "approved"}
+        sample={sample}
       />
 
       {/* Example shifts are checked against the example roster, as Browse flags them; a release-held sample has none. */}
