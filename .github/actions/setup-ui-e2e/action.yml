@@ -58,11 +58,12 @@ runs:
           fi
           echo "Chromium install attempt $attempt timed out or failed, retrying..." >&2
           # A timed-out attempt can leave its root apt-get holding the apt lock, or dpkg
-          # half-configured; clear both before the next attempt.
+          # half-configured; clear both (recovery bounded) before the next attempt.
           if command -v sudo >/dev/null 2>&1; then
             sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
             sleep 2
-            sudo dpkg --configure -a || true
+            sudo timeout 120 dpkg --configure -a || true
           fi
           sleep 5
         done

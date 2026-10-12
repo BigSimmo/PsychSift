@@ -2073,11 +2073,13 @@ jobs:
             echo "Playwright browsers install attempt $attempt timed out or failed, retrying..." >&2
             # `timeout` kills the attempt's shell but not the root apt-get it started, which
             # then holds the apt lock and fails every retry (dispatch run 38234519037). Stop
-            # it, then finish any half-configured packages before the next attempt.
+            # it (and any dpkg it started), then finish half-configured packages, bounded so a stalled
+            # recovery cannot hold the loop, before the next attempt.
             if command -v sudo >/dev/null 2>&1; then
               sudo pkill -x apt-get || true
+              sudo pkill -x dpkg || true
               sleep 2
-              sudo dpkg --configure -a || true
+              sudo timeout 120 dpkg --configure -a || true
             fi
             sleep 5
           done
