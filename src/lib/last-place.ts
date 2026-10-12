@@ -30,7 +30,9 @@ const SAFE_PATH = /^(?:\/[A-Za-z0-9._~-]+)+$/;
  * safety plan, which belongs to one conversation rather than to "where I was".
  */
 const SKIPPED_LAST_SEGMENTS = new Set(["new", "edit", "search", "setup"]);
-const SKIPPED_PREFIXES = ["/safety-plan", "/mockups", "/api", "/auth"];
+// "/teaching/c" and "/teaching/display" carry one-time or private tokens in the path,
+// which must never be kept on the device or replayed on a later open.
+const SKIPPED_PREFIXES = ["/safety-plan", "/mockups", "/api", "/auth", "/teaching/c", "/teaching/display"];
 
 /**
  * The path to remember for a page, or null when the page should not replace

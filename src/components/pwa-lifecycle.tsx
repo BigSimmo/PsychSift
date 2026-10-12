@@ -328,7 +328,10 @@ export function PwaLifecycle() {
   const [offlineSaved, setOfflineSaved] = useState<{ at: number; pathname: string | null } | null>(null);
   // A page reached after the signal dropped came from a saved copy of unknown
   // age, so the time only holds for the page that was on screen when it dropped.
-  const offlineSavedAt = offlineSaved && offlineSaved.pathname === pathname ? offlineSaved.at : null;
+  // The Clinical home "/" switches what it shows by query (?mode=…) without a new
+  // path, so there a matching path proves nothing and the line says "saved earlier".
+  const offlineSavedAt =
+    offlineSaved && pathname !== "/" && offlineSaved.pathname === pathname ? offlineSaved.at : null;
   const [showIosHint, setShowIosHint] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);

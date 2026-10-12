@@ -222,6 +222,7 @@ describe("PwaLifecycle", () => {
   });
 
   it("names the work-clock time the page on screen was opened online", async () => {
+    navigationState.pathname = "/on-call";
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     render(<PwaLifecycle />);
 
@@ -230,6 +231,16 @@ describe("PwaLifecycle", () => {
     expect(
       await screen.findByRole("region", { name: /^Offline, showing what was saved at \d{2}:\d{2}$/ }),
     ).toBeInTheDocument();
+    navigationState.pathname = "/";
+  });
+
+  it("claims no time on the Clinical home, whose content changes by query without a new path", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    render(<PwaLifecycle />);
+
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    fireEvent.offline(window);
+    expect(await screen.findByRole("region", { name: "Offline, showing what was saved earlier" })).toBeInTheDocument();
   });
 
   it("forgets the saved time when a new page is opened while offline", async () => {

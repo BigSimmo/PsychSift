@@ -35,6 +35,12 @@ describe("lastPlaceToRemember", () => {
     expect(lastPlaceToRemember("/mockups/anything")).toBeNull();
   });
 
+  it("never keeps a page whose path carries a check-in or display token", () => {
+    expect(lastPlaceToRemember("/teaching/c/abc123token")).toBeNull();
+    expect(lastPlaceToRemember("/teaching/display/abc123token")).toBeNull();
+    expect(lastPlaceToRemember("/teaching")).toBe("/teaching");
+  });
+
   it("refuses anything that is not a bare same-site path", () => {
     expect(lastPlaceToRemember("/on-call?q=lithium")).toBeNull();
     expect(lastPlaceToRemember("/on-call#top")).toBeNull();

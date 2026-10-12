@@ -31,4 +31,12 @@ describe("WorkRail Clinical button", () => {
     expect(link.getAttribute("href")).toContain("mode=dsm");
     expect(link).toHaveTextContent("Clinical");
   });
+
+  it.each(["roster", "my-day"])("never links to a Work page when %s was the mode used last", (mode) => {
+    window.localStorage.setItem(LAST_APP_MODE_STORAGE_KEY, mode);
+    render(<WorkRail identity={identity} currentArea="day" onOpenSettings={() => {}} />);
+    const link = screen.getByTestId("work-rail-clinical");
+    expect(link).toHaveAccessibleName("Clinical, Answer");
+    expect(link.getAttribute("href")).toContain("mode=answer");
+  });
 });

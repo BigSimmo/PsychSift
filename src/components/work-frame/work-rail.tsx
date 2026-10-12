@@ -8,7 +8,7 @@ import type { SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSi
 import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { appModeIcons } from "@/lib/app-mode-icons";
-import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
+import { DEFAULT_APP_MODE, useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { modeMenuSideForMode } from "@/lib/phone-mode-groups";
 import { WORK_AREAS, workAreaFor, type WorkAreaId } from "@/lib/work-frame/areas";
@@ -54,7 +54,10 @@ export function useWorkRailShown(): boolean {
  * same place. It opens the Clinical mode used last, with that mode's icon.
  */
 function WorkRailClinical() {
-  const [lastMode] = useLastAppMode();
+  const [storedMode] = useLastAppMode();
+  // The mode menu also remembers Work modes (My Day, Roster), which must never
+  // turn this button into a link to another Work page.
+  const lastMode = modeMenuSideForMode(storedMode) === "clinical" ? storedMode : DEFAULT_APP_MODE;
   const Icon = appModeIcons[lastMode];
   return (
     <Link
