@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -60,14 +60,18 @@ const LazyDockedPanel = dynamic(
  */
 function SourceDrawerFrame({ docked, ...sheetProps }: SheetProps & { docked: boolean }) {
   const [dockedOnce, setDockedOnce] = useState(false);
+  // Keep the browser marker owned by the source, rather than by whichever
+  // responsive frame currently renders it.
+  const historyId = useId();
   if (docked && sheetProps.open && !dockedOnce) setDockedOnce(true);
-  if (!docked) return <Sheet {...sheetProps} />;
+  if (!docked) return <Sheet {...sheetProps} historyId={historyId} />;
   if (!dockedOnce) return null;
   return (
     <LazyDockedPanel
       open={sheetProps.open}
       onClose={sheetProps.onClose}
       dismissOnBack={sheetProps.dismissOnBack}
+      historyId={historyId}
       title={sheetProps.title ?? "Source"}
       description={sheetProps.description ?? ""}
       closeLabel={sheetProps.closeLabel ?? "Close"}
