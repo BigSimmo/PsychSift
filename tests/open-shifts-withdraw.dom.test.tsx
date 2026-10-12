@@ -81,6 +81,22 @@ describe("Open shifts, taking back a waiting request", () => {
     );
   });
 
+  it("shows the request as waiting again when a newer read finds it asked for again elsewhere", async () => {
+    const listing = waiting();
+    mocks.state = stateWith(listing);
+    mocks.post.mockResolvedValue({ ok: true, result: { ok: true, openShiftId: listing.id, status: "open" } });
+    const view = renderFor(listing);
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledOnce());
+    // The same doctor asks again from another device before this page's re-read lands.
+    mocks.state = stateWith(listing, { readAt: new Date(NOW.getTime() + 60_000) });
+    view.rerender(<OpenShiftsAdvertPage serviceId={listing.serviceId} openShiftId={listing.id} />);
+    expect(screen.getByText("Waiting for approval")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Request this shift" })).toBeNull();
+    expect(screen.queryByText("Request taken back. The shift is open again.")).toBeNull();
+  });
+
   it("does not call the shift open when someone else asked for it before the page re-read it", async () => {
     const listing = waiting();
     mocks.state = stateWith(listing);

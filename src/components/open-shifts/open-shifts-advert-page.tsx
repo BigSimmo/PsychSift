@@ -371,6 +371,9 @@ export function OpenShiftsAdvertPage({
   const [withdrawLoaded, setWithdrawLoaded] = useState(false);
   // The shift whose waiting request was taken back, so the page drops it before the reload lands.
   const [withdrawnKey, setWithdrawnKey] = useState<string | null>(null);
+  // The read the take-back was made against. Only that read is overridden: a newer read is the truth,
+  // so a request made again from another tab or device shows as waiting.
+  const [withdrawnReadAt, setWithdrawnReadAt] = useState<number | null>(null);
   const withdrawnNoticeRef = useRef<HTMLParagraphElement>(null);
   // The button that opened the take-back is gone, so keyboard focus lands on the result instead,
   // once per take-back rather than on every re-render.
@@ -426,7 +429,8 @@ export function OpenShiftsAdvertPage({
   const timeText = endsNextDay(listing.startsAt, listing.endsAt)
     ? `${perthTimeOf(listing.startsAt)}–${perthTimeOf(listing.endsAt)} next day`
     : formatShiftTimes(listing.startsAt, listing.endsAt);
-  const withdrawn = withdrawnKey === `${listing.serviceId}:${listing.id}`;
+  const withdrawnHere = withdrawnKey === `${listing.serviceId}:${listing.id}`;
+  const withdrawn = withdrawnHere && (state.readAt?.getTime() ?? null) === withdrawnReadAt;
   const sent = listing.claimedByMe || (state.readAt?.getTime() ?? null) === sentReadAt ? sentState : null;
   const alreadyMine = (listing.claimedByMe && !withdrawn) || sent !== null;
   const approved = sent === "approved" || listing.status === "approved";
@@ -540,7 +544,7 @@ export function OpenShiftsAdvertPage({
         </p>
       </div>
 
-      {withdrawn && !alreadyMine ? (
+      {withdrawnHere && !alreadyMine ? (
         <p
           role="status"
           ref={withdrawnNoticeRef}
@@ -723,6 +727,7 @@ export function OpenShiftsAdvertPage({
           onWithdrawn={() => {
             setSent(null);
             setWithdrawnKey(`${listing.serviceId}:${listing.id}`);
+            setWithdrawnReadAt(state.readAt?.getTime() ?? null);
             setWithdrawOpen(false);
             state.reload();
           }}
