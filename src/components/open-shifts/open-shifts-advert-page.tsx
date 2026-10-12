@@ -373,6 +373,7 @@ export function OpenShiftsAdvertPage({
       </dl>
       <OpenShiftsAdvertActions
         listing={listing}
+        sample={sample}
         booked={(listing.claimedByMe && listing.status === "approved") || sent === "approved"}
       />
 

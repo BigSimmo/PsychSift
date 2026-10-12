@@ -132,6 +132,7 @@ describe("who could do this", () => {
     startsAt: at("2026-10-14", "08:00"),
     endsAt: at("2026-10-14", "16:30"),
     minGrade: "registrar" as const,
+    postedBy: null,
   };
 
   it("lists members at or above the level with nothing at the same time", () => {
@@ -148,6 +149,7 @@ describe("who could do this", () => {
         { userId: eli.userId, date: "2026-10-14", kind: "cant" },
         { userId: bo.userId, date: "2026-10-14", kind: "prefer_off" },
       ],
+      leave: null,
       actorId: ash.userId,
     });
     expect(result.people.map((person) => [person.name, person.prefersOff, person.isYou])).toEqual([
@@ -158,23 +160,58 @@ describe("who could do this", () => {
     expect(result.cantWork).toBe(1);
   });
 
-  it("counts leave as busy and lists everyone for any level when nothing else is known", () => {
+  it("counts leave as busy and lists every member with a level when nothing else is known", () => {
     const result = whoCouldDoThis({
       shift: { ...shift, minGrade: null },
-      members: [cy, fin],
+      members: [cy, dee, fin],
       assignments: [row(cy.userId, at("2026-10-14", "00:00"), at("2026-10-15", "00:00"), "leave")],
       unavailability: null,
+      leave: null,
       actorId: null,
     });
-    expect(result.people.map((person) => person.name)).toEqual(["Dr Fin Example"]);
+    // Fin's level is "other", and Roster never lets a member without a ranked level take a shift.
+    expect(result.people.map((person) => person.name)).toEqual(["Dr Dee Example"]);
     expect(result.busy).toBe(1);
+  });
+
+  it("leaves out the poster and anyone with leave over the shift, however long ago it began", () => {
+    const result = whoCouldDoThis({
+      shift: { ...shift, postedBy: ash.userId },
+      members: [ash, bo, dee, eli],
+      assignments: [],
+      unavailability: null,
+      leave: [
+        // Began weeks before the shift, so the assignments window would never see it.
+        {
+          userId: dee.userId,
+          name: null,
+          kind: "annual",
+          startsOn: "2026-09-20",
+          endsOn: "2026-10-20",
+          status: "approved",
+        },
+        {
+          userId: eli.userId,
+          name: null,
+          kind: "annual",
+          startsOn: "2026-10-15",
+          endsOn: "2026-10-16",
+          status: "planned",
+        },
+      ],
+      actorId: ash.userId,
+    });
+    expect(result.people.map((person) => person.name)).toEqual(["Dr Eli Example", "Dr Bo Example"]);
+    expect(result.onLeave).toBe(1);
   });
 
   it("matches levels as Roster does", () => {
     expect(meetsLevel("consultant", "registrar")).toBe(true);
     expect(meetsLevel("resident", "registrar")).toBe(false);
     expect(meetsLevel("other", "intern")).toBe(false);
-    expect(meetsLevel(null, null)).toBe(true);
+    expect(meetsLevel("intern", null)).toBe(true);
+    expect(meetsLevel(null, null)).toBe(false);
+    expect(meetsLevel("other", null)).toBe(false);
   });
 
   it("reads a week before the shift's start to its end date", () => {

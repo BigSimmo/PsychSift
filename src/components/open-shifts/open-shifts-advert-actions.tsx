@@ -21,22 +21,29 @@ const action =
 export function OpenShiftsAdvertActions({
   listing,
   booked,
+  sample,
 }: {
   readonly listing: OpenShiftListing;
+  /** Example data: a made-up shift is never shared or put in a real calendar. */
+  readonly sample: boolean;
   /** Approved for you: the calendar button shows. */
   readonly booked: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const shareable = listing.status === "open" && !listing.claimedByMe;
-  if (!shareable && !booked) return null;
+  if (sample || (!shareable && !booked)) return null;
 
   async function share() {
     const link = `${window.location.origin}${advertHref(listing)}`;
     const text = openShiftShareText(listing, link);
     if (typeof navigator.share === "function") {
-      // A dismissed share sheet is not an error.
-      await navigator.share({ title: "Open shift", text }).catch(() => {});
-      return;
+      try {
+        await navigator.share({ title: "Open shift", text });
+        return;
+      } catch (error) {
+        // A dismissed share sheet is not an error. Any other failure falls back to copying.
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
     }
     try {
       await navigator.clipboard.writeText(text);

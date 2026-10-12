@@ -1,6 +1,12 @@
 import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { gradeRank, placementProblem } from "@/lib/roster/team/eligibility";
-import type { RosterAssignment, RosterGrade, RosterTeamMember, RosterUnavailability } from "@/lib/roster/team/model";
+import type {
+  RosterAssignment,
+  RosterGrade,
+  RosterTeamLeave,
+  RosterTeamMember,
+  RosterUnavailability,
+} from "@/lib/roster/team/model";
 
 /**
  * "Who could do this" on a posted shift that is still open: the team's
@@ -9,8 +15,10 @@ import type { RosterAssignment, RosterGrade, RosterTeamMember, RosterUnavailabil
  *
  * It reads what a roster manager already reads: the team's `members` (names
  * and levels), its `assignments` around the shift (every member's live team
- * roster rows), and `unavailability` (the days members said they can't or
- * would rather not work; managers see everyone's). A doctor's other jobs and
+ * roster rows), `team_leave` (leave planned, applied for or approved) and
+ * `unavailability` (the days members said they can't or would rather not
+ * work; managers see everyone's). The person who posted the shift is left
+ * out, because Roster never lets a poster take their own shift. A doctor's other jobs and
  * private shifts are never read, so this is a starting point for a phone
  * call, not a promise anyone is free. Roster rechecks level and overlap when
  * someone asks for the shift and it is approved.
@@ -41,26 +49,37 @@ export type WhoCould = {
   readonly busy: number;
   /** Left out because they said they can't work that day. */
   readonly cantWork: number;
+  /** Left out because they have leave planned, applied for or approved over the shift. */
+  readonly onLeave: number;
 };
 
-/** True when `grade` meets the shift's minimum. A shift for any level takes everyone. */
+/**
+ * True when `grade` meets the shift's minimum. Roster only lets someone with a set level take a shift,
+ * so a member with no level (or "other") never counts, even for a shift open to any level.
+ */
 export function meetsLevel(grade: RosterGrade | null, minGrade: RosterGrade | null): boolean {
-  if (minGrade === null) return true;
   const mine = gradeRank(grade);
+  if (minGrade === null) return mine !== null;
   const minimum = gradeRank(minGrade);
   return mine !== null && minimum !== null && mine >= minimum;
 }
 
 export function whoCouldDoThis(input: {
-  shift: { startsAt: string; endsAt: string; minGrade: RosterGrade | null };
+  shift: { startsAt: string; endsAt: string; minGrade: RosterGrade | null; postedBy: string | null };
   members: readonly RosterTeamMember[];
   assignments: readonly RosterAssignment[];
   /** Null when the read failed or wasn't made: nobody is then left out for it. */
   unavailability: RosterUnavailability["unavailability"] | null;
+  /** Null when the read failed or wasn't made: nobody is then left out for it. */
+  leave: RosterTeamLeave["leave"] | null;
   actorId: string | null;
 }): WhoCould {
-  const { shift, members, assignments, unavailability, actorId } = input;
+  const { shift, members, assignments, unavailability, leave, actorId } = input;
   const day = perthDateOf(shift.startsAt);
+  const lastDay = perthDateOf(shift.endsAt);
+  const away = new Set(
+    (leave ?? []).filter((row) => row.startsOn <= lastDay && row.endsOn >= day).map((row) => row.userId),
+  );
   const said = new Map<string, "cant" | "prefer_off">();
   for (const row of unavailability ?? []) {
     if (row.date !== day) continue;
@@ -69,9 +88,15 @@ export function whoCouldDoThis(input: {
   }
   let busy = 0;
   let cantWork = 0;
+  let onLeave = 0;
   const people: WhoCouldPerson[] = [];
   for (const member of members) {
+    if (member.userId === shift.postedBy) continue;
     if (!meetsLevel(member.grade, shift.minGrade)) continue;
+    if (away.has(member.userId)) {
+      onLeave += 1;
+      continue;
+    }
     if (placementProblem(assignments, member.userId, shift.startsAt, shift.endsAt, [], null) === "clash") {
       busy += 1;
       continue;
@@ -94,5 +119,5 @@ export function whoCouldDoThis(input: {
     (a, b) =>
       (gradeRank(a.grade) ?? 99) - (gradeRank(b.grade) ?? 99) || (a.name ?? "￿").localeCompare(b.name ?? "￿", "en-AU"),
   );
-  return { people, busy, cantWork };
+  return { people, busy, cantWork, onLeave };
 }

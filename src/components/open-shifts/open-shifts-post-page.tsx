@@ -100,6 +100,8 @@ export function OpenShiftsPostPage() {
   const [done, setDone] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
+  const [report, setReport] = useState<string | null>(null);
 
   function applyPrefill(prefill: PostAgainPrefill) {
     if (prefill.serviceId) setServiceId(prefill.serviceId);
@@ -134,6 +136,8 @@ export function OpenShiftsPostPage() {
   }, []);
 
   const team = state.teams.find((row) => row.serviceId === serviceId) ?? state.teams[0] ?? null;
+  // "Post again" from a team this manager no longer posts for: say which team it will go to instead.
+  const copiedTeamMissing = copied && serviceId !== "" && team !== null && team.serviceId !== serviceId;
   // A site from the address (or another team) only counts if it is one of this team's sites.
   const site = team?.sites.some((row) => row.id === siteId) ? siteId : "";
   const dates = planDates(
@@ -152,6 +156,25 @@ export function OpenShiftsPostPage() {
   const siteName = team?.sites.find((row) => row.id === site)?.name ?? null;
   const signature = (on: string) =>
     JSON.stringify([team?.serviceId, on, start, end, code.trim(), kind, site, level, urgent]);
+  /**
+   * The team's live shift for this date, if one already matches exactly. A post whose answer was lost on the
+   * way back may still have gone live, so a date the team already shows is never sent a second time.
+   */
+  const liveMatch = (on: string) => {
+    const onTimes = gapTimes(on, start, end);
+    if (!onTimes || !team) return null;
+    return (
+      state.shifts.find(
+        (row) =>
+          row.serviceId === team.serviceId &&
+          row.status !== "cancelled" &&
+          row.status !== "expired" &&
+          row.shiftCode === code.trim() &&
+          Date.parse(row.startsAt) === Date.parse(onTimes.startsAt) &&
+          Date.parse(row.endsAt) === Date.parse(onTimes.endsAt),
+      ) ?? null
+    );
+  };
   const alreadyPosted = dates.filter((on) => signature(on) in done);
   const toPost = dates.filter((on) => !(signature(on) in done));
 
@@ -179,6 +202,12 @@ export function OpenShiftsPostPage() {
     for (const [index, on] of toPost.entries()) {
       setProgress({ current: index + 1, total: toPost.length });
       const onTimes = gapTimes(on, start, end);
+      const live = liveMatch(on);
+      if (live) {
+        attempts.push({ date: on, ok: true, openShiftId: live.id });
+        nowDone[signature(on)] = live.id;
+        continue;
+      }
       if (!onTimes) {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
@@ -203,16 +232,27 @@ export function OpenShiftsPostPage() {
     setProgress(null);
     setDone(nowDone);
     const { failed } = splitAttempts(attempts);
+    // Read the team's shifts again, so a retry sees any date whose answer was lost but did go live.
+    if (failed.length > 0) state.reload();
     if (failed.length === 0) {
       const only = dates.length === 1 ? nowDone[signature(dates[0]!)] : "";
       router.push(only ? postedShiftHref(team.serviceId, only) : `${OPEN_SHIFTS_HREF}/post`);
       return null;
     }
-    if (dates.length === 1) return `Not posted. ${failed[0]!.message}`;
+    if (dates.length === 1) {
+      setReport(null);
+      return `Not posted. ${failed[0]!.message}`;
+    }
     const posted = dates.filter((on) => signature(on) in nowDone);
     const missing = failed.map((row) => formatDayShort(row.date)).join(", ");
     const reason = failed[0]!.message;
-    if (posted.length === 0) return `None of the ${dates.length} dates were posted. ${reason}`;
+    if (posted.length === 0) {
+      setReport(null);
+      return `None of the ${dates.length} dates were posted. ${reason}`;
+    }
+    setReport(
+      `Posted ${posted.length} of ${dates.length}: ${posted.map(formatDayShort).join(", ")}. Not posted: ${missing}.`,
+    );
     return `Posted ${posted.length} of ${dates.length}: ${posted.map(formatDayShort).join(", ")}. Not posted: ${missing}. ${reason} "Yes" now sends only the dates not posted.`;
   }
 
@@ -241,7 +281,17 @@ export function OpenShiftsPostPage() {
         >
           {copied ? (
             <p className="rounded-md bg-[color:var(--surface-subtle)] px-3 py-2 text-sm text-[color:var(--text)]">
-              Copied from a posted shift. Choose the date, then check the rest.
+              {copiedTeamMissing
+                ? `Copied from a posted shift in a team you no longer post for, so this will post for ${team?.name}. Choose the date, then check the rest.`
+                : "Copied from a posted shift. Choose the date, then check the rest."}
+            </p>
+          ) : null}
+          {report && !confirming ? (
+            <p
+              role="status"
+              className="rounded-md bg-[color:var(--surface-subtle)] px-3 py-2 text-sm text-[color:var(--text)]"
+            >
+              {`${report} Posting again sends only the dates not posted.`}
             </p>
           ) : null}
 
@@ -449,7 +499,10 @@ export function OpenShiftsPostPage() {
       {times && team ? (
         <ConfirmSheet
           open={confirming}
-          onClose={() => setConfirming(false)}
+          // Posting can't be walked away from mid-way: the sheet stays until every date has an answer.
+          onClose={() => {
+            if (!progress) setConfirming(false);
+          }}
           title={
             dates.length > 1
               ? `Post this shift on ${toPost.length} ${toPost.length === 1 ? "date" : "dates"}?`

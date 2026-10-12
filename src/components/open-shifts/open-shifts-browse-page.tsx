@@ -138,8 +138,49 @@ export function OpenShiftsBrowsePage() {
         <>
           <div className="min-[1024px]:grid min-[1024px]:grid-cols-[minmax(0,1fr)_24rem] min-[1024px]:items-start min-[1024px]:gap-6">
             <div className="min-w-0">
+              {/* Roster and freshness notes sit above the list, so a phone in List view still sees them. */}
+              {state.rosterStatus === "error" && !sample ? (
+                <Note
+                  icon={<TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}
+                  tone="warn"
+                >
+                  <b className="font-semibold">Your roster couldn&apos;t be read,</b> so clashes aren&apos;t checked or
+                  hidden.{" "}
+                  <button
+                    type="button"
+                    onClick={state.reload}
+                    className="font-medium text-[color:var(--mode-identity)] underline"
+                  >
+                    Try again
+                  </button>
+                </Note>
+              ) : null}
+              {state.rosterStatus === "ready" && (!state.roster || state.roster.length === 0) && !sample ? (
+                <Note icon={<CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
+                  <b className="font-semibold text-[color:var(--text-heading)]">No roster to check against.</b> Add your
+                  roster so each shift shows whether it clashes.{" "}
+                  <Link href="/roster/shifts" className="font-medium text-[color:var(--mode-identity)]">
+                    Add your roster
+                  </Link>
+                </Note>
+              ) : coveredUntil && coveredUntil < windowEnd && !sample ? (
+                <Note icon={<CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
+                  <b className="font-semibold text-[color:var(--text-heading)]">{`Your roster stops at ${formatDayShort(coveredUntil)}.`}</b>{" "}
+                  We can&apos;t check shifts after that until you add more.{" "}
+                  <Link href="/roster/shifts" className="font-medium text-[color:var(--mode-identity)]">
+                    Update roster
+                  </Link>
+                </Note>
+              ) : null}
+              {state.offline && state.readAt ? (
+                <Note icon={<Info aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
+                  <b className="font-semibold text-[color:var(--text-heading)]">{`Showing the list from ${perthTimeOf(state.readAt)}.`}</b>{" "}
+                  Counts and the roster check may be out of date until you reconnect.
+                </Note>
+              ) : null}
+
               <OpenShiftsRequestsStrip listings={state.listings} roster={state.roster} now={now} />
-              <OpenShiftsFitsYou rows={fitsYou(summary.matching)} requestable={!signedOut} />
+              <OpenShiftsFitsYou rows={fitsYou(summary.matching)} requestable={!signedOut && !sample} />
               <div className="relative">
                 <div
                   // `work-chips` gives the one-line sideways scroll and the edge
@@ -234,7 +275,7 @@ export function OpenShiftsBrowsePage() {
                 ))}
               </div>
               <div className={view === "list" ? "" : "max-[1023px]:hidden"} data-testid="open-shifts-list">
-                <OpenShiftsDayList summary={summary} />
+                <OpenShiftsDayList summary={summary} partial={partial} filtered={filterCount > 0} />
               </div>
             </div>
             <div
@@ -290,46 +331,6 @@ export function OpenShiftsBrowsePage() {
                   </li>
                 ) : null}
               </ul>
-
-              {state.rosterStatus === "error" && !sample ? (
-                <Note
-                  icon={<TriangleAlert aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}
-                  tone="warn"
-                >
-                  <b className="font-semibold">Your roster couldn&apos;t be read,</b> so clashes aren&apos;t checked or
-                  hidden.{" "}
-                  <button
-                    type="button"
-                    onClick={state.reload}
-                    className="font-medium text-[color:var(--mode-identity)] underline"
-                  >
-                    Try again
-                  </button>
-                </Note>
-              ) : null}
-              {state.rosterStatus === "ready" && (!state.roster || state.roster.length === 0) && !sample ? (
-                <Note icon={<CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
-                  <b className="font-semibold text-[color:var(--text-heading)]">No roster to check against.</b> Add your
-                  roster so each shift shows whether it clashes.{" "}
-                  <Link href="/roster/shifts" className="font-medium text-[color:var(--mode-identity)]">
-                    Add your roster
-                  </Link>
-                </Note>
-              ) : coveredUntil && coveredUntil < windowEnd && !sample ? (
-                <Note icon={<CircleHelp aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
-                  <b className="font-semibold text-[color:var(--text-heading)]">{`Your roster stops at ${formatDayShort(coveredUntil)}.`}</b>{" "}
-                  We can&apos;t check shifts after that until you add more.{" "}
-                  <Link href="/roster/shifts" className="font-medium text-[color:var(--mode-identity)]">
-                    Update roster
-                  </Link>
-                </Note>
-              ) : null}
-              {state.offline && state.readAt ? (
-                <Note icon={<Info aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />}>
-                  <b className="font-semibold text-[color:var(--text-heading)]">{`Showing the list from ${perthTimeOf(state.readAt)}.`}</b>{" "}
-                  Counts and the roster check may be out of date until you reconnect.
-                </Note>
-              ) : null}
 
               {/* The chosen day. From 1024px the list beside the calendar already shows every day. */}
               <div className="min-[1024px]:hidden">
@@ -455,14 +456,29 @@ export function OpenShiftsBrowsePage() {
 /** Days shown before "Show later days", so a phone list stays short. */
 const FIRST_DAYS = 5;
 
-function OpenShiftsDayList({ summary }: { readonly summary: ReturnType<typeof summariseBrowse> }) {
+function OpenShiftsDayList({
+  summary,
+  partial,
+  filtered,
+}: {
+  readonly summary: ReturnType<typeof summariseBrowse>;
+  /** Some teams couldn't be read, or the list is an offline copy. */
+  readonly partial: boolean;
+  readonly filtered: boolean;
+}) {
   const [all, setAll] = useState(false);
   const allDays = [...summary.perDay.keys()].sort();
   // Later days stay in the page on a computer, where the calendar scrolls to them; a phone shows them on request.
   const later = all ? 0 : Math.max(0, allDays.length - FIRST_DAYS);
   if (allDays.length === 0) {
     return (
-      <p className="px-3 py-6 text-center text-sm text-[color:var(--text-muted)]">No open shifts match your filters.</p>
+      <p className="px-3 py-6 text-center text-sm text-[color:var(--text-muted)]">
+        {partial
+          ? "None found in the teams read. Some of your teams couldn't be read, so there may be more."
+          : summary.total === 0
+            ? `Nothing is posted for the next ${WINDOW_DAYS} days. New shifts appear here when a roster manager posts them.`
+            : `None match. ${summary.total} ${summary.total === 1 ? "is" : "are"} hidden by ${filtered ? "your filters" : "the clash and level settings"}; open Filters to see ${summary.total === 1 ? "it" : "them"}.`}
+      </p>
     );
   }
   return (

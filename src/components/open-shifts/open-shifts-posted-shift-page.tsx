@@ -58,7 +58,9 @@ function ShiftSummary({ shift }: { shift: PostedShift }) {
 }
 
 type WhoCouldState =
-  { status: "loading" } | { status: "failed" } | { status: "ready"; result: WhoCould; unavailabilityChecked: boolean };
+  | { status: "loading" }
+  | { status: "failed" }
+  | { status: "ready"; result: WhoCould; unavailabilityChecked: boolean; leaveChecked: boolean };
 
 /**
  * "Who could do this": team members at or above the shift's level with nothing on their team roster at
@@ -68,7 +70,7 @@ type WhoCouldState =
 function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: string | null }) {
   const [state, setState] = useState<WhoCouldState>({ status: "loading" });
   const [generation, setGeneration] = useState(0);
-  const { serviceId, startsAt, endsAt, minGrade } = shift;
+  const { serviceId, startsAt, endsAt, minGrade, postedBy } = shift;
 
   useEffect(() => {
     let cancelled = false;
@@ -77,7 +79,8 @@ function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: strin
       fetchRosterRead(serviceId, "members"),
       fetchRosterRead(serviceId, "assignments", range),
       fetchRosterRead(serviceId, "unavailability", range),
-    ]).then(([members, assignments, unavailability]) => {
+      fetchRosterRead(serviceId, "team_leave", { from: perthDateOf(startsAt), to: perthDateOf(endsAt) }),
+    ]).then(([members, assignments, unavailability, leave]) => {
       if (cancelled) return;
       if (!members.ok || !assignments.ok) {
         setState({ status: "failed" });
@@ -86,11 +89,13 @@ function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: strin
       setState({
         status: "ready",
         unavailabilityChecked: unavailability.ok,
+        leaveChecked: leave.ok,
         result: whoCouldDoThis({
-          shift: { startsAt, endsAt, minGrade },
+          shift: { startsAt, endsAt, minGrade, postedBy },
           members: members.data.members,
           assignments: assignments.data.assignments,
           unavailability: unavailability.ok ? unavailability.data.unavailability : null,
+          leave: leave.ok ? leave.data.leave : null,
           actorId,
         }),
       });
@@ -98,13 +103,16 @@ function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: strin
     return () => {
       cancelled = true;
     };
-  }, [serviceId, startsAt, endsAt, minGrade, actorId, generation]);
+  }, [serviceId, startsAt, endsAt, minGrade, postedBy, actorId, generation]);
 
   const left =
     state.status === "ready"
       ? [
           state.result.busy > 0
             ? `${state.result.busy} at the right level ${state.result.busy === 1 ? "is" : "are"} already rostered then`
+            : null,
+          state.result.onLeave > 0
+            ? `${state.result.onLeave} ${state.result.onLeave === 1 ? "has" : "have"} leave then`
             : null,
           state.result.cantWork > 0 ? `${state.result.cantWork} said they can't work that day` : null,
         ].filter(Boolean)
@@ -163,6 +171,7 @@ function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: strin
             {[
               left.length ? `Not listed: ${left.join("; ")}.` : null,
               state.unavailabilityChecked ? null : "Days people said they can't work couldn't be checked.",
+              state.leaveChecked ? null : "Leave couldn't be checked.",
               "From the team roster only, not other jobs or private shifts. Nobody is told they're listed.",
             ]
               .filter(Boolean)
