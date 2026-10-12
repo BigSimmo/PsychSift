@@ -146,9 +146,7 @@ function shortDate(dateKey: string): string {
 export function demoTeach(today: string, now?: Date): { upcoming: DemoTeachSession[]; taught: SessionRef[] } {
   const day = (offset: number) => addDays(today, offset);
   // The talk is the programme's own journal club, so every page names the same day.
-  const nextClub = demoPresentingDate(today);
-  const over = now ? now.getTime() >= Date.parse(perthInstant(nextClub, "14:45")) : false;
-  const talkDay = over ? demoPresentingDate(addDays(nextClub, 1)) : nextClub;
+  const talkDay = demoPresentingDate(today, now);
   const later = (
     n: number,
     title: string,
