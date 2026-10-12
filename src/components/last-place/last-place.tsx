@@ -49,8 +49,18 @@ function storeLastPlace(path: string) {
 let boot: { readonly lastPlace: string | null; done: boolean } | null = null;
 const bootListeners = new Set<() => void>();
 
+/**
+ * True once the doctor has tapped or typed on this document. This component loads after
+ * the page, so its own listeners can miss the first touches; the browser keeps the record.
+ */
+function doctorHasInteracted(): boolean {
+  return (
+    (navigator as Navigator & { userActivation?: { hasBeenActive?: boolean } }).userActivation?.hasBeenActive === true
+  );
+}
+
 function bootDecision() {
-  boot ??= { lastPlace: readStoredLastPlace(), done: !coldHomeOpen() };
+  boot ??= { lastPlace: readStoredLastPlace(), done: doctorHasInteracted() || !coldHomeOpen() };
   return boot;
 }
 
@@ -134,7 +144,9 @@ export function LastPlace() {
     const state = bootDecision();
     if (state.done) return;
     endDecision();
-    if (window.location.pathname !== "/") return;
+    // Only a bare, untouched home moves: a search or mode change on `/` keeps the page.
+    if (window.location.pathname !== "/" || window.location.search || window.location.hash) return;
+    if (doctorHasInteracted()) return;
     const target = coldLandingTarget({ onShiftNow, lastPlace: state.lastPlace, routeVisible });
     if (target) router.replace(target, { scroll: false });
   });

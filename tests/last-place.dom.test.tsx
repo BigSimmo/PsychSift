@@ -135,6 +135,19 @@ describe("LastPlace", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("leaves the page alone when the doctor touched it before this helper loaded", async () => {
+    window.localStorage.setItem(LAST_PLACE_STORAGE_KEY, "/teaching");
+    setEntry("/");
+    Object.defineProperty(navigator, "userActivation", { value: { hasBeenActive: true }, configurable: true });
+    try {
+      render(<LastPlace />);
+      await act(async () => {});
+      expect(replace).not.toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(navigator, "userActivation");
+    }
+  });
+
   it("remembers each page without its query string", async () => {
     pathname = "/on-call/whos-on";
     setEntry("/on-call/whos-on?x=1");
