@@ -1241,8 +1241,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
       const icon = homeRegion.locator(".mode-home-icon").first();
       await expect(icon).toBeVisible();
-      const iconBox = await icon.boundingBox();
-      expect(iconBox, `${home.path} hero icon`).not.toBeNull();
+      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
+      // (48px since PR 5b), not a standalone pixel choice. The home can swap its subtree between the
+      // visibility check and a box read, so each sample is a fresh read of the settled icon.
+      await expect
+        .poll(
+          async () => {
+            const box = await icon.boundingBox();
+            return box && { width: Math.round(box.width), height: Math.round(box.height) };
+          },
+          { message: `${home.path} hero icon size` },
+        )
+        .toEqual({ width: 48, height: 48 });
 
       // ModeHomeHero gives its heading the deterministic id `<heroTestId>-title`
       // (role/name lookups can collide with sr-only section headings).
@@ -1271,16 +1281,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
         };
       });
 
-      const metrics = {
-        iconWidth: Math.round(iconBox?.width ?? 0),
-        iconHeight: Math.round(iconBox?.height ?? 0),
-        headingFontSize,
-      };
-      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
-      // (48px since PR 5b), not a standalone pixel choice.
-      expect(metrics.iconWidth).toBe(48);
-      expect(metrics.iconHeight).toBe(48);
-      expect(metrics.headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
+      expect(headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
       expect(subtitleFontSize).toBeCloseTo(expectedTypeSizes.subtitle, 1);
 
       await expectNoPageHorizontalOverflow(page);
