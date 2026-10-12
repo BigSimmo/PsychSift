@@ -70,10 +70,11 @@ export function WorkRail({
       <Link
         href="/my-day/profile"
         className="work-rail__avatar"
+        data-signed-in={identity.signedIn ? "true" : "false"}
         aria-label={identity.signedIn ? `Work profile, ${identity.displayName}` : "Work profile and sign-in"}
         data-testid="work-rail-profile"
       >
-        <span aria-hidden="true">{identity.signedIn ? identity.initials : "?"}</span>
+        <span aria-hidden="true">{identity.initials}</span>
       </Link>
       <ul className="work-rail__list">
         {WORK_SIDE_AREAS.filter((entry) => routeVisible(entry.href)).map((entry) => {
