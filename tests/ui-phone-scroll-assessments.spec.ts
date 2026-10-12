@@ -89,6 +89,9 @@ for (const standalone of [false, true]) {
       await expect(page).toHaveURL(/view=progress/);
       await expect(page.locator("[data-screen-heading]").first()).toBeFocused();
       await page.goto("/teaching/assessments");
+      // A streamed page can briefly hold a finished section twice (once still parked in React's hidden
+      // reveal container), which a strict locator rejects at once. Wait for the single settled copy.
+      await expect(page.getByTestId("assess-doctor-hero")).toHaveCount(1, { timeout: 15_000 });
       await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
       await page.getByRole("button", { name: /^Request an EPA From/ }).click();
       await expect(page.getByRole("dialog")).toBeVisible();
