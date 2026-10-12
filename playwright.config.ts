@@ -34,7 +34,9 @@ const mockupTag = /@mockup/;
 // iPhone-project journey that typed a question and pressed Send timed out on
 // "pwa-notice-stack subtree intercepts pointer events" (release-browser-matrix, 2026-09-22 on).
 // A returning user who has dismissed it once is the state these journeys are about, so the two
-// iPhone projects start from that state. `ui-pwa.spec.ts` resets it to prove the sheet itself.
+// iPhone projects and the iPad `tablet` project start from that state (the iPad user agent gets the
+// same sheet; once WebKit could launch it covered tablet clicks across shards, matrix run
+// 38236585559). `ui-pwa.spec.ts` resets it to prove the sheet itself.
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
 const iosInstallHintDismissed = {
   cookies: [],
@@ -163,6 +165,7 @@ export default defineConfig({
       grepInvert: mockupTag,
       use: {
         ...devices["iPad Mini"],
+        storageState: iosInstallHintDismissed,
         viewport: { width: 768, height: 1024 },
       },
     },
