@@ -358,13 +358,25 @@ const roster: WorkArea = {
   identity: "roster",
   tabs: [
     { id: "month", label: "Month", sub: "Your calendar", icon: "calendar", href: "/roster", title: "Roster" },
-    { id: "team", label: "Team", sub: "Who is on", icon: "users", href: "/roster/team" },
+    // Open shifts folded into Roster (Work mode simplify plan, owner yes 12 Oct 2026): one page with
+    // your requests and hours at the top, so Requests and Alerts are no longer tabs of their own.
+    {
+      id: "open-shifts",
+      label: "Open shifts",
+      sub: "Extra shifts on offer",
+      icon: "hand",
+      href: "/open-shifts",
+      paths: ["/open-shifts", "/open-shifts/shift/", "/open-shifts/mine", "/open-shifts/alerts"],
+      title: "Open shifts",
+    },
     { id: "swaps", label: "Swaps", sub: "Ask and answer", icon: "swap", href: "/roster/swaps" },
   ],
   groups: [
     {
       label: "My roster",
       items: [
+        // Team left the tabs for Open shifts (12 Oct 2026): Month's top card opens "Who is on" too.
+        { id: "team", label: "Team", sub: "Who is on", icon: "users", href: "/roster/team" },
         // Today folded into Month (owner decision, 11 Oct 2026): its Who is on and Phone numbers buttons
         // sit on Month's top card, and /roster/today opens Month in this work mode.
         { id: "shifts", label: "My shifts", sub: "Week by week", icon: "layers", href: "/roster/shifts" },
@@ -427,17 +439,32 @@ const roster: WorkArea = {
       ],
     },
     {
-      label: "Inside Roster",
+      label: "Open shifts",
       items: [
         {
-          id: "open-shifts",
-          label: "Open shifts",
-          sub: "Browse, requests, alerts",
-          icon: "search",
-          href: "/open-shifts",
-          paths: [],
-          opens: "open",
+          id: "open-shifts-post",
+          label: "Post a shift",
+          short: "Post",
+          sub: "Managers",
+          icon: "plus",
+          href: "/open-shifts/post",
+          paths: ["/open-shifts/post", "/open-shifts/post/"],
+          gate: "open-shifts-poster",
         },
+        {
+          id: "open-shifts-board",
+          label: "Week board",
+          sub: "Managers",
+          icon: "grid",
+          href: "/open-shifts/board",
+          gate: "open-shifts-poster",
+          band: false,
+        },
+      ],
+    },
+    {
+      label: "Inside Roster",
+      items: [
         {
           id: "manage",
           label: "Manage team",
@@ -464,12 +491,16 @@ const roster: WorkArea = {
   ],
 };
 
-/** Open shifts, inside Roster: the shifts on offer, your requests and alerts. */
+/**
+ * Open shifts' own pages. Since 12 Oct 2026 the frame draws them as Roster's
+ * "Open shifts" tab (`workAreaFor` returns Roster for the `open-shifts` mode),
+ * so this area is no longer an inner area with tabs of its own. It stays so the
+ * `open` id still names these pages for help, example data and AI Search.
+ */
 const openShifts: WorkArea = {
   id: "open",
   name: "Open shifts",
   identity: "roster",
-  parent: "rost",
   tabs: [
     {
       id: "open-shifts-browse",
@@ -1283,9 +1314,9 @@ export function workAreaFor(modeId: AppModeId, pathname: string): WorkArea | nul
     case "roster":
       return pathname === "/roster/manage" || pathname.startsWith("/roster/manage/") ? manageTeam : roster;
     case "open-shifts":
-      // Open shifts is an inner area of Roster, with Roster's colours. The mode
-      // id stays `open-shifts` for search and the registry.
-      return openShifts;
+      // Open shifts is a Roster tab (12 Oct 2026). The mode id stays `open-shifts`
+      // for search and the registry.
+      return roster;
     case "teaching":
       return ASSESSMENT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
         ? assessments

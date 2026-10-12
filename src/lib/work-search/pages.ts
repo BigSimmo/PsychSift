@@ -46,7 +46,7 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "rost:shifts": ["shifts", "my roster"],
   "rost:requests": ["leave", "annual leave", "al", "holiday", "request", "book leave", "pdl", "study leave"],
   "rost:hours": ["overtime", "rest", "fatigue", "safe hours"],
-  "open:open-shifts-browse": ["extra shifts", "locum", "open shifts", "available shifts"],
+  "rost:open-shifts": ["extra shifts", "locum", "open shifts", "available shifts"],
   "open:open-shifts-mine": ["booked", "asked"],
   "open:open-shifts-alerts": ["notify", "shift alerts"],
   "manage:manage-inbox": ["approve", "approvals", "manager", "manage roster"],
