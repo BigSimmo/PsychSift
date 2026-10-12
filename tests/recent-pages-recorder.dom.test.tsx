@@ -85,4 +85,26 @@ describe("Recent pages recorder", () => {
       "Panic disorder",
     );
   });
+  it("does not trust the title on screen when it first loads after the reader has already moved on", async () => {
+    // The document was loaded on /roster; the reader moved to a diagnosis before this recorder loaded.
+    vi.spyOn(performance, "getEntriesByType").mockReturnValue([
+      { name: "http://localhost/roster", type: "navigate" } as unknown as PerformanceEntry,
+    ]);
+    goTo("/dsm/diagnoses/panic-disorder");
+    document.title = "Roster | PsychSift";
+    render(<RecentPagesRecorder />);
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(readRecentPages()).toEqual([]);
+
+    await act(async () => {
+      document.title = "Panic disorder | DSM-5 Diagnosis | PsychSift";
+      await Promise.resolve();
+    });
+    expect(readRecentPages().map((page) => [page.path, page.title])).toEqual([
+      ["/dsm/diagnoses/panic-disorder", "Panic disorder"],
+    ]);
+    vi.restoreAllMocks();
+  });
 });

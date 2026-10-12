@@ -34,15 +34,36 @@ export function RecentPagesRecorder() {
   // The document title as the navigation to this path began, captured while
   // rendering the new path (before the new page's title is committed). Null on
   // a cold load, where the title in the document is already this page's own.
+  // This recorder loads after the page, so a reader may already have moved on
+  // by the time it first renders; then the title on screen may still be the
+  // previous page's, and is treated as such (see `firstStartTitle`).
   const [navigation, setNavigation] = useState<{ path: string | null; startTitle: string | null }>(() => ({
     path: pathname,
-    startTitle: null,
+    startTitle: firstStartTitle(pathname),
   }));
   if (navigation.path !== pathname) {
     setNavigation({ path: pathname, startTitle: typeof document === "undefined" ? null : document.title });
   }
   if (!pathname || !recentPageTarget(pathname)) return null;
   return <RecordRecentPage key={pathname} pathname={pathname} startTitle={navigation.startTitle} />;
+}
+
+/**
+ * The start title for the recorder's first render. Null when this is still the
+ * page the document was loaded on (a cold load: its title is its own). When a
+ * client navigation happened before this recorder loaded, the current title is
+ * held as the start title, so it is only recorded once the page sets a new one;
+ * at worst a quick visit goes unrecorded, never mislabelled.
+ */
+function firstStartTitle(pathname: string | null): string | null {
+  if (typeof document === "undefined" || !pathname) return null;
+  try {
+    const entry = performance.getEntriesByType("navigation")[0];
+    if (!entry || samePath(new URL(entry.name).pathname, pathname)) return null;
+  } catch {
+    return null;
+  }
+  return document.title;
 }
 
 function samePath(a: string, b: string): boolean {
