@@ -34,6 +34,7 @@ import {
   onCallHospitalPhoneStorageKey,
 } from "@/components/on-call/call/call-device-stores";
 import { onCallCallGroups, onCallRowBadge } from "@/components/on-call/call/call-groups";
+import { WorkModeLaunchProvider } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { OnCallCallPage } from "@/components/on-call/call/call-page";
 import { onCallCallRoute } from "@/components/on-call/kit/dial-sheet";
 import { clearOnCallDeviceState } from "@/lib/on-call/device-state-keys";
@@ -113,6 +114,22 @@ describe("Call page", () => {
     expect(screen.getByTestId("on-call-refer-sections")).toBeInTheDocument();
     expect(screen.getByTestId("on-call-refer-services-link")).toHaveAttribute("href", "/services/search");
     expect(document.getElementById("on-call-group-hospital")).toBeNull();
+  });
+
+  it("keeps Refer out of Contacts for a classic reader, who keeps the standalone Refer page", () => {
+    window.history.replaceState(null, "", "/on-call/call?show=refer");
+    handbook.state = ready(items([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]));
+    render(
+      <WorkModeLaunchProvider
+        launch={{ newWorkMode: false, previewAudience: false, classicPreferred: true, choiceAvailable: true }}
+      >
+        <OnCallCallPage />
+      </WorkModeLaunchProvider>,
+    );
+    expect(screen.queryByRole("radio", { name: "Refer" })).toBeNull();
+    expect(screen.queryByTestId("on-call-refer-sections")).toBeNull();
+    expect(screen.getByRole("radio", { name: "Hospital" })).toHaveAttribute("aria-checked", "true");
+    window.history.replaceState(null, "", "/on-call/call");
   });
 
   it("keeps the crisis lines on Refer, and counts a referral-only search match as a result", async () => {

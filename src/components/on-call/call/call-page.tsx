@@ -43,7 +43,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import { RosterWhosOnEntryLink } from "@/components/on-call/roster-whos-on/roster-whos-on-entry-link";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { NewWorkModeOnly, useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -94,7 +94,8 @@ function PeopleTabFromAddress({ onAsked }: { readonly onAsked: (asked: string | 
 }
 
 /** The tab an address asks for: `/on-call/call?show=refer` opens Refer (the old Refer page lands there). */
-function peopleTabFor(asked: string | null): PeopleTab {
+function peopleTabFor(asked: string | null, withRefer = true): PeopleTab {
+  if (asked === "refer" && !withRefer) return "hospital";
   return PEOPLE_TABS.some((option) => option.value === asked) ? (asked as PeopleTab) : "hospital";
 }
 
@@ -283,8 +284,11 @@ export function OnCallCallPage() {
   const entries = useOnCallEntries();
   const hospitalPhone = useOnCallHospitalPhone();
   const [query, setQuery] = useState("");
+  // Refer inside Contacts is a new work mode screen; classic readers keep the standalone Refer page.
+  const withRefer = useNewWorkMode();
+  const peopleTabs = withRefer ? PEOPLE_TABS : PEOPLE_TABS.filter((option) => option.value !== "refer");
   const [tab, setTabState] = useState<PeopleTab>("hospital");
-  const followAddress = useCallback((asked: string | null) => setTabState(peopleTabFor(asked)), []);
+  const followAddress = useCallback((asked: string | null) => setTabState(peopleTabFor(asked, withRefer)), [withRefer]);
   // Keep the address in step with the chosen tab, so a refresh reopens the same one.
   const setTab = useCallback(
     (next: PeopleTab) => {
@@ -377,8 +381,8 @@ export function OnCallCallPage() {
   const hospitalCount = groups.reduce((sum, group) => sum + group.items.length, 0);
   // Referral routes are searched here too (Refer lives inside Contacts), so they count towards the result.
   const referralCount = onCallReferralMatchCount({
-    items: ready ? handbook.items : [],
-    entries: entries.entries,
+    items: ready && withRefer ? handbook.items : [],
+    entries: withRefer ? entries.entries : [],
     query,
     signedOut,
   });
@@ -454,7 +458,7 @@ export function OnCallCallPage() {
         <div data-testid="on-call-call-search">
           <SearchField
             label="Search people"
-            placeholder="Search numbers, referrals, roles"
+            placeholder={withRefer ? "Search numbers, referrals, roles" : "Search numbers, roles"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
@@ -471,7 +475,7 @@ export function OnCallCallPage() {
             layout="equal"
             value={tab}
             onChange={setTab}
-            options={PEOPLE_TABS}
+            options={peopleTabs}
             ariaControls="on-call-people-list"
           />
         )}
@@ -595,7 +599,7 @@ export function OnCallCallPage() {
           </OnCallGroupedList>
         ) : null}
 
-        {searching || tab === "refer" ? <OnCallReferSections query={query} /> : null}
+        {withRefer && (searching || tab === "refer") ? <OnCallReferSections query={query} /> : null}
       </div>
 
       {searching ? null : (
