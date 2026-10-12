@@ -205,6 +205,19 @@ describe("who could do this", () => {
     expect(result.onLeave).toBe(1);
   });
 
+  it("sees a can't-work day on the morning an overnight shift ends", () => {
+    const result = whoCouldDoThis({
+      shift: { startsAt: at("2026-10-14", "21:30"), endsAt: at("2026-10-15", "08:00"), minGrade: null, postedBy: null },
+      members: [ash, bo],
+      assignments: [],
+      unavailability: [{ userId: bo.userId, date: "2026-10-15", kind: "cant" }],
+      leave: null,
+      actorId: null,
+    });
+    expect(result.people.map((person) => person.name)).toEqual(["Dr Ash Example"]);
+    expect(result.cantWork).toBe(1);
+  });
+
   it("matches levels as Roster does", () => {
     expect(meetsLevel("consultant", "registrar")).toBe(true);
     expect(meetsLevel("resident", "registrar")).toBe(false);

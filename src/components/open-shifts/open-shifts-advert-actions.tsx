@@ -3,6 +3,7 @@
 import { CalendarPlus, Check, Share2 } from "lucide-react";
 import { useState } from "react";
 
+import { useRosterNow } from "@/components/roster/roster-format";
 import { downloadTextFile } from "@/lib/admin/download-file";
 import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import type { OpenShiftListing } from "@/lib/open-shifts/model";
@@ -30,7 +31,9 @@ export function OpenShiftsAdvertActions({
   readonly booked: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const shareable = listing.status === "open" && !listing.claimedByMe;
+  const now = useRosterNow();
+  // A shift that has started can't be asked for, so it isn't passed on.
+  const shareable = listing.status === "open" && !listing.claimedByMe && Date.parse(listing.startsAt) > now.getTime();
   if (sample || (!shareable && !booked)) return null;
 
   async function share() {

@@ -22,7 +22,7 @@ export const openShiftsTopic: WorkHelpTopic = {
     {
       id: "my-requests",
       q: "Where do I see what I asked for?",
-      a: "Your requests sits at the top of Open shifts. Tap it to see the shifts you have requested, the ones booked for you and any that changed. A booked shift can go in your phone's calendar from its page.",
+      a: "The Your requests strip sits at the top of Open shifts. Tap it to see the shifts you have requested, the ones booked for you and any that changed. A booked shift can go in your phone's calendar from its page.",
       link: { label: "My requests", href: "/open-shifts/mine" },
     },
     {
@@ -40,7 +40,7 @@ export const openShiftsTopic: WorkHelpTopic = {
     {
       id: "post-shift",
       q: "How do I post a shift that needs cover?",
-      a: "Roster managers can post one from Post a shift in Roster's More, on one date or several. It goes live straight away for team members at the right level, and a roster manager approves whoever asks. A posted shift shows who in the team could do it, and Post again copies it.",
+      a: "Roster managers can post one from Post a shift in Roster's More, on one date or several. It goes live straight away for team members at the right level, and a roster manager approves whoever asks, unless the team approves same-level requests automatically. A posted shift shows who in the team could do it, and Post again copies it.",
       link: { label: "Post a shift", href: "/open-shifts/post" },
     },
   ],

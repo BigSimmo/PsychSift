@@ -82,7 +82,8 @@ export function whoCouldDoThis(input: {
   );
   const said = new Map<string, "cant" | "prefer_off">();
   for (const row of unavailability ?? []) {
-    if (row.date !== day) continue;
+    // Every Perth day the shift touches counts, so "can't" on the morning an overnight shift ends is seen.
+    if (row.date < day || row.date > lastDay) continue;
     // "Can't" outranks "rather not" if a member somehow has both.
     if (row.kind === "cant" || !said.has(row.userId)) said.set(row.userId, row.kind);
   }
