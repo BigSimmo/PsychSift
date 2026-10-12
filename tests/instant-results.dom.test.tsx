@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import { useMedicationCatalog } from "@/components/clinical-dashboard/use-medication-catalog";
 import {
-  medicationCatalogueWarmupUrl,
   resetModeResultsWarmupForTests,
   useModeResultsWarmup,
   warmModeResults,
@@ -96,13 +95,10 @@ describe("medication catalogue request while sign-in resolves", () => {
 });
 
 describe("mode results warm-up", () => {
-  it("warms the medication catalogue once, with no query text and no model-backed route", () => {
+  it("warms medication once and makes no data request, so it never spends the search rate limit", () => {
     expect(warmModeResults("prescribing")).toBe(true);
     expect(warmModeResults("prescribing")).toBe(false);
-    const urls = fetchMock.mock.calls.map(([url]) => String(url));
-    expect(urls).toEqual([medicationCatalogueWarmupUrl]);
-    expect(medicationCatalogueWarmupUrl).not.toMatch(/[?&]q=/);
-    expect(urls.some((url) => url.startsWith("/api/search") || url.startsWith("/api/answer"))).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("makes no data request for documents, whose search is retrieval-backed", () => {
@@ -120,12 +116,11 @@ describe("mode results warm-up", () => {
     const first = renderHook(() => useModeResultsWarmup("prescribing"));
     first.unmount();
     await act(async () => vi.advanceTimersByTimeAsync(5_000));
-    expect(fetchMock).not.toHaveBeenCalled();
-
     renderHook(() => useModeResultsWarmup("prescribing"));
-    expect(fetchMock).not.toHaveBeenCalled();
     await act(async () => vi.advanceTimersByTimeAsync(5_000));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // The cancelled home never warmed; the second one did, so a third call has nothing to do.
+    expect(warmModeResults("prescribing")).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

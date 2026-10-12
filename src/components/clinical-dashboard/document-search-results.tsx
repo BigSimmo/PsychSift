@@ -1453,7 +1453,7 @@ function DocumentSearchResultsPanelImpl({
     (unavailableMessage && !shouldShowHome);
 
   return (
-    <div data-testid="document-search-workspace" aria-busy={loading} className="w-full space-y-2.5 sm:space-y-3">
+    <div data-testid="document-search-workspace" className="w-full space-y-2.5 sm:space-y-3">
       {showIdentityHeader ? (
         <SearchResultsHeaderBand
           modeId={showRecordMatches ? recordMode : "documents"}

@@ -788,9 +788,6 @@ function MedicationResults({
     <div
       ref={resultsRef}
       tabIndex={-1}
-      // Busy only until the first response for this query lands. A refetch keeps the
-      // previous rows on screen, so it is not announced as a busy region.
-      aria-busy={initialCatalogLoading}
       className={cn(pageContainer, "medication-results-workspace space-y-3 py-0 outline-none sm:py-2")}
     >
       <SearchResultsHeaderBand

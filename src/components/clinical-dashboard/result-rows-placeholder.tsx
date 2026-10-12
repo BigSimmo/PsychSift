@@ -11,8 +11,8 @@ import { Skeleton, cn } from "@/components/ui-primitives";
  *
  * Accessibility follows `LoadingPanel`'s skeleton variant (COMPONENTS.md §9.29): one
  * `role="status"` node named by `label`, an `sr-only` twin of the label, every shimmer
- * bar `aria-hidden`, and no `aria-live` on visible content (§9.2). The caller marks its
- * own results region `aria-busy` while this is mounted.
+ * bar `aria-hidden`, and no `aria-live` on visible content (§9.2). Callers do not mark a
+ * parent `aria-busy`: that would hold back this status until the rows had gone.
  */
 // The inset tone, not Skeleton's default subtle one: on a raised card the subtle tone is
 // nearly the card's own colour in light mode, so the rows read as empty boxes.

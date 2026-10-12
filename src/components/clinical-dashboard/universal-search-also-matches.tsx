@@ -154,9 +154,8 @@ export function UniversalSearchAlsoMatches({
     : matchCount > 0
       ? `${withCatalogueDegradedNotice(`${matchCountLabel(matchCount)} also match this search`, catalogueDegraded)}.`
       : emptyMessage;
-  // No pending arm. The strip is not drawn at all until this query's matches are in (see the
-  // gate below), so a "Searching…" here could only ever show during a background refetch,
-  // where the count already on screen is the honest thing to keep saying.
+  // No pending arm. The strip is not drawn at all while this query's lookup is running (see
+  // the gate below), so a "Searching…" here could never show.
   const headerMeta = matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";
 
   if (!submissionActive) return null;
@@ -170,7 +169,8 @@ export function UniversalSearchAlsoMatches({
   // page before the main results arrived, and still saying it after they had. It is
   // secondary to the results the search asked for, so it now fills in quietly underneath
   // them once it has something to show, and never holds or competes with the main list.
-  if (currentGroups.length === 0) return null;
+  // Streamed groups arrive one mode at a time, so a partial count is never shown either.
+  if (currentGroups.length === 0 || searchPending) return null;
 
   return (
     <section

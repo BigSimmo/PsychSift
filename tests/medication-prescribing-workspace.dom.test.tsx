@@ -258,7 +258,7 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
     expect(note.closest('[role="status"]')).not.toBeNull();
   });
 
-  it("shows rows shaped like results, marked busy, while the first response is on its way", () => {
+  it("shows rows shaped like results, announced outside any busy region, while the first response is on its way", () => {
     catalogLoading.current = true;
     catalogNoData.current = true;
     const { container } = renderWorkspace({ query: "lithium", showHome: false });
@@ -266,13 +266,14 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
     expect(screen.getByRole("status", { name: "Loading medication results" })).toBe(
       screen.getByTestId("medication-results-placeholder"),
     );
-    expect(container.querySelector(".medication-results-workspace")).toHaveAttribute("aria-busy", "true");
+    // No busy parent: it would hold back the placeholder's status until the rows had gone.
+    expect(container.querySelector(".medication-results-workspace")).not.toHaveAttribute("aria-busy");
   });
 
-  it("drops the placeholder and the busy flag once results are in", () => {
+  it("drops the placeholder once results are in", () => {
     const { container } = renderWorkspace({ query: "lithium", showHome: false });
     expect(screen.queryByTestId("medication-results-placeholder")).not.toBeInTheDocument();
-    expect(container.querySelector(".medication-results-workspace")).toHaveAttribute("aria-busy", "false");
+    expect(container.querySelector(".medication-results-workspace")).not.toHaveAttribute("aria-busy");
   });
 
   it("hides a kept correction while the catalogue is still answering the new words", () => {
