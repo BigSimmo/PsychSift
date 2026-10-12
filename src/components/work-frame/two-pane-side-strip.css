@@ -30,7 +30,7 @@
   gap: calc(var(--spacing) * 1);
   margin-bottom: calc(var(--spacing) * 4);
   color: var(--text-muted);
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
 }
 
@@ -48,7 +48,7 @@
   min-height: 3.25rem;
   border-radius: var(--radius-lg);
   color: var(--text-muted);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
 }
 

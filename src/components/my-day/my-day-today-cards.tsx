@@ -1400,12 +1400,9 @@ export function NeedsYouRow({
       subtitle={
         <>
           {line.late ? (
-            <span
-              className={cn(
-                "font-bold",
-                lapsed ? "text-[color:var(--danger-text)]" : "text-[color:var(--warning-text)]",
-              )}
-            >{`${line.late} · `}</span>
+            <span data-late={lapsed ? "passed" : "due"} className="font-bold text-[color:var(--work-ink)]">
+              {`${line.late} · `}
+            </span>
           ) : null}
           {line.rest}
         </>
@@ -1827,7 +1824,9 @@ export function RenewalsRunwayCard({
             title={point.title}
             subtitle={
               point.passed ? (
-                <span className="font-bold text-[color:var(--danger-text)]">{`Date passed · ${fullDate(point.date)}`}</span>
+                <span data-late="passed" className="font-bold text-[color:var(--work-ink)]">
+                  {`Date passed · ${fullDate(point.date)}`}
+                </span>
               ) : (
                 `${relativeDays(point.date, today).replace(/^i/, "I").replace(/^t/, "T")} · ${fullDate(point.date)}`
               )

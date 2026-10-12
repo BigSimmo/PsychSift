@@ -161,9 +161,25 @@ html[data-glass="flat"][data-work-frame],
 html[data-glass="flat"] [data-work-frame],
 html[data-glass="flat"] .work-band,
 html[data-glass="flat"] .work-more-sheet,
-html[data-glass="flat"] .universal-header[data-work-frame] {
+html[data-glass="flat"] .universal-header[data-work-frame],
+html[data-bright]:not(.dark)[data-work-frame],
+html[data-bright]:not(.dark) [data-work-frame],
+html[data-bright]:not(.dark) .work-band,
+html[data-bright]:not(.dark) .work-more-sheet,
+html[data-bright]:not(.dark) .universal-header[data-work-frame] {
   --work-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
   --work-glass-blur: none !important;
+}
+html[data-bright]:not(.dark)[data-work-frame],
+html[data-bright]:not(.dark) [data-work-frame],
+html[data-bright]:not(.dark) .work-band,
+html[data-bright]:not(.dark) .work-more-sheet,
+html[data-bright]:not(.dark) .universal-header[data-work-frame] {
+  /* Bright light (reading-aids.css) is fully solid: nothing shows through. */
+  --work-glass-fill: var(--surface-raised) !important;
+}
+html[data-bright]:not(.dark) .work-more-sheet.work-more-sheet {
+  background: var(--surface-raised);
 }
 
 /* Work pages sit on crisp white, under the tinted band. The page shell and
@@ -984,7 +1000,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .universal-header[data-work-frame] .universal-header-mode-area {
-  font-size: 0.5625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   line-height: var(--work-leading-heading);
@@ -1266,7 +1282,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
      "Saved pages and items" in full rather than "Saved pages and ite…". */
   display: -webkit-box;
   overflow: hidden;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   color: var(--work-ink-muted);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -1401,7 +1417,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   border-radius: var(--radius-pill);
   background: var(--mode-identity-soft);
   color: var(--mode-identity-deep, var(--mode-identity));
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1443,7 +1459,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   justify-content: space-between;
   gap: calc(var(--spacing) * 2);
   margin: 0;
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   line-height: var(--work-leading-meta);
@@ -1452,7 +1468,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-label__count {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 600;
   letter-spacing: 0;
@@ -1608,7 +1624,7 @@ button.work-row:focus-visible {
 
 .work-row__sub {
   margin-top: calc(var(--spacing) * 0.25);
-  font-size: 0.71875rem;
+  font-size: var(--text-xs, 0.75rem);
   line-height: var(--work-leading-row-sub);
   color: var(--work-ink-muted);
 }
@@ -1618,7 +1634,7 @@ button.work-row:focus-visible {
   flex: none;
   justify-items: end;
   gap: calc(var(--spacing) * 0.75);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   color: var(--work-ink-muted);
 }
@@ -1641,7 +1657,7 @@ button.work-row:focus-visible {
 }
 
 .work-date__month {
-  font-size: 0.5625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1689,7 +1705,7 @@ a.work-hero:focus-visible {
 }
 
 .work-hero__eyebrow {
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1761,7 +1777,7 @@ a.work-hero:focus-visible {
   position: relative;
   display: block;
   margin-top: calc(var(--spacing) * 0.5);
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   line-height: var(--work-leading-none);
 }
@@ -1803,7 +1819,7 @@ a.work-hero:focus-visible {
   display: inline-block;
   padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2);
   border-radius: var(--radius-pill);
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: var(--work-leading-tag);
@@ -1836,6 +1852,9 @@ a.work-hero:focus-visible {
 @media (forced-colors: active) {
   .work-tag {
     border: 1px solid CanvasText;
+  }
+  .work-tag::before {
+    background: CanvasText !important;
   }
 }
 
@@ -2281,7 +2300,7 @@ html:has(.work-dock) #main-content {
   border-radius: var(--work-radius-field);
   background: var(--work-surface);
   font: inherit;
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--work-ink-muted);
@@ -2391,7 +2410,7 @@ button.work-week__day {
 }
 
 .work-check__value {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   font-style: normal;
   font-variant-numeric: tabular-nums;
@@ -2575,7 +2594,7 @@ html[data-work-frame] .app-toast-region {
   place-items: center;
   border: 1.5px solid var(--work-line);
   border-radius: var(--radius-pill);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -2684,7 +2703,7 @@ html[data-work-frame] .app-toast-region {
 
 .work-side-menu__label {
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2) calc(var(--spacing) * 0.5);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 750;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -2923,7 +2942,7 @@ html[data-work-frame] .app-toast-region {
 .work-rail__label {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   /* One fixed line, held as a floor too: the label clips (overflow hidden),
      so as a grid item its minimum height is otherwise zero, and inside the
@@ -2980,7 +2999,7 @@ html[data-work-frame] .app-toast-region {
   border-radius: var(--radius-pill);
   background: var(--text-heading);
   color: var(--surface);
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 800;
   line-height: calc(var(--spacing) * 4.25);
@@ -3035,4 +3054,84 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
   height: auto;
   min-height: calc(var(--spacing) * 7.5);
   padding-block: calc(var(--spacing) * 1);
+}
+
+/* Ward Flow review (owner decision, 12 Oct 2026): figures in Geist Mono,
+   one shape per status with plain words, a paler colour instead of
+   transparency, and the Bright light mode. */
+
+/* Figures in Geist Mono beside words in Geist. */
+.work-ring__value,
+.work-ring__figure,
+.work-mring__value,
+.work-mring__figure,
+.work-date__day,
+.work-label__count,
+.work-chip__count,
+.work-week__num,
+[data-figure] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* One shape per status. On a status tag the word is plain grey ink and only
+   the glyph carries colour: triangle red, filled dot amber, tick green.
+   Colour is never the only signal. Neutral and mode tags are labels, not
+   statuses ("Met", "Sending", "In your week"), so they carry no glyph. */
+.work-tag[data-tone="red"]:not([data-plain]),
+.work-tag[data-tone="amber"]:not([data-plain]),
+.work-tag[data-tone="green"]:not([data-plain]) {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+  background: var(--work-wash);
+  color: var(--work-ink-muted);
+  box-shadow: var(--work-edge-inset) var(--work-line);
+}
+.work-tag[data-tone="red"]:not([data-plain])::before,
+.work-tag[data-tone="amber"]:not([data-plain])::before,
+.work-tag[data-tone="green"]:not([data-plain])::before {
+  content: "";
+  flex: none;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: var(--radius-pill);
+  background: var(--warning, var(--warning-text));
+}
+.work-tag[data-tone="red"]:not([data-plain])::before {
+  border-radius: 0;
+  background: var(--danger-text);
+  clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
+}
+.work-tag[data-tone="green"]:not([data-plain])::before {
+  border-radius: 0;
+  background: var(--success-text);
+  clip-path: polygon(8% 52%, 22% 38%, 40% 56%, 80% 14%, 94% 28%, 40% 84%);
+}
+.work-tag[data-tone="neutral"] {
+  box-shadow: var(--work-edge-inset) var(--work-line);
+}
+
+/* A late line on My Day: dark words with the status shape in front, a red
+   triangle once a date has passed and an amber dot while it is overdue but in
+   hand (Ward Flow review, 12 Oct 2026; the same shapes as .work-tag). */
+[data-late]::before {
+  content: "";
+  display: inline-block;
+  width: calc(var(--spacing) * 2);
+  height: calc(var(--spacing) * 2);
+  margin-inline-end: calc(var(--spacing) * 1);
+  background: var(--warning-text);
+  border-radius: var(--radius-pill);
+}
+[data-late="passed"]::before {
+  background: var(--danger-text);
+  border-radius: 0;
+  clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
+}
+@media (forced-colors: active) {
+  [data-late]::before {
+    background: CanvasText;
+  }
 }

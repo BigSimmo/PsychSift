@@ -2444,7 +2444,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             <PrivacyInputNotice
               id={composerPrivacyWarningId}
               testId={composerPrivacyWarningId}
-              className="mt-1.5 justify-center px-3 text-center"
+              className="mt-1.5 justify-center px-3 text-center sm:px-0"
               returnMode={searchMode === "answer" ? undefined : searchMode}
             />
           </div>
