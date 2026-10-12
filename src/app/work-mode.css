@@ -3006,7 +3006,6 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
 .work-label__count,
 .work-chip__count,
 .work-week__num,
-[data-testid="roster-month-totals"] dd,
 [data-figure] {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -3055,4 +3054,27 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
 .work-tag[data-tone="neutral"] {
   background: var(--work-wash);
   color: var(--work-ink-muted);
+}
+
+/* A late line on My Day: dark words with the status shape in front, a red
+   triangle once a date has passed and an amber dot while it is overdue but in
+   hand (Ward Flow review, 12 Oct 2026; the same shapes as .work-tag). */
+[data-late]::before {
+  content: "";
+  display: inline-block;
+  width: calc(var(--spacing) * 2);
+  height: calc(var(--spacing) * 2);
+  margin-inline-end: calc(var(--spacing) * 1);
+  background: var(--warning-text);
+  border-radius: var(--radius-pill);
+}
+[data-late="passed"]::before {
+  background: var(--danger-text);
+  border-radius: 0;
+  clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
+}
+@media (forced-colors: active) {
+  [data-late]::before {
+    background: CanvasText;
+  }
 }
