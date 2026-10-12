@@ -37,6 +37,8 @@ vi.mock("@/components/roster/use-roster-team", () => ({
       : { status: serviceId ? "loading" : "idle", data: null, message: null, reload: vi.fn(), readAt: null };
   },
 }));
+// The Open shifts row reads every team's list; its own tests cover it.
+vi.mock("@/components/open-shifts/open-shifts-fit-line", () => ({ OpenShiftsFitLine: () => null }));
 vi.mock("@/components/roster/use-roster-links", () => ({ useRosterLinks: () => ({ links: [], add: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-settings", () => ({ useRosterSettings: () => ({}) }));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({

@@ -477,7 +477,7 @@ function OpenShiftsDayList({ summary }: { readonly summary: ReturnType<typeof su
             className={`scroll-mt-4 ${!all && index >= FIRST_DAYS ? "max-[1023px]:hidden" : ""}`}
           >
             <SectionHeading count={shown.length}>{formatDayLong(date)}</SectionHeading>
-            <FlatList label={`Open shifts on ${formatDayLong(date)}`}>
+            <FlatList label={`Shifts on ${formatDayLong(date)}`}>
               {shown.map((row) => (
                 <ShiftRow key={row.listing.id} listing={row.listing} check={row.check} href={advertHref(row.listing)} />
               ))}

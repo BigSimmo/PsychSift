@@ -1,12 +1,17 @@
 "use client";
 
+import { Copy } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { modeInsetHairline } from "@/components/mode-kit/recipes";
 import { useRosterNow } from "@/components/roster/roster-format";
-import { postRosterAction } from "@/components/roster/use-roster-team";
-import { Button } from "@/components/ui/button";
+import { fetchRosterRead, postRosterAction } from "@/components/roster/use-roster-team";
+import { Button, buttonFaceClass } from "@/components/ui/button";
 import { formatHours, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
+import { postAgainHref } from "@/lib/open-shifts/post-plan";
+import { whoCouldDoThis, whoCouldWindow, type WhoCould } from "@/lib/open-shifts/who-could";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAction } from "@/lib/roster/team/model";
 
@@ -14,6 +19,7 @@ import { ConfirmSheet } from "./open-shifts-confirm";
 import { SignInAction } from "./open-shifts-sign-in";
 import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
+  FlatList,
   FootAction,
   ListSkeleton,
   OPEN_SHIFTS_HREF,
@@ -48,6 +54,123 @@ function ShiftSummary({ shift }: { shift: PostedShift }) {
       <p className="nums">{`${formatDayShort(perthDateOf(shift.startsAt))}, ${formatShiftTimes(shift.startsAt, shift.endsAt)}`}</p>
       <p className="text-[color:var(--text-muted)]">{shift.siteName ?? shift.teamName}</p>
     </div>
+  );
+}
+
+type WhoCouldState =
+  { status: "loading" } | { status: "failed" } | { status: "ready"; result: WhoCould; unavailabilityChecked: boolean };
+
+/**
+ * "Who could do this": team members at or above the shift's level with nothing on their team roster at
+ * the same time, from the reads a roster manager already makes. Names and level only; nobody is
+ * messaged. A failed members or roster read shows no list at all, never a guess.
+ */
+function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: string | null }) {
+  const [state, setState] = useState<WhoCouldState>({ status: "loading" });
+  const [generation, setGeneration] = useState(0);
+  const { serviceId, startsAt, endsAt, minGrade } = shift;
+
+  useEffect(() => {
+    let cancelled = false;
+    const range = whoCouldWindow(startsAt, endsAt);
+    void Promise.all([
+      fetchRosterRead(serviceId, "members"),
+      fetchRosterRead(serviceId, "assignments", range),
+      fetchRosterRead(serviceId, "unavailability", range),
+    ]).then(([members, assignments, unavailability]) => {
+      if (cancelled) return;
+      if (!members.ok || !assignments.ok) {
+        setState({ status: "failed" });
+        return;
+      }
+      setState({
+        status: "ready",
+        unavailabilityChecked: unavailability.ok,
+        result: whoCouldDoThis({
+          shift: { startsAt, endsAt, minGrade },
+          members: members.data.members,
+          assignments: assignments.data.assignments,
+          unavailability: unavailability.ok ? unavailability.data.unavailability : null,
+          actorId,
+        }),
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, startsAt, endsAt, minGrade, actorId, generation]);
+
+  const left =
+    state.status === "ready"
+      ? [
+          state.result.busy > 0
+            ? `${state.result.busy} at the right level ${state.result.busy === 1 ? "is" : "are"} already rostered then`
+            : null,
+          state.result.cantWork > 0 ? `${state.result.cantWork} said they can't work that day` : null,
+        ].filter(Boolean)
+      : [];
+
+  return (
+    <section aria-labelledby="open-shifts-who-could">
+      <SectionHeading
+        id="open-shifts-who-could"
+        count={state.status === "ready" ? state.result.people.length : undefined}
+      >
+        Who could do this
+      </SectionHeading>
+      {state.status === "loading" ? (
+        <p className="px-3 text-sm text-[color:var(--text-muted)]">Checking the team roster…</p>
+      ) : state.status === "failed" ? (
+        <div className="px-3 text-sm text-[color:var(--text-muted)]">
+          <p>The team roster couldn&apos;t be read, so nobody is listed.</p>
+          <button
+            type="button"
+            onClick={() => {
+              setState({ status: "loading" });
+              setGeneration((value) => value + 1);
+            }}
+            className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
+          >
+            Try again
+          </button>
+        </div>
+      ) : (
+        <>
+          {state.result.people.length > 0 ? (
+            <FlatList label="Team members who could do this shift">
+              {state.result.people.map((person) => (
+                <li
+                  key={person.userId}
+                  className={`${modeInsetHairline} flex min-h-12 flex-col justify-center px-3 py-2`}
+                >
+                  <span className="text-base-minus font-medium text-[color:var(--text-heading)]">
+                    {`${person.name ?? "Name not set"}${person.isYou ? " (you)" : ""}`}
+                  </span>
+                  <span className="text-sm text-[color:var(--text-muted)]">
+                    {[gradeLabel(person.grade), person.prefersOff ? "Would rather have the day off" : null]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </li>
+              ))}
+            </FlatList>
+          ) : (
+            <p className="px-3 text-sm text-[color:var(--text-muted)]">
+              Nobody at the right level is free on the team roster then.
+            </p>
+          )}
+          <p className="px-3 pt-2 text-xs text-[color:var(--text-muted)]">
+            {[
+              left.length ? `Not listed: ${left.join("; ")}.` : null,
+              state.unavailabilityChecked ? null : "Days people said they can't work couldn't be checked.",
+              "From the team roster only, not other jobs or private shifts. Nobody is told they're listed.",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -215,6 +338,22 @@ export function OpenShiftsPostedShiftPage({ serviceId, openShiftId }: { serviceI
           </p>
         </section>
       )}
+
+      {shift.status === "open" && !started ? <WhoCouldDoThis shift={shift} actorId={state.actorId} /> : null}
+
+      <div className="mt-4 px-3">
+        <Link
+          href={postAgainHref(`${OPEN_SHIFTS_HREF}/post/new`, shift, shift.serviceId)}
+          className={`${buttonFaceClass({ variant: "secondary", block: true })} no-underline`}
+          data-testid="open-shifts-post-again"
+        >
+          <Copy aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
+          Post again
+        </Link>
+        <p className="pt-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
+          Same times, level and site. You choose the date.
+        </p>
+      </div>
 
       {live ? (
         <div className="mt-2 px-3">

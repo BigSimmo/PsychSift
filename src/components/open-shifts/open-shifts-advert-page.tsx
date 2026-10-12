@@ -36,6 +36,7 @@ import {
   shiftTitle,
   startsIn,
 } from "./open-shifts-ui";
+import { OpenShiftsAdvertActions } from "./open-shifts-advert-actions";
 import { useOpenShifts } from "./use-open-shifts";
 
 const AGREEMENT = `clause 15 of the ${FATIGUE_RULE_SET.source.title.includes("2024") ? "2024 WA AMA agreement" : "WA AMA agreement"}`;
@@ -331,6 +332,7 @@ export function OpenShiftsAdvertPage({
             ? "withdrawn"
             : "taken";
   const requestable =
+    !sample &&
     !closed &&
     !alreadyMine &&
     !signedOut &&
@@ -369,6 +371,10 @@ export function OpenShiftsAdvertPage({
         <Fact label="Length" value={formatHours(hoursBetween(listing.startsAt, listing.endsAt))} />
         <Fact label="Shift code" value={listing.shiftCode} />
       </dl>
+      <OpenShiftsAdvertActions
+        listing={listing}
+        booked={(listing.claimedByMe && listing.status === "approved") || sent === "approved"}
+      />
 
       {/* Example shifts are checked against the example roster, as Browse flags them; a release-held sample has none. */}
       <div className="mt-4">

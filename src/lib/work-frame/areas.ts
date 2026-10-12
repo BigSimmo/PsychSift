@@ -491,12 +491,16 @@ const roster: WorkArea = {
   ],
 };
 
-/** Open shifts, inside Roster: the shifts on offer, your requests and alerts. */
+/**
+ * Open shifts' own pages. Since 12 Oct 2026 the frame draws them as Roster's
+ * "Open shifts" tab (`workAreaFor` returns Roster for the `open-shifts` mode),
+ * so this area is no longer an inner area with tabs of its own. It stays so the
+ * `open` id still names these pages for help, example data and AI Search.
+ */
 const openShifts: WorkArea = {
   id: "open",
   name: "Open shifts",
   identity: "roster",
-  parent: "rost",
   tabs: [
     {
       id: "open-shifts-browse",
