@@ -139,6 +139,28 @@ describe("Posting a shift", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
   });
+
+  it("after a post gets no answer, doesn't post to another team while the first team can't be read", async () => {
+    const OTHER = "5e000000-0000-4000-8000-000000000020";
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+
+    // The re-read reaches only another team, so the form would fall back to it.
+    mocks.state = {
+      ...mocks.state,
+      teams: [{ serviceId: OTHER, name: "Other example team", sites: [] }],
+      failedTeams: ["Example team"],
+      readAt: new Date(Date.now() + 1000),
+    };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Still checking/));
+    expect(mocks.post).toHaveBeenCalledOnce();
+  });
 });
 
 describe("Share and calendar", () => {

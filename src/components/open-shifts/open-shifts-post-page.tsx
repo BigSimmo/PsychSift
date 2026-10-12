@@ -107,7 +107,7 @@ export function OpenShiftsPostPage() {
   // Dates whose post got no answer (the connection dropped), with the team's shift ids known before that
   // attempt. Only these are checked against the team's list on a retry: one that went live is not sent again.
   const [unanswered, setUnanswered] = useState<
-    Record<string, { readonly ids: readonly string[]; readonly at: number }>
+    Record<string, { readonly ids: readonly string[]; readonly at: number; readonly serviceId: string }>
   >({});
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
@@ -216,6 +216,12 @@ export function OpenShiftsPostPage() {
    */
   async function post(): Promise<string | null> {
     if (!team || !times) return "Choose a team, date and times.";
+    // A post that got no answer for a team that couldn't be read just now: wait, rather than let the form
+    // fall back to another team and post there instead.
+    if (Object.values(unanswered).some((entry) => !state.teams.some((row) => row.serviceId === entry.serviceId))) {
+      state.reload();
+      return "Still checking whether an earlier post went live. Try again in a moment.";
+    }
     const attempts: PostAttempt[] = [];
     const nowDone = { ...done };
     const nowUnanswered = { ...unanswered };
@@ -260,7 +266,11 @@ export function OpenShiftsPostPage() {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first.
         if (result.code === "roster_unavailable" && !(signature(on) in nowUnanswered)) {
-          nowUnanswered[signature(on)] = { ids: state.shifts.map((row) => row.id), at: attemptTime() };
+          nowUnanswered[signature(on)] = {
+            ids: state.shifts.map((row) => row.id),
+            at: attemptTime(),
+            serviceId: team.serviceId,
+          };
         }
       }
     }
