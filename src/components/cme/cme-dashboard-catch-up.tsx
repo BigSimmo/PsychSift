@@ -280,6 +280,8 @@ export type CmeYearSummaryProps = {
   readonly firstLogAction?: ReactNode;
   /** Hours logged today, added to the kicker when above zero ("· 1 h today"): it replaced "About this year" (12 Oct 2026). */
   readonly todayHours?: number;
+  /** Customise's "Year dates": off leaves the kicker as the bare year (a closed year still says so). */
+  readonly showTimeLeft?: boolean;
 };
 
 /**
@@ -297,7 +299,7 @@ export type CmeYearSummaryProps = {
  */
 export function CmeYearSummary(props: CmeYearSummaryProps) {
   const { year, today, loggedHours, targetHours, categoryHours, plan, weeklyHours, entries, closed, onOpenGap } = props;
-  const { firstLogAction, todayHours = 0 } = props;
+  const { firstLogAction, todayHours = 0, showTimeLeft = true } = props;
 
   if (!(targetHours > 0)) {
     return (
@@ -329,7 +331,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
     );
   }
 
-  const label = cmeYearLabel({ year, today, closed });
+  const label = showTimeLeft || closed ? cmeYearLabel({ year, today, closed }) : String(year);
 
   if (!(loggedHours > 0)) {
     // cpd_empty: one calm empty state, no hero.
