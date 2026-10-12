@@ -95,7 +95,10 @@ export const modeSecondaryNavigationRegistry = {
     { id: "pathways", label: "Pathways", href: "/therapy-compass/pathways" },
     // The qualified-clinician sign-off queue. It becomes `audience: "administrators"` once the owner's
     // account carries the site administrator role; until then hiding it would hide it from the owner too.
-    { id: "review", label: "Review", href: "/therapy-compass/review" },
+    // `group: "more"` keeps it registered (the route, the pill name, `activeId`) but off the main
+    // tabs, which list only ungrouped entries (owner decision, October 2026). The Therapy search
+    // page links to it, so it stays one tap away.
+    { id: "review", label: "Review", href: "/therapy-compass/review", group: "more" },
   ],
   // Two genuinely distinct surfaces: `/factsheets/search` (query + filters +
   // result rows) and `/factsheets/topics` (category browse). Search leads, the

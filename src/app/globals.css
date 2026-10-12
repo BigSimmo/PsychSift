@@ -699,8 +699,10 @@
   /* Keep in sync with mobile-composer-reserve.ts (phone dock clearance). */
   --keyboard-height: 0px;
   --phone-dock-hidden-pad: 0rem;
-  --phone-dock-differentials-compare-clearance: 12.5rem;
-  --phone-dock-differentials-compare-compact-clearance: 12.25rem;
+  /* Differentials now docks the shared Compare tray, one row tall like the
+     therapy tray, so it clears the same as Patient details and Therapy. */
+  --phone-dock-differentials-compare-clearance: 9rem;
+  --phone-dock-differentials-compare-compact-clearance: 8.75rem;
   /* Patient details is a single ~3rem row + 0.5rem gap above the pill, so it
      clears roughly 3.5rem less than the Compare bar. */
   --phone-dock-patient-details-clearance: 9rem;
@@ -714,11 +716,8 @@
   --patient-details-fab-padding: 0.3125rem 0.5rem 0.3125rem 1rem;
   --patient-details-fab-count-size: 1.625rem;
   --patient-details-fab-count-padding: 0.375rem;
-  --therapy-compare-tray-gap: 0.5rem;
   --therapy-compare-tray-pip-gap: 0.125rem;
   --therapy-compare-tray-pip-size: 1.5rem;
-  --therapy-compare-tray-padding: 0.25rem 0.5rem;
-  --therapy-compare-tray-summary-inset: 0.25rem;
   /* Radius tokens are the single source of truth in @theme above (they also
      generate the rounded-* utilities); do not redefine them here or var() and
      the utilities drift apart. */
@@ -2186,74 +2185,16 @@ summary::-webkit-details-marker {
   --footer-scrim-height: max(7rem, calc(var(--safe-area-bottom) + 5.5rem));
 }
 
-/* In-flow above the search pill inside the phone dock so scroll-hide
-   translateY moves the Compare bar with the composer (no viewport-fixed jump). */
-.differentials-mobile-compare-fab {
-  pointer-events: none;
-  position: relative;
-  z-index: var(--z-raised);
-  display: flex;
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 0.5rem;
-}
-
-.differentials-mobile-compare-fab__button {
-  pointer-events: auto;
-  display: inline-flex;
-  min-height: 3.25rem;
-  max-width: min(100%, 36rem);
-  align-items: center;
-  gap: 0.625rem;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--clinical-accent), white 14%);
-  background:
-    radial-gradient(
-      circle at 82% 0%,
-      color-mix(in srgb, var(--clinical-accent-contrast) 20%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(135deg, color-mix(in srgb, var(--clinical-accent), white 7%), var(--clinical-accent));
-  padding: 0.375rem 0.625rem 0.375rem 1.25rem;
-  color: var(--clinical-accent-contrast);
-  font-size: 0.95rem;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  box-shadow: 0 18px 42px rgb(0 0 0 / 24%);
-  touch-action: manipulation;
-  /* 160ms has no duration rung — do not invent one; nearest is --duration-quick (150ms). */
-  transition:
-    transform 160ms var(--ease-spring),
-    background-color 160ms var(--ease-out-soft),
-    box-shadow 160ms var(--ease-out-soft);
-}
-
-.differentials-mobile-compare-fab__button:active {
-  transform: translateY(1px) scale(0.99);
-  transition: transform 160ms var(--ease-spring);
-}
-
-.differentials-mobile-compare-fab__button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
-}
-
-.differentials-mobile-compare-fab__button--empty {
-  border-color: var(--border-strong);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  color: var(--text-muted);
-  font-weight: 800;
-}
-
-/* DSM mobile compare strip adapts to footer scroll-hide transitions */
-.dsm-mobile-compare-strip {
+/* Shared Compare tray, page-owned phone footer layer (routes with no dock
+   addon slot, such as DSM search): follows the footer's scroll-hide. */
+.shared-compare-tray-layer {
   transition:
     transform var(--duration-moderate) var(--ease-chrome-reveal),
     opacity var(--duration-moderate) var(--ease-chrome-reveal);
 }
 
 @media (max-width: 1023px) {
-  .dsm-mobile-compare-strip[data-scroll-hidden="true"] {
+  .shared-compare-tray-layer[data-scroll-hidden="true"] {
     transform: translateY(calc(100% + 5.5rem + var(--safe-area-bottom, 0px) + var(--keyboard-height, 0px) + 0.5rem));
     opacity: 0;
     pointer-events: none;
@@ -2262,20 +2203,20 @@ summary::-webkit-details-marker {
       opacity var(--duration-slow) var(--ease-chrome-hide);
   }
 
-  .dsm-mobile-compare-strip[data-scroll-hidden="true"] * {
+  .shared-compare-tray-layer[data-scroll-hidden="true"] * {
     pointer-events: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dsm-mobile-compare-strip,
-  .dsm-mobile-compare-strip[data-scroll-hidden="true"] {
+  .shared-compare-tray-layer,
+  .shared-compare-tray-layer[data-scroll-hidden="true"] {
     transition: none;
   }
 }
 
-html[data-motion="reduced"] .dsm-mobile-compare-strip,
-html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"] {
+html[data-motion="reduced"] .shared-compare-tray-layer,
+html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"] {
   transition: none;
 }
 
@@ -2354,40 +2295,9 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   font-weight: 800;
 }
 
-/* Therapy Compass compare tray: the row above the search pill that says what is
-   in the comparison. Same in-flow trick as the two rows above, so scroll-hide
-   carries it with the composer.
-
-   It must stay ONE row tall at every state — the dock's content clearance is a
-   static token, so a dock that grows covers page content by exactly its growth.
-   The expanded state is a bottom sheet for that reason, not a taller bar.
-
-   Interaction states are NOT redeclared here: the summary row carries
-   `interactiveRowBase` and the actions are the shared `Button`, so hover, focus
-   and disabled behaviour come from the design system, per COMPONENTS.md 9.1. */
-.therapy-compare-tray {
-  position: relative;
-  z-index: var(--z-raised);
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: var(--therapy-compare-tray-gap);
-  margin-bottom: var(--therapy-compare-tray-gap);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-strong);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  padding: var(--therapy-compare-tray-padding);
-  box-shadow: var(--e3);
-}
-
-.therapy-compare-tray__summary {
-  min-width: 0;
-  flex: 1 1 auto;
-  gap: var(--therapy-compare-tray-gap);
-  border-radius: var(--radius-md);
-  padding-inline: var(--therapy-compare-tray-summary-inset);
-}
-
+/* Compare slot pips, drawn by CompareSlotStrip (the therapy compare page).
+   The dock tray itself is now the shared Compare tray, built from Tailwind
+   tokens in src/components/compare/shared-compare-tray.tsx. */
 .therapy-compare-tray__pips {
   display: flex;
   flex-shrink: 0;
@@ -2427,26 +2337,6 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   .therapy-compare-tray__pip[data-landed="true"] {
     transform: none;
   }
-}
-
-.therapy-compare-tray__names {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-heading);
-  font-size: 0.8125rem;
-  font-weight: 800;
-}
-
-.therapy-compare-tray__count {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
 }
 
 /* Bottom-docked composer: hint row + upward dropdown grow above the pill. */
@@ -3918,12 +3808,12 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   /* Differentials search results: compare action sits above the search pill in the dock.
      Heights track --phone-dock-differentials-compare-* (same as content reserve). */
   .answer-footer-search-dock[data-footer-addon="differentials-compare"] .answer-footer-search-backdrop {
-    height: max(var(--phone-dock-differentials-compare-clearance), calc(var(--safe-area-bottom) + 11.25rem));
+    height: max(var(--phone-dock-differentials-compare-clearance), calc(var(--safe-area-bottom) + 7.75rem));
   }
 
   .answer-footer-search-dock.document-mobile-search-compact[data-footer-addon="differentials-compare"]
     .answer-footer-search-backdrop {
-    height: max(var(--phone-dock-differentials-compare-compact-clearance), calc(var(--safe-area-bottom) + 11rem));
+    height: max(var(--phone-dock-differentials-compare-compact-clearance), calc(var(--safe-area-bottom) + 7.5rem));
   }
 
   /* Medication surfaces: Patient details pill above the search pill in the dock.

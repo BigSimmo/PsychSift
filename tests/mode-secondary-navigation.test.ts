@@ -607,10 +607,11 @@ describe("mode secondary navigation registry", () => {
     ]);
   });
 
-  it("leaves every other mode ungrouped", () => {
+  it("leaves every other mode ungrouped, except Therapy's Review queue kept off the tabs", () => {
     for (const modeId of appModeIds.filter((id) => id !== "on-call")) {
       const { tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId));
-      expect([...tools, ...more], modeId).toEqual([]);
+      const grouped = [...tools, ...more].map((entry) => entry.id);
+      expect(grouped, modeId).toEqual(modeId === "therapy-compass" ? ["review"] : []);
     }
   });
 

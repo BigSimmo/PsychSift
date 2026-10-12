@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useId, useMemo, useState } from "react";
 import { BookOpenCheck, Check, ChevronDown, ChevronRight, CircleAlert, GitCompareArrows, SearchX } from "lucide-react";
 
 import {
@@ -14,13 +14,9 @@ import {
   ResultFilterTrigger,
   resultFilterFacetGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
-import { mobileComposerVisibleReserve } from "@/components/clinical-dashboard/mobile-composer-reserve";
-import {
-  PhoneFooterLayerPortal,
-  usePhoneFooterLayerScrollHidden,
-} from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { cardPadding, cardSurface, focusRing, stretchedRowLinkClass } from "@/components/card-recipes";
+import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
 import { cn, codeText, EmptyState, metadataPill, pageContainer } from "@/components/ui-primitives";
 import type { DsmCategory, DsmDiagnosisSummary } from "@/lib/dsm";
 import { readResultFilterValues, replaceResultFilterUrl, writeResultFilterValues } from "@/lib/result-filter-url";
@@ -170,40 +166,6 @@ function DsmSearchResultCard({
   );
 }
 
-function DsmMobileCompareStrip({ selected }: { selected: string[] }) {
-  const phoneChromeHidden = usePhoneFooterLayerScrollHidden();
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-
-  if (!selected.length || !mounted) return null;
-
-  return (
-    <PhoneFooterLayerPortal>
-      <div
-        aria-live="polite"
-        className="phone-footer-layer dsm-mobile-compare-strip pointer-events-none inset-x-0 z-[var(--z-chrome)] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:fixed lg:hidden"
-        data-scroll-hidden={phoneChromeHidden ? "true" : undefined}
-        style={{ bottom: mobileComposerVisibleReserve.shellDock }}
-      >
-        <Link
-          href={compareHref(selected)}
-          data-testid="dsm-search-compare-mobile"
-          className="pointer-events-auto inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--command)] px-4 text-sm font-bold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-        >
-          <GitCompareArrows className="h-4 w-4 shrink-0" aria-hidden />
-          Compare
-          <span className="grid h-7 min-w-7 place-items-center rounded-full bg-[color:var(--command-contrast)]/20 px-1.5 text-xs font-extrabold tabular-nums">
-            {selected.length}
-          </span>
-        </Link>
-      </div>
-    </PhoneFooterLayerPortal>
-  );
-}
-
 export function DsmSearchPage({
   query,
   categories,
@@ -245,7 +207,6 @@ export function DsmSearchPage({
   const openChapters = selectedCategories.size > 0 || browseGroups.length === 1;
   const activeFilterCount = selectedCategories.size + selectedSupport.size;
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const canCompare = selected.length >= 2;
 
   function toggleCategory(value: string) {
     replaceResultFilterUrl((params) => {
@@ -342,13 +303,7 @@ export function DsmSearchPage({
 
   return (
     <div data-testid="dsm-search-page" className="min-h-full bg-[color:var(--background)]">
-      <div
-        className={cn(
-          pageContainer,
-          "space-y-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8",
-          selected.length > 0 && "sm:max-lg:pb-16",
-        )}
-      >
+      <div className={cn(pageContainer, "space-y-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8")}>
         <SearchResultsHeaderBand
           modeId="dsm"
           query={query}
@@ -368,18 +323,6 @@ export function DsmSearchPage({
               activeCount={activeFilterCount}
               onToggle={() => setFilterOpen((current) => !current)}
             />
-          }
-          utilityControls={
-            canCompare ? (
-              <Link
-                href={compareHref(selected)}
-                data-testid="dsm-search-compare"
-                className="inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--command)] px-2.5 text-xs font-bold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-              >
-                <GitCompareArrows className="h-4 w-4" aria-hidden />
-                Compare {selected.length}
-              </Link>
-            ) : null
           }
           filterControls={
             <ResultFilterTrigger
@@ -499,15 +442,7 @@ export function DsmSearchPage({
                     Choose diagnoses from the result list.
                   </p>
                 )}
-                {canCompare ? (
-                  <Link
-                    href={compareHref(selected)}
-                    className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--command)] px-3 text-sm font-bold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-                  >
-                    Compare selected
-                    <ChevronRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                ) : null}
+                {/* Compare itself is the shared Compare tray at the foot of the window. */}
               </section>
               <p className="flex items-start gap-2 px-1 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
                 <BookOpenCheck className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
@@ -535,7 +470,17 @@ export function DsmSearchPage({
         <UniversalSearchAlsoMatches modeId="dsm" query={query} />
       </div>
 
-      <DsmMobileCompareStrip selected={selected} />
+      <SharedCompareTray
+        count={selected.length}
+        names={selected.map((slug) => queryResults.find((result) => result.slug === slug)?.title ?? slug)}
+        max={3}
+        compareHref={compareHref(selected)}
+        onClear={() => setSelected([])}
+        noun="diagnoses"
+        // DSM search has no dock addon slot, so the tray is its own footer layer above the search box.
+        phonePlacement="footer-layer"
+        testId="dsm-compare-tray"
+      />
     </div>
   );
 }

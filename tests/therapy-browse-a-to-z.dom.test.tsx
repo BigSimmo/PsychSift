@@ -6,7 +6,7 @@ import type { Therapy } from "@/components/therapy-compass/data/types";
 /**
  * Audit item 6 (Therapy): with nothing typed the list is browsing, not a
  * search, so it is titled "Therapies", runs A to Z, and no card says "Why
- * matched" or "Best match". A typed query keeps the ranked cards unchanged.
+ * matched" or "Best match". A typed query keeps the ranked order and Best match.
  */
 
 function therapy(overrides: Partial<Therapy> = {}): Therapy {
@@ -91,7 +91,9 @@ describe("therapy search with nothing typed", () => {
     ]);
     expect(screen.queryByText("Why matched")).toBeNull();
     expect(screen.queryByText("Best match")).toBeNull();
-    expect(screen.getAllByText("Best used for")).toHaveLength(3);
+    // "Best used for" moved into the record; the compact row keeps Avoid / modify.
+    expect(screen.queryByText("Best used for")).toBeNull();
+    expect(screen.getAllByText("Avoid / modify:")).toHaveLength(3);
   });
 
   it("treats punctuation alone as nothing typed, as the scorer does", () => {
@@ -115,7 +117,8 @@ describe("therapy search with nothing typed", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "interpersonal" })).toBeVisible();
     expect(cardNames()).toEqual(unsorted.map((item) => item.name));
-    expect(screen.getAllByText("Why matched")).toHaveLength(3);
+    // Compact rows carry no "Why matched" cell; the top hit still says Best match.
+    expect(screen.queryByText("Why matched")).toBeNull();
     expect(screen.getByText("Best match")).toBeInTheDocument();
   });
 });

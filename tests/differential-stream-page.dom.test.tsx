@@ -52,7 +52,8 @@ describe("DifferentialStreamPage", () => {
     const firstCard = differentialPresentationsCards[0];
     expect(firstCard).toBeTruthy();
     expect(screen.getByRole("button", { name: firstCard!.title })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Open pathway/ }).length).toBeGreaterThan(0);
+    // The title is the row's open link now; its name ends ", open pathway".
+    expect(screen.getAllByRole("link", { name: /open pathway$/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/differential candidates?/).length).toBeGreaterThan(0);
   });
 
@@ -65,7 +66,7 @@ describe("DifferentialStreamPage", () => {
     const slug = firstCard!.href.split("/").at(-1) ?? "";
     expect(slug).toBeTruthy();
     const card = screen.getByTestId(`differential-stream-card-${slug}`);
-    expect(within(card).getByRole("link", { name: "Open pathway" })).toHaveAttribute(
+    expect(within(card).getByRole("link", { name: /open pathway$/ })).toHaveAttribute(
       "href",
       `${firstCard!.href}?q=acute+confusion`,
     );
@@ -170,6 +171,76 @@ describe("DifferentialStreamPage", () => {
     expect(byUrgency).toHaveAttribute("aria-pressed", "false");
     expect(byPresentation).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("differentials-stream-filter-trigger")).toHaveAccessibleName(/No filters active/);
+  });
+
+  it("lists each diagnosis's related diagnoses once, as chips, keeping every label", () => {
+    const model = buildDifferentialStreamModel("diagnoses", "");
+    const item = model.items.find((candidate) => candidate.examples.length > 0 && candidate.related.length > 0);
+    expect(item).toBeTruthy();
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    const card = screen.getByTestId(`differential-stream-card-${item!.slug}`);
+    const chips = within(within(card).getByTestId("differential-stream-related"))
+      .getAllByRole("listitem")
+      .map((chip) => chip.textContent);
+    // No label is printed twice on the card…
+    expect(new Set(chips).size).toBe(chips.length);
+    // …and nothing the old document-icon list showed is lost.
+    for (const label of [...item!.examples, ...item!.related.slice(0, 4).map((node) => node.label)]) {
+      expect(chips).toContain(label);
+      expect(within(card).getAllByText(label)).toHaveLength(1);
+    }
+    // The title opens the record; the separate Open button is gone.
+    expect(within(card).getByRole("link", { name: `${item!.title}, open` })).toHaveAttribute("href", item!.href);
+  });
+
+  it("drops the Must-check shelf from Diagnoses while Emergent stays the first group", () => {
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    expect(screen.queryByTestId("differentials-stream-safety-shelf")).not.toBeInTheDocument();
+    expect(screen.queryByText("Must-check / emergent shelf")).not.toBeInTheDocument();
+    const groups = screen.getAllByTestId(/^differential-stream-chapter-/);
+    const first = groups[0]!;
+    const firstCards = within(first).getAllByTestId(/^differential-stream-card-/);
+    expect(firstCards.length).toBeGreaterThan(0);
+    expect(firstCards.every((card) => card.dataset.status === "emergent")).toBe(true);
+  });
+
+  it("puts scenario chips in one sideways-scrolling row of focusable buttons", async () => {
+    const user = userEvent.setup();
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    const row = screen.getByTestId("differentials-stream-presets");
+    expect(row.className).toContain("overflow-x-auto");
+    expect(row.className).not.toMatch(/(^|\s)flex-wrap(\s|$)/);
+    const chips = within(row).getAllByRole("button");
+    expect(chips.length).toBeGreaterThan(1);
+    for (const chip of chips) {
+      expect(chip.className).toContain("whitespace-nowrap");
+      expect(chip.className).toContain("focus-visible:outline");
+    }
+    chips[0]!.focus();
+    await user.tab();
+    expect(chips[1]).toHaveFocus();
+  });
+
+  it("shows the Compare tray only once a diagnosis is ticked", async () => {
+    const user = userEvent.setup();
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    expect(screen.queryByTestId("differentials-compare-tray")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tick diagnoses to compare")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tick two or more diagnoses/)).not.toBeInTheDocument();
+
+    const boxes = screen.getAllByRole("checkbox");
+    await user.click(boxes[0]!);
+    expect(await screen.findByTestId("differentials-compare-tray")).toHaveTextContent("1 selected");
+    await user.click(boxes[1]!);
+    const compare = screen.getByTestId("differentials-compare-tray-compare");
+    expect(compare.getAttribute("href")).toMatch(/^\/differentials\/compare\?ids=/);
+
+    await user.click(screen.getByTestId("differentials-compare-tray-clear"));
+    expect(screen.queryByTestId("differentials-compare-tray")).not.toBeInTheDocument();
   });
 
   it("scrolls only for an explicit focus parameter", async () => {

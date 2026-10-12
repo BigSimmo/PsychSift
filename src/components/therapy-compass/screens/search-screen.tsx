@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 
 import {
@@ -13,12 +15,13 @@ import {
   resultFilterFacetGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { pageContainer } from "@/components/ui-primitives";
+import { therapyScreenHref } from "@/lib/therapy-compass-navigation";
 
 import { useTcBindings } from "../bindings";
 import { matchesAvailability, matchesTopics } from "../data/select";
 import { hasSearchableTherapyQuery } from "@/lib/therapy-ranking";
 import { LoadingState } from "../ui";
-import { ResultCard } from "../therapy-card";
+import { CompactResultRow } from "../therapy-card";
 
 // Curated quick-filter tags surfaced as chips (all exist in the tag set).
 // None of the six is ever zero across the whole 205-therapy catalogue, so the
@@ -227,16 +230,15 @@ export function SearchScreen() {
               onClearSearch={b.clearSearch}
             />
           ) : (
-            <div className="flex flex-col gap-3.5">
+            // One hairline card with divided compact rows (no cards inside cards).
+            <ul
+              data-testid="therapy-result-list"
+              className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
+            >
               {shown.map((t, index) => (
-                <ResultCard
-                  key={t.slug}
-                  therapy={t}
-                  featured={!browsing && hasRankedQuery && index === 0}
-                  browsing={browsing}
-                />
+                <CompactResultRow key={t.slug} therapy={t} featured={!browsing && hasRankedQuery && index === 0} />
               ))}
-            </div>
+            </ul>
           )}
         </>
       )}
@@ -244,6 +246,22 @@ export function SearchScreen() {
       {!b.error && !b.loading ? (
         <UniversalSearchAlsoMatches modeId="therapy-compass" query={q} className="mt-4" />
       ) : null}
+
+      {/* The sign-off queue left the main tabs (it is editorial work, not a
+          clinical destination). This quiet link keeps it one tap away. */}
+      <p className="m-0 pt-2">
+        <Link
+          href={b.workspaceHref(therapyScreenHref("review"))}
+          data-testid="therapy-review-queue-link"
+          className="inline-flex min-h-tap items-center gap-2 rounded-lg px-1 text-sm-minus font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        >
+          <ClipboardCheck aria-hidden="true" className="size-icon-md shrink-0" />
+          Review queue
+          {b.loading || b.error ? null : (
+            <span className="nums text-[color:var(--text-muted)]">· {b.reviewCount} to review</span>
+          )}
+        </Link>
+      </p>
     </section>
   );
 }
