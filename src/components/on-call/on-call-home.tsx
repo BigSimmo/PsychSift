@@ -332,15 +332,16 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             <>
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
               {!ready && !handbookLoading ? <OnCallHandbookState handbook={handbook} page="now" /> : null}
-              <NewWorkModeOnly>
-                <WorkSetupRow />
-              </NewWorkModeOnly>
             </>
           }
           safety={
             <>
               <NowEmergencyPin handbook={handbook} pins={pins} now={now} />
               {numbersOnScreen ? null : <NowCrisisLines now={now} />}
+              {/* After the emergency pin and crisis lines, never above them. */}
+              <NewWorkModeOnly>
+                <WorkSetupRow />
+              </NewWorkModeOnly>
             </>
           }
           nowSurface="own"
