@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { announceRecentPageTitle } from "@/lib/recent-pages";
+import { announceRecentPageTitle } from "@/lib/recent-pages-record";
 
 /**
  * Hands a page's own name to Recent pages when its tab title does not carry it

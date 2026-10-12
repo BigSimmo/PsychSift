@@ -10,8 +10,8 @@ import {
   recentPageTitle,
   recentPagesGeneration,
   recentPageTitleAnnouncedEvent,
-  recordRecentPage,
 } from "@/lib/recent-pages";
+import { recordRecentPage } from "@/lib/recent-pages-record";
 
 /** How long after a navigation the page title may still settle. */
 const TITLE_WATCH_MS = 8_000;

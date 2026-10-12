@@ -8,7 +8,8 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ClinicalMenuRecentPages, ClinicalMenuWorkAreas } from "@/components/clinical-dashboard/clinical-menu-drawer";
-import { clearRecentPages, recordRecentPage, RECENT_PAGES_SHOWN } from "@/lib/recent-pages";
+import { clearRecentPages, RECENT_PAGES_SHOWN } from "@/lib/recent-pages";
+import { recordRecentPage } from "@/lib/recent-pages-record";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/roster",

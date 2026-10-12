@@ -1,5 +1,4 @@
 import { RECENT_PAGES_STORAGE_KEY, subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
-import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * "Recent pages": the last few pages this reader opened, across Work and
@@ -339,21 +338,12 @@ export function recentPagesGeneration(): number {
   return generation;
 }
 
-/** A title that could name a patient is never kept (a document title is free text someone typed). */
-function safeRecentTitle(title: string): string | null {
-  const name = title.trim();
-  if (!name || name.length > 120 || looksLikePatientDetail(name)) return null;
-  return name;
-}
 export const recentPageTitleAnnouncedEvent = "psychsift:recent-page-title";
 
-/** A page names itself for Recent pages. Ignored for any path the list may not hold. */
-export function announceRecentPageTitle(pathname: string, title: string): void {
-  const target = recentPageTarget(pathname);
-  const name = safeRecentTitle(title);
-  if (!target || !name) return;
-  announcedTitles.delete(target.path);
-  announcedTitles.set(target.path, name);
+/** For the recording module only: hold a title a page announced for itself. */
+export function holdAnnouncedRecentPageTitle(path: string, name: string): void {
+  announcedTitles.delete(path);
+  announcedTitles.set(path, name);
   while (announcedTitles.size > ANNOUNCED_TITLES_KEPT) {
     const oldestKey = announcedTitles.keys().next().value;
     if (oldestKey === undefined) break;
@@ -368,19 +358,11 @@ export function announcedRecentPageTitle(pathname: string): string | null {
   return target ? (announcedTitles.get(target.path) ?? null) : null;
 }
 
-/**
- * Record one open of `pathname` titled `title`. Anything `recentPageTarget`
- * refuses is dropped here, whatever the caller checked. The caller decides
- * whether recording is allowed (the "Save recent searches" switch).
- */
-export function recordRecentPage(pathname: string, title: string, at: number = Date.now()): void {
+/** For the recording module only: put one already-checked page at the top of the list. */
+export function storeRecentPage(page: RecentPage): void {
   if (typeof window === "undefined") return;
-  const target = recentPageTarget(pathname);
-  const name = safeRecentTitle(title);
-  if (!target || !name) return;
-  const page: RecentPage = { ...target, title: name, at };
-  const current = readRecentPages(at);
-  const next = normaliseRecentPages([page, ...current.filter((existing) => existing.path !== page.path)], at);
+  const current = readRecentPages(page.at);
+  const next = normaliseRecentPages([page, ...current.filter((existing) => existing.path !== page.path)], page.at);
   try {
     window.localStorage.setItem(RECENT_PAGES_STORAGE_KEY, JSON.stringify(next));
   } catch {

@@ -10,7 +10,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SharedHomeEmptyState } from "@/components/clinical-dashboard/answer-status";
 import { ModeHomeStartList, modeHomeStartListConfig } from "@/components/mode-home-start-list";
-import { clearRecentPages, recordRecentPage } from "@/lib/recent-pages";
+import { clearRecentPages } from "@/lib/recent-pages";
+import { recordRecentPage } from "@/lib/recent-pages-record";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",

@@ -20,10 +20,9 @@ import {
   RECENT_PAGES_TTL_MS,
   recentPageTarget,
   recentPageTitle,
-  recordRecentPage,
-  announceRecentPageTitle,
   announcedRecentPageTitle,
 } from "@/lib/recent-pages";
+import { announceRecentPageTitle, recordRecentPage } from "@/lib/recent-pages-record";
 
 afterEach(() => {
   clearRecentPages();
