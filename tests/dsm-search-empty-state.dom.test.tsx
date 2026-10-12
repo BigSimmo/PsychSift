@@ -101,6 +101,44 @@ describe("DsmSearchPage empty state", () => {
     expect(params.get("q")).toBe("review");
   });
 
+  it("keeps diagnoses outside a category filter listed under Not matching", () => {
+    const summary = (slug: string, title: string, key: string, label: string): DsmDiagnosisSummary => ({
+      slug,
+      title,
+      icd_code: "F00",
+      category: { key, label },
+      summary: `${title} summary`,
+      criteriaCount: 2,
+      criteriaProvenance: "dsm_criteria" as const,
+      differentialCount: 1,
+      specifierCount: 1,
+    });
+    const anxiety = { key: "anxiety", label: "Anxiety disorders", diagnosis_count: 8 };
+    window.history.replaceState(null, "", "/dsm/search?q=review&category=mood");
+
+    render(
+      <DsmSearchPage
+        query="review"
+        categories={[...categories, anxiety]}
+        results={[
+          summary("anxiety-1", "Anxiety one", "anxiety", "Anxiety disorders"),
+          summary("mood-1", "Mood one", "mood", "Mood disorders"),
+        ]}
+      />,
+    );
+
+    // Filters highlight, never hide: both diagnoses stay, the match first.
+    const rows = screen.getAllByTestId("dsm-search-result");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Mood one");
+    expect(rows[0]).not.toHaveAttribute("data-outside-filter");
+    expect(rows[1]).toHaveTextContent("Anxiety one");
+    expect(rows[1]).toHaveAttribute("data-outside-filter", "true");
+    expect(screen.getByRole("link", { name: "Open Anxiety one" })).toBeVisible();
+    expect(screen.getByTestId("dsm-highlight-note")).toHaveTextContent("1 of 2 highlighted, all rows stay");
+    expect(screen.getByTestId("dsm-outside-heading")).toHaveTextContent("Not matching · 1");
+  });
+
   it("keeps at least the 1rem side padding on the phone compare tray, growing only for safe-area insets", async () => {
     const { readFileSync } = await import("node:fs");
     // DSM's phone strip is now the shared Compare tray's footer layer.

@@ -22,6 +22,7 @@ import { matchesAvailability, matchesTopics } from "../data/select";
 import { hasSearchableTherapyQuery } from "@/lib/therapy-ranking";
 import { LoadingState } from "../ui";
 import { CompactResultRow } from "../therapy-card";
+import { FilterHighlightNote, FilterNotMatchingHeading } from "@/components/clinical-dashboard/filter-highlight";
 
 // Curated quick-filter tags surfaced as chips (all exist in the tag set).
 // None of the six is ever zero across the whole 205-therapy catalogue, so the
@@ -48,6 +49,20 @@ export function SearchScreen() {
     [b.searchResults, browsing],
   );
   const shown = results.slice(0, MAX_CARDS);
+  // Filters highlight, never hide: therapies the filters pick come first, and
+  // every other therapy matching the query stays listed under "Not matching".
+  // `b.queryMatches` is the query-only set, before any filter.
+  const highlightFilterActive = b.search.tags.length > 0 || b.search.reviewedOnly || b.search.briefOnly;
+  const outside = useMemo(() => {
+    if (!highlightFilterActive) return [];
+    const picked = new Set(b.searchResults.map((therapy) => therapy.slug));
+    const rest = b.queryMatches.filter((therapy) => !picked.has(therapy.slug));
+    return browsing
+      ? rest.sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }))
+      : rest;
+  }, [highlightFilterActive, b.searchResults, b.queryMatches, browsing]);
+  const outsideShown = outside.slice(0, MAX_CARDS);
+  const scopeCount = highlightFilterActive ? results.length + outside.length : results.length;
   // An empty query gives every record the same baseline score and then sorts
   // alphabetically, so only call out a best match when the scorer had real
   // query evidence to rank. Facets narrow the list but do not rank it.
@@ -182,7 +197,7 @@ export function SearchScreen() {
         modeId="therapy-compass"
         query={browsing ? "" : q}
         emptyQuerySubject="Therapies"
-        matchCount={results.length}
+        matchCount={scopeCount}
         status={b.error ? "error" : b.loading ? "loading" : "ready"}
         faultBody={b.error ?? undefined}
         onRetry={b.retryData}
@@ -218,7 +233,15 @@ export function SearchScreen() {
         <LoadingState />
       ) : (
         <>
-          {results.length === 0 ? (
+          <FilterHighlightNote
+            active={highlightFilterActive && scopeCount > 0}
+            highlighted={results.length}
+            total={scopeCount}
+            onClear={b.clearSearchFilters}
+            testId="therapy-highlight-note"
+            className="mb-2"
+          />
+          {scopeCount === 0 ? (
             <SearchResultsEmptyState
               modeId="therapy-compass"
               query={q}
@@ -229,7 +252,7 @@ export function SearchScreen() {
               // a query reset as a filter operation.
               onClearSearch={b.clearSearch}
             />
-          ) : (
+          ) : results.length > 0 ? (
             // One hairline card with divided compact rows (no cards inside cards).
             <ul
               data-testid="therapy-result-list"
@@ -239,7 +262,22 @@ export function SearchScreen() {
                 <CompactResultRow key={t.slug} therapy={t} featured={!browsing && hasRankedQuery && index === 0} />
               ))}
             </ul>
-          )}
+          ) : null}
+          {outside.length > 0 ? (
+            <div data-testid="therapy-outside-filter" className="mt-2 grid gap-2">
+              <FilterNotMatchingHeading
+                label="Not matching"
+                count={outside.length}
+                level={2}
+                testId="therapy-outside-heading"
+              />
+              <ul className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0">
+                {outsideShown.map((t) => (
+                  <CompactResultRow key={t.slug} therapy={t} outsideFilter />
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </>
       )}
 

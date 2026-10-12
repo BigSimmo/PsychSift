@@ -698,6 +698,10 @@ test.describe("previously uncovered production routes", () => {
     await expect(page.getByRole("button", { name: "Remove Priority: Emergent filter" })).toBeVisible();
     const visiblePresentationCards = page.locator('[data-testid^="differential-stream-card-"]:visible');
     await expect(visiblePresentationCards.first()).toHaveAttribute("data-status", "emergent");
+    // Filters highlight, never hide: a spoken note says how many are highlighted.
+    await expect(visibleByTestId(page, "differentials-stream-highlight-note")).toContainText(
+      /\d+ of \d+ highlighted, all rows stay/,
+    );
     await expect.poll(async () => visiblePresentationCards.count()).toBeGreaterThan(0);
 
     await page.emulateMedia({ reducedMotion: "reduce" });

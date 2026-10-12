@@ -929,6 +929,16 @@ Rules:
   slot by route, not by selection, so with nothing ticked the dock reserves an
   empty one-row band; closing it needs the claim gated like Therapy's (in
   `global-search-shell.tsx` and the dashboard mode surface).
+- **Filters highlight, never hide (October 2026, owner-approved).** On the
+  Differentials stream (urgency and chapter filters), DSM search (category and
+  support filters) and Therapy search (topics, reviewed, handout), a filter no
+  longer removes rows. Matching rows come first in their usual order; every other
+  row stays below under "Not emergent" (one urgency filter) or "Not matching", its
+  title muted by `--text-muted`, never by opacity. A polite live note reads
+  "N of M highlighted, all rows stay" with Clear
+  (`src/components/clinical-dashboard/filter-highlight.tsx`). Search scope and the
+  Differentials family view still define the set itself. The band count is the
+  whole set.
 
 Coverage: `tests/phone-dock-addon-contract.test.ts` (registry, exclusivity, CSS/TS
 value parity, therapy route/claim gating), `tests/patient-details-dock-action.dom.test.tsx`

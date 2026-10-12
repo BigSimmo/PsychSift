@@ -20,6 +20,7 @@ import Link from "next/link";
 import { cardSurface, stretchedRowLinkClass } from "@/components/card-recipes";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { filterOutsideTitleClass } from "@/components/clinical-dashboard/filter-highlight";
 import { THERAPY_MAX_COMPARE, therapyRecordHref } from "@/lib/therapy-compass-navigation";
 
 import { useTcBindings } from "./bindings";
@@ -314,10 +315,13 @@ export function CompactResultRow({
   therapy,
   featured = false,
   query,
+  outsideFilter = false,
 }: {
   therapy: Therapy;
   featured?: boolean;
   query?: string;
+  /** Outside the active filters: still listed and tappable, title muted by token. */
+  outsideFilter?: boolean;
 }) {
   const b = useTcBindings();
   const baseId = useId();
@@ -343,6 +347,7 @@ export function CompactResultRow({
     <li
       data-therapy-result-card
       data-therapy-result-featured={featured ? "" : undefined}
+      data-outside-filter={outsideFilter ? "true" : undefined}
       className="relative px-4 pt-3 pb-1.5 transition-colors sm:px-5 md:pb-3 md:hover:bg-[color:var(--surface-subtle)]"
     >
       {featured ? (
@@ -358,7 +363,12 @@ export function CompactResultRow({
           actions and chevron move to a right-hand column. */}
       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 [grid-template-areas:'title_chev'_'avoid_avoid'_'foot_foot'] md:[grid-template-areas:'title_actions'_'avoid_actions'_'tags_actions']">
         <div className="min-w-0 [grid-area:title]">
-          <h3 className="m-0 text-base font-semibold leading-snug tracking-display text-[color:var(--text-heading)]">
+          <h3
+            className={cn(
+              "m-0 text-base font-semibold leading-snug tracking-display",
+              outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+            )}
+          >
             <Link
               href={b.workspaceHref(therapyRecordHref(therapy.slug))}
               data-therapy-result-open

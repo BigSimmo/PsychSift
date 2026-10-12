@@ -306,6 +306,7 @@
         "src/components/alerts/remind-me-sheet.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
+        "src/components/clinical-dashboard/filter-highlight.tsx",
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/clinical-dashboard/settings-reminders.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
@@ -441,6 +442,7 @@
         "src/components/alerts/remind-me-sheet.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/ClinicalSidebar.tsx",
+        "src/components/clinical-dashboard/filter-highlight.tsx",
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/clinical-dashboard/settings-reminders.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
@@ -573,6 +575,7 @@
         "tests/design-sync-visual-exports.test.ts",
         "tests/design-system-adoption.test.ts",
         "tests/design-system-contract-utils.test.ts",
+        "tests/filter-highlight.dom.test.tsx",
         "tests/on-call-compliance.test.ts",
         "tests/therapy-compass-responsive-contract.test.ts",
         "tests/ui-v2-components.dom.test.tsx"

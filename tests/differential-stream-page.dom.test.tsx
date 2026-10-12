@@ -72,7 +72,7 @@ describe("DifferentialStreamPage", () => {
     );
   });
 
-  it("reveals a filtered safety-shelf target before scrolling to it", async () => {
+  it("clears the urgency highlight when a safety-shelf target sits outside it", async () => {
     const user = userEvent.setup();
     const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
     const model = buildDifferentialStreamModel("presentations", "");
@@ -88,7 +88,11 @@ describe("DifferentialStreamPage", () => {
     await user.click(within(priorityGroup).getByRole("radio", { name: /^Urgent/ }));
     expect(new URL(window.location.href).searchParams.get("priority")).toBe("urgent");
     view.rerender(<DifferentialStreamPage stream="presentations" />);
-    expect(screen.queryByTestId(`differential-stream-card-${safetyItem!.slug}`)).not.toBeInTheDocument();
+    // Filters highlight, never hide: the emergent target stays listed, under "Not urgent".
+    expect(screen.getByTestId(`differential-stream-card-${safetyItem!.slug}`)).toHaveAttribute(
+      "data-outside-filter",
+      "true",
+    );
 
     scrollIntoView.mockClear();
     await user.click(
@@ -99,7 +103,11 @@ describe("DifferentialStreamPage", () => {
 
     expect(new URL(window.location.href).searchParams.has("priority")).toBe(false);
     view.rerender(<DifferentialStreamPage stream="presentations" />);
-    await waitFor(() => expect(screen.getByTestId(`differential-stream-card-${safetyItem!.slug}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`differential-stream-card-${safetyItem!.slug}`)).not.toHaveAttribute(
+        "data-outside-filter",
+      ),
+    );
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: "center" }));
   });
 
@@ -113,9 +121,15 @@ describe("DifferentialStreamPage", () => {
     await user.click(within(priorityGroup).getByRole("radio", { name: /^Emergent/ }));
     expect(new URL(window.location.href).searchParams.get("priority")).toBe("emergent");
     view.rerender(<DifferentialStreamPage stream="presentations" query="agitation" />);
-    const emergentCards = screen.getAllByTestId(/^differential-stream-card-/);
+    // Every row stays; the emergent ones come first and the rest sit under "Not emergent".
+    const allCards = screen.getAllByTestId(/^differential-stream-card-/);
+    expect(allCards).toHaveLength(initialCards);
+    const emergentCards = allCards.filter((card) => card.dataset.outsideFilter !== "true");
     expect(emergentCards.length).toBeLessThan(initialCards);
     expect(emergentCards.every((card) => card.dataset.status === "emergent")).toBe(true);
+    const outsideCards = allCards.filter((card) => card.dataset.outsideFilter === "true");
+    expect(outsideCards.every((card) => card.dataset.status !== "emergent")).toBe(true);
+    expect(allCards.indexOf(outsideCards[0]!)).toBeGreaterThan(allCards.indexOf(emergentCards.at(-1)!));
     expect(screen.getByRole("button", { name: "Remove Priority: Emergent filter" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Remove Priority: Emergent filter" }));
@@ -127,6 +141,42 @@ describe("DifferentialStreamPage", () => {
     view.rerender(<DifferentialStreamPage stream="presentations" query="agitation" />);
     expect(screen.getAllByTestId(/^differential-stream-card-/).length).toBeLessThan(initialCards);
     expect(screen.getByRole("button", { name: /Remove Related pathways: .+ filter/ })).toBeInTheDocument();
+  });
+
+  it("keeps non-matching diagnoses present under Not emergent with a spoken note", () => {
+    window.history.replaceState(null, "", "/differentials/diagnoses?priority=emergent");
+    const model = buildDifferentialStreamModel("diagnoses", "");
+    const total = model.items.length;
+    const emergent = model.items.filter((item) => item.status === "emergent").length;
+    expect(emergent).toBeGreaterThan(0);
+    expect(emergent).toBeLessThan(total);
+
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    // Nothing is hidden: every diagnosis is still a row, and each still opens.
+    const cards = screen.getAllByTestId(/^differential-stream-card-/);
+    expect(cards).toHaveLength(total);
+    const outside = cards.filter((card) => card.dataset.outsideFilter === "true");
+    expect(outside).toHaveLength(total - emergent);
+    for (const card of outside.slice(0, 5)) {
+      expect(within(card).getByRole("link", { name: /, open$/ })).toBeInTheDocument();
+    }
+
+    const note = screen.getByTestId("differentials-stream-highlight-note");
+    expect(note).toHaveTextContent(`${emergent} of ${total} highlighted, all rows stay`);
+    // A polite live region, so the note is heard.
+    expect(within(note).getByRole("status")).toHaveAttribute("aria-live", "polite");
+    expect(within(note).getByRole("button", { name: "Clear" })).toBeInTheDocument();
+    expect(screen.getByTestId("differentials-stream-outside-heading")).toHaveTextContent(
+      `Not emergent · ${total - emergent}`,
+    );
+    // Matching rows first, then the rest: no emergent row below the heading.
+    expect(cards.indexOf(outside[0]!)).toBe(emergent);
+    // Faded by colour token, never by opacity.
+    for (const card of outside.slice(0, 5)) {
+      expect(card.className).not.toMatch(/opacity/);
+      expect(within(card).getByRole("heading", { level: 3 }).className).toContain("text-[color:var(--text-muted)]");
+    }
   });
 
   it("replaces match navigation with a removable focused-family filter", async () => {

@@ -30,6 +30,11 @@ import {
   writeResultFilterValues,
 } from "@/lib/result-filter-url";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
+import {
+  FilterHighlightNote,
+  FilterNotMatchingHeading,
+  filterOutsideTitleClass,
+} from "@/components/clinical-dashboard/filter-highlight";
 import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
 import { usePhoneMedia } from "@/components/compare/use-phone-media";
 import { differentialRouteWithQuery, differentialSelectedCompareHref } from "@/lib/differentials-navigation";
@@ -105,6 +110,7 @@ function StreamCard({
   selected,
   showSelect,
   focusMode,
+  outsideFilter = false,
   onFocus,
   onToggleSelect,
   onShowConnections,
@@ -113,6 +119,8 @@ function StreamCard({
   stream: DifferentialStreamType;
   query: string;
   highlight: "match" | "related" | "dim" | "neutral";
+  /** Outside the active urgency/chapter filter: still listed, title muted by token. */
+  outsideFilter?: boolean;
   selected: boolean;
   showSelect: boolean;
   focusMode: boolean;
@@ -147,7 +155,8 @@ function StreamCard({
       data-highlight={highlight}
       data-match={item.isMatch ? "true" : "false"}
       data-status={item.status}
-      className={`relative p-4 transition ${cardTone}`}
+      data-outside-filter={outsideFilter ? "true" : undefined}
+      className={`relative p-4 transition ${outsideFilter ? "" : cardTone}`}
       onFocus={onFocus}
     >
       <div className="flex items-start justify-between gap-3">
@@ -155,7 +164,12 @@ function StreamCard({
           <div className="flex flex-wrap items-center gap-2">
             {/* The title is the row's open control, stretched across the card,
                 so the separate full-width Open button is gone. */}
-            <h3 className="text-sm font-bold text-[color:var(--text-heading)]">
+            <h3
+              className={cn(
+                "text-sm font-bold",
+                outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+              )}
+            >
               <Link
                 href={href}
                 onClick={onFocus}
@@ -451,6 +465,18 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
       return true;
     });
   const visibleItems = filterStreamItems(resultScope, presentationPriority, selectedChapterFilters, familyMode);
+  // Filters highlight, never hide: urgency and chapter filters pick the rows
+  // that come first; every other row in scope stays, listed after them under
+  // "Not emergent" (or "Not matching"). Search scope and the family view still
+  // define the set itself.
+  const highlightFilterActive = presentationPriority !== "all" || selectedChapterFilters.size > 0;
+  const scopeItems = filterStreamItems(resultScope, "all", new Set(), familyMode);
+  const visibleIds = new Set(visibleItems.map((item) => item.id));
+  const outsideItems = highlightFilterActive ? scopeItems.filter((item) => !visibleIds.has(item.id)) : [];
+  const outsideLabel =
+    presentationPriority !== "all" && selectedChapterFilters.size === 0
+      ? `Not ${statusLabel(presentationPriority).toLowerCase()}`
+      : "Not matching";
 
   const activeChapters =
     !hasQuery && model.stream === "diagnoses"
@@ -657,7 +683,48 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     });
   }
 
-  function renderCardGrid(items: DifferentialStreamItem[]): ReactNode {
+  function clearHighlightFilters() {
+    replaceResultFilterUrl((params) => {
+      params.delete("priority");
+      params.delete("chapter");
+    });
+  }
+
+  function renderGrouped(items: DifferentialStreamItem[], outsideFilter: boolean): ReactNode {
+    if (items.length === 0) return null;
+    if (hasQuery || familyMode || activeChapters.length === 0) return renderCardGrid(items, outsideFilter);
+    const ids = new Set(items.map((item) => item.id));
+    return activeChapters.map((chapter) => {
+      const chapterItems = chapter.itemIds
+        .map((id) => itemById.get(id))
+        .filter((item): item is DifferentialStreamItem => Boolean(item))
+        .filter((item) => ids.has(item.id));
+      if (chapterItems.length === 0) return null;
+      const keyPrefix = outsideFilter ? "outside-" : "";
+      return (
+        <div
+          key={`${keyPrefix}${chapter.id}`}
+          data-testid={`differential-stream-chapter-${keyPrefix}${chapter.id}`}
+          className="grid gap-2"
+        >
+          <div className="pt-2">
+            <h3
+              className={cn(
+                "text-sm font-extrabold",
+                outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+              )}
+            >
+              {chapter.title}
+            </h3>
+            <p className="text-xs text-[color:var(--text-muted)]">{chapter.description}</p>
+          </div>
+          {renderCardGrid(chapterItems, outsideFilter)}
+        </div>
+      );
+    });
+  }
+
+  function renderCardGrid(items: DifferentialStreamItem[], outsideFilter = false): ReactNode {
     return (
       // One hairline card per group with divided rows (no cards inside cards).
       // From the two-column width each row draws its own bottom and inner
@@ -674,6 +741,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
             selected={selectedIds.has(item.slug)}
             showSelect={showSelect}
             focusMode={familyMode && focusedSlug === item.slug}
+            outsideFilter={outsideFilter}
             onFocus={() => setFocusedSlug(item.slug)}
             onToggleSelect={() => toggleSelected(item.slug)}
             onShowConnections={() => {
@@ -700,7 +768,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
         <SearchResultsHeaderBand
           modeId="differentials"
           query={hasQuery ? query : ""}
-          matchCount={visibleItems.length}
+          matchCount={scopeItems.length}
           headingLevel={2}
           filterLabel={isPresentation ? "Presentation pathway controls" : `${copy.heading} catalogue controls`}
           mobileControlsPlacement="inline"
@@ -837,8 +905,16 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
           </section>
         ) : null}
 
+        <FilterHighlightNote
+          active={highlightFilterActive && scopeItems.length > 0}
+          highlighted={visibleItems.length}
+          total={scopeItems.length}
+          onClear={clearHighlightFilters}
+          testId="differentials-stream-highlight-note"
+        />
+
         <section className="grid gap-3">
-          {visibleItems.length === 0 ? (
+          {scopeItems.length === 0 ? (
             <div
               data-testid="differentials-stream-empty-filter"
               className="grid justify-items-start gap-2 rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] p-4"
@@ -854,25 +930,21 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
                 Clear filters
               </button>
             </div>
-          ) : hasQuery || familyMode || activeChapters.length === 0 ? (
-            renderCardGrid(visibleItems)
           ) : (
-            activeChapters.map((chapter) => {
-              const chapterItems = chapter.itemIds
-                .map((id) => itemById.get(id))
-                .filter((item): item is DifferentialStreamItem => Boolean(item))
-                .filter((item) => visibleItems.some((visible) => visible.id === item.id));
-              if (chapterItems.length === 0) return null;
-              return (
-                <div key={chapter.id} data-testid={`differential-stream-chapter-${chapter.id}`} className="grid gap-2">
-                  <div className="pt-2">
-                    <h3 className="text-sm font-extrabold text-[color:var(--text-heading)]">{chapter.title}</h3>
-                    <p className="text-xs text-[color:var(--text-muted)]">{chapter.description}</p>
-                  </div>
-                  {renderCardGrid(chapterItems)}
+            <>
+              {renderGrouped(visibleItems, false)}
+              {outsideItems.length > 0 ? (
+                <div data-testid="differentials-stream-outside-filter" className="grid gap-3">
+                  <FilterNotMatchingHeading
+                    label={outsideLabel}
+                    count={outsideItems.length}
+                    level={2}
+                    testId="differentials-stream-outside-heading"
+                  />
+                  {renderGrouped(outsideItems, true)}
                 </div>
-              );
-            })
+              ) : null}
+            </>
           )}
         </section>
 
