@@ -10,9 +10,10 @@ export const metadata: Metadata = {
 
 type OpenShiftsAdvertRouteProps = {
   params: Promise<{ serviceId: string; openShiftId: string }>;
+  searchParams: Promise<{ request?: string | string[] }>;
 };
 
-export default async function OpenShiftsAdvertRoute({ params }: OpenShiftsAdvertRouteProps) {
-  const { serviceId, openShiftId } = await params;
-  return <OpenShiftsAdvertPage serviceId={serviceId} openShiftId={openShiftId} />;
+export default async function OpenShiftsAdvertRoute({ params, searchParams }: OpenShiftsAdvertRouteProps) {
+  const [{ serviceId, openShiftId }, { request }] = await Promise.all([params, searchParams]);
+  return <OpenShiftsAdvertPage serviceId={serviceId} openShiftId={openShiftId} requestOnOpen={request === "1"} />;
 }

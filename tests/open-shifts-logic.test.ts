@@ -191,7 +191,7 @@ describe("browse", () => {
     listing({ date: "2026-10-07", from: "18:00", to: "23:00", kind: "evening" }),
     listing({ date: "2026-10-08", from: "08:00", to: "16:30", minGrade: "resident" }), // lower level
     listing({ date: "2026-10-09", from: "08:00", to: "16:30", urgent: true }),
-    listing({ date: "2026-10-30", from: "08:00", to: "16:30" }), // outside 14 days
+    listing({ date: "2026-11-20", from: "08:00", to: "16:30" }), // outside the 28-day window
   ];
 
   it("hides clashes and lower levels by default, each counted once", () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ChevronRight, Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -66,6 +67,12 @@ import { useRosterLinks } from "./use-roster-links";
 import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
+
+// Open shifts reads every team's list, so its Month row loads only after the page (12 Oct 2026).
+const OpenShiftsFitLine = dynamic(
+  () => import("@/components/open-shifts/open-shifts-fit-line").then((module) => module.OpenShiftsFitLine),
+  { ssr: false },
+);
 
 /**
  * Roster's Month tab (work-mode redesign, owner request 6 Oct 2026; mockup
@@ -694,6 +701,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         </div>
         <div className="grid min-w-0 gap-2.25">
           {comingUp()}
+          <OpenShiftsFitLine />
           <MonthTotalsCard totals={totals} partial={partial} month={month} />
           {shifts.sample ? null : (
             <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">
