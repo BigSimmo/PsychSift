@@ -457,11 +457,11 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  it("shapes the loading skeleton like the page: the renew card, the count row, and two modules", () => {
+  it("shapes the loading skeleton like the page: the renew card, then Needs you, then Coming up with its counts", () => {
     state.loading = true;
     render(<AdminTodayPage now={NOW} />);
     expect(screen.getByTestId("admin-today-loading-renew-next")).toBeTruthy();
-    expect(screen.getByTestId("admin-today-loading-at-a-glance").children).toHaveLength(3);
+    expect(screen.queryByTestId("admin-today-loading-at-a-glance")).toBeNull();
     expect(screen.getByTestId("admin-today-loading-needs-you")).toBeTruthy();
     expect(screen.getByTestId("admin-today-loading-coming-up")).toBeTruthy();
   });

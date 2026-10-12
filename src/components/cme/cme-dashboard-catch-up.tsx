@@ -346,7 +346,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
           </span>
           <span
             data-testid="cme-year-label"
-            className={showTimeLeft ? "text-sm-minus text-[color:var(--text-muted)]" : "sr-only"}
+            className={showTimeLeft || closed ? "text-sm-minus text-[color:var(--text-muted)]" : "sr-only"}
           >
             {label}
           </span>

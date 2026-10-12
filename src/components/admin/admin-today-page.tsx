@@ -67,16 +67,12 @@ function TodayLoadingSkeleton() {
           <AdminSkeleton className="h-3 w-24" />
           <AdminSkeleton className="h-28" />
         </div>
-        <div className="grid grid-cols-3 gap-2" data-testid="admin-today-loading-at-a-glance">
-          {[0, 1, 2].map((index) => (
-            <AdminSkeleton key={index} className="h-17" />
-          ))}
-        </div>
       </div>
       <div className={adminStyles.column} aria-hidden="true">
+        {/* Coming up carries the three counts at its top (12 Oct 2026), so they load here too. */}
         <div className="grid gap-2" data-testid="admin-today-loading-coming-up">
           <AdminSkeleton className="h-3 w-24" />
-          <AdminSkeleton className="h-52" />
+          <AdminSkeleton className="h-64" />
         </div>
       </div>
     </div>
