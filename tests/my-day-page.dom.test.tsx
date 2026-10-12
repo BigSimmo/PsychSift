@@ -523,9 +523,11 @@ describe("MyDayPage", () => {
     render(<MyDayPage now={NOW} />);
     const empty = screen.getByTestId("my-day-empty");
     expect(empty.textContent).toContain("Nothing needs you right now");
-    // When it checked is said once, in the stamp under the card (usefulness audit, 11 Oct 2026).
-    expect(empty.textContent).not.toContain("Checked");
-    expect(screen.getByTestId("my-day-stamp").textContent).toMatch(/Checked \d{2}:\d{2}/);
+    // The all-clear and when it checked are one line, said once (Work mode simplify plan, 12 Oct 2026).
+    const stamp = screen.getByTestId("my-day-stamp");
+    expect(empty.contains(stamp)).toBe(true);
+    expect(stamp.textContent).toMatch(/Checked \d{2}:\d{2}/);
+    expect(screen.getAllByText(/Checked \d{2}:\d{2}/)).toHaveLength(1);
   });
 
   it("names only the modes that were checked, and never says nothing needs you while one failed", () => {

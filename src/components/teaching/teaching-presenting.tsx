@@ -86,7 +86,7 @@ function PresentingPage({ demoMode, talkId = null }: { demoMode: boolean; talkId
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const teach = useTeachingResource<TeachRead>(demoMode ? null : "/api/teaching/depth?view=teach");
-  // The demo talk moves to tomorrow once today's has ended (14:45 Perth), so the demo reads the clock too.
+  // The demo talk moves to the next club once today's has ended (15:00 Perth), so the demo reads the clock too.
   const teachData = useMemo<{ upcoming: DemoTeachSession[]; taught: SessionRef[] } | null>(
     () => (demoMode && today && now ? demoTeach(today, now) : teach.data),
     [demoMode, today, now, teach.data],
