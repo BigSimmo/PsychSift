@@ -5,7 +5,8 @@ import { useId, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
-import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { ON_CALL_SERVICE_HANDBOOK_ACTION, OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { WorkEmptyLine } from "@/components/mode-kit/work-empty-line";
 import { onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { OnCallNextShift } from "@/components/on-call/on-call-next-shift";
@@ -201,6 +202,15 @@ export function NowShiftLists({
           {lists.map((list) => (
             <TickList key={list.key} list={list} ticked={ticked} onToggle={toggle} />
           ))}
+          {hasLists ? null : (
+            <WorkEmptyLine
+              className="px-3"
+              testId="on-call-now-checklists-empty"
+              action={ON_CALL_SERVICE_HANDBOOK_ACTION}
+            >
+              Your service has not added shift lists for this hospital yet.
+            </WorkEmptyLine>
+          )}
           {hasLists ? (
             <div className="flex min-w-0 items-center justify-between gap-3 px-3">
               <p className={modeSecondaryText}>Nothing is saved</p>

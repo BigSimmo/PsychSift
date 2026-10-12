@@ -9,6 +9,7 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  ListChecks,
   Moon,
   Phone,
   Shield,
@@ -751,10 +752,13 @@ const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
   { label: "Roster", href: "/roster", icon: CalendarDays, testId: "my-day-qa-roster", mode: "roster" },
 ];
 
-/** During on call (the mockup's 03:10 screen): Handover and Remind me take CPD's and Roster's places. */
+/**
+ * During on call the hero already offers Log a call and Handover, so the tiles
+ * offer what it does not (site review 12 Oct 2026, item 7).
+ */
 const MY_DAY_ON_CALL_ACTIONS: readonly MyDayQuickAction[] = [
-  MY_DAY_QUICK_ACTIONS[0]!,
-  { label: "Handover", href: "/on-call/handover", icon: FileText, testId: "my-day-qa-handover", mode: "on-call" },
+  { label: "Playbook", href: "/on-call/playbook", icon: ListChecks, testId: "my-day-qa-playbook", mode: "on-call" },
+  { label: "Contacts", href: "/on-call/contacts", icon: Phone, testId: "my-day-qa-contacts", mode: "on-call" },
   MY_DAY_QUICK_ACTIONS[2]!,
   { label: "Remind me", icon: Bell, testId: "my-day-qa-remind", mode: "my-day" },
 ];

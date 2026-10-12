@@ -36,6 +36,7 @@ import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries } from "@/lib/on-call/handbook-items";
@@ -331,6 +332,9 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             <>
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
               {!ready && !handbookLoading ? <OnCallHandbookState handbook={handbook} page="now" /> : null}
+              <NewWorkModeOnly>
+                <WorkSetupRow />
+              </NewWorkModeOnly>
             </>
           }
           safety={
