@@ -350,7 +350,9 @@ test.describe("previously uncovered production routes", () => {
     );
   });
 
-  test("Therapy result cards use the full phone width with a symmetric action row", async ({ page }, testInfo) => {
+  test("Therapy result rows are compact, show the full Avoid warning and keep 48px controls", async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoApp(page, "/therapy-compass/search?q=CBT&run=1");
 
@@ -359,64 +361,44 @@ test.describe("previously uncovered production routes", () => {
     await expect(card).toHaveAttribute("data-therapy-result-featured", "");
     await expect(card.getByText("Best match", { exact: true })).toBeVisible();
     await expect(page.locator("[data-therapy-result-highlight]")).toHaveCount(1);
+    // "Best used for" and the evidence block moved into the record.
+    await expect(card.getByText("Best used for", { exact: false })).toHaveCount(0);
 
     for (const width of [320, 390, 639, 768, 1440, 1920]) {
       await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
       await expectNoHorizontalOverflow(page);
 
       const layout = await card.evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
-        const borderLeft = Number.parseFloat(getComputedStyle(element).borderLeftWidth);
-        const copy = element.querySelector<HTMLElement>("[data-therapy-result-copy]")!.getBoundingClientRect();
-        const evidence = element.querySelector<HTMLElement>("[data-therapy-result-evidence]")!.getBoundingClientRect();
+        const avoid = element.querySelector<HTMLElement>("[data-therapy-result-avoid]")!;
+        const text = avoid.lastElementChild as HTMLElement;
         const actions = element.querySelector<HTMLElement>("[data-therapy-result-actions]")!;
         const buttons = [...actions.querySelectorAll<HTMLElement>("button, a")].map((button) => {
-          const buttonBounds = button.getBoundingClientRect();
-          return {
-            left: buttonBounds.left,
-            right: buttonBounds.right,
-            top: buttonBounds.top,
-            width: buttonBounds.width,
-            height: buttonBounds.height,
-          };
+          const bounds = button.getBoundingClientRect();
+          return { top: bounds.top, width: bounds.width, height: bounds.height };
         });
         return {
-          card: { left: bounds.left, right: bounds.right },
-          borderLeft,
-          copyLeft: copy.left,
-          evidence: { left: evidence.left, right: evidence.right },
+          // The owner decision: the warning is never clamped or ellipsised.
+          avoidClipped: avoid.scrollHeight - avoid.clientHeight,
+          avoidOverflow: getComputedStyle(text).textOverflow,
+          avoidClamp: getComputedStyle(text).webkitLineClamp,
           buttons,
         };
       });
 
-      if (width < 640) {
-        // Featured cards carry the intentional 3px best-match accent edge.
-        // The evidence panel remains full-bleed inside that border.
-        expect(
-          Math.abs(layout.evidence.left - (layout.card.left + layout.borderLeft)),
-          `${width}px evidence left edge`,
-        ).toBeLessThanOrEqual(1);
-        expect(
-          Math.abs(layout.card.right - layout.evidence.right),
-          `${width}px evidence right edge`,
-        ).toBeLessThanOrEqual(1);
-        expect(layout.copyLeft - layout.card.left, `${width}px copy inset`).toBeGreaterThanOrEqual(15);
-        expect(new Set(layout.buttons.map((button) => Math.round(button.top))).size, `${width}px button row`).toBe(1);
-        expect(
-          Math.max(...layout.buttons.map((button) => button.width)) -
-            Math.min(...layout.buttons.map((button) => button.width)),
-          `${width}px equal action widths`,
-        ).toBeLessThanOrEqual(1);
-        for (const button of layout.buttons) {
-          expect(button.height, `${width}px action target`).toBeGreaterThanOrEqual(48);
-        }
+      expect(layout.avoidClipped, `${width}px avoid warning clipped`).toBeLessThanOrEqual(1);
+      expect(layout.avoidOverflow, `${width}px avoid warning ellipsis`).not.toBe("ellipsis");
+      expect(["none", ""], `${width}px avoid warning line clamp`).toContain(layout.avoidClamp);
+      expect(new Set(layout.buttons.map((button) => Math.round(button.top))).size, `${width}px button row`).toBe(1);
+      for (const button of layout.buttons) {
+        expect(button.height, `${width}px action target height`).toBeGreaterThanOrEqual(48);
+        expect(button.width, `${width}px action target width`).toBeGreaterThanOrEqual(48);
       }
     }
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const compare = card.locator("[data-therapy-result-actions] > a, [data-therapy-result-actions] > button").nth(1);
-    await expect(compare).toHaveAccessibleName("Add to compare");
+    const compare = card.getByTestId("therapy-result-compare");
+    await expect(compare).toHaveAccessibleName(/^Add .+ to compare$/);
     await compare.focus();
     const focusStyle = await compare.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -432,25 +414,26 @@ test.describe("previously uncovered production routes", () => {
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
     await expectNoHorizontalOverflow(page);
     await expect(card.locator("[data-therapy-result-actions] button, [data-therapy-result-actions] a")).toHaveCount(3);
+    // The shared Compare tray exists only once something is ticked.
+    await expect(page.getByTestId("therapy-compare-tray")).toHaveCount(0);
 
     // Adding deliberately keeps the reader where they are. The set moves into
     // the URL (so it is still shareable and survives a reload) and into the tray
     // above the composer; the page does not change.
     await compare.focus();
     await page.keyboard.press("Space");
-    await expect(compare).toHaveAccessibleName("In compare tray");
+    await expect(compare).toHaveAccessibleName(/^Remove .+ from compare$/);
+    await expect(compare).toHaveAttribute("aria-pressed", "true");
     await expect(page).toHaveURL(/\/therapy-compass\/search/);
     // The set commits to component state first and reaches the URL through a
     // `router.replace` soft navigation, so the accessible name flips before
-    // `page.url()` carries `ids`. Reading the URL straight after that name
-    // assertion is a race — it lost once under full-suite load on 2026-09-01
-    // (`ids` read as null) and passes in isolation. Wait for the parameter
-    // itself rather than for the route it was already on.
+    // `page.url()` carries `ids`. Wait for the parameter itself.
     await expect(page).toHaveURL(/[?&]ids=/);
     const stayedPut = new URL(page.url());
     expect(stayedPut.searchParams.get("q")).toBe("CBT");
     expect(stayedPut.searchParams.get("ids")).toBeTruthy();
     await expect(page.getByTestId("therapy-compare-tray")).toBeVisible();
+    await expect(page.getByTestId("therapy-compare-tray-count")).toHaveText(/^1 of \d+ selected$/);
     await expect(page.getByRole("heading", { name: "Therapy Comparison", level: 1 })).toHaveCount(0);
   });
 

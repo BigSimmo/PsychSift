@@ -411,29 +411,18 @@ export const STYLE_CONTRACT_EXEMPTIONS: Readonly<Record<string, string>> = {
   "mode-action-mode-option-icon": "mode menu option — no effect contract yet (#094)",
 
   // Mode-specific surfaces.
-  "differentials-mobile-compare-fab__button": "differentials compare FAB — no effect contract yet (#094)",
-  "differentials-mobile-compare-fab__button--empty": "differentials compare FAB — no effect contract yet (#094)",
-  // Same shape as the compare FAB above, and the same gap: a rendered-effect
-  // contract needs a phone-viewport route with the medication catalogue loaded.
+  // A rendered-effect contract needs a phone-viewport route with the
+  // medication catalogue loaded.
   // The tap floor (min-height: 3rem) is the regression worth catching here.
   "patient-details-fab__button": "patient details dock pill — no effect contract yet (#094)",
   "patient-details-fab__button--active": "patient details dock pill, populated state — no effect contract yet (#094)",
   "patient-details-fab__count": "patient details count badge — no effect contract yet (#094)",
   "medication-mobile-result": "prescribing phone results — no effect contract yet (#094)",
 
-  // Therapy compare tray. Phone-only (it portals into the dock's addon slot
-  // below 639px), so it is not reachable at the desktop viewport
-  // `ui-style-contract.spec.ts` drives — the same reason the Patient details
-  // pill above is exempt rather than contracted. What is covered:
-  // `tests/therapy-compare-tray.dom.test.tsx` pins the portal target,
-  // breakpoint, empty-set silence and sheet wiring, and
-  // `tests/ui-therapy-nav-scroll.spec.ts` proves in Chromium that the row hides
-  // with the composer and releases its reserve. None of that is a computed-style
-  // assertion, so these stay exemptions, not contracts.
-  "therapy-compare-tray": "therapy compare tray row — phone-only; no effect contract yet (#094)",
-  "therapy-compare-tray__pip": "therapy compare tray slot pip — phone-only; no effect contract yet (#094)",
-  "therapy-compare-tray__names": "therapy compare tray name line — phone-only; no effect contract yet (#094)",
-  "therapy-compare-tray__count": "therapy compare tray count line — phone-only; no effect contract yet (#094)",
+  // Compare slot pips, drawn by CompareSlotStrip on the therapy compare page.
+  // The dock tray itself is now the shared Compare tray, styled with Tailwind
+  // tokens rather than unlayered CSS (tests/shared-compare-tray.dom.test.tsx).
+  "therapy-compare-tray__pip": "compare slot pip — no effect contract yet (#094)",
   "search-band-count": "count weight/colour; the zero-result state needs a deterministic empty fixture first",
   "search-band-rule": "gradient divider — forced-colors fallback covered by ui-accessibility",
 

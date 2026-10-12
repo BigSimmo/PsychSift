@@ -2524,15 +2524,24 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await submit.click();
     await searchResponse;
 
-    const compareAction = page.getByTestId("differentials-compare-selected-mobile");
+    const compareAction = page.getByTestId("differentials-compare-tray-compare");
     const dock = page.locator("form.answer-footer-search-dock");
     const scrollport = visibleByTestId(page, "differentials-search-results");
     const mainContent = page.locator("#main-content");
     await expect(scrollport).toBeVisible();
     await expect(scrollport.getByRole("region", { name: "Source status" })).toContainText("No indexed source matches");
     await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
+    // The shared Compare tray appears only once something is ticked.
+    await expect(page.getByTestId("differentials-compare-tray")).toHaveCount(0);
+    const selections = page
+      .getByTestId("differential-mobile-result-card")
+      .getByRole("checkbox", { name: /^Add .+ to comparison$/ });
+    await selections.first().check();
+    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("1 selected");
+    await selections.first().check();
+    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("2 selected");
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
 
     // Begin with the visible composer reserve. Document scrolling deliberately
@@ -2663,12 +2672,11 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       .toBe(true);
     await expectNoPageHorizontalOverflow(page);
 
-    // The result cards and compare bar remain in their non-desktop layout up
-    // to 1023px, so the composer must keep providing the portal host on tablet.
+    // From 640px the shared tray floats above the content instead of riding
+    // in the phone dock; it stays visible and tappable.
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
   });
 
   test("diagnosis detail actions stay tappable and tabs stay single-line", async ({ page }) => {
