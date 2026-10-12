@@ -146,22 +146,25 @@ export function ToggleSwitch({
   "aria-label": ariaLabel,
 }: ToggleSwitchProps) {
   const track = cn(
-    "relative inline-flex h-6 w-10 shrink-0 box-content rounded-full border shadow-[var(--shadow-inset)] transition",
+    // A filled track both ways, like the system switch: grey when off (it read as an empty
+    // outline on white and vanished on a dark card), the accent when on (each Work area maps
+    // the accent to its own colour, so a switch matches the page's buttons).
+    "relative inline-flex h-6 w-[2.75rem] shrink-0 box-content rounded-full border shadow-[var(--shadow-inset)] transition-colors",
     enabled
       ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)]"
-      : "border-[color:var(--border-strong)] bg-[color:var(--surface-inset)]",
+      : "border-[color:var(--border-strong)] bg-[color:var(--border-strong)]",
     className,
   );
   const knob = (
     <span
       aria-hidden
       className={cn(
-        // Gate 9: the knob travels on `transform`, never on `left`/`right`. Track is w-10
-        // (40px content box; `box-content` keeps the 1px border outside it) with a
-        // 16px knob inset 4px each side, so the throw is 40-4-4-16 = 16px.
-        "absolute top-1 left-1 h-4 w-4 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] shadow-sm",
+        // Gate 9: the knob travels on `transform`, never on `left`/`right`. Track is 2.75rem
+        // (44px content box; `box-content` keeps the 1px border outside it) with a
+        // 20px knob inset 2px each side, so the throw is 44-2-2-20 = 20px.
+        "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-[color:var(--surface-raised)] shadow-sm",
         "transition-transform duration-[var(--duration-base)] motion-reduce:transition-none",
-        enabled ? "translate-x-4" : "translate-x-0",
+        enabled ? "translate-x-5" : "translate-x-0",
       )}
     />
   );
