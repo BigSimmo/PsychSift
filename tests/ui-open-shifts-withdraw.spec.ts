@@ -20,9 +20,11 @@ async function stubOpenShift(page: Page) {
     minGrade: "registrar",
     siteId: null,
     mine: false,
-    // The request is deliberately absent on the read after the stale withdrawal.
     claimedByMe: false,
   };
+  // The server's view moves on: the request is waiting after the claim, and on the reads after the
+  // stale take-back it has already been decided elsewhere, so it is no longer this doctor's.
+  const phase = { current: "before" as "before" | "claimed" | "withdrawn", readsAfterWithdraw: 0 };
 
   await page.route("**/api/roster/team", async (route) =>
     route.fulfill({
@@ -38,9 +40,11 @@ async function stubOpenShift(page: Page) {
     if (request.method() === "POST") {
       const action = request.postDataJSON() as { action?: string };
       if (action.action === "open.claim") {
+        phase.current = "claimed";
         return route.fulfill({ json: { result: { ok: true, openShiftId, status: "claimed" } } });
       }
       if (action.action === "open.withdraw") {
+        phase.current = "withdrawn";
         return route.fulfill({
           status: 404,
           json: { code: "roster_not_found", message: "Not found." },
@@ -61,15 +65,18 @@ async function stubOpenShift(page: Page) {
       });
     }
     if (url.searchParams.get("what") === "requests") {
-      return route.fulfill({ json: { swaps: [], openShifts: [openShift] } });
+      if (phase.current === "withdrawn") phase.readsAfterWithdraw += 1;
+      const listing = phase.current === "claimed" ? { ...openShift, status: "claimed", claimedByMe: true } : openShift;
+      return route.fulfill({ json: { swaps: [], openShifts: [listing] } });
     }
     return route.fulfill({ json: { assignments: [] } });
   });
   await page.route("**/api/roster/shifts**", (route) => route.fulfill({ json: { shifts: [], sample: false } }));
+  return phase;
 }
 
 test("a stale take-back reports the decision and refreshes the real advert", async ({ page }) => {
-  await stubOpenShift(page);
+  const phase = await stubOpenShift(page);
   await page.goto(`/open-shifts/shift/${serviceId}/${openShiftId}`);
 
   await clickWhenHydrated(page.getByRole("button", { name: "Request this shift", exact: true }));
@@ -84,6 +91,8 @@ test("a stale take-back reports the decision and refreshes the real advert", asy
   await expect(page.getByRole("alert").filter({ hasText: "This request can't be found any more." })).toHaveText(
     "This request can't be found any more. Check My shifts.",
   );
+  // The page re-read the request after the take-back failed, and shows that read, not this visit's copy.
+  await expect.poll(() => phase.readsAfterWithdraw).toBeGreaterThan(0);
   await expect(page.getByText("Waiting for approval")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Take back my request", exact: true })).toHaveCount(0);
 });
