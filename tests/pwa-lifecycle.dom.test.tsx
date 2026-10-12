@@ -5,6 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PwaLifecycle } from "@/components/pwa-lifecycle";
 
+const navigationState = vi.hoisted(() => ({ pathname: "/" }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  usePathname: () => navigationState.pathname,
+}));
+
 type MockWorker = ServiceWorker & { postMessage: ReturnType<typeof vi.fn> };
 
 function createWorker(version?: string): MockWorker {
@@ -224,6 +230,22 @@ describe("PwaLifecycle", () => {
     expect(
       await screen.findByRole("region", { name: /^Offline, showing what was saved at \d{2}:\d{2}$/ }),
     ).toBeInTheDocument();
+  });
+
+  it("forgets the saved time when a new page is opened while offline", async () => {
+    navigationState.pathname = "/on-call";
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    const { rerender } = render(<PwaLifecycle />);
+
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    fireEvent.offline(window);
+    await screen.findByRole("region", { name: /^Offline, showing what was saved at \d{2}:\d{2}$/ });
+
+    // The next page comes from a saved copy of unknown age, so no time is claimed for it.
+    navigationState.pathname = "/my-day";
+    rerender(<PwaLifecycle />);
+    expect(await screen.findByRole("region", { name: "Offline, showing what was saved earlier" })).toBeInTheDocument();
+    navigationState.pathname = "/";
   });
 
   it("dismisses the offline notice per episode and re-surfaces it on the next connectivity drop", async () => {

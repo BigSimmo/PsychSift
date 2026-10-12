@@ -324,8 +324,11 @@ export function PwaLifecycle() {
   // still shows was loaded then or later, so naming this time can understate how
   // fresh it is but never overstate it.
   const pathname = usePathname();
-  const shownOnlineAtRef = useRef<number | null>(null);
-  const [offlineSavedAt, setOfflineSavedAt] = useState<number | null>(null);
+  const shownOnlineRef = useRef<{ at: number; pathname: string | null } | null>(null);
+  const [offlineSaved, setOfflineSaved] = useState<{ at: number; pathname: string | null } | null>(null);
+  // A page reached after the signal dropped came from a saved copy of unknown
+  // age, so the time only holds for the page that was on screen when it dropped.
+  const offlineSavedAt = offlineSaved && offlineSaved.pathname === pathname ? offlineSaved.at : null;
   const [showIosHint, setShowIosHint] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
@@ -345,7 +348,7 @@ export function PwaLifecycle() {
     const handleOffline = () => {
       if (restoredTimer) window.clearTimeout(restoredTimer);
       setConnectionRestored(false);
-      setOfflineSavedAt(shownOnlineAtRef.current);
+      setOfflineSaved(shownOnlineRef.current);
     };
     const handleOnline = () => {
       if (restoredTimer) window.clearTimeout(restoredTimer);
@@ -366,7 +369,7 @@ export function PwaLifecycle() {
   }, []);
 
   useEffect(() => {
-    if (navigator.onLine) shownOnlineAtRef.current = Date.now();
+    shownOnlineRef.current = navigator.onLine ? { at: Date.now(), pathname } : null;
   }, [pathname]);
 
   useEffect(() => {
