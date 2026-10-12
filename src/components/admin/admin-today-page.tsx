@@ -15,6 +15,7 @@ import { TodayNewJobModule } from "@/components/admin/today/today-new-job-module
 import { TodayRenewNextCard } from "@/components/admin/today/today-renew-next-card";
 import { TodayRequirementsModule } from "@/components/admin/today/today-requirements-module";
 import { TodayStarred } from "@/components/admin/today/today-starred";
+import { TodayOvertimeRow } from "@/components/admin/today/today-requirements-module";
 import { PageTitleUnderBand, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
 import { todayStateCopy } from "@/components/mode-kit/today/today-copy";
 import { WorkButton, WorkCard, WorkDock, WorkIconCircle } from "@/components/mode-kit/work";
@@ -195,6 +196,7 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
             {newJobProgress ? <TodayNewJobModule progress={newJobProgress} today={today} /> : null}
             <TodayStarred items={helpItems} testId="admin-today-pinned" />
             <TodayRequirementsModule summary={requirementsSummary} />
+            <TodayOvertimeRow />
           </div>
         </div>
       )}
