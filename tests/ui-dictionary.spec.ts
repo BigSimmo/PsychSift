@@ -236,8 +236,9 @@ test("merges search and browse into one catalogue with a measured phone header",
   expect(narrowRow.overflow).toBeLessThanOrEqual(2);
 
   await page.setViewportSize({ width: 768, height: 900 });
-  await page.waitForTimeout(400);
-  await expectAbbreviationsLabelToFit();
+  // Safari's phone emulation can take longer than a fixed pause to re-lay the
+  // control out at the new width, so wait for the settled measurement instead.
+  await expect(expectAbbreviationsLabelToFit).toPass({ timeout: 5_000 });
   await page.setViewportSize({ width: 390, height: 844 });
 
   await gotoDictionary(page, "/dictionary/search?q=tardive+dyskinesia", "dictionary-catalogue-main");
