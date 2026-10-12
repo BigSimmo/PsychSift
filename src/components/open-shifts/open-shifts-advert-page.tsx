@@ -36,6 +36,7 @@ import {
   shiftTitle,
   startsIn,
 } from "./open-shifts-ui";
+import { OpenShiftsAdvertActions } from "./open-shifts-advert-actions";
 import { useOpenShifts } from "./use-open-shifts";
 
 const AGREEMENT = `clause 15 of the ${FATIGUE_RULE_SET.source.title.includes("2024") ? "2024 WA AMA agreement" : "WA AMA agreement"}`;
@@ -248,7 +249,16 @@ export function RequestSheet({
   );
 }
 
-export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: string; openShiftId: string }) {
+export function OpenShiftsAdvertPage({
+  serviceId,
+  openShiftId,
+  requestOnOpen = false,
+}: {
+  serviceId: string;
+  openShiftId: string;
+  /** "Request" on a Fits your roster row: open the confirm sheet straight away. Nothing is sent until confirmed. */
+  requestOnOpen?: boolean;
+}) {
   const state = useOpenShifts();
   const signedOut = useSignedOut();
   const now = useRosterNow();
@@ -256,6 +266,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
   // Kept mounted after the first open so closing hands focus back to "Request this shift".
   const [sheetLoaded, setSheetLoaded] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
+  const [autoOpened, setAutoOpened] = useState(false);
   const listing = state.listings.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
 
   if (state.status === "loading") {
@@ -320,6 +331,20 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           : listing.status === "cancelled"
             ? "withdrawn"
             : "taken";
+  const requestable =
+    !sample &&
+    !closed &&
+    !alreadyMine &&
+    !signedOut &&
+    !state.offline &&
+    check.state !== "overlap" &&
+    check.state !== "loading" &&
+    check.state !== "unread";
+  if (requestOnOpen && requestable && !autoOpened) {
+    setAutoOpened(true);
+    setSheetLoaded(true);
+    setSheetOpen(true);
+  }
 
   return (
     <div className="mx-auto w-full max-w-reading pb-6" data-mode-identity="open-shifts">
@@ -346,6 +371,11 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
         <Fact label="Length" value={formatHours(hoursBetween(listing.startsAt, listing.endsAt))} />
         <Fact label="Shift code" value={listing.shiftCode} />
       </dl>
+      <OpenShiftsAdvertActions
+        listing={listing}
+        sample={sample}
+        booked={(listing.claimedByMe && listing.status === "approved") || sent === "approved"}
+      />
 
       {/* Example shifts are checked against the example roster, as Browse flags them; a release-held sample has none. */}
       <div className="mt-4">
