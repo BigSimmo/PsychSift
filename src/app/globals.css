@@ -13,6 +13,8 @@
 @import "./mode-band.css";
 @import "./work-mode.css";
 @import "./work-mode-tokens.css";
+/* Clinical header glass and title band, in line with Work (12 Oct 2026). */
+@import "./clinical-mode.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));
@@ -6248,12 +6250,10 @@ html.theme-transitioning *:after {
 /* Deliberately UNLAYERED. Tailwind's utilities layer outranks @layer
    components regardless of selector specificity, and the band root also
    carries the `border` / `border-[color:var(--border)]` utilities — inside a
-   layer these rules lose and the accent rail silently renders as a neutral
-   1px border. Verify with computed styles, not class presence. */
-/* The accent used to be the card's real border-top, drawn edge to edge. At 58px
-   the band is a bar rather than a card lid, and a line across its whole width
-   reads as a divider between the composer and the results instead of as the
-   band's own mark. It moves inside the padding: 2 x 18px, level with the count.
+   layer these rules lose and the fault mark silently renders as a zero-width
+   box. Verify with computed styles, not class presence. */
+/* The band was a card with an accent edge; since 12 Oct 2026 it is one plain
+   line, and only a failed or partial search draws a mark before the count.
 
    Drawn as a `border-left` on a zero-width box rather than as a background, for
    two reasons that are not stylistic. Forced colors drops backgrounds outright
@@ -6270,18 +6270,9 @@ html.theme-transitioning *:after {
   box-sizing: content-box;
   width: 0;
   height: 1.125rem;
-  border-left: 2px solid var(--clinical-accent);
-  /* 2 + 4 = 6px, which is the faulted mark's own footprint, so the count does
-     not shift sideways the moment a search degrades. */
-  margin-right: 4px;
-}
-/* Keyed off the element rather than `.search-band[data-status=…] &`: a
-   descendant selector would put `.search-band` back into the unlayered-visual
-   inventory with a live component rule, and the style-contract registry would
-   then require a second contract for a class that no longer paints anything. */
-.search-band-lead[data-tone="warning"] {
+  /* Drawn only for a failed or partial search (the plain line has no accent
+     since 12 Oct 2026), so the mark is always the warning's double stroke. */
   border-left: 6px double var(--warning);
-  margin-right: 0;
 }
 
 /* The query sits after the count rather than leading the band, so it steps down
@@ -6362,16 +6353,12 @@ html.theme-transitioning *:after {
    while still looking correct in review. Rendering (not reading) exposed three
    losses that colour alone was hiding. */
 @media (forced-colors: active) {
-  /* 1 — the lead mark survives as stroke count, not hue: --clinical-accent
-     resolves to LinkText and --warning is not remapped by the token block at
-     all, so "accent" and "warning" would paint the same mark. One stroke is a
-     healthy search; two is a degraded one. */
+  /* 1 — the fault mark survives as stroke count, not hue: --warning is not
+     remapped by the token block at all. A healthy search draws no mark; a
+     degraded one keeps its double stroke. */
   .search-band-lead {
-    border-left-color: CanvasText;
-    height: 1.25rem;
-  }
-  .search-band-lead[data-tone="warning"] {
     border-left: 6px double CanvasText;
+    height: 1.25rem;
   }
   /* 2 — a fault also doubles the card's own top edge. Structural, not
      chromatic, and deliberately redundant with the mark above: at 58px an 18px

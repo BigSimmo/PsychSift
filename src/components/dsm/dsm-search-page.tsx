@@ -408,47 +408,60 @@ export function DsmSearchPage({
         {results.length ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
             {browsing ? (
-              <section aria-label="DSM diagnoses by chapter, A to Z" className="grid gap-3">
-                {browseGroups.map((group) => (
-                  <details
-                    // Re-mount when the chapter filter changes so a newly narrowed list opens.
-                    key={`${group.key}:${openChapters ? "open" : "closed"}`}
-                    open={openChapters || undefined}
-                    data-testid="dsm-browse-chapter"
-                    className="group/chapter grid gap-2"
-                  >
-                    <summary
-                      className={cn(
-                        cardSurface,
-                        "flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 [&::-webkit-details-marker]:hidden",
-                        focusRing,
-                      )}
+              <section aria-label="DSM diagnoses by chapter, A to Z" className="grid gap-2">
+                {/* One grouped card with hairline rows, as Work draws its lists
+                    (owner design review, 12 Oct 2026). The eyebrow names the
+                    rows; each chapter opens in place onto its diagnoses. */}
+                <p
+                  aria-hidden="true"
+                  className="px-1 text-xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
+                >
+                  Chapters
+                </p>
+                <div
+                  data-testid="dsm-browse-chapters"
+                  className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)]"
+                >
+                  {browseGroups.map((group) => (
+                    <details
+                      // Re-mount when the chapter filter changes so a newly narrowed list opens.
+                      key={`${group.key}:${openChapters ? "open" : "closed"}`}
+                      open={openChapters || undefined}
+                      data-testid="dsm-browse-chapter"
+                      className="group/chapter"
                     >
-                      <h2 className="min-w-0 flex-1 truncate text-sm font-extrabold text-[color:var(--text-heading)]">
-                        {group.label}
-                      </h2>
-                      <span className={cn(metadataPill, "shrink-0 tabular-nums")}>
-                        {group.items.length}
-                        <span className="sr-only">{group.items.length === 1 ? " diagnosis" : " diagnoses"}</span>
-                      </span>
-                      <ChevronDown
-                        className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open/chapter:rotate-180 motion-reduce:transition-none"
-                        aria-hidden
-                      />
-                    </summary>
-                    <div className="mt-2 grid gap-2">
-                      {group.items.map((result) => (
-                        <DsmSearchResultCard
-                          key={result.slug}
-                          result={result}
-                          compact
-                          isSelected={selectedSet.has(result.slug)}
-                          onToggle={() => toggleDiagnosis(result.slug)}
+                      <summary
+                        className={cn(
+                          "focus-ring-contained flex min-h-13 cursor-pointer list-none items-center gap-2 px-4 py-2 [&::-webkit-details-marker]:hidden",
+                          focusRing,
+                        )}
+                      >
+                        <h2 className="min-w-0 flex-1 truncate text-base-minus font-medium text-[color:var(--text-heading)]">
+                          {group.label}
+                        </h2>
+                        <span className="shrink-0 text-sm tabular-nums text-[color:var(--text-muted)]">
+                          {group.items.length}
+                          <span className="sr-only">{group.items.length === 1 ? " diagnosis" : " diagnoses"}</span>
+                        </span>
+                        <ChevronDown
+                          className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open/chapter:rotate-180 motion-reduce:transition-none"
+                          aria-hidden
                         />
-                      ))}
-                    </div>
-                  </details>
-                ))}
+                      </summary>
+                      <div className="grid gap-2 bg-[color:var(--surface-subtle)] px-3 pb-3 pt-1">
+                        {group.items.map((result) => (
+                          <DsmSearchResultCard
+                            key={result.slug}
+                            result={result}
+                            compact
+                            isSelected={selectedSet.has(result.slug)}
+                            onToggle={() => toggleDiagnosis(result.slug)}
+                          />
+                        ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
                 <p className="flex items-start gap-2 px-1 text-xs font-medium leading-5 text-[color:var(--text-muted)] lg:hidden">
                   <BookOpenCheck className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
                   Reference content only. Confirm criteria, exclusions, and clinical context before use.

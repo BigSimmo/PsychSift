@@ -623,13 +623,20 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
    */
   const onCallEditor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   /** What the mode pill names (the page, the mode or a work area) and this address's work frame. */
-  const { activeModePage, pillShowsAreaOnly, pillModeLabel, routeWorkArea, routeWorkFrame, routeWorkFramed } =
-    useHeaderModePill({
-      modeId: selectedAppMode.id,
-      modeLabel: selectedAppMode.label,
-      pathname: currentPathname ?? "",
-      modeOwnPages,
-    });
+  const {
+    activeModePage,
+    pillPageLine,
+    pillShowsAreaOnly,
+    pillModeLabel,
+    routeWorkArea,
+    routeWorkFrame,
+    routeWorkFramed,
+  } = useHeaderModePill({
+    modeId: selectedAppMode.id,
+    modeLabel: selectedAppMode.label,
+    pathname: currentPathname ?? "",
+    modeOwnPages,
+  });
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
   const pendingModeSelectionFocusRef = useRef<AppModeId | null>(null);
@@ -2703,7 +2710,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
             </span>
             <span className="min-w-0">
-              {activeModePage ? (
+              {pillPageLine ? (
                 // Page first, mode underneath. The order is the point: the big
                 // line answers "where am I", which changes, and the small
                 // coloured line answers "which mode", which does not. Reversing
@@ -2716,7 +2723,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                 // stops naming it.
                 <>
                   <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                    {activeModePage.label}
+                    {pillPageLine.label}
                   </span>
                   <span className="universal-header-mode-area block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
                     {pillModeLabel}

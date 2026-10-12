@@ -94,6 +94,9 @@ export function RegistryModeNav({
     <ModeNav
       items={items}
       label={`${appModeDefinition(modeId).label} pages`}
+      // The mode's name over its tabs on a mode page; a record route keeps the
+      // bar alone, because the record's own title follows straight after.
+      title={activeId === null ? undefined : appModeDefinition(modeId).label}
       densityProfile={registryModeNavDensityProfiles[modeId]}
       activeId={activeId}
     />

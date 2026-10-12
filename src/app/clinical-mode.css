@@ -1,0 +1,162 @@
+/* Clinical mode chrome in line with Work (owner design review, 12 Oct 2026).
+   ------------------------------------------------------------------------
+   The Clinical header and its title band take Work's look without taking
+   Work's frame: the round header controls and the mode pill wear the same
+   glass, each mode's page bar opens with a calm title above plain text tabs,
+   and from 1024px the title, the tabs and the page share one centred 64rem
+   column, the width Work's wide pages use.
+
+   Work pages carry `data-work-frame` and are drawn by work-mode.css, so every
+   rule here is scoped to the header without it. The glass colours are Work's
+   own tokens (work-mode-tokens.css), so the two headers can never drift into
+   two shades of glass. Tap targets stay 48px. Forced colours keep every edge. */
+
+/* ------------------------------------------------------------ the column */
+
+/* Work's wide column. `pageContainer` (primitive-recipes) reads it for the page
+   body, and the page bar and the Psychiatry and Medicines bands below read it
+   for their title and tabs, so all three line up. */
+:root {
+  --clinical-col: 64rem;
+}
+
+/* --------------------------------------------------------- the top bar */
+
+/* Round glass buttons and a glass pill, as Work draws them: blur and a
+   hairline, no fill of their own and no shadow. */
+.universal-header:not([data-work-frame]) {
+  --clinical-glass-fill: var(--work-glass-fill);
+  --clinical-glass-blur: blur(18px) saturate(180%);
+}
+
+.universal-header:not([data-work-frame]) .universal-header-icon-control,
+.universal-header:not([data-work-frame]) .universal-header-mode-button {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.universal-header:not([data-work-frame]) .universal-header-icon-control::before,
+.universal-header:not([data-work-frame]) .universal-header-mode-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: var(--work-z-under);
+  border-radius: var(--radius-pill);
+  background: var(--clinical-glass-fill);
+  box-shadow: var(--work-edge-inset) var(--work-glass-line);
+  backdrop-filter: var(--clinical-glass-blur);
+  -webkit-backdrop-filter: var(--clinical-glass-blur);
+}
+
+/* Hover darkens the ink only. A filled hover on a glass circle sticks after a
+   tap on a touch screen and reads as a second, pressed state. */
+.universal-header:not([data-work-frame]) .universal-header-icon-control:hover,
+.universal-header:not([data-work-frame]) .universal-header-mode-button:hover {
+  border-color: transparent;
+  background: transparent;
+}
+
+.universal-header:not([data-work-frame]) .universal-header-icon-control:hover {
+  color: var(--text-heading);
+}
+
+/* The badge sits flat inside the glass, as Work's does. */
+.universal-header:not([data-work-frame]) .universal-header-mode-badge {
+  box-shadow: none;
+}
+
+/* Where blur is unsupported, unwanted or too costly (the same three cases
+   work-mode.css handles), the glass keeps its shape and hairline and wears a
+   near-opaque tint of the same surface instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .universal-header:not([data-work-frame]) {
+    --clinical-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+    --clinical-glass-blur: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .universal-header:not([data-work-frame]) {
+    --clinical-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+    --clinical-glass-blur: none;
+  }
+}
+
+html[data-glass="flat"] .universal-header:not([data-work-frame]) {
+  --clinical-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent);
+  --clinical-glass-blur: none;
+}
+
+@media (forced-colors: active) {
+  .universal-header:not([data-work-frame]) .universal-header-icon-control::before,
+  .universal-header:not([data-work-frame]) .universal-header-mode-button::before {
+    border: 1px solid ButtonBorder;
+  }
+}
+
+/* -------------------------------------------------------- the page bar */
+
+/* The section's name, above its tabs, at Work's band title size. The bar is a
+   navigation landmark, so this is a label rather than a heading: the page
+   keeps its own h1. Indented by the tabs' ink offset so the title's first
+   letter sits over the first tab's. */
+.mode-nav__heading {
+  margin: 0;
+  padding: calc(var(--spacing) * 1) var(--mode-nav-ink-offset) 0;
+  font-size: 1.5625rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  text-wrap: balance;
+  color: var(--text-heading);
+}
+
+/* Plain text tabs, as Work's band draws them: the word and its underline.
+   The icon is aria-hidden decoration (see the "Mode navigation" block in
+   globals.css), so dropping it at every width costs no information, only
+   frees room. The page-list sheet keeps its icons. Specific enough to beat
+   the density profiles' restore band. */
+.mode-nav-rail > .mode-nav .mode-nav__bar .mode-nav__icon {
+  display: none;
+}
+
+.mode-nav-rail .mode-nav__ink {
+  font-size: var(--text-base-minus, 0.9375rem);
+}
+
+@media (min-width: 1024px) {
+  .mode-nav-rail > .mode-nav {
+    max-width: calc(var(--clinical-col) + 2 * var(--mode-nav-ink-offset));
+  }
+
+  .mode-nav__heading {
+    padding-top: calc(var(--spacing) * 5);
+  }
+}
+
+/* A phone held sideways keeps the tabs and drops the big title, as the mode
+   band does. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .mode-nav__heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* ----------------------------------------------- the Psychiatry band */
+
+/* Psychiatry and Medicines are dashboards that already use the 64rem column,
+   so from 1024px their band's title and tabs open out to it. Other bands keep
+   their reading column. */
+@media (min-width: 1024px) {
+  .mode-band:is([data-mode="psychiatry"], [data-mode="medicines"]) :is(.mode-band__inner, .mode-band__tabs) {
+    max-width: calc(var(--clinical-col) + var(--mode-band-gutter) * 2);
+  }
+}
