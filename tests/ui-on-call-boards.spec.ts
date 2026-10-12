@@ -245,7 +245,7 @@ test.describe("01 Home", () => {
       "on-call-home-recent",
       "on-call-now-right-now",
       "on-call-now-team",
-      "on-call-now-footer",
+      "on-call-now-shift-tools",
     ];
     for (const id of modules) {
       await expect(visibleByTestId(page, id), `${id} is drawn on Now but does not render`).toBeVisible();
@@ -253,7 +253,7 @@ test.describe("01 Home", () => {
 
     // Top to bottom in the drawn order. A module that renders in the wrong
     // place still passes a presence check, and the order is the safety order:
-    // hospital, its emergency route, Your usual (usefulness audit, 11 Oct 2026), Right now, Your team, footer.
+    // hospital, its emergency route, Your usual (usefulness audit, 11 Oct 2026), Right now, Your team, the shift tools.
     const tops = await Promise.all(
       modules.map(async (id) => (await visibleByTestId(page, id).boundingBox())?.y ?? Number.NaN),
     );
@@ -281,17 +281,13 @@ test.describe("01 Home", () => {
     await expectTapFloor(allRoles, "Right now's All roles link");
   });
 
-  test("keeps First night in the footer group and the escalation ladder under Who do I call now", async ({ page }) => {
+  test("keeps no link list on Now, and the escalation ladder under Who do I call now", async ({ page }) => {
     await openBoard(page, ROUTES.home);
-    const footer = visibleByTestId(page, "on-call-now-footer");
-    const firstNight = footer.getByTestId("on-call-home-first-night");
-    await expect(firstNight).toHaveAttribute("href", "/on-call/first-night");
-    await expectTapFloor(firstNight, "First night row");
-    await expect(footer.getByTestId("on-call-now-footer-shifts")).toHaveAttribute("href", "/roster");
-    await expect(footer.getByTestId("on-call-now-footer-card")).toHaveAttribute("href", "/on-call/card");
-    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026): the
-    // link goes straight to the calendar's real page, not through the old redirect.
-    await expect(footer.getByTestId("on-call-now-footer-calendar")).toHaveAttribute("href", "/roster/calendar");
+    // Work mode simplify plan, owner approval 12 Oct 2026: My shifts and Calendar live in Roster, the
+    // Pocket card in the Handbook, First night in Starting here.
+    await expect(page.getByTestId("on-call-now-footer")).toHaveCount(0);
+    const tools = visibleByTestId(page, "on-call-now-shift-tools");
+    await expect(tools.getByTestId("on-call-now-checklists")).toBeVisible();
     // Mock-up v10: "Who do I call now?" is its own group with the ladder link
     // at its right. The literal href is what the route-reachability guard reads;
     // the click test above proves the destination actually renders.
@@ -308,7 +304,7 @@ test.describe("01 Home", () => {
 
   test("holds together at the site's narrow width, which the drawing never shows", async ({ page }) => {
     await openBoard(page, ROUTES.home, NARROW);
-    await expect(visibleByTestId(page, "on-call-now-footer")).toBeVisible();
+    await expect(visibleByTestId(page, "on-call-now-shift-tools")).toBeVisible();
     await expectNoHorizontalOverflow(page, "Now at 320px");
   });
 });
@@ -580,11 +576,11 @@ test.describe("02 More — the second row is about the page you are on", () => {
 });
 
 test.describe("05 Page menu", () => {
-  test("opens from in-page More, not a round header ellipsis", async ({ page }) => {
+  test("opens from in-page Options, not a round header ellipsis", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
     const trigger = page.getByTestId("on-call-page-menu-trigger");
     await expect(trigger).toBeVisible();
-    await expect(trigger).toHaveText(/More/);
+    await expect(trigger).toHaveText(/Options/);
     await expectTapFloor(trigger, "page menu trigger");
   });
 
