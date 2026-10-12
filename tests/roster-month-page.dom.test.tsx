@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   teams: {} as Record<string, unknown>,
   reads: {} as Record<string, unknown>,
   readCalls: [] as [string | null, string][],
+  entries: [] as unknown[],
 }));
 
 vi.mock("next/navigation", () => ({
@@ -36,6 +37,9 @@ vi.mock("@/components/roster/use-roster-team", () => ({
       ? { status: "ready", data: state.reads[what], message: null, reload: vi.fn(), readAt: new Date() }
       : { status: serviceId ? "loading" : "idle", data: null, message: null, reload: vi.fn(), readAt: null };
   },
+}));
+vi.mock("@/components/work-calendar/use-work-calendar-entries", () => ({
+  useWorkCalendarEntries: () => ({ entries: state.entries }),
 }));
 vi.mock("@/components/roster/use-roster-links", () => ({ useRosterLinks: () => ({ links: [], add: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-settings", () => ({ useRosterSettings: () => ({}) }));
@@ -84,6 +88,7 @@ function ready(shifts: unknown[], extra: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  state.entries = [];
   state.readCalls = [];
   state.reads = {};
   state.teams = {
@@ -153,6 +158,35 @@ describe("Roster Month tab", () => {
     const coming = screen.getByTestId("roster-month-coming");
     expect(within(coming).getAllByTestId("roster-month-coming-shift")).toHaveLength(3);
     expect(coming).not.toHaveTextContent("Nights · 2 in a row");
+  });
+
+  it("counts a rotation start among the three rows, in date order", () => {
+    ready([
+      shift("d8", "2026-10-08", "day"),
+      shift("d9", "2026-10-09", "day"),
+      shift("d12", "2026-10-12", "day"),
+      shift("d13", "2026-10-13", "day"),
+    ]);
+    state.entries = [
+      {
+        id: "rotation:r1",
+        kind: "rotation",
+        title: "Consultation liaison",
+        start: "2026-10-10",
+        end: "2026-12-31",
+        allDay: true,
+      },
+    ];
+    render(<RosterMonthPage now={NOW} />);
+    const items = within(screen.getByTestId("roster-month-coming")).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items[1]).toHaveTextContent("Consultation liaison starts");
+  });
+
+  it("names the day when the next shift is later than tomorrow", () => {
+    ready([shift("n9", "2026-10-09", "night", "21:00", "08:30", "2026-10-10")]);
+    render(<RosterMonthPage now={NOW} />);
+    expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("Night Fri 9");
   });
 
   it("keeps a run of nights' length when it starts among the next three shifts but runs past them", () => {

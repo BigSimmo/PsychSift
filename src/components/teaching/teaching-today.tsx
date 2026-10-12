@@ -263,7 +263,7 @@ function TodayBody({
         />
       )}
       {/* No session ahead still leaves past ones to log, give feedback on or catch up on. */}
-      <NeedsYou live={live} today={today} catchUp={catchUp} />
+      <NeedsYou live={live} today={today} now={now} catchUp={catchUp} />
       {hero ? (
         <T5List testId="teaching-rest-of-week">
           <T5Row
