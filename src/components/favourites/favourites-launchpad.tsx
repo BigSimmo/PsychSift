@@ -41,14 +41,19 @@ export function FavouritesContinueCard({
       onClick={() => onOpen(item)}
       aria-label={`Continue ${item.title}`}
       data-testid="favourites-continue-strip"
-      className={cn("work-card flex min-h-tap min-w-0 items-center gap-3 py-2.5 pl-3 pr-1.5", focusRing)}
+      // At large text the card wraps: the words take a row of their own when
+      // the type tile and the Open pill leave them too little room.
+      className={cn(
+        "work-card flex min-h-tap min-w-0 items-center gap-3 py-2.5 pl-3 pr-1.5 [html[data-large-text]_&]:flex-wrap",
+        focusRing,
+      )}
     >
       <FavouriteTypeTile item={item} />
-      <span className="flex min-w-0 flex-1 flex-col">
+      <span className="flex min-w-0 flex-1 flex-col [html[data-large-text]_&]:basis-40">
         <span className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--clinical-accent)]">
           Continue
         </span>
-        <span className="flex min-w-0 items-center gap-1.5">
+        <span className="flex min-w-0 items-center gap-1.5 [html[data-large-text]_&]:flex-wrap">
           <span className="line-clamp-2 min-w-0 text-sm font-bold leading-snug text-[color:var(--work-ink)]">
             {item.title}
           </span>
@@ -58,7 +63,7 @@ export function FavouritesContinueCard({
           {favouriteKindLabel(item)} · {openedLabel(item.openedAt, now)}
         </span>
       </span>
-      <span aria-hidden="true" className="work-button shrink-0" data-variant="tinted">
+      <span aria-hidden="true" className="work-button ml-auto shrink-0" data-variant="tinted">
         Open
       </span>
     </Link>
