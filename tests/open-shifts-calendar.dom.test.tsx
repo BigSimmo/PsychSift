@@ -35,6 +35,10 @@ describe("Open shifts Browse calendar", () => {
         name: "Friday 9 October, 3 shifts match, includes an urgent shift",
       }),
     ).toBeTruthy();
+    // The urgent day carries the shared amber dot, never the overdue triangle.
+    const urgentDay = screen.getByRole("button", { name: /^Friday 9 October/ });
+    expect(urgentDay.querySelector('[data-mark="dot"]')).not.toBeNull();
+    expect(urgentDay.querySelector("svg.lucide-triangle-alert")).toBeNull();
     expect(screen.getByRole("button", { name: "Monday 12 October, you're rostered" })).toBeTruthy();
     // A past rostered day is not called rostered.
     expect(screen.getByRole("button", { name: "Thursday 1 October" })).toBeTruthy();

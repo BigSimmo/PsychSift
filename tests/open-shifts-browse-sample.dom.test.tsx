@@ -69,6 +69,19 @@ describe("Open shifts, signed-out preview", () => {
     ).toBeTruthy();
   });
 
+  it("marks urgent rows and the calendar key with the shared dot", () => {
+    render(<OpenShiftsBrowsePage />);
+
+    const legend = screen.getByRole("list", { name: "Calendar key" });
+    expect(legend.querySelector('[data-mark="dot"]')).not.toBeNull();
+    expect(legend.querySelector("svg.lucide-triangle-alert")).toBeNull();
+
+    const urgentRow = screen.getAllByRole("listitem").find((row) => row.textContent?.includes("Urgent"));
+    expect(urgentRow).toBeDefined();
+    expect(urgentRow?.querySelector('[data-mark="dot"]')).not.toBeNull();
+    expect(urgentRow?.querySelector("svg.lucide-triangle-alert")).toBeNull();
+  });
+
   it("marks the days the example roster has the doctor working", () => {
     render(<OpenShiftsBrowsePage />);
     // Mon 5 Oct: on call tonight, off Tuesday, day shifts Wednesday to Friday.
