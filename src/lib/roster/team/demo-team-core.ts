@@ -427,6 +427,7 @@ export function demoRosterCommand(action: RosterAction): RosterCommandResult {
       return { ok: true, openShiftId: action.openShiftId, status: "filled" };
     case "open.decline":
     case "open.release":
+    case "open.withdraw":
       return { ok: true, openShiftId: action.openShiftId, status: "open" };
     case "open.cancel":
       return { ok: true, openShiftId: action.openShiftId, status: "cancelled" };
