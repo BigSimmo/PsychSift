@@ -172,6 +172,26 @@ export function getPatientProfileSnapshot(): PatientProfile {
   return cachedProfile;
 }
 
+/**
+ * True when the profile holds anything a clinician typed. The default unit
+ * (`scrUnit`) is not content, so a profile that has only ever been opened and
+ * emptied reads as empty and the Settings clear action stays disabled.
+ */
+export function patientProfileHasContent(profile: PatientProfile): boolean {
+  return (
+    profile.ageYears !== null ||
+    profile.egfr !== null ||
+    profile.crcl !== null ||
+    profile.scr !== null ||
+    profile.hepatic !== null ||
+    profile.qtc !== null ||
+    profile.pregnant ||
+    profile.breastfeeding ||
+    profile.allergies.length > 0 ||
+    profile.medications.length > 0
+  );
+}
+
 export function getServerPatientProfileSnapshot(): PatientProfile {
   return EMPTY_PATIENT_PROFILE;
 }

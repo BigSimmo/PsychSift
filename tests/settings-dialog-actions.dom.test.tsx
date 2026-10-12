@@ -64,6 +64,12 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { SettingsDialog } from "@/components/clinical-dashboard/settings-dialog";
+import {
+  EMPTY_PATIENT_PROFILE,
+  getPatientProfileSnapshot,
+  resetPatientProfile,
+  writePatientProfile,
+} from "@/lib/patient-profile-storage";
 
 function renderDialog(identityOverrides: Record<string, unknown> = {}) {
   const onSignOut = vi.fn();
@@ -87,6 +93,7 @@ function renderDialog(identityOverrides: Record<string, unknown> = {}) {
 
 afterEach(async () => {
   cleanup();
+  resetPatientProfile();
   // Sheet cleanup restores focus in requestAnimationFrame and performs one
   // defensive retry 50 ms later. Queue our timer from the following frame so
   // it cannot overtake that nested retry when the CI event loop is delayed.
@@ -152,6 +159,25 @@ describe("SettingsDialog — destructive and account actions", () => {
     const button = screen.getByRole("button", { name: "Clear recent searches" });
     expect(button).toBeDisabled();
     mockRecentCount.set(3); // Reset for other tests
+  });
+
+  // The prescribing profile is physiology, allergies and medications typed for a
+  // patient. It is not a "recent search", so it needs its own clear: on a shared
+  // computer the searches button alone used to leave a patient's details behind.
+  it("clears the prescribing patient profile through its own privacy action", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    renderDialog();
+    const button = screen.getByRole("button", { name: "Clear prescribing patient profile" });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: null, medications: [] });
+    expect(screen.getByText("Prescribing patient profile cleared.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();
+  });
+
+  it("disables the prescribing profile clear when nothing has been entered", () => {
+    renderDialog();
+    expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();
   });
 
   // Clearing saved items deletes every favourite with no undo, so the row now
