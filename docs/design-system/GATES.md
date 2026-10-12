@@ -132,23 +132,23 @@ rendered size. The `*-minus` steps sit one notch under the Tailwind default they
 named for. This table is documentation, not a gate: do not delete type steps, and do
 not add a blocking ESLint rule for which existing step a surface chooses.
 
-| Size  | Utility           | When to use                                                         |
-| ----- | ----------------- | ------------------------------------------------------------------- |
-| 10px  | `text-3xs`        | Micro floor: dense metadata, legends, count bubbles                 |
-| 11px  | `text-2xs`        | Chip compact / secondary labels                                     |
-| 12px  | `text-xs`         | Tailwind default; Chip `standard`                                   |
-| 13px  | `text-sm-minus`   | One notch under `text-sm` (14px) — dense body/labels                |
-| 14px  | `text-sm`         | Tailwind default body/label                                         |
-| 15px  | `text-base-minus` | One notch under `text-base` (16px) — comfortable body just under 16 |
-| 16px  | `text-base`       | Tailwind default                                                    |
-| 17px  | `text-lg-minus`   | One notch under `text-lg` (18px)                                    |
-| 18px  | `text-lg`         | Tailwind default                                                    |
-| 20px  | `text-xl`         | Tailwind default                                                    |
-| 22px  | `text-2xl-minus`  | One notch under `text-2xl` (24px)                                   |
-| 24px  | `text-2xl`        | Tailwind default                                                    |
-| 26px  | `text-3xl-minus`  | One notch under `text-3xl` (30px)                                   |
-| 30px  | `text-3xl`        | Tailwind default                                                    |
-| fluid | `text-hero`       | Mode-home display heading (`clamp`)                                 |
+| Size  | Utility           | When to use                                                          |
+| ----- | ----------------- | -------------------------------------------------------------------- |
+| 12px  | `text-3xs`        | Legacy alias, now at the 12 px floor (Ward Flow review, 12 Oct 2026) |
+| 12px  | `text-2xs`        | Legacy alias, now at the 12 px floor (Ward Flow review, 12 Oct 2026) |
+| 12px  | `text-xs`         | Tailwind default; Chip `standard`                                    |
+| 13px  | `text-sm-minus`   | One notch under `text-sm` (14px) — dense body/labels                 |
+| 14px  | `text-sm`         | Tailwind default body/label                                          |
+| 15px  | `text-base-minus` | One notch under `text-base` (16px) — comfortable body just under 16  |
+| 16px  | `text-base`       | Tailwind default                                                     |
+| 17px  | `text-lg-minus`   | One notch under `text-lg` (18px)                                     |
+| 18px  | `text-lg`         | Tailwind default                                                     |
+| 20px  | `text-xl`         | Tailwind default                                                     |
+| 22px  | `text-2xl-minus`  | One notch under `text-2xl` (24px)                                    |
+| 24px  | `text-2xl`        | Tailwind default                                                     |
+| 26px  | `text-3xl-minus`  | One notch under `text-3xl` (30px)                                    |
+| 30px  | `text-3xl`        | Tailwind default                                                     |
+| fluid | `text-hero`       | Mode-home display heading (`clamp`)                                  |
 
 ⚠️ **The "1 318 call sites" figure this section used to quote was a repo-wide grep including
 `src/app/mockups/**`, which every one of these gates excludes** — 1 360 at `7aaf9349c`.
