@@ -677,9 +677,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // One task-oriented placeholder per mode (PT-14): the follow-up composer must
   // not swap to brand copy that hides what the input actually does.
   const queryPlaceholder = composerPlaceholder ?? selectedSearch.placeholder;
-  // A work page drawn inside another area's frame wears that area's badge: Open shifts is a Roster tab
-  // (12 Oct 2026), so its pill shows Roster's icon beside Roster's name.
-  const SelectedAppModeIcon = appModeIcons[routeWorkArea?.identity ?? selectedAppMode.id];
+  const SelectedAppModeIcon = appModeIcons[routeWorkArea?.identity ?? selectedAppMode.id]; // Open shifts wears Roster's badge
   const actionMenuModeOptions: ModeActionModeOption[] = visibleAppModeOptions.map((mode) => ({
     id: mode.id,
     label: mode.label,
