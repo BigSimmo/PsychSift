@@ -2531,14 +2531,8 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(scrollport).toBeVisible();
     await expect(scrollport.getByRole("region", { name: "Source status" })).toContainText("No indexed source matches");
     await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
-    // The shared Compare tray appears only once something is ticked.
-    await expect(page.getByTestId("differentials-compare-tray")).toHaveCount(0);
-    const selections = page
-      .getByTestId("differential-mobile-result-card")
-      .getByRole("checkbox", { name: /^Add .+ to comparison$/ });
-    await selections.first().check();
-    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("1 selected");
-    await selections.first().check();
+    // A submitted search pre-ticks its top two diagnoses, so the shared
+    // Compare tray is already showing with Compare ready.
     await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("2 selected");
     await expect(compareAction).toBeVisible();
     await expect(compareAction).toHaveText("Compare");
@@ -2551,7 +2545,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     // settled range instead of polling a stale scrollTop.
     await input.focus();
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     // The visible dock/reserve can finish its layout commit after the first
     // endpoint scroll, increasing document height. Treat scrolling to the live
     // endpoint and measuring it as one retriable action; a persistent clearance
@@ -2563,7 +2557,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       expect(geometry.maxScrollTop - geometry.scrollTop).toBeLessThanOrEqual(1);
     }).toPass({ timeout: 15_000 });
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     const clearance = await page.evaluate(() => {
       const main = document.getElementById("main-content");
       const last = document.querySelector('[data-testid="differential-mobile-result-card"]:last-of-type');

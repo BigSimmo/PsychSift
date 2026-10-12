@@ -131,11 +131,13 @@ export function SharedCompareTray({
         variant="ghost"
         size="sm"
         icon={X}
-        className="shrink-0 px-2.5"
+        // Below 360px the word moves to screen readers only, so the count is
+        // never cut ("2 of 4 select…"); the X icon keeps a 48px target.
+        className="min-w-tap shrink-0 justify-center px-2.5 max-[22.5rem]:px-0"
         onClick={onClear}
         testId={`${testId}-clear`}
       >
-        Clear
+        <span className="max-[22.5rem]:sr-only">Clear</span>
       </Button>
       {ready && compareHref ? (
         <Link href={compareHref} className={compareClass} data-testid={`${testId}-compare`}>

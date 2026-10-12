@@ -662,7 +662,8 @@ test.describe("previously uncovered production routes", () => {
     await expect(page.getByRole("radiogroup", { name: "Clinical urgency" })).toBeVisible();
     await page.getByTestId("differentials-stream-filter-panel-done").click();
     await expect(page.getByText("High-priority presentation pathways")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Open pathway/ }).first()).toBeVisible();
+    // The title is the link; its name ends ", open pathway" for presentations.
+    await expect(page.getByRole("link", { name: /open pathway$/ }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Show family" })).toHaveCount(0);
 
     await gotoApp(page, "/differentials/presentations?q=agitation");
