@@ -12,46 +12,48 @@ const COUNT_STATUS: Record<RenewalsShowFilter, AdminStatus> = {
   "not-recorded": "not-recorded",
 };
 
+/** The tally's short words: the Coming up card already says these are dates. */
+const TALLY_WORDS: Record<RenewalsShowFilter, string> = {
+  "date-passed": "Passed",
+  "due-90": "In 90 days",
+  "not-recorded": "Not recorded",
+};
+
 /**
- * The three counts (work-mode redesign, owner request 6 Oct 2026): Date
- * passed, Due in 90 days and Not recorded as three white cards, each with its
- * status shape beside the number, each opening Renewals already filtered to
- * the rows it counted. The counts come from `renewalsShowCounts`, the same
- * function Renewals filters through, so a number and its list cannot
- * disagree. A zero still shows (an absent card would read as "not checked"),
- * just quieter.
+ * The three counts as one hairline strip at the top of the Coming up card
+ * (12 Oct 2026 simplify plan: Admin Today showed the same dates four ways; the
+ * three count cards folded into Coming up). Each third keeps its status shape
+ * and opens Renewals already filtered to the rows it counted. The counts come
+ * from `renewalsShowCounts`, the same function Renewals filters through, so a
+ * number and its list cannot disagree. A zero still shows (an absent count
+ * would read as "not checked"), just quieter.
  */
 export function TodayAtAGlance({ counts }: { counts: Record<RenewalsShowFilter, number> }) {
   return (
-    <section aria-labelledby="admin-today-at-a-glance-heading" data-testid="admin-today-at-a-glance">
-      <h2 id="admin-today-at-a-glance-heading" className="sr-only">
-        At a glance
-      </h2>
-      <ul role="list" className={adminStyles.counts}>
-        {RENEWALS_SHOW_FILTERS.map((filter) => {
-          const count = counts[filter];
-          const label = RENEWALS_SHOW_LABELS[filter];
-          return (
-            <li key={filter} className="min-w-0">
-              <Link
-                href={renewalsShowHref(filter)}
-                aria-label={`${label}: ${count}`}
-                className={adminStyles.countCard}
-                data-testid={`admin-today-at-a-glance-${filter}`}
-                data-zero={count === 0 ? "" : undefined}
-              >
-                <span aria-hidden="true" className={adminStyles.countFigure}>
-                  {count}
-                  <AdminStatusShape status={COUNT_STATUS[filter]} />
-                </span>
-                <span aria-hidden="true" className={adminStyles.countWord}>
-                  {label}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+    <ul role="list" aria-label="At a glance" className={adminStyles.tally} data-testid="admin-today-at-a-glance">
+      {RENEWALS_SHOW_FILTERS.map((filter) => {
+        const count = counts[filter];
+        const label = RENEWALS_SHOW_LABELS[filter];
+        return (
+          <li key={filter} className="min-w-0">
+            <Link
+              href={renewalsShowHref(filter)}
+              aria-label={`${label}: ${count}`}
+              className={adminStyles.tallyItem}
+              data-testid={`admin-today-at-a-glance-${filter}`}
+              data-zero={count === 0 ? "" : undefined}
+            >
+              <span aria-hidden="true" className={adminStyles.tallyFigure}>
+                {count}
+                <AdminStatusShape status={COUNT_STATUS[filter]} />
+              </span>
+              <span aria-hidden="true" className={adminStyles.tallyWord}>
+                {TALLY_WORDS[filter]}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
