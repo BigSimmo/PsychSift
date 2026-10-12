@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   teams: {} as Record<string, unknown>,
   reads: {} as Record<string, unknown>,
   readCalls: [] as [string | null, string][],
+  entries: [] as unknown[],
 }));
 
 vi.mock("next/navigation", () => ({
@@ -36,6 +37,9 @@ vi.mock("@/components/roster/use-roster-team", () => ({
       ? { status: "ready", data: state.reads[what], message: null, reload: vi.fn(), readAt: new Date() }
       : { status: serviceId ? "loading" : "idle", data: null, message: null, reload: vi.fn(), readAt: null };
   },
+}));
+vi.mock("@/components/work-calendar/use-work-calendar-entries", () => ({
+  useWorkCalendarEntries: () => ({ entries: state.entries }),
 }));
 vi.mock("@/components/roster/use-roster-links", () => ({ useRosterLinks: () => ({ links: [], add: vi.fn() }) }));
 vi.mock("@/components/roster/use-roster-settings", () => ({ useRosterSettings: () => ({}) }));
@@ -84,6 +88,7 @@ function ready(shifts: unknown[], extra: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  state.entries = [];
   state.readCalls = [];
   state.reads = {};
   state.teams = {
@@ -117,9 +122,11 @@ describe("Roster Month tab", () => {
     expect(within(grid).getByRole("button", { name: "Thu 8 Oct: Day" })).toHaveAttribute("tabindex", "-1");
   });
 
-  it("leads with the next shift and lists the next three shifts, then leave", () => {
+  it("leads with the next shift and lists only the next three shifts", () => {
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("On call tonight");
+    // Team stays one tap away from Month (Open shifts fold moved Team out of the tabs).
+    expect(screen.getByTestId("roster-month-who")).toHaveAttribute("href", "/roster/team");
     const coming = screen.getByTestId("roster-month-coming");
     // Days and nights alike, in date order, each with its date and time; the lead shift is not repeated.
     const rows = within(coming).getAllByTestId("roster-month-coming-shift");
@@ -133,11 +140,12 @@ describe("Roster Month tab", () => {
     expect(coming).not.toHaveTextContent("On call");
     // The nights are already listed, so no separate run row.
     expect(coming).not.toHaveTextContent("in a row");
-    expect(coming).toHaveTextContent("Annual leave");
-    expect(coming).toHaveTextContent("2 days");
+    // Work mode simplify plan, 12 Oct 2026: three rows only; the calendar above shows the leave.
+    expect(within(coming).getAllByRole("listitem")).toHaveLength(3);
+    expect(coming).not.toHaveTextContent("Annual leave");
   });
 
-  it("still names a later run of nights after the next three shifts", () => {
+  it("stops at three rows, leaving a later run of nights to the calendar", () => {
     ready([
       shift("d7", "2026-10-07", "day"),
       shift("d8", "2026-10-08", "day"),
@@ -149,7 +157,36 @@ describe("Roster Month tab", () => {
     render(<RosterMonthPage now={NOW} />);
     const coming = screen.getByTestId("roster-month-coming");
     expect(within(coming).getAllByTestId("roster-month-coming-shift")).toHaveLength(3);
-    expect(coming).toHaveTextContent("Nights · 2 in a row");
+    expect(coming).not.toHaveTextContent("Nights · 2 in a row");
+  });
+
+  it("counts a rotation start among the three rows, in date order", () => {
+    ready([
+      shift("d8", "2026-10-08", "day"),
+      shift("d9", "2026-10-09", "day"),
+      shift("d12", "2026-10-12", "day"),
+      shift("d13", "2026-10-13", "day"),
+    ]);
+    state.entries = [
+      {
+        id: "rotation:r1",
+        kind: "rotation",
+        title: "Consultation liaison",
+        start: "2026-10-10",
+        end: "2026-12-31",
+        allDay: true,
+      },
+    ];
+    render(<RosterMonthPage now={NOW} />);
+    const items = within(screen.getByTestId("roster-month-coming")).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items[1]).toHaveTextContent("Consultation liaison starts");
+  });
+
+  it("names the day when the next shift is later than tomorrow", () => {
+    ready([shift("n9", "2026-10-09", "night", "21:00", "08:30", "2026-10-10")]);
+    render(<RosterMonthPage now={NOW} />);
+    expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("Night Fri 9");
   });
 
   it("keeps a run of nights' length when it starts among the next three shifts but runs past them", () => {
@@ -184,11 +221,13 @@ describe("Roster Month tab", () => {
 
   it("counts the month, with days off and public holidays worked", () => {
     render(<RosterMonthPage now={NOW} />);
+    // Work mode simplify plan, 12 Oct 2026: one line, kinds with none left out, opening Hours and rest.
     const totals = screen.getByTestId("roster-month-totals");
-    expect(within(totals).getByText("Night").nextSibling).toHaveTextContent("2");
+    expect(totals).toHaveTextContent("October: 1 day, 2 night, 1 on call, 25 off");
+    expect(within(totals).getByRole("link")).toHaveAttribute("href", "/roster?view=hours");
     // 31 days, 4 working, 2 on leave.
     expect(screen.getByTestId("roster-month-off")).toHaveTextContent("25");
-    expect(screen.getByTestId("roster-month-holidays")).toHaveTextContent("0");
+    expect(screen.queryByTestId("roster-month-holidays")).toBeNull();
   });
 
   it("opens a team shift's day sheet with the swap, give-away and can't-make hand-offs", async () => {

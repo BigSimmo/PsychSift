@@ -495,7 +495,11 @@ describe("Now: the footer group", () => {
     expect(within(who).getByRole("heading", { name: "Who do I call now?" })).toBeInTheDocument();
     // The Playbook is the one home for "who do I call" (usefulness audit, 11 Oct 2026).
     expect(within(who).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/playbook");
-    order(["on-call-now-who", "on-call-now-shift-tools"]);
+    order(["on-call-now-who", "on-call-now-team", "on-call-now-shift-tools"]);
+    // On a computer, who to call sits in the left column with the numbers and the tools on the
+    // right, so the two columns balance (Work mode simplify plan, 12 Oct 2026).
+    expect(who.closest('[data-today-column="act"]')).not.toBeNull();
+    expect(screen.getByTestId("on-call-now-shift-tools").closest('[data-today-column="ahead"]')).not.toBeNull();
     // The shift lists share the tools' card with Log a call and Handover.
     const tools = screen.getByTestId("on-call-now-shift-tools");
     expect(within(tools).getByTestId("on-call-now-checklists")).toBeInTheDocument();
