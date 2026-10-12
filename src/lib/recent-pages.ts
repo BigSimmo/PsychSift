@@ -298,8 +298,32 @@ function notify() {
 
 subscribeAccountTransition(() => {
   cache = null;
+  announcedTitles.clear();
   notify();
 });
+
+/**
+ * Titles a page hands over itself, by path, for pages whose document title
+ * does not name the record (a document's viewer is titled "PsychSift"). Held in
+ * memory only, until the recorder reads them; never stored apart from the list.
+ */
+const announcedTitles = new Map<string, string>();
+export const recentPageTitleAnnouncedEvent = "psychsift:recent-page-title";
+
+/** A page names itself for Recent pages. Ignored for any path the list may not hold. */
+export function announceRecentPageTitle(pathname: string, title: string): void {
+  const target = recentPageTarget(pathname);
+  const name = title.trim();
+  if (!target || !name || name.length > 120) return;
+  announcedTitles.set(target.path, name);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(recentPageTitleAnnouncedEvent));
+}
+
+/** The title a page handed over for this path, if any. */
+export function announcedRecentPageTitle(pathname: string): string | null {
+  const target = recentPageTarget(pathname);
+  return target ? (announcedTitles.get(target.path) ?? null) : null;
+}
 
 /**
  * Record one open of `pathname` titled `title`. Anything `recentPageTarget`
