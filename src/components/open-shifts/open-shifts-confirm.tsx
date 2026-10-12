@@ -46,7 +46,7 @@ export function ConfirmSheet({
   return (
     <Sheet
       open={open}
-      onClose={onClose}
+      onClose={busy ? () => {} : onClose}
       title={title}
       testId={testId}
       footer={
@@ -60,7 +60,7 @@ export function ConfirmSheet({
           >
             {confirmLabel}
           </Button>
-          <Button variant="ghost" block onClick={onClose}>
+          <Button variant="ghost" block disabled={busy} onClick={onClose}>
             Go back
           </Button>
         </div>
