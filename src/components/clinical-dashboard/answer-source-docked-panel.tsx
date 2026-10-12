@@ -10,7 +10,6 @@ import { cn, toolbarButton } from "@/components/ui-primitives";
 export type AnswerSourceDockedPanelProps = {
   open: boolean;
   onClose: () => void;
-  dismissOnBack?: boolean;
   title: string;
   description: string;
   closeLabel: string;
@@ -44,7 +43,6 @@ export type AnswerSourceDockedPanelProps = {
 export function AnswerSourceDockedPanel({
   open,
   onClose,
-  dismissOnBack = false,
   title,
   description,
   closeLabel,
@@ -57,7 +55,6 @@ export function AnswerSourceDockedPanel({
 }: AnswerSourceDockedPanelProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const panelId = useId();
   // The element that had focus when the panel opened: the citation or source card.
   const openerRef = useRef<HTMLElement | null>(null);
   // Focus moves in when the panel reaches the page. A callback ref rather than
@@ -106,36 +103,16 @@ export function AnswerSourceDockedPanel({
   }, []);
   const onCloseRef = useRef(onClose);
   const resolveReturnRef = useRef(resolveReturnFocusTarget);
-  const requestClose = useCallback(() => {
-    const stateKey = `ps_sheet_${panelId}`;
-    if (dismissOnBack && typeof window !== "undefined" && window.history.state?.[stateKey]) {
-      try {
-        window.history.back();
-        return;
-      } catch {
-        // Restricted embeds may reject history traversal; close in place.
-      }
-    }
-    onCloseRef.current();
-  }, [dismissOnBack, panelId]);
+  // No history entry, unlike the Sheet: the panel is not modal, so the reader
+  // can leave it through the page (an answer link, a new question), and a
+  // pushed entry would then be left behind for Back to land on and do nothing.
+  // Escape and the close button dismiss it; Back keeps its page meaning.
+  const requestClose = useCallback(() => onCloseRef.current(), []);
 
   useEffect(() => {
     onCloseRef.current = onClose;
     resolveReturnRef.current = resolveReturnFocusTarget;
   }, [onClose, resolveReturnFocusTarget]);
-
-  useEffect(() => {
-    if (!open || !dismissOnBack || typeof window === "undefined" || !window.history?.pushState) return undefined;
-    const stateKey = `ps_sheet_${panelId}`;
-    try {
-      window.history.pushState({ [stateKey]: true }, "");
-    } catch {
-      // Ignore history exceptions in restricted embeds.
-    }
-    const handlePopState = () => onCloseRef.current();
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [open, dismissOnBack, panelId]);
 
   useEffect(() => {
     if (!open) return undefined;

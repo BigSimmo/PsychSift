@@ -100,8 +100,11 @@ describe("answer source docked panel (from 1024px)", () => {
     installMatchMediaStub(true);
     const user = setupUser();
     render(<RailAndDrawer />);
+    const historyLength = window.history.length;
 
     const { railRow } = await openDocked(user);
+    // Not modal, so no Back entry: one the reader left through the page would strand Back.
+    expect(window.history.length).toBe(historyLength);
     await waitFor(() => expect(document.activeElement).toBe(screen.getByTestId("answer-source-drawer")));
     await user.keyboard("{Escape}");
 

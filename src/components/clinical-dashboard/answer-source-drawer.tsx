@@ -67,7 +67,6 @@ function SourceDrawerFrame({ docked, ...sheetProps }: SheetProps & { docked: boo
     <LazyDockedPanel
       open={sheetProps.open}
       onClose={sheetProps.onClose}
-      dismissOnBack={sheetProps.dismissOnBack}
       title={sheetProps.title ?? "Source"}
       description={sheetProps.description ?? ""}
       closeLabel={sheetProps.closeLabel ?? "Close"}
