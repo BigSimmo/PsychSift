@@ -163,11 +163,26 @@ begin
   if r ->> 'status' is distinct from 'claimed' then raise exception 'open: expected different-grade claim pending approval, got %', r; end if;
   perform pg_temp.expect_error(format($f$select pg_temp.cmd('mei', 'open.claim', %L)$f$, jsonb_build_object('openShiftId', oid)),
     'roster_open_shift_taken');
+  -- Taking back a waiting request: only the doctor who asked can, and the shift is open again.
+  perform pg_temp.expect_error(format('select public.roster_open_withdraw(%L,%L,%L)',
+    pg_temp.id('mei'), pg_temp.id('svc'), oid), 'roster_not_found');
+  perform pg_temp.expect_error(format('select public.roster_open_withdraw(%L,%L,%L)',
+    pg_temp.id('mgr'), pg_temp.id('svc'), oid), 'roster_not_found');
+  r := public.roster_open_withdraw(pg_temp.id('lee'), pg_temp.id('svc'), oid);
+  if r ->> 'status' is distinct from 'open'
+     or exists (select 1 from public.roster_open_shifts where id = oid and (status <> 'open' or claimed_by is not null or claimed_at is not null)) then
+    raise exception 'open: withdraw did not reopen the shift, got %', r;
+  end if;
+  r := pg_temp.cmd('lee', 'open.claim', jsonb_build_object('openShiftId', oid));
+  if r ->> 'status' is distinct from 'claimed' then raise exception 'open: claim after withdraw failed %', r; end if;
   r := pg_temp.cmd('mgr', 'open.approve', jsonb_build_object('openShiftId', oid));
   if r ->> 'status' is distinct from 'approved' then raise exception 'open: manager approval failed %', r; end if;
   if (select user_id from public.roster_assignments where id = day) is distinct from pg_temp.id('lee') then
     raise exception 'open: approved assignment did not move to claimant';
   end if;
+  -- An approved shift is on the roster, so it is never taken back here.
+  perform pg_temp.expect_error(format('select public.roster_open_withdraw(%L,%L,%L)',
+    pg_temp.id('lee'), pg_temp.id('svc'), oid), 'roster_conflict');
 end
 $open$;
 
