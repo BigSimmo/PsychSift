@@ -27310,8 +27310,8 @@ begin
   if not found or v_open.claimed_by is distinct from p_actor_id then raise exception 'roster_not_found'; end if;
   -- Approved, cancelled or expired since the doctor last looked, or the shift has already
   -- started (a started shift can no longer be claimed, so reopening it would strand it): nothing
-  -- is changed.
-  if v_open.status <> 'claimed' or v_open.starts_at <= now() then raise exception 'roster_conflict'; end if;
+  -- is changed. The clock is read after the locks, so a call that waited on them can't slip past the start.
+  if v_open.status <> 'claimed' or v_open.starts_at <= clock_timestamp() then raise exception 'roster_conflict'; end if;
 
   update public.roster_open_shifts set status = 'open', claimed_by = null, claimed_at = null where id = v_open.id;
   return jsonb_build_object('openShiftId', v_open.id, 'status', 'open');

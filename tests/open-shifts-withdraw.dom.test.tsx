@@ -103,7 +103,11 @@ describe("Open shifts, taking back a waiting request", () => {
     renderFor(listing);
     fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/decided before it could be taken back/));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toMatch(
+        /can't be taken back now\. Your roster manager has decided, or the shift has started/,
+      ),
+    );
     // The page reads the request again, so it shows what the manager decided.
     expect(mocks.state.reload).toHaveBeenCalledOnce();
     // The same take-back can't be sent again against what the page last read.

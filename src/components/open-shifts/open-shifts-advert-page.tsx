@@ -293,7 +293,7 @@ function WithdrawSheet({
       }
       setError(
         result.code === "roster_conflict"
-          ? "Your roster manager decided before it could be taken back. Check My shifts."
+          ? "It can't be taken back now. Your roster manager has decided, or the shift has started. Check My shifts."
           : result.code === "roster_not_found"
             ? "This request can't be found any more. Check My shifts."
             : `Not taken back. ${result.message}`,
