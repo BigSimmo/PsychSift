@@ -80,7 +80,7 @@ function PlanActions({ situation, allowFilled }: { situation: SituationView; all
           label="Copy steps"
           onClick={() => {
             copyTextToClipboard(planText(situation)).then(
-              () => setNote("Copied"),
+              () => setNote("Copied. Nothing is saved."),
               () => setNote("Copying isn't available on this phone"),
             );
           }}

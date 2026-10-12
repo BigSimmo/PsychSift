@@ -22,13 +22,13 @@ describe("First Nations review stamp", () => {
     expect(reviewStampText(stamp)).toBe("Source: Source A · Reviewed by Reviewer Body, Elder · 12 Mar 2026");
   });
 
-  it("says Not yet reviewed when there is no record or the content has changed since", () => {
+  it("says No cultural review recorded yet when there is no record or the content has changed since", () => {
     expect(reviewStampText(buildReviewStamp("Source A", [], [{ subjectId: "b1", content: block }]))).toBe(
-      "Source: Source A · Not yet reviewed",
+      "Source: Source A · No cultural review recorded yet",
     );
     const changed = { ...block, do: "y" };
     expect(reviewStampText(buildReviewStamp("Source A", [approval], [{ subjectId: "b1", content: changed }]))).toBe(
-      "Source: Source A · Not yet reviewed",
+      "Source: Source A · No cultural review recorded yet",
     );
   });
 
@@ -36,7 +36,7 @@ describe("First Nations review stamp", () => {
     const { container, rerender } = render(
       <ReviewStamp stamp={{ source: "Source A", reviewer: null, reviewedOn: null }} />,
     );
-    expect(screen.getByText("Source: Source A · Not yet reviewed")).toBeTruthy();
+    expect(screen.getByText("Source: Source A · No cultural review recorded yet")).toBeTruthy();
     rerender(<ReviewStamp />);
     expect(container.textContent).toBe("");
   });
