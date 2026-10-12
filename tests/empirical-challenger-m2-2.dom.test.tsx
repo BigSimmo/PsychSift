@@ -133,8 +133,10 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
     });
 
     it("verifies icon sizing domain separation in globals.css", () => {
-      expect(globalsCss).toContain("width: var(--spacing-icon-xs);");
-      expect(globalsCss).toContain("height: var(--spacing-icon-xs);");
+      // Icon boxes are sized from the icon scale. The recent-searches chip icon that
+      // used --spacing-icon-xs went with the chips (recent questions are now a list).
+      expect(globalsCss).toMatch(/width: var\(--spacing-icon-[a-z0-9]+\);/);
+      expect(globalsCss).toMatch(/height: var\(--spacing-icon-[a-z0-9]+\);/);
       expect(globalsCss).not.toContain("width: var(--text-2xs);");
     });
 
