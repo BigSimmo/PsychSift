@@ -338,7 +338,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             <>
               <NowEmergencyPin handbook={handbook} pins={pins} now={now} />
               {numbersOnScreen ? null : <NowCrisisLines now={now} />}
-              {/* After the emergency pin and crisis lines, never above them. */}
+              {/* Never between the emergency pin and crisis lines. When hospital numbers are on screen the crisis lines sit at the foot of the page, as on main. */}
               <NewWorkModeOnly>
                 <WorkSetupRow />
               </NewWorkModeOnly>
@@ -420,7 +420,13 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   12 Oct 2026), share the tools' card: the rest live where they belong (Roster, Handbook,
                   Starting here). */}
               <NowShiftShortcuts>
-                <NowShiftLists context={context} shifts={shifts} items={handbookItems} now={now} />
+                <NowShiftLists
+                  context={context}
+                  shifts={shifts}
+                  items={handbookItems}
+                  now={now}
+                  handbookReady={ready}
+                />
               </NowShiftShortcuts>
               <NowShiftPulseCard now={now} />
               {/* A week before a new job starts until the end of its first week. */}

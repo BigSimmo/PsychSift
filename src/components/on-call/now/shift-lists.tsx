@@ -117,11 +117,14 @@ export function NowShiftLists({
   shifts,
   items,
   now,
+  handbookReady = true,
 }: {
   readonly context: OnCallShiftContext;
   readonly shifts: RosterShiftsState;
   readonly items: readonly HandbookItem[];
   readonly now: Date;
+  /** False while the handbook is loading, signed out or unavailable: an empty list is then unconfirmed. */
+  readonly handbookReady?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [ticks, setTicks] = useState<{ readonly shiftKey: string; readonly ids: ReadonlySet<string> }>(() => ({
@@ -202,13 +205,17 @@ export function NowShiftLists({
           {lists.map((list) => (
             <TickList key={list.key} list={list} ticked={ticked} onToggle={toggle} />
           ))}
-          {hasLists ? null : (
+          {hasLists ? null : handbookReady ? (
             <WorkEmptyLine
               className="px-3"
               testId="on-call-now-checklists-empty"
               action={ON_CALL_SERVICE_HANDBOOK_ACTION}
             >
               Your service has not added shift lists for this hospital yet.
+            </WorkEmptyLine>
+          ) : (
+            <WorkEmptyLine className="px-3" testId="on-call-now-checklists-empty">
+              Shift lists are not available right now.
             </WorkEmptyLine>
           )}
           {hasLists ? (
