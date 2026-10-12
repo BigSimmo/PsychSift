@@ -5,6 +5,7 @@ import { adminStyles } from "@/components/admin/admin-kit";
 import { ADMIN_PAGE_HREFS } from "@/components/admin/admin-page-sections";
 import { AdminWindow } from "@/components/admin/renewals/window-bar";
 import { WorkHero } from "@/components/mode-kit/work";
+import type { RenewalsShowFilter } from "@/lib/admin/renewals-filters";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { ADMIN_REQUIREMENTS_CATALOGUE, requirementChecklistRows } from "@/lib/admin/requirements";
 import { formatDateEcho, formatRelativeDate } from "@/lib/admin/renewal-dates";
@@ -38,6 +39,18 @@ function windowShare(start: string, end: string, today: string): number {
 }
 
 /**
+ * The hero's answer: what has passed and what is due, in Admin's own count words.
+ * Null when neither has anything, so the hero keeps naming the next item.
+ */
+function renewalsAnswer(counts: Record<RenewalsShowFilter, number>): string | null {
+  const parts = [
+    counts["date-passed"] > 0 ? `${counts["date-passed"]} date passed` : null,
+    counts["due-90"] > 0 ? `${counts["due-90"]} due in 90 days` : null,
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
  * "Renew next": Today's one hero card, in Admin's slate (work-mode redesign,
  * owner request 6 Oct 2026). The item's name, its recorded date in words, the
  * renewal window with today marked, then "How to renew" and "Renewed". Nothing
@@ -47,10 +60,19 @@ export function TodayRenewNextCard({
   item,
   ownEntries,
   today,
+  counts,
 }: {
   item: RenewNextItem;
   ownEntries: readonly OnCallEntry[];
   today: string;
+  /**
+   * Admin Today passes the renewal counts so the hero title answers the page
+   * ("1 date passed, 4 due in 90 days", the same words as the counts) and the item becomes the line under it
+   * (Ward Flow review, owner approved 12 Oct 2026). The same counts drive
+   * Coming up, so the title and the list cannot disagree. My Day leaves this
+   * out and keeps the item as the title.
+   */
+  counts?: Record<RenewalsShowFilter, number>;
 }) {
   const relative = formatRelativeDate(item.date, today);
   const dateLine =
@@ -70,14 +92,15 @@ export function TodayRenewNextCard({
       : ADMIN_PAGE_HREFS.newJob;
   const howToRenewIsExternal = howToRenewHref.startsWith("http");
   const hasWindow = item.kind === "compliance" && item.windowStart && item.windowEnd;
+  const answer = counts ? renewalsAnswer(counts) : null;
 
   return (
     <WorkHero
       testId="admin-today-renew-next"
       aria-label={item.kind === "new-job" ? "New job starts" : "Renew next"}
-      eyebrow={item.kind === "new-job" ? "New job starts" : "Renew next"}
-      title={item.title}
-      sub={<span className="tabular-nums">{dateLine}</span>}
+      eyebrow={answer ? "Renewals" : item.kind === "new-job" ? "New job starts" : "Renew next"}
+      title={answer ?? item.title}
+      sub={<span className="tabular-nums">{answer ? `Next: ${item.title} · ${dateLine}` : dateLine}</span>}
       footer={
         <div className="grid gap-3">
           {hasWindow && item.windowStart && item.windowEnd ? (
