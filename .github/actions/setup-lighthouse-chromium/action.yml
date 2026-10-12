@@ -46,7 +46,7 @@ runs:
       shell: bash
       run: |
         if command -v sudo >/dev/null 2>&1; then
-          sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
           sudo mkdir -p /etc/apt/apt.conf.d
           sudo tee /etc/apt/apt.conf.d/99flaky-mirror-resilience >/dev/null << 'EOF'
         Acquire::Retries "3";
@@ -55,6 +55,9 @@ runs:
         EOF
         fi
         install_chromium() {
+          # Fail the attempt if install-deps fails, rather than letting the browser
+          # download that follows mask it (see release-browser-matrix in ci.yml).
+          set -e
           if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
             npx playwright install-deps chromium
             npx playwright install chromium
@@ -67,6 +70,14 @@ runs:
             exit 0
           fi
           echo "Chromium install attempt $attempt timed out or failed, retrying..." >&2
+          # A timed-out attempt can leave its root apt-get holding the apt lock, or dpkg
+          # half-configured; clear both (recovery bounded) before the next attempt.
+          if command -v sudo >/dev/null 2>&1; then
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 2
+            sudo timeout 120 dpkg --configure -a || true
+          fi
           sleep 5
         done
         exit 1
