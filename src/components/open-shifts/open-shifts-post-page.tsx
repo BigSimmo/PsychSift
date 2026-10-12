@@ -270,8 +270,10 @@ export function OpenShiftsPostPage() {
         nowDone[signature(on)] = result.result.openShiftId ?? "";
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
-        // No answer at all: it may still have gone live, so a retry checks the team's list first.
-        if (result.code === "roster_unavailable" && !(signature(on) in nowUnanswered)) {
+        // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat
+        // with no answer replaces the earlier record, so the next retry waits for a read newer than this one.
+        // The current list holds no copy from an earlier attempt, or that copy would have been matched above.
+        if (result.code === "roster_unavailable") {
           nowUnanswered[signature(on)] = {
             ids: state.shifts.map((row) => row.id),
             at: attemptTime(),

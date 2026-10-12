@@ -140,6 +140,30 @@ describe("Posting a shift", () => {
     await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
   });
 
+  it("after a second post also gets no answer, waits again for a newer read before sending", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+
+    // A fresh read, after the first attempt but before the second, shows the first post didn't go live. The
+    // retry sends it, and that answer is lost too.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    mocks.state = { ...mocks.state, readAt: new Date() };
+    view.rerender(<OpenShiftsPostPage />);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledTimes(2));
+
+    // Tapping again before a read newer than the second attempt holds the post.
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Still checking/));
+    expect(mocks.post).toHaveBeenCalledTimes(2);
+  });
+
   it("after a post gets no answer, doesn't post to another team while the first team can't be read", async () => {
     const OTHER = "5e000000-0000-4000-8000-000000000020";
     mocks.state = { ...mocks.state, shifts: [] };
