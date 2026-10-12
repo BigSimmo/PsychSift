@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
   usePathname: () => "/on-call/call",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
@@ -24,7 +25,8 @@ vi.mock("@/lib/on-call/entry-store", () => ({
 
 import OnCallCallRoute from "@/app/(search-app)/on-call/call/page";
 import OnCallFindRoute from "@/app/(search-app)/on-call/find/page";
-import OnCallReferRoute from "@/app/(search-app)/on-call/refer/page";
+import { OnCallReferPage } from "@/components/on-call/refer/refer-page";
+
 import OnCallWhosOnRoute from "@/app/(search-app)/on-call/whos-on/page";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import {
@@ -33,6 +35,9 @@ import {
   type OnCallHubPage,
 } from "@/components/on-call/on-call-section-identity";
 import { modeSecondaryNavigationRegistry } from "@/lib/mode-secondary-navigation";
+
+// The route redirects to Contacts in the current work mode; the classic page it keeps is the component.
+const OnCallReferRoute = () => <OnCallReferPage />;
 
 const routes: { page: Exclude<OnCallHubPage, "now">; Route: () => ReactElement }[] = [
   { page: "whos-on", Route: OnCallWhosOnRoute },
