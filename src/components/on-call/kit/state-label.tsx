@@ -34,6 +34,16 @@ function words(state: OnCallRowState): string {
   }
 }
 
+/**
+ * The one action a "Not set up for this hospital" line offers (site review 12 Oct 2026, item 2):
+ * the service handbook page, where the service's own entries are kept. It is an existing page;
+ * nothing new is promised.
+ */
+export const ON_CALL_SERVICE_HANDBOOK_ACTION = {
+  label: "Service handbook",
+  href: "/on-call/service",
+} as const;
+
 export function OnCallStateLabel({ state }: { readonly state: OnCallRowState }) {
   const warning = state.kind === "removed";
   return (
