@@ -100,9 +100,13 @@ export function OpenShiftsPostPage() {
   const [done, setDone] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedServiceId, setCopiedServiceId] = useState<string | null>(null);
 
   function applyPrefill(prefill: PostAgainPrefill) {
-    if (prefill.serviceId) setServiceId(prefill.serviceId);
+    if (prefill.serviceId) {
+      setServiceId(prefill.serviceId);
+      setCopiedServiceId(prefill.serviceId);
+    }
     if (prefill.kind) {
       setKind(prefill.kind);
       setStart(DEFAULTS[prefill.kind].start);
@@ -142,9 +146,12 @@ export function OpenShiftsPostPage() {
   );
   const times = gapTimes(date, start, end);
   const hours = times ? hoursBetween(times.startsAt, times.endsAt) : 0;
-  const problem = !times
-    ? "Choose a date and times."
-    : date < today
+  const copiedTeamUnavailable = copiedServiceId !== null && !state.teams.some((row) => row.serviceId === copiedServiceId);
+  const problem = copiedTeamUnavailable
+    ? "The copied team is no longer available. Choose a team before posting."
+    : !times
+      ? "Choose a date and times."
+      : date < today
       ? "The date has passed."
       : !code.trim()
         ? "Give the shift a code."
@@ -244,6 +251,11 @@ export function OpenShiftsPostPage() {
               Copied from a posted shift. Choose the date, then check the rest.
             </p>
           ) : null}
+          {copiedTeamUnavailable ? (
+            <p role="alert" className="rounded-md border border-[color:var(--warning-border)] px-3 py-2 text-sm">
+              The team from the copied shift is no longer available. Choose one of your current teams to continue.
+            </p>
+          ) : null}
 
           {state.teams.length > 1 ? (
             <Field label="Team" htmlFor={`${id}-team`}>
@@ -253,6 +265,7 @@ export function OpenShiftsPostPage() {
                 value={team?.serviceId ?? ""}
                 onChange={(event) => {
                   setServiceId(event.target.value);
+                  setCopiedServiceId(null);
                   // Sites belong to a team, so a site picked in another team can't carry over.
                   setSiteId("");
                 }}
