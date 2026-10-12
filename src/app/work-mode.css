@@ -178,6 +178,9 @@ html[data-bright]:not(.dark) .universal-header[data-work-frame] {
   /* Bright light (reading-aids.css) is fully solid: nothing shows through. */
   --work-glass-fill: var(--surface-raised) !important;
 }
+html[data-bright]:not(.dark) .work-more-sheet.work-more-sheet {
+  background: var(--surface-raised);
+}
 
 /* Work pages sit on crisp white, under the tinted band. The page shell and
    the root take it too, so a short page fills the screen in one surface
@@ -1799,6 +1802,9 @@ a.work-hero:focus-visible {
 @media (forced-colors: active) {
   .work-tag {
     border: 1px solid CanvasText;
+  }
+  .work-tag::before {
+    background: CanvasText !important;
   }
 }
 

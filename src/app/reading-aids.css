@@ -21,6 +21,10 @@
   --info: var(--dim-ink);
   --danger-text: var(--dim-ink);
   --danger-bg: var(--surface-subtle);
+  --danger-border: var(--border);
+  --info-text: var(--dim-ink);
+  --info-bg: var(--surface-subtle);
+  --info-border: var(--border);
   --warning-text: var(--dim-ink);
   --warning-bg: var(--surface-subtle);
   color: var(--dim-ink);
