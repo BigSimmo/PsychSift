@@ -341,16 +341,19 @@ async function expectIdlePhoneHomeCentered(page: Page, homeTestId: string) {
         mainOverflowY: main.scrollHeight - main.clientHeight,
       };
     }, homeTestId);
-  await expect.poll(readGeometry, { message: "the idle home, canvas and main must all render" }).not.toBeNull();
-  const geometry = await readGeometry();
-
-  expect(geometry).not.toBeNull();
-  expect(geometry!.docOverflowY).toBeLessThanOrEqual(2);
-  expect(geometry!.mainOverflowY).toBeLessThanOrEqual(2);
-  expect(Math.abs(geometry!.homeMidY - geometry!.canvasMidY)).toBeLessThanOrEqual(
-    Math.max(24, geometry!.canvasHeight * 0.12),
-  );
-  expect(Math.abs(geometry!.homeMidX - geometry!.canvasMidX)).toBeLessThanOrEqual(24);
+  // Retry the whole check on one fresh sample at a time: a read can land mid-swap and see
+  // null, and only a sample that meets every constraint counts, so a server-rendered tree
+  // replaced at hydration cannot pass on stale coordinates.
+  await expect(async () => {
+    const geometry = await readGeometry();
+    expect(geometry, "the idle home, canvas and main must all render").not.toBeNull();
+    expect(geometry!.docOverflowY).toBeLessThanOrEqual(2);
+    expect(geometry!.mainOverflowY).toBeLessThanOrEqual(2);
+    expect(Math.abs(geometry!.homeMidY - geometry!.canvasMidY)).toBeLessThanOrEqual(
+      Math.max(24, geometry!.canvasHeight * 0.12),
+    );
+    expect(Math.abs(geometry!.homeMidX - geometry!.canvasMidX)).toBeLessThanOrEqual(24);
+  }).toPass({ timeout: 15_000 });
   await expectNoPageHorizontalOverflow(page);
 }
 
