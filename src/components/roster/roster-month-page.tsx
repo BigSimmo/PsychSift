@@ -369,7 +369,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
                 : `${SHIFT_KIND_LABEL[kind]} today`
               : date === addDaysToDate(today, 1)
                 ? `${SHIFT_KIND_LABEL[kind]} tomorrow`
-                : "Next shift";
+                : `Next ${SHIFT_KIND_LABEL[kind].toLowerCase()} · ${weekdayOf(date)} ${Number(date.slice(8, 10))}`;
           const tag = onNow
             ? `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`
             : `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
@@ -552,6 +552,16 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
       });
     // Stable sort: on the same day, a shift stays ahead of the leave that follows it. Only the next
     // three show: the calendar above has the month (Work mode simplify plan, 12 Oct 2026).
+    rows.push(
+      ...edges.map((edge) => ({
+        date: edge.date,
+        node: (
+          <li key={`${edge.entry.id}:${edge.edge}`}>
+            <RosterEntryEdgeRow edge={edge} />
+          </li>
+        ),
+      })),
+    );
     rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
     rows.splice(COMING_UP_ROWS);
     return (
@@ -559,11 +569,6 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         <WorkSectionLabel>Coming up</WorkSectionLabel>
         <WorkCard as="ul" testId="roster-month-coming">
           {rows.map((row) => row.node)}
-          {edges.map((edge) => (
-            <li key={`${edge.entry.id}:${edge.edge}`}>
-              <RosterEntryEdgeRow edge={edge} />
-            </li>
-          ))}
         </WorkCard>
       </>
     );
