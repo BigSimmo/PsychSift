@@ -7,15 +7,13 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { CpdSummary } from "@/components/my-day/my-day-today-cards";
+import { CpdRingsCard } from "@/components/my-day/my-day-today-cards";
 
 afterEach(cleanup);
 
 describe("My Day CPD wording", () => {
   it("says the target hours are logged, not that the target is reached", () => {
-    render(
-      <CpdSummary loggedHours={52} targetHours={50} byCategory={{ educational: 30, reviewing: 12, measuring: 10 }} />,
-    );
+    render(<CpdRingsCard loggedHours={52} targetHours={50} />);
     const card = screen.getByTestId("my-day-cpd");
     expect(card.textContent).toContain("Target hours logged");
     expect(card.textContent).toContain("Your target hours are logged.");
@@ -23,9 +21,7 @@ describe("My Day CPD wording", () => {
   });
 
   it("still counts down while hours are short", () => {
-    render(
-      <CpdSummary loggedHours={32} targetHours={50} byCategory={{ educational: 20, reviewing: 8, measuring: 4 }} />,
-    );
+    render(<CpdRingsCard loggedHours={32} targetHours={50} />);
     expect(screen.getByTestId("my-day-cpd").textContent).toContain("18 hours to go by 31 December.");
   });
 });

@@ -12,6 +12,7 @@ import {
   upcomingTalkMeta,
 } from "@/components/teaching/presenting-model";
 import { demoFeedbackTotals, demoSupervision, demoTeach } from "@/lib/teaching/depth-demo";
+import { demoTeachingSessions } from "@/lib/teaching/demo-programme";
 
 /* Presenting against its mock-up (v5 screen 02), on the made-up presenter. Tue 6 Oct 2026 12:35 Perth. */
 
@@ -52,9 +53,21 @@ describe("Presenting's made-up presenter", () => {
     for (const talk of read.upcoming) expect(talk.venue).not.toMatch(/^Demo /);
   });
 
-  it("moves the talk to tomorrow once today's has ended", () => {
+  // Work mode simplify plan, 12 Oct 2026: Needs you said "You present Mon 12 Oct" while the programme ran
+  // the journal club on Tue 13 Oct. The made-up talk now sits on the programme's own journal club.
+  it("puts the made-up talk on the programme's journal club day", () => {
+    const monday = "2026-10-12";
+    expect(demoTeach(monday).upcoming[0].startsAt.slice(0, 10)).toBe("2026-10-13");
+    const club = demoTeachingSessions({ from: monday, to: "2026-10-18" }, new Date("2026-10-12T06:00:00Z")).find(
+      (row) => row.title === "Journal club",
+    );
+    expect(club?.startsAt).toBe(demoTeach(monday).upcoming[0].startsAt);
+    expect(club?.isPresenter).toBe(true);
+  });
+
+  it("moves the talk to the next journal club once today's has ended", () => {
     const evening = new Date("2026-10-06T07:00:00Z"); // 15:00 Perth
-    expect(talkKicker(demoTeach(TODAY, evening).upcoming[0], evening, TODAY)).toBe("Your next talk · Wed 7 Oct 14:00");
+    expect(talkKicker(demoTeach(TODAY, evening).upcoming[0], evening, TODAY)).toBe("Your next talk · Tue 13 Oct 14:00");
   });
 
   it("shows 31 h of a 50 h target this year, the latest hour waiting and the group session confirmed", () => {

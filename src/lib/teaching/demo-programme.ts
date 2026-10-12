@@ -310,7 +310,7 @@ function demoSummary(series: DemoSeries | DemoOpenSeries, date: string, today: s
     venue: moved ? MOVED_VENUE : series.venue,
     hasJoinLink: series.joinLink,
     status: moved ? "moved" : "scheduled",
-    // The demo viewer presents at this week's journal club, so Presenting and "Next for you" have a talk.
+    // The demo viewer presents at this week's journal club, so Presenting and the hero's "Then you present" line have a talk.
     isPresenter: series.key === PRESENTING_KEY && mondayOfDate(date) === mondayOfDate(today),
     source: "teaching",
   };
@@ -434,6 +434,16 @@ const THIS_WEEK_ATTENDS = new Set<number>([21, PRESENTING_KEY, 5, 23, 7, 24, CAS
 const UNLOGGED_AFTER_NEWEST = 3;
 /** Feedback is open for seven days after a session the viewer checked in to. */
 const FEEDBACK_OPEN_DAYS = 7;
+
+/**
+ * The first date on or after `from` that the made-up journal club runs: the talk the made-up viewer
+ * presents. Presenting's example talk (`demoTeach`) uses it, so Teaching's Needs you, its hero and
+ * My Day all name the same day (Work mode simplify plan, 12 Oct 2026).
+ */
+export function demoPresentingDate(from: string): string {
+  const series = seriesByKey(PRESENTING_KEY)!;
+  return nextTeachingOccurrence(anchorOf(series, from), series.frequency, from) ?? from;
+}
 
 function seriesByKey(key: number): DemoSeries | undefined {
   return DEMO_SERIES.find((candidate) => candidate.key === key);

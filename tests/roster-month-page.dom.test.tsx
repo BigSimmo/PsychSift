@@ -117,7 +117,7 @@ describe("Roster Month tab", () => {
     expect(within(grid).getByRole("button", { name: "Thu 8 Oct: Day" })).toHaveAttribute("tabindex", "-1");
   });
 
-  it("leads with the next shift and lists the next three shifts, then leave", () => {
+  it("leads with the next shift and lists only the next three shifts", () => {
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("On call tonight");
     const coming = screen.getByTestId("roster-month-coming");
@@ -133,11 +133,12 @@ describe("Roster Month tab", () => {
     expect(coming).not.toHaveTextContent("On call");
     // The nights are already listed, so no separate run row.
     expect(coming).not.toHaveTextContent("in a row");
-    expect(coming).toHaveTextContent("Annual leave");
-    expect(coming).toHaveTextContent("2 days");
+    // Work mode simplify plan, 12 Oct 2026: three rows only; the calendar above shows the leave.
+    expect(within(coming).getAllByRole("listitem")).toHaveLength(3);
+    expect(coming).not.toHaveTextContent("Annual leave");
   });
 
-  it("still names a later run of nights after the next three shifts", () => {
+  it("stops at three rows, leaving a later run of nights to the calendar", () => {
     ready([
       shift("d7", "2026-10-07", "day"),
       shift("d8", "2026-10-08", "day"),
@@ -149,7 +150,7 @@ describe("Roster Month tab", () => {
     render(<RosterMonthPage now={NOW} />);
     const coming = screen.getByTestId("roster-month-coming");
     expect(within(coming).getAllByTestId("roster-month-coming-shift")).toHaveLength(3);
-    expect(coming).toHaveTextContent("Nights · 2 in a row");
+    expect(coming).not.toHaveTextContent("Nights · 2 in a row");
   });
 
   it("keeps a run of nights' length when it starts among the next three shifts but runs past them", () => {
@@ -184,11 +185,13 @@ describe("Roster Month tab", () => {
 
   it("counts the month, with days off and public holidays worked", () => {
     render(<RosterMonthPage now={NOW} />);
+    // Work mode simplify plan, 12 Oct 2026: one line, kinds with none left out, opening Hours and rest.
     const totals = screen.getByTestId("roster-month-totals");
-    expect(within(totals).getByText("Night").nextSibling).toHaveTextContent("2");
+    expect(totals).toHaveTextContent("October: 1 day, 2 night, 1 on call, 25 off");
+    expect(within(totals).getByRole("link")).toHaveAttribute("href", "/roster?view=hours");
     // 31 days, 4 working, 2 on leave.
     expect(screen.getByTestId("roster-month-off")).toHaveTextContent("25");
-    expect(screen.getByTestId("roster-month-holidays")).toHaveTextContent("0");
+    expect(screen.queryByTestId("roster-month-holidays")).toBeNull();
   });
 
   it("opens a team shift's day sheet with the swap, give-away and can't-make hand-offs", async () => {
