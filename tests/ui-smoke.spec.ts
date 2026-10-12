@@ -29,6 +29,7 @@ import {
 import {
   clickWhenHydrated,
   clickWhenSettled,
+  expectHydrated,
   expectSingleSettledOwner,
   visibleByTestId,
 } from "./playwright-settlement";
@@ -4383,6 +4384,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     // The panel below deliberately stays page-scoped: `ResultFilterSheet`
     // renders through `OverlayPortal`, so it lives outside this subtree.
     const trigger = dsmPage.getByTestId("dsm-category-filter-desktop");
+    // A keypress before React attaches the trigger's handler is lost on slower engines (WebKit).
+    await expectHydrated(trigger);
     await trigger.focus();
     await page.keyboard.press("Enter");
     const panel = page.getByTestId("dsm-category-filter-panel");
