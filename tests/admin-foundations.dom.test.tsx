@@ -68,15 +68,30 @@ describe("the old page files stay as redirect backstops (spec review 8)", () => 
     ["@/app/(search-app)/on-call/logistics/page", "/admin/help"],
     ["@/app/(search-app)/on-call/education/page", "/teaching/week"],
   ])("%s redirects to %s", async (modulePath, target) => {
-    const { default: Page } = (await import(modulePath)) as { default: () => unknown };
+    const { default: Page } = (await import(modulePath)) as { default: (props?: unknown) => unknown };
     let digest = "";
     try {
-      Page();
+      await Page();
     } catch (error) {
       digest = String((error as { digest?: unknown }).digest ?? "");
     }
     // next/navigation's redirect() throws with digest "NEXT_REDIRECT;<type>;<url>;<status>;".
     expect(digest.split(";")[2]).toBe(target);
+  });
+});
+
+describe("the My Work backstop keeps the query string", () => {
+  it("carries every parameter across to /admin", async () => {
+    const { default: Page } = (await import("@/app/(search-app)/my-work/page")) as {
+      default: (props: { searchParams: Promise<Record<string, string | string[]>> }) => Promise<unknown>;
+    };
+    let digest = "";
+    try {
+      await Page({ searchParams: Promise.resolve({ q: "renewals", tag: ["a", "b"] }) });
+    } catch (error) {
+      digest = String((error as { digest?: unknown }).digest ?? "");
+    }
+    expect(digest.split(";")[2]).toBe("/admin?q=renewals&tag=a&tag=b");
   });
 });
 
