@@ -75,6 +75,7 @@ describe("answer source docked panel (from 1024px)", () => {
     // jsdom has no layout; give the panel the 26rem width it has from 1280px.
     const width = vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(416);
     const user = setupUser();
+    const main = document.body.appendChild(Object.assign(document.createElement("main"), { id: "main-content" }));
     render(<RailAndDrawer />);
 
     const { panel } = await openDocked(user);
@@ -87,7 +88,12 @@ describe("answer source docked panel (from 1024px)", () => {
     expect(document.body.dataset.sourceDocked).toBe("true");
     // The answer column's reserve is the panel's width, its right offset and a gutter.
     expect(document.body.style.getPropertyValue("--source-dock-reserve")).toMatch(/^4\d\dpx$/);
+    // Also inline on the answer's scroll area, which desktop Safari needs to re-lay it out.
+    expect(main.style.paddingRight).toMatch(/^4\d\dpx$/);
     expect(screen.getByRole("button", { name: "Close source detail" })).toBeVisible();
+    await user.keyboard("{Escape}");
+    expect(main.style.paddingRight).toBe("");
+    main.remove();
   });
 
   it("closes on Escape and returns focus to the source that opened it", async () => {

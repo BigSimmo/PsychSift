@@ -79,12 +79,18 @@ export function AnswerSourceDockedPanel({
     // panel covered the prose; one measurement keeps the two in step.
     // Width plus the CSS right offset, not the on-screen box: the box moves while
     // the panel animates in, and an early read left the answer no room at all.
+    // The room also goes straight onto the answer's scroll area as an inline
+    // style: desktop Safari reported the stylesheet's padding but did not lay
+    // the answer out again for it, so the panel still covered the prose.
+    const main = document.getElementById("main-content");
     const reserve = () => {
       const room = node.offsetWidth + (parseFloat(getComputedStyle(node).right) || 0) + 16;
       if (Number.isFinite(room) && node.offsetWidth > 0) {
         document.body.style.setProperty("--source-dock-reserve", `${Math.round(room)}px`);
+        main?.style.setProperty("padding-right", `${Math.round(room)}px`);
       } else {
         document.body.style.removeProperty("--source-dock-reserve");
+        main?.style.removeProperty("padding-right");
       }
     };
     reserve();
@@ -95,6 +101,7 @@ export function AnswerSourceDockedPanel({
       observer?.disconnect();
       window.removeEventListener("resize", reserve);
       document.body.style.removeProperty("--source-dock-reserve");
+      main?.style.removeProperty("padding-right");
     };
   }, []);
   const onCloseRef = useRef(onClose);

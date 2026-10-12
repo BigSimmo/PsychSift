@@ -2636,7 +2636,16 @@ test.describe("PsychSift UI smoke coverage", () => {
       mainPaddingRight: getComputedStyle(document.getElementById("main-content")!).paddingRight,
       mainWidth: document.getElementById("main-content")!.getBoundingClientRect().width,
     }));
-    expect(proseBox!.x + proseBox!.width, JSON.stringify(reserveState)).toBeLessThanOrEqual(panelBox!.x);
+    // Polled: a browser may lay the answer out again a frame after the panel lands.
+    await expect
+      .poll(
+        async () => {
+          const box = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
+          return box ? box.x + box.width : Number.POSITIVE_INFINITY;
+        },
+        { message: JSON.stringify(reserveState), timeout: 5_000 },
+      )
+      .toBeLessThanOrEqual(panelBox!.x);
     await expectNoPageHorizontalOverflow(page);
 
     // Escape closes it and focus goes back to the citation that opened it.
