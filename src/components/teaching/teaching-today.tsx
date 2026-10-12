@@ -562,7 +562,7 @@ function ThenLine({ session, heroDate }: { session: SessionSummaryRead; heroDate
       data-testid="teaching-hero-then"
       className={cn(
         focusRing,
-        "-mx-1 flex min-h-12 items-center gap-1 rounded-lg px-1 text-xs leading-snug font-bold text-inherit no-underline",
+        "-mx-1 -my-2.5 flex min-h-12 items-center gap-1 rounded-lg px-1 text-xs leading-snug font-bold text-inherit no-underline",
       )}
     >
       <span className="min-w-0 break-words">{words}</span>

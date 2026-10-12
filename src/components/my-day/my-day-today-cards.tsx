@@ -1335,7 +1335,7 @@ export function ThisWeekCard({
         {view === "week" ? (
           // The letters under each day are the key, so there is no separate key row
           // (Work mode simplify plan, 12 Oct 2026). The spoken key stays for screen readers.
-          <div className="flex min-w-0 justify-end">
+          <div className="-mt-3 -mb-2 flex min-w-0 justify-end">
             <span className="sr-only">{key}</span>
             <QuietTextLink href={withMyDayReturn("/my-day/week")} testId="my-day-open-week">
               Open week
