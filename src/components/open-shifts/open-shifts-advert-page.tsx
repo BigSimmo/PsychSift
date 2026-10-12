@@ -268,10 +268,15 @@ function WithdrawSheet({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set once the request turns out decided, so it can't be retried against the old listing.
+  const [stale, setStale] = useState(false);
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
     setWasOpen(open);
-    if (open) setError(null);
+    if (open) {
+      setError(null);
+      setStale(false);
+    }
   }
   async function withdraw() {
     setBusy(true);
@@ -282,7 +287,10 @@ function WithdrawSheet({
     } as RosterAction);
     setBusy(false);
     if (!result.ok) {
-      if (result.code === "roster_conflict" || result.code === "roster_not_found") onStale();
+      if (result.code === "roster_conflict" || result.code === "roster_not_found") {
+        setStale(true);
+        onStale();
+      }
       setError(
         result.code === "roster_conflict"
           ? "Your roster manager decided before it could be taken back. Check My shifts."
@@ -302,7 +310,14 @@ function WithdrawSheet({
       testId="open-shifts-withdraw"
       footer={
         <div className="flex flex-col gap-2">
-          <Button variant="primary" block busy={busy} busyLabel="Taking back" onClick={() => void withdraw()}>
+          <Button
+            variant="primary"
+            block
+            busy={busy}
+            busyLabel="Taking back"
+            disabled={stale}
+            onClick={() => void withdraw()}
+          >
             Yes, take it back
           </Button>
           <Button variant="ghost" block onClick={onClose}>
@@ -341,8 +356,8 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
   const [sent, setSent] = useState<string | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawLoaded, setWithdrawLoaded] = useState(false);
-  // Set once a waiting request is taken back, so the page drops it before the reload lands.
-  const [withdrawn, setWithdrawn] = useState(false);
+  // The shift whose waiting request was taken back, so the page drops it before the reload lands.
+  const [withdrawnKey, setWithdrawnKey] = useState<string | null>(null);
   const listing = state.listings.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
 
   if (state.status === "loading") {
@@ -391,6 +406,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
   const timeText = endsNextDay(listing.startsAt, listing.endsAt)
     ? `${perthTimeOf(listing.startsAt)}–${perthTimeOf(listing.endsAt)} next day`
     : formatShiftTimes(listing.startsAt, listing.endsAt);
+  const withdrawn = withdrawnKey === `${listing.serviceId}:${listing.id}`;
   const alreadyMine = (listing.claimedByMe && !withdrawn) || sent !== null;
   const approved = sent === "approved" || listing.status === "approved";
   // A started shift can no longer be claimed, so the server refuses to reopen it.
@@ -485,8 +501,16 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
       </div>
 
       {withdrawn && !alreadyMine ? (
-        <p role="status" className="mx-3 mt-4 text-sm font-medium text-[color:var(--text-heading)]">
-          Request taken back. The shift is open again.
+        <p
+          role="status"
+          // The button that opened the take-back is gone, so keyboard focus lands on the result instead.
+          ref={(node) => node?.focus()}
+          tabIndex={-1}
+          className="mx-3 mt-4 text-sm font-medium text-[color:var(--text-heading)]"
+        >
+          {listing.claimedByMe || listing.status === "open"
+            ? "Request taken back. The shift is open again."
+            : "Request taken back."}
         </p>
       ) : null}
       {signedOut ? (
@@ -639,7 +663,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
           onSent={(status) => {
-            setWithdrawn(false);
+            setWithdrawnKey(null);
             setSent(status);
             setSheetOpen(false);
             state.reload();
@@ -658,7 +682,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           }}
           onWithdrawn={() => {
             setSent(null);
-            setWithdrawn(true);
+            setWithdrawnKey(`${listing.serviceId}:${listing.id}`);
             setWithdrawOpen(false);
             state.reload();
           }}

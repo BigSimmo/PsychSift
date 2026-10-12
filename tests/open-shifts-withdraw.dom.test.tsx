@@ -75,6 +75,23 @@ describe("Open shifts, taking back a waiting request", () => {
     expect(mocks.state.reload).toHaveBeenCalledOnce();
     expect(screen.queryByText("Waiting for approval")).toBeNull();
     expect(screen.queryByText(/Someone else has it now/)).toBeNull();
+    // The button that opened the take-back is gone, so focus moves to the result.
+    expect(document.activeElement?.textContent).toBe("Request taken back. The shift is open again.");
+  });
+
+  it("does not call the shift open when someone else asked for it before the page re-read it", async () => {
+    const listing = waiting();
+    mocks.state = stateWith(listing);
+    mocks.post.mockResolvedValue({ ok: true, result: { ok: true, openShiftId: listing.id, status: "open" } });
+    const view = renderFor(listing);
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledOnce());
+    const taken = { ...listing, status: "claimed" as const, claimedByMe: false };
+    mocks.state = stateWith(taken);
+    view.rerender(<OpenShiftsAdvertPage serviceId={taken.serviceId} openShiftId={taken.id} />);
+    expect(screen.getByText("Request taken back.")).toBeTruthy();
+    expect(screen.queryByText(/The shift is open again/)).toBeNull();
   });
 
   it("explains a request decided before it could be taken back, and keeps it", async () => {
@@ -87,6 +104,8 @@ describe("Open shifts, taking back a waiting request", () => {
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/decided before it could be taken back/));
     // The page reads the request again, so it shows what the manager decided.
     expect(mocks.state.reload).toHaveBeenCalledOnce();
+    // The same take-back can't be sent again against what the page last read.
+    expect((screen.getByRole("button", { name: "Yes, take it back" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("drops a request sent on this visit once a take-back finds it already declined", async () => {
