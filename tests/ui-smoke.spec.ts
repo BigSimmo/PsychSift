@@ -4785,7 +4785,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const globalSearchInput = page.locator('[data-testid="global-search-input"]:visible').first();
     await expect(page.getByRole("button", { name: "Mode Medication" })).toBeVisible({ timeout: 30_000 });
-    await expect(globalSearchInput).toHaveAttribute("placeholder", "Search medication dosing or safety...");
+    await expect(globalSearchInput).toHaveAttribute("placeholder", "Search medications...");
     await expect(globalSearchInput).toHaveValue("acamprosate renal dose");
 
     const acamprosateResult = page.getByTestId("medication-result-acamprosate-desktop");

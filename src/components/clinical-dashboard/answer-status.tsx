@@ -17,6 +17,7 @@ import {
 import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { AnswerSuggestionChips } from "@/components/clinical-dashboard/answer-suggestion-chips";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
+import { ModeHomeStartList, modeHomeStartListConfig } from "@/components/mode-home-start-list";
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { LazyMyDayHomeCard } from "@/components/my-day/my-day-home-card-lazy";
 import { ShowAllChip } from "@/components/show-all-chip";
@@ -91,6 +92,7 @@ export function SharedHomeEmptyState({
       }
       actionsLabel={sharedHomeEmptyState.starterActionsLabel}
       actions={[]}
+      startList={modeHomeStartListConfig(modeId) ? <ModeHomeStartList modeId={modeId} /> : undefined}
       footer={
         <div className="grid w-full gap-3">
           {/* My Day sits under the composer, never above it: the composer

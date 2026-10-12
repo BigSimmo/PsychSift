@@ -258,7 +258,7 @@ export const appModeDefinitions = [
     href: "/dsm",
     search: {
       kind: "dsm",
-      placeholder: "Search DSM diagnoses or criteria...",
+      placeholder: "Search diagnoses...",
       inputAriaLabel: "Search DSM diagnoses, ICD codes, criteria, and categories",
       submitIdleLabel: "DSM",
       submitBusyLabel: "DSM",
@@ -336,7 +336,7 @@ export const appModeDefinitions = [
       // document corpus for dosing/threshold guidance (defaultQueryMode dose_threshold_lookup).
       // The medication registry joins cross-entity search via /api/search/universal instead.
       kind: "documents",
-      placeholder: "Search medication dosing or safety...",
+      placeholder: "Search medications...",
       inputAriaLabel: "Search medication dosing, safety, and monitoring guidance",
       submitIdleLabel: "Meds",
       submitBusyLabel: "Meds",

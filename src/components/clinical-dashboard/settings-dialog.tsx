@@ -68,6 +68,7 @@ import {
 } from "@/components/clinical-dashboard/use-app-preferences";
 import { useScrollHideReporter } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { clearMedicineVisits, countMedicineVisits } from "@/lib/medicines-recent";
+import { clearRecentPages, countRecentPages } from "@/lib/recent-pages";
 import { clearPsychiatryVisits, countPsychiatryVisits } from "@/lib/psychiatry-hub/visits";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
@@ -191,8 +192,8 @@ function forgetWorkSearchRecents() {
 
 function readRecentQueryCount(): number {
   if (typeof window === "undefined") return 0;
-  // The Psychiatry and Medicines hubs' recently opened records ride on the same switch and the same Clear.
-  return countRecentQueries() + countPsychiatryVisits() + countMedicineVisits();
+  // The Psychiatry and Medicines hubs' recently opened records, and Recent pages, ride on the same switch and the same Clear.
+  return countRecentQueries() + countPsychiatryVisits() + countMedicineVisits() + countRecentPages();
 }
 
 /**
@@ -634,6 +635,7 @@ export function SettingsDialog({
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
+    clearRecentPages();
     forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
@@ -654,6 +656,7 @@ export function SettingsDialog({
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
+    clearRecentPages();
     forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches turned off and existing ones cleared.");
