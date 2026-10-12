@@ -11,13 +11,13 @@ export const openShiftsTopic: WorkHelpTopic = {
       id: "request-shift",
       q: "How do I pick up an extra shift?",
       a: "In Roster, open the Open shifts tab. Tap Request beside a shift that fits your roster, or tap any shift and choose Request this shift. You confirm before anything is sent. Your roster manager decides, unless your team approves same-level requests automatically.",
-      link: { label: "Open shifts", href: "/open-shifts" },
+      link: { label: "Shifts to pick up", href: "/open-shifts" },
     },
     {
       id: "clash-check",
       q: "Will it warn me about clashes?",
       a: "Each shift is checked against your PsychSift roster. An overlap is the only thing that stops a request. Other flags never stop it, and it can't see work outside PsychSift.",
-      link: { label: "Open shifts", href: "/open-shifts" },
+      link: { label: "Shifts to pick up", href: "/open-shifts" },
     },
     {
       id: "my-requests",
