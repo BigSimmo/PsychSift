@@ -141,7 +141,7 @@ function FitRow({ listing, requestable }: { readonly listing: OpenShiftListing; 
       {requestable ? (
         <Link
           href={`${href}?request=1`}
-          className="inline-flex min-h-12 shrink-0 items-center rounded-full px-4 text-sm font-semibold text-[color:var(--mode-identity)] no-underline shadow-[var(--work-edge-inset-strong)_var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--mode-identity)]"
+          className="inline-flex min-h-12 shrink-0 items-center rounded-full px-3.5 text-sm font-semibold text-[color:var(--mode-identity)] no-underline shadow-[var(--work-edge-inset-strong)_var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--mode-identity)]"
           aria-label={`Request ${shiftTitle(listing)}, ${formatDayShort(date)}`}
         >
           Request
