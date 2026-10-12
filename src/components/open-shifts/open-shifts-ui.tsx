@@ -205,12 +205,7 @@ export function ShiftRow({
           <span className="text-2xs text-[color:var(--text-muted)]">{shiftPlace(listing)}</span>
           {meta || listing.urgent ? (
             <span className="inline-flex items-center gap-1 text-2xs text-[color:var(--text-muted)]">
-              {listing.urgent ? (
-                <>
-                  <UrgentDot />
-                  Urgent
-                </>
-              ) : null}
+              {listing.urgent ? <UrgentDot>Urgent</UrgentDot> : null}
               {meta && listing.urgent ? " · " : null}
               {meta}
             </span>

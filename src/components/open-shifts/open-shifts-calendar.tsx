@@ -177,8 +177,7 @@ export function OpenShiftsCalendar({
                           "nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center gap-0.5 rounded-full bg-[color:var(--mode-identity-soft)] px-1 text-3xs font-extrabold leading-none text-[color:var(--mode-identity)]",
                         )}
                       >
-                        {urgent ? <UrgentDot /> : null}
-                        {count ? count : null}
+                        {urgent ? <UrgentDot>{count || null}</UrgentDot> : count || null}
                       </span>
                     ) : (
                       <i aria-hidden="true" className="block h-[0.9375rem]" />
