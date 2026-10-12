@@ -500,19 +500,20 @@ function OpenShiftsDayList({
   const allDays = [...new Set(summary.all.map((row) => perthDateOf(row.listing.startsAt)))].sort();
   // Later days stay in the page on a computer, where the calendar scrolls to them; a phone shows them on request.
   const later = all ? 0 : Math.max(0, allDays.length - FIRST_DAYS);
-  if (summary.perDay.size === 0) {
-    return (
+  // When nothing matches, the message still sits above each day's hidden shifts, so they can be shown in place.
+  const noneShown =
+    summary.perDay.size === 0 ? (
       <p className="px-3 py-6 text-center text-sm text-[color:var(--text-muted)]">
         {partial
           ? "None found in the teams read. Some of your teams couldn't be read, so there may be more."
           : summary.total === 0
             ? `Nothing is posted for the next ${WINDOW_DAYS} days. New shifts appear here when a roster manager posts them.`
-            : `None match. ${summary.total} ${summary.total === 1 ? "is" : "are"} hidden by ${filtered ? "your filters" : "the clash and level settings"}; open Filters to see ${summary.total === 1 ? "it" : "them"}.`}
+            : `None match. ${summary.total} ${summary.total === 1 ? "is" : "are"} hidden by ${filtered ? "your filters" : "the clash and level settings"}; open Filters, or show ${summary.total === 1 ? "it" : "them"} below.`}
       </p>
-    );
-  }
+    ) : null;
   return (
     <>
+      {noneShown}
       {allDays.map((date, index) => {
         const { shown, hidden } = dayRows(summary, date);
         return (

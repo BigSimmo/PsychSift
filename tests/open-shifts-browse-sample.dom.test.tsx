@@ -98,3 +98,20 @@ describe("Open shifts, signed-out preview", () => {
     expect(context.textContent).not.toMatch(/example/i);
   });
 });
+
+describe("Open shifts, nothing matching", () => {
+  it("still offers each day's hidden shifts under the none-match message", () => {
+    // Only today's evening shift, which clashes with the example doctor's on call from 17:00 Perth.
+    hook.state = {
+      ...sampleState(),
+      listings: sampleListings(NOW).filter(
+        (listing) =>
+          Date.parse(listing.startsAt) >= Date.parse("2026-10-05T08:00:00.000Z") &&
+          Date.parse(listing.startsAt) < Date.parse("2026-10-05T16:00:00.000Z"),
+      ),
+    };
+    render(<OpenShiftsBrowsePage />);
+    expect(screen.getByText(/^None match\. 1 is hidden/)).toBeTruthy();
+    expect(screen.getAllByText("1 hidden by your settings").length).toBeGreaterThan(0);
+  });
+});
