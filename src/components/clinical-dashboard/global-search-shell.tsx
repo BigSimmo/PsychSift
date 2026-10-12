@@ -884,6 +884,9 @@ function GlobalStandaloneSearchShellBody({
       // reporting it again here measured the chrome twice per scroll frame.
       if (!(target instanceof HTMLElement) || target === main || !main.contains(target)) return;
       if (target.scrollHeight <= target.clientHeight + 1) return;
+      // A desktop side list (ClinicalSplit) scrolls on its own beside the page;
+      // moving through it must not hide or reveal the app header.
+      if (target.closest("[data-chrome-scroll-ignore]")) return;
       reportChromeScrollHideRef.current({
         offset: target.scrollTop,
         maxOffset: Math.max(0, target.scrollHeight - target.clientHeight),

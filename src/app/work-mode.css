@@ -240,11 +240,49 @@ body {
   display: none;
 }
 
+/* Clinical's list beside the record (ClinicalSplit in work-desktop-layout.tsx)
+   uses the same columns as WorkSplit. Below 1024px it draws no list and its
+   wrappers take no box, so a Clinical record keeps exactly its phone and
+   upright-tablet layout; the page shell around it already pads the column. */
+.clinical-split__list {
+  display: none;
+}
+
+.clinical-split,
+.clinical-split__detail {
+  display: contents;
+}
+
 @media (min-width: 1024px) {
-  .work-split {
+  .work-split,
+  .clinical-split {
     grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
     gap: calc(var(--spacing) * 5);
     align-items: start;
+  }
+
+  .clinical-split {
+    display: grid;
+  }
+
+  .clinical-split__detail {
+    display: block;
+    min-width: 0;
+  }
+
+  /* Sticks under the record's own nav header, which pins at the top once the
+     app header scrolls away: the same 5rem the DSM record's summary column uses. */
+  .clinical-split__list {
+    display: block;
+    position: sticky;
+    top: calc(var(--spacing) * 20);
+    max-height: calc(100dvh - var(--spacing) * 24);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background-color: var(--surface);
+    box-shadow: var(--shadow-inset);
   }
 
   .work-split__list {
