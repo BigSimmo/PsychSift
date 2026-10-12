@@ -301,11 +301,16 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
   const { year, today, loggedHours, targetHours, categoryHours, plan, weeklyHours, entries, closed, onOpenGap } = props;
   const { firstLogAction, todayHours = 0, showTimeLeft = true } = props;
 
+  const label = showTimeLeft || closed ? cmeYearLabel({ year, today, closed }) : String(year);
+
   if (!(targetHours > 0)) {
     return (
       <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className={SUMMARY_CARD}>
-        <div data-testid="cme-year-label" className={LABEL}>
-          {year}
+        <div className={`${LABEL} nums`}>
+          <span data-testid="cme-year-label">{label}</span>
+          {todayHours > 0 ? (
+            <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
+          ) : null}
         </div>
         <p data-testid="cme-total-hours" className="m-0 flex items-baseline gap-1.5">
           {loggedHours > 0 ? (
@@ -330,8 +335,6 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
       </section>
     );
   }
-
-  const label = showTimeLeft || closed ? cmeYearLabel({ year, today, closed }) : String(year);
 
   if (!(loggedHours > 0)) {
     // cpd_empty: one calm empty state, no hero.
