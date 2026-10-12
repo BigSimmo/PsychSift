@@ -61,8 +61,11 @@ function RowBody({
   return (
     <>
       <FavouriteTypeTile item={item} />
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="flex min-w-0 items-start gap-1.5">
+      {/* At large text (12 Oct 2026) the words need at least 8rem: below that
+          they take a row of their own under the type tile, and the title, the
+          Example tag and the details wrap rather than run over each other. */}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5 [html[data-large-text]_&]:basis-32">
+        <span className="flex min-w-0 items-start gap-1.5 [html[data-large-text]_&]:flex-wrap">
           <span className="line-clamp-2 min-w-0 text-sm font-bold leading-snug text-[color:var(--work-ink)]">
             {item.title}
           </span>
@@ -72,7 +75,7 @@ function RowBody({
           <span className="block min-w-0 truncate text-xs text-[color:var(--text-muted)]">{item.note}</span>
         ) : null}
         <span id={metaId} className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span className="flex min-w-0 items-center gap-1 text-xs font-medium text-[color:var(--text-muted)]">
+          <span className="flex min-w-0 items-center gap-1 text-xs font-medium text-[color:var(--text-muted)] [html[data-large-text]_&]:flex-wrap">
             {item.pinned ? (
               <>
                 <Pin className="size-icon-xs shrink-0 text-[color:var(--clinical-accent)]" aria-hidden="true" />
@@ -317,7 +320,7 @@ export function FavouriteRow({
                 stretchedRowLinkClass,
               )}
             >
-              <span className="flex min-w-0 items-center gap-3">
+              <span className="flex min-w-0 items-center gap-3 [html[data-large-text]_&]:flex-wrap">
                 <RowBody item={item} view={view} showSet={showSet} time={time} metaId={metaId} />
               </span>
             </Link>

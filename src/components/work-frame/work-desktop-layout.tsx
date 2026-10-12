@@ -51,6 +51,43 @@ export function WorkSplit({
 }
 
 /**
+ * Clinical's list beside the open record: WorkSplit's columns (the same CSS
+ * rule in work-mode.css), for a Clinical record page (a DSM diagnosis, a
+ * therapy, the Act). Clinical pages bring their own padded page shell, so this
+ * adds no padding of its own, and below 1024px it draws no list at all and its
+ * wrappers take no box: phones and upright tablets keep the record exactly as
+ * it is. From 1024px the list is a sticky column on the left that scrolls on
+ * its own (`data-chrome-scroll-ignore` keeps that scroll from hiding the app
+ * header).
+ *
+ * The list is navigation to other records or to places on the page, so it is a
+ * `nav` named by `listLabel`; mark its current row with `aria-current`.
+ */
+export function ClinicalSplit({
+  list,
+  detail,
+  listLabel,
+  className,
+  testId,
+}: {
+  readonly list: ReactNode;
+  readonly detail: ReactNode;
+  /** Names the list column for screen readers ("DSM diagnoses"). */
+  readonly listLabel: string;
+  readonly className?: string;
+  readonly testId?: string;
+}) {
+  return (
+    <div className={cn("clinical-split", className)} data-testid={testId}>
+      <nav className="clinical-split__list" aria-label={listLabel} data-chrome-scroll-ignore="">
+        {list}
+      </nav>
+      <div className="clinical-split__detail">{detail}</div>
+    </div>
+  );
+}
+
+/**
  * Two or three columns of cards from 1024px (Today beside Coming up), one
  * column in order below it. Each child is one column.
  */
