@@ -365,8 +365,8 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
     <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className="work-hero">
       <div className="cpd-hero-top">
         <div className="min-w-0">
-          <div data-testid="cme-year-label" className="cpd-hero-kicker nums">
-            {label}
+          <div className="cpd-hero-kicker nums">
+            <span data-testid="cme-year-label">{label}</span>
             {todayHours > 0 ? (
               <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
             ) : null}
