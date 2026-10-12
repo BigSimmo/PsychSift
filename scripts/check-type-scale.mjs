@@ -4,7 +4,8 @@
 //
 // The scale lives in the @theme block of src/app/globals.css: named steps
 // text-3xs … text-3xl-minus, on top of Tailwind's default xs/sm/base/lg/xl/2xl/3xl.
-// text-3xs (10px) is the floor; the old 8px text-4xs step is retired.
+// 12px is the floor: text-3xs and text-2xs are legacy names that now alias xs
+// (owner decision 12 Oct 2026); the old 8px text-4xs step is retired.
 // Arbitrary text-[<n><unit>] values re-introduce off-scale sizes; this check
 // tracks that drift. Colour utilities (text-[color:var(--…)]) are the sanctioned
 // token-access form and are intentionally NOT flagged.

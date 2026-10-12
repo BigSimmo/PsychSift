@@ -179,7 +179,7 @@ function persist(next: AppPreferences) {
   window.dispatchEvent(new Event(changeEvent));
 }
 
-/** Reflects density/motion onto <html> so the choice takes real visual effect. */
+/** Reflects density, motion and Bright light onto <html> so the choice takes real visual effect. */
 export function applyPreferenceSideEffects(preferences: AppPreferences) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
@@ -196,6 +196,7 @@ export function applyPreferenceSideEffects(preferences: AppPreferences) {
   } else {
     root.setAttribute("data-motion", preferences.motion);
   }
+  root.toggleAttribute("data-bright", preferences.brightLight);
 }
 
 /**
