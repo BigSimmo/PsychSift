@@ -483,7 +483,7 @@ export function OpenShiftsPostPage() {
           {alreadyPosted.length > 0 ? (
             <p className="text-[color:var(--text-muted)]">{`Already posted, not sent again: ${alreadyPosted.map(formatDayShort).join(", ")}.`}</p>
           ) : null}
-          <p aria-live="polite" className="nums font-medium text-[color:var(--text-heading)]">
+          <p aria-live="polite" className="sr-only">
             {progress && progress.total > 1 ? `Posting ${progress.current} of ${progress.total}` : ""}
           </p>
         </ConfirmSheet>

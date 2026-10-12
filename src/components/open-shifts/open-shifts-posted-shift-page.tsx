@@ -129,7 +129,7 @@ function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: strin
               setState({ status: "loading" });
               setGeneration((value) => value + 1);
             }}
-            className="inline-flex min-h-12 items-center font-medium text-[color:var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
+            className="inline-flex items-center min-h-12 font-medium text-[color:var(--mode-identity)] focus-visible:outline-2 focus-visible:outline-[color:var(--command)]"
           >
             Try again
           </button>

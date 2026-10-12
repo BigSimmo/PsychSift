@@ -66,7 +66,10 @@ export function OpenShiftsAdvertActions({
           ) : (
             <Share2 aria-hidden="true" strokeWidth={1.6} className="size-icon-sm" />
           )}
-          <span aria-live="polite">{copied ? "Copied to share" : "Share with a colleague"}</span>
+          <span>{copied ? "Copied to share" : "Share with a colleague"}</span>
+          <span aria-live="polite" className="sr-only">
+            {copied ? "Copied to share" : ""}
+          </span>
         </button>
       ) : null}
     </div>
