@@ -1241,6 +1241,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
       const icon = homeRegion.locator(".mode-home-icon").first();
       await expect(icon).toBeVisible();
+      // The home can swap its subtree between the visibility check and a single box read, so read the
+      // box until the settled icon answers.
+      await expect.poll(() => icon.boundingBox(), { message: `${home.path} hero icon` }).not.toBeNull();
       const iconBox = await icon.boundingBox();
       expect(iconBox, `${home.path} hero icon`).not.toBeNull();
 
