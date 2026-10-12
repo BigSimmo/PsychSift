@@ -33,7 +33,6 @@ function entry(id: WorkAreaId, modeId: AppModeId, label: string, short = label):
 export const WORK_SIDE_AREAS: readonly WorkSideArea[] = [
   entry("day", "my-day", "My Day"),
   entry("call", "on-call", "On Call"),
-  entry("open", "open-shifts", "Open shifts", "Shifts"),
   entry("rost", "roster", "Roster"),
   entry("teach", "teaching", "Teaching"),
   entry("cpd", "cme", "CPD"),
