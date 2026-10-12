@@ -218,12 +218,14 @@ export const modeSecondaryNavigationRegistry = {
     { id: "week", label: "Week", href: "/teaching/week" },
     { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
   ],
-  // Psychiatry's hub has three pages, switched with ?page= (like My Day). The
+  // Psychiatry's hub has two pages, switched with ?page= (like My Day): one
+  // Home page and Saved (owner design review, 12 Oct 2026, which folded the old
+  // Tools page into Home; `/psychiatry?page=tools` still lands on Home). The
   // band draws them as its underline tabs; each section the hub gathers keeps
-  // its own navigation.
+  // its own navigation. The Home id stays `psychiatry-ask` so saved layouts and
+  // the band's current-tab key keep working.
   psychiatry: [
-    { id: "psychiatry-ask", label: "Ask", href: "/psychiatry" },
-    { id: "psychiatry-tools", label: "Tools", href: "/psychiatry?page=tools" },
+    { id: "psychiatry-ask", label: "Home", href: "/psychiatry" },
     { id: "psychiatry-saved", label: "Saved", href: "/psychiatry?page=saved" },
   ],
   medicines: [],
@@ -522,8 +524,8 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     return null;
   }
   if (modeId === "psychiatry") {
-    // The address carries no ?page= here, so the page itself names Tools or
-    // Saved through useModeBandCurrentTab.
+    // The address carries no ?page= here, so the page itself names Saved
+    // through useModeBandCurrentTab.
     if (pathname === "/psychiatry") return "psychiatry-ask";
     return null;
   }
