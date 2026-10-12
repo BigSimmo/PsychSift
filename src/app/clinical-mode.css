@@ -97,6 +97,81 @@ html[data-glass="flat"] .universal-header:not([data-work-frame]) {
   }
 }
 
+/* Large text on a phone (12 Oct 2026). The pill's room was the viewport less
+   9rem, and rems grow with the reader's text, so at 320px and large text the
+   pill shrank to its badge and the area's name vanished. Once the bar is
+   narrower than 17rem (a 320px phone reaches that only with enlarged text),
+   the bar takes two rows, as Work's does at the same point: the round
+   controls keep the first row at a fixed 48px, and the pill gets a row of its
+   own, full width, so the area's name reads in full. At normal text none of
+   this applies. Phones only: there the mode menu opens in a sheet, outside
+   this container. */
+@media (max-width: 639px) {
+  .universal-header:not([data-work-frame]) {
+    container: clinical-bar / inline-size;
+  }
+
+  @container clinical-bar (max-width: 17rem) {
+    .universal-header:not([data-work-frame]) .universal-header-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      row-gap: calc(var(--spacing) * 1);
+    }
+
+    .universal-header:not([data-work-frame]) .universal-header-trailing {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    .universal-header:not([data-work-frame]) .universal-header-mode {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      justify-self: stretch;
+    }
+
+    .universal-header:not([data-work-frame]) .universal-header-icon-control {
+      width: 48px;
+      height: 48px;
+      min-width: 48px;
+      min-height: 48px;
+    }
+
+    .universal-header:not([data-work-frame]) .universal-header-icon-control svg,
+    .universal-header:not([data-work-frame]) .universal-header-mode-button svg {
+      max-width: 24px;
+      max-height: 24px;
+    }
+
+    .universal-header:not([data-work-frame]) .universal-header-mode-button {
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px;
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      min-height: 48px;
+      padding: 4px 16px 4px 8px;
+    }
+
+    /* The chevron is decoration (the pill's name says it opens a menu); it
+       gives its room to the name, as Work's does. */
+    .universal-header:not([data-work-frame]) .universal-header-mode-button > svg {
+      display: none;
+    }
+
+    .universal-header:not([data-work-frame]) .universal-header-mode-badge {
+      width: 32px;
+      height: 32px;
+    }
+
+    /* A name too long even for the whole row wraps rather than shortening. */
+    .universal-header:not([data-work-frame]) .universal-header-mode-button .truncate {
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+  }
+}
+
 /* -------------------------------------------------------- the page bar */
 
 /* The section's name, above its tabs, at Work's band title size. The bar is a

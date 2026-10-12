@@ -2646,7 +2646,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) return;
             closeModeMenu();
           }}
-          className="relative z-[60] min-w-0 justify-self-center"
+          className="universal-header-mode relative z-[60] min-w-0 justify-self-center"
         >
           <button
             ref={modeButtonRef}
@@ -2862,8 +2862,11 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             </button>
           ) : null}
           {appModeHasWorkSearch(selectedAppMode.id) ? <StaffWorkHeaderControls modeId={selectedAppMode.id} /> : null}
-          {/* At large text, work pages let cut-off labels wrap (work-mode.css). */}
-          {appModeHasWorkSearch(selectedAppMode.id) ? <LargeTextFlag /> : null}
+          {/* At large text, work pages let cut-off labels wrap (work-mode.css).
+              Favourites is drawn with the work tokens and rows, so it opts in
+              too: at 320px with large text its tiles and labels were cut off
+              (12 Oct 2026). Clinical reference pages stay untouched. */}
+          {appModeHasWorkSearch(selectedAppMode.id) || selectedAppMode.id === "favourites" ? <LargeTextFlag /> : null}
         </div>
       </div>
 
