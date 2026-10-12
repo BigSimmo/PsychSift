@@ -393,7 +393,9 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
     : formatShiftTimes(listing.startsAt, listing.endsAt);
   const alreadyMine = (listing.claimedByMe && !withdrawn) || sent !== null;
   const approved = sent === "approved" || listing.status === "approved";
-  const canWithdraw = alreadyMine && !approved && state.sample === null && !state.offline;
+  // A started shift can no longer be claimed, so the server refuses to reopen it.
+  const started = Date.parse(listing.startsAt) <= now.getTime();
+  const canWithdraw = alreadyMine && !approved && !started && state.sample === null && !state.offline;
   const sample = state.sample !== null;
   // A deep link or a list read earlier can still name a shift nobody can ask for now.
   const closed: string | null = alreadyMine

@@ -154,7 +154,7 @@ $clash$;
 
 -- 8. Open shifts: the first eligible claim reserves it; a different grade needs manager approval.
 do $open$
-declare day uuid; r jsonb; oid uuid;
+declare day uuid; r jsonb; oid uuid; was_start timestamptz; was_end timestamptz;
 begin
   select id into day from public.roster_assignments where user_id = pg_temp.id('ivy') and shift_code = 'D';
   r := pg_temp.cmd('ivy', 'open.post', jsonb_build_object('assignmentId', day));
@@ -175,6 +175,15 @@ begin
   end if;
   r := pg_temp.cmd('lee', 'open.claim', jsonb_build_object('openShiftId', oid));
   if r ->> 'status' is distinct from 'claimed' then raise exception 'open: claim after withdraw failed %', r; end if;
+  -- Once the shift has started it can no longer be claimed, so a waiting request is not taken back.
+  select starts_at, ends_at into was_start, was_end from public.roster_open_shifts where id = oid;
+  update public.roster_open_shifts set starts_at = now() - interval '1 hour', ends_at = now() + interval '7 hours' where id = oid;
+  perform pg_temp.expect_error(format('select public.roster_open_withdraw(%L,%L,%L)',
+    pg_temp.id('lee'), pg_temp.id('svc'), oid), 'roster_conflict');
+  if (select status from public.roster_open_shifts where id = oid) is distinct from 'claimed' then
+    raise exception 'open: refused withdraw of a started shift changed the row';
+  end if;
+  update public.roster_open_shifts set starts_at = was_start, ends_at = was_end where id = oid;
   r := pg_temp.cmd('mgr', 'open.approve', jsonb_build_object('openShiftId', oid));
   if r ->> 'status' is distinct from 'approved' then raise exception 'open: manager approval failed %', r; end if;
   if (select user_id from public.roster_assignments where id = day) is distinct from pg_temp.id('lee') then

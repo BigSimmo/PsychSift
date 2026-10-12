@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-12T08:58:13.775Z",
+  "sealed_at": "2026-10-12T12:38:37.206Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -303,6 +303,6 @@
     "20261010011100_work_bookings_organiser_role.sql": "e8c284f391bccc4d6327968e076ef15dd8f17d9a4ff40254a01f92ea687cad76",
     "20261010081500_roster_needs_stale_check.sql": "b9db1f643397ab1919d087d8cede955272c22474353b060acdf19a617db1b7d8",
     "20261010120000_evaluate_site_content_release_digest_once_per_health_read.sql": "4d9cf9487e74d3773c0263928fa5546b2d4ed60877c8cfdd179cbf1e16b866c2",
-    "20261012090000_roster_open_withdraw.sql": "09baf7b30abf8b39bcf00169f553187a61f0891169df6f9f3bda807f7ce00ba8"
+    "20261012090000_roster_open_withdraw.sql": "5b79b4ca60e26f4c8a3353dcdfc27c5d677e0789df33f4e27414450d2ebe60c1"
   }
 }

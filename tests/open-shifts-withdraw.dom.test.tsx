@@ -121,4 +121,14 @@ describe("Open shifts, taking back a waiting request", () => {
     renderFor(listing);
     expect(screen.queryByRole("button", { name: "Take back my request" })).toBeNull();
   });
+
+  it("stops offering a take-back once the shift has started", () => {
+    const started = waiting({
+      startsAt: new Date(NOW.getTime() - 3_600_000).toISOString(),
+      endsAt: new Date(NOW.getTime() + 7 * 3_600_000).toISOString(),
+    });
+    mocks.state = stateWith(started);
+    renderFor(started);
+    expect(screen.queryByRole("button", { name: "Take back my request" })).toBeNull();
+  });
 });
