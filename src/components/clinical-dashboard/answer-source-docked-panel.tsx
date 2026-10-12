@@ -11,8 +11,6 @@ export type AnswerSourceDockedPanelProps = {
   open: boolean;
   onClose: () => void;
   dismissOnBack?: boolean;
-  /** Stable across the responsive Sheet/docked frame transition. */
-  historyId?: string;
   title: string;
   description: string;
   closeLabel: string;
@@ -47,7 +45,6 @@ export function AnswerSourceDockedPanel({
   open,
   onClose,
   dismissOnBack = false,
-  historyId,
   title,
   description,
   closeLabel,
@@ -60,8 +57,7 @@ export function AnswerSourceDockedPanel({
 }: AnswerSourceDockedPanelProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const generatedPanelId = useId();
-  const panelId = historyId ?? generatedPanelId;
+  const panelId = useId();
   // The element that had focus when the panel opened: the citation or source card.
   const openerRef = useRef<HTMLElement | null>(null);
   // Focus moves in when the panel reaches the page. A callback ref rather than
@@ -131,33 +127,14 @@ export function AnswerSourceDockedPanel({
   useEffect(() => {
     if (!open || !dismissOnBack || typeof window === "undefined" || !window.history?.pushState) return undefined;
     const stateKey = `ps_sheet_${panelId}`;
-    // The Sheet may already own this marker when a resize swaps frames.
-    if (!window.history.state?.[stateKey]) {
-      try {
-        window.history.pushState({ ...(window.history.state ?? {}), [stateKey]: true }, "");
-      } catch {
-        // Ignore history exceptions in restricted embeds.
-      }
+    try {
+      window.history.pushState({ [stateKey]: true }, "");
+    } catch {
+      // Ignore history exceptions in restricted embeds.
     }
     const handlePopState = () => onCloseRef.current();
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [open, dismissOnBack, panelId]);
-
-  // A page action can close the non-modal dock without going through requestClose.
-  // Remove its marker without traversing history (which could undo a later URL).
-  useEffect(() => {
-    if (open || !dismissOnBack || typeof window === "undefined") return;
-    const stateKey = `ps_sheet_${panelId}`;
-    const state = window.history.state;
-    if (state?.[stateKey]) {
-      const { [stateKey]: _marker, ...previousState } = state;
-      try {
-        window.history.replaceState(previousState, "");
-      } catch {
-        // Ignore history exceptions in restricted embeds.
-      }
-    }
   }, [open, dismissOnBack, panelId]);
 
   useEffect(() => {

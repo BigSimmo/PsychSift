@@ -37,8 +37,6 @@ type SheetBaseProps = {
   onClose: () => void;
   /** When true, registers a history entry so browser/phone Back dismisses the sheet instead of leaving the page. */
   dismissOnBack?: boolean;
-  /** Stable marker id when a responsive overlay swaps container frames. */
-  historyId?: string;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
@@ -117,7 +115,6 @@ export function Sheet({
   open,
   onClose,
   dismissOnBack = false,
-  historyId,
   title,
   description,
   children,
@@ -177,8 +174,7 @@ export function Sheet({
   const unmountingRef = useRef(false);
   const titleId = useId();
   const descId = useId();
-  const generatedSheetId = useId();
-  const sheetId = historyId ?? generatedSheetId;
+  const sheetId = useId();
   const setBackdropRef = useCallback(
     (node: HTMLDivElement | null) => {
       backdropRef.current = node;
@@ -229,12 +225,10 @@ export function Sheet({
       return undefined;
     }
     const stateKey = `ps_sheet_${sheetId}`;
-    if (!window.history.state?.[stateKey]) {
-      try {
-        window.history.pushState({ ...(window.history.state ?? {}), [stateKey]: true }, "");
-      } catch {
-        // Ignore storage/history exceptions in restricted embeds
-      }
+    try {
+      window.history.pushState({ [stateKey]: true }, "");
+    } catch {
+      // Ignore storage/history exceptions in restricted embeds
     }
 
     const handlePopState = () => {
@@ -250,21 +244,6 @@ export function Sheet({
       // is removed when the user dismisses the sheet, which calls history.back()
       // while this listener is still attached.
     };
-  }, [open, dismissOnBack, sheetId]);
-
-  // Page actions can close a sheet without requestClose. Remove the marker in
-  // place, preserving the state that was beneath it rather than adding a Back.
-  useEffect(() => {
-    if (open || !dismissOnBack || typeof window === "undefined") return;
-    const stateKey = `ps_sheet_${sheetId}`;
-    const state = window.history.state;
-    if (!state?.[stateKey]) return;
-    const { [stateKey]: _marker, ...previousState } = state;
-    try {
-      window.history.replaceState(previousState, "");
-    } catch {
-      // Ignore history exceptions in restricted embeds.
-    }
   }, [open, dismissOnBack, sheetId]);
 
   // Swipe-to-dismiss for the mobile bottom sheet: dragging the grip down past a
