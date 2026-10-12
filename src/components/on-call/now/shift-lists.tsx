@@ -5,7 +5,8 @@ import { useId, useState } from "react";
 import { focusRing } from "@/components/card-recipes";
 import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
 import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
-import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { ON_CALL_SERVICE_HANDBOOK_ACTION, OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { WorkEmptyLine } from "@/components/mode-kit/work-empty-line";
 import { onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { modeNameText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
 import { OnCallNextShift } from "@/components/on-call/on-call-next-shift";
@@ -116,11 +117,14 @@ export function NowShiftLists({
   shifts,
   items,
   now,
+  handbookReady = true,
 }: {
   readonly context: OnCallShiftContext;
   readonly shifts: RosterShiftsState;
   readonly items: readonly HandbookItem[];
   readonly now: Date;
+  /** False while the handbook is loading, signed out or unavailable: an empty list is then unconfirmed. */
+  readonly handbookReady?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [ticks, setTicks] = useState<{ readonly shiftKey: string; readonly ids: ReadonlySet<string> }>(() => ({
@@ -176,8 +180,12 @@ export function NowShiftLists({
                   className="w-16 shrink-0"
                 />
               </span>
-            ) : (
+            ) : handbookReady ? (
               <OnCallStateLabel state={{ kind: "not-set-up" }} />
+            ) : (
+              <span data-testid="on-call-now-checklists-pending" className="text-xs text-[color:var(--text-muted)]">
+                Not available right now
+              </span>
             )}
           </span>
           <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
@@ -201,6 +209,19 @@ export function NowShiftLists({
           {lists.map((list) => (
             <TickList key={list.key} list={list} ticked={ticked} onToggle={toggle} />
           ))}
+          {hasLists ? null : handbookReady ? (
+            <WorkEmptyLine
+              className="px-3"
+              testId="on-call-now-checklists-empty"
+              action={ON_CALL_SERVICE_HANDBOOK_ACTION}
+            >
+              Your service has not added shift lists for this hospital yet.
+            </WorkEmptyLine>
+          ) : (
+            <WorkEmptyLine className="px-3" testId="on-call-now-checklists-empty">
+              Shift lists are not available right now.
+            </WorkEmptyLine>
+          )}
           {hasLists ? (
             <div className="flex min-w-0 items-center justify-between gap-3 px-3">
               <p className={modeSecondaryText}>Nothing is saved</p>
