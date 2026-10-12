@@ -2048,19 +2048,29 @@ jobs:
           Acquire::https::Timeout "30";
           EOF
           fi
+          # `set -e`: without it a failed `install-deps` on a cache hit was masked by the
+          # browser download that followed, so the attempt "passed" with apt libraries
+          # missing and every WebKit test died at launch (libevent-2.1.so.7, main run
+          # 38228339791). The launch probe proves the engine actually starts on this
+          # runner, so a missing library fails here and retries instead of in each test.
           install_browsers() {
+            set -e
             if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
               npx playwright install-deps "$BROWSER_ENGINE"
               npx playwright install "$BROWSER_ENGINE"
             else
               npx playwright install --with-deps "$BROWSER_ENGINE"
             fi
+            node -e 'require("playwright")[process.env.BROWSER_ENGINE].launch().then((browser) => browser.close())'
           }
           for attempt in 1 2 3; do
             if timeout 180 bash -c "$(declare -f install_browsers); install_browsers"; then
               exit 0
             fi
             echo "Playwright browsers install attempt $attempt timed out or failed, retrying..." >&2
+            # A timeout can kill apt mid-install; finish any half-configured packages so
+            # the next attempt is not refused by an interrupted dpkg.
+            if command -v sudo >/dev/null 2>&1; then sudo dpkg --configure -a || true; fi
             sleep 5
           done
           exit 1

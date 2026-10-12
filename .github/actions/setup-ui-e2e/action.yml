@@ -42,6 +42,9 @@ runs:
         EOF
         fi
         install_chromium() {
+          # Fail the attempt if install-deps fails, rather than letting the browser
+          # download that follows mask it (see release-browser-matrix in ci.yml).
+          set -e
           if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
             npx playwright install-deps chromium
             npx playwright install chromium

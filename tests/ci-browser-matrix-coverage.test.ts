@@ -191,6 +191,18 @@ describe("release-browser-matrix engine coverage", () => {
     expect(releaseJob).toContain('npx playwright install --with-deps "$BROWSER_ENGINE"');
   });
 
+  it("fails the install attempt when system libraries are missing instead of failing every test at launch", () => {
+    const steps = parsedWorkflow.jobs["release-browser-matrix"].steps as WorkflowStep[];
+    const install = steps.find((step) => step.name === "Install Playwright browsers");
+    const script = String(install?.run ?? "");
+    // Main run 38228339791: install-deps failed on a cache hit, the browser download after
+    // it succeeded, the attempt reported success, and every WebKit test died at launch.
+    expect(script).toMatch(/install_browsers\(\) \{\n\s+set -e\n/);
+    expect(script).toContain('require("playwright")[process.env.BROWSER_ENGINE].launch()');
+    expect(script.indexOf("launch()")).toBeGreaterThan(script.indexOf('install --with-deps "$BROWSER_ENGINE"'));
+    expect(script).toContain("sudo dpkg --configure -a || true");
+  });
+
   it("reuses only the same run's matching production build, preserving the mockup build and no-producer fallback", () => {
     const job = parsedWorkflow.jobs["release-browser-matrix"];
     const steps = job.steps as WorkflowStep[];
