@@ -385,18 +385,13 @@ describe("MyDayDashboard cards", () => {
         })}
       />,
     );
+    // Work mode simplify plan, 12 Oct 2026: CPD is one row opening CPD, which holds the breakdown and the pace.
     const cpd = screen.getByTestId("my-day-card-cpd");
-    expect(cpd.textContent).toContain(
-      "32 of 50 CPD hours logged this year: Educational 14, Reviewing performance 9, Measuring outcomes 9. 18 hours to go by 31 December.",
-    );
-    expect(cpd.textContent).toContain("Educational14 h");
-    expect(cpd.textContent).toContain("Reviewing performance9 h");
-    expect(cpd.textContent).toContain("Measuring outcomes9 h");
-    // work-mode redesign, owner request 6 Oct 2026: the hours to go move into the card's foot, with the weekly pace.
-    expect(cpd.textContent).toContain("18 h to go by 31 Dec");
-    expect(cpd.textContent).toContain("Your 50 h target is the one you confirmed in CPD.");
+    expect(cpd.textContent).toContain("32 of 50 h");
+    expect(cpd.textContent).toContain("64%");
+    expect(cpd.textContent).toContain("18 hours to go by 31 December");
+    expect(cpd.textContent).not.toContain("Educational");
     expect(screen.getByTestId("my-day-cpd").getAttribute("href")).toBe("/cme?from=my-day");
-    expect(screen.getByTestId("my-day-cpd-ring")).toBeTruthy();
     const runway = screen.getByTestId("my-day-runway");
     expect(runway.querySelectorAll("li")).toHaveLength(2);
     expect(runway.textContent).not.toContain("Indemnity");
@@ -458,14 +453,11 @@ describe("MyDayDashboard cards", () => {
     online.mockRestore();
   });
 
-  // work-mode redesign, owner request 6 Oct 2026: the row opens the Customise sheet in place of the inline Edit mode.
-  it("opens the Customise sheet from the Customise row at the bottom", () => {
-    const onCustomise = vi.fn();
-    render(<MyDayDashboard {...props({ onCustomise })} />);
-    const row = screen.getByTestId("my-day-customise");
-    expect(row.textContent).toContain("Show or hide these cards");
-    fireEvent.click(row);
-    expect(onCustomise).toHaveBeenCalledTimes(1);
+  // Work mode simplify plan, 12 Oct 2026: Customise is in the band's More, so Today has no Customise row.
+  it("has no Customise row at the bottom of Today", () => {
+    render(<MyDayDashboard {...props()} />);
+    expect(screen.queryByTestId("my-day-customise")).toBeNull();
+    expect(screen.getByTestId("my-day-dashboard").textContent).not.toContain("Customise My Day");
   });
 });
 
@@ -629,7 +621,7 @@ describe("Customise", () => {
     render(<MyDayDashboard {...props({ page: "me", sources: { ...EMPTY_SOURCES, cpd: READY_CPD } })} />);
     expect(shownCards()).toEqual([]);
     expect(screen.getByTestId("my-day-all-hidden").textContent).toContain(
-      "Choose Customise My Day to bring them back.",
+      "Choose More, then Customise, to bring them back.",
     );
   });
 
