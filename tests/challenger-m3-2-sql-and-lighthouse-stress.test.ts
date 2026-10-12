@@ -396,14 +396,21 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       const largeSql = statements.join("\n");
       expect(largeSql.length).toBeGreaterThan(150000);
 
-      const start = performance.now();
-      const stripped = stripMigrationSql(largeSql);
-      const duration = performance.now() - start;
+      // Warm up once to avoid measuring cold-start noise, then require every measured run to
+      // remain below the limit. This catches regressions that a fastest-run statistic could hide.
+      stripMigrationSql(largeSql);
+      let stripped = "";
+      const durations: number[] = [];
+      for (let run = 0; run < 5; run++) {
+        const start = performance.now();
+        stripped = stripMigrationSql(largeSql);
+        durations.push(performance.now() - start);
+      }
 
       expect(stripped).toContain("https://example.com/item--1999");
       expect(stripped).toContain("Note with ''quotes'' and -- dashes");
       expect(stripped).not.toContain("trailing comment");
-      expect(duration).toBeLessThan(100); // Must be very fast, well below 100ms
+      expect(Math.max(...durations)).toBeLessThan(100); // Every warm run must be very fast
     });
 
     it("handles long unclosed comment or string safely without catastrophic backtracking", () => {
