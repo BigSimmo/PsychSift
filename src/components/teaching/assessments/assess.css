@@ -115,7 +115,7 @@
   padding: calc(var(--spacing) * 3);
 }
 .assess-dom__kicker {
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 750;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -164,7 +164,7 @@ li + li > .assess-ob {
 .assess-ob__num {
   width: 1.75rem;
   flex: none;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
@@ -233,7 +233,7 @@ li + li > .assess-ob {
   color: var(--work-ink);
 }
 .assess-rate small {
-  font-size: 0.5625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   line-height: var(--assess-leading-1-15);
   color: var(--work-ink-muted);
@@ -502,7 +502,7 @@ a.assess-pair__top:focus-visible {
   padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2.25);
   border-radius: var(--radius-pill);
   background: var(--work-wash);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   color: var(--work-ink-muted);
 }
@@ -511,7 +511,7 @@ a.assess-pair__top:focus-visible {
 .assess-key {
   display: flex;
   gap: calc(var(--spacing) * 3);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   color: var(--work-ink-muted);
 }
@@ -545,7 +545,7 @@ a.assess-pair__top:focus-visible {
   color: var(--work-ink);
 }
 .assess-cr__top em {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 650;
   white-space: nowrap;
@@ -599,7 +599,7 @@ a.assess-pair__top:focus-visible {
   display: flex;
   justify-content: space-between;
   padding: 0 calc(var(--spacing) * 3) calc(var(--spacing) * 2.25);
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   color: var(--work-ink-muted);
 }
@@ -623,7 +623,7 @@ a.assess-pair__top:focus-visible {
   color: var(--work-ink);
 }
 .assess-day__head em {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 650;
   color: var(--work-ink-muted);
@@ -646,7 +646,7 @@ a.assess-pair__top:focus-visible {
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--work-ink-muted);
@@ -723,7 +723,7 @@ a.assess-pair__top:focus-visible {
   color: var(--work-ink-muted);
 }
 .assess-kinds small {
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   line-height: var(--assess-leading-1-2);
   color: var(--work-ink-muted);
@@ -758,7 +758,7 @@ a.assess-pair__top:focus-visible {
   text-align: center;
 }
 .assess-diff small {
-  font-size: 0.65625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   color: var(--work-ink-muted);
 }
@@ -910,7 +910,7 @@ a.assess-pair__top:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: calc(var(--spacing) * 2);
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -968,7 +968,7 @@ select.assess-txt {
   display: flex;
   justify-content: space-between;
   padding: 0 calc(var(--spacing) * 0.5);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
   color: var(--work-ink-muted);
 }
