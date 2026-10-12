@@ -353,7 +353,10 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
   const [sheetOpen, setSheetOpen] = useState(false);
   // Kept mounted after the first open so closing hands focus back to "Request this shift".
   const [sheetLoaded, setSheetLoaded] = useState(false);
-  const [sent, setSent] = useState<string | null>(null);
+  const [sentState, setSent] = useState<string | null>(null);
+  // When the request was sent, so a later read that no longer shows it as this doctor's
+  // (declined or cancelled since) lets this visit's record of sending it lapse.
+  const [sentReadAt, setSentReadAt] = useState<number | null>(null);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [withdrawLoaded, setWithdrawLoaded] = useState(false);
   // The shift whose waiting request was taken back, so the page drops it before the reload lands.
@@ -413,6 +416,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
     ? `${perthTimeOf(listing.startsAt)}–${perthTimeOf(listing.endsAt)} next day`
     : formatShiftTimes(listing.startsAt, listing.endsAt);
   const withdrawn = withdrawnKey === `${listing.serviceId}:${listing.id}`;
+  const sent = listing.claimedByMe || (state.readAt?.getTime() ?? null) === sentReadAt ? sentState : null;
   const alreadyMine = (listing.claimedByMe && !withdrawn) || sent !== null;
   const approved = sent === "approved" || listing.status === "approved";
   // A started shift can no longer be claimed, so the server refuses to reopen it.
@@ -670,6 +674,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           onSent={(status) => {
             setWithdrawnKey(null);
             setSent(status);
+            setSentReadAt(state.readAt?.getTime() ?? null);
             setSheetOpen(false);
             state.reload();
           }}

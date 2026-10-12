@@ -76,7 +76,9 @@ describe("Open shifts, taking back a waiting request", () => {
     expect(screen.queryByText("Waiting for approval")).toBeNull();
     expect(screen.queryByText(/Someone else has it now/)).toBeNull();
     // The button that opened the take-back is gone, so focus moves to the result.
-    expect(document.activeElement?.textContent).toBe("Request taken back. The shift is open again.");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Request taken back. The shift is open again."),
+    );
   });
 
   it("does not call the shift open when someone else asked for it before the page re-read it", async () => {
@@ -124,6 +126,22 @@ describe("Open shifts, taking back a waiting request", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
     await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledTimes(2));
     mocks.state = stateWith(open);
+    view.rerender(<OpenShiftsAdvertPage serviceId={open.serviceId} openShiftId={open.id} />);
+    expect(screen.queryByText("Waiting for approval")).toBeNull();
+  });
+
+  it("lets a request sent on this visit lapse once a later read shows it declined", async () => {
+    const open = waiting({ status: "open", claimedByMe: false });
+    mocks.state = stateWith(open);
+    const view = renderFor(open);
+    mocks.post.mockResolvedValueOnce({ ok: true, result: { ok: true, openShiftId: open.id, status: "claimed" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Request this shift" })[0]!);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, send request" }));
+    await waitFor(() => expect(screen.getByText("Waiting for approval")).toBeTruthy());
+
+    // The manager declines, and the next read shows the shift open again and not this doctor's.
+    mocks.state = stateWith(open, { readAt: new Date(NOW.getTime() + 60_000) });
     view.rerender(<OpenShiftsAdvertPage serviceId={open.serviceId} openShiftId={open.id} />);
     expect(screen.queryByText("Waiting for approval")).toBeNull();
   });
