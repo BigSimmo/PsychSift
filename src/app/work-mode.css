@@ -265,6 +265,16 @@ body {
     display: grid;
   }
 
+  /* A Clinical record carries wider content than a work record (a row of
+     four fact tiles, a two-column summary), so on a tablet on its side the
+     list takes the narrow end of the shared range and gives the record the
+     rest; from 1280px it takes the shared range again. */
+  @media (max-width: 1279.98px) {
+    .clinical-split {
+      grid-template-columns: 17rem minmax(0, 1fr);
+    }
+  }
+
   .clinical-split__detail {
     display: block;
     min-width: 0;
