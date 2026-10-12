@@ -257,11 +257,14 @@ function WithdrawSheet({
   open,
   onClose,
   onWithdrawn,
+  onStale,
 }: {
   listing: OpenShiftListing;
   open: boolean;
   onClose: () => void;
   onWithdrawn: () => void;
+  /** The request was decided before it could be taken back, so the page reads it again. */
+  onStale: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -279,6 +282,7 @@ function WithdrawSheet({
     } as RosterAction);
     setBusy(false);
     if (!result.ok) {
+      if (result.code === "roster_conflict" || result.code === "roster_not_found") onStale();
       setError(
         result.code === "roster_conflict"
           ? "Your roster manager decided before it could be taken back. Check My shifts."
@@ -645,6 +649,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
           listing={listing}
           open={withdrawOpen}
           onClose={() => setWithdrawOpen(false)}
+          onStale={state.reload}
           onWithdrawn={() => {
             setSent(null);
             setWithdrawn(true);

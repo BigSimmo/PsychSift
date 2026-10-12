@@ -85,7 +85,8 @@ describe("Open shifts, taking back a waiting request", () => {
     fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/decided before it could be taken back/));
-    expect(screen.getByText("Waiting for approval")).toBeTruthy();
+    // The page reads the request again, so it shows what the manager decided.
+    expect(mocks.state.reload).toHaveBeenCalledOnce();
   });
 
   it("never offers to take back an approved shift, or while offline", () => {
