@@ -330,8 +330,11 @@ export function CmeWhatsLeft({
               data-testid="cme-whats-left-see-all"
               className="work-row min-h-tap min-w-0 flex-1"
             >
+              <span aria-hidden="true" className="work-ic rounded-full" data-tone="neutral">
+                <LayoutGrid aria-hidden="true" strokeWidth={2} />
+              </span>
               <span className="work-row__text">
-                <span className="work-row__title">{`See all ${left.length} in End of year`}</span>
+                <span className="work-row__title text-[color:var(--mode-identity)]">{`See all ${left.length} in End of year`}</span>
                 <span className="work-row__sub">{`${hidden} more, plus evidence and handing it in`}</span>
               </span>
               <ChevronRight aria-hidden="true" className="work-row__chev" />
