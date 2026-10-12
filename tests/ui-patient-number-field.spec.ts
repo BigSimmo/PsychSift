@@ -112,8 +112,10 @@ async function openPatientStrip(page: Page): Promise<void> {
     const open = await panel.evaluate((element) => (element as HTMLDetailsElement).open);
     if (!open) await clickWhenHydrated(panel.locator("summary").first());
     await expect(crcl).toBeVisible({ timeout: 5_000 });
-  }).toPass({ timeout: 20_000 });
-  await waitForHydratedField(crcl);
+    await waitForHydratedField(crcl);
+    // A replacement that lands after the field first painted mounts closed; this retries it.
+    await expect(crcl).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 /**
