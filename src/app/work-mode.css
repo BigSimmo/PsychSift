@@ -3029,9 +3029,9 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
    the glyph carries colour: triangle red, filled dot amber, tick green.
    Colour is never the only signal. Neutral and mode tags are labels, not
    statuses ("Met", "Sending", "In your week"), so they carry no glyph. */
-.work-tag[data-tone="red"],
-.work-tag[data-tone="amber"],
-.work-tag[data-tone="green"] {
+.work-tag[data-tone="red"]:not([data-plain]),
+.work-tag[data-tone="amber"]:not([data-plain]),
+.work-tag[data-tone="green"]:not([data-plain]) {
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing) * 1);
@@ -3039,9 +3039,9 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
   color: var(--work-ink-muted);
   box-shadow: var(--work-edge-inset) var(--work-line);
 }
-.work-tag[data-tone="red"]::before,
-.work-tag[data-tone="amber"]::before,
-.work-tag[data-tone="green"]::before {
+.work-tag[data-tone="red"]:not([data-plain])::before,
+.work-tag[data-tone="amber"]:not([data-plain])::before,
+.work-tag[data-tone="green"]:not([data-plain])::before {
   content: "";
   flex: none;
   width: 0.75em;
@@ -3049,12 +3049,12 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
   border-radius: var(--radius-pill);
   background: var(--warning, var(--warning-text));
 }
-.work-tag[data-tone="red"]::before {
+.work-tag[data-tone="red"]:not([data-plain])::before {
   border-radius: 0;
   background: var(--danger-text);
   clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
 }
-.work-tag[data-tone="green"]::before {
+.work-tag[data-tone="green"]:not([data-plain])::before {
   border-radius: 0;
   background: var(--success-text);
   clip-path: polygon(8% 52%, 22% 38%, 40% 56%, 80% 14%, 94% 28%, 40% 84%);

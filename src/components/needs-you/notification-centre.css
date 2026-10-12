@@ -251,7 +251,7 @@
 
 .notify-row__hint {
   margin: 0;
-  font-size: 0.71875rem;
+  font-size: var(--text-xs);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
@@ -314,7 +314,7 @@
 }
 
 .notify-oncall [data-testid="on-call-notifications-list"] a > span:first-child > span:last-child {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }
@@ -392,7 +392,7 @@
 }
 
 .notify-note__text small {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs);
   line-height: var(--leading-snug);
   color: var(--work-ink-muted);
 }

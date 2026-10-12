@@ -1202,7 +1202,9 @@ export function SettingsDialog({
                     icon={Sun}
                     label="Bright light"
                     description="For glare on a ward or in sun: solid screens, darker lines and heavier text. Uses light mode."
-                    checked={preferences.brightLight}
+                    // Bright light only paints in light mode, so a synced "on" from another
+                    // device reads as off here while this device shows dark.
+                    checked={preferences.brightLight && theme !== "dark"}
                     onChange={(next) => {
                       setPreference("brightLight", next);
                       if (next) setThemePreference("light");
