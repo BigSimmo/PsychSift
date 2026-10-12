@@ -63,7 +63,7 @@ describe("mode pages sheet recipes", () => {
       path.join(process.cwd(), "src/components/clinical-dashboard/master-search-header.tsx"),
       "utf8",
     );
-    const start = source.indexOf("{activeModePage ? (");
+    const start = source.indexOf("{pillPageLine ? (");
     const pill = source.slice(start, source.indexOf("<ChevronDown", start));
     expect(pill.length).toBeGreaterThan(0);
     expect(pill).not.toMatch(/font-(bold|extrabold|black)/);

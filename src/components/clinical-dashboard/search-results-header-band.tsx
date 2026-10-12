@@ -254,6 +254,11 @@ export function SearchResultsHeaderBand({
   const browseSubject = trimmedQuery ? undefined : emptyQuerySubject?.trim() || undefined;
   const displayQuery = trimmedQuery || browseSubject || "All";
   const showQuerySubject = Boolean(trimmedQuery) || Boolean(browseSubject) || !hideEmptyQuery;
+  // Only a typed query is drawn after the count (owner design review, 12 Oct
+  // 2026: "146 DSM diagnoses", not "146 DSM diagnoses | DSM diagnoses"). A browse
+  // subject or "All" says nothing the count's own noun does not, so it stays in
+  // the DOM as the region's heading for assistive technology and is not drawn.
+  const querySubjectDrawn = Boolean(trimmedQuery);
   const regionLabel = browseSubject
     ? `Browse ${browseSubject}`
     : showQuerySubject
@@ -338,10 +343,13 @@ export function SearchResultsHeaderBand({
       data-status={resolvedStatus}
       data-testid="search-query-ribbon"
       className={cn(
-        // `search-band` no longer paints the accent — the lead rule does. The
-        // class stays because the forced-colors fault signal hangs off it, and
-        // because the style-contract registry names it.
-        "search-band relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--shadow-inset)]",
+        // One plain line, not a boxed strip (owner design review, 12 Oct 2026):
+        // the count reads like a Work section header, with Filter beside it. The
+        // border stays, transparent, so forced colours still draw the band's
+        // edge and its doubled top edge when a search faults. The class stays
+        // because the forced-colors fault signal hangs off it, and because the
+        // style-contract registry names it.
+        "search-band relative overflow-hidden rounded-xl border border-transparent",
         className,
       )}
     >
@@ -352,7 +360,7 @@ export function SearchResultsHeaderBand({
           truncating query now that Sort and full-width selects are wide-only. */}
       <div
         className={cn(
-          "flex min-w-0 items-center gap-x-2 px-3 sm:min-h-[3.75rem] sm:flex-nowrap sm:gap-x-2.5 sm:px-4",
+          "flex min-w-0 items-center gap-x-2 px-1 sm:min-h-[3.75rem] sm:flex-nowrap sm:gap-x-2.5",
           inlineControls ? "min-h-[3.625rem] flex-nowrap" : "flex-wrap py-2 sm:py-0",
         )}
       >
@@ -361,15 +369,12 @@ export function SearchResultsHeaderBand({
             only absorb what is left after flexible lengths resolve — so the wide
             layout is unchanged and no breakpoint had to move. */}
         <div className={cn("mr-auto flex min-w-0 items-center gap-2 sm:gap-2.5", inlineControls ? null : "py-1")}>
-          {/* The lead rule, replacing the full-width accent border. Rendered in
-              flow rather than absolutely positioned: an absolute bar inside this
-              `overflow-hidden` 12px-radius card had its ends sliced by the corner
-              arc, which is what the border-top was adopted to fix. */}
-          <span
-            className="search-band-lead shrink-0"
-            data-tone={faulted || partial ? "warning" : "accent"}
-            aria-hidden
-          />
+          {/* The fault mark. A healthy search draws no mark at all: the plain
+              line carries no accent (owner design review, 12 Oct 2026). A failed
+              or partial one keeps a double stroke before the count, so state is
+              never carried by colour alone. Rendered in flow rather than
+              absolutely positioned, so the band's corner can never clip it. */}
+          {faulted || partial ? <span className="search-band-lead shrink-0" data-tone="warning" aria-hidden /> : null}
           {/* Count first, query second. The count is the answer to the search; the
               query is what you already typed, and the composer above still shows it.
               Leading with the query spent the band's only heading slot on
@@ -484,7 +489,7 @@ export function SearchResultsHeaderBand({
               always rendered rather than appearing on scroll — conditional chrome
               is what this band spent its last redesign removing — and it is the
               part that truncates when the line runs out, never the number. */}
-          {showQuerySubject ? (
+          {querySubjectDrawn ? (
             <>
               <span className="search-band-rule mx-0.5 h-[1.125rem] w-px shrink-0" aria-hidden />
               <QueryHeading
@@ -497,7 +502,10 @@ export function SearchResultsHeaderBand({
               </QueryHeading>
             </>
           ) : (
-            <span className="min-w-0 flex-1" aria-hidden="true" />
+            <>
+              {showQuerySubject ? <QueryHeading className="sr-only">{displayQuery}</QueryHeading> : null}
+              <span className="min-w-0 flex-1" aria-hidden="true" />
+            </>
           )}
         </div>
 
@@ -656,10 +664,7 @@ export function SearchResultsHeaderBand({
           data-testid="search-query-ribbon-filters"
           role="group"
           aria-label={filterLabel}
-          className={cn(
-            "min-w-0 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-2 sm:px-3",
-            Boolean(pageMobileControls) && "hidden sm:block",
-          )}
+          className={cn("min-w-0 px-1 pb-1", Boolean(pageMobileControls) && "hidden sm:block")}
         >
           {pageControls}
         </div>
@@ -677,7 +682,7 @@ export function SearchResultsHeaderBand({
           data-testid="search-query-ribbon-shelf"
           role="group"
           aria-label="Applied filters"
-          className="flex min-w-0 items-center gap-1.5 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-2 sm:gap-2 sm:px-3"
+          className="flex min-w-0 items-center gap-1.5 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-2 sm:gap-2 sm:px-3"
         >
           {/* A funnel on a phone, the wordmark from `sm`. A prefixed chip costs
               roughly 215px of a 350px bar, so every character the label spends is
@@ -764,7 +769,7 @@ export function SearchResultsHeaderBand({
         <div
           role="alert"
           data-testid="search-query-ribbon-fault"
-          className="search-band-fault-panel border-t border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-3 text-center sm:px-4"
+          className="search-band-fault-panel rounded-xl border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-3 text-center sm:px-4"
         >
           <p className="search-band-fault text-[color:var(--warning)]">{resolvedFaultTitle}</p>
           <p className="search-band-count-word mt-0.5 text-[color:var(--warning)]">{resolvedFaultBody}</p>

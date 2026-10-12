@@ -207,9 +207,7 @@ describe("ClinicalDashboard merge-artifact guards", () => {
 
   it("releases the Safari toolbar reserve only after phone composers hide", () => {
     expect(mobileComposerReserveSource).toContain('export const mobileComposerHiddenReserve = "0rem"');
-    expect(mobileComposerReserveSource).toContain(
-      "calc(12.5rem + var(--safe-area-bottom) + var(--keyboard-height, 0px))",
-    );
+    expect(mobileComposerReserveSource).toContain("calc(9rem + var(--safe-area-bottom) + var(--keyboard-height, 0px))");
     expect(mobileComposerReserveSource).toContain("export const mobileComposerDifferentialsCompareReserve");
     expect(mobileComposerReserveSource).toContain("export function resolveMobileComposerReserve");
     expect(mobileComposerReserveSource).toContain("export function isDocumentViewerOwnedRoute");
@@ -263,7 +261,7 @@ describe("ClinicalDashboard merge-artifact guards", () => {
     expect(globalSearchShellSource).toContain("useReserveTransitionMarker");
     expect(clinicalDashboardSource).toContain("useDashboardChromeCoordinator(searchMode)");
     expect(dashboardChromeCoordinatorSource).toContain("useReserveTransitionMarker");
-    expect(globalStylesSource).toContain("--phone-dock-differentials-compare-clearance: 12.5rem");
+    expect(globalStylesSource).toContain("--phone-dock-differentials-compare-clearance: 9rem");
     expect(globalStylesSource).toContain("var(--phone-dock-differentials-compare-clearance)");
     // Child pages must not stack a second dock-sized safe-area pad under the
     // shared host reserve — that pad cannot collapse when the dock hides.

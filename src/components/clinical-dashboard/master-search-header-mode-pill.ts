@@ -3,6 +3,7 @@
 import { useWorkFramePill } from "@/components/work-frame/work-frame-store";
 import type { AppModeId } from "@/lib/app-modes";
 import { activeModeSecondaryNavigationId, type ModeSecondaryNavigationEntry } from "@/lib/mode-secondary-navigation";
+import { modeMenuSideForMode } from "@/lib/phone-mode-groups";
 import { workAreaFor, workAreaPillName, workFrameForRoute } from "@/lib/work-frame/areas";
 
 /**
@@ -71,8 +72,25 @@ export function useHeaderModePill({
       ? { id: "work-frame", label: workPill.page }
       : null
     : registryModePage;
-  /** The area-only pill: a work area's name, alone, in its own colour. */
-  const pillShowsAreaOnly = Boolean(workPill) && !activeModePage;
+  /**
+   * A Clinical page names its area alone too (owner design review, 12 Oct
+   * 2026): "Psychiatry", not "Ask" over "PSYCHIATRY". The page's own title and
+   * tabs, just below, already say which page this is, so the pill keeps to one
+   * line. The page still reaches assistive technology through the pill's name.
+   */
+  const clinicalAreaOnly = !workPill && modeMenuSideForMode(modeId) === "clinical";
+  /** The area-only pill: the area's name, alone, in its own colour. */
+  const pillShowsAreaOnly = clinicalAreaOnly || (Boolean(workPill) && !activeModePage);
   const pillModeLabel = workPill?.area ?? modeLabel;
-  return { activeModePage, pillShowsAreaOnly, pillModeLabel, routeWorkArea, routeWorkFrame, routeWorkFramed };
+  /** The page line under the pill's name, when the pill draws one. */
+  const pillPageLine = clinicalAreaOnly ? null : activeModePage;
+  return {
+    activeModePage,
+    pillPageLine,
+    pillShowsAreaOnly,
+    pillModeLabel,
+    routeWorkArea,
+    routeWorkFrame,
+    routeWorkFramed,
+  };
 }

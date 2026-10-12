@@ -742,10 +742,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const sharedHome = visibleByTestId(page, "shared-home-empty-state");
     const searchInput = visibleGlobalSearchInput(page);
-    const sharedHomeBrand = page.getByTestId("shared-home-brand");
-    await expect(sharedHomeBrand).toBeVisible();
-    await expect(sharedHomeBrand).toContainText("PsychSift");
-    await expect(sharedHomeBrand).toContainText("From question to source");
+    // The rail carries the PsychSift mark, so the header does not repeat it
+    // (owner design review, 12 Oct 2026).
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Answers" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-sparkles\b/);
     await searchInput.fill("lithium draft");
@@ -765,7 +764,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(sharedHome).toBeVisible();
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Services" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-route\b/);
-    await expect(sharedHomeBrand).toContainText("PsychSift");
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(page.getByText("Services Navigator", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("services-home")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
@@ -1241,8 +1240,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
       const icon = homeRegion.locator(".mode-home-icon").first();
       await expect(icon).toBeVisible();
-      const iconBox = await icon.boundingBox();
-      expect(iconBox, `${home.path} hero icon`).not.toBeNull();
+      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
+      // (48px since PR 5b), not a standalone pixel choice. The home can swap its subtree between the
+      // visibility check and a box read, so each sample is a fresh read of the settled icon.
+      await expect
+        .poll(
+          async () => {
+            const box = await icon.boundingBox();
+            return box && { width: Math.round(box.width), height: Math.round(box.height) };
+          },
+          { message: `${home.path} hero icon size` },
+        )
+        .toEqual({ width: 48, height: 48 });
 
       // ModeHomeHero gives its heading the deterministic id `<heroTestId>-title`
       // (role/name lookups can collide with sr-only section headings).
@@ -1271,16 +1280,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
         };
       });
 
-      const metrics = {
-        iconWidth: Math.round(iconBox?.width ?? 0),
-        iconHeight: Math.round(iconBox?.height ?? 0),
-        headingFontSize,
-      };
-      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
-      // (48px since PR 5b), not a standalone pixel choice.
-      expect(metrics.iconWidth).toBe(48);
-      expect(metrics.iconHeight).toBe(48);
-      expect(metrics.headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
+      expect(headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
       expect(subtitleFontSize).toBeCloseTo(expectedTypeSizes.subtitle, 1);
 
       await expectNoPageHorizontalOverflow(page);
@@ -2527,15 +2527,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await submit.click();
     await searchResponse;
 
-    const compareAction = page.getByTestId("differentials-compare-selected-mobile");
+    const compareAction = page.getByTestId("differentials-compare-tray-compare");
     const dock = page.locator("form.answer-footer-search-dock");
     const scrollport = visibleByTestId(page, "differentials-search-results");
     const mainContent = page.locator("#main-content");
     await expect(scrollport).toBeVisible();
     await expect(scrollport.getByRole("region", { name: "Source status" })).toContainText("No indexed source matches");
     await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
+    // A submitted search pre-ticks its top two diagnoses, so the shared
+    // Compare tray is already showing with Compare ready.
+    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("2 selected");
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
 
     // Begin with the visible composer reserve. Document scrolling deliberately
@@ -2545,7 +2548,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     // settled range instead of polling a stale scrollTop.
     await input.focus();
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     // The visible dock/reserve can finish its layout commit after the first
     // endpoint scroll, increasing document height. Treat scrolling to the live
     // endpoint and measuring it as one retriable action; a persistent clearance
@@ -2557,7 +2560,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       expect(geometry.maxScrollTop - geometry.scrollTop).toBeLessThanOrEqual(1);
     }).toPass({ timeout: 15_000 });
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     const clearance = await page.evaluate(() => {
       const main = document.getElementById("main-content");
       const last = document.querySelector('[data-testid="differential-mobile-result-card"]:last-of-type');
@@ -2666,12 +2669,11 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       .toBe(true);
     await expectNoPageHorizontalOverflow(page);
 
-    // The result cards and compare bar remain in their non-desktop layout up
-    // to 1023px, so the composer must keep providing the portal host on tablet.
+    // From 640px the shared tray floats above the content instead of riding
+    // in the phone dock; it stays visible and tappable.
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
   });
 
   test("diagnosis detail actions stay tappable and tabs stay single-line", async ({ page }) => {

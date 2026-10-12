@@ -122,8 +122,14 @@ export function ModeNav({
   densityProfile,
   activeId,
   originId,
+  title,
 }: {
   items: ModeNavItem[];
+  /**
+   * The section's name, drawn as a calm title above the tabs (clinical-mode.css).
+   * A label, not a heading: the page keeps its own h1.
+   */
+  title?: string;
   /** Names the landmark, e.g. "Therapy pages". */
   label: string;
   /** Calibrated against this destination set's complete icon-and-label widths. */
@@ -196,6 +202,11 @@ export function ModeNav({
       className="mode-nav-rail border-b border-[color:var(--border)] bg-[color:var(--surface)]"
     >
       <div className="mode-nav" data-density-profile={densityProfile}>
+        {title ? (
+          <p className="mode-nav__heading" data-testid="mode-nav-title">
+            {title}
+          </p>
+        ) : null}
         {/* Collapsed: the default, and the only state that cannot overflow. */}
         <div className="mode-nav__control px-4 pb-2.5 pt-1.5">
           <button
