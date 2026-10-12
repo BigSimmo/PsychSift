@@ -94,15 +94,7 @@ describe("phone side menu tabs", () => {
     expect(screen.getByRole("tabpanel")).toHaveAttribute("aria-labelledby", work.id);
     expect(screen.queryByRole("button", { name: "New chat" })).toBeNull();
     const areas = within(screen.getByTestId("clinical-menu-work")).getAllByRole("link");
-    expect(areas.map((link) => link.textContent)).toEqual([
-      "My Day",
-      "On Call",
-      "Open shifts",
-      "Roster",
-      "Teaching",
-      "CPD",
-      "Admin",
-    ]);
+    expect(areas.map((link) => link.textContent)).toEqual(["My Day", "On Call", "Roster", "Teaching", "CPD", "Admin"]);
     // Appearance, Settings and the account card stay at the foot of both tabs.
     expect(screen.getByRole("button", { name: /Appearance/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
