@@ -49,6 +49,20 @@ for (const colorScheme of ["light", "dark"] as const) {
       expect(tops).toEqual([...tops].sort((a, b) => a - b));
     });
 
+    test("keeps call guidance before the team on phones and in the left column on desktop", async ({ page }) => {
+      await openNow(page, colorScheme);
+      const who = visibleByTestId(page, "on-call-now-who");
+      const team = visibleByTestId(page, "on-call-now-team");
+      const mobileTops = await Promise.all([who, team].map(async (section) => (await section.boundingBox())?.y ?? Number.NaN));
+      expect(mobileTops[0]).toBeLessThan(mobileTops[1]);
+
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await expect(page.locator('[data-today-column="act"] [data-testid="on-call-now-who"]')).toBeVisible();
+      await expect(page.locator('[data-today-column="ahead"] [data-testid="on-call-now-shift-tools"]')).toBeVisible();
+      const crisis = page.locator('[data-today-column="ahead"] [data-testid="on-call-now-crisis"]');
+      if ((await crisis.count()) > 0) await expect(crisis).toBeVisible();
+    });
+
     test("has no search box and no ask box on the page", async ({ page }) => {
       await openNow(page, colorScheme);
       const main = visibleByTestId(page, "on-call-home-main");
