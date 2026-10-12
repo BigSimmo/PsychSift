@@ -2646,6 +2646,69 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(firstRailRow).toBeFocused();
   });
 
+  test("clinical records open with their list beside them from 1024px only", async ({ page }) => {
+    // ClinicalSplit (work-desktop-layout.tsx): from 1024px a DSM diagnosis, a
+    // therapy record and the Act have a list in a column on the left; below that
+    // width the list is not drawn at all and the record is the phone column.
+    const pages = [
+      {
+        route: "/dsm/diagnoses/major-depressive-disorder",
+        list: "DSM diagnoses",
+        current: "Major depressive disorder",
+        currentState: "page",
+        beside: { level: 1, name: "Major depressive disorder" },
+      },
+      {
+        route: "/therapy-compass/cognitive-behavioural-therapy-cbt",
+        list: "Therapies",
+        current: "Cognitive Behavioural Therapy (CBT)",
+        currentState: "page",
+        beside: { level: 1, name: "Cognitive Behavioural Therapy (CBT)" },
+      },
+      {
+        route: "/forms/act",
+        list: "Act and Standards topics",
+        current: "Criteria for an involuntary treatment order",
+        currentState: "location",
+        beside: { level: 2, name: "Mental Health Act 2014 (WA)" },
+      },
+    ] as const;
+
+    for (const width of [1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const entry of pages) {
+        await gotoApp(page, entry.route);
+        const list = page.getByRole("navigation", { name: entry.list });
+        await expect(list).toBeVisible({ timeout: 30_000 });
+        const current = list.locator(`[aria-current="${entry.currentState}"]`);
+        await expect(current).toHaveCount(1);
+        await expect(current).toContainText(entry.current);
+        // Every row is a full 48px target, the current one included.
+        for (const row of await list.getByRole("link").all()) {
+          if (!(await row.isVisible())) continue;
+          const box = await row.boundingBox();
+          expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+        }
+        // Beside the record, not above it.
+        const listBox = await list.boundingBox();
+        const headingBox = await page
+          .getByRole("heading", { level: entry.beside.level, name: entry.beside.name, exact: true })
+          .boundingBox();
+        expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(headingBox!.x);
+        await expectNoPageHorizontalOverflow(page);
+      }
+    }
+
+    for (const width of [390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const entry of pages) {
+        await gotoApp(page, entry.route);
+        await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("navigation", { name: entry.list })).toHaveCount(0);
+      }
+    }
+  });
+
   for (const viewport of [
     { name: "desktop", width: 1280, height: 900 },
     { name: "390x844 mobile", width: 390, height: 844 },
