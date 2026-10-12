@@ -21,7 +21,7 @@ import { OnCallRouteFreshnessLine } from "@/components/on-call/refer/route-fresh
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
-import { onCallEntryIsEditable } from "@/lib/on-call/entry-model";
+import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import { searchHandbookItems } from "@/lib/on-call/handbook-search";
@@ -33,6 +33,35 @@ function matchesNote(entry: { title: string; subtitle?: string | null }, query: 
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const haystack = `${entry.title} ${entry.subtitle ?? ""}`.toLowerCase();
   return terms.every((term) => haystack.includes(term));
+}
+
+/**
+ * How many referral rows a search shows: the hospital's referral routes plus the reader's own referral
+ * notes. Contacts counts these too, so a referral-only match never reads as "no results" there.
+ */
+export function onCallReferralMatchCount({
+  items,
+  entries,
+  query,
+  signedOut,
+}: {
+  readonly items: readonly HandbookItem[];
+  readonly entries: readonly OnCallEntry[];
+  readonly query: string;
+  readonly signedOut: boolean;
+}): number {
+  if (!query.trim()) return 0;
+  const routes = searchHandbookItems(
+    items.filter((item) => item.section === "referrals"),
+    query,
+  ).length;
+  if (signedOut) return routes;
+  return (
+    routes +
+    entries.filter(
+      (entry) => entry.section === "referrals" && onCallEntryIsEditable(entry) && matchesNote(entry, query),
+    ).length
+  );
 }
 
 /**

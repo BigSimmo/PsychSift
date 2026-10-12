@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
   usePathname: () => "/on-call/call",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));

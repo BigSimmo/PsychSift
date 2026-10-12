@@ -16,6 +16,7 @@ const entries = vi.hoisted(() => ({
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
   usePathname: () => "/on-call/call",
   useRouter: () => ({ push: vi.fn(), replace: router.replace, back: vi.fn(), prefetch: vi.fn() }),
 }));
@@ -112,6 +113,23 @@ describe("Call page", () => {
     expect(screen.getByTestId("on-call-refer-sections")).toBeInTheDocument();
     expect(screen.getByTestId("on-call-refer-services-link")).toHaveAttribute("href", "/services/search");
     expect(document.getElementById("on-call-group-hospital")).toBeNull();
+  });
+
+  it("keeps the crisis lines on Refer, and counts a referral-only search match as a result", async () => {
+    handbook.state = ready(
+      items([
+        { id: "sw", title: "Switchboard", phone: "9000 0000" },
+        { id: "r", title: "Synthetic sleep clinic", phone: "9000 0077", section: "referrals" },
+      ]),
+    );
+    render(<OnCallCallPage />);
+    await showTab("Refer");
+    // Refer shows no hospital numbers, so the public crisis lines stay on screen.
+    expect(screen.getByTestId("on-call-crisis-lines")).toBeInTheDocument();
+    await userEvent.type(screen.getByRole("searchbox"), "sleep clinic");
+    expect(screen.queryByTestId("on-call-call-nothing-found")).toBeNull();
+    expect(screen.getByText("1 result")).toBeInTheDocument();
+    expect(screen.getByTestId("on-call-refer-row-r")).toBeInTheDocument();
   });
 
   it("orders Emergency, then departments, then Wards, then General with Switchboard first", () => {

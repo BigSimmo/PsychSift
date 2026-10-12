@@ -112,11 +112,10 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "admin:admin-hospital": ["hospital", "sick calls", "medical workforce", "dct", "safe number"],
   "admin:admin-people": ["roles", "give a role", "supervisors", "people"],
   "call:now": ["on call", "tonight", "shift", "breaks", "shift pulse", "workload"],
-  "call:call": ["phone", "numbers", "switchboard", "pager", "contacts", "ring"],
-  "call:refer": ["referral", "referrals", "refer"],
-  "call:find": ["handbook", "wards", "equipment", "systems down"],
+  // Refer, Who's who and the Pocket card folded into Contacts and the Handbook (12 Oct 2026), so their words did too.
+  "call:call": ["phone", "numbers", "switchboard", "pager", "contacts", "ring", "referral", "referrals", "refer"],
+  "call:find": ["handbook", "wards", "equipment", "systems down", "roles", "teams", "print", "pocket card"],
   "call:playbook": ["what to do", "emergency", "codes", "who to call", "escalate"],
-  "call:whoswho": ["roles", "teams"],
   "call:starting-here": [
     "checklist",
     "induction",
@@ -126,7 +125,6 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
     "first shift",
     "new job",
   ],
-  "call:card": ["print", "pocket card"],
   "call:whoson": ["tonight's team", "who's on"],
   "call:check": ["before you leave", "checklist"],
   "call:handover": ["handover"],

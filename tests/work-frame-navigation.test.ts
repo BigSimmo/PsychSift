@@ -121,6 +121,9 @@ describe("work frame navigation", () => {
     expect(manage.length).toBeGreaterThan(0);
     for (const page of manage) expect(page.gates?.length, page.id).toBeGreaterThan(0);
     expect(searchWorkPages("locum")[0]?.page.href).toBe("/open-shifts");
+    // Refer, Who's who and the Pocket card folded into Contacts and the Handbook, and their search words with them.
+    expect(searchWorkPages("referrals")[0]?.page.href).toBe("/on-call/call");
+    expect(searchWorkPages("pocket card")[0]?.page.href).toBe("/on-call/find");
   });
 
   it("puts the reader's chosen tabs first, then the area's own, then the rest by width", () => {
