@@ -500,14 +500,12 @@ test.describe("previously uncovered production routes", () => {
         });
         await expect(remove).toBeEnabled();
         await waitForReactEventHandler(remove);
-        // Slot clear commits through `router.push` with compacted ids. Wait for
-        // the URL only — same-route `?ids=` soft-nav may not fire a document load.
-        await Promise.all([
-          currentPage.waitForURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, {
-            timeout: 30_000,
-          }),
-          remove.click(),
-        ]);
+        // Slot clear commits through `router.push` with compacted ids. Click first, then poll
+        // the URL: a same-route `?ids=` soft navigation fires no document load, which
+        // `waitForURL` waits for, and inside `Promise.all` its timeout also hid whether the
+        // click itself ever landed (WebKit, 12 Oct 2026).
+        await remove.click();
+        await expect(currentPage).toHaveURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, { timeout: 30_000 });
         // Empty dashed panel is suppressed in favour of the compact slot rail
         // and inline starter chips when fewer than two diagnoses remain.
         await expect(currentPage.getByTestId("compare-slot-tile-compact").first()).toBeVisible();
