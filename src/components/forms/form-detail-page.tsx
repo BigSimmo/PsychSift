@@ -972,6 +972,13 @@ export function FormDetailPage({ form }: { form: FormRecord }) {
                       "Use the current approved form, confirm authority, and document the least restrictive safe option before signing.",
                     )}
                   </p>
+                  <p
+                    data-testid="form-product-boundary"
+                    className="mt-2 max-w-5xl text-sm leading-6 text-[color:var(--text-muted)]"
+                  >
+                    PsychSift is a reference only. It does not fill in, sign or submit this form for you: complete and
+                    lodge it on the official form through your service&apos;s usual process.
+                  </p>
                 </div>
               </div>
             </section>
