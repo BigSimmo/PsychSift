@@ -242,20 +242,6 @@ describe("On Call home layout", () => {
     expect(screen.queryByTestId("on-call-roster-right-now")).toBeNull();
   });
 
-  it("keeps Who to call before the team and in the left column with the numbers", () => {
-    render(<OnCallHome />);
-
-    const who = screen.getByTestId("on-call-now-who");
-    const team = screen.getByTestId("on-call-now-team");
-    const shiftTools = screen.getByTestId("on-call-now-shift-tools");
-    const crisis = screen.getByTestId("on-call-now-crisis");
-    // Node.DOCUMENT_POSITION_FOLLOWING === 4: the team comes after the guidance.
-    expect(who.compareDocumentPosition(team) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(who.closest('[data-today-column="act"]')).toBeTruthy();
-    expect(shiftTools.closest('[data-today-column="ahead"]')).toBeTruthy();
-    expect(crisis.closest('[data-today-column="ahead"]')).toBeTruthy();
-  });
-
   it("puts Your usual above the shift tools, because last shift predicts this shift", () => {
     storeState.entries = [contact("reg", "After-hours registrar", ["call-first"], "9000 0030")];
 

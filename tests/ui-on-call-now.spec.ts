@@ -53,7 +53,9 @@ for (const colorScheme of ["light", "dark"] as const) {
       await openNow(page, colorScheme);
       const who = visibleByTestId(page, "on-call-now-who");
       const team = visibleByTestId(page, "on-call-now-team");
-      const mobileTops = await Promise.all([who, team].map(async (section) => (await section.boundingBox())?.y ?? Number.NaN));
+      const mobileTops = await Promise.all(
+        [who, team].map(async (section) => (await section.boundingBox())?.y ?? Number.NaN),
+      );
       expect(mobileTops[0]).toBeLessThan(mobileTops[1]);
 
       await page.setViewportSize({ width: 1280, height: 900 });
