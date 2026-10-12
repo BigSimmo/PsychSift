@@ -1121,7 +1121,11 @@ function MedicationResults({
         })}
       </div>
 
-      <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+      {/* Mounted (so its lookup runs in parallel) but kept out of view until the medication
+          list itself has arrived: it fills in underneath the results, never ahead of them. */}
+      <div hidden={initialCatalogLoading}>
+        <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+      </div>
 
       <StatusNotice
         realDataReady={realDataReady}

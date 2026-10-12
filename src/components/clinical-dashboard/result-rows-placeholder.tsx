@@ -14,6 +14,10 @@ import { Skeleton, cn } from "@/components/ui-primitives";
  * bar `aria-hidden`, and no `aria-live` on visible content (§9.2). The caller marks its
  * own results region `aria-busy` while this is mounted.
  */
+// The inset tone, not Skeleton's default subtle one: on a raised card the subtle tone is
+// nearly the card's own colour in light mode, so the rows read as empty boxes.
+const bar = "bg-[color:var(--surface-inset)]";
+
 export function ResultRowsPlaceholder({
   label,
   rows = 4,
@@ -35,11 +39,11 @@ export function ResultRowsPlaceholder({
             aria-hidden
             className="grid min-w-0 grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-2.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-2 shadow-[var(--shadow-inset)]"
           >
-            <Skeleton className="size-9 rounded-lg" animationDelay={delay} />
+            <Skeleton className={cn("size-9 rounded-lg", bar)} animationDelay={delay} />
             <div className="grid min-w-0 gap-2 py-0.5">
-              <Skeleton className={cn("h-4", index % 2 === 0 ? "w-1/2" : "w-2/5")} animationDelay={delay} />
-              <Skeleton className="h-3 w-4/5" animationDelay={delay} />
-              <Skeleton className={cn("h-3", index % 2 === 0 ? "w-3/5" : "w-2/3")} animationDelay={delay} />
+              <Skeleton className={cn("h-4", bar, index % 2 === 0 ? "w-1/2" : "w-2/5")} animationDelay={delay} />
+              <Skeleton className={cn("h-3 w-4/5", bar)} animationDelay={delay} />
+              <Skeleton className={cn("h-3", bar, index % 2 === 0 ? "w-3/5" : "w-2/3")} animationDelay={delay} />
             </div>
           </div>
         );
