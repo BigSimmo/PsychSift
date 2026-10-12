@@ -298,7 +298,7 @@ function isOpenSeries(series: DemoSeries | DemoOpenSeries): series is DemoOpenSe
   return "serviceId" in series;
 }
 
-function demoSummary(series: DemoSeries | DemoOpenSeries, date: string, today: string): SessionSummary {
+function demoSummary(series: DemoSeries | DemoOpenSeries, date: string, today: string, now?: Date): SessionSummary {
   const startsAt = perthInstant(date, series.startTime);
   const moved = series.key === MOVED_SERIES_KEY && date === movedDate(today);
   return {
@@ -310,8 +310,8 @@ function demoSummary(series: DemoSeries | DemoOpenSeries, date: string, today: s
     venue: moved ? MOVED_VENUE : series.venue,
     hasJoinLink: series.joinLink,
     status: moved ? "moved" : "scheduled",
-    // The demo viewer presents at this week's journal club, so Presenting and "Next for you" have a talk.
-    isPresenter: series.key === PRESENTING_KEY && mondayOfDate(date) === mondayOfDate(today),
+    // The demo viewer presents at their next journal club, the same talk Presenting and Needs you name.
+    isPresenter: series.key === PRESENTING_KEY && date === demoPresentingDate(today, now),
     source: "teaching",
   };
 }
@@ -319,7 +319,7 @@ function demoSummary(series: DemoSeries | DemoOpenSeries, date: string, today: s
 export function demoTeachingSessions(range: { from: string; to: string }, now: Date = new Date()): SessionSummary[] {
   const today = perthToday(now);
   return DEMO_SERIES.flatMap((series) =>
-    datesBetween(series, range.from, range.to, today).map((date) => demoSummary(series, date, today)),
+    datesBetween(series, range.from, range.to, today).map((date) => demoSummary(series, date, today, now)),
   ).sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title));
 }
 
@@ -337,10 +337,10 @@ export function demoTeachingWeek(range: { from: string; to: string }, now: Date 
   return { teams: [DEMO_TEACHING_TEAM], sessions, notices, attendance: demoAttendanceIn(range, now) };
 }
 
-function whatsOnRow(series: DemoSeries | DemoOpenSeries, date: string, today: string): WhatsOnRow {
+function whatsOnRow(series: DemoSeries | DemoOpenSeries, date: string, today: string, now?: Date): WhatsOnRow {
   const own = !isOpenSeries(series);
   return {
-    ...demoSummary(series, date, today),
+    ...demoSummary(series, date, today, now),
     teamName: isOpenSeries(series) ? series.teamName : DEMO_TEACHING_TEAM.name,
     joinUrl: series.joinLink ? DEMO_JOIN_URL : null,
     own,
@@ -359,7 +359,7 @@ export function demoWhatsOnSessions(range: { from: string; to: string }, now: Da
   const today = perthToday(now);
   return [...DEMO_SERIES, ...DEMO_OPEN_SERIES]
     .flatMap((series) =>
-      datesBetween(series, range.from, range.to, today).map((date) => whatsOnRow(series, date, today)),
+      datesBetween(series, range.from, range.to, today).map((date) => whatsOnRow(series, date, today, now)),
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.occurrenceId.localeCompare(b.occurrenceId));
 }
@@ -385,7 +385,7 @@ export function demoTeachingSessionDetail(occurrenceId: string, now: Date = new 
   if (!series) return null;
   const today = perthToday(now);
   if (!datesBetween(series, date, date, today).includes(date)) return null;
-  const summary = demoSummary(series, date, today);
+  const summary = demoSummary(series, date, today, now);
   // Master plan R5/R15: another service's open session is a read-only visitor view with no presenter name.
   const visitor = isOpenSeries(series);
   return {
@@ -434,6 +434,20 @@ const THIS_WEEK_ATTENDS = new Set<number>([21, PRESENTING_KEY, 5, 23, 7, 24, CAS
 const UNLOGGED_AFTER_NEWEST = 3;
 /** Feedback is open for seven days after a session the viewer checked in to. */
 const FEEDBACK_OPEN_DAYS = 7;
+
+/**
+ * The date of the made-up viewer's next talk: the first journal club on or after `today`, or the one
+ * after it once that day's session is over (its programme end, 15:00 Perth, when `now` is known). The programme's "You
+ * present" flag and Presenting's example talk (`demoTeach`) both read it, so Teaching's Needs you,
+ * its hero and My Day always name the same day (Work mode simplify plan, 12 Oct 2026).
+ */
+export function demoPresentingDate(today: string, now?: Date): string {
+  const series = seriesByKey(PRESENTING_KEY)!;
+  const next = (from: string) => nextTeachingOccurrence(anchorOf(series, from), series.frequency, from) ?? from;
+  const club = next(today);
+  const ends = Date.parse(perthInstant(club, series.startTime)) + series.minutes * 60_000;
+  return now && now.getTime() >= ends ? next(addDays(club, 1)) : club;
+}
 
 function seriesByKey(key: number): DemoSeries | undefined {
   return DEMO_SERIES.find((candidate) => candidate.key === key);
