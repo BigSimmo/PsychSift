@@ -128,6 +128,7 @@ const APP_PREFERENCE_RESET_KEYS: ReadonlyArray<keyof AppPreferences> = [
   "showRecentOnHome",
   "showProtocolsOnHome",
   "compactCitations",
+  "brightLight",
 ];
 
 /** Every preference the full reset covers. Excludes the `saveRecentSearches`

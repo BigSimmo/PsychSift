@@ -213,15 +213,15 @@ describe("AdminRenewalsPage — the checklist", () => {
     expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="dot"]')).not.toBeNull();
   });
 
-  it("marks the timeline by shape, not shade: a diamond for a passed date, a triangle otherwise (M8)", () => {
+  it("marks the timeline by shape, not shade: a triangle for a passed date, a dot otherwise (M8)", () => {
     renderPage();
     const timeline = screen.getByTestId("admin-renewals-summary-timeline");
     const marks = Array.from(timeline.querySelectorAll("[data-mark]")).map((mark) => mark.getAttribute("data-mark"));
     // WWC's date passed on 3 Sep; the others are still ahead.
-    expect(marks).toContain("diamond");
     expect(marks).toContain("triangle");
-    expect(timeline.querySelector("svg.lucide-diamond")).not.toBeNull();
+    expect(marks).toContain("dot");
     expect(timeline.querySelector("svg.lucide-triangle")).not.toBeNull();
+    expect(timeline.querySelector("svg.lucide-circle")).not.toBeNull();
   });
 
   it("charts the soonest dates within twelve months, never pinning a later date to the edge", () => {

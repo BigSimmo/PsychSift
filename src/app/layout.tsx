@@ -17,6 +17,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { PUBLIC_APP_ROBOTS_METADATA } from "@/lib/crawler-policy";
 import { BRAND_DESCRIPTION, BRAND_NAME } from "@/lib/brand";
 import "./globals.css";
+import "./reading-aids.css";
 
 /**
  * Origin of the Supabase project, or null when the public env is absent (demo mode).

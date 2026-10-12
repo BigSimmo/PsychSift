@@ -92,7 +92,7 @@ export function TodayRenewNextCard({
       : ADMIN_PAGE_HREFS.newJob;
   const howToRenewIsExternal = howToRenewHref.startsWith("http");
   const hasWindow = item.kind === "compliance" && item.windowStart && item.windowEnd;
-  const answer = counts ? renewalsAnswer(counts) : null;
+  const answer = counts && item.kind === "compliance" ? renewalsAnswer(counts) : null;
 
   return (
     <WorkHero
