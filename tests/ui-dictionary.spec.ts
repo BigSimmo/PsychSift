@@ -207,11 +207,27 @@ test("merges search and browse into one catalogue with a measured phone header",
   expect(Math.abs(scopeSegments[0] - scopeSegments[1])).toBeLessThanOrEqual(1);
   const abbreviationsRadio = toggle.getByRole("radio", { name: /Abbreviations/ });
   const expectAbbreviationsLabelToFit = async () => {
-    const dimensions = await abbreviationsRadio.getByText("Abbreviations", { exact: true }).evaluate((label) => ({
-      clientWidth: label.clientWidth,
-      scrollWidth: label.scrollWidth,
-    }));
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+    const dimensions = await abbreviationsRadio.getByText("Abbreviations", { exact: true }).evaluate((label) => {
+      const segment = label.parentElement;
+      const style = segment ? getComputedStyle(segment) : null;
+      return {
+        clientWidth: label.clientWidth,
+        scrollWidth: label.scrollWidth,
+        // Read on failure only: which layout the browser applied at this width.
+        layout: {
+          innerWidth: window.innerWidth,
+          smMatches: window.matchMedia("(min-width: 40rem)").matches,
+          segmentWidth: Math.round(segment?.getBoundingClientRect().width ?? -1),
+          fontSize: style?.fontSize,
+          letterSpacing: style?.letterSpacing,
+          paddingLeft: style?.paddingLeft,
+          hintWidth: Math.round(label.nextElementSibling?.getBoundingClientRect().width ?? -1),
+        },
+      };
+    });
+    expect(dimensions.scrollWidth, `Abbreviations label clipped: ${JSON.stringify(dimensions)}`).toBeLessThanOrEqual(
+      dimensions.clientWidth,
+    );
   };
   await expectAbbreviationsLabelToFit();
   await expect(abbreviationsRadio).toBeChecked();
