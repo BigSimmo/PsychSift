@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useState, useSyncExternalStore } from "react";
+import { useId, useMemo, useState } from "react";
 import { BookOpenCheck, Check, ChevronDown, ChevronRight, CircleAlert, GitCompareArrows, SearchX } from "lucide-react";
 
 import {
@@ -14,16 +14,17 @@ import {
   ResultFilterTrigger,
   resultFilterFacetGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
-import { mobileComposerVisibleReserve } from "@/components/clinical-dashboard/mobile-composer-reserve";
-import {
-  PhoneFooterLayerPortal,
-  usePhoneFooterLayerScrollHidden,
-} from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { cardPadding, cardSurface, focusRing, stretchedRowLinkClass } from "@/components/card-recipes";
+import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
 import { cn, codeText, EmptyState, metadataPill, pageContainer } from "@/components/ui-primitives";
 import type { DsmCategory, DsmDiagnosisSummary } from "@/lib/dsm";
 import { readResultFilterValues, replaceResultFilterUrl, writeResultFilterValues } from "@/lib/result-filter-url";
+import {
+  FilterHighlightNote,
+  FilterNotMatchingHeading,
+  filterOutsideTitleClass,
+} from "@/components/clinical-dashboard/filter-highlight";
 
 /** cardSelected encoding with clinical accent — DSM forbids per-category colour tokens. */
 const dsmCardSelected =
@@ -81,16 +82,20 @@ function DsmSearchResultCard({
   isSelected,
   onToggle,
   compact = false,
+  outsideFilter = false,
 }: {
   result: DsmDiagnosisSummary;
   isSelected: boolean;
   onToggle: () => void;
+  /** Outside the active filter: still listed and tappable, title muted by token. */
+  outsideFilter?: boolean;
   /** Browse rows: one line on a phone (title and ICD code); summary and chapter return at `sm`. */
   compact?: boolean;
 }) {
   return (
     <article
       data-testid="dsm-search-result"
+      data-outside-filter={outsideFilter ? "true" : undefined}
       className={cn(
         cardSurface,
         cardPadding.compact,
@@ -128,7 +133,12 @@ function DsmSearchResultCard({
           <div className="flex min-h-12 min-w-0 items-center gap-2 sm:items-start">
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-2">
-                <h3 className="min-w-0 flex-1 truncate text-sm font-extrabold leading-5 text-[color:var(--text-heading)] group-hover:text-[color:var(--clinical-accent)] sm:whitespace-normal sm:text-base-minus">
+                <h3
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-sm font-extrabold leading-5 group-hover:text-[color:var(--clinical-accent)] sm:whitespace-normal sm:text-base-minus",
+                    outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+                  )}
+                >
                   {result.title}
                 </h3>
                 <span className={cn(metadataPill, codeText, "shrink-0")}>{result.icd_code}</span>
@@ -148,7 +158,12 @@ function DsmSearchResultCard({
         ) : (
           <div className="flex min-w-0 items-start gap-2">
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-extrabold leading-5 text-[color:var(--text-heading)] group-hover:text-[color:var(--clinical-accent)] sm:text-base-minus">
+              <h3
+                className={cn(
+                  "text-sm font-extrabold leading-5 group-hover:text-[color:var(--clinical-accent)] sm:text-base-minus",
+                  outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+                )}
+              >
                 {result.title}
               </h3>
               <p className="mt-1.5 line-clamp-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
@@ -167,40 +182,6 @@ function DsmSearchResultCard({
         )}
       </Link>
     </article>
-  );
-}
-
-function DsmMobileCompareStrip({ selected }: { selected: string[] }) {
-  const phoneChromeHidden = usePhoneFooterLayerScrollHidden();
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-
-  if (!selected.length || !mounted) return null;
-
-  return (
-    <PhoneFooterLayerPortal>
-      <div
-        aria-live="polite"
-        className="phone-footer-layer dsm-mobile-compare-strip pointer-events-none inset-x-0 z-[var(--z-chrome)] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:fixed lg:hidden"
-        data-scroll-hidden={phoneChromeHidden ? "true" : undefined}
-        style={{ bottom: mobileComposerVisibleReserve.shellDock }}
-      >
-        <Link
-          href={compareHref(selected)}
-          data-testid="dsm-search-compare-mobile"
-          className="pointer-events-auto inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--command)] px-4 text-sm font-bold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-        >
-          <GitCompareArrows className="h-4 w-4 shrink-0" aria-hidden />
-          Compare
-          <span className="grid h-7 min-w-7 place-items-center rounded-full bg-[color:var(--command-contrast)]/20 px-1.5 text-xs font-extrabold tabular-nums">
-            {selected.length}
-          </span>
-        </Link>
-      </div>
-    </PhoneFooterLayerPortal>
   );
 }
 
@@ -236,6 +217,13 @@ export function DsmSearchPage({
       return true;
     });
   const results = filterDiagnoses(selectedCategories, selectedSupport);
+  // Filters highlight, never hide: the filtered diagnoses come first and every
+  // other query-matched diagnosis stays listed after them under "Not matching".
+  const highlightFilterActive = selectedCategories.size + selectedSupport.size > 0;
+  const resultSlugs = new Set(results.map((result) => result.slug));
+  const outsideResults = highlightFilterActive ? queryResults.filter((result) => !resultSlugs.has(result.slug)) : [];
+  // Browsing reads A to Z, like the chapters; a search keeps its ranked order.
+  if (highlightFilterActive && query.trim().length === 0) outsideResults.sort(compareDsmBrowseTitles);
   // Nothing typed: this is the whole catalogue, not a search, so it reads as the
   // chapter list a psychiatrist looks things up by rather than a ranked list.
   const browsing = query.trim().length === 0;
@@ -245,7 +233,6 @@ export function DsmSearchPage({
   const openChapters = selectedCategories.size > 0 || browseGroups.length === 1;
   const activeFilterCount = selectedCategories.size + selectedSupport.size;
   const selectedSet = useMemo(() => new Set(selected), [selected]);
-  const canCompare = selected.length >= 2;
 
   function toggleCategory(value: string) {
     replaceResultFilterUrl((params) => {
@@ -342,18 +329,12 @@ export function DsmSearchPage({
 
   return (
     <div data-testid="dsm-search-page" className="min-h-full bg-[color:var(--background)]">
-      <div
-        className={cn(
-          pageContainer,
-          "space-y-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8",
-          selected.length > 0 && "sm:max-lg:pb-16",
-        )}
-      >
+      <div className={cn(pageContainer, "space-y-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8")}>
         <SearchResultsHeaderBand
           modeId="dsm"
           query={query}
           emptyQuerySubject="DSM diagnoses"
-          matchCount={results.length}
+          matchCount={queryResults.length}
           headingLevel={1}
           filterLabel="Filter diagnoses by category"
           appliedFilters={appliedFilters}
@@ -368,18 +349,6 @@ export function DsmSearchPage({
               activeCount={activeFilterCount}
               onToggle={() => setFilterOpen((current) => !current)}
             />
-          }
-          utilityControls={
-            canCompare ? (
-              <Link
-                href={compareHref(selected)}
-                data-testid="dsm-search-compare"
-                className="inline-flex min-h-tap shrink-0 items-center gap-1.5 rounded-lg bg-[color:var(--command)] px-2.5 text-xs font-bold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-              >
-                <GitCompareArrows className="h-4 w-4" aria-hidden />
-                Compare {selected.length}
-              </Link>
-            ) : null
           }
           filterControls={
             <ResultFilterTrigger
@@ -405,80 +374,118 @@ export function DsmSearchPage({
           summary={{ count: results.length, noun: results.length === 1 ? "diagnosis" : "diagnoses" }}
         />
 
-        {results.length ? (
+        <FilterHighlightNote
+          active={highlightFilterActive && queryResults.length > 0}
+          highlighted={results.length}
+          total={queryResults.length}
+          onClear={clearFilters}
+          testId="dsm-highlight-note"
+        />
+
+        {results.length || outsideResults.length ? (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-            {browsing ? (
-              <section aria-label="DSM diagnoses by chapter, A to Z" className="grid gap-2">
-                {/* One grouped card with hairline rows, as Work draws its lists
-                    (owner design review, 12 Oct 2026). The eyebrow names the
-                    rows; each chapter opens in place onto its diagnoses. */}
-                <p
-                  aria-hidden="true"
-                  className="px-1 text-xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
-                >
-                  Chapters
-                </p>
-                <div
-                  data-testid="dsm-browse-chapters"
-                  className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)]"
-                >
-                  {browseGroups.map((group) => (
-                    <details
-                      // Re-mount when the chapter filter changes so a newly narrowed list opens.
-                      key={`${group.key}:${openChapters ? "open" : "closed"}`}
-                      open={openChapters || undefined}
-                      data-testid="dsm-browse-chapter"
-                      className="group/chapter"
-                    >
-                      <summary
-                        className={cn(
-                          "focus-ring-contained flex min-h-13 cursor-pointer list-none items-center gap-2 px-4 py-2 [&::-webkit-details-marker]:hidden",
-                          focusRing,
-                        )}
+            <div className="grid min-w-0 gap-3">
+              {browsing ? (
+                <section aria-label="DSM diagnoses by chapter, A to Z" className="grid gap-2">
+                  {/* One grouped card with hairline rows, as Work draws its lists
+                      (owner design review, 12 Oct 2026). The eyebrow names the
+                      rows; each chapter opens in place onto its diagnoses. */}
+                  <p
+                    aria-hidden="true"
+                    className="px-1 text-xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
+                  >
+                    Chapters
+                  </p>
+                  <div
+                    data-testid="dsm-browse-chapters"
+                    className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)]"
+                  >
+                    {browseGroups.map((group) => (
+                      <details
+                        // Re-mount when the chapter filter changes so a newly narrowed list opens.
+                        key={`${group.key}:${openChapters ? "open" : "closed"}`}
+                        open={openChapters || undefined}
+                        data-testid="dsm-browse-chapter"
+                        className="group/chapter"
                       >
-                        <h2 className="min-w-0 flex-1 truncate text-base-minus font-medium text-[color:var(--text-heading)]">
-                          {group.label}
-                        </h2>
-                        <span className="shrink-0 text-sm tabular-nums text-[color:var(--text-muted)]">
-                          {group.items.length}
-                          <span className="sr-only">{group.items.length === 1 ? " diagnosis" : " diagnoses"}</span>
-                        </span>
-                        <ChevronDown
-                          className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open/chapter:rotate-180 motion-reduce:transition-none"
-                          aria-hidden
-                        />
-                      </summary>
-                      <div className="grid gap-2 bg-[color:var(--surface-subtle)] px-3 pb-3 pt-1">
-                        {group.items.map((result) => (
-                          <DsmSearchResultCard
-                            key={result.slug}
-                            result={result}
-                            compact
-                            isSelected={selectedSet.has(result.slug)}
-                            onToggle={() => toggleDiagnosis(result.slug)}
+                        <summary
+                          className={cn(
+                            "focus-ring-contained flex min-h-13 cursor-pointer list-none items-center gap-2 px-4 py-2 [&::-webkit-details-marker]:hidden",
+                            focusRing,
+                          )}
+                        >
+                          <h2 className="min-w-0 flex-1 truncate text-base-minus font-medium text-[color:var(--text-heading)]">
+                            {group.label}
+                          </h2>
+                          <span className="shrink-0 text-sm tabular-nums text-[color:var(--text-muted)]">
+                            {group.items.length}
+                            <span className="sr-only">{group.items.length === 1 ? " diagnosis" : " diagnoses"}</span>
+                          </span>
+                          <ChevronDown
+                            className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open/chapter:rotate-180 motion-reduce:transition-none"
+                            aria-hidden
                           />
-                        ))}
-                      </div>
-                    </details>
+                        </summary>
+                        <div className="grid gap-2 bg-[color:var(--surface-subtle)] px-3 pb-3 pt-1">
+                          {group.items.map((result) => (
+                            <DsmSearchResultCard
+                              key={result.slug}
+                              result={result}
+                              compact
+                              isSelected={selectedSet.has(result.slug)}
+                              onToggle={() => toggleDiagnosis(result.slug)}
+                            />
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                  <p className="flex items-start gap-2 px-1 text-xs font-medium leading-5 text-[color:var(--text-muted)] lg:hidden">
+                    <BookOpenCheck
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]"
+                      aria-hidden
+                    />
+                    Reference content only. Confirm criteria, exclusions, and clinical context before use.
+                  </p>
+                </section>
+              ) : (
+                <section aria-label="DSM diagnosis results" className="grid gap-3">
+                  {results.map((result) => (
+                    <DsmSearchResultCard
+                      key={result.slug}
+                      result={result}
+                      isSelected={selectedSet.has(result.slug)}
+                      onToggle={() => toggleDiagnosis(result.slug)}
+                    />
                   ))}
-                </div>
-                <p className="flex items-start gap-2 px-1 text-xs font-medium leading-5 text-[color:var(--text-muted)] lg:hidden">
-                  <BookOpenCheck className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
-                  Reference content only. Confirm criteria, exclusions, and clinical context before use.
-                </p>
-              </section>
-            ) : (
-              <section aria-label="DSM diagnosis results" className="grid gap-3">
-                {results.map((result) => (
-                  <DsmSearchResultCard
-                    key={result.slug}
-                    result={result}
-                    isSelected={selectedSet.has(result.slug)}
-                    onToggle={() => toggleDiagnosis(result.slug)}
+                </section>
+              )}
+
+              {outsideResults.length > 0 ? (
+                <section
+                  data-testid="dsm-outside-filter"
+                  aria-label="Diagnoses outside the filter"
+                  className="grid gap-2"
+                >
+                  <FilterNotMatchingHeading
+                    label="Not matching"
+                    count={outsideResults.length}
+                    level={2}
+                    testId="dsm-outside-heading"
                   />
-                ))}
-              </section>
-            )}
+                  {outsideResults.map((result) => (
+                    <DsmSearchResultCard
+                      key={result.slug}
+                      result={result}
+                      compact={browsing}
+                      outsideFilter
+                      isSelected={selectedSet.has(result.slug)}
+                      onToggle={() => toggleDiagnosis(result.slug)}
+                    />
+                  ))}
+                </section>
+              ) : null}
+            </div>
 
             <aside className="hidden gap-3 lg:sticky lg:top-20 lg:grid" aria-label="Comparison selection">
               <section className={cn(cardSurface, "rounded-xl p-4")}>
@@ -512,15 +519,7 @@ export function DsmSearchPage({
                     Choose diagnoses from the result list.
                   </p>
                 )}
-                {canCompare ? (
-                  <Link
-                    href={compareHref(selected)}
-                    className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--command)] px-3 text-sm font-bold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-                  >
-                    Compare selected
-                    <ChevronRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                ) : null}
+                {/* Compare itself is the shared Compare tray at the foot of the window. */}
               </section>
               <p className="flex items-start gap-2 px-1 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
                 <BookOpenCheck className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]" aria-hidden />
@@ -548,7 +547,17 @@ export function DsmSearchPage({
         <UniversalSearchAlsoMatches modeId="dsm" query={query} />
       </div>
 
-      <DsmMobileCompareStrip selected={selected} />
+      <SharedCompareTray
+        count={selected.length}
+        names={selected.map((slug) => queryResults.find((result) => result.slug === slug)?.title ?? slug)}
+        max={3}
+        compareHref={compareHref(selected)}
+        onClear={() => setSelected([])}
+        noun="diagnoses"
+        // DSM search has no dock addon slot, so the tray is its own footer layer above the search box.
+        phonePlacement="footer-layer"
+        testId="dsm-compare-tray"
+      />
     </div>
   );
 }

@@ -27,10 +27,12 @@ describe("Empirical Challenger M2-1: Stress-Testing Typography Floor, Icon Scali
       expect(pipMatch).toBeTruthy();
       expect(pipMatch![1].trim()).toBe("0.75rem");
 
-      // 2. Therapy compare tray count
-      const countMatch = globalsCss.match(/\.therapy-compare-tray__count\s*\{[\s\S]*?font-size:\s*([^;]+);/);
-      expect(countMatch).toBeTruthy();
-      expect(countMatch![1].trim()).toBe("0.75rem");
+      // 2. The therapy compare tray's count line moved into the shared Compare
+      //    tray, which sets it with the text-xs utility (0.75rem) rather than CSS.
+      expect(globalsCss).not.toMatch(/\.therapy-compare-tray__count\s*\{/);
+      expect(readFileSync("src/components/compare/shared-compare-tray.tsx", "utf8")).toContain(
+        "block truncate text-xs text-[color:var(--text-muted)]",
+      );
 
       // 3. Answer source mark
       const markMatch = globalsCss.match(/\.answer-source-mark\s*\{[\s\S]*?font-size:\s*([^;]+);/);

@@ -2,12 +2,14 @@
 
 import { useId } from "react";
 import {
+  ChevronRight,
   Clock,
   ExternalLink,
   FileText,
   Heart,
   Scale,
   Sparkles,
+  SquareCheck,
   Target,
   TriangleAlert,
   type LucideIcon,
@@ -18,13 +20,14 @@ import Link from "next/link";
 import { cardSurface, stretchedRowLinkClass } from "@/components/card-recipes";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
+import { filterOutsideTitleClass } from "@/components/clinical-dashboard/filter-highlight";
 import { THERAPY_MAX_COMPARE, therapyRecordHref } from "@/lib/therapy-compass-navigation";
 
 import { useTcBindings } from "./bindings";
 import { cardPreviewText, prioritiseTherapyTags, summarise } from "./data/select";
 import type { Therapy } from "./data/types";
 import { controlPressed, favouritePressed, heroCard } from "./controls";
-import { Eyebrow, StatusBadge, TagRow } from "./ui";
+import { Eyebrow, StatusBadge, Tag, TagRow, tagTone } from "./ui";
 import { useTherapyFavourite } from "./use-therapy-favourite";
 
 /**
@@ -34,7 +37,10 @@ import { useTherapyFavourite } from "./use-therapy-favourite";
  */
 const cardActionButton = "min-w-0 px-2 text-xs sm:px-4 sm:text-sm-minus md:w-auto";
 
-/** Large search-result card with why-matched / avoid / best-fit columns. */
+/**
+ * Large result card with why-matched / avoid / best-fit columns. Recommend
+ * still ranks with it; the Search list uses `CompactResultRow` below.
+ */
 export function ResultCard({
   therapy,
   rank,
@@ -75,8 +81,7 @@ export function ResultCard({
     cardPreviewText(therapy.bestUsedFor, { exclude: therapy.name }) ||
     cardPreviewText(therapy.indications, { exclude: therapy.name }) ||
     (browsing ? "See record for indications." : "Relevant to the current search.");
-  const avoidModify =
-    summarise(therapy.contraindicationsOrCautions, 1) || "Check source and review status before clinical use.";
+  const avoidModify = therapyAvoidModifyText(therapy);
   const rankedBestFit = [therapy.setting, therapy.timeRequired, therapy.patientPopulation]
     .map((value) => cardPreviewText(value, { exclude: therapy.name }))
     .filter(Boolean)
@@ -291,4 +296,211 @@ function CardCell({
       <p className="line-clamp-2">{text}</p>
     </div>
   );
+}
+
+/**
+ * Compact search-list row: one divided row inside the list's single hairline
+ * card.
+ *
+ * The whole row opens the record (the title link is stretched across it), so
+ * the three full-width buttons become quiet 48px icon controls. "Best used for"
+ * and "Best fit" live in the record ("Use when", "What it targets", "Where it
+ * is delivered", "Who it suits"), where they are shown in full.
+ *
+ * The Avoid / modify line stays on the row in the warning colour and is NEVER
+ * clamped or cut: it is a safety cue, and the owner decided (October 2026) it
+ * must read in full on every screen size without a tap.
+ */
+export function CompactResultRow({
+  therapy,
+  featured = false,
+  query,
+  outsideFilter = false,
+}: {
+  therapy: Therapy;
+  featured?: boolean;
+  query?: string;
+  /** Outside the active filters: still listed and tappable, title muted by token. */
+  outsideFilter?: boolean;
+}) {
+  const b = useTcBindings();
+  const baseId = useId();
+  const sheetUnavailableId = `${baseId}-sheet`;
+  const compareFullId = `${baseId}-compare-full`;
+  const { notice, saved, toggleFavourite } = useTherapyFavourite(therapy.slug);
+  const inCompare = b.isInCompare(therapy.slug);
+  // A full tray keeps its tab stop and states why, per the wiring convention.
+  const compareFull = !inCompare && b.compareSlugs.length >= THERAPY_MAX_COMPARE;
+  const rankingQuery = query ?? b.search.query;
+  const subtitle =
+    cardPreviewText(therapy.clinicalSummary, { exclude: therapy.name }) ||
+    cardPreviewText(therapy.bestUsedFor, { exclude: therapy.name }) ||
+    "";
+  const tags = prioritiseTherapyTags(therapy.tags.length ? therapy.tags : [therapy.category], {
+    query: rankingQuery,
+    activeTags: b.search.tags,
+  });
+  const avoidModify = therapyAvoidModifyText(therapy);
+  const quietIcon = "relative z-10 w-tap shrink-0 gap-0 px-0";
+
+  return (
+    <li
+      data-therapy-result-card
+      data-therapy-result-featured={featured ? "" : undefined}
+      data-outside-filter={outsideFilter ? "true" : undefined}
+      className="relative px-4 pt-3 pb-1.5 transition-colors sm:px-5 md:pb-3 md:hover:bg-[color:var(--surface-subtle)]"
+    >
+      {featured ? (
+        <div
+          data-therapy-result-highlight
+          className="mb-1.5 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2.5 py-0.5 text-2xs font-extrabold tracking-wide text-[color:var(--clinical-accent)] uppercase forced-colors:border-[CanvasText] forced-colors:text-[CanvasText]"
+        >
+          <Sparkles aria-hidden="true" size={12} strokeWidth={2.1} />
+          Best match
+        </div>
+      ) : null}
+      {/* Phone: title|chevron, the avoid line, then tags|actions. From md the
+          actions and chevron move to a right-hand column. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-2 [grid-template-areas:'title_chev'_'avoid_avoid'_'foot_foot'] md:[grid-template-areas:'title_actions'_'avoid_actions'_'tags_actions']">
+        <div className="min-w-0 [grid-area:title]">
+          <h3
+            className={cn(
+              "m-0 text-base font-semibold leading-snug tracking-display",
+              outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
+            )}
+          >
+            <Link
+              href={b.workspaceHref(therapyRecordHref(therapy.slug))}
+              data-therapy-result-open
+              className={cn(
+                "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                stretchedRowLinkClass,
+              )}
+            >
+              {therapy.name}
+            </Link>
+          </h3>
+          {subtitle ? (
+            <p className="m-0 mt-0.5 line-clamp-1 text-sm-minus leading-snug text-[color:var(--text-muted)]">
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
+        <ChevronRight
+          aria-hidden="true"
+          className="mt-1 size-icon-md shrink-0 text-[color:var(--text-muted)] [grid-area:chev] md:hidden"
+        />
+        <p
+          data-therapy-result-avoid
+          className="m-0 mt-1.5 flex min-w-0 items-start gap-1.5 text-xs leading-snug text-[color:var(--warning-text)] [grid-area:avoid]"
+        >
+          <TriangleAlert aria-hidden="true" size={13} strokeWidth={2} className="mt-px shrink-0" />
+          {/* No line clamp, no ellipsis, at any width: the full warning always shows. */}
+          <span className="min-w-0 break-words">
+            <span className="font-bold">Avoid / modify: </span>
+            {avoidModify}
+          </span>
+        </p>
+        <div className="flex min-w-0 items-center gap-2 [grid-area:foot] md:contents">
+          <div className="mt-1 flex min-h-tap min-w-0 flex-1 items-center md:min-h-0 md:pb-1.5 md:[grid-area:tags]">
+            {/* Whole tags only: a tag that does not fit wraps onto a hidden
+                second line rather than being cut mid-word. */}
+            <div className="flex max-h-7 min-w-0 flex-1 flex-wrap gap-x-1.5 gap-y-3 overflow-hidden">
+              {tags.slice(0, 3).map((tag) => (
+                <Tag key={tag} tone={tagTone(tag)}>
+                  {tag}
+                </Tag>
+              ))}
+            </div>
+          </div>
+          <div
+            data-therapy-result-actions
+            className="-mr-2 flex shrink-0 items-center self-center md:[grid-area:actions]"
+          >
+            <Button
+              variant="ghost"
+              icon={Heart}
+              className={cn(quietIcon, favouritePressed)}
+              aria-pressed={saved}
+              onClick={() => void toggleFavourite()}
+              title={saved ? "Remove from favourites" : "Save to favourites"}
+            >
+              <span className="sr-only">
+                {saved ? `Remove ${therapy.name} from favourites` : `Save ${therapy.name} to favourites`}
+              </span>
+            </Button>
+            <Button
+              variant="ghost"
+              icon={inCompare ? SquareCheck : Scale}
+              className={cn(quietIcon, inCompare && "text-[color:var(--clinical-accent)]")}
+              // Ticking fills the shared Compare tray and leaves the reader where they are.
+              onClick={
+                compareFull
+                  ? ignoreUnavailableActivation
+                  : inCompare
+                    ? () => b.removeCompare(therapy.slug)
+                    : () => b.addCompare(therapy.slug)
+              }
+              aria-pressed={inCompare}
+              aria-disabled={compareFull ? true : undefined}
+              aria-describedby={compareFull ? compareFullId : undefined}
+              title={
+                compareFull
+                  ? `Compare holds ${THERAPY_MAX_COMPARE} therapies — remove one first`
+                  : inCompare
+                    ? "Remove from compare"
+                    : "Add to compare"
+              }
+              testId="therapy-result-compare"
+            >
+              <span className="sr-only">
+                {inCompare ? `Remove ${therapy.name} from compare` : `Add ${therapy.name} to compare`}
+              </span>
+            </Button>
+            {compareFull ? (
+              <span id={compareFullId} className="sr-only">
+                The comparison already holds {THERAPY_MAX_COMPARE} therapies. Remove one before adding another.
+              </span>
+            ) : null}
+            <Button
+              variant="ghost"
+              icon={FileText}
+              className={cn(quietIcon, !therapy.patientSheetAvailable && "opacity-40")}
+              onClick={therapy.patientSheetAvailable ? () => b.openSheet(therapy.slug) : ignoreUnavailableActivation}
+              aria-disabled={therapy.patientSheetAvailable ? undefined : true}
+              aria-describedby={therapy.patientSheetAvailable ? undefined : sheetUnavailableId}
+              title={therapy.patientSheetAvailable ? "Patient sheet" : "This record has no patient sheet"}
+            >
+              <span className="sr-only">
+                {therapy.patientSheetAvailable ? `Patient sheet for ${therapy.name}` : "Sheet unavailable"}
+              </span>
+            </Button>
+            {therapy.patientSheetAvailable ? null : (
+              <span id={sheetUnavailableId} className="sr-only">
+                This record has no patient sheet.
+              </span>
+            )}
+            <ChevronRight
+              aria-hidden="true"
+              className="ml-1 hidden size-icon-md shrink-0 text-[color:var(--text-muted)] md:block"
+            />
+          </div>
+        </div>
+      </div>
+      {notice ? (
+        <p
+          role="status"
+          aria-live="polite"
+          className="mb-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2 text-xs font-semibold text-[color:var(--text-muted)]"
+        >
+          {notice}
+        </p>
+      ) : null}
+    </li>
+  );
+}
+
+/** The card's Avoid / modify wording: the first sentence of the cautions, unchanged. */
+export function therapyAvoidModifyText(therapy: Therapy): string {
+  return summarise(therapy.contraindicationsOrCautions, 1) || "Check source and review status before clinical use.";
 }

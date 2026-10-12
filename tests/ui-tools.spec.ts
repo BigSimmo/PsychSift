@@ -2523,15 +2523,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await submit.click();
     await searchResponse;
 
-    const compareAction = page.getByTestId("differentials-compare-selected-mobile");
+    const compareAction = page.getByTestId("differentials-compare-tray-compare");
     const dock = page.locator("form.answer-footer-search-dock");
     const scrollport = visibleByTestId(page, "differentials-search-results");
     const mainContent = page.locator("#main-content");
     await expect(scrollport).toBeVisible();
     await expect(scrollport.getByRole("region", { name: "Source status" })).toContainText("No indexed source matches");
     await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
+    // A submitted search pre-ticks its top two diagnoses, so the shared
+    // Compare tray is already showing with Compare ready.
+    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("2 selected");
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
 
     // Begin with the visible composer reserve. Document scrolling deliberately
@@ -2541,7 +2544,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     // settled range instead of polling a stale scrollTop.
     await input.focus();
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     // The visible dock/reserve can finish its layout commit after the first
     // endpoint scroll, increasing document height. Treat scrolling to the live
     // endpoint and measuring it as one retriable action; a persistent clearance
@@ -2553,7 +2556,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       expect(geometry.maxScrollTop - geometry.scrollTop).toBeLessThanOrEqual(1);
     }).toPass({ timeout: 15_000 });
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     const clearance = await page.evaluate(() => {
       const main = document.getElementById("main-content");
       const last = document.querySelector('[data-testid="differential-mobile-result-card"]:last-of-type');
@@ -2662,12 +2665,11 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       .toBe(true);
     await expectNoPageHorizontalOverflow(page);
 
-    // The result cards and compare bar remain in their non-desktop layout up
-    // to 1023px, so the composer must keep providing the portal host on tablet.
+    // From 640px the shared tray floats above the content instead of riding
+    // in the phone dock; it stays visible and tappable.
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
   });
 
   test("diagnosis detail actions stay tappable and tabs stay single-line", async ({ page }) => {

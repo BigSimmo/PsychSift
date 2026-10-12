@@ -101,10 +101,49 @@ describe("DsmSearchPage empty state", () => {
     expect(params.get("q")).toBe("review");
   });
 
-  it("keeps at least the 1rem side padding on the phone compare strip, growing only for safe-area insets", async () => {
+  it("keeps diagnoses outside a category filter listed under Not matching", () => {
+    const summary = (slug: string, title: string, key: string, label: string): DsmDiagnosisSummary => ({
+      slug,
+      title,
+      icd_code: "F00",
+      category: { key, label },
+      summary: `${title} summary`,
+      criteriaCount: 2,
+      criteriaProvenance: "dsm_criteria" as const,
+      differentialCount: 1,
+      specifierCount: 1,
+    });
+    const anxiety = { key: "anxiety", label: "Anxiety disorders", diagnosis_count: 8 };
+    window.history.replaceState(null, "", "/dsm/search?q=review&category=mood");
+
+    render(
+      <DsmSearchPage
+        query="review"
+        categories={[...categories, anxiety]}
+        results={[
+          summary("anxiety-1", "Anxiety one", "anxiety", "Anxiety disorders"),
+          summary("mood-1", "Mood one", "mood", "Mood disorders"),
+        ]}
+      />,
+    );
+
+    // Filters highlight, never hide: both diagnoses stay, the match first.
+    const rows = screen.getAllByTestId("dsm-search-result");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Mood one");
+    expect(rows[0]).not.toHaveAttribute("data-outside-filter");
+    expect(rows[1]).toHaveTextContent("Anxiety one");
+    expect(rows[1]).toHaveAttribute("data-outside-filter", "true");
+    expect(screen.getByRole("link", { name: "Open Anxiety one" })).toBeVisible();
+    expect(screen.getByTestId("dsm-highlight-note")).toHaveTextContent("1 of 2 highlighted, all rows stay");
+    expect(screen.getByTestId("dsm-outside-heading")).toHaveTextContent("Not matching · 1");
+  });
+
+  it("keeps at least the 1rem side padding on the phone compare tray, growing only for safe-area insets", async () => {
     const { readFileSync } = await import("node:fs");
-    const source = readFileSync("src/components/dsm/dsm-search-page.tsx", "utf8");
-    const strip = source.split("\n").find((line) => line.includes("dsm-mobile-compare-strip")) ?? "";
+    // DSM's phone strip is now the shared Compare tray's footer layer.
+    const source = readFileSync("src/components/compare/shared-compare-tray.tsx", "utf8");
+    const strip = source.split("\n").find((line) => line.includes("shared-compare-tray-layer")) ?? "";
     expect(strip).toContain("pl-[max(1rem,env(safe-area-inset-left))]");
     expect(strip).toContain("pr-[max(1rem,env(safe-area-inset-right))]");
     expect(strip).not.toMatch(/\b(?:pl|pr)-safe\b/);

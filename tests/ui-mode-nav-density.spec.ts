@@ -95,7 +95,7 @@ const gotoTherapySearch = (page: Page) => gotoTherapy(page);
  * offline rather than leaving a mode uncovered.
  */
 const MODES = [
-  { modeId: "therapy-compass", route: "/therapy-compass/search?q=CBT&run=1", items: 5, profile: "extended" },
+  { modeId: "therapy-compass", route: "/therapy-compass/search?q=CBT&run=1", items: 4, profile: "extended" },
   { modeId: "dsm", route: "/dsm/compare", items: 2, profile: "two-item" },
   { modeId: "specifiers", route: "/specifiers/compare", items: 4, profile: "compact-four" },
   { modeId: "sources", route: "/sources/search?q=RANZCP", items: 5, profile: "balanced-four" },
@@ -227,10 +227,12 @@ test.describe("ModeNav density", () => {
    * move these.
    */
   for (const [width, labels] of [
-    [375, ["Search", "Recommend", "Compare", "More"]],
-    [390, ["Search", "Recommend", "Compare", "More"]],
-    [430, ["Search", "Recommend", "Compare", "More"]],
-    [768, ["Search", "Recommend", "Compare", "Pathways", "Review"]],
+    // Review (the sign-off queue) left the bar in October 2026; it is reached
+    // from the Therapy search page, so four destinations fit without More.
+    [375, ["Search", "Recommend", "Compare", "Pathways"]],
+    [390, ["Search", "Recommend", "Compare", "Pathways"]],
+    [430, ["Search", "Recommend", "Compare", "Pathways"]],
+    [768, ["Search", "Recommend", "Compare", "Pathways"]],
   ] as const) {
     test(`uses available Therapy phone space at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 });
@@ -350,7 +352,8 @@ test.describe("ModeNav density", () => {
         ["/therapy-compass/compare", "Compare"],
         ["/therapy-compass/recommend", "Recommend"],
         ["/therapy-compass/pathways", "Pathways"],
-        ["/therapy-compass/review", "Review"],
+        // `/therapy-compass/review` is off the bar (group "more"), so it has no
+        // tab to mark; its link lives on the Therapy search page.
       ] as const) {
         await gotoTherapy(page, route);
         await expect.poll(async () => (await readNav(page)).state, { timeout: 10_000 }).toBe("bar");

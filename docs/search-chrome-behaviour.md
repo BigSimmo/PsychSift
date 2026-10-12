@@ -914,17 +914,37 @@ Rules:
   claim and the render have to agree, in both directions.
 - **Keep an addon exactly one row tall.** The clearance is a static token, so a
   dock that grows covers page content by exactly its own growth. Anything that
-  needs more room opens a bottom `Sheet` instead of a taller bar; that is why
-  the compare tray's expanded state is a sheet and the Patient details panel is
-  one too.
-- **Gate the portal at 639px**, matching `.phone-footer-layer`'s `sm:fixed`. The two
-  Compare bars gate at 1023px, which between 640–1023px portals into a slot on a
-  form that is not fixed. Do not copy that.
+  needs more room opens a bottom `Sheet` instead of a taller bar, as the Patient
+  details panel does.
+- **Gate the portal at 639px**, matching `.phone-footer-layer`'s `sm:fixed`.
+- **One Compare tray (October 2026).** Therapy, Differentials (the diagnoses list
+  and submitted search) and DSM search all use `SharedCompareTray`
+  (`src/components/compare/shared-compare-tray.tsx`): "N selected, Clear, Compare",
+  rendered only once something is ticked. On a phone it portals into the route's
+  dock addon slot when the shell claims one (Therapy, Differentials), otherwise it
+  is a page-owned `phone-footer-layer` (`.shared-compare-tray-layer`) fixed above the
+  dock with its own in-flow spacer (DSM). From 640px it is a floating pill with an
+  in-flow spacer under the list. Differentials' clearance dropped from 12.5rem to
+  the one-row 9rem to match. Known gap: the shell still claims the Differentials
+  slot by route, not by selection, so with nothing ticked the dock reserves an
+  empty one-row band; closing it needs the claim gated like Therapy's (in
+  `global-search-shell.tsx` and the dashboard mode surface).
+- **Filters highlight, never hide (October 2026, owner-approved).** On the
+  Differentials stream (urgency and chapter filters), DSM search (category and
+  support filters) and Therapy search (topics, reviewed, handout), a filter no
+  longer removes rows. Matching rows come first in their usual order; every other
+  row stays below under "Not emergent" (one urgency filter) or "Not matching", its
+  title muted by `--text-muted`, never by opacity. A polite live note reads
+  "N of M highlighted, all rows stay" with Clear
+  (`src/components/clinical-dashboard/filter-highlight.tsx`). Search scope and the
+  Differentials family view still define the set itself. The band count is the
+  whole set.
 
 Coverage: `tests/phone-dock-addon-contract.test.ts` (registry, exclusivity, CSS/TS
 value parity, therapy route/claim gating), `tests/patient-details-dock-action.dom.test.tsx`
-(portal target, breakpoint, sheet wiring), `tests/therapy-compare-tray.dom.test.tsx`
-(portal target, breakpoint, empty-set silence, sheet wiring),
+(portal target, breakpoint, sheet wiring), `tests/therapy-compare-tray.dom.test.tsx` and
+`tests/shared-compare-tray.dom.test.tsx` (portal target, breakpoint, empty-set silence,
+announcements),
 `tests/ui-therapy-nav-scroll.spec.ts` (the tray hides with the composer and
 releases its reserve to `0rem`).
 
