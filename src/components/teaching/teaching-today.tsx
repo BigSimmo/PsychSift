@@ -110,7 +110,12 @@ function TodayScreen({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
   const monday = today ? mondayOf(today) : null;
-  const range = useMemo(() => (today && monday ? { from: monday, to: addDays(today, 6) } : null), [today, monday]);
+  // Demo Presenting can roll to next Tuesday after the Tuesday talk ends; load that one extra
+  // session for the hero link, while TodayBody keeps the visible list to this week.
+  const range = useMemo(
+    () => (today && monday ? { from: monday, to: addDays(today, demoMode ? 7 : 6) } : null),
+    [today, monday, demoMode],
+  );
   const view = useTeachingWeek(range, { demoMode }, now);
   const online = useOnline();
   const loaded = useLastLoaded(view, monday, now);
@@ -167,8 +172,9 @@ function TodayBody({
   const live = view.demo === "off";
   const week = stale?.week ?? (view.status === "ready" ? view.week : null);
   const teamValue = week && (team === ALL_TEAMS || week.teams.some((t) => t.id === team)) ? team : ALL_TEAMS;
-  const sessions = week ? sessionsForTeam([...week.sessions, ...week.relocated], teamValue) : [];
-  const inRange = week ? heroSession(sessions, now) : null;
+  const allSessions = week ? sessionsForTeam([...week.sessions, ...week.relocated], teamValue) : [];
+  const sessions = allSessions.filter((session) => perthDateKey(session.startsAt) <= addDays(today, 6));
+  const inRange = week ? heroSession(allSessions, now) : null;
   // Every hook sits above the early returns.
   const later = useTeachingResource<{ session: SessionSummaryRead | null }>(
     week && live && !stale && !inRange && week.teams.length > 0 ? "/api/teaching?view=next-session" : null,

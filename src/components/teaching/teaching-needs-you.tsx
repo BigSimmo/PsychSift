@@ -6,6 +6,7 @@ import Link from "next/link";
 import { focusRing } from "@/components/card-recipes";
 import { withUnit } from "@/components/teaching/teaching-number";
 import { presenterPrep } from "@/components/teaching/teaching-presenter-prep";
+import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { cn } from "@/components/ui-primitives";
 import { demoFeedbackOpen, demoTeach } from "@/lib/teaching/depth-demo";
@@ -84,13 +85,14 @@ export function NeedsYouRow({
 }
 
 export function NeedsYou({ live, today, catchUp = 0 }: { live: boolean; today?: string; catchUp?: number }) {
+  const now = useTeachingNow();
   const unlogged = useTeachingResource<{ count: number }>(live ? "/api/teaching?view=unlogged-count" : null);
   const teach = useTeachingResource<TeachRead>(live ? "/api/teaching/depth?view=teach" : null);
   const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
     live ? "/api/teaching/depth?view=feedback-open" : null,
   );
   const count = unlogged.data?.count ?? 0;
-  const teachRead = live ? teach.data : today ? demoTeach(today) : null;
+  const teachRead = live ? teach.data : today ? demoTeach(today, now ?? undefined) : null;
   const owed = live ? (feedback.data?.sessions ?? []) : today ? demoFeedbackOpen(today) : [];
   const prep = teachRead ? presenterPrep(teachRead, today ?? null) : null;
 
