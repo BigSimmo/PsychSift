@@ -180,8 +180,12 @@ export function NowShiftLists({
                   className="w-16 shrink-0"
                 />
               </span>
-            ) : (
+            ) : handbookReady ? (
               <OnCallStateLabel state={{ kind: "not-set-up" }} />
+            ) : (
+              <span data-testid="on-call-now-checklists-pending" className="text-xs text-[color:var(--text-muted)]">
+                Not available right now
+              </span>
             )}
           </span>
           <ChevronRight aria-hidden="true" className="size-icon-md shrink-0 text-[color:var(--text-muted)]" />
