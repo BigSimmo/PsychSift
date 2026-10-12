@@ -172,6 +172,9 @@ export function OpenShiftsPostPage() {
       state.shifts.find(
         (row) =>
           !before.includes(row.id) &&
+          // Only a shift this person posted, so another manager's identical opening is never taken for theirs.
+          state.actorId !== null &&
+          row.postedBy === state.actorId &&
           row.serviceId === team.serviceId &&
           row.status === "open" &&
           row.shiftCode === code.trim() &&

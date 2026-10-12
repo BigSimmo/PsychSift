@@ -111,6 +111,28 @@ describe("Posting a shift", () => {
     expect(mocks.post).toHaveBeenCalledOnce();
     expect(mocks.push.mock.calls[0]![0]).toContain(liveShift().id);
   });
+
+  it("after a post gets no answer, still sends it when the matching new shift was posted by someone else", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { ok: true, openShiftId: "5e000000-0000-4000-8000-0000000000b3" },
+    });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+
+    // Another manager posted the same opening in the meantime.
+    mocks.state = {
+      ...mocks.state,
+      shifts: [{ ...liveShift(), postedBy: "5e000000-0000-4000-8000-000000000002" }],
+    };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+  });
 });
 
 describe("Share and calendar", () => {
