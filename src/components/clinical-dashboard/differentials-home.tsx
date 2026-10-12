@@ -42,6 +42,7 @@ import {
   differentialSelectedCompareHref,
   syncDifferentialSelectionIdsToUrl,
 } from "@/lib/differentials-navigation";
+import { usePublishDifferentialsCompareCount } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId } from "@/lib/mode-home-composer";
 import {
   composeDifferentialSearchResults,
@@ -919,6 +920,7 @@ function SearchResultsView({
   const filterReachRouter = useRouter();
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  usePublishDifferentialsCompareCount(selectedIds.size);
   // Capture cold-load URL ids in state so a loading catalogue cannot wipe `ids`
   // via replaceState before the first result set hydrates selection.
   const [initialUrlIds] = useState(() =>

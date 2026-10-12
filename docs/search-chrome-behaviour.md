@@ -925,10 +925,11 @@ Rules:
   is a page-owned `phone-footer-layer` (`.shared-compare-tray-layer`) fixed above the
   dock with its own in-flow spacer (DSM). From 640px it is a floating pill with an
   in-flow spacer under the list. Differentials' clearance dropped from 12.5rem to
-  the one-row 9rem to match. Known gap: the shell still claims the Differentials
-  slot by route, not by selection, so with nothing ticked the dock reserves an
-  empty one-row band; closing it needs the claim gated like Therapy's (in
-  `global-search-shell.tsx` and the dashboard mode surface).
+  the one-row 9rem to match. The Differentials claim is gated on a tick, like
+  Therapy's: the list publishes its ticked count
+  (`src/components/differentials/compare-presence.ts`) and both the shell and the
+  dashboard mode surface claim the slot only while it is above zero, so an empty
+  tray never reserves a band.
 - **Filters highlight, never hide (October 2026, owner-approved).** On the
   Differentials stream (urgency and chapter filters), DSM search (category and
   support filters) and Therapy search (topics, reviewed, handout), a filter no

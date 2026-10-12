@@ -130,6 +130,7 @@ import {
 } from "@/lib/mode-home-composer";
 import { readSearchNavigationContext, type SearchNavigationOptions } from "@/lib/search-navigation-context";
 import { isTherapyPhoneDockRoute, readTherapyCompareSlugCount } from "@/lib/therapy-compass-navigation";
+import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import {
   isAlwaysStandaloneShellPath,
   isDashboardOwnedModeHomePath,
@@ -475,8 +476,11 @@ function GlobalStandaloneSearchShellBody({
   const hasSubmittedModeSearch = requestedRun && requestedQuery.length > 0;
   const isDocumentCommandSearchView = pathname === "/documents/search" && requestedQuery.length > 0;
   const useCompactBottomSearch = hasSubmittedModeSearch || isDocumentCommandSearchView;
+  const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
+  // Gated on a tick like Therapy's: an empty tray must not claim the dock band.
   const differentialsCompareAddonActive =
     searchMode === "differentials" &&
+    differentialsCompareHasSelection &&
     // `/differentials` is absent on purpose: it redirects to the shared home, so a
     // branch naming it can never be true and would only read as live ownership.
     (pathname === "/differentials/diagnoses" || pathname === "/differentials/search");

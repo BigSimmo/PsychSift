@@ -38,6 +38,7 @@ import {
 import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
 import { usePhoneMedia } from "@/components/compare/use-phone-media";
 import { differentialRouteWithQuery, differentialSelectedCompareHref } from "@/lib/differentials-navigation";
+import { usePublishDifferentialsCompareCount } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId } from "@/lib/mode-home-composer";
 import type {
   DifferentialStreamItem,
@@ -544,6 +545,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     .filter((item): item is DifferentialStreamItem => Boolean(item));
 
   const selectedCount = selectedIds.size;
+  usePublishDifferentialsCompareCount(selectedCount);
   const showSelect = model.stream === "diagnoses";
   const showBrowseGrouping = !hasQuery && model.stream === "diagnoses";
   // One grouping control, placed by width: on phones it sits on its own row under
