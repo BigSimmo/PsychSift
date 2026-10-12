@@ -302,15 +302,21 @@ describe("audit navigation and auth regressions", () => {
     expect(universalAlsoMatchesSource).toContain("const searchActive = submissionActive;");
     expect(universalAlsoMatchesSource).not.toContain('modeId !== "prescribing"');
     expect(universalAlsoMatchesSource).not.toContain('(isWide || modeId === "answer" || expanded)');
-    // The header now says pending / a count / nothing found. The "Tap to open"
-    // arm it replaced survives only in the comment above the searchActive gate,
-    // which is why this pins the expression rather than searching for the string.
+    // The header says a count or nothing found. The "Tap to open" arm it replaced
+    // survives only in the comment above the searchActive gate, which is why this
+    // pins the expression rather than searching for the string. The pending arm
+    // ("Searching…") went on 2026-10-12: the strip is no longer drawn until this
+    // query's matches are in, so it fills in quietly under the main results instead
+    // of announcing a search over an empty page.
     expect(universalAlsoMatchesSource).toContain(
-      'const headerMeta = searchPending ? "Searching…" : matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";',
+      'const headerMeta = matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";',
     );
+    expect(universalAlsoMatchesSource).not.toContain('searchPending ? "Searching…"');
     expect(universalAlsoMatchesSource).toContain("enabled: trimmedQuery.length >= 2 && searchActive");
     expect(universalAlsoMatchesSource).toContain('if (modeId === "answer" && currentGroups.length === 0) return null;');
-    expect(universalAlsoMatchesSource).toContain("if (!searchPending && currentGroups.length === 0) return null;");
+    // Not drawn while pending, and not drawn when nothing matched: one gate for both.
+    expect(universalAlsoMatchesSource).toContain("if (currentGroups.length === 0) return null;");
+    expect(universalAlsoMatchesSource).not.toContain("if (!searchPending && currentGroups.length === 0) return null;");
     expect(universalAlsoMatchesSource).toContain("const [viewportReady, setViewportReady] = useState(false);");
     expect(universalAlsoMatchesSource).toContain("setViewportReady(true);");
     // The panel status is a three-way now — pending / a count / nothing found —

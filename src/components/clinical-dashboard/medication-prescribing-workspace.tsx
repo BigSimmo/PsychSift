@@ -33,6 +33,7 @@ import {
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
+import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import {
   medicationVerdictRingClass,
   PatientVerdictSignal,
@@ -787,6 +788,9 @@ function MedicationResults({
     <div
       ref={resultsRef}
       tabIndex={-1}
+      // Busy only until the first response for this query lands. A refetch keeps the
+      // previous rows on screen, so it is not announced as a busy region.
+      aria-busy={initialCatalogLoading}
       className={cn(pageContainer, "medication-results-workspace space-y-3 py-0 outline-none sm:py-2")}
     >
       <SearchResultsHeaderBand
@@ -880,11 +884,11 @@ function MedicationResults({
       <PatientDetailsDockAction />
 
       {/* The error branch moved into the band's fault panel, which carries the
-          same message and announces it once. Loading copy stays here. */}
+          same message and announces it once. While the first response is on its way the
+          list shows rows shaped like the results it is waiting for, not a line of text
+          over an empty page. */}
       {initialCatalogLoading ? (
-        <div className="medication-results-inset">
-          <p className="text-sm text-[color:var(--text-muted)]">Loading medication catalogue…</p>
-        </div>
+        <ResultRowsPlaceholder label="Loading medication results" rows={4} testId="medication-results-placeholder" />
       ) : null}
 
       {!initialCatalogLoading && !catalog.error && resultCount === 0 ? (

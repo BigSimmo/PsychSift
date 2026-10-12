@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { authSessionFingerprint, createAuthRequestLifecycle } from "@/lib/auth-request-lifecycle";
 import type { MedicationRecord, MedicationSearchResult } from "@/lib/medications";
@@ -233,6 +233,12 @@ export function useMedicationCatalog(
   const [prevAuthIdentity, setPrevAuthIdentity] = useState(authIdentity);
   const [prevAuthorizationHeader, setPrevAuthorizationHeader] = useState(authorizationHeader);
   const [requestLifecycle] = useState(() => createAuthRequestLifecycle());
+  // The debounce exists to coalesce keystrokes, so it only applies once this hook has
+  // actually sent a request. The first request of a freshly mounted results view (a
+  // submitted search) goes immediately instead of waiting out a typing pause that never
+  // happened. Set when the timer fires, not when it is scheduled, so a dev StrictMode
+  // mount/unmount/mount (which clears the first timer) still sends the first one at once.
+  const requestSentRef = useRef(false);
   const [state, setState] = useState<AsyncState<MedicationCatalogResponse>>({
     data: null,
     loading: enabled,
@@ -269,32 +275,36 @@ export function useMedicationCatalog(
     const suffix = params.toString();
     const url = suffix ? `/api/medications?${suffix}` : "/api/medications";
 
-    const timer = window.setTimeout(() => {
-      fetchJson(url, authorizationHeader, controller.signal, parseMedicationCatalogResponse)
-        .then((data) => {
-          if (!controller.signal.aborted && isCurrentRequest()) setState({ data, loading: false, error: null });
-        })
-        .catch((error) => {
-          if (
-            controller.signal.aborted ||
-            !isCurrentRequest() ||
-            (error instanceof DOMException && error.name === "AbortError")
-          )
-            return;
-          const isOffline =
-            (typeof navigator !== "undefined" && !navigator.onLine) ||
-            (error instanceof TypeError && error.message.includes("fetch"));
-          setState({
-            data: null,
-            loading: false,
-            error: isOffline
-              ? "You are offline. Connect to search the live medication registry."
-              : error instanceof Error
-                ? error.message
-                : "Could not load medications.",
+    const timer = window.setTimeout(
+      () => {
+        requestSentRef.current = true;
+        fetchJson(url, authorizationHeader, controller.signal, parseMedicationCatalogResponse)
+          .then((data) => {
+            if (!controller.signal.aborted && isCurrentRequest()) setState({ data, loading: false, error: null });
+          })
+          .catch((error) => {
+            if (
+              controller.signal.aborted ||
+              !isCurrentRequest() ||
+              (error instanceof DOMException && error.name === "AbortError")
+            )
+              return;
+            const isOffline =
+              (typeof navigator !== "undefined" && !navigator.onLine) ||
+              (error instanceof TypeError && error.message.includes("fetch"));
+            setState({
+              data: null,
+              loading: false,
+              error: isOffline
+                ? "You are offline. Connect to search the live medication registry."
+                : error instanceof Error
+                  ? error.message
+                  : "Could not load medications.",
+            });
           });
-        });
-    }, debounceMs);
+      },
+      requestSentRef.current ? debounceMs : 0,
+    );
 
     return () => {
       window.clearTimeout(timer);

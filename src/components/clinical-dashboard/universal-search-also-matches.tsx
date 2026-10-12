@@ -25,35 +25,6 @@ function matchCountLabel(count: number) {
   return count === 1 ? "1 related mode" : `${count} related modes`;
 }
 
-/**
- * Loading placeholder that occupies the real card geometry.
- *
- * Replaces a single muted sentence, which collapsed the tray to one text line
- * and then snapped it open to a four-card grid the moment results landed. The
- * skeletons keep the tray the height it is about to be, so nothing below the
- * panel jumps. Purely decorative — announcement is owned by the visually
- * hidden `role="status"` node in the panel body (SPEC §9.2: a live region is
- * never visible content).
- */
-function AlsoMatchesSkeletonCard({ className }: { className?: string }) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "flex min-w-0 flex-col gap-2 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-2 shadow-[var(--e1)]",
-        className,
-      )}
-    >
-      <div className="flex items-center gap-2">
-        <span className="h-9 w-9 shrink-0 animate-skeleton-shimmer rounded-lg bg-[color:var(--surface-inset)]" />
-        <span className="h-3 w-20 animate-skeleton-shimmer rounded bg-[color:var(--surface-inset)]" />
-      </div>
-      <span className="h-3 w-full animate-skeleton-shimmer rounded bg-[color:var(--surface-inset)]" />
-      <span className="h-3 w-3/5 animate-skeleton-shimmer rounded bg-[color:var(--surface-inset)]" />
-    </div>
-  );
-}
-
 export function UniversalSearchAlsoMatches({
   modeId,
   query,
@@ -183,14 +154,23 @@ export function UniversalSearchAlsoMatches({
     : matchCount > 0
       ? `${withCatalogueDegradedNotice(`${matchCountLabel(matchCount)} also match this search`, catalogueDegraded)}.`
       : emptyMessage;
-  const headerMeta = searchPending ? "Searching…" : matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";
+  // No pending arm. The strip is not drawn at all until this query's matches are in (see the
+  // gate below), so a "Searching…" here could only ever show during a background refetch,
+  // where the count already on screen is the honest thing to keep saying.
+  const headerMeta = matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";
 
   if (!submissionActive) return null;
   if (!viewportReady || trimmedQuery.length < 2) return null;
   if (modeId === "answer" && currentGroups.length === 0) return null;
   // At every width now, not just from sm up: the phone lookup is eager, so a
   // header that would open onto nothing is dropped instead of offered.
-  if (!searchPending && currentGroups.length === 0) return null;
+  //
+  // And not while the lookup is still running either. This strip used to mount as soon as
+  // the search was submitted and sit there saying "Searching…" — over an otherwise empty
+  // page before the main results arrived, and still saying it after they had. It is
+  // secondary to the results the search asked for, so it now fills in quietly underneath
+  // them once it has something to show, and never holds or competes with the main list.
+  if (currentGroups.length === 0) return null;
 
   return (
     <section
@@ -307,17 +287,6 @@ export function UniversalSearchAlsoMatches({
           expanded ? "mt-1.5 grid" : "hidden",
         )}
       >
-        {searchPending ? (
-          <>
-            <AlsoMatchesSkeletonCard />
-            <AlsoMatchesSkeletonCard className="max-sm:hidden" />
-            <AlsoMatchesSkeletonCard className="hidden xl:flex" />
-            <AlsoMatchesSkeletonCard className="hidden xl:flex" />
-          </>
-        ) : null}
-        {!searchPending && currentGroups.length === 0 ? (
-          <p className="rounded-lg px-2 py-2 text-xs font-medium text-[color:var(--text-muted)]">{emptyMessage}</p>
-        ) : null}
         {currentGroups.map((group) => {
           const targetModeId = group.modeId;
           const targetMode = appModeDefinition(targetModeId);

@@ -1560,7 +1560,6 @@
         "src/app/(search-app)/dictionary/topics/page.tsx",
         "src/components/clinical-dashboard/clinical-dashboard-lazy.tsx",
         "src/components/clinical-dashboard/dashboard-nav.tsx",
-        "src/components/clinical-dashboard/document-search-results.tsx",
         "src/components/clinical-dashboard/global-search-shell.tsx",
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/document-viewer/document-visuals-panel.tsx",
@@ -1573,7 +1572,6 @@
         "src/app/(search-app)/dictionary/topics/page.tsx",
         "src/components/clinical-dashboard/clinical-dashboard-lazy.tsx",
         "src/components/clinical-dashboard/dashboard-nav.tsx",
-        "src/components/clinical-dashboard/document-search-results.tsx",
         "src/components/clinical-dashboard/global-search-shell.tsx",
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/document-viewer/document-visuals-panel.tsx",
@@ -2609,6 +2607,7 @@
         "src/app/(search-app)/open-shifts/loading.tsx",
         "src/app/(search-app)/roster/loading.tsx",
         "src/components/clinical-dashboard/document-search-results.tsx",
+        "src/components/clinical-dashboard/result-rows-placeholder.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
         "src/components/mode-home-page-skeleton.tsx"
       ],
@@ -2619,6 +2618,7 @@
         "src/app/(search-app)/open-shifts/loading.tsx",
         "src/app/(search-app)/roster/loading.tsx",
         "src/components/clinical-dashboard/document-search-results.tsx",
+        "src/components/clinical-dashboard/result-rows-placeholder.tsx",
         "src/components/clinical-dashboard/signed-image.tsx",
         "src/components/mode-home-page-skeleton.tsx"
       ],

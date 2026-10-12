@@ -13,6 +13,8 @@ vi.mock("next/navigation", () => ({
 // two records: the "nothing found" state.
 const catalogEmpty = vi.hoisted(() => ({ current: false }));
 const catalogLoading = vi.hoisted(() => ({ current: false }));
+// When set, the first response for this query has not landed yet: no data at all.
+const catalogNoData = vi.hoisted(() => ({ current: false }));
 const catalogueRecords = [
   {
     slug: "lithium",
@@ -110,18 +112,20 @@ vi.mock("@/components/clinical-dashboard/universal-search-also-matches", () => (
 
 vi.mock("@/components/clinical-dashboard/use-medication-catalog", () => ({
   useMedicationCatalog: () => ({
-    data: {
-      records: catalogEmpty.current ? catalogueRecords : [],
-      matches: (catalogEmpty.current ? [] : [clozapine, lithium, sertraline]).map((result) => ({
-        medication: undefined,
-        result,
-        score: 1,
-        reasons: [],
-      })),
-      interpretation: catalogInterpretation.current,
-      total: 3,
-      governance: {},
-    },
+    data: catalogNoData.current
+      ? null
+      : {
+          records: catalogEmpty.current ? catalogueRecords : [],
+          matches: (catalogEmpty.current ? [] : [clozapine, lithium, sertraline]).map((result) => ({
+            medication: undefined,
+            result,
+            score: 1,
+            reasons: [],
+          })),
+          interpretation: catalogInterpretation.current,
+          total: 3,
+          governance: {},
+        },
     loading: catalogLoading.current,
     error: null,
   }),
@@ -159,6 +163,7 @@ afterEach(() => {
   catalogInterpretation.current = undefined;
   catalogEmpty.current = false;
   catalogLoading.current = false;
+  catalogNoData.current = false;
   window.history.replaceState(null, "", "/");
   cleanup();
   vi.restoreAllMocks();
@@ -251,6 +256,23 @@ describe("MedicationPrescribingWorkspace — query interpretation", () => {
     expect(note).toHaveTextContent("No exact match for \u201csertaline\u201d. No results for sertraline either.");
     expect(note).not.toHaveTextContent("Showing results");
     expect(note.closest('[role="status"]')).not.toBeNull();
+  });
+
+  it("shows rows shaped like results, marked busy, while the first response is on its way", () => {
+    catalogLoading.current = true;
+    catalogNoData.current = true;
+    const { container } = renderWorkspace({ query: "lithium", showHome: false });
+    expect(screen.queryByText(/Loading medication catalogue/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Loading medication results" })).toBe(
+      screen.getByTestId("medication-results-placeholder"),
+    );
+    expect(container.querySelector(".medication-results-workspace")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("drops the placeholder and the busy flag once results are in", () => {
+    const { container } = renderWorkspace({ query: "lithium", showHome: false });
+    expect(screen.queryByTestId("medication-results-placeholder")).not.toBeInTheDocument();
+    expect(container.querySelector(".medication-results-workspace")).toHaveAttribute("aria-busy", "false");
   });
 
   it("hides a kept correction while the catalogue is still answering the new words", () => {
