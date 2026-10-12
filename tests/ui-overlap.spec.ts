@@ -267,46 +267,33 @@ test.describe("Header element overlap coverage", () => {
     });
   }
 
-  test("desktop dormant search keeps the example ticker and prompts around the composer without a Smart promise", async ({
+  test("desktop dormant search keeps its prompts under the composer, with no repeated Try line or Smart promise", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await mockDemoDashboard(page);
     await gotoHome(page);
 
-    // Every mode home shares the same stack: "Try …" ticker line above the
-    // pill, prompt rail below. Answer is a dormant mode, so the ticker must
-    // read as an ordinary example search with no Smart wording.
-    const ticker = page.getByTestId("search-example-ticker");
+    // The desktop "Try ..." line above the pill repeated the prompts below it,
+    // so it went in the owner design review of 12 Oct 2026; the prompt rail
+    // carries the examples alone. Answer is a dormant mode, so nothing may
+    // promise Smart search.
     const promptRow = page.getByTestId("smart-search-prompt-row");
-    await expect(ticker).toBeVisible();
-    await expect(ticker).toContainText("in Answer.");
-    await expect(ticker).not.toContainText("Smart");
+    await expect(page.getByTestId("search-example-ticker")).toHaveCount(0);
     await expect(page.getByTestId("smart-search-intent-cue")).toHaveCount(0);
     await expect(promptRow).toBeVisible();
+    await expect(promptRow).not.toContainText("Smart");
     await expect(promptRow.getByRole("button", { name: "lithium level timing" })).toBeVisible();
     await expect(promptRow.getByRole("button", { name: "clozapine ANC monitoring" })).toBeVisible();
 
     const geometry = await page.evaluate(() => {
-      const ticker = document.querySelector('[data-testid="search-example-ticker"]');
       const prompt = document.querySelector('[data-testid="smart-search-prompt-row"]');
       const pill = document.querySelector(".answer-footer-search-pill");
-      if (!ticker || !prompt || !pill) return null;
-      const tickerRect = ticker.getBoundingClientRect();
-      const promptRect = prompt.getBoundingClientRect();
-      const pillRect = pill.getBoundingClientRect();
-      return {
-        tickerBottom: tickerRect.bottom,
-        pillTop: pillRect.top,
-        pillBottom: pillRect.bottom,
-        promptTop: promptRect.top,
-      };
+      if (!prompt || !pill) return null;
+      return { pillBottom: pill.getBoundingClientRect().bottom, promptTop: prompt.getBoundingClientRect().top };
     });
 
-    expect(geometry, "composer, ticker, and prompt row must render").not.toBeNull();
-    expect(geometry!.tickerBottom, "the ticker should sit above the search bar").toBeLessThanOrEqual(
-      geometry!.pillTop + 1,
-    );
+    expect(geometry, "composer and prompt row must render").not.toBeNull();
     expect(geometry!.promptTop, "prompts should sit below the search bar").toBeGreaterThanOrEqual(
       geometry!.pillBottom - 1,
     );
@@ -560,7 +547,9 @@ test.describe("Header element overlap coverage", () => {
     const ticker = page.getByTestId("smart-search-phone-ticker");
     await expect(ticker).toBeVisible();
     await expect(ticker).toContainText("Try this");
-    await expect(ticker).toContainText("Tap to search");
+    // "Tap to search" left the visible line on 12 Oct 2026 so the suggestion
+    // fits a 320px phone; the accessible name below still ends with it.
+    await expect(ticker).not.toContainText("Tap to search");
 
     const tickerBox = await ticker.boundingBox();
     expect(tickerBox, "phone suggestion ticker must render").not.toBeNull();
@@ -572,8 +561,8 @@ test.describe("Header element overlap coverage", () => {
     // this journey flaky.
     await ticker.hover();
     const ariaLabel = (await ticker.getAttribute("aria-label")) ?? "";
-    // Label-in-Name (WCAG 2.5.3): visible "Try this" / suggestion / "Tap to search"
-    // must appear in the accessible name.
+    // Label-in-Name (WCAG 2.5.3): the visible "Try this" and suggestion must
+    // start the accessible name, which still says how to use it.
     expect(ariaLabel).toMatch(/^Try this .+\. Tap to search$/);
     const suggestion = ariaLabel.replace(/^Try this /, "").replace(/\. Tap to search$/, "");
     expect(suggestion).toBeTruthy();

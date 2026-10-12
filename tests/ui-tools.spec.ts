@@ -761,7 +761,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(sharedHome).toBeVisible();
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Services" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-route\b/);
-    await expect(sharedHomeBrand).toContainText("PsychSift");
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(page.getByText("Services Navigator", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("services-home")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
