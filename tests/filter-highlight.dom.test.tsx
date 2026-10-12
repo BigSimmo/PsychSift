@@ -26,6 +26,10 @@ describe("FilterHighlightNote", () => {
 
     view.rerender(<FilterHighlightNote active highlighted={2} total={10} onClear={onClear} testId="note" />);
     expect(announce).toHaveBeenLastCalledWith("2 of 10 highlighted, all rows stay");
+
+    view.rerender(<FilterHighlightNote active={false} highlighted={0} total={10} onClear={onClear} testId="note" />);
+    expect(screen.queryByTestId("note")).toBeNull();
+    expect(announce).toHaveBeenLastCalledWith("Filter cleared, all rows shown");
   });
 
   it("offers a 48px Clear that clears only through its callback", async () => {

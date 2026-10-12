@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { announce } from "@/components/ui/live-announcer";
@@ -36,9 +36,13 @@ export function FilterHighlightNote({
   className?: string;
 }) {
   const message = active ? `${highlighted} of ${total} highlighted, all rows stay` : "";
+  // Clearing unmounts the note and its Clear button, so say so once.
+  const wasActive = useRef(active);
   useEffect(() => {
     if (message) announce(message);
-  }, [message]);
+    else if (wasActive.current) announce("Filter cleared, all rows shown");
+    wasActive.current = active;
+  }, [message, active]);
   if (!active) return null;
   return (
     <div data-testid={testId} className={cn("flex flex-wrap items-center gap-x-2", className)}>
