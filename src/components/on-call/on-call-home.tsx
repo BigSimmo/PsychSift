@@ -383,6 +383,10 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                 now={now}
                 live={!pinnedNow}
               />
+              {/* Who to call sits in the left column with the numbers, so on a computer the
+                  numbers and escalation balance the shift tools on the right (Work mode
+                  simplify plan, 12 Oct 2026). */}
+              <NowWhoToCall situations={situations} reminder={pinnedReminder?.title ?? null} />
             </>
           }
           comingUp={
@@ -401,7 +405,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   now={now}
                 />
               ) : null}
-              <NowWhoToCall situations={situations} reminder={pinnedReminder?.title ?? null} />
             </>
           }
           atAGlance={

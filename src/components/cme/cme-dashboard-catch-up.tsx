@@ -278,6 +278,10 @@ export type CmeYearSummaryProps = {
   readonly onOpenGap: () => void;
   /** The empty variant's one action ("Log your first activity"). */
   readonly firstLogAction?: ReactNode;
+  /** Hours logged today, added to the kicker when above zero ("· 1 h today"): it replaced "About this year" (12 Oct 2026). */
+  readonly todayHours?: number;
+  /** Customise's "Year dates": off leaves the kicker as the bare year (a closed year still says so). */
+  readonly showTimeLeft?: boolean;
 };
 
 /**
@@ -295,13 +299,18 @@ export type CmeYearSummaryProps = {
  */
 export function CmeYearSummary(props: CmeYearSummaryProps) {
   const { year, today, loggedHours, targetHours, categoryHours, plan, weeklyHours, entries, closed, onOpenGap } = props;
-  const { firstLogAction } = props;
+  const { firstLogAction, todayHours = 0, showTimeLeft = true } = props;
+
+  const label = showTimeLeft || closed ? cmeYearLabel({ year, today, closed }) : String(year);
 
   if (!(targetHours > 0)) {
     return (
       <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className={SUMMARY_CARD}>
-        <div data-testid="cme-year-label" className={LABEL}>
-          {year}
+        <div className={`${LABEL} nums`}>
+          <span data-testid="cme-year-label">{label}</span>
+          {todayHours > 0 ? (
+            <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
+          ) : null}
         </div>
         <p data-testid="cme-total-hours" className="m-0 flex items-baseline gap-1.5">
           {loggedHours > 0 ? (
@@ -327,8 +336,6 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
     );
   }
 
-  const label = cmeYearLabel({ year, today, closed });
-
   if (!(loggedHours > 0)) {
     // cpd_empty: one calm empty state, no hero.
     return (
@@ -337,7 +344,10 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
           <span aria-hidden="true" className="work-empty__badge">
             <Award aria-hidden="true" strokeWidth={2} />
           </span>
-          <span data-testid="cme-year-label" className="sr-only">
+          <span
+            data-testid="cme-year-label"
+            className={showTimeLeft || closed ? "text-sm-minus text-[color:var(--text-muted)]" : "sr-only"}
+          >
             {label}
           </span>
           <p data-testid="cme-total-hours" className="work-empty__title">
@@ -361,8 +371,11 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
     <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className="work-hero">
       <div className="cpd-hero-top">
         <div className="min-w-0">
-          <div data-testid="cme-year-label" className="cpd-hero-kicker nums">
-            {label}
+          <div className="cpd-hero-kicker nums">
+            <span data-testid="cme-year-label">{label}</span>
+            {todayHours > 0 ? (
+              <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
+            ) : null}
           </div>
           {/* Read as one sentence: "32.5 of 50 hours logged, 65 percent". */}
           <p data-testid="cme-total-hours" className="cpd-hero-big m-0" role="img" aria-label={spoken}>

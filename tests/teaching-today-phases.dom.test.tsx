@@ -94,6 +94,26 @@ describe("Today's model", () => {
 });
 
 describe("Today's hero", () => {
+  // Work mode simplify plan, 12 Oct 2026: the session after the hero is one line inside it, not its own card.
+  it("names the talk you present next inside the hero, opening Presenting", async () => {
+    const talk = session({
+      occurrenceId: "88888888-8888-4888-8888-888888888888",
+      title: "Journal club",
+      isPresenter: true,
+      startsAt: "2026-09-30T06:00:00Z",
+      endsAt: "2026-09-30T07:00:00Z",
+    });
+    serveFetch((url) =>
+      url.startsWith("/api/teaching?view=week") ? json(200, week({ sessions: [session(), talk] })) : null,
+    );
+    render(<TeachingToday demoMode={false} />);
+    const hero = await screen.findByTestId("teaching-hero");
+    const then = within(hero).getByTestId("teaching-hero-then");
+    expect(then).toHaveTextContent("Then you present Journal club at 14:00");
+    expect(then).toHaveAttribute("href", `/teaching/teach?talk=${talk.occurrenceId}`);
+    expect(screen.queryByTestId("teaching-next-for-you")).toBeNull();
+  });
+
   it("after a session you checked in to, logs it to CPD in quarter hours and then offers a reflection", async () => {
     vi.setSystemTime(JUST_AFTER);
     const posts: unknown[] = [];
