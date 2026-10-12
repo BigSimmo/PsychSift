@@ -365,7 +365,9 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
         <div className="min-w-0">
           <div data-testid="cme-year-label" className="cpd-hero-kicker nums">
             {label}
-            {todayHours > 0 ? <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span> : null}
+            {todayHours > 0 ? (
+              <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
+            ) : null}
           </div>
           {/* Read as one sentence: "32.5 of 50 hours logged, 65 percent". */}
           <p data-testid="cme-total-hours" className="cpd-hero-big m-0" role="img" aria-label={spoken}>

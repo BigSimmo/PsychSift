@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 
 import { CmeCategoryLegend, CmeYearSummary } from "@/components/cme/cme-dashboard-catch-up";
 import { CmeTodayDetailSheet, type CmeTodayDetail } from "@/components/cme/cme-dashboard-detail-sheet";
@@ -27,7 +27,7 @@ import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-lis
 import { hoursByCategory } from "@/components/cme/cme-progress-visuals";
 import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme-quick-log";
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
-import { CmeBandAction, CmeKvCard, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
+import { CmeBandAction, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
 import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
 import { WorkColumns } from "@/components/work-frame/work-desktop-layout";
 import { Button } from "@/components/ui/button";
@@ -35,13 +35,11 @@ import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-
 import { addDays, expandEvents } from "@/lib/calendar/calendar-event";
 import { cmeCalendarEvents } from "@/lib/cme/calendar-events";
 import { buildCmeCatchUpPlan } from "@/lib/cme/catch-up-plan";
-import { cpdYearOf, daysRemainingInCpdYear, formatCalendarDateShort, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { formatCalendarDateShort, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { evaluateYear } from "@/lib/cme/evaluate";
 import { useCmeModuleOrder, type CmeDashboardModuleId } from "@/lib/cme/module-order";
 import { cmeRoutineGapScenarios, cmeWeeklyPace } from "@/lib/cme/pace";
 import type { CmePlanGoal } from "@/lib/cme/plan-goals";
-import { readCpdHome } from "@/lib/cme/home-choice";
-import { describeConfirmedSource } from "@/lib/cme/presets";
 import {
   cmeRoutineCadenceLabels,
   routineLogPrefill,
@@ -245,7 +243,6 @@ export function CmeDashboard({
     };
   }, [set, entries, routines, today]);
   const { totalHours, statuses, unmet } = derived.evaluation;
-  const inRequestedYear = cpdYearOf(now) === set.year;
   const yearEntries = entries.filter((entry) => !entry.archivedAt && entry.date.startsWith(`${set.year}-`));
   const culturallySafePracticeToLog = set.requirements.some(
     (requirement) =>
