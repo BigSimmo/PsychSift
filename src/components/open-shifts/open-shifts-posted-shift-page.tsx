@@ -92,6 +92,7 @@ function WhoCouldDoThis({ shift, actorId }: { shift: PostedShift; actorId: strin
           assignments: assignments.data.assignments,
           unavailability: unavailability.ok ? unavailability.data.unavailability : null,
           actorId,
+          posterId: shift.postedBy,
         }),
       });
     });

@@ -45,10 +45,11 @@ export type WhoCould = {
 
 /** True when `grade` meets the shift's minimum. A shift for any level takes everyone. */
 export function meetsLevel(grade: RosterGrade | null, minGrade: RosterGrade | null): boolean {
-  if (minGrade === null) return true;
   const mine = gradeRank(grade);
+  if (mine === null) return false;
+  if (minGrade === null) return true;
   const minimum = gradeRank(minGrade);
-  return mine !== null && minimum !== null && mine >= minimum;
+  return minimum !== null && mine >= minimum;
 }
 
 export function whoCouldDoThis(input: {
@@ -58,8 +59,9 @@ export function whoCouldDoThis(input: {
   /** Null when the read failed or wasn't made: nobody is then left out for it. */
   unavailability: RosterUnavailability["unavailability"] | null;
   actorId: string | null;
+  posterId?: string | null;
 }): WhoCould {
-  const { shift, members, assignments, unavailability, actorId } = input;
+  const { shift, members, assignments, unavailability, actorId, posterId } = input;
   const day = perthDateOf(shift.startsAt);
   const said = new Map<string, "cant" | "prefer_off">();
   for (const row of unavailability ?? []) {
@@ -71,6 +73,7 @@ export function whoCouldDoThis(input: {
   let cantWork = 0;
   const people: WhoCouldPerson[] = [];
   for (const member of members) {
+    if (posterId && member.userId === posterId) continue;
     if (!meetsLevel(member.grade, shift.minGrade)) continue;
     if (placementProblem(assignments, member.userId, shift.startsAt, shift.endsAt, [], null) === "clash") {
       busy += 1;
