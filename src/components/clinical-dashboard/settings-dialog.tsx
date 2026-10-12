@@ -1802,7 +1802,11 @@ function SettingsField({
         </div>
       </div>
       {children ? (
-        <div className={cn(stacked ? "w-full" : "w-full md:w-auto md:shrink-0")}>{children}</div>
+        // Below 360px a stacked control borrows most of the row's side padding: at the 12px type
+        // floor a three-way choice such as "Comprehensive" needs every pixel of its third.
+        <div className={cn(stacked ? "w-full max-[359px]:-mx-3 max-[359px]:w-auto" : "w-full md:w-auto md:shrink-0")}>
+          {children}
+        </div>
       ) : valueText ? (
         <span className="shrink-0 pl-12 text-sm-minus font-medium leading-5 text-[color:var(--text-muted)] md:pl-0 md:text-right">
           {valueText}
