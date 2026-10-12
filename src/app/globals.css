@@ -13,6 +13,8 @@
 @import "./mode-band.css";
 @import "./work-mode.css";
 @import "./work-mode-tokens.css";
+/* Clinical header glass and title band, in line with Work (12 Oct 2026). */
+@import "./clinical-mode.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));
@@ -236,11 +238,11 @@
      `eyebrowText` in ui-primitives.tsx for the uppercase eyebrow treatment
      (`--text-2xs` used to bake that tracking in; it is now the neutral 11px
      step and the tracking lives at the recipe/call site instead).
-       3xs         10px  micro floor: dense metadata, legend labels, count
-                         bubbles. An 8px `4xs` step existed here and is retired
-                         — unreadable at any density in a clinical product, so
-                         nothing below 10px is a legal step. ≤9px snaps here.
-       2xs         11px  Chip `compact` / secondary labels (most common small size)
+       3xs         12px  legacy name, now an alias of xs. 12px is the floor for
+                         every word on screen (owner decision, 12 Oct 2026, from
+                         the Ward Flow review): the old 10px and 8px steps were
+                         too small to read on a phone in a clinical product.
+       2xs         12px  legacy name, now an alias of xs (was 11px)
        (xs 12 · sm 14 · base 16 come from Tailwind's default scale —
         Chip `standard` uses xs / 12px; see docs/design-system/TOKENS.md)
        sm-minus    13px  one notch under sm — dense body/labels bigger than xs
@@ -248,8 +250,8 @@
        (lg 18 · xl 20 · 2xl 24 come from Tailwind's default scale)
        lg-minus    17px  one notch under lg — display titles a shade under 18
        2xl-minus   22px  one notch under 2xl — wide-screen nowrap headings */
-  --text-3xs: 0.625rem;
-  --text-2xs: 0.6875rem;
+  --text-3xs: 0.75rem; /* alias of xs, see above */
+  --text-2xs: 0.75rem; /* alias of xs, see above */
   --text-sm-minus: 0.8125rem;
   --text-base-minus: 0.9375rem;
   --text-lg-minus: 1.0625rem;
@@ -699,8 +701,10 @@
   /* Keep in sync with mobile-composer-reserve.ts (phone dock clearance). */
   --keyboard-height: 0px;
   --phone-dock-hidden-pad: 0rem;
-  --phone-dock-differentials-compare-clearance: 12.5rem;
-  --phone-dock-differentials-compare-compact-clearance: 12.25rem;
+  /* Differentials now docks the shared Compare tray, one row tall like the
+     therapy tray, so it clears the same as Patient details and Therapy. */
+  --phone-dock-differentials-compare-clearance: 9rem;
+  --phone-dock-differentials-compare-compact-clearance: 8.75rem;
   /* Patient details is a single ~3rem row + 0.5rem gap above the pill, so it
      clears roughly 3.5rem less than the Compare bar. */
   --phone-dock-patient-details-clearance: 9rem;
@@ -714,11 +718,8 @@
   --patient-details-fab-padding: 0.3125rem 0.5rem 0.3125rem 1rem;
   --patient-details-fab-count-size: 1.625rem;
   --patient-details-fab-count-padding: 0.375rem;
-  --therapy-compare-tray-gap: 0.5rem;
   --therapy-compare-tray-pip-gap: 0.125rem;
   --therapy-compare-tray-pip-size: 1.5rem;
-  --therapy-compare-tray-padding: 0.25rem 0.5rem;
-  --therapy-compare-tray-summary-inset: 0.25rem;
   /* Radius tokens are the single source of truth in @theme above (they also
      generate the rounded-* utilities); do not redefine them here or var() and
      the utilities drift apart. */
@@ -2186,74 +2187,16 @@ summary::-webkit-details-marker {
   --footer-scrim-height: max(7rem, calc(var(--safe-area-bottom) + 5.5rem));
 }
 
-/* In-flow above the search pill inside the phone dock so scroll-hide
-   translateY moves the Compare bar with the composer (no viewport-fixed jump). */
-.differentials-mobile-compare-fab {
-  pointer-events: none;
-  position: relative;
-  z-index: var(--z-raised);
-  display: flex;
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 0.5rem;
-}
-
-.differentials-mobile-compare-fab__button {
-  pointer-events: auto;
-  display: inline-flex;
-  min-height: 3.25rem;
-  max-width: min(100%, 36rem);
-  align-items: center;
-  gap: 0.625rem;
-  border-radius: 9999px;
-  border: 1px solid color-mix(in srgb, var(--clinical-accent), white 14%);
-  background:
-    radial-gradient(
-      circle at 82% 0%,
-      color-mix(in srgb, var(--clinical-accent-contrast) 20%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(135deg, color-mix(in srgb, var(--clinical-accent), white 7%), var(--clinical-accent));
-  padding: 0.375rem 0.625rem 0.375rem 1.25rem;
-  color: var(--clinical-accent-contrast);
-  font-size: 0.95rem;
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  box-shadow: 0 18px 42px rgb(0 0 0 / 24%);
-  touch-action: manipulation;
-  /* 160ms has no duration rung — do not invent one; nearest is --duration-quick (150ms). */
-  transition:
-    transform 160ms var(--ease-spring),
-    background-color 160ms var(--ease-out-soft),
-    box-shadow 160ms var(--ease-out-soft);
-}
-
-.differentials-mobile-compare-fab__button:active {
-  transform: translateY(1px) scale(0.99);
-  transition: transform 160ms var(--ease-spring);
-}
-
-.differentials-mobile-compare-fab__button:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 3px;
-}
-
-.differentials-mobile-compare-fab__button--empty {
-  border-color: var(--border-strong);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  color: var(--text-muted);
-  font-weight: 800;
-}
-
-/* DSM mobile compare strip adapts to footer scroll-hide transitions */
-.dsm-mobile-compare-strip {
+/* Shared Compare tray, page-owned phone footer layer (routes with no dock
+   addon slot, such as DSM search): follows the footer's scroll-hide. */
+.shared-compare-tray-layer {
   transition:
     transform var(--duration-moderate) var(--ease-chrome-reveal),
     opacity var(--duration-moderate) var(--ease-chrome-reveal);
 }
 
 @media (max-width: 1023px) {
-  .dsm-mobile-compare-strip[data-scroll-hidden="true"] {
+  .shared-compare-tray-layer[data-scroll-hidden="true"] {
     transform: translateY(calc(100% + 5.5rem + var(--safe-area-bottom, 0px) + var(--keyboard-height, 0px) + 0.5rem));
     opacity: 0;
     pointer-events: none;
@@ -2262,20 +2205,20 @@ summary::-webkit-details-marker {
       opacity var(--duration-slow) var(--ease-chrome-hide);
   }
 
-  .dsm-mobile-compare-strip[data-scroll-hidden="true"] * {
+  .shared-compare-tray-layer[data-scroll-hidden="true"] * {
     pointer-events: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dsm-mobile-compare-strip,
-  .dsm-mobile-compare-strip[data-scroll-hidden="true"] {
+  .shared-compare-tray-layer,
+  .shared-compare-tray-layer[data-scroll-hidden="true"] {
     transition: none;
   }
 }
 
-html[data-motion="reduced"] .dsm-mobile-compare-strip,
-html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"] {
+html[data-motion="reduced"] .shared-compare-tray-layer,
+html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"] {
   transition: none;
 }
 
@@ -2354,40 +2297,9 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   font-weight: 800;
 }
 
-/* Therapy Compass compare tray: the row above the search pill that says what is
-   in the comparison. Same in-flow trick as the two rows above, so scroll-hide
-   carries it with the composer.
-
-   It must stay ONE row tall at every state — the dock's content clearance is a
-   static token, so a dock that grows covers page content by exactly its growth.
-   The expanded state is a bottom sheet for that reason, not a taller bar.
-
-   Interaction states are NOT redeclared here: the summary row carries
-   `interactiveRowBase` and the actions are the shared `Button`, so hover, focus
-   and disabled behaviour come from the design system, per COMPONENTS.md 9.1. */
-.therapy-compare-tray {
-  position: relative;
-  z-index: var(--z-raised);
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: var(--therapy-compare-tray-gap);
-  margin-bottom: var(--therapy-compare-tray-gap);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-strong);
-  background: color-mix(in srgb, var(--surface) 94%, transparent);
-  padding: var(--therapy-compare-tray-padding);
-  box-shadow: var(--e3);
-}
-
-.therapy-compare-tray__summary {
-  min-width: 0;
-  flex: 1 1 auto;
-  gap: var(--therapy-compare-tray-gap);
-  border-radius: var(--radius-md);
-  padding-inline: var(--therapy-compare-tray-summary-inset);
-}
-
+/* Compare slot pips, drawn by CompareSlotStrip (the therapy compare page).
+   The dock tray itself is now the shared Compare tray, built from Tailwind
+   tokens in src/components/compare/shared-compare-tray.tsx. */
 .therapy-compare-tray__pips {
   display: flex;
   flex-shrink: 0;
@@ -2427,26 +2339,6 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   .therapy-compare-tray__pip[data-landed="true"] {
     transform: none;
   }
-}
-
-.therapy-compare-tray__names {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-heading);
-  font-size: 0.8125rem;
-  font-weight: 800;
-}
-
-.therapy-compare-tray__count {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
 }
 
 /* Bottom-docked composer: hint row + upward dropdown grow above the pill. */
@@ -3346,7 +3238,10 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   --smart-search-phone-ticker-vertical-padding: 0.375rem;
 
   min-height: var(--spacing-tap);
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  /* "Try this" and the example, centred under the hero. The example takes
+     only the room it needs, and shortens only once the line is full. */
+  grid-template-columns: auto minmax(0, max-content);
+  justify-content: center;
   align-items: center;
   gap: var(--smart-search-phone-ticker-gap);
   overflow: hidden;
@@ -3364,11 +3259,11 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   align-items: center;
   --smart-search-phone-ticker-kicker-gap: 0.25rem;
   gap: var(--smart-search-phone-ticker-kicker-gap);
-  color: var(--clinical-accent);
+  /* A quiet sentence-case lead-in (12 Oct 2026), so the example carries the line. */
+  color: var(--text-muted);
   font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .smart-search-phone-ticker-query {
@@ -3379,13 +3274,6 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   --smart-search-phone-ticker-line-height: 1.1rem;
   line-height: var(--smart-search-phone-ticker-line-height);
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.smart-search-phone-ticker-action {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -3433,15 +3321,16 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
 /* END mode-home prompt rail one-line */
 
 /* BEGIN tablet mode-home composer geometry */
-/* Across 640-1279px the settled one-line surface is 160px: example ticker
-   line (24px), composer, gaps, and prompt rail. Every mode home renders that
-   same stack. Pre-reserve that exact height in this bounded band. The portal
+/* Across 640-1279px the settled one-line surface is 128px: composer, gap and
+   prompt rail. The 24px "Try …" line above it left on 12 Oct 2026 (the Prompts
+   rail already offers the same examples), taking 32px of stack with it. Every
+   mode home renders that same stack. Pre-reserve that exact height in this bounded band. The portal
    host's pending/non-empty selectors remain the owner, so a hidden composer
    still reserves zero. At 1280px+ the existing 88px default remains
    deliberately unchanged because measured CLS stays below 0.01. */
 @media (min-width: 640px) and (max-width: 1279.98px) {
   :root {
-    --spacing-mode-home-composer-wide: 10rem;
+    --spacing-mode-home-composer-wide: 8rem;
   }
 }
 /* END tablet mode-home composer geometry */
@@ -3687,66 +3576,6 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   white-space: nowrap;
 }
 
-/* Home history is a quiet convenience rather than a second set of primary
-   actions. Keep the shared chip behaviour and touch target, but use a compact
-   rectangular treatment that takes up less visual and vertical space. */
-.home-recent-searches {
-  gap: calc(var(--spacing-icon-xs) / 2) var(--radius-md);
-  padding-inline: 0;
-}
-
-.home-recent-searches .answer-suggestion-label {
-  color: var(--text-heading);
-  font-size: var(--text-xs);
-  font-weight: 650;
-  letter-spacing: 0.025em;
-}
-
-.home-recent-searches .answer-suggestion-chips {
-  justify-content: center;
-  gap: calc(var(--spacing-icon-xs) / 2);
-}
-
-.home-recent-searches .answer-suggestion-chip {
-  min-height: calc(var(--spacing-tap) * 7 / 12);
-  border-color: color-mix(in srgb, var(--border) 58%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-inset) 42%, transparent);
-  box-shadow: none;
-  padding-inline: var(--radius-md);
-  color: color-mix(in srgb, var(--text-muted) 90%, transparent);
-  font-size: var(--text-xs);
-  font-weight: 550;
-}
-
-.home-recent-searches .answer-suggestion-chip-icon {
-  width: var(--spacing-icon-xs);
-  height: var(--spacing-icon-xs);
-  margin-right: var(--radius-xs);
-}
-
-.home-recent-searches .answer-suggestion-chip:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--clinical-accent-border) 68%, transparent);
-  background: color-mix(in srgb, var(--clinical-accent-soft) 52%, transparent);
-}
-
-@media (pointer: coarse) {
-  .home-recent-searches .answer-suggestion-chip {
-    min-height: var(--spacing-tap);
-  }
-}
-
-@media (max-width: 639px) {
-  .home-recent-searches {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .home-recent-searches .answer-suggestion-chips {
-    justify-content: flex-start;
-  }
-}
-
 .answer-footer-search-edge .answer-suggestion-row {
   padding-inline: 0.25rem;
 }
@@ -3918,12 +3747,12 @@ html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]
   /* Differentials search results: compare action sits above the search pill in the dock.
      Heights track --phone-dock-differentials-compare-* (same as content reserve). */
   .answer-footer-search-dock[data-footer-addon="differentials-compare"] .answer-footer-search-backdrop {
-    height: max(var(--phone-dock-differentials-compare-clearance), calc(var(--safe-area-bottom) + 11.25rem));
+    height: max(var(--phone-dock-differentials-compare-clearance), calc(var(--safe-area-bottom) + 7.75rem));
   }
 
   .answer-footer-search-dock.document-mobile-search-compact[data-footer-addon="differentials-compare"]
     .answer-footer-search-backdrop {
-    height: max(var(--phone-dock-differentials-compare-compact-clearance), calc(var(--safe-area-bottom) + 11rem));
+    height: max(var(--phone-dock-differentials-compare-compact-clearance), calc(var(--safe-area-bottom) + 7.5rem));
   }
 
   /* Medication surfaces: Patient details pill above the search pill in the dock.
@@ -6248,12 +6077,10 @@ html.theme-transitioning *:after {
 /* Deliberately UNLAYERED. Tailwind's utilities layer outranks @layer
    components regardless of selector specificity, and the band root also
    carries the `border` / `border-[color:var(--border)]` utilities — inside a
-   layer these rules lose and the accent rail silently renders as a neutral
-   1px border. Verify with computed styles, not class presence. */
-/* The accent used to be the card's real border-top, drawn edge to edge. At 58px
-   the band is a bar rather than a card lid, and a line across its whole width
-   reads as a divider between the composer and the results instead of as the
-   band's own mark. It moves inside the padding: 2 x 18px, level with the count.
+   layer these rules lose and the fault mark silently renders as a zero-width
+   box. Verify with computed styles, not class presence. */
+/* The band was a card with an accent edge; since 12 Oct 2026 it is one plain
+   line, and only a failed or partial search draws a mark before the count.
 
    Drawn as a `border-left` on a zero-width box rather than as a background, for
    two reasons that are not stylistic. Forced colors drops backgrounds outright
@@ -6270,18 +6097,9 @@ html.theme-transitioning *:after {
   box-sizing: content-box;
   width: 0;
   height: 1.125rem;
-  border-left: 2px solid var(--clinical-accent);
-  /* 2 + 4 = 6px, which is the faulted mark's own footprint, so the count does
-     not shift sideways the moment a search degrades. */
-  margin-right: 4px;
-}
-/* Keyed off the element rather than `.search-band[data-status=…] &`: a
-   descendant selector would put `.search-band` back into the unlayered-visual
-   inventory with a live component rule, and the style-contract registry would
-   then require a second contract for a class that no longer paints anything. */
-.search-band-lead[data-tone="warning"] {
+  /* Drawn only for a failed or partial search (the plain line has no accent
+     since 12 Oct 2026), so the mark is always the warning's double stroke. */
   border-left: 6px double var(--warning);
-  margin-right: 0;
 }
 
 /* The query sits after the count rather than leading the band, so it steps down
@@ -6362,16 +6180,12 @@ html.theme-transitioning *:after {
    while still looking correct in review. Rendering (not reading) exposed three
    losses that colour alone was hiding. */
 @media (forced-colors: active) {
-  /* 1 — the lead mark survives as stroke count, not hue: --clinical-accent
-     resolves to LinkText and --warning is not remapped by the token block at
-     all, so "accent" and "warning" would paint the same mark. One stroke is a
-     healthy search; two is a degraded one. */
+  /* 1 — the fault mark survives as stroke count, not hue: --warning is not
+     remapped by the token block at all. A healthy search draws no mark; a
+     degraded one keeps its double stroke. */
   .search-band-lead {
-    border-left-color: CanvasText;
-    height: 1.25rem;
-  }
-  .search-band-lead[data-tone="warning"] {
     border-left: 6px double CanvasText;
+    height: 1.25rem;
   }
   /* 2 — a fault also doubles the card's own top edge. Structural, not
      chromatic, and deliberately redundant with the mark above: at 58px an 18px
@@ -6670,4 +6484,21 @@ html.theme-transitioning *:after {
    layout but not in the selector tree the combinator walks. */
 .universal-header-trailing:has(> #universal-header-trailing-slot > *) .universal-header-new-chat {
   display: none;
+}
+
+/* A cited source docked beside the answer (answer-source-docked-panel.tsx,
+   from 1024px only): the answer column moves left by the panel's width and
+   gutter, so the panel never covers the prose. The panel is 22rem wide at
+   right 1rem, and 26rem at right 1.5rem from 1280px. The panel measures its own
+   edge into --source-dock-reserve; these widths are only the fallback. */
+@media (min-width: 1024px) {
+  body[data-source-docked] #main-content {
+    padding-right: var(--source-dock-reserve, calc(22rem + 1.5rem));
+  }
+}
+
+@media (min-width: 1280px) {
+  body[data-source-docked] #main-content {
+    padding-right: var(--source-dock-reserve, calc(26rem + 2.5rem));
+  }
 }

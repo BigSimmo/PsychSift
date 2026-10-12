@@ -20,6 +20,7 @@ import { rosterCoveredUntil } from "@/lib/open-shifts/roster-check";
 import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 
 import { OpenShiftsCalendar } from "./open-shifts-calendar";
+import { UrgentDot } from "./urgent-dot";
 import { OpenShiftsFitsYou, OpenShiftsRequestsStrip, fitsYou } from "./open-shifts-for-you";
 import { clearSavedFilters, readSavedFilters, saveFilters } from "./open-shifts-saved-filters";
 import { useSignedOut } from "@/components/mode-kit/use-signed-out-sample";
@@ -315,9 +316,9 @@ export function OpenShiftsBrowsePage() {
                 <li className="inline-flex items-center gap-1.5">
                   <span
                     aria-hidden="true"
-                    className="inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full border border-[color:var(--warning-border)] text-[color:var(--warning-text)]"
+                    className="inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center rounded-full bg-[color:var(--mode-identity-soft)]"
                   >
-                    <TriangleAlert aria-hidden="true" strokeWidth={2.2} className="size-2.5" />
+                    <UrgentDot />
                   </span>
                   Includes an urgent shift
                 </li>

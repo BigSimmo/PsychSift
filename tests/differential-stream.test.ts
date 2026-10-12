@@ -119,12 +119,15 @@ describe("differential stream navigation helpers", () => {
 });
 
 describe("differential stream compare CTA contracts", () => {
-  it("requires two selections before enabling the mobile compare link", () => {
+  it("requires two selections before enabling compare in the shared tray", () => {
     const workspace = readFileSync(
       new URL("../src/components/differentials/differential-stream-workspace.tsx", import.meta.url),
       "utf8",
     );
-    expect(workspace).toContain("const canCompare = selectedCount >= 2");
+    const tray = readFileSync(new URL("../src/components/compare/shared-compare-tray.tsx", import.meta.url), "utf8");
+    expect(workspace).toContain("<SharedCompareTray");
+    expect(tray).toContain("minToCompare = 2");
+    expect(tray).toContain("const ready = count >= minToCompare");
     expect(workspace).toContain("normalizeSearchText(query)");
     expect(workspace).toContain("model.compareSeedIds");
   });

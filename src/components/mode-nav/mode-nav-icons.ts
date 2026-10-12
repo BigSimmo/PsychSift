@@ -39,7 +39,6 @@ import {
   Users,
   UsersRound,
   Waypoints,
-  Wrench,
   type LucideIcon,
   Clock,
   FileSignature,
@@ -158,9 +157,8 @@ export const iconByItemId: Record<RoutedModeSecondaryNavigationId, LucideIcon> =
   "forms-list": FileSignature,
   "forms-clock": Timer,
   "forms-act": FileText,
-  // Psychiatry's three hub pages.
-  "psychiatry-ask": Search,
-  "psychiatry-tools": Wrench,
+  // Psychiatry's two hub pages: Home and Saved.
+  "psychiatry-ask": House,
   "psychiatry-saved": Bookmark,
   // First Nations. Prefixed ids, so On Call's "contacts" icon is not shared —
   // each mode's rail slots wear their own mark even where the idea overlaps.

@@ -184,9 +184,10 @@ describe("AdminTodayPage", () => {
     state.entries = [registration, wwc];
     render(<AdminTodayPage now={NOW} />);
     const card = screen.getByTestId("admin-today-renew-next");
-    expect(within(card).getByText("Medical registration")).toBeTruthy();
-    // Amended for the work-mode redesign, owner request 6 Oct 2026: the hero says "Renew by" with the weekday.
-    expect(within(card).getByText("Renew by Thu 15 Oct · in 2 weeks")).toBeTruthy();
+    // Amended for the Ward Flow review, owner approved 12 Oct 2026: the title answers the page with the
+    // same count words as Coming up, and the item moves to the line under it, still saying "Renew by".
+    expect(within(card).getByText(/\bdue in 90 days$/)).toBeTruthy();
+    expect(within(card).getByText("Next: Medical registration · Renew by Thu 15 Oct · in 2 weeks")).toBeTruthy();
     expect(screen.getByTestId("admin-today-renew-next-window")).toBeTruthy();
     const renewed = within(card).getByTestId("admin-today-renew-next-renewed");
     expect(renewed.getAttribute("href")).toBe(`/admin/renewals#on-call-entry-${registration.id}`);
