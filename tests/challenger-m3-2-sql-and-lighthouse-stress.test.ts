@@ -414,6 +414,9 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       expect(stripped).not.toContain("trailing comment");
       const median = [...durations].sort((a, b) => a - b)[Math.floor(durations.length / 2)];
       expect(median).toBeLessThan(100);
+      // An outlier ceiling still fails a run that is pathologically slow, which no runner pause
+      // explains.
+      expect(Math.max(...durations)).toBeLessThan(300);
     });
 
     it("handles long unclosed comment or string safely without catastrophic backtracking", () => {
