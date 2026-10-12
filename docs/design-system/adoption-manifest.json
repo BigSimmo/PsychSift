@@ -2541,6 +2541,7 @@
       },
       "testFiles": [
         "tests/accessible-table.dom.test.tsx",
+        "tests/answer-source-docked-panel.dom.test.tsx",
         "tests/answer-source-rail.dom.test.tsx",
         "tests/answer-support-priority.dom.test.tsx",
         "tests/challenger-m3-stress.dom.test.tsx",
