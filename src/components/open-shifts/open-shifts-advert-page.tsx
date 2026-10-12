@@ -2,7 +2,7 @@
 
 import { Building2, CircleCheck, CircleHelp, Clock, Lock, Scale, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
@@ -358,6 +358,12 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
   const [withdrawLoaded, setWithdrawLoaded] = useState(false);
   // The shift whose waiting request was taken back, so the page drops it before the reload lands.
   const [withdrawnKey, setWithdrawnKey] = useState<string | null>(null);
+  const withdrawnNoticeRef = useRef<HTMLParagraphElement>(null);
+  // The button that opened the take-back is gone, so keyboard focus lands on the result instead,
+  // once per take-back rather than on every re-render.
+  useEffect(() => {
+    if (withdrawnKey) withdrawnNoticeRef.current?.focus();
+  }, [withdrawnKey]);
   const listing = state.listings.find((row) => row.serviceId === serviceId && row.id === openShiftId) ?? null;
 
   if (state.status === "loading") {
@@ -503,8 +509,7 @@ export function OpenShiftsAdvertPage({ serviceId, openShiftId }: { serviceId: st
       {withdrawn && !alreadyMine ? (
         <p
           role="status"
-          // The button that opened the take-back is gone, so keyboard focus lands on the result instead.
-          ref={(node) => node?.focus()}
+          ref={withdrawnNoticeRef}
           tabIndex={-1}
           className="mx-3 mt-4 text-sm font-medium text-[color:var(--text-heading)]"
         >
