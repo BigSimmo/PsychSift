@@ -2160,7 +2160,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     id: id(84),
     section: "logistics",
     slug: "demo-basic-life-support-module",
-    title: "Basic life support module",
+    title: "Resuscitation competence check",
     subtitle: "Online module and a practical session",
     // The one already past its recorded date, so the lapsed treatment appears
     // in a browser rather than only in a test.
