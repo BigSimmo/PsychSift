@@ -99,6 +99,9 @@ export function OpenShiftsPostPage() {
   // failure sends only the dates still missing and never posts the same shift twice.
   const [done, setDone] = useState<Record<string, string>>({});
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
+  // Dates whose post got no answer (the connection dropped), with the team's shift ids known before that
+  // attempt. Only these are checked against the team's list on a retry: one that went live is not sent again.
+  const [unanswered, setUnanswered] = useState<Record<string, readonly string[]>>({});
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);
@@ -157,19 +160,25 @@ export function OpenShiftsPostPage() {
   const signature = (on: string) =>
     JSON.stringify([team?.serviceId, on, start, end, code.trim(), kind, site, level, urgent]);
   /**
-   * The team's live shift for this date, if one already matches exactly. A post whose answer was lost on the
-   * way back may still have gone live, so a date the team already shows is never sent a second time.
+   * For a date whose earlier post got no answer: the open shift that post made, if it did go live. It must be
+   * new since that attempt and match everything that was sent. A first post is never checked, so a manager can
+   * still deliberately post a second opening for the same slot.
    */
-  const liveMatch = (on: string) => {
+  const lostAnswerMatch = (on: string) => {
+    const before = unanswered[signature(on)];
     const onTimes = gapTimes(on, start, end);
-    if (!onTimes || !team) return null;
+    if (!before || !onTimes || !team) return null;
     return (
       state.shifts.find(
         (row) =>
+          !before.includes(row.id) &&
           row.serviceId === team.serviceId &&
-          row.status !== "cancelled" &&
-          row.status !== "expired" &&
+          row.status === "open" &&
           row.shiftCode === code.trim() &&
+          row.kind === kind &&
+          (row.siteId ?? "") === site &&
+          (row.minGrade ?? "") === level &&
+          row.urgent === urgent &&
           Date.parse(row.startsAt) === Date.parse(onTimes.startsAt) &&
           Date.parse(row.endsAt) === Date.parse(onTimes.endsAt),
       ) ?? null
@@ -199,10 +208,11 @@ export function OpenShiftsPostPage() {
     if (!team || !times) return "Choose a team, date and times.";
     const attempts: PostAttempt[] = [];
     const nowDone = { ...done };
+    const nowUnanswered = { ...unanswered };
     for (const [index, on] of toPost.entries()) {
       setProgress({ current: index + 1, total: toPost.length });
       const onTimes = gapTimes(on, start, end);
-      const live = liveMatch(on);
+      const live = lostAnswerMatch(on);
       if (live) {
         attempts.push({ date: on, ok: true, openShiftId: live.id });
         nowDone[signature(on)] = live.id;
@@ -227,10 +237,15 @@ export function OpenShiftsPostPage() {
         nowDone[signature(on)] = result.result.openShiftId ?? "";
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
+        // No answer at all: it may still have gone live, so a retry checks the team's list first.
+        if (result.code === "roster_unavailable" && !(signature(on) in nowUnanswered)) {
+          nowUnanswered[signature(on)] = state.shifts.map((row) => row.id);
+        }
       }
     }
     setProgress(null);
     setDone(nowDone);
+    setUnanswered(nowUnanswered);
     const { failed } = splitAttempts(attempts);
     // Read the team's shifts again, so a retry sees any date whose answer was lost but did go live.
     if (failed.length > 0) state.reload();

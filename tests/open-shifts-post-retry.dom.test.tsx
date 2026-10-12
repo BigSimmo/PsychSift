@@ -83,12 +83,32 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Posting a shift", () => {
-  it("never sends a shift the team already shows, and opens the one that is live", async () => {
+  it("still sends a deliberate second opening for a slot the team already has", async () => {
+    mocks.post.mockResolvedValue({
+      ok: true,
+      result: { ok: true, openShiftId: "5e000000-0000-4000-8000-0000000000b2" },
+    });
     render(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+  });
+
+  it("after a post gets no answer, never sends it again once the team shows it went live", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+    expect(mocks.state.reload).toHaveBeenCalledOnce();
+
+    // The re-read shows the post did go live before its answer was lost.
+    mocks.state = { ...mocks.state, shifts: [liveShift()] };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
-    expect(mocks.post).not.toHaveBeenCalled();
+    expect(mocks.post).toHaveBeenCalledOnce();
     expect(mocks.push.mock.calls[0]![0]).toContain(liveShift().id);
   });
 });

@@ -60,7 +60,9 @@ describe("Open shifts, signed-out preview", () => {
     const list = screen.getByRole("list", { name: /Open shifts on/ });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     expect(within(list).getByText(/No flags on your PsychSift roster/)).toBeTruthy();
-    expect(screen.getByText(/1 hidden/).textContent).toBe("1 hidden: 1 overlaps your roster");
+    expect(screen.getByText(/^1 hidden:/).textContent).toBe("1 hidden: 1 overlaps your roster");
+    // The day-by-day list offers the same hidden shift, so a computer (which has no chosen-day panel) can show it.
+    expect(screen.getAllByText("1 hidden by your settings").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "No clashes" }));
     expect(
       within(screen.getByRole("list", { name: /Open shifts on/ })).getByText("Overlaps your rostered shift"),

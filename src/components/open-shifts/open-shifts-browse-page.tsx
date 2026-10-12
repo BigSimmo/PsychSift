@@ -452,7 +452,35 @@ export function OpenShiftsBrowsePage() {
   );
 }
 
-/** Every matching shift, day by day: the phone's first view and the desktop's left column. */
+/** A day's shifts that the filters or the clash and level settings hide, one tap away. */
+function HiddenOnDay({ date, rows }: { readonly date: string; readonly rows: ReturnType<typeof dayRows>["hidden"] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3 px-3 text-sm text-[color:var(--text-muted)]">
+        <span>{`${rows.length} hidden by your settings`}</span>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-label={`${open ? "Hide" : "Show"} hidden shifts on ${formatDayLong(date)}`}
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex min-h-12 shrink-0 items-center font-medium text-[color:var(--mode-identity)]"
+        >
+          {open ? "Hide" : "Show"}
+        </button>
+      </div>
+      {open ? (
+        <FlatList label={`Hidden shifts on ${formatDayLong(date)}`}>
+          {rows.map((row) => (
+            <ShiftRow key={row.listing.id} listing={row.listing} check={row.check} href={advertHref(row.listing)} />
+          ))}
+        </FlatList>
+      ) : null}
+    </>
+  );
+}
+
+/** Every open shift, day by day: the phone's first view and the desktop's left column. */
 /** Days shown before "Show later days", so a phone list stays short. */
 const FIRST_DAYS = 5;
 
@@ -467,10 +495,12 @@ function OpenShiftsDayList({
   readonly filtered: boolean;
 }) {
   const [all, setAll] = useState(false);
-  const allDays = [...summary.perDay.keys()].sort();
+  // Days with only hidden shifts still get a section, so a computer's calendar can scroll to them and the
+  // hidden ones can be shown.
+  const allDays = [...new Set(summary.all.map((row) => perthDateOf(row.listing.startsAt)))].sort();
   // Later days stay in the page on a computer, where the calendar scrolls to them; a phone shows them on request.
   const later = all ? 0 : Math.max(0, allDays.length - FIRST_DAYS);
-  if (allDays.length === 0) {
+  if (summary.perDay.size === 0) {
     return (
       <p className="px-3 py-6 text-center text-sm text-[color:var(--text-muted)]">
         {partial
@@ -484,7 +514,7 @@ function OpenShiftsDayList({
   return (
     <>
       {allDays.map((date, index) => {
-        const { shown } = dayRows(summary, date);
+        const { shown, hidden } = dayRows(summary, date);
         return (
           <section
             key={date}
@@ -493,11 +523,19 @@ function OpenShiftsDayList({
             className={`scroll-mt-4 ${!all && index >= FIRST_DAYS ? "max-[1023px]:hidden" : ""}`}
           >
             <SectionHeading count={shown.length}>{formatDayLong(date)}</SectionHeading>
-            <FlatList label={`Shifts on ${formatDayLong(date)}`}>
-              {shown.map((row) => (
-                <ShiftRow key={row.listing.id} listing={row.listing} check={row.check} href={advertHref(row.listing)} />
-              ))}
-            </FlatList>
+            {shown.length > 0 ? (
+              <FlatList label={`Shifts on ${formatDayLong(date)}`}>
+                {shown.map((row) => (
+                  <ShiftRow
+                    key={row.listing.id}
+                    listing={row.listing}
+                    check={row.check}
+                    href={advertHref(row.listing)}
+                  />
+                ))}
+              </FlatList>
+            ) : null}
+            {hidden.length > 0 ? <HiddenOnDay date={date} rows={hidden} /> : null}
           </section>
         );
       })}
