@@ -1,5 +1,5 @@
 import type { AppModeId } from "@/lib/app-modes";
-import { ON_CALL_ADMIN_ROWS_HREF, ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
+import { ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
 
 /**
  * The work-mode frame's own navigation table (work-mode redesign, owner
@@ -1188,35 +1188,35 @@ const onCall: WorkArea = {
   id: "call",
   name: "On Call",
   identity: "on-call",
+  // Four jobs, one place each (Work mode simplify plan, owner approval 12 Oct 2026): Now for the shift,
+  // Contacts for who and where (People, Refer and Who's on together), Playbook for what to do, and the
+  // Handbook (first in More, so it joins the tab row whenever there is room) for how the hospital works.
   tabs: [
     { id: "now", label: "Now", sub: "Your shift", icon: "pulse", href: "/on-call", title: "On Call" },
     {
       id: "call",
-      label: "People",
-      sub: "Who to ring",
+      label: "Contacts",
+      sub: "Numbers and referrals",
       icon: "phone",
       href: "/on-call/call",
-      paths: ["/on-call/call", "/on-call/contacts"],
+      paths: ["/on-call/call", "/on-call/contacts", "/on-call/refer", "/on-call/referrals"],
     },
-    {
-      id: "refer",
-      label: "Refer",
-      sub: "Who takes it",
-      icon: "refer",
-      href: "/on-call/refer",
-      paths: ["/on-call/refer", "/on-call/referrals"],
-    },
+    { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
   ],
   groups: [
     {
       label: "Reference",
       items: [
-        { id: "find", label: "Handbook", sub: "Wards, systems", icon: "book", href: "/on-call/find" },
-        { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
-        { id: "whoswho", label: "Who's who", sub: "Roles and teams", icon: "users", href: "/on-call/who-is-who" },
         {
-          // One entry for the three pages a doctor new to a hospital needs; a chip row on each
-          // moves between them (usefulness audit, 11 Oct 2026).
+          id: "find",
+          label: "Handbook",
+          sub: "Wards, systems, pocket card",
+          icon: "book",
+          href: "/on-call/find",
+          // Who's who and the Pocket card are reached from the Handbook's own page.
+          paths: ["/on-call/find", "/on-call/who-is-who", "/on-call/card"],
+        },
+        {
           id: "starting-here",
           label: "Starting here",
           short: "Starting",
@@ -1225,17 +1225,18 @@ const onCall: WorkArea = {
           href: "/on-call/first-week",
           paths: ["/on-call/first-week", "/on-call/first-night", "/on-call/orientation"],
         },
-        { id: "card", label: "Pocket card", sub: "To print", icon: "card", href: "/on-call/card" },
-        // The area's last group (Service) is for editors only, so Help sits with the reference pages.
-        { id: "call-help", label: "Help", sub: "How On Call works", icon: "help", action: "work-help" },
       ],
     },
     {
-      // Trimmed (usefulness audit, 11 Oct 2026): "Who to call now" is the Playbook's job, so it opens
-      // there from Now; Shift pulse shows on Now once it has a pattern; Who's on links to the roster
-      // names; Teaching and Renewals are in the side menu.
-      label: "Tonight tools",
+      label: "Tonight",
       items: [
+        {
+          id: "handover",
+          label: "Handover",
+          sub: "Kept on this phone",
+          icon: "send",
+          href: "/on-call/handover",
+        },
         ...(ON_CALL_WHOS_ON_ENABLED
           ? [
               {
@@ -1250,43 +1251,25 @@ const onCall: WorkArea = {
           : [
               {
                 id: "whoson-roster",
-                label: "From the roster",
-                short: "Roster",
-                sub: "Your team's roster",
+                label: "Who's on",
+                sub: "From your team's roster",
                 icon: "calendar",
                 href: "/on-call/whos-on/roster",
               } as const,
             ]),
-        {
-          id: "check",
-          label: "Check these",
-          sub: "Before you leave",
-          icon: "check-list",
-          href: "/on-call/check",
-          band: false,
-        },
-        {
-          id: "handover",
-          label: "Handover",
-          sub: "Kept on this phone",
-          icon: "send",
-          href: "/on-call/handover",
-          band: false,
-        },
-        {
-          id: "logistics",
-          label: "Numbers",
-          sub: "Crisis lines first",
-          icon: "phone",
-          href: ON_CALL_ADMIN_ROWS_HREF,
-          paths: [],
-          leadsTo: "my-work",
-        },
+        { id: "call-help", label: "Help", sub: "How On Call works", icon: "help", action: "work-help" },
       ],
     },
     {
-      label: "Service",
+      label: "Keeping it right",
       items: [
+        {
+          id: "check",
+          label: "Check these",
+          sub: "Numbers due a check",
+          icon: "check-list",
+          href: "/on-call/check",
+        },
         {
           id: "service",
           label: "Manage service",

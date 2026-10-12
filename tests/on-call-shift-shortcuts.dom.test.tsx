@@ -19,8 +19,10 @@ afterEach(() => {
 describe("NowShiftShortcuts", () => {
   it("sits in one flat card with Log a call and Handover", () => {
     render(<NowShiftShortcuts />);
-    const card = screen.getByTestId("on-call-now-shortcuts");
+    // The pair sits inside the shift tools' one flat card (Work mode simplify plan, 12 Oct 2026).
+    const card = screen.getByTestId("on-call-now-shift-tools");
     expect(card.className).toMatch(/\bwork-card\b/);
+    expect(card).toContainElement(screen.getByTestId("on-call-now-shortcuts"));
     expect(screen.getByTestId("on-call-now-log-a-call")).toHaveTextContent("Log a call");
     expect(screen.getByTestId("on-call-home-handover")).toHaveAttribute("href", "/on-call/handover");
   });

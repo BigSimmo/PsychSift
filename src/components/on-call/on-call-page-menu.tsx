@@ -218,7 +218,8 @@ export function OnCallPageMenu({
         )}
       >
         <Ellipsis aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
-        More
+        {/* "Options", not "More": the band's More tab sits just above it (Work mode simplify plan, 12 Oct 2026). */}
+        Options
       </button>
 
       <Sheet
