@@ -646,7 +646,13 @@ function topResultGovernanceCounts(results: GoldenRetrievalResult[]) {
 }
 
 /** A first attempt replaced by its retry: still counted in latency populations and run cost. */
-export type SupersededAttemptSample = { route: string; latencyMs: number; estimatedCostUsd: number | null };
+export type SupersededAttemptSample = {
+  route: string;
+  latencyMs: number;
+  estimatedCostUsd: number | null;
+  /** A first attempt over its route ceiling still counts against the ceiling gate. */
+  routeCeilingExceeded?: boolean;
+};
 
 export function isGroundedSupported(result: RagQualityResult, providerMode: EvalQualityProviderMode) {
   if (providerMode === "offline") {
@@ -688,7 +694,9 @@ function summarizeRagQualityResults(
   const expectedDangerWarningMissing = results.filter((result) =>
     result.failures.includes("expected danger source governance warning missing"),
   ).length;
-  const routeCeilingFailures = results.filter((result) => result.routeCeilingExceeded).length;
+  const routeCeilingFailures =
+    results.filter((result) => result.routeCeilingExceeded).length +
+    additionalLatencySamples.filter((sample) => sample.routeCeilingExceeded).length;
   const generationFallbacks = results.filter((result) =>
     /(?:^|;\s*)generation_fallback:/i.test(result.routingReason ?? ""),
   ).length;
@@ -1311,6 +1319,8 @@ async function runRagQualityCases(args: {
   captureDiagnostics?: boolean;
   /** Run exactly these case ids (blocking-gate retry); ignores `limit`. */
   caseIds?: readonly string[];
+  /** Receives each result as it completes, so a later throw does not lose earlier ones. */
+  sink?: { results: RagQualityResult[]; diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> };
   providerMode: EvalQualityProviderMode;
   supabase: Awaited<ReturnType<typeof loadAdminClient>>;
 }) {
@@ -1332,8 +1342,8 @@ async function runRagQualityCases(args: {
     ? allCases.filter((testCase) => args.caseIds!.includes(testCase.id))
     : allCases.slice(0, args.limit ?? allCases.length);
   const droppedCaseIds = args.caseIds ? [] : allCases.slice(cases.length).map((testCase) => testCase.id);
-  const results: RagQualityResult[] = [];
-  const diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> = [];
+  const results: RagQualityResult[] = args.sink?.results ?? [];
+  const diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> = args.sink?.diagnosticCases ?? [];
 
   for (const testCase of cases) {
     const answer = (await withProviderBackoff(`quality-rag:${testCase.id}`, () =>
@@ -1610,27 +1620,27 @@ async function main() {
   if (args.failOnThreshold && args.gateRetry && report.blocking_threshold_failures.length > 0) {
     const { caseIds, nonRetryable } = blockingGateRetryCaseIds(report, qualityFailureCategory, args.providerMode);
     const initial = report;
-    let retryRun:
-      Awaited<ReturnType<typeof runRagQualityCases>> | { results: RagQualityResult[]; diagnosticCases: [] } = {
-      results: [],
-      diagnosticCases: [],
-    };
+    const retryRun: {
+      results: RagQualityResult[];
+      diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>>;
+    } = { results: [], diagnosticCases: [] };
     let retryError: string | null = null;
     try {
       if (caseIds.length) {
-        retryRun = await runRagQualityCases({
+        await runRagQualityCases({
           ...args,
           ownerId,
           supabase,
           caseIds,
           captureDiagnostics: Boolean(args.dumpRagCases),
+          sink: retryRun,
         });
       }
     } catch (error) {
-      // A failed rerun must not discard the completed first evaluation: keep its
-      // report and blocking verdict, and record the failure in the receipt.
+      // A failed rerun must not discard the completed first evaluation or the retries that
+      // finished before the error: keep them and record the failure in the receipt.
       retryError = error instanceof Error ? error.message : String(error);
-      console.error(`[eval:quality] blocking-gate retry failed; keeping first-attempt report: ${retryError}`);
+      console.error(`[eval:quality] blocking-gate retry failed; keeping completed attempts: ${retryError}`);
     }
     const retried = retryRun.results;
     retryDiagnosticCases = retryRun.diagnosticCases.map((record) => ({ ...record, attempt: "retry" }));
@@ -1640,11 +1650,23 @@ async function main() {
     );
     const mergedResults = mergeRetriedRagResults(ragResults, retried);
     const merged = reportFor(mergedResults, null, additionalLatencySamples);
-    report = reportFor(
-      mergedResults,
-      { ...summarizeGateRetry({ initial, final: merged, retried, nonRetryable }), retry_error: retryError },
-      additionalLatencySamples,
-    );
+    const retryReceipt = {
+      ...summarizeGateRetry({ initial, final: merged, retried, nonRetryable }),
+      attempted: caseIds.length > 0,
+      retry_error: retryError,
+    };
+    report = reportFor(mergedResults, retryReceipt, additionalLatencySamples);
+    // Non-retryable first-attempt failures (offline provider use, latency, retrieval) stand: a
+    // substituted result must never erase them from the final verdict.
+    const carried = nonRetryable.filter((failure) => !report.blocking_threshold_failures.includes(failure));
+    if (carried.length) {
+      const finalFailures = [...report.blocking_threshold_failures, ...carried];
+      report = {
+        ...report,
+        blocking_threshold_failures: finalFailures,
+        gate_retry: { ...retryReceipt, final_blocking_threshold_failures: finalFailures },
+      };
+    }
     console.error(
       `[eval:quality] blocking-gate retry: re-ran ${retried.length} case(s) [${caseIds.join(", ")}]; blocking before=${initial.blocking_threshold_failures.length} after=${report.blocking_threshold_failures.length}`,
     );

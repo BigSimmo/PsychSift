@@ -64,11 +64,10 @@ export function blockingGateRetryCaseIds(
   for (const failure of report.blocking_threshold_failures) {
     const routeP95 = routeP95Pattern.exec(failure);
     const p95 = p95Pattern.exec(failure);
-    if (routeP95) {
-      const [, route, limit] = routeP95;
-      add(results.filter((result) => result.latencyRoute === route && result.latencyMs > Number(limit)));
-    } else if (p95) {
-      add(results.filter((result) => result.latencyMs > Number(p95[1])));
+    if (routeP95 || p95) {
+      // Latency gates keep every first-attempt sample (latencySamplesForRetry), so a rerun can
+      // never clear them; re-running would only add provider cost. They stand as-is.
+      nonRetryable.push(failure);
     } else if (failure.startsWith("RAG citation_failure_rate")) {
       add(results.filter((result) => result.failures.some((item) => failureCategory(item) === "citation")));
     } else if (failure.startsWith("RAG source_backed_review_fallback unaccounted")) {
@@ -113,6 +112,7 @@ export function latencySamplesForRetry(report: EvalQualityReport, caseIds: reado
       route: result.latencyRoute,
       latencyMs: result.latencyMs,
       estimatedCostUsd: result.estimatedCostUsd,
+      routeCeilingExceeded: result.routeCeilingExceeded,
     }));
 }
 
@@ -153,7 +153,7 @@ export function summarizeGateRetry(args: {
 export function renderGateRetryMarkdown(retry: GateRetrySummary | null | undefined) {
   if (!retry) return "";
   if (!retry.attempted) {
-    return `\n## Blocking-Gate Retry\n\nNo retry: ${
+    return `\n## Blocking-Gate Retry\n\n${retry.retry_error ? `Retry failed (first-attempt verdict kept): ${retry.retry_error}\n\n` : ""}No retry: ${
       retry.initial_blocking_threshold_failures.length ? "no retryable RAG case was implicated." : "nothing blocked."
     }\n`;
   }

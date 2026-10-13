@@ -109,9 +109,10 @@ describe("blocking-gate retry", () => {
         expect.stringMatching(/^RAG route unsupported p95_latency_ms 6360 above 4000$/),
       ]),
     );
+    // Latency gates keep the first-attempt sample, so they are not re-run (a retry cannot clear them).
     expect(blockingGateRetryCaseIds(initial, qualityFailureCategory)).toEqual({
-      caseIds: ["citation-miss", "discharge-documentation", "unsupported-coffee-machine"],
-      nonRetryable: [],
+      caseIds: ["citation-miss", "discharge-documentation"],
+      nonRetryable: ["RAG route unsupported p95_latency_ms 6360 above 4000"],
     });
   });
 
@@ -157,6 +158,37 @@ describe("blocking-gate retry", () => {
       additionalLatencySamples: latencySamplesForRetry(initial, ["unsupported-coffee-machine"]),
     });
     expect(final.blocking_threshold_failures).toContain("RAG route unsupported p95_latency_ms 6360 above 4000");
+  });
+
+  it("keeps a first attempt's route-ceiling breach in the final gate", () => {
+    const over = ragResult({ id: "ceiling-case", routeCeilingExceeded: true });
+    const first = [...healthy, over];
+    const initial = report(first);
+    const final = buildEvalQualityReport({
+      retrievalResults: [],
+      ragResults: mergeRetriedRagResults(first, [{ ...over, routeCeilingExceeded: false }]),
+      skippedComponents: ["retrieval"],
+      additionalLatencySamples: latencySamplesForRetry(initial, ["ceiling-case"]),
+    });
+    expect(final.rag.summary.route_ceiling_failure_count).toBe(1);
+  });
+
+  it("shows a crashed retry in the markdown instead of 'nothing retryable'", () => {
+    const initial = report([...healthy, citationMiss]);
+    const receipt = {
+      ...summarizeGateRetry({ initial, final: initial, retried: [], nonRetryable: [] }),
+      attempted: true,
+      retry_error: "provider exploded",
+    };
+    const markdown = renderEvalQualityMarkdown(
+      buildEvalQualityReport({
+        retrievalResults: [],
+        ragResults: [...healthy, citationMiss],
+        skippedComponents: ["retrieval"],
+        gateRetry: receipt,
+      }),
+    );
+    expect(markdown).toContain("Retry failed (first-attempt verdict kept): provider exploded");
   });
 
   it("still blocks when the same case fails again", () => {
