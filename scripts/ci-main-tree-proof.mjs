@@ -499,6 +499,7 @@ function assert(condition, message) {
 }
 
 async function selfTest() {
+  if (process.env.CI_TREE_PROOF_SELF_TEST_FORCE_FAIL === "1") assert(false, "forced failure (test hook)");
   const ok = (name, extra = {}) => ({ name, status: "completed", conclusion: "success", ...extra });
   const full = [
     { ...ok("Change scope"), id: 501 },
@@ -795,7 +796,17 @@ function recordTestedTree({ env = process.env, runGit = git } = {}) {
 }
 
 async function main() {
-  if (process.argv.includes("--self-test")) return selfTest();
+  if (process.argv.includes("--self-test")) {
+    // A self-test failure must fail the process. The fail-open handler below exists for the CI
+    // proof path only; applied here it would print a warning and exit 0, hiding broken guards.
+    try {
+      await selfTest();
+    } catch (error) {
+      console.error(`ci-main-tree-proof self-test FAILED: ${String(error?.stack ?? error)}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (process.argv.includes("--record-tested-tree")) {
     try {
       recordTestedTree();
