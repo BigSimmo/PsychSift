@@ -5,7 +5,7 @@
   "action": "done",
   "payload": {
     "id": "#E6142T",
-    "outcome": "Positioned floating PWA update notification on non-answer routes in pwa-lifecycle.tsx to eliminate overlap with search composers and mobile chrome",
+    "outcome": "Positioned floating PWA update notification on non-answer routes in pwa-lifecycle.tsx to eliminate overlap with search composers and mobile chrome; this disposition covers only the PWA notification and does not close the services-search mode-noun stop-list task, which remains tracked separately as #Q7M4SZ",
     "baseRowFingerprint": "2f70b014d807047cbc1309c4c28591101c2de8f050989661fda6168df6fffa67"
   }
 }
