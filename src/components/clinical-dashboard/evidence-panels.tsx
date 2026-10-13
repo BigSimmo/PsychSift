@@ -109,6 +109,7 @@ export function AnswerUtilityActions({
   pendingFeedback = null,
   onSubmitFeedback,
   cpdHref = null,
+  reportOnly = false,
 }: {
   copied: boolean;
   onCopy: () => void;
@@ -116,6 +117,12 @@ export function AnswerUtilityActions({
   onSubmitFeedback?: (feedbackType: AnswerFeedbackType) => void;
   /** A new CME entry with the lead cited source filled in; absent when nothing was cited. */
   cpdHref?: string | null;
+  /**
+   * "Not in your sources" (audit D03): there is no answer to copy, log as CPD or call
+   * supported, so only "Report a problem" stays, for a reader who knows the library does
+   * cover the question.
+   */
+  reportOnly?: boolean;
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const feedbackTriggerRef = useRef<HTMLButtonElement>(null);
@@ -155,15 +162,22 @@ export function AnswerUtilityActions({
           large text pushed "Report a problem" off the right edge (audit D17,
           2026-10-13); at ordinary sizes the row still fits on one line. */}
       <div className={chatActionRow} aria-label="Answer actions">
-        <button type="button" onClick={onCopy} className={chatMicroAction} aria-label="Copy answer with source status">
-          <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-          {/* Below 360px (small phones) the full label truncated to "Copy …".
+        {reportOnly ? null : (
+          <button
+            type="button"
+            onClick={onCopy}
+            className={chatMicroAction}
+            aria-label="Copy answer with source status"
+          >
+            <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            {/* Below 360px (small phones) the full label truncated to "Copy …".
               The short word keeps the action legible; the accessible name is
               unchanged. */}
-          <span className="truncate max-[359px]:hidden">{copied ? "Copied with sources" : "Copy with sources"}</span>
-          <span className="hidden max-[359px]:inline">{copied ? "Copied" : "Copy"}</span>
-        </button>
-        {cpdHref ? (
+            <span className="truncate max-[359px]:hidden">{copied ? "Copied with sources" : "Copy with sources"}</span>
+            <span className="hidden max-[359px]:inline">{copied ? "Copied" : "Copy"}</span>
+          </button>
+        )}
+        {cpdHref && !reportOnly ? (
           <Link
             href={cpdHref}
             data-testid="answer-log-cpd"
@@ -180,20 +194,22 @@ export function AnswerUtilityActions({
                 than opening a panel to choose the only affirmative option in
                 it. `verified` is that option, and the panel's own question —
                 "Is the answer supported?" — is what a thumb up answers. */}
-            <button
-              data-testid="answer-feedback-useful"
-              type="button"
-              disabled={Boolean(pendingFeedback)}
-              onClick={() => onSubmitFeedback("verified")}
-              className={cn(chatMicroAction, "min-w-12 justify-center px-2 disabled:opacity-60")}
-              aria-label="This answer is supported by its sources"
-            >
-              {pendingFeedback === "verified" ? (
-                <Loader2 aria-hidden="true" className="size-icon-sm shrink-0 animate-spin" />
-              ) : (
-                <ThumbsUp aria-hidden="true" className="size-icon-sm shrink-0" />
-              )}
-            </button>
+            {reportOnly ? null : (
+              <button
+                data-testid="answer-feedback-useful"
+                type="button"
+                disabled={Boolean(pendingFeedback)}
+                onClick={() => onSubmitFeedback("verified")}
+                className={cn(chatMicroAction, "min-w-12 justify-center px-2 disabled:opacity-60")}
+                aria-label="This answer is supported by its sources"
+              >
+                {pendingFeedback === "verified" ? (
+                  <Loader2 aria-hidden="true" className="size-icon-sm shrink-0 animate-spin" />
+                ) : (
+                  <ThumbsUp aria-hidden="true" className="size-icon-sm shrink-0" />
+                )}
+              </button>
+            )}
             {/* The thumb down IS the way in to "report a problem": it opens the
                 list of problem types rather than recording an unlabelled
                 negative, because an unlabelled negative tells a reviewer

@@ -9,7 +9,12 @@ import { RetrievalStateBanner } from "@/components/ui/retrieval-state-banner";
 import { type AnswerFeedbackType } from "@/lib/answer-feedback";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { CrossModeLinksSection } from "@/components/clinical-dashboard/cross-mode-links";
-import { answerIsRefusal, answerStateForAnswer } from "@/components/clinical-dashboard/answer-copy-payload";
+import {
+  answerIsNotInSources,
+  answerIsRefusal,
+  answerStateForAnswer,
+} from "@/components/clinical-dashboard/answer-copy-payload";
+import { AnswerNotInSources } from "@/components/clinical-dashboard/answer-not-in-sources";
 import { AnswerInlineSections } from "@/components/clinical-dashboard/answer-inline-sections";
 import {
   answerUsesAdaptiveMainSurface,
@@ -293,6 +298,7 @@ function StagedAnswerResultSurfaceImpl({
     [answer, sources, weakEvidence],
   );
   const refusalAnswer = answerIsRefusal({ answer, answerState });
+  const notInSources = answerIsNotInSources(answer, { demo: isDemoAnswer });
 
   // Built once so both arms of the `ready` / degraded split below stay identical.
   // The split exists only because `AnswerCardProps` discriminates on `state` to make
@@ -628,7 +634,16 @@ function StagedAnswerResultSurfaceImpl({
                 it (see UserQuestionBubble) so the framing change costs a screen
                 reader nothing. */}
             <UserQuestionBubble query={query} />
-            {answerState.kind === "ready" ? (
+            {notInSources ? (
+              // Its own layout, not an answer card: no support chip, limitations count,
+              // source cards, Copy, CPD or dose caution around a refusal (audit D03).
+              <AnswerNotInSources
+                text={projectedAnswer.leadText}
+                query={query}
+                preformatted={preformatted}
+                searchedCount={railSources.length}
+              />
+            ) : answerState.kind === "ready" ? (
               <AnswerCard
                 state={answerState}
                 verification={answerVerification}
@@ -659,13 +674,15 @@ function StagedAnswerResultSurfaceImpl({
               </AnswerCard>
             )}
 
-            <AnswerUtilityActions
-              copied={copiedAnswer}
-              onCopy={onCopyAnswer}
-              cpdHref={cpdHref}
-              pendingFeedback={pendingFeedback}
-              onSubmitFeedback={onSubmitFeedback}
-            />
+            {notInSources ? null : (
+              <AnswerUtilityActions
+                copied={copiedAnswer}
+                onCopy={onCopyAnswer}
+                cpdHref={cpdHref}
+                pendingFeedback={pendingFeedback}
+                onSubmitFeedback={onSubmitFeedback}
+              />
+            )}
 
             {/* The governed caution, placed here rather than above the prose
                 (owner decision, 2026-08-31, matching the approved specimen).
@@ -674,7 +691,9 @@ function StagedAnswerResultSurfaceImpl({
                 refuses to render an answer without it, and this is the surface
                 honouring the obligation that prop documents. The words are
                 unchanged. */}
-            <VerificationNotice {...answerVerification} />
+            {/* A "Not in your sources" answer states no clinical content, so it carries no
+                caution about checking doses and numbers (audit D03). */}
+            {notInSources ? null : <VerificationNotice {...answerVerification} />}
 
             {/* Kept, though the approved specimen does not draw it: that specimen
                 is one answer with no library matches to show, and this collapsed
@@ -709,6 +728,17 @@ function StagedAnswerResultSurfaceImpl({
                 layout="rows"
               />
             ) : null}
+
+            {/* Report a problem stays, for a reader who knows the library does cover this. */}
+            {notInSources ? (
+              <AnswerUtilityActions
+                reportOnly
+                copied={copiedAnswer}
+                onCopy={onCopyAnswer}
+                pendingFeedback={pendingFeedback}
+                onSubmitFeedback={onSubmitFeedback}
+              />
+            ) : null}
           </div>
         </div>
 
@@ -717,7 +747,7 @@ function StagedAnswerResultSurfaceImpl({
             sources when there are some, so an answer can carry a table with no
             cited source to hang it off — and that table would then have no route at
             all. Render those in place rather than lose them. */}
-        {centralTables.length > 0 && railSources.length === 0 ? (
+        {!notInSources && centralTables.length > 0 && railSources.length === 0 ? (
           <div data-testid="answer-uncited-tables" className="min-w-0">
             <CanonicalAnswerTables tables={centralTables} />
           </div>
