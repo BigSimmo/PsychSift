@@ -173,6 +173,9 @@ describe("PsychiatryHome", () => {
     try {
       render(<PsychiatryHome counts={counts} now={now} />);
       expect(screen.getByTestId("psychiatry-offline")).toHaveTextContent("Search needs a connection.");
+      cleanup();
+      render(<PsychiatryHome counts={counts} now={now} initialPage="saved" />);
+      expect(screen.getByTestId("psychiatry-offline")).toHaveTextContent("Search needs a connection.");
     } finally {
       onLine.mockRestore();
     }

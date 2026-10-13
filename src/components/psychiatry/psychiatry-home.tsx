@@ -476,12 +476,10 @@ function AskPage({
   readonly now: Date | null;
   readonly counts: PsychiatrySectionCounts;
 }) {
-  const offline = useOffline();
   const latest = visits[0] ?? null;
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2 lg:gap-x-8">
       <div className="grid min-w-0 gap-5">
-        {offline ? <OfflineNote /> : null}
         {latest ? <ResumeRow latest={latest} now={now} /> : null}
         {/* Continue leads the content once it holds something (Clinical audit,
             13 Oct 2026, item 15); empty, it keeps its quiet place at the end. */}
@@ -606,6 +604,7 @@ export function PsychiatryHome({
         </header>
 
         <div id="psychiatry-panel" className="grid gap-3 sm:gap-4">
+          {offline ? <OfflineNote /> : null}
           {page === "ask" ? <AskPage visits={state.visits} opens={state.opens} now={now} counts={counts} /> : null}
           {page === "saved" ? <PsychiatrySavedCard /> : null}
         </div>
