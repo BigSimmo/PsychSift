@@ -781,12 +781,9 @@ test.describe("PsychSift accessibility coverage", () => {
     expect(clinicianSwitchSize.width).toBeGreaterThanOrEqual(44);
     expect(clinicianSwitchSize.height).toBeGreaterThanOrEqual(44);
 
-    // Sheet builder therapy picker — the only aria-expanded control in the builder rail.
-    // The page's section menu trigger also sits in the page on phones now (its
-    // tab rail pins in place instead of moving into the top bar), so skip it.
-    const builderPicker = page
-      .locator('[data-therapy-root] button[aria-expanded]:not([data-testid$="-section-trigger"])')
-      .first();
+    // Sheet builder therapy picker. The page header's own menu buttons also
+    // sit inside the page on phones, so name the picker directly.
+    const builderPicker = page.getByTestId("therapy-sheet-builder-picker");
     await expect(builderPicker).toHaveAttribute("aria-expanded", "false");
     await builderPicker.click();
     await expect(builderPicker).toHaveAttribute("aria-expanded", "true");
