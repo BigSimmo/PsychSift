@@ -218,7 +218,7 @@ export function OnCallEducationSection({
   onVerified,
 }: OnCallEducationSectionProps) {
   const { zone } = useWorkTimeZone();
-  const educationEntries = entries.filter((entry) => entry.section === "education");
+  const educationEntries = entries.filter((entry) => (entry.view ?? entry.section) === "education");
 
   if (educationEntries.length === 0) {
     return (

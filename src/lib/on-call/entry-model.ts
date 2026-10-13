@@ -6,6 +6,19 @@ export const ON_CALL_SECTIONS = ["contacts", "playbook", "referrals", "orientati
 
 export type OnCallSection = (typeof ON_CALL_SECTIONS)[number];
 
+export const ON_CALL_VIEW_PAGES = [
+  "contacts",
+  "who-is-who",
+  "playbook",
+  "referrals",
+  "orientation",
+  "education",
+  "logistics",
+  "compliance",
+] as const;
+
+export type OnCallPageView = (typeof ON_CALL_VIEW_PAGES)[number];
+
 /** Twelve months. Derived at read time, never stored, so changing this number
  *  never needs a migration or a backfill. */
 export const ON_CALL_REVIEW_INTERVAL_MONTHS = 12;
@@ -453,6 +466,13 @@ export const onCallEntrySchema = z
      * remains the authority either way.
      */
     isOwn: z.boolean().optional(),
+    /**
+     * Virtual view presentation model derived at read time from stored section
+     * and details — never stored directly in the database, never accepted from
+     * a client write (the create/update schemas omit it). Consumers read
+     * entry.view for flexible UI presentation across virtual and stored views.
+     */
+    view: z.enum(ON_CALL_VIEW_PAGES).optional(),
   })
   .strict();
 

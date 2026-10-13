@@ -136,7 +136,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
   // third view added without a matching exclusion fails the same safe way.
   const groups = ON_CALL_SECTIONS.map((section) => ({
     section,
-    entries: sortCardEntries(cardEntries.filter((entry) => onCallViewForEntry(entry) === section)),
+    entries: sortCardEntries(cardEntries.filter((entry) => (entry.view ?? onCallViewForEntry(entry)) === section)),
   })).filter((group) => group.entries.length > 0);
 
   return (
