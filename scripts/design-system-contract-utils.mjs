@@ -4,6 +4,26 @@ import path from "node:path";
 import ts from "@typescript/typescript6";
 import postcss from "postcss";
 
+// Helpers only traverse these trees; their scopes and findings remain per-call.
+// Keep a small window for successive checks of one file, including its TS/TSX
+// parse variants. Exact text matching observes edits without file timestamps.
+const SOURCE_FILE_CACHE_LIMIT = 4;
+const sourceFileCache = [];
+
+function parsedSourceFile(relativePath, sourceText, scriptKind) {
+  const cached = sourceFileCache.find(
+    (entry) =>
+      entry.relativePath === relativePath && entry.sourceText === sourceText && entry.scriptKind === scriptKind,
+  );
+  if (cached) return cached.source;
+
+  // Target and parent-node settings are fixed for every caller of this helper.
+  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, scriptKind);
+  sourceFileCache.push({ relativePath, sourceText, scriptKind, source });
+  if (sourceFileCache.length > SOURCE_FILE_CACHE_LIMIT) sourceFileCache.shift();
+  return source;
+}
+
 /** Public barrel after the DS-P2-21 split. Recipe bodies live under `primitive-recipes/`. */
 export const UI_PRIMITIVES_BARREL = "src/components/ui-primitives.tsx";
 export const PRIMITIVE_RECIPES_DIR = "src/components/primitive-recipes";
@@ -147,12 +167,17 @@ export function findTextSoftConsumersInSource(relativePath, sourceText) {
     return findings;
   }
 
+  // Every match requires this literal; keep CSS parsing and nonstring scanner
+  // inputs on their existing paths even when no consumer can be found.
+  if (typeof sourceText === "string" && !sourceText.includes("--text-soft")) return findings;
+
   const languageVariant = relativePath.endsWith(".tsx") ? ts.LanguageVariant.JSX : ts.LanguageVariant.Standard;
   const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, languageVariant, sourceText);
   const commentTokens = new Set([ts.SyntaxKind.SingleLineCommentTrivia, ts.SyntaxKind.MultiLineCommentTrivia]);
   for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
     if (commentTokens.has(token)) continue;
     const tokenText = scanner.getTokenText();
+    if (!tokenText.includes("--text-soft")) continue;
     const tokenOffset = scanner.getTokenPos();
     const tokenLineOffset = sourceText.slice(0, tokenOffset).split(/\r?\n/).length - 1;
     recordMatches(tokenText, tokenLineOffset);
@@ -241,7 +266,7 @@ export function jsxClassText(attribute) {
 
 export function findInteractiveTapLiteralsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx")) return [];
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
   const interactiveTags = new Set(["a", "button", "input", "select", "summary", "textarea"]);
 
@@ -580,7 +605,7 @@ export const SUB_TAP_MIN_HEIGHT_PREFILTER = /\bmin-h-(?:[0-9]|1[01]|px\b|\[|comp
 export function findInteractiveTapFloorDeclarationsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx")) return [];
   if (!SUB_TAP_MIN_HEIGHT_PREFILTER.test(sourceText)) return [];
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
 
   function inspectOpeningElement(node) {
@@ -816,7 +841,7 @@ function isRawScaleLiteralValue(value) {
   return !trimmed.split(/\s+/).every((part) => CSS_ZERO_VALUE.test(part) || CSS_WIDE_KEYWORD.test(part));
 }
 
-function recordRawScaleLiteralProperty(result, relativePath, line, prop, value, token) {
+function recordRawScaleLiteralProperty(result, { relativePath, line, prop, value, token }) {
   if (!isRawScaleLiteralValue(value)) return;
   const label = token ?? `${prop}: ${value}`;
   if (RAW_PADDING_PROPERTY.test(prop)) {
@@ -938,7 +963,7 @@ function tokenEntries(node, source) {
 function classExpressionAnalyzer(relativePath, sourceText) {
   if (!/\.[cm]?[jt]sx?$/.test(relativePath)) return null;
   const kind = relativePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, kind);
+  const source = parsedSourceFile(relativePath, sourceText, kind);
   const scopeByNode = new WeakMap();
   const rootScope = { bindings: new Map(), functionScope: true, parent: null };
   const blockedBinding = Symbol("blocked binding");
@@ -1051,158 +1076,175 @@ function classExpressionAnalyzer(relativePath, sourceText) {
 
   const empty = () => [{ usesDensityRecipe: false, tokens: [] }];
 
+  function densityRecipePossibility() {
+    return [{ usesDensityRecipe: true, tokens: [] }];
+  }
+
+  function transparentExpression(node) {
+    if (ts.isParenthesizedExpression(node)) return node.expression;
+    if (ts.isAsExpression(node)) return node.expression;
+    if (ts.isTypeAssertionExpression(node)) return node.expression;
+    if (ts.isNonNullExpression(node)) return node.expression;
+    return null;
+  }
+
+  function binaryPossibilities(node, resolving) {
+    if (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
+      return [...empty(), ...possibilities(node.right, resolving)];
+    }
+    if (
+      node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+      node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
+    ) {
+      return [...possibilities(node.left, resolving), ...possibilities(node.right, resolving)];
+    }
+    return combinePossibilities(possibilities(node.left, resolving), possibilities(node.right, resolving));
+  }
+
+  function callPossibilities(node, resolving) {
+    if (ts.isPropertyAccessExpression(node.expression)) {
+      const method = node.expression.name.text;
+      if (method === "filter" || method === "join") {
+        return possibilities(node.expression.expression, resolving);
+      }
+    }
+    const callee = ts.isIdentifier(node.expression) ? node.expression.text : "";
+    if (!CLASS_COMPOSERS.has(callee)) return empty();
+    return node.arguments.reduce(
+      (entries, argument) => combinePossibilities(entries, possibilities(argument, resolving)),
+      empty(),
+    );
+  }
+
+  function objectPropertyPossibilities(entries, property, resolving) {
+    if (ts.isSpreadAssignment(property)) {
+      return combinePossibilities(entries, possibilities(property.expression, resolving));
+    }
+    if (ts.isShorthandPropertyAssignment(property)) {
+      return combinePossibilities(entries, possibilities(property.name, resolving));
+    }
+    if (!ts.isPropertyAssignment(property)) return entries;
+    const name = property.name;
+    let keyEntries = empty();
+    if (ts.isStringLiteralLike(name) || ts.isIdentifier(name)) {
+      keyEntries = [{ usesDensityRecipe: false, tokens: tokenEntries(name, source) }];
+    } else if (ts.isComputedPropertyName(name)) {
+      keyEntries = possibilities(name.expression, resolving);
+    }
+    return combinePossibilities(entries, [...empty(), ...keyEntries]);
+  }
+
+  function objectPossibilities(node, resolving) {
+    return node.properties.reduce(
+      (entries, property) => objectPropertyPossibilities(entries, property, resolving),
+      empty(),
+    );
+  }
+
+  function templatePossibilities(node, resolving) {
+    let entries = [{ usesDensityRecipe: false, tokens: tokenEntries(node.head, source) }];
+    for (const span of node.templateSpans) {
+      entries = combinePossibilities(entries, possibilities(span.expression, resolving));
+      entries = combinePossibilities(entries, [
+        { usesDensityRecipe: false, tokens: tokenEntries(span.literal, source) },
+      ]);
+    }
+    return entries;
+  }
+
+  function identifierPossibilities(node, resolving) {
+    const binding = resolveBinding(node);
+    if (binding === blockedBinding) return empty();
+    if (!binding) {
+      return node.text === "metadataPill" || node.text === "metadataPillDensity" ? densityRecipePossibility() : empty();
+    }
+    if (binding.densityRecipe) return densityRecipePossibility();
+    if (resolving.has(binding)) return empty();
+    const next = new Set(resolving);
+    next.add(binding);
+    if (binding.destructuredFrom) {
+      const sourcePossibilities = possibilities(binding.destructuredFrom, next);
+      if (sourcePossibilities.some((entry) => entry.usesDensityRecipe)) return densityRecipePossibility();
+    }
+    return binding.initializer ? possibilities(binding.initializer, next) : empty();
+  }
+
+  function objectPropertyInitializer(initializer, propertyName) {
+    const unwrapped = ts.isAsExpression(initializer) ? initializer.expression : initializer;
+    if (!ts.isObjectLiteralExpression(unwrapped)) return null;
+    const property = unwrapped.properties.find((candidate) => {
+      if (!ts.isPropertyAssignment(candidate)) return false;
+      const name = candidate.name;
+      return (
+        (ts.isIdentifier(name) && name.text === propertyName) ||
+        (ts.isStringLiteralLike(name) && name.text === propertyName)
+      );
+    });
+    return property && ts.isPropertyAssignment(property) ? property.initializer : null;
+  }
+
+  function namespaceDensityRecipe(node, binding) {
+    if (!binding || binding === blockedBinding || !binding.namespaceImport) return false;
+    return node.name.text === "metadataPill" || node.name.text === "metadataPillDensity";
+  }
+
+  function propertyAccessPossibilities(node, resolving) {
+    const expressionPossibilities = possibilities(node.expression, resolving);
+    if (expressionPossibilities.some((entry) => entry.usesDensityRecipe)) return densityRecipePossibility();
+    if (!ts.isIdentifier(node.expression)) return empty();
+    const binding = resolveBinding(node.expression);
+    if (namespaceDensityRecipe(node, binding)) return densityRecipePossibility();
+    if (!binding || binding === blockedBinding || !binding.initializer || resolving.has(binding)) return empty();
+    const initializer = objectPropertyInitializer(binding.initializer, node.name.text);
+    if (!initializer) return empty();
+    const next = new Set(resolving);
+    next.add(binding);
+    return possibilities(initializer, next);
+  }
+
+  function elementAccessPossibilities(node, resolving) {
+    const expressionPossibilities = possibilities(node.expression, resolving);
+    if (expressionPossibilities.some((entry) => entry.usesDensityRecipe)) return densityRecipePossibility();
+    if (!ts.isIdentifier(node.expression)) return empty();
+    const binding = resolveBinding(node.expression);
+    if (!binding || binding === blockedBinding || !binding.initializer || resolving.has(binding)) return empty();
+    const initializer = ts.isAsExpression(binding.initializer) ? binding.initializer.expression : binding.initializer;
+    if (!ts.isObjectLiteralExpression(initializer)) return empty();
+    const requested = ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : null;
+    const next = new Set(resolving);
+    next.add(binding);
+    return initializer.properties.flatMap((property) => {
+      if (!ts.isPropertyAssignment(property)) return [];
+      const propertyName =
+        ts.isIdentifier(property.name) || ts.isStringLiteralLike(property.name) ? property.name.text : null;
+      if (requested !== null && propertyName !== requested) return [];
+      return possibilities(property.initializer, next);
+    });
+  }
+
   function possibilities(node, resolving = new Set()) {
     if (!node) return empty();
-    if (
-      ts.isParenthesizedExpression(node) ||
-      ts.isAsExpression(node) ||
-      ts.isTypeAssertionExpression(node) ||
-      ts.isNonNullExpression(node)
-    ) {
-      return possibilities(node.expression, resolving);
-    }
+    const transparent = transparentExpression(node);
+    if (transparent) return possibilities(transparent, resolving);
     if (ts.isConditionalExpression(node)) {
       return [...possibilities(node.whenTrue, resolving), ...possibilities(node.whenFalse, resolving)];
     }
-    if (ts.isBinaryExpression(node)) {
-      if (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
-        return [...empty(), ...possibilities(node.right, resolving)];
-      }
-      if (
-        node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
-        node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
-      ) {
-        return [...possibilities(node.left, resolving), ...possibilities(node.right, resolving)];
-      }
-      return combinePossibilities(possibilities(node.left, resolving), possibilities(node.right, resolving));
-    }
-    if (ts.isCallExpression(node)) {
-      const callee = ts.isIdentifier(node.expression) ? node.expression.text : "";
-      if (
-        ts.isPropertyAccessExpression(node.expression) &&
-        (node.expression.name.text === "filter" || node.expression.name.text === "join")
-      ) {
-        return possibilities(node.expression.expression, resolving);
-      }
-      if (!CLASS_COMPOSERS.has(callee)) return empty();
-      return node.arguments.reduce(
-        (entries, argument) => combinePossibilities(entries, possibilities(argument, resolving)),
-        empty(),
-      );
-    }
+    if (ts.isBinaryExpression(node)) return binaryPossibilities(node, resolving);
+    if (ts.isCallExpression(node)) return callPossibilities(node, resolving);
     if (ts.isArrayLiteralExpression(node)) {
       return node.elements.reduce(
         (entries, element) => combinePossibilities(entries, possibilities(element, resolving)),
         empty(),
       );
     }
-    if (ts.isObjectLiteralExpression(node)) {
-      return node.properties.reduce((entries, property) => {
-        if (ts.isSpreadAssignment(property))
-          return combinePossibilities(entries, possibilities(property.expression, resolving));
-        if (ts.isShorthandPropertyAssignment(property)) {
-          return combinePossibilities(entries, possibilities(property.name, resolving));
-        }
-        if (!ts.isPropertyAssignment(property)) return entries;
-        const name = property.name;
-        const keyEntries =
-          ts.isStringLiteralLike(name) || ts.isIdentifier(name)
-            ? [{ usesDensityRecipe: false, tokens: tokenEntries(name, source) }]
-            : ts.isComputedPropertyName(name)
-              ? possibilities(name.expression, resolving)
-              : empty();
-        return combinePossibilities(entries, [...empty(), ...keyEntries]);
-      }, empty());
-    }
+    if (ts.isObjectLiteralExpression(node)) return objectPossibilities(node, resolving);
     if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       return [{ usesDensityRecipe: false, tokens: tokenEntries(node, source) }];
     }
-    if (ts.isTemplateExpression(node)) {
-      let entries = [{ usesDensityRecipe: false, tokens: tokenEntries(node.head, source) }];
-      for (const span of node.templateSpans) {
-        entries = combinePossibilities(entries, possibilities(span.expression, resolving));
-        entries = combinePossibilities(entries, [
-          { usesDensityRecipe: false, tokens: tokenEntries(span.literal, source) },
-        ]);
-      }
-      return entries;
-    }
-    if (ts.isIdentifier(node)) {
-      const binding = resolveBinding(node);
-      if (binding === blockedBinding) return empty();
-      if (!binding && (node.text === "metadataPill" || node.text === "metadataPillDensity")) {
-        return [{ usesDensityRecipe: true, tokens: [] }];
-      }
-      if (!binding) return empty();
-      if (binding.densityRecipe) return [{ usesDensityRecipe: true, tokens: [] }];
-      if (resolving.has(binding)) return empty();
-      const next = new Set(resolving);
-      next.add(binding);
-      if (binding.destructuredFrom) {
-        const sourcePossibilities = possibilities(binding.destructuredFrom, next);
-        if (sourcePossibilities.some((entry) => entry.usesDensityRecipe)) {
-          return [{ usesDensityRecipe: true, tokens: [] }];
-        }
-      }
-      if (!binding.initializer) return empty();
-      return possibilities(binding.initializer, next);
-    }
-    if (ts.isPropertyAccessExpression(node)) {
-      const expressionPossibilities = possibilities(node.expression, resolving);
-      if (expressionPossibilities.some((entry) => entry.usesDensityRecipe)) {
-        return [{ usesDensityRecipe: true, tokens: [] }];
-      }
-      if (ts.isIdentifier(node.expression)) {
-        const binding = resolveBinding(node.expression);
-        if (
-          binding &&
-          binding !== blockedBinding &&
-          binding.namespaceImport &&
-          (node.name.text === "metadataPill" || node.name.text === "metadataPillDensity")
-        ) {
-          return [{ usesDensityRecipe: true, tokens: [] }];
-        }
-        if (binding && binding !== blockedBinding && binding.initializer && !resolving.has(binding)) {
-          const initializer = binding.initializer;
-          const unwrapped = ts.isAsExpression(initializer) ? initializer.expression : initializer;
-          const property = ts.isObjectLiteralExpression(unwrapped)
-            ? unwrapped.properties.find(
-                (candidate) =>
-                  ts.isPropertyAssignment(candidate) &&
-                  ((ts.isIdentifier(candidate.name) && candidate.name.text === node.name.text) ||
-                    (ts.isStringLiteralLike(candidate.name) && candidate.name.text === node.name.text)),
-              )
-            : null;
-          if (property && ts.isPropertyAssignment(property)) {
-            const next = new Set(resolving);
-            next.add(binding);
-            return possibilities(property.initializer, next);
-          }
-        }
-      }
-      return empty();
-    }
-    if (ts.isElementAccessExpression(node)) {
-      const expressionPossibilities = possibilities(node.expression, resolving);
-      if (expressionPossibilities.some((entry) => entry.usesDensityRecipe)) {
-        return [{ usesDensityRecipe: true, tokens: [] }];
-      }
-      if (!ts.isIdentifier(node.expression)) return empty();
-      const binding = resolveBinding(node.expression);
-      if (!binding || binding === blockedBinding || !binding.initializer || resolving.has(binding)) return empty();
-      const initializer = ts.isAsExpression(binding.initializer) ? binding.initializer.expression : binding.initializer;
-      if (!ts.isObjectLiteralExpression(initializer)) return empty();
-      const requested = ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : null;
-      const next = new Set(resolving);
-      next.add(binding);
-      return initializer.properties.flatMap((property) => {
-        if (!ts.isPropertyAssignment(property)) return [];
-        const propertyName =
-          ts.isIdentifier(property.name) || ts.isStringLiteralLike(property.name) ? property.name.text : null;
-        if (requested !== null && propertyName !== requested) return [];
-        return possibilities(property.initializer, next);
-      });
-    }
+    if (ts.isTemplateExpression(node)) return templatePossibilities(node, resolving);
+    if (ts.isIdentifier(node)) return identifierPossibilities(node, resolving);
+    if (ts.isPropertyAccessExpression(node)) return propertyAccessPossibilities(node, resolving);
+    if (ts.isElementAccessExpression(node)) return elementAccessPossibilities(node, resolving);
     return empty();
   }
 
@@ -1505,9 +1547,8 @@ function hasAccessibleNameInScope(owner, source) {
   return false;
 }
 
-export function analyzeClassContractsInSource(relativePath, sourceText) {
-  const analyzer = classExpressionAnalyzer(relativePath, sourceText);
-  const result = {
+function emptyClassContractResult() {
+  return {
     arbitraryTracking: [],
     colourOnlyStatusIndicators: [],
     darkColorOverrides: [],
@@ -1530,140 +1571,177 @@ export function analyzeClassContractsInSource(relativePath, sourceText) {
     typeStepUsages: [],
     unapprovedZIndices: [],
   };
+}
+
+function classRootLine(analyzer, root) {
+  return analyzer.source.getLineAndCharacterOfPosition(root.owner.getStart(analyzer.source)).line + 1;
+}
+
+function classRootStructuralFindings(root, possibilities) {
+  const densityConflicts = new Set();
+  let edgeOwnershipConflict = false;
+  for (const possibility of possibilities) {
+    const bases = possibility.tokens.map(({ token }) => utilityBase(token));
+    const ownsBorder = bases.some((token) => BORDER_WIDTH_UTILITY.test(token));
+    const ownsRing = bases.some((token) => RING_WIDTH_UTILITY.test(token));
+    if (ownsBorder && ownsRing) {
+      edgeOwnershipConflict = true;
+      break;
+    }
+    if (root.tag !== "Chip" && !possibility.usesDensityRecipe) continue;
+    for (const base of bases) {
+      if (DENSITY_HEIGHT_UTILITY.test(base) || DENSITY_TEXT_UTILITY.test(base)) densityConflicts.add(base);
+    }
+  }
+  return { densityConflicts, edgeOwnershipConflict };
+}
+
+function isColourOnlySwatchRecipe(rootBases) {
+  return (
+    rootBases.some((base) => SWATCH_GEOMETRY.test(base)) &&
+    rootBases.includes("rounded-full") &&
+    !rootBases.some((base) => base.startsWith("text-"))
+  );
+}
+
+function jsxRootHasOnlyColourChannel(root, source) {
+  return (
+    !hasAccessibleNameInScope(root.owner, source) &&
+    !hasSiblingTextChannel(root.owner) &&
+    jsxOwnerChildren(root.owner).length === 0
+  );
+}
+
+function recordStatusColourContracts(result, { relativePath, analyzer, root, rootLine, possibilities }) {
+  const rootBases = [...new Set(possibilities.flatMap((entry) => entry.tokens.map(({ token }) => utilityBase(token))))];
+  const statusText = rootBases.filter((base) => STATUS_TEXT_UTILITY.test(base));
+  const statusSurface = rootBases.filter((base) => STATUS_SURFACE_UTILITY.test(base));
+
+  if (statusText.length > 0 && childrenAreNumeralOnly(jsxOwnerChildren(root.owner))) {
+    result.statusColouredNumerals.push(`${relativePath}:${rootLine} (${statusText[0]})`);
+  }
+  if (statusSurface.length === 0 || root.tag === "StatusMark") return;
+
+  const isJsxRoot = ts.isJsxOpeningElement(root.owner) || ts.isJsxSelfClosingElement(root.owner);
+  if (isJsxRoot) {
+    if (jsxRootHasOnlyColourChannel(root, analyzer.source)) {
+      result.colourOnlyStatusIndicators.push(`${relativePath}:${rootLine} (${statusSurface[0]})`);
+    }
+    return;
+  }
+  if (root.tag === "recipe" && isColourOnlySwatchRecipe(rootBases)) {
+    result.colourOnlyStatusIndicators.push(`${relativePath}:${rootLine} (${statusSurface[0]})`);
+  }
+}
+
+function recordClassRootContracts(result, { allTokens, relativePath, analyzer, root }) {
+  const possibilities = analyzer.possibilities(root.expression);
+  const rootLine = classRootLine(analyzer, root);
+  const context = { relativePath, analyzer, root, rootLine, possibilities };
+  const { densityConflicts, edgeOwnershipConflict } = classRootStructuralFindings(root, possibilities);
+  if (edgeOwnershipConflict) result.edgeOwnershipConflicts.push(`${relativePath}:${rootLine}`);
+  if (densityConflicts.size > 0) {
+    result.densityOverrides.push(`${relativePath}:${rootLine} (${[...densityConflicts].join(", ")})`);
+  }
+  recordStatusColourContracts(result, context);
+  for (const entry of uniqueTokenEntries(possibilities)) allTokens.set(entry.id, entry);
+}
+
+function recordRawClassTokenContracts(result, { relativePath, line, token, base }) {
+  if (LITERAL_SHADOW_UTILITY.test(base)) result.literalShadowClasses.push(`${relativePath}:${line} (${token})`);
+  if (ARBITRARY_TRACKING_UTILITY.test(base)) result.arbitraryTracking.push(`${relativePath}:${line} (${token})`);
+  if (RAW_PADDING_UTILITY.test(base)) result.rawPaddingLiterals.push(`${relativePath}:${line} (${token})`);
+  if (RAW_RADIUS_UTILITY.test(base)) result.rawRadiusLiterals.push(`${relativePath}:${line} (${token})`);
+  if (RAW_GAP_UTILITY.test(base)) result.rawGapLiterals.push(`${relativePath}:${line} (${token})`);
+  if (RAW_MARGIN_UTILITY.test(base)) result.rawMarginLiterals.push(`${relativePath}:${line} (${token})`);
+  if (RAW_LINE_HEIGHT_UTILITY.test(base)) result.rawLineHeightLiterals.push(`${relativePath}:${line} (${token})`);
+
+  const arbitraryProperty = base.match(ARBITRARY_PROPERTY_UTILITY);
+  if (!arbitraryProperty) return;
+  recordRawScaleLiteralProperty(result, {
+    relativePath,
+    line,
+    prop: arbitraryProperty[1].toLowerCase(),
+    value: arbitraryProperty[2],
+    token,
+  });
+}
+
+function recordTypeAndLegacyClassTokenContracts(result, { relativePath, line, token, base }) {
+  // The caller decides which bare text names are type steps by reading the
+  // `@theme` block, keeping globals.css as the only source of truth.
+  const bareTextUtility = base.match(/^text-([a-z0-9][a-z0-9-]*)$/);
+  if (bareTextUtility) result.typeStepUsages.push(bareTextUtility[1]);
+  if (hasLegacyTapClass(token)) result.legacyTapClasses.push(`${relativePath}:${line} (${token})`);
+  for (const match of token.matchAll(LEGACY_SHADOW_ALIAS)) {
+    result.legacyShadowAliases.push(`${relativePath}:${line} (${match[0]})`);
+  }
+  if (LEGACY_PALETTE_UTILITY.test(base)) result.legacyPaletteUtilities.push(`${relativePath}:${line} (${token})`);
+}
+
+function recordTransitionClassTokenContracts(result, { relativePath, line, base }) {
+  const transition = base.match(/^transition-\[([^\]]+)\]$/);
+  if (!transition) return;
+  const properties = transition[1].split(/[,_]/).filter(Boolean);
+  for (const property of properties) {
+    if (!SAFE_TRANSITION_PROPERTIES.has(property)) result.layoutTransitions.push({ relativePath, line, property });
+  }
+}
+
+function recordZIndexClassTokenContract(result, { relativePath, line, token, base }) {
+  if (!/^-?z-(?:\[|\(|\$|$)/.test(base) && !/^-?z-\d+$/.test(base)) return;
+  const numeric = base.match(/^(-?)z-(?:\[(-?\d+)\]|(-?\d+))$/);
+  const tokenMatch = base.match(/^z-(?:\[var\((--z-[a-z-]+)\)\]|\((--z-[a-z-]+)\))$/);
+  const numericAllowed = numeric && ALLOWED_Z_INDEX_RUNGS.has(Number(`${numeric[1]}${numeric[2] ?? numeric[3]}`));
+  const tokenAllowed = tokenMatch && ALLOWED_Z_INDEX_TOKENS.has(tokenMatch[1] ?? tokenMatch[2]);
+  if (!numericAllowed && !tokenAllowed) result.unapprovedZIndices.push(`${relativePath}:${line} (${token})`);
+}
+
+function recordClassTokenContracts(result, relativePath, { token, line }) {
+  const base = utilityBase(token);
+  const variants = utilityVariants(token);
+  const context = { relativePath, line, token, base };
+  if (base === "transition-all" || HARDCODED_MOTION_UTILITY.test(base)) {
+    result.hardcodedMotionClasses.push(`${relativePath}:${line} (${token})`);
+  }
+  if (IMAGE_INVERSION_UTILITY.test(base) || INVERSION_FUNCTION.test(base)) {
+    result.imageInversions.push(`${relativePath}:${line} (${token})`);
+  }
+  recordRawClassTokenContracts(result, context);
+  recordTypeAndLegacyClassTokenContracts(result, context);
+  recordTransitionClassTokenContracts(result, context);
+  recordZIndexClassTokenContract(result, context);
+  if (variants.includes("dark") && isColorUtility(base)) {
+    result.darkColorOverrides.push(`${relativePath}:${line} (${token})`);
+  }
+  if (variants.includes("disabled") && DISABLED_OPACITY_UTILITY.test(base)) {
+    result.disabledOpacityUses.push(`${relativePath}:${line} (${token})`);
+  }
+}
+
+function deduplicateClassRootFindings(result) {
+  for (const key of [
+    "edgeOwnershipConflicts",
+    "densityOverrides",
+    "colourOnlyStatusIndicators",
+    "statusColouredNumerals",
+  ]) {
+    result[key] = [...new Set(result[key])];
+  }
+}
+
+export function analyzeClassContractsInSource(relativePath, sourceText) {
+  const analyzer = classExpressionAnalyzer(relativePath, sourceText);
+  const result = emptyClassContractResult();
   if (!analyzer) return result;
 
   const allTokens = new Map();
   for (const root of analyzer.classRoots) {
-    const possibilities = analyzer.possibilities(root.expression);
-    const densityConflictsForRoot = new Set();
-    for (const possibility of possibilities) {
-      const bases = possibility.tokens.map(({ token }) => utilityBase(token));
-      if (
-        bases.some((token) => BORDER_WIDTH_UTILITY.test(token)) &&
-        bases.some((token) => RING_WIDTH_UTILITY.test(token))
-      ) {
-        const line = analyzer.source.getLineAndCharacterOfPosition(root.owner.getStart(analyzer.source)).line + 1;
-        result.edgeOwnershipConflicts.push(`${relativePath}:${line}`);
-        break;
-      }
-      const densityConflicts = possibility.tokens.filter(({ token }) => {
-        const base = utilityBase(token);
-        return DENSITY_HEIGHT_UTILITY.test(base) || DENSITY_TEXT_UTILITY.test(base);
-      });
-      if ((root.tag === "Chip" || possibility.usesDensityRecipe) && densityConflicts.length > 0) {
-        for (const { token } of densityConflicts) densityConflictsForRoot.add(utilityBase(token));
-      }
-    }
-    if (densityConflictsForRoot.size > 0) {
-      const line = analyzer.source.getLineAndCharacterOfPosition(root.owner.getStart(analyzer.source)).line + 1;
-      result.densityOverrides.push(`${relativePath}:${line} (${[...densityConflictsForRoot].join(", ")})`);
-    }
-
-    // Status-colour boundary (GATES.md §3). Two distinct defects, one pass over
-    // the same resolved class set, and deliberately mutually exclusive: a
-    // numeral has children, a colour-only indicator has none.
-    const rootBases = [...new Set(possibilities.flatMap((p) => p.tokens.map(({ token }) => utilityBase(token))))];
-    const statusText = rootBases.filter((base) => STATUS_TEXT_UTILITY.test(base));
-    const statusSurface = rootBases.filter((base) => STATUS_SURFACE_UTILITY.test(base));
-    const rootLine = analyzer.source.getLineAndCharacterOfPosition(root.owner.getStart(analyzer.source)).line + 1;
-
-    if (statusText.length > 0 && childrenAreNumeralOnly(jsxOwnerChildren(root.owner))) {
-      result.statusColouredNumerals.push(`${relativePath}:${rootLine} (${statusText[0]})`);
-    }
-
-    if (statusSurface.length > 0 && root.tag !== "StatusMark") {
-      const isJsxRoot = ts.isJsxOpeningElement(root.owner) || ts.isJsxSelfClosingElement(root.owner);
-      if (isJsxRoot) {
-        // A status hue painted on a box that says nothing: no children to read,
-        // and no name on it or anything containing it. Colour is then the only
-        // channel the state has.
-        if (
-          !hasAccessibleNameInScope(root.owner, analyzer.source) &&
-          !hasSiblingTextChannel(root.owner) &&
-          jsxOwnerChildren(root.owner).length === 0
-        ) {
-          result.colourOnlyStatusIndicators.push(`${relativePath}:${rootLine} (${statusSurface[0]})`);
-        }
-      } else if (root.tag === "recipe") {
-        // A shared swatch recipe — a status hue plus a tiny round box and no text
-        // utility. Its call sites inherit the defect, and the analyzer cannot see
-        // across files to find them, so the recipe is where it is catchable.
-        const swatch =
-          rootBases.some((base) => SWATCH_GEOMETRY.test(base)) &&
-          rootBases.includes("rounded-full") &&
-          !rootBases.some((base) => base.startsWith("text-"));
-        if (swatch) result.colourOnlyStatusIndicators.push(`${relativePath}:${rootLine} (${statusSurface[0]})`);
-      }
-    }
-
-    for (const entry of uniqueTokenEntries(possibilities)) allTokens.set(entry.id, entry);
+    recordClassRootContracts(result, { allTokens, relativePath, analyzer, root });
   }
 
-  for (const { token, line } of allTokens.values()) {
-    const base = utilityBase(token);
-    const variants = utilityVariants(token);
-    if (base === "transition-all" || HARDCODED_MOTION_UTILITY.test(base)) {
-      result.hardcodedMotionClasses.push(`${relativePath}:${line} (${token})`);
-    }
-    if (IMAGE_INVERSION_UTILITY.test(base) || INVERSION_FUNCTION.test(base)) {
-      result.imageInversions.push(`${relativePath}:${line} (${token})`);
-    }
-    if (LITERAL_SHADOW_UTILITY.test(base)) result.literalShadowClasses.push(`${relativePath}:${line} (${token})`);
-    if (ARBITRARY_TRACKING_UTILITY.test(base)) result.arbitraryTracking.push(`${relativePath}:${line} (${token})`);
-    if (RAW_PADDING_UTILITY.test(base)) result.rawPaddingLiterals.push(`${relativePath}:${line} (${token})`);
-    if (RAW_RADIUS_UTILITY.test(base)) result.rawRadiusLiterals.push(`${relativePath}:${line} (${token})`);
-    if (RAW_GAP_UTILITY.test(base)) result.rawGapLiterals.push(`${relativePath}:${line} (${token})`);
-    if (RAW_MARGIN_UTILITY.test(base)) result.rawMarginLiterals.push(`${relativePath}:${line} (${token})`);
-    if (RAW_LINE_HEIGHT_UTILITY.test(base)) result.rawLineHeightLiterals.push(`${relativePath}:${line} (${token})`);
-    const arbitraryProperty = base.match(ARBITRARY_PROPERTY_UTILITY);
-    if (arbitraryProperty) {
-      recordRawScaleLiteralProperty(
-        result,
-        relativePath,
-        line,
-        arbitraryProperty[1].toLowerCase(),
-        arbitraryProperty[2],
-        token,
-      );
-    }
-    // Every bare `text-<name>` this file uses, whatever `<name>` turns out to
-    // mean. The caller decides which of these are type steps by reading the
-    // `@theme` block, so the scale is never spelled out twice — writing the
-    // step list here would make this module a second source of truth that
-    // globals.css could drift away from silently.
-    const bareTextUtility = base.match(/^text-([a-z0-9][a-z0-9-]*)$/);
-    if (bareTextUtility) result.typeStepUsages.push(bareTextUtility[1]);
-    if (hasLegacyTapClass(token)) result.legacyTapClasses.push(`${relativePath}:${line} (${token})`);
-    for (const match of token.matchAll(LEGACY_SHADOW_ALIAS)) {
-      result.legacyShadowAliases.push(`${relativePath}:${line} (${match[0]})`);
-    }
-    const transition = base.match(/^transition-\[([^\]]+)\]$/);
-    if (transition) {
-      const properties = transition[1].split(/[,_]/).filter(Boolean);
-      for (const property of properties) {
-        if (!SAFE_TRANSITION_PROPERTIES.has(property)) result.layoutTransitions.push({ relativePath, line, property });
-      }
-    }
-    if (/^-?z-(?:\[|\(|\$|$)/.test(base) || /^-?z-\d+$/.test(base)) {
-      const numeric = base.match(/^(-?)z-(?:\[(-?\d+)\]|(-?\d+))$/);
-      const tokenMatch = base.match(/^z-(?:\[var\((--z-[a-z-]+)\)\]|\((--z-[a-z-]+)\))$/);
-      const numericAllowed = numeric && ALLOWED_Z_INDEX_RUNGS.has(Number(`${numeric[1]}${numeric[2] ?? numeric[3]}`));
-      const tokenAllowed = tokenMatch && ALLOWED_Z_INDEX_TOKENS.has(tokenMatch[1] ?? tokenMatch[2]);
-      if (!numericAllowed && !tokenAllowed) result.unapprovedZIndices.push(`${relativePath}:${line} (${token})`);
-    }
-    if (LEGACY_PALETTE_UTILITY.test(base)) result.legacyPaletteUtilities.push(`${relativePath}:${line} (${token})`);
-    if (variants.includes("dark") && isColorUtility(base)) {
-      result.darkColorOverrides.push(`${relativePath}:${line} (${token})`);
-    }
-    if (variants.includes("disabled") && DISABLED_OPACITY_UTILITY.test(base)) {
-      result.disabledOpacityUses.push(`${relativePath}:${line} (${token})`);
-    }
-  }
-
-  result.edgeOwnershipConflicts = [...new Set(result.edgeOwnershipConflicts)];
-  result.densityOverrides = [...new Set(result.densityOverrides)];
-  result.colourOnlyStatusIndicators = [...new Set(result.colourOnlyStatusIndicators)];
-  result.statusColouredNumerals = [...new Set(result.statusColouredNumerals)];
+  for (const entry of allTokens.values()) recordClassTokenContracts(result, relativePath, entry);
+  deduplicateClassRootFindings(result);
   return result;
 }
 
@@ -1753,7 +1831,7 @@ function isOutOfFlowClassText(classText) {
 export function findElevationInversionsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx") && !relativePath.endsWith(".ts")) return [];
   if (relativePath.includes("/mockups/")) return [];
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
 
   function visit(node) {
@@ -1799,7 +1877,7 @@ export function findHandRolledCommandButtonsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx")) return [];
   if (relativePath.includes("/mockups/")) return [];
   if (relativePath === "src/components/ui/button.tsx") return [];
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
 
   function visit(node) {
@@ -1867,7 +1945,7 @@ export function findHandRolledCommandButtonsInSource(relativePath, sourceText) {
 export function findVisibleLiveRegionsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx")) return [];
   if (relativePath.includes("/mockups/")) return [];
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
 
   function attributeStringValue(attribute) {
@@ -2028,7 +2106,7 @@ export function analyzeCssContractsInSource(relativePath, sourceText) {
     // Custom-property declarations are the token definitions themselves — the
     // scale has to be written down somewhere — so only real properties count.
     if (!prop.startsWith("--")) {
-      recordRawScaleLiteralProperty(result, relativePath, line, prop, declaration.value);
+      recordRawScaleLiteralProperty(result, { relativePath, line, prop, value: declaration.value });
     }
     if (/^(?:-webkit-)?(?:backdrop-)?filter$/.test(prop)) {
       for (const match of declaration.value.matchAll(/\b(invert|hue-rotate)\(/g)) {
@@ -2115,7 +2193,7 @@ export function findSameFileTextSmMinusMix(relativePath, sourceText) {
 export function findErrorStateCountPropsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx") || !sourceText.includes("ErrorState")) return [];
 
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
   const countBearingCopy =
     /\b\d+\s+(?:items?|matches?|records?|results?|sources?)\b|\b(?:item|match|record|result|source)?counts?\b|\btotal(?:Items?|Matches?|Records?|Results?|Sources?)?\b|\.(?:count|length)\b/i;
@@ -2147,7 +2225,7 @@ export function findErrorStateCountPropsInSource(relativePath, sourceText) {
 export function findFailedStateResultCountsInSource(relativePath, sourceText) {
   if (!relativePath.endsWith(".tsx") || !/error|fail/i.test(sourceText)) return [];
 
-  const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const source = parsedSourceFile(relativePath, sourceText, ts.ScriptKind.TSX);
   const findings = [];
   const failureSignal =
     /\b(?:error|failed|failure|hasError|isError|loadError|requestError)\b|["'](?:error|failed)["']/i;
@@ -2393,7 +2471,7 @@ function isInsideCommentOrString(source, position) {
 }
 
 function namedFunctionRange(relativePath, source, functionName) {
-  const parsed = ts.createSourceFile(relativePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const parsed = parsedSourceFile(relativePath, source, ts.ScriptKind.TSX);
   const declaration = parsed.statements.find(
     (node) => ts.isFunctionDeclaration(node) && node.name?.text === functionName,
   );
