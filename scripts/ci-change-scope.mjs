@@ -78,72 +78,97 @@ function isWithinPath(rootPath, candidatePath) {
   );
 }
 
-function validateSiteContentChangeOwners(value, label = "site-content-owner-manifest-malformed") {
-  if (
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value) ||
-    value.version !== "site-content-change-owners-v1"
-  ) {
-    throw new Error(label);
+const allowedSiteContentOwnerRoots = new Set(["data", "public", "src"]);
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function validateSiteContentProducerOwners(mode, owners, label) {
+  if (!mode || !Array.isArray(owners) || owners.length === 0) throw new Error(label);
+  if (owners.some((owner) => typeof owner !== "string")) throw new Error(label);
+  if (owners.join("|") !== [...new Set(owners)].sort().join("|")) throw new Error(label);
+}
+
+function assertCanonicalSiteContentOwnerSpelling(owner) {
+  if (owner.length === 0) throw new Error("site-content-owner-manifest-empty-owner");
+  const normalizedOwner = normalizePath(owner);
+  const canonicalOwner = posixPath.normalize(normalizedOwner);
+  const hasNoncanonicalSegment =
+    canonicalOwner === "" ||
+    canonicalOwner === "." ||
+    normalizedOwner.includes("//") ||
+    normalizedOwner.split("/").includes(".");
+  if (owner !== normalizedOwner || canonicalOwner !== normalizedOwner || hasNoncanonicalSegment) {
+    throw new Error("site-content-owner-manifest-noncanonical-owner");
   }
+}
+
+function siteContentOwnerRepositoryRoot(owner, label) {
+  if (owner.startsWith("/") || owner.includes("..") || owner.includes("\\")) throw new Error(label);
+  if (/[?\[\]{}]/.test(owner) || (/\*/.test(owner) && !owner.endsWith("/**"))) {
+    throw new Error("site-content-owner-manifest-malformed-glob");
+  }
+  const repositoryRoot = owner.split("/", 1)[0];
+  if (allowedSiteContentOwnerRoots.has(repositoryRoot) && owner === `${repositoryRoot}/**`) {
+    throw new Error("site-content-owner-manifest-broad-path");
+  }
+  if (!allowedSiteContentOwnerRoots.has(repositoryRoot)) {
+    throw new Error("site-content-owner-manifest-unknown-root");
+  }
+  return repositoryRoot;
+}
+
+function canonicalSiteContentOwner(owner, label) {
+  assertCanonicalSiteContentOwnerSpelling(owner);
+  const repositoryRoot = siteContentOwnerRepositoryRoot(owner, label);
+  return {
+    ownerPath: owner.endsWith("/**") ? owner.slice(0, -3) : owner,
+    repositoryRoot,
+  };
+}
+
+function assertSiteContentOwnerType(owner, ownerPath) {
+  if (!existsSync(ownerPath)) throw new Error("site-content-owner-manifest-missing-owner");
+  const ownerStat = lstatSync(ownerPath);
+  if (ownerStat.isSymbolicLink()) throw new Error("site-content-owner-manifest-missing-owner");
+  const hasWrongType = owner.endsWith("/**") ? !ownerStat.isDirectory() : !ownerStat.isFile();
+  if (hasWrongType) throw new Error("site-content-owner-manifest-missing-owner");
+}
+
+function assertSiteContentOwnerAncestorsAreReal(ownerPath) {
+  const ownerPathParts = ownerPath.split("/");
+  for (let partCount = 1; partCount < ownerPathParts.length; partCount += 1) {
+    const ancestorPath = ownerPathParts.slice(0, partCount).join("/");
+    if (lstatSync(ancestorPath).isSymbolicLink()) {
+      throw new Error("site-content-owner-manifest-escaping-owner");
+    }
+  }
+}
+
+function assertSiteContentOwnerWithinRoots(repositoryRealPath, repositoryRoot, ownerPath) {
+  const allowedRootRealPath = realpathSync(repositoryRoot);
+  const ownerRealPath = realpathSync(ownerPath);
+  if (!isWithinPath(repositoryRealPath, ownerRealPath) || !isWithinPath(allowedRootRealPath, ownerRealPath)) {
+    throw new Error("site-content-owner-manifest-escaping-owner");
+  }
+}
+
+function validateSiteContentOwner(repositoryRealPath, owner, label) {
+  const { ownerPath, repositoryRoot } = canonicalSiteContentOwner(owner, label);
+  assertSiteContentOwnerType(owner, ownerPath);
+  assertSiteContentOwnerAncestorsAreReal(ownerPath);
+  assertSiteContentOwnerWithinRoots(repositoryRealPath, repositoryRoot, ownerPath);
+}
+
+function validateSiteContentChangeOwners(value, label = "site-content-owner-manifest-malformed") {
+  if (!isPlainObject(value) || value.version !== "site-content-change-owners-v1") throw new Error(label);
   const repositoryRealPath = realpathSync(".");
   const producers = value.producers;
-  if (!producers || typeof producers !== "object" || Array.isArray(producers) || Object.keys(producers).length === 0) {
-    throw new Error(label);
-  }
+  if (!isPlainObject(producers) || Object.keys(producers).length === 0) throw new Error(label);
   for (const [mode, owners] of Object.entries(producers)) {
-    if (!mode || !Array.isArray(owners) || owners.length === 0 || owners.some((owner) => typeof owner !== "string")) {
-      throw new Error(label);
-    }
-    if (owners.join("|") !== [...new Set(owners)].sort().join("|")) throw new Error(label);
-    for (const owner of owners) {
-      if (owner.length === 0) throw new Error("site-content-owner-manifest-empty-owner");
-      const normalizedOwner = normalizePath(owner);
-      const canonicalOwner = posixPath.normalize(normalizedOwner);
-      if (
-        owner !== normalizedOwner ||
-        canonicalOwner !== normalizedOwner ||
-        canonicalOwner === "" ||
-        canonicalOwner === "." ||
-        normalizedOwner.includes("//") ||
-        normalizedOwner.split("/").includes(".")
-      ) {
-        throw new Error("site-content-owner-manifest-noncanonical-owner");
-      }
-      if (owner.startsWith("/") || owner.includes("..") || owner.includes("\\")) {
-        throw new Error(label);
-      }
-      if (/[?\[\]{}]/.test(owner) || (/\*/.test(owner) && !owner.endsWith("/**"))) {
-        throw new Error("site-content-owner-manifest-malformed-glob");
-      }
-      const repositoryRoot = owner.split("/", 1)[0];
-      const allowedRepositoryRoots = new Set(["data", "public", "src"]);
-      if (allowedRepositoryRoots.has(repositoryRoot) && owner === `${repositoryRoot}/**`) {
-        throw new Error("site-content-owner-manifest-broad-path");
-      }
-      if (!allowedRepositoryRoots.has(repositoryRoot)) {
-        throw new Error("site-content-owner-manifest-unknown-root");
-      }
-      const ownerPath = owner.endsWith("/**") ? owner.slice(0, -3) : owner;
-      if (!existsSync(ownerPath)) throw new Error("site-content-owner-manifest-missing-owner");
-      const ownerStat = lstatSync(ownerPath);
-      if (ownerStat.isSymbolicLink() || (owner.endsWith("/**") ? !ownerStat.isDirectory() : !ownerStat.isFile())) {
-        throw new Error("site-content-owner-manifest-missing-owner");
-      }
-      const ownerPathParts = ownerPath.split("/");
-      for (let partCount = 1; partCount < ownerPathParts.length; partCount += 1) {
-        const ancestorPath = ownerPathParts.slice(0, partCount).join("/");
-        if (lstatSync(ancestorPath).isSymbolicLink()) {
-          throw new Error("site-content-owner-manifest-escaping-owner");
-        }
-      }
-      const allowedRootRealPath = realpathSync(repositoryRoot);
-      const ownerRealPath = realpathSync(ownerPath);
-      if (!isWithinPath(repositoryRealPath, ownerRealPath) || !isWithinPath(allowedRootRealPath, ownerRealPath)) {
-        throw new Error("site-content-owner-manifest-escaping-owner");
-      }
-    }
+    validateSiteContentProducerOwners(mode, owners, label);
+    for (const owner of owners) validateSiteContentOwner(repositoryRealPath, owner, label);
   }
   return producers;
 }
@@ -599,8 +624,7 @@ function isRecognisedLightPath(filePath) {
 // drive both the empty and non-empty cases without touching the real file.
 const readFlakeLedger = () => readFileSync("tests/flake-ledger.json", "utf8");
 
-function classify(files, { readLedger = readFlakeLedger } = {}) {
-  const normalized = [...new Set(files.map(normalizePath).filter(Boolean))].sort();
+function directChangeScopes(normalized, readLedger) {
   const docsChanged = normalized.some((file) => pathMatches(file, docPatterns));
   const sourceChanged = normalized.some((file) => pathMatches(file, [...sourcePatterns, ...staticConfigPatterns]));
   const uiChanged = normalized.some((file) => isUiChangedPath(file));
@@ -618,6 +642,25 @@ function classify(files, { readLedger = readFlakeLedger } = {}) {
   const siteContentChanged =
     normalized.some((file) => pathMatches(file, siteContentPatterns)) ||
     fullRunSentinelFiles.some((sentinel) => normalized.includes(sentinel));
+  return {
+    advisoryUiChanged,
+    buildChanged,
+    containerChanged,
+    dbChanged,
+    docsChanged,
+    ingestionSastChanged,
+    lockfileChanged,
+    perfChanged,
+    prPolicyBodyChanged,
+    ragEvalChanged,
+    siteContentChanged,
+    sourceChanged,
+    uiChanged,
+    workflowChanged,
+  };
+}
+
+function isStaticHeavyChange(normalized, direct) {
   // Only two categories are allowed to take the lightweight path: recognised
   // documentation and recognised non-executable workflow/policy surfaces.
   // Unknown non-doc files fail closed to the heavy plan. Executable files that
@@ -625,40 +668,62 @@ function classify(files, { readLedger = readFlakeLedger } = {}) {
   // or a workflow helper under `scripts/`) remain heavy even when the directory
   // is otherwise treated as a light policy surface.
   const hasUnknownNonLightPath = normalized.some((file) => !isRecognisedLightPath(file));
-  const staticHeavyChanged =
-    sourceChanged || buildChanged || containerChanged || dbChanged || lockfileChanged || hasUnknownNonLightPath;
+  return (
+    direct.sourceChanged ||
+    direct.buildChanged ||
+    direct.containerChanged ||
+    direct.dbChanged ||
+    direct.lockfileChanged ||
+    hasUnknownNonLightPath
+  );
+}
+
+function isDocsOnlyChange(normalized, direct) {
+  return (
+    normalized.length > 0 &&
+    normalized.every((file) => pathMatches(file, docPatterns)) &&
+    !normalized.includes(generatedMedicationLexiconReport) &&
+    !direct.sourceChanged &&
+    !direct.workflowChanged
+  );
+}
+
+function derivedChangeScopes(normalized, direct) {
+  const staticHeavyChanged = isStaticHeavyChange(normalized, direct);
   // Pure workflow YAML/policy changes use focused workflow-contract tests in
   // static-pr. Product, test, build, database, dependency and unknown changes
   // retain the complete coverage lane.
   const coverageChanged = staticHeavyChanged;
-  const docsOnly =
-    normalized.length > 0 &&
-    normalized.every((file) => pathMatches(file, docPatterns)) &&
-    !normalized.includes(generatedMedicationLexiconReport) &&
-    !sourceChanged &&
-    !workflowChanged;
-  const workflowOnly = workflowChanged && !staticHeavyChanged;
+  const docsOnly = isDocsOnlyChange(normalized, direct);
+  const workflowOnly = direct.workflowChanged && !staticHeavyChanged;
+  return { coverageChanged, docsOnly, staticHeavyChanged, workflowOnly };
+}
+
+function classify(files, { readLedger = readFlakeLedger } = {}) {
+  const normalized = [...new Set(files.map(normalizePath).filter(Boolean))].sort();
+  const direct = directChangeScopes(normalized, readLedger);
+  const derived = derivedChangeScopes(normalized, direct);
 
   return {
     files: normalized,
-    docs_only: docsOnly,
-    docs_changed: docsChanged,
-    source_changed: sourceChanged,
-    static_heavy_changed: staticHeavyChanged,
-    coverage_changed: coverageChanged,
-    ingestion_sast_changed: ingestionSastChanged,
-    ui_changed: uiChanged,
-    perf_changed: perfChanged,
-    advisory_ui_changed: advisoryUiChanged,
-    db_changed: dbChanged,
-    container_changed: containerChanged,
-    rag_eval_changed: ragEvalChanged,
-    workflow_changed: workflowChanged,
-    workflow_only: workflowOnly,
-    build_changed: buildChanged,
-    lockfile_changed: lockfileChanged,
-    pr_policy_body_changed: prPolicyBodyChanged,
-    site_content_changed: siteContentChanged,
+    docs_only: derived.docsOnly,
+    docs_changed: direct.docsChanged,
+    source_changed: direct.sourceChanged,
+    static_heavy_changed: derived.staticHeavyChanged,
+    coverage_changed: derived.coverageChanged,
+    ingestion_sast_changed: direct.ingestionSastChanged,
+    ui_changed: direct.uiChanged,
+    perf_changed: direct.perfChanged,
+    advisory_ui_changed: direct.advisoryUiChanged,
+    db_changed: direct.dbChanged,
+    container_changed: direct.containerChanged,
+    rag_eval_changed: direct.ragEvalChanged,
+    workflow_changed: direct.workflowChanged,
+    workflow_only: derived.workflowOnly,
+    build_changed: direct.buildChanged,
+    lockfile_changed: direct.lockfileChanged,
+    pr_policy_body_changed: direct.prPolicyBodyChanged,
+    site_content_changed: direct.siteContentChanged,
   };
 }
 
@@ -871,10 +936,9 @@ function assertMockupSpecParity() {
  * perfInitialLoadApiPatterns. A new query-bearing route usually means more handlers
  * need the same carve-out. Fails CLOSED on an unreadable budget.
  */
-function assertBudgetRoutesAreQueryFree() {
-  let budget;
+function readLighthouseBudget() {
   try {
-    budget = JSON.parse(readFileSync("lighthouse-budget.json", "utf8"));
+    return JSON.parse(readFileSync("lighthouse-budget.json", "utf8"));
   } catch (error) {
     throw new Error(
       `budget-routes-query-free: could not read lighthouse-budget.json (${
@@ -882,14 +946,20 @@ function assertBudgetRoutesAreQueryFree() {
       }). If that file moved, update this guard — do not delete it.`,
     );
   }
+}
 
+function lighthouseBudgetRoutes(budget) {
   const routes = Array.isArray(budget?.routes) ? budget.routes : null;
   if (!routes || routes.length === 0) {
     throw new Error(
       "budget-routes-query-free: lighthouse-budget.json lists no routes; this guard has nothing to check.",
     );
   }
+  return routes;
+}
 
+function assertBudgetRoutesAreQueryFree() {
+  const routes = lighthouseBudgetRoutes(readLighthouseBudget());
   const withQuery = routes.filter((route) => typeof route === "string" && route.includes("?"));
   if (withQuery.length > 0) {
     throw new Error(
@@ -900,7 +970,7 @@ function assertBudgetRoutesAreQueryFree() {
   console.log(`Budget routes query-free: ${routes.length} routes carry no query string.`);
 }
 
-function selfTest() {
+function assertBrowserAndAdvisoryScopes() {
   for (const file of [
     "tests/adaptive-answer-ui.spec.ts",
     "tests/api-csrf-proxy.spec.ts",
@@ -1009,7 +1079,9 @@ function selfTest() {
   assertScope("runtime-config-keeps-coverage", ["lighthouse-budget.json"], {
     coverage_changed: true,
   });
+}
 
+function assertCoreStaticAndUiScopes() {
   assertScope("unstaged-status", parseStatusPorcelain(" M scripts/ci-change-scope.mjs\0"), {
     source_changed: true,
     workflow_changed: true,
@@ -1100,7 +1172,9 @@ function selfTest() {
       ui_changed: true,
     },
   );
+}
 
+function assertPerformanceScopeExclusions() {
   // ---- perf_changed: the narrow scope the Lighthouse budget job keys off. ----
   //
   // Both directions are load-bearing. A false negative means a render regression
@@ -1195,7 +1269,9 @@ function selfTest() {
   assertScope("perf-on-for-proxy-owned-developer-headers", ["src/lib/developer-area/headers.ts"], {
     perf_changed: true,
   });
+}
 
+function assertPerformanceScopeInclusions() {
   assertScope("perf-on-for-route-page", ["src/app/(search-app)/dsm/page.tsx"], {
     ui_changed: true,
     perf_changed: true,
@@ -1253,6 +1329,9 @@ function selfTest() {
   // scope, so a future refactor over-triggers by one job rather than silently
   // dropping a render surface.
   assertScope("perf-on-for-unrecognised-src-path", ["src/features/new-thing/index.ts"], { perf_changed: true });
+}
+
+function assertProductScopeRouting() {
   assertScope("runtime-data", ["data/medications-snapshot.json"], {
     source_changed: true,
     coverage_changed: true,
@@ -1330,6 +1409,9 @@ function selfTest() {
     ui_changed: true,
     source_changed: true,
   });
+}
+
+function assertRagIngestionAndDatabaseScopes() {
   assertScope("rag-fixture", ["src/lib/retrieval-selection.ts", "scripts/fixtures/rag-retrieval-golden.json"], {
     rag_eval_changed: true,
     source_changed: true,
@@ -1421,6 +1503,9 @@ function selfTest() {
       source_changed: true,
     },
   );
+}
+
+function assertWorkflowAndPolicyScopes() {
   assertScope("workflow", [".github/workflows/ci.yml", "docs/process-hardening.md"], {
     workflow_changed: true,
     workflow_only: true,
@@ -1485,6 +1570,9 @@ function selfTest() {
     docs_only: false,
     source_changed: false,
   });
+}
+
+function assertDependencyAndContainerScopes() {
   assertScope("package", ["package.json"], {
     source_changed: false,
     coverage_changed: true,
@@ -1559,6 +1647,9 @@ function selfTest() {
       build_changed: true,
     },
   );
+}
+
+function assertFallbackAndRenameScopes() {
   assertScope("renamed-destination", parseStatusPorcelain("R  src/lib/rag-new.ts\0docs/rag-old.md\0"), {
     source_changed: true,
     rag_eval_changed: true,
@@ -1598,6 +1689,9 @@ function selfTest() {
   assertScope("inherited-pr-policy-body-does-not-sync", ["docs/testing.md"], {
     pr_policy_body_changed: false,
   });
+}
+
+function assertSiteContentRoutingScopes() {
   for (const owners of Object.values(siteContentProducerOwners)) {
     for (const owner of owners) {
       assertScope(`site-content-owner:${owner}`, [owner.replace(/\/\*\*$/, "/representative.json")], {
@@ -1611,22 +1705,30 @@ function selfTest() {
     site_content_changed: true,
   });
   assertScope("site-content-negative-ui", ["src/components/ordinary-card.tsx"], { site_content_changed: false });
+}
+
+function assertSiteContentManifestRejected(value, expectedError) {
   try {
-    validateSiteContentChangeOwners({ version: "site-content-change-owners-v1", producers: {} });
-    throw new Error("site-content-owner-manifest-malformed:self-test-did-not-fail");
+    validateSiteContentChangeOwners(value);
+    throw new Error(`${expectedError}:self-test-did-not-fail`);
   } catch (error) {
-    if (!(error instanceof Error) || !error.message.includes("site-content-owner-manifest-malformed")) throw error;
+    if (!(error instanceof Error) || !error.message.includes(expectedError)) throw error;
   }
+}
+
+function assertSiteContentValidationScopes() {
+  assertSiteContentManifestRejected(
+    { version: "site-content-change-owners-v1", producers: {} },
+    "site-content-owner-manifest-malformed",
+  );
   for (const owner of ["data/**", "public/**", "src/**"]) {
-    try {
-      validateSiteContentChangeOwners({
+    assertSiteContentManifestRejected(
+      {
         version: "site-content-change-owners-v1",
         producers: { malformed: [owner] },
-      });
-      throw new Error("site-content-owner-manifest-broad-path:self-test-did-not-fail");
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("site-content-owner-manifest-broad-path")) throw error;
-    }
+      },
+      "site-content-owner-manifest-broad-path",
+    );
   }
   for (const [expectedError, owner] of [
     ["site-content-owner-manifest-empty-owner", ""],
@@ -1640,16 +1742,28 @@ function selfTest() {
     ["site-content-owner-manifest-noncanonical-owner", "public/therapy-compass-data//**"],
     ["site-content-owner-manifest-noncanonical-owner", "public/therapy-compass-data/./**"],
   ]) {
-    try {
-      validateSiteContentChangeOwners({
+    assertSiteContentManifestRejected(
+      {
         version: "site-content-change-owners-v1",
         producers: { malformed: [owner] },
-      });
-      throw new Error(`${expectedError}:self-test-did-not-fail`);
-    } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes(expectedError)) throw error;
-    }
+      },
+      expectedError,
+    );
   }
+}
+
+function selfTest() {
+  assertBrowserAndAdvisoryScopes();
+  assertCoreStaticAndUiScopes();
+  assertPerformanceScopeExclusions();
+  assertPerformanceScopeInclusions();
+  assertProductScopeRouting();
+  assertRagIngestionAndDatabaseScopes();
+  assertWorkflowAndPolicyScopes();
+  assertDependencyAndContainerScopes();
+  assertFallbackAndRenameScopes();
+  assertSiteContentRoutingScopes();
+  assertSiteContentValidationScopes();
   console.log("CI change scope self-test passed.");
 }
 
