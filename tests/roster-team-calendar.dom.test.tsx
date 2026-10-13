@@ -638,9 +638,7 @@ describe("Team calendar", () => {
       expect(header.className).toMatch(/print:grid/);
       expect(within(header).getByText("Example team")).toBeTruthy();
       expect(within(header).getByText("Printed Thu 15 Oct 2026")).toBeTruthy();
-      expect(
-        within(header).getByText("D Day · L Late · N Night · OC On call · AL Leave · W Other work"),
-      ).toBeTruthy();
+      expect(within(header).getByText("D Day · L Late · N Night · OC On call · AL Leave · W Other work")).toBeTruthy();
     });
 
     it("prints no header on the Week view, which has no Print button", async () => {
