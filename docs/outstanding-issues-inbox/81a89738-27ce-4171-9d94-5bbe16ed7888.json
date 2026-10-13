@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "81a89738-27ce-4171-9d94-5bbe16ed7888",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Arrange Aboriginal governance review for the five held cultural formulation records before any is published",
+    "detail": "Follow-up to #R8HED2 (closed by PR #3412's hold). first-nations-sewb, cultural-explanatory-model, migration-refugee, racism-discrimination and religion-spirituality have release held in src/data/formulation-concepts.json. All carry Indigenous terms, so the clinical sign-off tool refuses them (scripts/lib/indigenous-content.mjs); each needs review under Aboriginal governance. The records also still read clinical_review_required with no reviewer, so governance review alone does not clear them: keep release held until the owner decides how their review status is completed and explicitly approves republishing (then restore each search-index entry). Changing release or review status is a clinical content change.",
+    "source": "Review of PR #3521, 2026-10-13",
+    "issueUlid": "01M4TD3FB5ASA514WYF0Q5C0F4"
+  }
+}
