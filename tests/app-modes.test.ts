@@ -228,7 +228,7 @@ describe("app mode search contract", () => {
     });
     expect(config).toMatchObject({
       kind: "tools",
-      placeholder: "Search sources, publishers, or topics...",
+      placeholder: "Search sources...",
       resultHeading: "Sources",
       nextStep: "Filter by quality, location, publisher, topic, or usage",
     });
