@@ -4146,7 +4146,8 @@ export function sanitizePromptUserQuery(query: string): string {
   // Strip control characters (preserving newline, tab, standard unicode) and disarm delimiter tags or prompt fences
   return query
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-    .replace(/<\/?(?:user_query|system|assistant|instruction|source)>/gi, "")
-    .replace(/<<<|>>>/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
     .trim();
 }

@@ -27,13 +27,13 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     errors.push("Age exceeds physiological bounds (>120 years)");
   }
 
-  if (input.weightKg <= 0) {
+  if (!Number.isFinite(input.weightKg) || input.weightKg <= 0) {
     errors.push("Weight must be greater than zero kg");
   } else if (input.weightKg > 350) {
     errors.push("Weight exceeds physiological bounds (>350 kg)");
   }
 
-  if (input.serumCreatinine <= 0) {
+  if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");
   }
 
@@ -60,6 +60,15 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
   }
 
   const rounded = Math.round(crCl * 100) / 100;
+  if (!Number.isFinite(rounded)) {
+    return {
+      isValid: false,
+      crClMlMin: null,
+      stage: null,
+      errors: ["Calculated creatinine clearance is not finite"],
+      warnings,
+    };
+  }
   return {
     isValid: true,
     crClMlMin: rounded,
@@ -80,7 +89,7 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
   if (input.age <= 0 || input.age > 120) {
     errors.push("Age must be between 1 and 120 years");
   }
-  if (input.serumCreatinine <= 0) {
+  if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");
   }
 

@@ -9,39 +9,39 @@ export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Objec
   // Antipsychotics & Confusable Pairs
   clozapine: "cloZAPine",
   clonidine: "cloNIDine",
-  olanzapine: "olanzaPINE",
-  quetiapine: "queTIApine",
-  aripiprazole: "aripipRAZOLE",
+  olanzapine: "OLANZapine",
+  quetiapine: "QUEtiapine",
+  aripiprazole: "ARIPiprazole",
   risperidone: "risperiDONE",
   chlorpromazine: "chlorproMAZINE",
   promethazine: "proMETHAZINE",
-  fluphenazine: "FLUphenazine",
+  fluphenazine: "fluPHENazine",
   flupentixol: "fluPENtixol",
   zuclopenthixol: "zucloPENthixol",
 
   // Antidepressants & Anxiolytics
-  fluoxetine: "fluOXEtine",
-  fluvoxamine: "fluvOXAMine",
-  paroxetine: "parOXEtine",
+  fluoxetine: "FLUoxetine",
+  fluvoxamine: "fluvoxaMINE",
+  paroxetine: "PARoxetine",
   sertraline: "serTRALine",
   citalopram: "citaloPRAM",
   escitalopram: "escitaloPRAM",
-  duloxetine: "dulOXEtine",
+  duloxetine: "DULoxetine",
   venlafaxine: "venlaFAXine",
   bupropion: "buPROPion",
   buspirone: "busPIRone",
 
   // Benzodiazepines & Sedatives
   clonazepam: "clonazePAM",
-  lorazepam: "lorazePAM",
+  lorazepam: "LORazepam",
   diazepam: "diazePAM",
   oxazepam: "oxazePAM",
   temazepam: "temazePAM",
-  alprazolam: "alPRAZolam",
+  alprazolam: "ALPRAZolam",
   midazolam: "midazolAM",
 
   // Mood Stabilizers & Anticonvulsants
-  carbamazepine: "carbaMAZEpine",
+  carbamazepine: "carBAMazepine",
   valproate: "VALproate",
   lamotrigine: "lamoTRIgine",
 
@@ -57,7 +57,7 @@ export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Objec
 export function formatTallMan(name: string): string {
   if (!name) return name;
   const key = name.toLowerCase().trim();
-  return ISMP_TALL_MAN_MEDICATIONS[key] ?? name;
+  return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key) ? ISMP_TALL_MAN_MEDICATIONS[key] : name;
 }
 
 /**
@@ -66,5 +66,5 @@ export function formatTallMan(name: string): string {
 export function isTallManMedication(name: string): boolean {
   if (!name) return false;
   const key = name.toLowerCase().trim();
-  return key in ISMP_TALL_MAN_MEDICATIONS;
+  return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key);
 }

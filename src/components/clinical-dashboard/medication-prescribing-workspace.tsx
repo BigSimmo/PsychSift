@@ -24,6 +24,7 @@ import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { sharedHomePresentation } from "@/lib/ui-copy";
+import { formatTallMan } from "@/lib/medications/tall-man";
 import { RetainedSnapshotNotice } from "@/components/clinical-dashboard/dashboard-notices";
 import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-results-header-band";
 import {
@@ -963,7 +964,7 @@ function MedicationResults({
                     <ResultToneIcon result={result} accent={row.accent} />
                     <div className="min-w-0">
                       <span className="block break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
-                        <HighlightedName text={result.name} term={query} />
+                        <HighlightedName text={formatTallMan(result.name)} term={query} />
                       </span>
                       <span className="mt-0.5 line-clamp-1 break-words text-xs font-medium leading-4 text-[color:var(--text-muted)]">
                         {result.indication}
@@ -1052,7 +1053,7 @@ function MedicationResults({
               <div className="min-w-0 space-y-1.5">
                 <div className="min-w-0">
                   <p className="line-clamp-2 break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
-                    <HighlightedName text={result.name} term={query} />
+                    <HighlightedName text={formatTallMan(result.name)} term={query} />
                   </p>
                   <p className="line-clamp-1 break-words text-xs font-medium text-[color:var(--text-muted)]">
                     {result.indication}
