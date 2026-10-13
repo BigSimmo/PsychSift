@@ -6,6 +6,7 @@ import { ArrowRight, Search } from "lucide-react";
 
 import { filterCompareCatalog, padCompareIds, slotLetters } from "@/components/compare/filter-catalog";
 import type { CompareCatalogItem, CompareStarterChip } from "@/components/compare/types";
+import { buttonFaceClass } from "@/components/ui/button-face";
 import { cn, searchShell, searchShellInput } from "@/components/ui-primitives";
 
 export function CompareCatalogPicker({
@@ -260,11 +261,7 @@ export function ComparePickerActions({ onDone, onReset }: { onDone?: () => void;
         </button>
       ) : null}
       {onDone ? (
-        <button
-          type="button"
-          onClick={onDone}
-          className="inline-flex min-h-tap items-center justify-center rounded-lg bg-[color:var(--command)] px-6 text-sm font-bold text-[color:var(--command-contrast)] transition-colors hover:bg-[color:var(--command-hover)]"
-        >
+        <button type="button" onClick={onDone} className={cn(buttonFaceClass({ variant: "primary" }), "px-6")}>
           Done
         </button>
       ) : null}

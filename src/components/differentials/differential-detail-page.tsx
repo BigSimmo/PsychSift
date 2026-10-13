@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import Link from "next/link";
 import {
-  Activity,
   TriangleAlert,
   Bookmark,
   BookmarkCheck,
@@ -14,16 +13,10 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   CircleHelp,
-  Clock3,
   FlaskConical,
-  GitBranch,
   GitCompareArrows,
-  Info,
   Plus,
   Share2,
-  ShieldAlert,
-  Stethoscope,
-  Target,
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
@@ -42,7 +35,14 @@ import { idsCompareHref } from "@/components/compare";
 import { COMPARE_MAX_COUNT } from "@/components/differentials/differential-compare-picker-control";
 import { inPageActionRowClass as actionRowClass } from "@/components/in-page-nav/in-page-nav-classes";
 import { InPageNavHeader } from "@/components/in-page-nav/in-page-nav-header";
-import { PageHeader } from "@/components/ui/page-header";
+import {
+  RecordBody,
+  RecordCautions,
+  RecordGlance,
+  RecordIntro,
+  RecordSection,
+} from "@/components/clinical-record-panels";
+import { buttonFaceClass } from "@/components/ui/button-face";
 import { StatusMark } from "@/components/ui/status-mark";
 import { cn, pageContainer, toneDanger, toneNeutral, toneWarning } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
@@ -66,36 +66,15 @@ import {
   isRedundantSafetySummary,
   resolveDoNowSteps,
   resolveSafetyFacts,
-  safetyFactCompactLabel,
   sectionBadgeLabel,
   sectionScopeLabel,
   visibleSectionItems,
   withholdGeneratedBody,
   type DifferentialDetailContext,
   type DifferentialDetailTabId,
-  type DifferentialSafetyFact,
 } from "@/lib/differential-detail";
 import type { DifferentialRecord, DifferentialSection } from "@/lib/differentials";
 import { useAccountData } from "@/components/account-data-provider";
-
-const sectionIcons: Record<DifferentialSection["tone"], LucideIcon> = {
-  fit: CircleCheck,
-  warning: TriangleAlert,
-  question: CircleHelp,
-  action: Activity,
-  test: FlaskConical,
-  overlap: GitBranch,
-};
-
-const sectionTone: Record<DifferentialSection["tone"], string> = {
-  fit: "border-[color:var(--success)]/20 bg-[color:var(--success-soft)] text-[color:var(--success)]",
-  warning: "border-[color:var(--warning)]/25 bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
-  question: "border-[color:var(--info)]/25 bg-[color:var(--info-soft)] text-[color:var(--info)]",
-  action:
-    "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
-  test: "border-[color:var(--info-border)] bg-[color:var(--info-soft)] text-[color:var(--info)]",
-  overlap: "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
-};
 
 const statusToneClass: Record<DifferentialRecord["status"], string> = {
   emergent: toneDanger,
@@ -254,30 +233,20 @@ function SectionRow({
   onOpenChange: (id: string, open: boolean) => void;
   termLinks: Record<string, string>;
 }) {
-  const Icon = sectionIcons[section.tone];
   const meta = rowMeta[section.tone];
   const items = useMemo(() => visibleSectionItems(section, record), [section, record]);
   const badge = sectionBadgeLabel(section, record);
   const scopeNote = sectionScopeLabel(section, record);
-
-  const iconTile = (
-    <span
-      className={cn("grid h-9 w-9 place-items-center rounded-lg border sm:h-10 sm:w-10", sectionTone[section.tone])}
-    >
-      <Icon className="h-4 w-4" aria-hidden />
-    </span>
-  );
 
   if (items.length === 0) {
     return (
       <article
         id={`differential-section-${section.id}`}
         data-testid="differential-section-row"
-        className="grid min-h-[4.25rem] scroll-mt-24 grid-cols-[2.25rem_minmax(0,1fr)] items-center gap-3 border-b border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2.5 last:border-b-0 sm:min-h-[4.75rem] sm:grid-cols-[2.5rem_minmax(0,1fr)_9rem] sm:px-4 sm:py-3"
+        className="grid min-h-[4.25rem] scroll-mt-24 grid-cols-[minmax(0,1fr)] items-center gap-3 border-b border-[color:var(--border)] py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_9rem]"
       >
-        {iconTile}
         <div className="min-w-0">
-          <h2 className="text-sm font-extrabold text-[color:var(--text-heading)] sm:text-base">{section.title}</h2>
+          <h3 className="text-base font-bold text-[color:var(--text-heading)]">{section.title}</h3>
           {scopeNote ? <ScopeNote label={scopeNote} /> : null}
           <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)] sm:text-sm sm:leading-6">
             {section.summary}
@@ -294,7 +263,7 @@ function SectionRow({
     <details
       id={`differential-section-${section.id}`}
       data-testid="differential-section-row"
-      className="group scroll-mt-24 border-b border-[color:var(--border)] bg-[color:var(--surface)] last:border-b-0"
+      className="group scroll-mt-24 border-b border-[color:var(--border)] last:border-b-0"
       open={open}
       onToggle={(event) => {
         // Native toggle also fires for prop-driven and browser-initiated flips
@@ -304,10 +273,9 @@ function SectionRow({
         if (next !== open) onOpenChange(section.id, next);
       }}
     >
-      <summary className="grid min-h-[4.25rem] cursor-pointer list-none grid-cols-[2.25rem_minmax(0,1fr)_auto_1rem] items-center gap-3 px-3 py-2.5 hover:bg-[color:var(--surface-subtle)] sm:min-h-[4.75rem] sm:grid-cols-[2.5rem_minmax(0,1fr)_9rem_5.5rem_2rem] sm:px-4 sm:py-3">
-        {iconTile}
+      <summary className="grid min-h-[4.25rem] cursor-pointer list-none grid-cols-[minmax(0,1fr)_auto_1rem] items-center gap-3 py-3 sm:grid-cols-[minmax(0,1fr)_9rem_5.5rem_2rem] [&::-webkit-details-marker]:hidden">
         <div className="min-w-0">
-          <h2 className="text-sm font-extrabold text-[color:var(--text-heading)] sm:text-base">{section.title}</h2>
+          <h3 className="text-base font-bold text-[color:var(--text-heading)]">{section.title}</h3>
           {scopeNote ? <ScopeNote label={scopeNote} /> : null}
           <p
             className={cn(
@@ -337,116 +305,50 @@ function SectionRow({
           aria-hidden
         />
       </summary>
-      <div
-        data-testid="differential-section-items"
-        className="border-t border-[color:var(--border)] px-3 pb-4 pt-3 sm:pl-[3.25rem] sm:pr-4"
-      >
+      <div data-testid="differential-section-items" className="pb-4 pt-1">
         <SectionItems section={section} items={items} termLinks={termLinks} />
       </div>
     </details>
   );
 }
 
-type SnapshotTheme = {
-  Icon: LucideIcon;
-  container: string;
-  iconTile: string;
-  heading: string;
-  divider: string;
-  chip: string;
-  accentText: string;
-};
-
-const snapshotThemes: Record<DifferentialRecord["status"], SnapshotTheme> = {
-  emergent: {
-    Icon: ShieldAlert,
-    // Full-opacity soft tokens: an /NN modifier compiles to a color-mix toward
-    // transparent, which renders near-invisible on the near-white soft values
-    // in light mode (see PR #468).
-    container: "border-[color:var(--danger-border)] bg-[color:var(--danger-soft)]",
-    iconTile: "border-[color:var(--danger)]/20 bg-[color:var(--surface)] text-[color:var(--danger)]",
-    heading: "text-[color:var(--danger)]",
-    divider: "border-[color:var(--danger)]/14",
-    chip: "border-[color:var(--danger-border)]/60 bg-[color:var(--danger-soft)] text-[color:var(--danger)]",
-    accentText: "text-[color:var(--danger)]",
-  },
-  urgent: {
-    Icon: TriangleAlert,
-    container: "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]",
-    iconTile: "border-[color:var(--warning)]/25 bg-[color:var(--surface)] text-[color:var(--warning)]",
-    heading: "text-[color:var(--warning)]",
-    divider: "border-[color:var(--warning)]/20",
-    chip: "border-[color:var(--warning-border)]/60 bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
-    accentText: "text-[color:var(--warning)]",
-  },
-  routine: {
-    Icon: Info,
-    container: "border-[color:var(--border)] bg-[color:var(--surface-subtle)]",
-    iconTile: "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)]",
-    heading: "text-[color:var(--text-heading)]",
-    divider: "border-[color:var(--border)]",
-    chip: "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
-    accentText: "text-[color:var(--text-muted)]",
-  },
-};
-
-const factIcons: Record<DifferentialSafetyFact["id"], LucideIcon> = {
-  "high-risk": ShieldAlert,
-  onset: Clock3,
-  course: Activity,
-  treatable: Plus,
-  causes: TriangleAlert,
-  tests: FlaskConical,
-  actions: Activity,
-  related: GitBranch,
-};
-
-function safetyFactGridClass(count: number): string {
-  if (count <= 1) return "grid-cols-1";
-  if (count >= 4) return "grid-cols-4";
-  if (count === 3) return "grid-cols-3";
-  return "grid-cols-2";
+/**
+ * The record's summary facts (High-risk, Actions, Related and the rest of
+ * `resolveSafetyFacts`) in the shared "At a glance" card, labels in full.
+ */
+function SafetyGlance({ record, curated }: { record: DifferentialRecord; curated: DifferentialCuratedEntry | null }) {
+  const facts = resolveSafetyFacts(record, curated);
+  if (facts.length === 0) return null;
+  return (
+    <RecordGlance
+      testId="differential-at-a-glance"
+      valueTestId="differential-safety-value"
+      facts={facts.map((fact) => ({ key: fact.id, label: fact.label, value: fact.value, wide: false }))}
+    />
+  );
 }
 
-function SafetySnapshot({
-  record,
-  termLinks,
-  curated,
-}: {
-  record: DifferentialRecord;
-  termLinks: Record<string, string>;
-  curated: DifferentialCuratedEntry | null;
-}) {
-  const theme = snapshotThemes[record.status];
-  const facts = resolveSafetyFacts(record, curated);
+/**
+ * Cautions, directly after At a glance and in full: the safety summary and
+ * every "Watch for" item. The items wrap rather than scroll sideways, so none
+ * is cut off at the edge of a phone.
+ */
+function SafetySnapshot({ record, termLinks }: { record: DifferentialRecord; termLinks: Record<string, string> }) {
   const tags = record.safetySnapshot.tags;
   const summary = record.safetySnapshot.summary.trim();
   const showSummary = summary.length > 0 && !isRedundantSafetySummary(summary, tags);
+  if (!showSummary && tags.length === 0) return null;
 
   return (
-    <section
-      className={cn("rounded-lg border px-3 py-2.5 shadow-[var(--shadow-inset)] sm:px-3.5 sm:py-3", theme.container)}
-      data-testid="differential-safety-snapshot"
-    >
-      <div className="flex items-center gap-1.5">
-        <span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-md border", theme.iconTile)}>
-          <theme.Icon className="h-3.5 w-3.5" aria-hidden />
-        </span>
-        <h2 className={cn("text-xs font-extrabold uppercase tracking-label", theme.heading)}>Safety snapshot</h2>
-      </div>
-
-      {showSummary ? (
-        <p className="mt-1.5 text-xs font-semibold leading-5 text-[color:var(--text-heading)] sm:text-sm">{summary}</p>
-      ) : null}
+    <RecordCautions title="Safety snapshot" testId="differential-safety-snapshot">
+      {showSummary ? <p className="m-0 font-semibold text-[color:var(--text-heading)]">{summary}</p> : null}
 
       {tags.length > 0 ? (
         <div
-          className="mt-1.5 flex min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5"
+          className={cn("flex min-w-0 flex-wrap items-center gap-1.5", showSummary && "mt-2")}
           data-testid="differential-safety-watchlist"
         >
-          <span className="shrink-0 text-2xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-heading)]">
-            Watch for
-          </span>
+          <span className="shrink-0 text-xs font-bold text-[color:var(--text-heading)]">Watch for</span>
           {tags.map((tag) => {
             const cleaned = cleanDifferentialItem(tag);
             return (
@@ -460,49 +362,17 @@ function SafetySnapshot({
                 // chip only when linked would jump size mid-row. TOKENS.md §2's
                 // compact-meta role list ("filter chips") is the closest
                 // documented fit (TOKENS.md requires this comment).
-                className={cn(!termLinks[cleaned] && theme.chip, "min-h-compact-meta shrink-0 px-2 text-2xs")}
+                className={cn(
+                  !termLinks[cleaned] &&
+                    "border-[color:var(--warning-border)] bg-[color:var(--surface)] text-[color:var(--warning-text)]",
+                  "min-h-compact-meta px-2 text-xs",
+                )}
               />
             );
           })}
         </div>
       ) : null}
-
-      {facts.length > 0 ? (
-        <div
-          className={cn("mt-1.5 grid gap-1 border-t pt-2 sm:gap-2", safetyFactGridClass(facts.length), theme.divider)}
-          role="list"
-          aria-label="Safety metrics"
-        >
-          {facts.map((fact) => {
-            const Icon = factIcons[fact.id];
-            const compactLabel = safetyFactCompactLabel[fact.id] ?? fact.label;
-            return (
-              <div key={fact.id} className="min-w-0 text-center sm:text-left" role="listitem">
-                <p
-                  className={cn(
-                    "min-w-0 text-2xs font-extrabold leading-tight tracking-tight tabular-nums [overflow-wrap:anywhere] min-[360px]:text-xs sm:text-base sm:leading-none sm:tracking-normal",
-                    theme.accentText,
-                  )}
-                  data-testid="differential-safety-value"
-                >
-                  {fact.value}
-                </p>
-                <p
-                  className="mt-1 flex min-w-0 items-center justify-center gap-1 text-2xs font-bold leading-tight text-[color:var(--text-muted)] sm:justify-start sm:text-xs"
-                  aria-label={fact.label}
-                >
-                  <Icon className={cn("h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5", theme.accentText)} aria-hidden />
-                  <span className="sm:hidden" aria-hidden>
-                    {compactLabel}
-                  </span>
-                  <span className="hidden sm:inline">{fact.label}</span>
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </section>
+    </RecordCautions>
   );
 }
 
@@ -525,17 +395,8 @@ function ClinicalHinge({ record }: { record: DifferentialRecord }) {
   const group = differentialGroupLabel(record);
 
   return (
-    <section
-      data-testid="differential-clinical-hinge"
-      className="rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-3 py-2.5 shadow-[var(--shadow-inset)] sm:px-4 sm:py-3"
-    >
-      <h2 className="flex items-center gap-1.5 text-2xs font-extrabold uppercase tracking-eyebrow text-[color:var(--clinical-accent)]">
-        <Target className="size-icon-sm shrink-0" aria-hidden />
-        {groupScoped ? "Presentation hinge" : "Clinical hinge"}
-      </h2>
-      <p className="mt-1 text-sm font-semibold leading-6 text-[color:var(--text-heading)] sm:text-base sm:leading-7">
-        {hinge}
-      </p>
+    <RecordSection testId="differential-clinical-hinge" title={groupScoped ? "Presentation hinge" : "Clinical hinge"}>
+      <p className="m-0 text-base font-semibold leading-7 text-[color:var(--text-heading)]">{hinge}</p>
       {groupScoped ? (
         <p
           data-testid="differential-clinical-hinge-scope"
@@ -546,7 +407,7 @@ function ClinicalHinge({ record }: { record: DifferentialRecord }) {
             : `Separates the presentation group. It is not specific to ${record.title}.`}
         </p>
       ) : null}
-    </section>
+    </RecordSection>
   );
 }
 
@@ -592,15 +453,12 @@ function PhoneDoNow({ record, curated }: { record: DifferentialRecord; curated: 
   const authored = doNowStepsAreCurated(curated);
 
   return (
-    <section
-      data-testid="differential-do-now-phone"
-      aria-label="Do now"
-      className="rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] px-3 py-3 shadow-[var(--shadow-inset)] lg:hidden"
+    <RecordSection
+      testId="differential-do-now-phone"
+      headingId="differential-do-now-title"
+      title="Do now"
+      className="lg:hidden"
     >
-      <h2 className="flex items-center gap-1.5 text-2xs font-extrabold uppercase tracking-eyebrow text-[color:var(--clinical-accent)]">
-        <Activity className="size-icon-sm shrink-0" aria-hidden />
-        Do now
-      </h2>
       {authored ? null : (
         <p className="mt-1 text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
           {differentialGroupScopeNote(record)}
@@ -633,7 +491,7 @@ function PhoneDoNow({ record, curated }: { record: DifferentialRecord; curated: 
       {authored ? (
         <p className="mt-2 text-2xs font-semibold text-[color:var(--text-muted)]">{curatedProvenanceFor(curated)}</p>
       ) : null}
-    </section>
+    </RecordSection>
   );
 }
 
@@ -944,53 +802,16 @@ function FooterStatus({
 }
 
 /**
- * Renders desktop actions for comparing, copying, and saving a diagnosis.
+ * The record's one action row, under the title at every width: Compare (into
+ * the prefilled compare queue), Copy after review, and Save.
  *
- * @param record - The diagnosis record whose content is copied.
+ * @param record - The diagnosis record being shown.
  * @param saved - Whether the diagnosis is currently saved.
  * @param onToggleSaved - Called when the saved state is toggled.
  * @param compareHref - Where the Compare control navigates.
+ * @param compareCount - How many diagnoses the compare queue will hold.
  */
-function TopActions({
-  record,
-  saved,
-  onToggleSaved,
-  compareHref,
-}: {
-  record: DifferentialRecord;
-  saved: boolean;
-  onToggleSaved: () => void;
-  compareHref: string;
-}) {
-  return (
-    <div className="hidden shrink-0 items-center gap-3 lg:flex">
-      <Link
-        href={compareHref}
-        className="inline-flex min-h-tap items-center gap-2 whitespace-nowrap rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface)] px-4 text-sm font-semibold text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)] hover:bg-[color:var(--surface-subtle)]"
-      >
-        <GitCompareArrows className="h-4 w-4" aria-hidden />
-        Compare
-      </Link>
-      <CopyAfterReviewButton text={formatDifferentialCopyText(record)} />
-      <button
-        type="button"
-        onClick={onToggleSaved}
-        aria-pressed={saved}
-        aria-label={saved ? "Remove saved diagnosis" : "Save diagnosis"}
-        className={cn(
-          "grid h-tap w-tap place-items-center rounded-lg border shadow-[var(--shadow-inset)] hover:bg-[color:var(--surface-subtle)]",
-          saved
-            ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-            : "border-[color:var(--border-lux)] bg-[color:var(--surface)] text-[color:var(--text-heading)]",
-        )}
-      >
-        {saved ? <BookmarkCheck className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}
-      </button>
-    </div>
-  );
-}
-
-function MobilePrimaryActions({
+function RecordActionRow({
   record,
   saved,
   onToggleSaved,
@@ -1004,18 +825,15 @@ function MobilePrimaryActions({
   compareCount: number;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--surface)] p-2 shadow-[var(--e2)] lg:hidden">
-      <Link
-        href={compareHref}
-        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--clinical-accent)] px-3 text-sm font-semibold text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)] hover:bg-[color:var(--primary-strong)]"
-      >
+    <>
+      <Link href={compareHref} className={buttonFaceClass({ variant: "secondary" })}>
         <GitCompareArrows className="h-4 w-4" aria-hidden />
         Compare ({compareCount})
       </Link>
       <CopyAfterReviewButton
         label="Copy"
         text={formatDifferentialCopyText(record)}
-        className="min-h-12 !bg-[color:var(--surface-raised)] !text-[color:var(--clinical-accent)] hover:!bg-[color:var(--surface-subtle)]"
+        className={buttonFaceClass({ variant: "secondary" })}
       />
       <button
         type="button"
@@ -1023,15 +841,15 @@ function MobilePrimaryActions({
         aria-pressed={saved}
         aria-label={saved ? "Remove saved diagnosis" : "Save diagnosis"}
         className={cn(
-          "grid h-12 w-12 place-items-center rounded-md border",
-          saved
-            ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-            : "border-[color:var(--clinical-accent-border)] bg-[color:var(--surface-raised)] text-[color:var(--text-heading)]",
+          buttonFaceClass({ variant: "secondary" }),
+          "w-tap px-0",
+          saved &&
+            "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
         )}
       >
         {saved ? <BookmarkCheck className="h-4 w-4" aria-hidden /> : <Bookmark className="h-4 w-4" aria-hidden />}
       </button>
-    </div>
+    </>
   );
 }
 
@@ -1058,17 +876,8 @@ function DiagnosisDiscoveryActions({
   ];
 
   return (
-    <nav
-      aria-label="Explore diagnosis"
-      data-testid="differential-discovery-actions"
-      className="grid gap-2 rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--surface-raised)] p-2 shadow-[var(--e2)] sm:hidden"
-    >
-      <div className="flex items-center justify-between gap-3 px-1 pt-0.5">
-        <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-heading)]">
-          Explore diagnosis
-        </p>
-        <span className="text-xs font-medium text-[color:var(--text-muted)]">Quick access</span>
-      </div>
+    <nav aria-label="Explore diagnosis" data-testid="differential-discovery-actions" className="grid gap-2 sm:hidden">
+      <h2 className="m-0 text-lg font-bold tracking-tight text-[color:var(--text-heading)]">Explore diagnosis</h2>
       <div className="grid grid-cols-2 gap-2">
         {actions.map((action) => {
           const Icon = action.icon;
@@ -1098,10 +907,6 @@ function DiagnosisDiscoveryActions({
       </div>
     </nav>
   );
-}
-
-function IconForDiagnosis(record: DifferentialRecord): LucideIcon {
-  return record.slug === "delirium" ? BrainCircuit : Stethoscope;
 }
 
 /**
@@ -1409,15 +1214,11 @@ export function DifferentialDetailPage({
           />
         )}
       />
-      <div className={cn(pageContainer, "grid gap-4 px-3 py-3 sm:px-6 sm:py-4 lg:gap-5 lg:px-8")}>
-        <PageHeader
+      <div className={cn(pageContainer, "grid gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:px-8")}>
+        <RecordIntro
           title={record.title}
-          description={record.subtitle}
-          icon={IconForDiagnosis(record)}
-          // On the title line, not the row below it: a lone urgency chip does
-          // not earn a full-width row on a desktop header, and the chip belongs
-          // to the title it qualifies. It wraps under the title on a phone.
-          inlineMeta={
+          line={record.subtitle}
+          tags={
             <>
               <span
                 className={cn(
@@ -1433,10 +1234,16 @@ export function DifferentialDetailPage({
               </span>
             </>
           }
-          actions={<TopActions record={record} saved={saved} onToggleSaved={toggleSaved} compareHref={compareHref} />}
+          actions={
+            <RecordActionRow
+              record={record}
+              saved={saved}
+              onToggleSaved={toggleSaved}
+              compareHref={compareHref}
+              compareCount={compareIds.length}
+            />
+          }
         />
-
-        <DiagnosisDiscoveryActions sections={sections} onSelect={changeTab} />
 
         {saveNotice ? (
           <p role="status" aria-live="polite" className="text-sm text-[color:var(--text-muted)]">
@@ -1468,17 +1275,16 @@ export function DifferentialDetailPage({
                   no ellipsis, scrollbar or any other cue that content was missing.
                   `repeat(1, minmax(0, 1fr))` caps the track at the column; measured
                   identical at 639px and above. */}
-              <div className="grid min-w-0 grid-cols-1 gap-4">
+              <RecordBody className="grid grid-cols-1">
+                <SafetyGlance record={record} curated={curated} />
+                <SafetySnapshot record={record} termLinks={detailContext.termLinks ?? {}} />
                 <ContentNote curated={curated} />
-                <SafetySnapshot record={record} termLinks={detailContext.termLinks ?? {}} curated={curated} />
                 <ClinicalHinge record={record} />
                 <PhoneDoNow record={record} curated={curated} />
-                <div className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--shadow-inset)]">
-                  <div className="flex items-center justify-between gap-3 border-b border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 sm:px-4">
-                    <p className="text-xs font-extrabold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                      Clinical review
-                    </p>
-                    {expandableSectionIds.length > 0 ? (
+                <RecordSection
+                  title="Clinical review"
+                  action={
+                    expandableSectionIds.length > 0 ? (
                       <button
                         type="button"
                         data-testid="differential-expand-all"
@@ -1492,24 +1298,30 @@ export function DifferentialDetailPage({
                         )}
                         {allOpen ? "Collapse all" : "Expand all"}
                       </button>
-                    ) : null}
+                    ) : null
+                  }
+                >
+                  <div className="border-t border-[color:var(--border)]">
+                    {bodyWithheld ? (
+                      <WithheldBody onOpenSource={() => changeTab("source")} />
+                    ) : (
+                      record.sections.map((section) => (
+                        <SectionRow
+                          key={section.id}
+                          section={section}
+                          record={record}
+                          open={openSections.has(section.id)}
+                          onOpenChange={setSectionOpen}
+                          termLinks={detailContext.termLinks ?? {}}
+                        />
+                      ))
+                    )}
                   </div>
-                  {bodyWithheld ? (
-                    <WithheldBody onOpenSource={() => changeTab("source")} />
-                  ) : (
-                    record.sections.map((section) => (
-                      <SectionRow
-                        key={section.id}
-                        section={section}
-                        record={record}
-                        open={openSections.has(section.id)}
-                        onOpenChange={setSectionOpen}
-                        termLinks={detailContext.termLinks ?? {}}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
+                </RecordSection>
+                {/* Map and Related, the record's onward journeys, close the
+                    phone record (the strip is phone-only; tabs carry them from sm). */}
+                <DiagnosisDiscoveryActions sections={sections} onSelect={changeTab} />
+              </RecordBody>
               <DifferentialOverviewRail
                 record={record}
                 detailContext={detailContext}
@@ -1543,13 +1355,6 @@ export function DifferentialDetailPage({
           ) : null}
         </div>
 
-        <MobilePrimaryActions
-          record={record}
-          saved={saved}
-          onToggleSaved={toggleSaved}
-          compareHref={compareHref}
-          compareCount={compareIds.length}
-        />
         <p className="rounded-lg border border-transparent px-1 text-xs leading-5 text-[color:var(--text-muted)]">
           Clinical reference — not validated decision support. Review before use.
         </p>

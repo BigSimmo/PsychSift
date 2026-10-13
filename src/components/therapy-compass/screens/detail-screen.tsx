@@ -3,14 +3,12 @@
 import { useMemo } from "react";
 
 import { InformationPageFooter, InformationPageShell } from "@/components/information-page-shell";
-import { PageHeader } from "@/components/ui/page-header";
-import { cn } from "@/components/ui-primitives";
+import { RecordBody, RecordIntro } from "@/components/clinical-record-panels";
 import { DesktopSplitList, type DesktopSplitGroup } from "@/components/work-frame/desktop-split-list";
 import { ClinicalSplit } from "@/components/work-frame/work-desktop-layout";
 import { therapyRecordHref, therapyScreenHref } from "@/lib/therapy-compass-navigation";
 
 import { useTcBindings } from "../bindings";
-import { heroCard } from "../controls";
 import { cardPreviewText } from "../data/select";
 import { TherapyKeyFacts } from "../record/key-facts";
 import { RelatedTherapies } from "../record/related-therapies";
@@ -93,41 +91,39 @@ export function DetailScreen() {
           list={<DesktopSplitList heading="Therapies by category" groups={splitGroups} />}
           detail={
             <>
-              <section data-screen-label="Detail" className="flex flex-col gap-3">
-                <TherapySaveNotice notice={notice} />
-
-                <div className={cn(heroCard, "px-4 py-4 sm:px-5 sm:py-5")}>
-                  <PageHeader
-                    title={t.name}
+              <section data-screen-label="Detail">
+                <RecordBody>
+                  <TherapySaveNotice notice={notice} />
+                  <RecordIntro
                     // The category always leads. It used to be replaced by "Also
                     // known as …" for any record carrying an alias, which quietly
                     // cost every one of those records the one line that says what
-                    // family of therapy this is — the more useful orienting fact of
-                    // the two. The aliases keep their place, one line further down.
+                    // family of therapy this is. The aliases keep their place, one
+                    // line further down.
                     eyebrow={t.category}
-                    description={summary}
+                    title={t.name}
+                    line={summary}
                     meta={
-                      <div className="flex flex-col gap-2">
-                        {t.aliases.length ? (
-                          <p className="m-0 text-xs text-[color:var(--text-muted)]">
-                            Also known as {t.aliases.join(", ")}
-                          </p>
-                        ) : null}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <StatusBadge status={t.reviewStatus} />
-                          <TagRow tags={t.tags.length ? t.tags : [t.category]} max={4} />
-                        </div>
-                      </div>
+                      t.aliases.length ? (
+                        <p className="m-0 text-xs text-[color:var(--text-muted)]">
+                          Also known as {t.aliases.join(", ")}
+                        </p>
+                      ) : null
                     }
+                    tags={
+                      <>
+                        <StatusBadge status={t.reviewStatus} />
+                        <TagRow tags={t.tags.length ? t.tags : [t.category]} max={4} />
+                      </>
+                    }
+                    actions={<TherapyCompareAction therapy={t} />}
                   />
-                </div>
-
-                <TherapyCompareAction therapy={t} />
-                <TherapyKeyFacts therapy={t} />
-                <TherapySafetySection therapy={t} />
-                <TherapyRecordSections therapy={t} />
-                <RelatedTherapies related={b.relatedForSelected} onOpen={(slug) => b.open(slug)} />
-                <TherapySourceProvenance therapy={t} />
+                  <TherapyKeyFacts therapy={t} />
+                  <TherapySafetySection therapy={t} />
+                  <TherapyRecordSections therapy={t} />
+                  <RelatedTherapies related={b.relatedForSelected} onOpen={(slug) => b.open(slug)} />
+                  <TherapySourceProvenance therapy={t} />
+                </RecordBody>
               </section>
               <InformationPageFooter className="mt-4">
                 {/* Therapy records name their sources but do not link to them yet (ledger #05WXHX). */}

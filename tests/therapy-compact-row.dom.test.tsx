@@ -73,6 +73,7 @@ vi.mock("@/components/clinical-dashboard/universal-search-also-matches", () => (
   UniversalSearchAlsoMatches: () => null,
 }));
 
+import { TherapyKeyFacts } from "@/components/therapy-compass/record/key-facts";
 import { TherapyRecordSections } from "@/components/therapy-compass/record/record-sections";
 import { SearchScreen } from "@/components/therapy-compass/screens/search-screen";
 import { therapyAvoidModifyText } from "@/components/therapy-compass/therapy-card";
@@ -130,7 +131,14 @@ describe("Therapy compact rows", () => {
 
   it("still shows what the row used for Best used for and Best fit, word for word, in the record", () => {
     const record = therapy();
-    render(<TherapyRecordSections therapy={record} />);
+    // Setting and Suits are shown in full in the At a glance card and are not
+    // printed a second time in the body, so the record is both together.
+    render(
+      <>
+        <TherapyKeyFacts therapy={record} />
+        <TherapyRecordSections therapy={record} />
+      </>,
+    );
 
     for (const text of [record.bestUsedFor, record.targetSymptoms, record.setting, record.patientPopulation]) {
       expect(screen.getByText(text!, { exact: false })).toBeInTheDocument();

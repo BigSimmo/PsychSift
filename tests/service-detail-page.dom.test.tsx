@@ -209,7 +209,9 @@ describe("ServiceDetailPage content cleanup", () => {
   it("keeps referral details compact and exposes no copy controls", () => {
     render(<ServiceDetailPage service={baseService()} />);
 
-    expect(screen.getByRole("heading", { name: "Priority facts" })).toBeInTheDocument();
+    // The priority facts are the shared At a glance card; the region keeps its established name.
+    expect(screen.getByLabelText("Priority facts")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "At a glance" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Call 13 92 76" })).toHaveAttribute("href", "tel:139276");
     expect(screen.queryByRole("button", { name: /copy/i })).not.toBeInTheDocument();
 

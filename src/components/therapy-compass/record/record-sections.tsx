@@ -1,42 +1,22 @@
-import {
-  ArrowUpRight,
-  Clock,
-  FileText,
-  MapPin,
-  ShieldCheck,
-  Target,
-  TriangleAlert,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
 import type { ReactNode } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
-import { cn } from "@/components/ui-primitives";
+import { RecordCautions, RecordSection as SharedRecordSection } from "@/components/clinical-record-panels";
 
 import { extractCitations, ProseBlock } from "../prose";
 import { parseSteps, splitIndications } from "../data/select";
 import type { Therapy } from "../data/types";
+import { therapyKeyFactCards } from "./key-fact-cards";
 
-function RecordSection({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children: ReactNode }) {
-  return (
-    <section className="flex gap-3 border-b border-[color:var(--border)] px-4 py-4 last:border-b-0 sm:px-5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-        <Icon className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="mb-1 text-sm font-semibold text-[color:var(--text-heading)]">{title}</h2>
-        {children}
-      </div>
-    </section>
-  );
+/** One body section in the shared record style: a plain heading, the content below. */
+function RecordSection({ title, children }: { title: string; children: ReactNode }) {
+  return <SharedRecordSection title={title}>{children}</SharedRecordSection>;
 }
 
-function TextSection({ icon, title, body }: { icon: LucideIcon; title: string; body: string | null }) {
+function TextSection({ title, body }: { title: string; body: string | null }) {
   const text = body?.trim();
   if (!text) return null;
   return (
-    <RecordSection icon={icon} title={title}>
+    <RecordSection title={title}>
       <ProseBlock text={text} label={title} />
     </RecordSection>
   );
@@ -52,10 +32,10 @@ function TextSection({ icon, title, body }: { icon: LucideIcon; title: string; b
  */
 function DeliverySection({ therapy }: { therapy: Therapy }) {
   const steps = parseSteps(therapy.deliverySteps);
-  if (!steps.length) return <TextSection icon={FileText} title="How to deliver it" body={therapy.deliverySteps} />;
+  if (!steps.length) return <TextSection title="How to deliver it" body={therapy.deliverySteps} />;
 
   return (
-    <RecordSection icon={FileText} title="How to deliver it">
+    <RecordSection title="How to deliver it">
       <ol className="m-0 max-w-[68ch] list-none space-y-2 p-0">
         {steps.map((step, index) => {
           const { text, citations } = extractCitations(step);
@@ -87,9 +67,6 @@ function DeliverySection({ therapy }: { therapy: Therapy }) {
  * it is appended only when it adds something new, so the block does not echo
  * itself. `alternatives` is deliberately not rendered: it is byte-identical to
  * `limitations` in every record in the catalogue.
- *
- * Rendered by the detail screen directly under the key-fact tiles, not at the foot of
- * the body, and never clamped: it is a safety cue and reads in full without a tap.
  */
 export function TherapySafetySection({ therapy }: { therapy: Therapy }) {
   const cautions = therapy.contraindicationsOrCautions?.trim() ?? "";
@@ -98,23 +75,18 @@ export function TherapySafetySection({ therapy }: { therapy: Therapy }) {
   const warnings = therapy.warnings.filter(Boolean);
   if (!text && !warnings.length) return null;
 
+  // Directly after At a glance and never clamped: safety text is read in full.
   return (
-    <section className="flex gap-3 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] px-4 py-4 sm:px-5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--surface)] text-[color:var(--warning-text)]">
-        <TriangleAlert className="h-4 w-4" aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="mb-1 text-sm font-semibold text-[color:var(--warning-text)]">Safety &amp; cautions</h2>
-        {text ? <ProseBlock text={text} label="Safety and cautions" tone="warning" clamp={false} /> : null}
-        {warnings.length ? (
-          <ul className="m-0 mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-[color:var(--warning-text)]">
-            {warnings.map((warning) => (
-              <li key={warning}>{warning}</li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-    </section>
+    <RecordCautions title="Safety & cautions" testId="therapy-safety-cautions">
+      {text ? <ProseBlock text={text} label="Safety and cautions" tone="warning" clamp={false} /> : null}
+      {warnings.length ? (
+        <ul className="m-0 mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-[color:var(--warning-text)]">
+          {warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      ) : null}
+    </RecordCautions>
   );
 }
 
@@ -130,30 +102,34 @@ export function TherapySafetySection({ therapy }: { therapy: Therapy }) {
  *
  * `homework` is titled "Stepping up or switching" because that is what the
  * field actually holds in every record; the field name is an import artefact.
+ *
+ * A section whose text is exactly the value the At a glance card already shows
+ * in full (Format, Setting, Suits) is not printed a second time.
  */
 export function TherapyRecordSections({ therapy }: { therapy: Therapy }) {
   const goals = splitIndications(therapy);
+  const glanced = new Set(
+    therapyKeyFactCards(therapy)
+      .filter((card) => card.id !== "cautions")
+      .map((card) => card.body.trim()),
+  );
+  const unlessGlanced = (body: string | null | undefined) => {
+    const text = body?.trim() ?? "";
+    return text && glanced.has(text) ? null : (body ?? null);
+  };
 
   return (
-    <div className="space-y-3">
-      <div className={cn(cardSurface, "overflow-hidden")}>
-        <TextSection icon={ShieldCheck} title="Use when" body={therapy.bestUsedFor} />
-        <TextSection icon={Target} title="What it targets" body={therapy.targetSymptoms} />
-        <TextSection icon={Target} title="Treatment goals" body={goals} />
-        <TextSection icon={Target} title="How it works" body={therapy.mechanism} />
-        <DeliverySection therapy={therapy} />
-        {/* `timeRequired` is prose about session counts, protocol length and
-            intensity. The Format tile opens it in a sheet; the reading column
-            still carries the full field. */}
-        <TextSection icon={Clock} title="Time and intensity" body={therapy.timeRequired} />
-        {/* The key-facts tile glances this as `{first} +N` and opens the full
-            list in a sheet. Several records list four or five settings, so the
-            reading column still carries the complete field. */}
-        <TextSection icon={MapPin} title="Where it is delivered" body={therapy.setting} />
-        <TextSection icon={Users} title="Who it suits" body={therapy.patientPopulation} />
-        <TextSection icon={TriangleAlert} title="Common pitfalls" body={therapy.commonPitfalls} />
-        <TextSection icon={ArrowUpRight} title="Stepping up or switching" body={therapy.homework} />
-      </div>
+    <div className="flex flex-col gap-7">
+      <TextSection title="Use when" body={therapy.bestUsedFor} />
+      <TextSection title="What it targets" body={therapy.targetSymptoms} />
+      <TextSection title="Treatment goals" body={goals} />
+      <TextSection title="How it works" body={therapy.mechanism} />
+      <DeliverySection therapy={therapy} />
+      <TextSection title="Time and intensity" body={unlessGlanced(therapy.timeRequired)} />
+      <TextSection title="Where it is delivered" body={unlessGlanced(therapy.setting)} />
+      <TextSection title="Who it suits" body={unlessGlanced(therapy.patientPopulation)} />
+      <TextSection title="Common pitfalls" body={therapy.commonPitfalls} />
+      <TextSection title="Stepping up or switching" body={therapy.homework} />
     </div>
   );
 }
