@@ -180,6 +180,9 @@ describe("SettingsDialog — destructive and account actions", () => {
     const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("storage unavailable");
     });
+    const removeItem = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
     renderDialog();
     fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
     expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: 72, medications: ["lithium"] });
@@ -187,6 +190,19 @@ describe("SettingsDialog — destructive and account actions", () => {
       screen.getByText("The prescribing patient profile could not be cleared. Please try again."),
     ).toBeInTheDocument();
     setItem.mockRestore();
+    removeItem.mockRestore();
+  });
+
+  it("still clears the profile by deleting it when writing the empty profile fails", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
+    setItem.mockRestore();
+    expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: null, medications: [] });
+    expect(screen.queryByText(/could not be cleared/)).not.toBeInTheDocument();
   });
 
   it("disables the prescribing profile clear when nothing has been entered", () => {

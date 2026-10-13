@@ -286,7 +286,14 @@ export function resetPatientProfile(): boolean {
     window.sessionStorage.setItem(PATIENT_PROFILE_STORAGE_KEY, serialized);
     cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === serialized;
   } catch {
-    // Storage may be unavailable; report the failed clear to the caller.
+    // Writing can fail (quota) while deleting still works, and a privacy clear must
+    // not leave patient details behind because of that: remove the key instead.
+    try {
+      window.sessionStorage.removeItem(PATIENT_PROFILE_STORAGE_KEY);
+      cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === null;
+    } catch {
+      // Storage entirely unavailable; report the failed clear to the caller.
+    }
   }
   window.dispatchEvent(new Event(PATIENT_PROFILE_CHANGE_EVENT));
   return cleared;
