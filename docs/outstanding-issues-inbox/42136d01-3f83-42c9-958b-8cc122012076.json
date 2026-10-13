@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "42136d01-3f83-42c9-958b-8cc122012076",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Two live-monitor scripts cannot use the shared entrypoint helper because the monitor workflow sparse-checks-out only those two files",
+    "detail": "Add scripts/lib/is-entrypoint.mjs to the sparse-checkout list in .github/workflows/live-domain-monitor.yml, then convert check-live-deployment-freshness.mjs and check-live-search-results.mjs and remove them from ALLOWED_RAW in tests/script-entrypoint-guard.test.ts. Why: they keep the raw file:// comparison, which is correct on Linux CI but would silently no-op if ever run on Windows. Context: converting them in PR 3507 would have broken the live monitor (ERR_MODULE_NOT_FOUND), so it was reverted and allow-listed. Owner: assistant. Confidence: medium; low urgency because they run on Linux only.",
+    "source": "session 2026-10-13 /ledger sweep; PR BigSimmo/PsychSift#3507, tests/script-entrypoint-guard.test.ts",
+    "issueUlid": "01M4TNNWC62S5NFBQ3WQJ8Q26B"
+  }
+}
