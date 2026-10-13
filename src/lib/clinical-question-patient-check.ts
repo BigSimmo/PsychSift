@@ -36,8 +36,11 @@ const AGE_PHRASES: readonly RegExp[] = [
   /\b\d{1,3}\s?(?:years?|yrs?)?\s?(?:male|female|man|woman|boy|girl)\b/gi,
 ];
 
-/** Millisecond readings ("QTc 480 ms", "QRS over 100 msec"), set aside like ages. */
-const UNIT_PHRASES: readonly RegExp[] = [/\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b/gi];
+/**
+ * Millisecond readings ("QTc 480 ms", "QRS over 100 msec"), set aside like ages. Lowercase only,
+ * and never before a capitalised word, so "Ward 4 Ms Smith" keeps its title and is still refused.
+ */
+const UNIT_PHRASES: readonly RegExp[] = [/\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b(?!\.?\s*\p{Lu})/gu];
 
 /** Words that follow "pt" or the diagnosis "MS" in a question, and never start a name. */
 const FUNCTION_WORD = "(?:with|on|in|who|taking|having|has|had|and|or|of|for|after|receiving|presenting|is|was)";

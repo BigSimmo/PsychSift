@@ -83,6 +83,10 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
     ["Ms Jones QTc 480 ms on citalopram", "a name"],
     ["pt John Smith lithium", "a name"],
     ["pt js with renal impairment", ""],
+    ["Ward 4 Ms Smith clozapine", ""],
+    ["2 Ms Jones lithium", ""],
+    ["seen at 9 Ms Jones on lithium", ""],
+    ["QTc 480 ms Ms Jones citalopram", ""],
   ])("refuses %s", (question, finding) => {
     const problem = clinicalQuestionPatientDetail(question);
     expect(problem).not.toBeNull();
