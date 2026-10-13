@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d24e0ba6-e21e-4c7a-81fd-04ff18800cf7",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#4W704K",
+    "outcome": "Resolved: Configured ENABLE ALWAYS on release records immutability trigger via migration.",
+    "baseRowFingerprint": "e911ef3b661b61d6517a518f222e79e747eed1a9702b9297cfc2ee57c64885dc"
+  }
+}

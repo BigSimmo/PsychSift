@@ -795,7 +795,9 @@ function walk(directory, root = ROOT) {
     if (entry.isDirectory()) return walk(absolute, root);
     if (!SOURCE_EXTENSIONS.has(path.extname(entry.name))) return [];
     const relative = toPosix(path.relative(root, absolute));
-    return relative.includes("/mockups/") || relative.includes("-mockup") ? [] : [relative];
+    return relative.includes("/mockups/") || relative.includes("-mockup") || relative.includes("/(admin)/admin/")
+      ? []
+      : [relative];
   });
 }
 
@@ -809,7 +811,8 @@ function pageRoutesFromFiles(files) {
       (relativePath) =>
         /\/page\.(?:ts|tsx)$/.test(relativePath) &&
         !relativePath.includes("/api/") &&
-        !relativePath.includes("/mockups/"),
+        !relativePath.includes("/mockups/") &&
+        !relativePath.includes("/(admin)/admin/"),
     )
     .sort();
 }
