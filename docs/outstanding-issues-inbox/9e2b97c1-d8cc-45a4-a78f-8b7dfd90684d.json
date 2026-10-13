@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "9e2b97c1-d8cc-45a4-a78f-8b7dfd90684d",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "A review bot (Gitar) armed auto-merge on a clinical-risk PR and it merged on bot approval alone, with no human review",
+    "detail": "Decide whether bot-enabled auto-merge should be allowed on PRs that touch the clinical-risk list (e.g. patient-safety-plan.tsx), and if not, turn off Gitar auto-merge or require a human approval via branch protection. Why: PR 3507 changed a patient-safety component and was squash-merged by gitar-bot at 2026-10-13 04:24 after only bot approvals; AGENTS.md treats auto-merge state as user-owned. Context: the owner had not armed it; the session could not disable it without breaking that rule. Owner: user. Confidence: high.",
+    "source": "session 2026-10-13 /ledger sweep; PR BigSimmo/PsychSift#3507",
+    "issueUlid": "01M4TNNVYKYF0XSQY0GS5GWG8Z"
+  }
+}
