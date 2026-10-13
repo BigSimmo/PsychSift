@@ -272,12 +272,22 @@ export function clearPatientProfile(): void {
  * field's point of view they are the same event: everything you are showing is
  * gone, whoever asked for it.
  */
-export function resetPatientProfile(): void {
-  if (typeof window === "undefined") return;
+export function resetPatientProfile(): boolean {
+  if (typeof window === "undefined") return false;
   // Bumped first so the single write below carries both halves of the clear in
   // one change event, rather than notifying twice and rendering an in-between
   // state in which the profile is already empty but the fields do not yet know
   // a clear is what emptied it.
   clearGeneration += 1;
-  writePatientProfile({ ...EMPTY_PATIENT_PROFILE, medications: [] });
+  const emptyProfile = { ...EMPTY_PATIENT_PROFILE, medications: [] };
+  const serialized = JSON.stringify(emptyProfile);
+  let cleared = false;
+  try {
+    window.sessionStorage.setItem(PATIENT_PROFILE_STORAGE_KEY, serialized);
+    cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === serialized;
+  } catch {
+    // Storage may be unavailable; report the failed clear to the caller.
+  }
+  window.dispatchEvent(new Event(PATIENT_PROFILE_CHANGE_EVENT));
+  return cleared;
 }

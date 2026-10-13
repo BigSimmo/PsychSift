@@ -175,6 +175,18 @@ describe("SettingsDialog — destructive and account actions", () => {
     expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();
   });
 
+  it("reports when the prescribing profile clear cannot be persisted", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    const setItem = vi.spyOn(window.sessionStorage, "setItem").mockImplementationOnce(() => {
+      throw new Error("storage unavailable");
+    });
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
+    expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: 72, medications: ["lithium"] });
+    expect(screen.getByText("The prescribing patient profile could not be cleared. Please try again.")).toBeInTheDocument();
+    setItem.mockRestore();
+  });
+
   it("disables the prescribing profile clear when nothing has been entered", () => {
     renderDialog();
     expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();

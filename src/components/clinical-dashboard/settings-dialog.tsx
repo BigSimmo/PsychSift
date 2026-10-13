@@ -659,8 +659,12 @@ export function SettingsDialog({
   }
 
   function handleClearPatientProfile() {
-    resetPatientProfile();
-    setPrivacyNotice("Prescribing patient profile cleared.");
+    const cleared = resetPatientProfile();
+    setPrivacyNotice(
+      cleared
+        ? "Prescribing patient profile cleared."
+        : "The prescribing patient profile could not be cleared. Please try again.",
+    );
   }
 
   /**
