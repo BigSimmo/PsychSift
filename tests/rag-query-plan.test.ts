@@ -356,6 +356,15 @@ describe("bounded RAG query planning", () => {
     expect(result.reasonCodes).not.toContain("comparison_sides_identified");
   });
 
+  it("does not reduce a stage to a bare lane when a subject follows its qualifier", () => {
+    const query = "Compare admission management of schizophrenia and discharge management of schizophrenia";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.subquestions.map((part) => part.question)).not.toContain(
+      "admission: directly relevant evidence for this comparison.",
+    );
+  });
+
   it.each([
     ["ANC threshold in the clozapine monitoring guideline", "document"],
     ["clozapin withholding neutrophils", "medicine"],
