@@ -33,6 +33,7 @@ import { buildRagDiagnosticDumpRecord, resolveLocalDiagnosticOutputPath } from "
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import {
   blockingGateRetryCaseIds,
+  finalBlockingFailures,
   latencySamplesForRetry,
   mergeRetriedRagResults,
   renderGateRetryMarkdown,
@@ -1658,9 +1659,13 @@ async function main() {
     report = reportFor(mergedResults, retryReceipt, additionalLatencySamples);
     // Non-retryable first-attempt failures (offline provider use, latency, retrieval) stand: a
     // substituted result must never erase them from the final verdict.
-    const carried = nonRetryable.filter((failure) => !report.blocking_threshold_failures.includes(failure));
-    if (carried.length) {
-      const finalFailures = [...report.blocking_threshold_failures, ...carried];
+    const finalFailures = finalBlockingFailures({
+      initial: initial.blocking_threshold_failures,
+      merged: report.blocking_threshold_failures,
+      nonRetryable,
+      retryError,
+    });
+    if (finalFailures.length !== report.blocking_threshold_failures.length) {
       report = {
         ...report,
         blocking_threshold_failures: finalFailures,

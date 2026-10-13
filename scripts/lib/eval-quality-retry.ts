@@ -7,8 +7,9 @@
  * by design and their values must not move, so instead of loosening them the harness re-runs ONLY
  * the cases implicated in a blocking RAG failure, once, and rebuilds the report with the retry
  * outcome substituted for each retried case. A gate therefore blocks only when the same case fails
- * it again; latency gates are re-evaluated as p95 over the population that includes the retry
- * samples. Thresholds are read, never written. Retrieval and offline-invariant failures are not
+ * it again. Latency gates are not retried at all: every first-attempt sample stays in the p95
+ * population, so a rerun could never clear one and would only add provider cost. If the retry
+ * itself errors, the whole first-attempt verdict stands. Thresholds are read, never written. Retrieval and offline-invariant failures are not
  * retryable and keep blocking exactly as before.
  *
  * Pure apart from types, so every branch is testable without a provider call.
@@ -186,4 +187,19 @@ Blocking failures after retry:
 
 ${list(retry.final_blocking_threshold_failures)}
 `;
+}
+
+/**
+ * The verdict after a retry. Non-retryable first-attempt failures always stand. A crashed retry is
+ * incomplete evidence, so then the whole first-attempt verdict stands: a partial set of passing
+ * retries can never lift a rate gate over its threshold and let the run pass.
+ */
+export function finalBlockingFailures(args: {
+  initial: readonly string[];
+  merged: readonly string[];
+  nonRetryable: readonly string[];
+  retryError: string | null;
+}): string[] {
+  const standing = args.retryError ? args.initial : args.nonRetryable;
+  return [...args.merged, ...standing.filter((failure) => !args.merged.includes(failure))];
 }

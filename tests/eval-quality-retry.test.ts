@@ -9,6 +9,7 @@ import {
 } from "../scripts/eval-quality";
 import {
   blockingGateRetryCaseIds,
+  finalBlockingFailures,
   latencySamplesForRetry,
   mergeRetriedRagResults,
   summarizeGateRetry,
@@ -208,5 +209,23 @@ describe("blocking-gate retry", () => {
 
   it("renders nothing extra when no retry ran", () => {
     expect(renderEvalQualityMarkdown(report(healthy))).not.toContain("Blocking-Gate Retry");
+  });
+});
+
+describe("finalBlockingFailures", () => {
+  const rate = "RAG grounded_supported_rate 0.9 below 0.95";
+  const latency = "RAG p95_latency_ms 6360 above 6000";
+
+  it("keeps non-retryable failures when the retry completed", () => {
+    expect(
+      finalBlockingFailures({ initial: [rate, latency], merged: [], nonRetryable: [latency], retryError: null }),
+    ).toEqual([latency]);
+  });
+
+  it("keeps the whole first-attempt verdict when the retry crashed part-way", () => {
+    // One retry passed and lifted the rate above its threshold before the next one threw.
+    expect(
+      finalBlockingFailures({ initial: [rate], merged: [], nonRetryable: [], retryError: "provider exploded" }),
+    ).toEqual([rate]);
   });
 });
