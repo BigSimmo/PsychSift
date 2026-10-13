@@ -75,7 +75,7 @@ async function clickUntil(control: Locator, outcome: () => Promise<void>) {
   await expect(async () => {
     await control.click({ timeout: 5_000 });
     await outcome();
-  }).toPass({ timeout: 30_000, intervals: [1_000, 2_000, 4_000] });
+  }).toPass({ timeout: 20_000, intervals: [1_000, 2_000, 4_000] });
 }
 
 async function expectNoSidewaysScroll(page: Page, label: string) {
