@@ -71,7 +71,7 @@ describe("the old page files stay as redirect backstops (spec review 8)", () => 
     const { default: Page } = (await import(modulePath)) as { default: (props?: unknown) => unknown };
     let digest = "";
     try {
-      await Page();
+      await Page({ searchParams: Promise.resolve({}) });
     } catch (error) {
       digest = String((error as { digest?: unknown }).digest ?? "");
     }

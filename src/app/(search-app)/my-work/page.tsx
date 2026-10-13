@@ -10,7 +10,7 @@ type MyWorkBackstopProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function MyWorkBackstop({ searchParams }: MyWorkBackstopProps = {}) {
+export default async function MyWorkBackstop({ searchParams }: MyWorkBackstopProps) {
   const params = searchParams ? await searchParams : {};
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {

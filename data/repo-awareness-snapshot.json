@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-12"
+    "committed_at": "2026-10-13"
   },
   "routes": {
     "modes": [
@@ -206,6 +206,11 @@
       {
         "path": "/teaching/supervision",
         "file": "src/app/(search-app)/teaching/supervision/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/my-work",
+        "file": "src/app/(search-app)/my-work/page.tsx",
         "area": "product"
       },
       {
@@ -1700,11 +1705,6 @@
       }
     ],
     "redirects": [
-      {
-        "path": "/my-work",
-        "file": "src/app/(search-app)/my-work/page.tsx",
-        "target": "/admin"
-      },
       {
         "path": "/calculators",
         "file": "src/app/(search-app)/calculators/page.tsx",
