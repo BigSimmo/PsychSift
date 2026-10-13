@@ -1353,6 +1353,10 @@ export function DifferentialDetailPage({
           {activeTab === "source" ? (
             <FooterStatus source={detailContext.source} liveGovernance={liveGovernance} curated={curated} />
           ) : null}
+
+          {/* Overview closes with these itself; every other tab keeps Map and
+              Related one tap away on a phone. */}
+          {activeTab !== "overview" ? <DiagnosisDiscoveryActions sections={sections} onSelect={changeTab} /> : null}
         </div>
 
         <p className="rounded-lg border border-transparent px-1 text-xs leading-5 text-[color:var(--text-muted)]">
