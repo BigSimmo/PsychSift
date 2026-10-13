@@ -92,6 +92,9 @@ function serviceChipShape(chip: ServiceStatusChip): StatusTagShape {
   if (/\b(crisis|urgent|emergency)\b/.test(label)) return "urgent";
   if (/unverified|not verified|unconfirmed/.test(label)) return "unrecorded";
   if (/^active$/.test(label.trim())) return "done";
+  // A closed, superseded or low-confidence service must not look like a plain region word.
+  if (chip.tone === "danger") return "urgent";
+  if (chip.tone === "warning") return "unrecorded";
   return "none";
 }
 
@@ -277,12 +280,12 @@ function ServiceCard({
         {call ? (
           <a
             href={call.href}
-            aria-label={`Call ${service.title}`}
-            title={`Call ${call.display}`}
+            aria-label={`Call ${call.display}, ${service.title}`}
             data-testid={`service-call-${service.slug}`}
-            className="relative z-10 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+            className="relative z-10 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
             <Phone className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="tabular-nums">{call.display}</span>
           </a>
         ) : null}
         <button
@@ -537,12 +540,15 @@ export function ServicesNavigatorPage() {
   );
   const alphabetEntries = useMemo(
     () =>
-      alphabetStripEntries(
-        displayedMatches,
-        (service) => service.title,
-        (service) => serviceRowId(service.slug),
-      ),
-    [displayedMatches],
+      // Only an A to Z sort gets letter jumps: a ranked list that happens to look alphabetical would mislead.
+      sortValue === "alpha"
+        ? alphabetStripEntries(
+            displayedMatches,
+            (service) => service.title,
+            (service) => serviceRowId(service.slug),
+          )
+        : [],
+    [displayedMatches, sortValue],
   );
   // Both scope segments show the current facet selection applied — "counts
   // on both" — differing only in whether the query/group scoping applies.
