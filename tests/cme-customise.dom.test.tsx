@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CmeCustomisePage } from "@/components/cme/cme-customise-page";
 import { cmeDashboardModuleLabels } from "@/lib/cme/module-order";
 import { cmeModuleOrderStorageKey } from "@/lib/cme/module-order-keys";
+import { withTopBarLeadingSlot } from "./helpers/top-bar-slot";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation, usePathname: () => "/cme/customise" }));
@@ -34,6 +35,8 @@ function noClinicalStatusColour(container: HTMLElement) {
 }
 
 describe("Customise", () => {
+  withTopBarLeadingSlot();
+
   beforeEach(() => {
     // The module-order store persists to localStorage, which jsdom keeps
     // alive across tests in this file. Reset it so every test starts from
