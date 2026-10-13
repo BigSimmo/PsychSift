@@ -195,6 +195,34 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(answer?.area).toBe("roster");
     });
 
+    it("displays single matching assessment in hero when exactly one match exists", () => {
+      const singleItem = [
+        {
+          id: "t:session:4",
+          area: "teaching" as const,
+          kind: "session" as const,
+          title: "Single Mini-CEX Assessment",
+          detail: "Consultant review",
+          date: "2026-10-18",
+          href: "/teaching/assessments/4",
+          tags: [],
+          text: [],
+        },
+      ];
+      const answer = answerWorkQuestion("mini-cex due this week", {
+        items: singleItem,
+        areas: [{ area: "teaching", status: "ready", sample: false }],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.headline).toBe("Single Mini-CEX Assessment");
+      expect(answer?.sub).toContain("Consultant review");
+      expect(answer?.action?.href).toBe("/teaching/assessments/4");
+      expect(answer?.action?.label).toBe("Open Workplace-Based Assessment");
+      expect(answer?.date).toBe("2026-10-18");
+    });
+
     it("parses assessment due question with timeframe", () => {
       const match = parseMyWorkAssessmentGrammar("what assessments are due this month");
       expect(match).not.toBeNull();

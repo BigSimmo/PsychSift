@@ -866,9 +866,12 @@ function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch)
     })
     .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 
+  const single = matchingItems.length === 1;
   const first = matchingItems[0];
+  const showFirstInHero = (match.intent === "next" || single) && Boolean(first);
+
   const headline =
-    match.intent === "next" && first
+    showFirstInHero && first
       ? first.title
       : matchingItems.length === 0
         ? isOverdue
@@ -879,7 +882,7 @@ function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch)
         : match.understood;
 
   const sub =
-    match.intent === "next" && first
+    showFirstInHero && first
       ? (first.detail ?? (first.date ? `${longDay(first.date)} · ${inDays(input.today, first.date)}` : null))
       : match.timeframe
         ? `Timeframe: ${match.timeframe}`
@@ -896,7 +899,7 @@ function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch)
     understood: match.understood,
     source: "From your Teaching and assessment portfolio",
     action:
-      first?.href && match.intent === "next"
+      first?.href && showFirstInHero
         ? { label: `Open ${catLabel}`, href: first.href }
         : { label: actionLabel, href: targetHref },
     ...(first?.date ? { date: first.date } : {}),
