@@ -23,9 +23,9 @@ import { RECENT_PAGES_CONTINUE_SHOWN, type RecentPageSection } from "@/lib/recen
  * or reworded here.
  *
  * A home with nothing to continue and no favourites (signed out, a new device)
- * shows three or four Browse links instead of one (Clinical audit, 13 Oct 2026,
- * item 17), each an existing page of that mode, so the screen under the box is
- * not empty. Once Continue or Favourites has something, only the first Browse
+ * shows two Browse links instead of one (Clinical audit, 13 Oct 2026, item 17),
+ * each an existing page of that mode, so the screen under the box is not empty.
+ * Two is the most that keeps the idle phone home on one screen at 390 x 844. Once Continue or Favourites has something, only the first Browse
  * link stays, as before.
  */
 
@@ -45,6 +45,9 @@ type StartListMode = Extract<
 >;
 
 type BrowseLink = { readonly href: string; readonly label: string };
+
+/** Browse links an empty home shows; more pushes the idle phone home past one screen. */
+const EMPTY_HOME_BROWSE_SHOWN = 2;
 
 type StartListConfig = {
   /** The Recent pages section whose records Continue lists. */
@@ -211,7 +214,7 @@ function ModeHomeStartListBody({ modeId, config }: { modeId: StartListMode; conf
       ) : null}
       {emptyHome && config.browse.length > 1 ? (
         <ModeHomeStartGroup id={`${modeId}-home-browse`} title="Browse" testId="mode-home-browse-list">
-          {config.browse.map((link) => (
+          {config.browse.slice(0, EMPTY_HOME_BROWSE_SHOWN).map((link) => (
             <ModeHomeStartRow key={link.href} href={link.href} icon={LayoutList} title={link.label} />
           ))}
         </ModeHomeStartGroup>

@@ -2699,10 +2699,15 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(atAGlance).toBeVisible();
     const safetyMetricItems = atAGlance.locator("dl > div");
     await expect(safetyMetricItems).toHaveCount(4);
-    const metricRows = await safetyMetricItems.evaluateAll((items) => {
-      return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
-    });
-    expect(metricRows).toBeLessThanOrEqual(2);
+    // Poll: WebKit can measure once before the grid reflows from the 1024px
+    // layout, which reads as one row per fact.
+    await expect
+      .poll(() =>
+        safetyMetricItems.evaluateAll((items) => {
+          return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
+        }),
+      )
+      .toBeLessThanOrEqual(2);
     const metricValuesStayWithinCells = await safetyMetricItems.evaluateAll((items) => {
       return items.every((item) => {
         const value = item.querySelector('[data-testid="differential-safety-value"]');

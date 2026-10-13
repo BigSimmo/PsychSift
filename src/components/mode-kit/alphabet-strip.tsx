@@ -155,10 +155,13 @@ export function AlphabetStrip({
     event.currentTarget.releasePointerCapture?.(event.pointerId);
   };
 
+  // Filtering can shrink the strip under a later letter; keep one tab stop.
+  const activeIndex = Math.min(focusIndex, Math.max(0, entries.length - 1));
+
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     let next: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(entries.length - 1, focusIndex + 1);
-    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = Math.max(0, focusIndex - 1);
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(entries.length - 1, activeIndex + 1);
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = Math.max(0, activeIndex - 1);
     else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = entries.length - 1;
     if (next === null) return;
@@ -196,7 +199,7 @@ export function AlphabetStrip({
                   buttonRefs.current[index] = node;
                 }}
                 type="button"
-                tabIndex={index === focusIndex ? 0 : -1}
+                tabIndex={index === activeIndex ? 0 : -1}
                 aria-label={`Jump to ${entry.letter}`}
                 onClick={() => {
                   setFocusIndex(index);
@@ -240,7 +243,7 @@ export const alphabetStripTargetClass = "scroll-mt-[calc(var(--phone-overlay-chr
  * gets no strip, because jumping to "M" there would land in the wrong place.
  * A lone row filed out of place in an otherwise A to Z list (a catalogue that
  * sorts "WACHS Goldfields" under G) is skipped rather than starting its own
- * letter: a row counts only when its letter sits between its neighbours'.
+ * letter: a row counts only when its letter sits between the last row kept and the next row.
  */
 export function alphabetStripEntries<T>(
   items: readonly T[],
@@ -250,15 +253,21 @@ export function alphabetStripEntries<T>(
   const letters = items.map((item) => alphabetStripLetter(nameOf(item)));
   const entries: AlphabetStripEntry[] = [];
   let outOfPlace = 0;
+  // Compare with the last row kept, not the raw previous row, so a skipped
+  // stray does not knock out the first row of the next letter.
+  let before: string | undefined;
   for (let index = 0; index < items.length; index += 1) {
     const letter = letters[index]!;
-    const before = letters[index - 1];
-    const after = letters[index + 1];
+    // Rows below the last kept letter are strays too, so look past them.
+    let next = index + 1;
+    while (before !== undefined && next < letters.length && letters[next]! < before) next += 1;
+    const after = letters[next];
     const inPlace = (before === undefined || before <= letter) && (after === undefined || letter <= after);
     if (!inPlace) {
       outOfPlace += 1;
       continue;
     }
+    before = letter;
     const previous = entries.at(-1)?.letter;
     if (letter === previous) continue;
     if (previous !== undefined && letter < previous) return [];

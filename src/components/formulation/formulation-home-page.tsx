@@ -332,7 +332,7 @@ function FormulationResults({ query }: { query: string }) {
                           {mechanism.name}
                         </Link>
                       </h2>
-                      <p className="m-0 mt-0.5 line-clamp-1 text-sm-minus leading-snug text-[color:var(--text-muted)]">
+                      <p className="m-0 mt-0.5 line-clamp-1 text-sm leading-snug text-[color:var(--text-muted)]">
                         {mechanism.summary}
                       </p>
                       <div className="mt-2">

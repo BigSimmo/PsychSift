@@ -643,6 +643,14 @@ describe("mode secondary navigation registry", () => {
     }
   });
 
+  it("lists Therapy's sign-off queue for site administrators only", () => {
+    const entries = modeSecondaryNavigationEntries("therapy-compass");
+    const ids = (isAdministrator: boolean) =>
+      visibleModeSecondaryNavigationEntries(entries, { isEditor: true, isAdministrator }).map((entry) => entry.id);
+    expect(ids(false)).not.toContain("review");
+    expect(ids(true)).toContain("review");
+  });
+
   it("names the right On Call page in the pill, including the two editors and the picker", () => {
     const cases: Record<string, string | null> = {
       "/on-call": "now",

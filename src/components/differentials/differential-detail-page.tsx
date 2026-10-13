@@ -1156,6 +1156,17 @@ export function DifferentialDetailPage({
     window.history.replaceState(null, "", url);
   }, []);
 
+  // The onward actions sit at the foot of a tab, so switching from there
+  // starts the new tab at its heading and brings the top bar back.
+  const changeTabFromFoot = useCallback(
+    (id: DifferentialDetailTabId) => {
+      changeTab(id);
+      document.getElementById("main-content")?.scrollTo({ top: 0 });
+      window.scrollTo({ top: 0 });
+    },
+    [changeTab],
+  );
+
   const setSectionOpen = useCallback((id: string, open: boolean) => {
     setOpenSections((previous) => {
       if (previous.has(id) === open) return previous;
@@ -1337,7 +1348,7 @@ export function DifferentialDetailPage({
                 </RecordSection>
                 {/* Map and Related, the record's onward journeys, close the
                     phone record (the strip is phone-only; tabs carry them from sm). */}
-                <DiagnosisDiscoveryActions sections={sections} onSelect={changeTab} />
+                <DiagnosisDiscoveryActions sections={sections} onSelect={changeTabFromFoot} />
               </RecordBody>
               <DifferentialOverviewRail
                 record={record}
@@ -1369,6 +1380,12 @@ export function DifferentialDetailPage({
 
           {activeTab === "source" ? (
             <FooterStatus source={detailContext.source} liveGovernance={liveGovernance} curated={curated} />
+          ) : null}
+
+          {/* Overview closes with these itself; every other tab keeps Map and
+              Related one tap away on a phone. */}
+          {activeTab !== "overview" ? (
+            <DiagnosisDiscoveryActions sections={sections} onSelect={changeTabFromFoot} />
           ) : null}
         </div>
 

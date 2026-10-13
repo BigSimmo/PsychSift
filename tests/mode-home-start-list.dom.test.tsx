@@ -47,7 +47,7 @@ describe("mode home start list", () => {
     }
   });
 
-  it("shows an empty home three or four Browse links to the mode's existing pages", () => {
+  it("shows an empty home two Browse links to the mode's existing pages", () => {
     render(<ModeHomeStartList modeId="dsm" />);
     expect(screen.queryByTestId("mode-home-continue")).toBeNull();
     const browse = screen.getByTestId("mode-home-browse-list");
@@ -58,7 +58,6 @@ describe("mode home start list", () => {
     ).toEqual([
       ["Browse all diagnoses", "/dsm/search"],
       ["Compare diagnoses", "/dsm/compare"],
-      ["Browse all specifiers", "/specifiers/search"],
     ]);
     cleanup();
 
@@ -74,8 +73,7 @@ describe("mode home start list", () => {
     for (const modeId of ["therapy-compass", "differentials", "formulation", "specifiers", "forms"] as const) {
       render(<ModeHomeStartList modeId={modeId} />);
       const count = within(screen.getByTestId("mode-home-browse-list")).getAllByRole("link").length;
-      expect(count, modeId).toBeGreaterThanOrEqual(3);
-      expect(count, modeId).toBeLessThanOrEqual(4);
+      expect(count, modeId).toBe(2);
       cleanup();
     }
   });

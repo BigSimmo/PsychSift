@@ -83,7 +83,8 @@ function compactText(value: string | null | undefined, maxLength: number, fallba
 /**
  * One status shape per chip, only where a shape means something (Clinical audit,
  * 13 Oct 2026, item 8): crisis or urgent is a red triangle, an unverified
- * availability is a dashed ring, an active service is a tick. Every other chip
+ * availability is a dashed ring, an active service is a tick, and a closed,
+ * paused, planned or low-confidence service is an amber dot. Every other chip
  * (acuity, setting, region) is a plain grey word. The chip words themselves are
  * unchanged.
  */
@@ -92,9 +93,10 @@ function serviceChipShape(chip: ServiceStatusChip): StatusTagShape {
   if (/\b(crisis|urgent|emergency)\b/.test(label)) return "urgent";
   if (/unverified|not verified|unconfirmed/.test(label)) return "unrecorded";
   if (/^active$/.test(label.trim())) return "done";
-  // A closed, superseded or low-confidence service must not look like a plain region word.
-  if (chip.tone === "danger") return "urgent";
-  if (chip.tone === "warning") return "unrecorded";
+  // A closed, paused, not-yet-open or low-confidence service gets the amber caution dot,
+  // matched by its own label: acuity and confidence tones share colours, so tone alone
+  // would give "High acuity" the crisis triangle.
+  if (/^(closed|superseded|temporarily unavailable|planned\b.*|low confidence)$/.test(label.trim())) return "soon";
   return "none";
 }
 
@@ -270,7 +272,7 @@ function ServiceCard({
           a compact 48px phone button rather than a full-width blue bar, so
           252 cards no longer read as a wall of colour. Same tel: action. */}
       <div className="mt-2 flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 pl-12 sm:pl-[3.25rem]">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 pl-12 sm:pl-13">
           {(service.statusChips ?? []).slice(0, 3).map((chip) => (
             <StatusTag key={`${service.slug}-${chip.label}`} shape={serviceChipShape(chip)}>
               {serviceChipLabel(chip)}

@@ -41,6 +41,11 @@ function therapy(overrides: Partial<Therapy> = {}): Therapy {
 }
 
 const bindingsState = vi.hoisted(() => ({ results: [] as Therapy[] }));
+const authState = vi.hoisted(() => ({ siteRole: undefined as string | undefined }));
+
+vi.mock("@/lib/example-data/store", () => ({
+  useAuthIfAvailable: () => ({ session: { user: { app_metadata: { site_role: authState.siteRole } } } }),
+}));
 
 vi.mock("@/components/therapy-compass/bindings", () => ({
   useTcBindings: () => ({
@@ -119,14 +124,23 @@ describe("Therapy compact rows", () => {
     }
   });
 
-  it("keeps the Review queue one tap away now that it has left the main tabs", () => {
+  it("keeps the Review queue one tap away for a site administrator", () => {
     bindingsState.results = [therapy()];
+    authState.siteRole = "administrator";
     render(<SearchScreen />);
 
     const link = screen.getByTestId("therapy-review-queue-link");
     expect(link).toHaveAttribute("href", "/therapy-compass/review");
     expect(link).toHaveTextContent("Review queue");
     expect(link).toHaveTextContent("12 to review");
+  });
+
+  it("leaves the Review queue link out for anyone who is not a site administrator", () => {
+    bindingsState.results = [therapy()];
+    authState.siteRole = undefined;
+    render(<SearchScreen />);
+
+    expect(screen.queryByTestId("therapy-review-queue-link")).toBeNull();
   });
 
   it("still shows what the row used for Best used for and Best fit, word for word, in the record", () => {

@@ -97,7 +97,7 @@ export function StatusTag({
       data-status-tag={shape}
       data-testid={testId}
       className={cn(
-        "inline-flex w-fit max-w-full shrink-0 items-center gap-1 rounded-full bg-[color:var(--surface-wash)] px-2 py-0.5 text-xs leading-snug font-semibold text-[color:var(--text-muted)] shadow-[inset_0_0_0_1px_var(--border)] forced-colors:border forced-colors:border-[CanvasText]",
+        "inline-flex w-fit max-w-full shrink-0 items-center gap-1 rounded-full bg-[color:var(--surface-wash)] px-2 py-0.5 text-xs leading-snug font-semibold text-[color:var(--text-muted)] border border-[color:var(--border)] forced-colors:border-[CanvasText]",
         className,
       )}
     >
