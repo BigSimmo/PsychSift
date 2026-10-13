@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "d2785add-72d1-47db-9e4b-32be1a8729e9",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Doc/instruction drift left open after the doc-fix pass: encoding damage, cloud-profile worktree rule, RAG duty missing from skills, stale decision",
+    "detail": "(1) docs/privacy-impact-assessment.md and docs/openai-cross-border-basis.md carry double-encoded text and a BOM (a verified-lossless guarded per-run repair exists on an unpushed branch; never a naive whole-file re-encode); docs/outstanding-issues.md:15 has a corrupted arrow (canonical ledger, edit only via reconciliation). (2) .claude/cloud-profile/skills/prompt/references/coding-workflow.md:21 has the pre-hardening worktree rule and is copied into every container session (owner decision on owned versus vendored). (3) No .agents skill mentions the RAG ranking-protection duty, and the retrieval-quality and reindex runbooks have no canary-pair or approval requirement. (4) docs/decisions/2026-09-26-remove-ward-flow-and-caring-contacts.md says Caring Contacts was removed but src/lib/caring-contacts/clock.ts is live with importers; needs a dated superseding decision, do not delete the file. (5) Admin renewals page test dropped its checked-wording assertion while admin-renewed-sheet still forbids the word; record the decision. (6) min-h-[48px] remains at account-setup-dialog.tsx:246 against a 'none remain' claim in docs/redesign/07-token-adoption-audit.md.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NPZWMGPSGFPRBRSPTZ0"
+  }
+}
