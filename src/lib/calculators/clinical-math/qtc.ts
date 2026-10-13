@@ -98,5 +98,3 @@ export function calculateQtc(input: QtcInput): QtcResult {
     errors: [],
   };
 }
-};
-}

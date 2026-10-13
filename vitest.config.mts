@@ -104,7 +104,6 @@ const config = {
           // Node environment, unchanged glob — existing tests behave exactly as before.
           name: "node",
           environment: "node",
-          setupFiles: ["tests/setup/node.setup.ts"],
           include: liveProviderTests ? ["tests/**/*.live.test.ts"] : ["tests/**/*.test.ts"],
           exclude: liveProviderTests ? [] : ["tests/**/*.live.test.ts"],
         },
