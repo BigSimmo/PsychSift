@@ -2699,12 +2699,16 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(safetySnapshot).toBeVisible();
     await expect(safetySnapshot.getByTestId("differential-safety-cta")).toHaveCount(0);
 
-    const safetyMetricItems = safetySnapshot.getByRole("list", { name: "Safety metrics" }).getByRole("listitem");
+    // The summary facts sit in the shared record layout's "At a glance" card,
+    // under their full labels: two up at 320px, one column with large text.
+    const atAGlance = detailPage.getByTestId("differential-at-a-glance");
+    await expect(atAGlance).toBeVisible();
+    const safetyMetricItems = atAGlance.locator("dl > div");
     await expect(safetyMetricItems).toHaveCount(4);
     const metricRows = await safetyMetricItems.evaluateAll((items) => {
       return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
     });
-    expect(metricRows).toBe(1);
+    expect(metricRows).toBeLessThanOrEqual(2);
     const metricValuesStayWithinCells = await safetyMetricItems.evaluateAll((items) => {
       return items.every((item) => {
         const value = item.querySelector('[data-testid="differential-safety-value"]');
@@ -2718,18 +2722,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     });
     expect(metricValuesStayWithinCells).toBe(true);
 
-    const watchRowCenterSpread = await safetySnapshot
+    // Cautions are shown in full: every "Watch for" item wraps inside the
+    // snapshot rather than scrolling off its edge, so none is cut off.
+    const watchItemsFullyInside = await safetySnapshot
       .getByTestId("differential-safety-watchlist")
       .evaluate((watchlist) => {
-        const centers = Array.from(watchlist.children).map((item) => {
+        const box = watchlist.getBoundingClientRect();
+        return Array.from(watchlist.children).every((item) => {
           const bounds = item.getBoundingClientRect();
-          return bounds.top + bounds.height / 2;
+          return bounds.left >= box.left - 0.5 && bounds.right <= box.right + 0.5;
         });
-        return Math.max(...centers) - Math.min(...centers);
       });
-    expect(watchRowCenterSpread).toBeLessThan(1);
-    const safetySnapshotBox = await safetySnapshot.boundingBox();
-    expect(safetySnapshotBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(250);
+    expect(watchItemsFullyInside).toBe(true);
     await expect(detailPage.getByRole("tab", { name: "Overview" })).toBeHidden();
     // The header is portaled into the universal collapse row on phones, so it
     // lives outside the page root that `detailPage` scopes to.
@@ -2844,7 +2848,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const forcedColorsMetricRows = await safetyMetricItems.evaluateAll((items) => {
       return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
     });
-    expect(forcedColorsMetricRows).toBe(1);
+    expect(forcedColorsMetricRows).toBeLessThanOrEqual(2);
   });
 
   test("diagnosis map keeps labels contained and the selected inspector out of the canvas", async ({ page }) => {

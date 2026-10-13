@@ -166,11 +166,11 @@ describe("Therapy Compass responsive contract", () => {
     // The record page is a single reading column at every width now, so it has
     // no multi-column grid of its own to reflow and no sticky rail to un-stick.
     // What replaced them is the shared record layout's "At a glance" card
-    // (clinical-record-panels): label/value pairs in full, two up from 22rem and
-    // one column below it, so the large-text setting on a 320px phone reflows
+    // (clinical-record-panels): label/value pairs in full, two up once the card is
+    // 15rem wide (a container query, so rem follows the root font size), so the large-text setting on a 320px phone reflows
     // to a single column instead of squeezing two.
     expect(keyFactsSource).toContain("RecordGlance");
-    expect(recordPanelsSource).toContain("min-[22rem]:grid-cols-2");
+    expect(recordPanelsSource).toContain("@[15rem]:grid-cols-2");
     expect(detailSource).not.toContain("sticky");
     expect(responsiveStackCount(compareSource)).toBeGreaterThanOrEqual(1);
     expect(compareSource).toContain("<Tabs");

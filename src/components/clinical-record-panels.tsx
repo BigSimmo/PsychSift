@@ -224,19 +224,24 @@ const GLANCE_WIDE_CHARS = 40;
 /**
  * The one "At a glance" card: a calm tinted hairline card of label/value
  * pairs. Values are always shown in full — no "Tap for detail" truncation.
- * Two columns from 22rem, so the large-text setting falls back to one.
+ * Two columns once the card is 15rem wide. It is a container query, and rem
+ * there follows the root font size, so the large-text setting on a 320px
+ * phone falls back to one column instead of squeezing two.
  */
 export function RecordGlance({
   facts,
   title = "At a glance",
   id,
   testId,
+  valueTestId,
   footer,
 }: {
   facts: RecordGlanceFact[];
   title?: string;
   id?: string;
   testId?: string;
+  /** Optional test id on every value, for records whose browser tests pin them. */
+  valueTestId?: string;
   footer?: ReactNode;
 }) {
   const shown = facts.filter((fact) => fact.value !== null && fact.value !== undefined && fact.value !== "");
@@ -248,21 +253,24 @@ export function RecordGlance({
       aria-label={title}
       className={cn(
         inPageAnchor,
-        "rounded-2xl border border-[color:var(--clinical-accent-border)] bg-[color:color-mix(in_srgb,var(--clinical-accent-soft)_55%,var(--surface))] p-5",
+        "@container rounded-2xl border border-[color:var(--clinical-accent-border)] bg-[color:color-mix(in_srgb,var(--clinical-accent-soft)_55%,var(--surface))] p-5",
       )}
     >
       <h2 className="m-0 text-xs font-bold text-[color:var(--clinical-accent)]">{title}</h2>
       {shown.length ? (
-        <dl className="m-0 mt-3.5 grid grid-cols-1 gap-x-5 gap-y-4 min-[22rem]:grid-cols-2">
+        <dl className="m-0 mt-3.5 grid grid-cols-1 gap-x-5 gap-y-4 @[15rem]:grid-cols-2">
           {shown.map((fact) => {
             const wide = fact.wide ?? (typeof fact.value === "string" && fact.value.length > GLANCE_WIDE_CHARS);
             return (
               <div
                 key={fact.key ?? fact.label}
-                className={cn("flex min-w-0 flex-col gap-0.5", wide && "min-[22rem]:col-span-2")}
+                className={cn("flex min-w-0 flex-col gap-0.5", wide && "@[15rem]:col-span-2")}
               >
                 <dt className="text-xs text-[color:var(--text-muted)]">{fact.label}</dt>
-                <dd className="m-0 break-words text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
+                <dd
+                  data-testid={valueTestId}
+                  className="m-0 break-words text-sm font-semibold leading-6 text-[color:var(--text-heading)]"
+                >
                   {fact.value}
                 </dd>
               </div>

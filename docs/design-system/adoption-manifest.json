@@ -1710,7 +1710,6 @@
       "directImportFiles": [
         "src/components/dictionary/dictionary-catalogue-pages.tsx",
         "src/components/differentials/differential-compare-queue-page.tsx",
-        "src/components/differentials/differential-detail-page.tsx",
         "src/components/dsm/dsm-page-header.tsx",
         "src/components/factsheets/factsheets-topics-page.tsx",
         "src/components/information-page-shell.tsx",
@@ -1727,7 +1726,6 @@
       "productImportFiles": [
         "src/components/dictionary/dictionary-catalogue-pages.tsx",
         "src/components/differentials/differential-compare-queue-page.tsx",
-        "src/components/differentials/differential-detail-page.tsx",
         "src/components/dsm/dsm-page-header.tsx",
         "src/components/factsheets/factsheets-topics-page.tsx",
         "src/components/information-page-shell.tsx",
