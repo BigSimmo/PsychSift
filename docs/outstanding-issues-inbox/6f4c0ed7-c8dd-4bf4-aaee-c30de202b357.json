@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "6f4c0ed7-c8dd-4bf4-aaee-c30de202b357",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#AD3F5B",
+    "outcome": "Resolved: Added migration 20261013140000_force_rls_control_plane.sql applying FORCE ROW LEVEL SECURITY to the six site_content control-plane tables.",
+    "baseRowFingerprint": "320975e01871569a4b2c3adab2ff713c366001d768f694f39d13d206e71cf852"
+  }
+}

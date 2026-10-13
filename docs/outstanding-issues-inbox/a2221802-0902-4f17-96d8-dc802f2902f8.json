@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "a2221802-0902-4f17-96d8-dc802f2902f8",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#NB4SHF",
+    "outcome": "Resolved: Unified On Call card selection and card heading to use onCallViewForEntry and ON_CALL_VIEW_TITLES.",
+    "baseRowFingerprint": "2f26e21013ffb430854053ba805d47b0dda50569d95fbf20804f78b32b0016f2"
+  }
+}

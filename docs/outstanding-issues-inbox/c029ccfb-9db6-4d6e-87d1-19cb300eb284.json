@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "c029ccfb-9db6-4d6e-87d1-19cb300eb284",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#4W704K",
+    "outcome": "Resolved: Set ENABLE ALWAYS on site_content_release_records_immutable trigger in 20261013140000_force_rls_control_plane.sql.",
+    "baseRowFingerprint": "e911ef3b661b61d6517a518f222e79e747eed1a9702b9297cfc2ee57c64885dc"
+  }
+}
