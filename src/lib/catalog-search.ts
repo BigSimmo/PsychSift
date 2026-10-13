@@ -263,36 +263,36 @@ export function rankCatalogRecords<T>(
   const expandedTerms = terms.filter((term) => !baseTermSet.has(term));
   const broad = Boolean(options.broadTerms?.length && terms.some((term) => options.broadTerms!.includes(term)));
 
-const recordFullTextCache = new WeakMap<object, string>();
-function getRecordFullText<T>(record: T, fullTextFn: (r: T) => string): string {
-  if (record && typeof record === "object") {
-    let cached = recordFullTextCache.get(record);
-    if (!cached) {
-      cached = fullTextFn(record);
-      recordFullTextCache.set(record, cached);
+  const recordFullTextCache = new WeakMap<object, string>();
+  function getRecordFullText<T>(record: T, fullTextFn: (r: T) => string): string {
+    if (record && typeof record === "object") {
+      let cached = recordFullTextCache.get(record);
+      if (!cached) {
+        cached = fullTextFn(record);
+        recordFullTextCache.set(record, cached);
+      }
+      return cached;
     }
-    return cached;
+    return fullTextFn(record);
   }
-  return fullTextFn(record);
-}
 
-const recordFieldTextCache = new WeakMap<object, Map<string, string>>();
-function getRecordFieldText<T>(record: T, fieldId: string, textFn: (r: T) => string): string {
-  if (record && typeof record === "object") {
-    let map = recordFieldTextCache.get(record);
-    if (!map) {
-      map = new Map();
-      recordFieldTextCache.set(record, map);
+  const recordFieldTextCache = new WeakMap<object, Map<string, string>>();
+  function getRecordFieldText<T>(record: T, fieldId: string, textFn: (r: T) => string): string {
+    if (record && typeof record === "object") {
+      let map = recordFieldTextCache.get(record);
+      if (!map) {
+        map = new Map();
+        recordFieldTextCache.set(record, map);
+      }
+      let text = map.get(fieldId);
+      if (text === undefined) {
+        text = textFn(record);
+        map.set(fieldId, text);
+      }
+      return text;
     }
-    let text = map.get(fieldId);
-    if (text === undefined) {
-      text = textFn(record);
-      map.set(fieldId, text);
-    }
-    return text;
+    return textFn(record);
   }
-  return textFn(record);
-}
 
   const typoCache = new Map<string, boolean>();
 
@@ -307,7 +307,9 @@ function getRecordFieldText<T>(record: T, fieldId: string, textFn: (r: T) => str
         compactQuery.length >= compactMinLength &&
         (getCachedCompactText(text).includes(compactQuery) ||
           (options.compactExtraText
-            ? getCachedCompactText(getRecordFieldText(record, "__compact_extra__", options.compactExtraText)).includes(compactQuery)
+            ? getCachedCompactText(getRecordFieldText(record, "__compact_extra__", options.compactExtraText)).includes(
+                compactQuery,
+              )
             : false));
 
       for (const field of options.fields) {
@@ -341,7 +343,8 @@ function getRecordFieldText<T>(record: T, fieldId: string, textFn: (r: T) => str
       const expanded = expandedTerms.filter((term) => text.includes(term)).length;
       const expandedPhrases = expandedTerms.filter((term) => term.includes(" ") && text.includes(term)).length;
       score += expandedPhrases * expandedPhraseBonus;
-      const fuzzyContentFallback = !compact && fuzzy === 0 ? fuzzyTokensAgainstText(fuzzyTokens, text, typoCache).length : 0;
+      const fuzzyContentFallback =
+        !compact && fuzzy === 0 ? fuzzyTokensAgainstText(fuzzyTokens, text, typoCache).length : 0;
       fuzzy += fuzzyContentFallback;
       // Broad full-text fuzzy evidence is only a fallback and stays weaker than
       // literal content or a weighted field match.
