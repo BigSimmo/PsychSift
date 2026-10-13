@@ -348,7 +348,7 @@ export function OnCallPlaybookSection({
   onEditEntry,
   onVerified,
 }: OnCallPlaybookSectionProps) {
-  const playbookEntries = entries.filter((entry) => entry.section === "playbook");
+  const playbookEntries = entries.filter((entry) => (entry.view ?? entry.section) === "playbook");
   // Now's problem buttons link here with the problem's anchor: open that one and bring it into view.
   useOpenPlaybookFromHash();
 

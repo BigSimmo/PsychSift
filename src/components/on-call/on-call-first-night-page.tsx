@@ -61,7 +61,7 @@ const STAGES: readonly Stage[] = ON_CALL_FIRST_NIGHT_STAGES.map((stage) => ({
 /** Induction manuals from the owner's Orientation section, in their own order. */
 function inductionEntries(entries: readonly OnCallEntry[]): OnCallEntry[] {
   return entries
-    .filter((entry) => entry.section === "orientation")
+    .filter((entry) => (entry.view ?? entry.section) === "orientation")
     .filter((entry) => {
       const parsed = onCallDetailsSchemaFor("orientation").safeParse(entry.details);
       return parsed.success && (parsed.data as { category?: string }).category?.toLowerCase() === "induction";

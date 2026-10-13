@@ -59,7 +59,8 @@ export function onCallReferralMatchCount({
   return (
     routes +
     entries.filter(
-      (entry) => entry.section === "referrals" && onCallEntryIsEditable(entry) && matchesNote(entry, query),
+      (entry) =>
+        (entry.view ?? entry.section) === "referrals" && onCallEntryIsEditable(entry) && matchesNote(entry, query),
     ).length
   );
 }
@@ -151,7 +152,8 @@ export function OnCallReferSections({ query }: { readonly query: string }) {
 
   const signedOut = entries.signedOut || handbook.status === "signed-out";
   const mine = useMemo(
-    () => entries.entries.filter((entry) => entry.section === "referrals" && onCallEntryIsEditable(entry)),
+    () =>
+      entries.entries.filter((entry) => (entry.view ?? entry.section) === "referrals" && onCallEntryIsEditable(entry)),
     [entries.entries],
   );
   const mineShown = searching ? mine.filter((entry) => matchesNote(entry, query)) : mine;

@@ -65,7 +65,7 @@ export function WhoCoversThis({
   const ranked = useMemo(() => {
     if (!active) return [];
     return entries
-      .filter((entry) => entry.section === "referrals")
+      .filter((entry) => (entry.view ?? entry.section) === "referrals")
       .map((entry) => {
         const facts = factsOf(entry);
         const match = facts

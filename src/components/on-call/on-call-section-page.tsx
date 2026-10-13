@@ -25,7 +25,7 @@ import {
   ON_CALL_VIEW_TITLES,
   type OnCallPageView,
 } from "@/components/on-call/on-call-section-identity";
-import { onCallViewStorageSection } from "@/components/on-call/on-call-entry-view";
+import { onCallViewForEntry, onCallViewStorageSection } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { OnCallPageMenu } from "@/components/on-call/on-call-page-menu";
@@ -105,20 +105,7 @@ const ON_CALL_VIEW_DESCRIPTIONS: Record<OnCallPageView, string> = {
  * defers to them rather than re-deriving either rule.
  */
 function onCallVisibleEntries(view: OnCallPageView, entries: readonly OnCallEntry[]): OnCallEntry[] {
-  switch (view) {
-    case "contacts":
-      return partitionContactsEntries(entries).contacts;
-    case "who-is-who":
-      return partitionContactsEntries(entries).roleExplainers;
-    case "logistics":
-      return partitionLogisticsEntries(entries).admin;
-    case "compliance":
-      return partitionLogisticsEntries(entries).compliance;
-    // Playbook, Referrals, Orientation and Teaching each own a whole section,
-    // so for them the view id IS the section id.
-    default:
-      return entries.filter((entry) => entry.section === view);
-  }
+  return entries.filter((entry) => (entry.view ?? onCallViewForEntry(entry)) === view);
 }
 
 /** What one entry in each view is called, for the add control's label. */
@@ -229,7 +216,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   }, [view, entries]);
   const sourceIds =
     view === "playbook" || view === "orientation"
-      ? entries.filter((entry) => entry.section === view).flatMap((entry) => entry.linkedDocumentIds)
+      ? entries.filter((entry) => (entry.view ?? entry.section) === view).flatMap((entry) => entry.linkedDocumentIds)
       : [];
   const { documents: linkedDocuments, loading: linkedDocumentsLoading } = useOnCallLinkedDocumentsState(sourceIds);
   // The page's own groups, for the header's jump list. Declared from the same
