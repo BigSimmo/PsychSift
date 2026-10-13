@@ -134,8 +134,9 @@ export function WhereIsHomePanel({ regions, map, interpreter, mapSource = null }
     );
   const regionLabels = useMemo(() => Object.fromEntries(regions.map((r) => [r.id, r.label])), [regions]);
   const selectRegion = (id: string) => {
-    setRegionId(id);
     setNote(null);
+    if (id === regionId) return;
+    setRegionId(id);
     // The letter lists one region's numbers; keeping it after a switch would let Copy
     // paste region A's services while region B is on screen.
     setLetter([]);

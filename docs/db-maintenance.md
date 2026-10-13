@@ -93,7 +93,7 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 3. Custom database GUCs
 
-- **Procedure:** Re-set required custom parameters (e.g. `app.indexing_v3_agent_base_url`) using `ALTER DATABASE postgres SET ...`. If it is unset, `invoke_indexing_v3_agent` falls back to the hardcoded production host, and `ALTER DATABASE` is denied on hosted Supabase, so verify the value rather than assuming it took effect.
+- **Procedure:** Re-set required custom parameters (e.g. `app.indexing_v3_agent_base_url`) by running `ALTER DATABASE postgres SET ...` as the project owner (`postgres`) in an operator session. The migration/`schema.sql` statement skips with a notice when its role lacks the privilege, so it cannot be relied on. If the value is unset, `invoke_indexing_v3_agent` falls back to the hardcoded production host; on a non-production restore, keep the `invoke_indexing_v3_agent` cron job inactive until the sanity check below shows the right value.
 - **Sanity check:** Verify settings with a read-only query:
   ```sql
   SELECT name, setting, source FROM pg_settings WHERE name LIKE 'app.%';
