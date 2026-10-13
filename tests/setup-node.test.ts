@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import "./setup/node.setup";
 
 const sampleObj = { calculate: () => 42 };
 
