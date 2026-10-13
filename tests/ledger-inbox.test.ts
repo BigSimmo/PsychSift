@@ -1,6 +1,15 @@
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { applyRequest, applyRequestBatch, planRequestBatch, validateRequest } from "../scripts/ledger-inbox.mjs";
+import {
+  acquireReconcileLock,
+  applyRequest,
+  applyRequestBatch,
+  planRequestBatch,
+  validateRequest,
+} from "../scripts/ledger-inbox.mjs";
 import {
   mergeArchiveOutcome,
   pruneResolvedIdFromQueue,
@@ -46,6 +55,76 @@ const BASE_LEDGER = [
   "| #005 | issue | Prior resolved issue | Original outcome text from PR #10 | 2026-01-01 |",
   "",
 ].join("\n");
+
+describe("ledger inbox intake and lock admission", () => {
+  const add = {
+    version: 1,
+    id: "11111111-1111-4111-8111-111111111111",
+    createdOn: "2026-10-13",
+    action: "add",
+    payload: { pri: "P2", type: "task", summary: "Synthetic fixture" },
+  };
+
+  it.each(["P9", "p2", "high"])("rejects an unsupported add priority before enqueue: %s", (pri) => {
+    expect(validateRequest({ ...add, payload: { ...add.payload, pri } })).toContain("add pri must be P1, P2, or P3");
+  });
+
+  it.each(["bug", "TASK", "other"])("rejects an unsupported add type before enqueue: %s", (type) => {
+    expect(validateRequest({ ...add, payload: { ...add.payload, type } })).toContain(
+      "add type must be task, issue, or rec",
+    );
+  });
+
+  it.each(["P1", "P2", "P3"])("accepts every writer-supported type at %s", (pri) => {
+    for (const type of ["task", "issue", "rec"]) {
+      const request = { ...add, payload: { ...add.payload, pri, type } };
+      expect(validateRequest(request)).toEqual([]);
+      expect(() => applyRequest(BASE_LEDGER, request)).not.toThrow();
+    }
+  });
+
+  it("serializes two stale recoverers before either can remove a replacement live lock", () => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "ledger-lock-admission-"));
+    const lockPath = path.join(fixture, "reconcile.lock");
+    mkdirSync(lockPath);
+    writeFileSync(path.join(lockPath, "owner.json"), JSON.stringify({ pid: 2147483647 }));
+    let release: (() => void) | undefined;
+    try {
+      release = acquireReconcileLock({
+        lockPath,
+        recoverTransaction: () => {
+          // Deterministically enter the competing acquirer at the old race
+          // window, after stale-owner inspection but before lock removal.
+          expect(() => acquireReconcileLock({ lockPath })).toThrow(/admission is already claimed/);
+          expect(JSON.parse(readFileSync(path.join(lockPath, "owner.json"), "utf8")).pid).toBe(2147483647);
+          return false;
+        },
+      });
+      const owner = readFileSync(path.join(lockPath, "owner.json"), "utf8");
+      expect(JSON.parse(owner).pid).toBe(process.pid);
+      expect(() => acquireReconcileLock({ lockPath })).toThrow(/another reconciliation is active/);
+      expect(readFileSync(path.join(lockPath, "owner.json"), "utf8")).toBe(owner);
+    } finally {
+      release?.();
+      rmSync(fixture, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it("fails closed on an abandoned admission claim without deleting the stale lock", () => {
+    const fixture = mkdtempSync(path.join(os.tmpdir(), "ledger-lock-admission-"));
+    const lockPath = path.join(fixture, "reconcile.lock");
+    mkdirSync(lockPath);
+    mkdirSync(`${lockPath}.admission`);
+    const owner = JSON.stringify({ pid: 2147483647 });
+    writeFileSync(path.join(lockPath, "owner.json"), owner);
+    try {
+      expect(() => acquireReconcileLock({ lockPath })).toThrow(/obtain reviewed recovery/);
+      expect(readFileSync(path.join(lockPath, "owner.json"), "utf8")).toBe(owner);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+});
 
 describe("ledger-inbox idempotent close and duplicate done handling", () => {
   describe("idempotent close of already-archived issues", () => {
