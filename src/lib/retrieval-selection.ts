@@ -57,7 +57,7 @@ export function selectAnswerRouteEvidence(args: {
         crossDocument: crossDocumentPlan.enabled,
       })
     : eligible;
-  return { crossDocumentPlan, rawResults, routeSelection };
+  return { crossDocumentPlan, eligibleResults: eligible.results, rawResults, routeSelection };
 }
 
 export function buildSelectedEvidenceArtifacts(query: string, results: SearchResult[]) {

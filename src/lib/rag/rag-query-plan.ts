@@ -133,14 +133,6 @@ function materialAmbiguity(query: string, analysis: ClinicalQueryAnalysis): Clin
   return null;
 }
 
-// A care-pathway stage ("admission", "community discharge") is a retrievable side: without its
-// own lane, one stage's documents can crowd the other out of a stage-vs-stage comparison.
-function isCarePathwayStage(side: string) {
-  return /^(?:the\s+)?(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)$/i.test(
-    side.trim(),
-  );
-}
-
 function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysis) {
   if (
     /^(?:the\s+)?(?:benefits?|risks?|efficacy|safety|advantages?|disadvantages?|pros?|cons?)(?:\s+of\b.*)?$/i.test(side)
@@ -150,7 +142,6 @@ function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysi
   if (analysis.medications.some((medicine) => side.toLowerCase().includes(medicine.toLowerCase()))) return true;
   if (hasClinicalPopulationSignal(side) || jurisdictionSignal.test(side) || settingSignal.test(side)) return true;
   if (/\b(?:guideline|policy|procedure|protocol|form|service|therapy|medication)\b/i.test(side)) return true;
-  if (isCarePathwayStage(side)) return true;
   return /^[A-Z][A-Z0-9-]{1,}$/.test(side.trim());
 }
 
@@ -159,17 +150,13 @@ function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [strin
 
   const match = query.match(/\b(?:compare|difference between)\s+(.+?)\s+(?:and|versus|vs\.?|with)\s+(.+)/i);
   if (!match) return null;
-  const qualifier = /\s+(?:monitoring|treatment|management|requirements?|approaches?|guidance)\b(.*)$/i;
-  const sideOf = (value: string) => {
-    const trimmed = value.replace(/[?.!]+$/g, "");
-    const side = trimmed.replace(qualifier, "").trim();
-    // A bare stage lane would drop a subject named after the qualifier
-    // ("admission management of schizophrenia"), so only a stage with nothing after it counts.
-    if (isCarePathwayStage(side) && trimmed.match(qualifier)?.[1]?.trim()) return "";
-    return side;
-  };
-  const left = sideOf(match[1]);
-  const right = sideOf(match[2]);
+  const clean = (value: string) =>
+    value
+      .replace(/[?.!]+$/g, "")
+      .replace(/\s+(?:monitoring|treatment|management|requirements?|approaches?|guidance)\b.*$/i, "")
+      .trim();
+  const left = clean(match[1]);
+  const right = clean(match[2]);
   return left && right && identifiableComparisonSide(left, analysis) && identifiableComparisonSide(right, analysis)
     ? [left, right]
     : null;

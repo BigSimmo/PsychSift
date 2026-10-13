@@ -337,41 +337,6 @@ describe("bounded RAG query planning", () => {
     ]);
   });
 
-  it("decomposes a care-pathway stage comparison so each stage gets its own lane", () => {
-    const query = "Compare admission and discharge requirements";
-    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
-
-    expect(result.kind).toBe("decomposed");
-    expect(result.reasonCodes).toContain("comparison_sides_identified");
-    expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
-      "admission: directly relevant evidence for this comparison.",
-      "discharge: directly relevant evidence for this comparison.",
-    ]);
-  });
-
-  it("does not treat a stage word inside a longer phrase as a comparison side", () => {
-    const query = "Compare admission criteria and bed capacity escalation";
-    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
-
-    expect(result.reasonCodes).not.toContain("comparison_sides_identified");
-  });
-
-  it("decomposes a stage comparison worded with a leading article", () => {
-    const query = "Compare the admission and discharge requirements";
-    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
-
-    expect(result.reasonCodes).toContain("comparison_sides_identified");
-  });
-
-  it("does not reduce a stage to a bare lane when a subject follows its qualifier", () => {
-    const query = "Compare admission management of schizophrenia and discharge management of schizophrenia";
-    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
-
-    expect(result.subquestions.map((part) => part.question)).not.toContain(
-      "admission: directly relevant evidence for this comparison.",
-    );
-  });
-
   it.each([
     ["ANC threshold in the clozapine monitoring guideline", "document"],
     ["clozapin withholding neutrophils", "medicine"],

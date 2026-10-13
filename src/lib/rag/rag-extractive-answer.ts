@@ -1056,8 +1056,8 @@ function factKindForSentence(sentence: string, query: string, intent: AnswerInte
 }
 
 /** Fact supports answer intent. */
-const admissionComparisonTermPattern = /\badmissions?\b/i;
-const dischargeComparisonTermPattern = /\bdischarg(?:e|es|ed|ing)\b/i;
+export const admissionComparisonTermPattern = /\badmissions?\b/i;
+export const dischargeComparisonTermPattern = /\bdischarg(?:e|es|ed|ing)\b/i;
 const sourceBoundTerminalContinuation = String.raw`(?=\s*(?:[.,;:]|$))`;
 const medicalClearanceContinuation = String.raw`(?=\s*(?:[.,;:]|$|\bor\s+if\s+(?:the\s+)?(?:consumer|patient)\b|\bfor\s+(?:an?\s+)?admission\b|\bvia\s+(?:the\s+)?emergency department\b|\band\s+arrang\w*\s+(?:an?\s+)?transfer\b|\bafter\s+(?:(?:a|the)\s+)?(?:(?:physical|clinical|medical)\s+)?assessment\b|\bby\s+(?:the\s+)?(?:treating\s+)?(?:doctor|clinician|consultant)\b|\bbefore\s+(?:an?\s+)?transfer\b|\bat\s+admission\b|\bprior\s+to\s+(?:admission|assessment|transfer)\b))`;
 const bedLocationContinuation = String.raw`(?=\s*(?:[.,;:]|$|\bat\s+(?:an?\s+)?(?:alternative\s+)?health service\b|\bfor\s+(?:an?\s+)?admission\b|\bwithin\s+(?:the\s+)?(?:service|ward|unit)\b|\bthrough\s+(?:the\s+)?(?:patient|bed)\s+flow\b|\band\s+notif\w*\s+(?:the\s+)?(?:staff|coordinator|clinician)\b))`;
@@ -1065,7 +1065,7 @@ const directBedLocationAction = String.raw`(?:locate\s+(?:an?\s+)?bed|(?:liaise|
 const subordinateBedLocationReportPattern = /\bwhether\b[^.!?]{0,180}\blocate\s+(?:an?\s+)?bed\b/i;
 const nonClinicalComparisonWrapperPattern =
   /^\s*(?:(?:for|regarding)\s+)?(?:(?:the|an?)\s+)?(?:(?:annual|monthly|quarterly|retrospective|historical)\s+)?(?:audit(?:\s+(?:observations?|findings?|reports?|records?))?|reports?|reporting|archives?|archival\s+records?|training(?:\s+(?:materials?|records?|requirements?))?|education(?:al)?\s+(?:materials?|records?)|governance(?:\s+(?:observations?|reports?|records?))?|historical\s+(?:records?|reports?)|retrospective\s+(?:reviews?|reports?))\b/i;
-const admissionRequirementBindingPatterns = [
+export const admissionRequirementBindingPatterns = [
   /\b(?:patient|consumer)\s+(?:will|must)\s+only\s+be\s+able\s+to\s+(?:come|enter)\b[^.!?]{0,180}\bmeet\s+(?:the\s+)?(?:identified\s+)?inclusion criteria\s+for admission\b/i,
   new RegExp(String.raw`\b(?:provide|obtain)\s+(?:an?\s+)?medical clearance\b${medicalClearanceContinuation}`, "i"),
   /\bmedical clearance\s+(?:(?:must|should)\s+be\s+(?:provided|obtained)|(?:is|are)\s+(?:required|provided|obtained))\b/i,
@@ -1083,7 +1083,7 @@ const admissionRequirementBindingPatterns = [
     "i",
   ),
 ] as const;
-const dischargeRequirementBindingPatterns = [
+export const dischargeRequirementBindingPatterns = [
   /\bclinicians?\s+(?:must|should|will)\s+actively\s+plan\s+(?:the\s+)?effective\s+and\s+timely\s+discharge\b/i,
   /\bdischarge planning\s+(?:(?:must be|is)\s+integral|(?:must|should)\s+(?:include|ensure|complete|notify|refer|document|arrange))\b/i,
   /\bdischarge plans?\s+(?:must|should)\s+(?:include|ensure|complete|notify|refer|document|arrange)\b/i,
@@ -2797,7 +2797,7 @@ function cleanSourceBoundComparisonCandidate(candidate: string) {
     .trim();
 }
 
-function sourceBoundComparisonFacts(args: {
+export function sourceBoundComparisonFacts(args: {
   results: SearchResult[];
   subjectPattern: RegExp;
   otherSubjectPattern: RegExp;
