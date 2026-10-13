@@ -16,6 +16,8 @@ import {
 } from "@/components/clinical-dashboard/result-filter-control";
 import { pageContainer } from "@/components/ui-primitives";
 import { therapyScreenHref } from "@/lib/therapy-compass-navigation";
+import { isAdministratorUser } from "@/lib/authorization";
+import { useAuthIfAvailable } from "@/lib/example-data/store";
 
 import { useTcBindings } from "../bindings";
 import { matchesAvailability, matchesTopics } from "../data/select";
@@ -34,6 +36,7 @@ const MAX_CARDS = 24;
 
 export function SearchScreen() {
   const b = useTcBindings();
+  const isAdministrator = isAdministratorUser(useAuthIfAvailable()?.session?.user);
   const q = b.search.query;
   // Nothing typed is browsing, not a search: show the list A to Z with no
   // "Best match" or "Why matched", so it never reads as the app having picked
@@ -300,20 +303,23 @@ export function SearchScreen() {
       ) : null}
 
       {/* The sign-off queue left the main tabs (it is editorial work, not a
-          clinical destination). This quiet link keeps it one tap away. */}
-      <p className="m-0 pt-2">
-        <Link
-          href={b.workspaceHref(therapyScreenHref("review"))}
-          data-testid="therapy-review-queue-link"
-          className="inline-flex min-h-tap items-center gap-2 rounded-lg px-1 text-sm-minus font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-        >
-          <ClipboardCheck aria-hidden="true" className="size-icon-md shrink-0" />
-          Review queue
-          {b.loading || b.error ? null : (
-            <span className="nums text-[color:var(--text-muted)]">· {b.reviewCount} to review</span>
-          )}
-        </Link>
-      </p>
+          clinical destination). This quiet link keeps it one tap away for a site
+          administrator, the only reader who can sign off (owner decision, 13 Oct 2026). */}
+      {isAdministrator ? (
+        <p className="m-0 pt-2">
+          <Link
+            href={b.workspaceHref(therapyScreenHref("review"))}
+            data-testid="therapy-review-queue-link"
+            className="inline-flex min-h-tap items-center gap-2 rounded-lg px-1 text-sm-minus font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          >
+            <ClipboardCheck aria-hidden="true" className="size-icon-md shrink-0" />
+            Review queue
+            {b.loading || b.error ? null : (
+              <span className="nums text-[color:var(--text-muted)]">· {b.reviewCount} to review</span>
+            )}
+          </Link>
+        </p>
+      ) : null}
     </section>
   );
 }
