@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "0bade374-d0ee-46ac-8e86-054e068140ca",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#R8HED2",
+    "outcome": "Resolved 2026-10-13 by PR #3412 (verified on main 4382217c3): first-nations-sewb, cultural-explanatory-model, migration-refugee, racism-discrimination and religion-spirituality all read release held in src/data/formulation-concepts.json; guide-07 is no longer a formulation concept. All five carry Indigenous terms, so the clinical sign-off tool refuses them; each needs review under Aboriginal governance before it is published.",
+    "baseRowFingerprint": "3b99d03565f3233363cfbed985d92bae1257298976ff01ccae3eb52f6b3dc611"
+  }
+}
