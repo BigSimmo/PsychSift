@@ -240,7 +240,7 @@ export const alphabetStripTargetClass = "scroll-mt-[calc(var(--phone-overlay-chr
  * gets no strip, because jumping to "M" there would land in the wrong place.
  * A lone row filed out of place in an otherwise A to Z list (a catalogue that
  * sorts "WACHS Goldfields" under G) is skipped rather than starting its own
- * letter: a row counts only when its letter sits between its neighbours'.
+ * letter: a row counts only when its letter sits between the last row kept and the next row.
  */
 export function alphabetStripEntries<T>(
   items: readonly T[],
@@ -250,15 +250,18 @@ export function alphabetStripEntries<T>(
   const letters = items.map((item) => alphabetStripLetter(nameOf(item)));
   const entries: AlphabetStripEntry[] = [];
   let outOfPlace = 0;
+  // Compare with the last row kept, not the raw previous row, so a skipped
+  // stray does not knock out the first row of the next letter.
+  let before: string | undefined;
   for (let index = 0; index < items.length; index += 1) {
     const letter = letters[index]!;
-    const before = letters[index - 1];
     const after = letters[index + 1];
     const inPlace = (before === undefined || before <= letter) && (after === undefined || letter <= after);
     if (!inPlace) {
       outOfPlace += 1;
       continue;
     }
+    before = letter;
     const previous = entries.at(-1)?.letter;
     if (letter === previous) continue;
     if (previous !== undefined && letter < previous) return [];
