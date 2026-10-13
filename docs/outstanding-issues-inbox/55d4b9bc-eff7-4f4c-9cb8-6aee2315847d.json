@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "55d4b9bc-eff7-4f4c-9cb8-6aee2315847d",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Ranking-snapshot date gate will fail again around 3 Nov 2026 unless the snapshot is refreshed (audit H5-1)",
+    "detail": "The snapshot was refreshed to 4 Oct, so the automatic checks pass today. Refreshing it needs a paid live eval run, which always needs the owner's explicit approval. Ask for that approval before the end of October; this touches a RAG ranking surface, so follow docs/rag-behaviour/ and the canary rules.",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4TNMPACSAKCD95HA1PXS0T8"
+  }
+}
