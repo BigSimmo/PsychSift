@@ -112,6 +112,7 @@ function setState(overrides: Partial<MyDayState>) {
   hookState.current = {
     status: "ready",
     demoMode: false,
+    readRevision: 0,
     retry,
     ...overrides,
     items,
