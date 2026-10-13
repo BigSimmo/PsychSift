@@ -66,33 +66,47 @@ function fixture(runtime: "missing" | "mismatched") {
     config,
     configPath,
     runtimeCalls,
-    run(extraEnvironment: Record<string, string> = {}) {
+    run(extraEnvironment: Record<string, string> = {}, explicitHarness = true) {
       // A minimal environment keeps inherited provider credentials and user
       // setup flags out of this isolated shell. Runtime shims precede system
       // utilities and log every invocation, including failure diagnostics.
-      return spawnSync(bashCommand, ["scripts/setup-codex-cloud.sh"], {
-        cwd: repoRoot,
-        encoding: "utf8",
-        env: {
-          NODE_ENV: "test",
-          SystemRoot: process.env.SystemRoot,
-          WINDIR: process.env.WINDIR,
-          TEMP: process.env.TEMP,
-          TMP: process.env.TMP,
-          HOME: bashPath(home),
-          NVM_DIR: bashPath(nvmDirectory),
-          PATH: `${bashPath(bin)}:${process.platform === "win32" ? "/mingw64/bin:" : ""}/usr/bin:/bin`,
-          CLOUD_POLICY_RUNTIME_CALLS: bashPath(runtimeCalls),
-          CODEX_CLOUD_ACCESS_PROFILE: "offline",
-          CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "1",
-          ...extraEnvironment,
+      return spawnSync(
+        bashCommand,
+        ["scripts/setup-codex-cloud.sh", ...(explicitHarness ? ["--policy-only-test-harness"] : [])],
+        {
+          cwd: repoRoot,
+          encoding: "utf8",
+          env: {
+            NODE_ENV: "test",
+            SystemRoot: process.env.SystemRoot,
+            WINDIR: process.env.WINDIR,
+            TEMP: process.env.TEMP,
+            TMP: process.env.TMP,
+            HOME: bashPath(home),
+            NVM_DIR: bashPath(nvmDirectory),
+            PATH: `${bashPath(bin)}:${process.platform === "win32" ? "/mingw64/bin:" : ""}/usr/bin:/bin`,
+            CLOUD_POLICY_RUNTIME_CALLS: bashPath(runtimeCalls),
+            CODEX_CLOUD_ACCESS_PROFILE: "offline",
+            CODEX_CLOUD_SETUP_STOP_AFTER_POLICY: "1",
+            ...extraEnvironment,
+          },
         },
-      });
+      );
     },
   };
 }
 
 describe("Codex Cloud policy-only harness runtime isolation", () => {
+  it.each(["inherited-flag", "ordinary-runtime"] as const)("rejects a policy-only shortcut in %s setup", (scenario) => {
+    const test = fixture("missing");
+    const result = scenario === "inherited-flag" ? test.run({}, false) : test.run({ NODE_ENV: "production" });
+    expect(result.status, result.stderr || result.stdout).toBe(1);
+    expect(result.stderr).toContain("requires --policy-only-test-harness in NODE_ENV=test");
+    expect(readFileSync(test.configPath, "utf8")).toBe(test.config);
+    expect(existsSync(test.runtimeCalls)).toBe(false);
+    expect(existsSync(path.join(test.home, ".clinical-kb-codex-cloud.sh"))).toBe(false);
+  });
+
   it.each(["missing", "mismatched"] as const)("writes policy without probing or installing a %s runtime", (runtime) => {
     const test = fixture(runtime);
     const result = test.run();

@@ -23,6 +23,9 @@ require_npm_config() {
 setup_step="initialization"
 diagnostic_python_bin=""
 policy_only_harness="${CODEX_CLOUD_SETUP_STOP_AFTER_POLICY:-0}"
+if [[ "$policy_only_harness" = "1" && ( "${1:-}" != "--policy-only-test-harness" || "${NODE_ENV:-}" != "test" ) ]]; then
+  fail "CODEX_CLOUD_SETUP_STOP_AFTER_POLICY requires --policy-only-test-harness in NODE_ENV=test."
+fi
 diagnose_setup_failure() {
   local status="$?"
   trap - ERR

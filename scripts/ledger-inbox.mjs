@@ -69,6 +69,12 @@ function validateAddRequest(request, problems) {
   for (const field of ["pri", "type", "summary"]) {
     if (!request.payload?.[field]) problems.push(`add requires ${field}`);
   }
+  if (request.payload?.pri && !["P1", "P2", "P3"].includes(String(request.payload.pri))) {
+    problems.push("add pri must be P1, P2, or P3");
+  }
+  if (request.payload?.type && !["task", "issue", "rec"].includes(String(request.payload.type))) {
+    problems.push("add type must be task, issue, or rec");
+  }
   if (request.payload?.issueUlid !== undefined && !isIssueUlid(request.payload.issueUlid)) {
     problems.push("add issueUlid must be a valid ULID");
   }
@@ -550,7 +556,7 @@ function reconcileLockAge(lockPath) {
   }
 }
 
-function recoverStaleReconcileLock(lockPath) {
+function recoverStaleReconcileLock(lockPath, recoverTransaction) {
   const owner = readReconcileLockOwner(lockPath);
   if (!owner && reconcileLockAge(lockPath) < OWNERLESS_LOCK_GRACE_MS) {
     throw new Error(`reconciliation lock at ${lockPath} is still initializing; retry after it completes`);
@@ -561,25 +567,44 @@ function recoverStaleReconcileLock(lockPath) {
     );
   }
   try {
-    recoverReconcileTransaction(lockPath);
+    recoverTransaction(lockPath);
   } catch (recoveryError) {
     throw new Error(`stale reconciliation requires recovery before retry: ${recoveryError.message}`);
   }
   rmSync(lockPath, { recursive: true, force: true });
 }
 
-function acquireReconcileLock() {
-  const lockPath = reconcileLockPath();
+export function acquireReconcileLock({
+  lockPath = reconcileLockPath(),
+  recoverTransaction = recoverReconcileTransaction,
+} = {}) {
+  // Every acquirer uses this atomic admission claim, including callers that
+  // find no existing lock. A stale recoverer cannot remove a replacement lock
+  // created between another recoverer's ownership check and directory removal.
+  const admissionPath = `${lockPath}.admission`;
   try {
-    createReconcileLock(lockPath);
+    mkdirSync(admissionPath);
   } catch (error) {
     if (error?.code !== "EEXIST") throw error;
-    recoverStaleReconcileLock(lockPath);
+    throw new Error(
+      `reconciliation admission is already claimed at ${admissionPath}; retry after release or obtain reviewed recovery`,
+    );
+  }
+  try {
+    writeFileSync(path.join(admissionPath, "owner.json"), `${JSON.stringify({ pid: process.pid })}\n`, "utf8");
     try {
       createReconcileLock(lockPath);
-    } catch (retryError) {
-      throw new Error(`could not acquire reconciliation lock at ${lockPath}: ${retryError.message}`);
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      recoverStaleReconcileLock(lockPath, recoverTransaction);
+      try {
+        createReconcileLock(lockPath);
+      } catch (retryError) {
+        throw new Error(`could not acquire reconciliation lock at ${lockPath}: ${retryError.message}`);
+      }
     }
+  } finally {
+    rmSync(admissionPath, { recursive: true, force: true });
   }
   return () => rmSync(lockPath, { recursive: true, force: true });
 }

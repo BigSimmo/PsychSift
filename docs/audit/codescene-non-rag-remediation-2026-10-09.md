@@ -114,8 +114,57 @@ preserved.
 Fresh provider-free evidence: the CI scope self-test, static Cloud contracts and
 owner-scope scanner passed. Ten focused suites passed all 230 tests, covering CI
 scope, tenancy, adoption, design utilities, Cloud setup/policy and ledger handling.
+
+Those integration runs were fresh executions on the source later committed as
+`66d21b5f482007cb47092afdea8e6ff25f85f7d4`; they were not reused receipts. The
+decisive console output was:
+
+```text
+CI change scope self-test passed.
+[Codex Cloud Check] PASS: static Cloud contracts match.
+✓ owner-scope phase 1: 125 src/app/api files clean against 56 owner-scoped tables.
+✓ owner-scope phase 2: 169 direct, 32 user-keyed, 29 derived-tier, 2 untiered-table and 1 dynamic-table-dispatch queries scoped on their chain or declared; 8 versioned-RPC call sites, all literal.
+Test Files  10 passed (10)
+Tests  230 passed (230)
+```
+
+The Vitest run finished at `2026-10-13T06:16:18.233Z`, with result reuse disabled
+(`GATE_RECEIPTS=refresh`). Its ten explicit owners were CI scope, API tenancy,
+design-system adoption, design-contract utilities, Cloud setup, Cloud policy
+harness, ledger inbox, remote ledger interlock, ledger cancellation and visual
+baseline adoption. The later snapshot-only commit `d77d16c2e168d4360b3fd4d597eb4252c695d895`
+did not rerun those suites; its fresh snapshot check reported
+`[repo-awareness] in step with data/repo-awareness-snapshot.json (307 pages, 576 documents, 2779 reviews)`.
+
 Dependency provisioning initially waited behind another worktree's exclusive lease;
 normal coordinator admission later succeeded and an exact-lock local donor was
 reused. Historical results above remain historical. Hosted CI and release readiness
 still require their own evidence. No merge, deployment, live canary or provider call
 is authorized by this repair.
+
+## Unresolved review findings - 13 October 2026
+
+The shell-comment parser, add-request domain mismatch and stale-lock removal race
+were inherited from the integration base; they were still present, so green CI
+did not dispose of those comments. The follow-up preserves the existing refusal
+paths while checking quoted/escaped hashes, rejecting add priorities/types the
+writer cannot accept, and atomically serializing lock acquisition and stale
+recovery. Tests use isolated lock fixtures, never the real reconciliation lock.
+An abandoned admission claim fails closed and requires reviewed recovery; this
+change does not authorize deleting a live or unclear claim.
+
+The policy-only shortcut now requires both an explicit `--policy-only-test-harness`
+invocation and `NODE_ENV=test`; an inherited stop flag alone refuses before
+runtime/configuration work. Ordinary setup without the stop flag is unchanged.
+
+Fresh direct checks of the follow-up source reported:
+
+```text
+[Codex Cloud Check] PASS: static Cloud contracts match.
+ledger inbox self-test passed.
+```
+
+Follow-up Vitest evidence is currently **unverified**. Normal admission returned
+`DATABASE_HEAVY_RUN_ADMISSION_BUSY` while another dependency task held capacity;
+no test or lock bypass was used. The earlier 230 passing tests are historical
+evidence for the integration source, not acceptance of these new review fixes.

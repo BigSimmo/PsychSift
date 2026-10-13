@@ -870,6 +870,43 @@ function validateCloudToolchainContract(sources, errors) {
   requireMatch(errors, gitignore, /^\/error\.log$/m, "Codex Cloud diagnostic error.log must stay ignored.");
 }
 
+export function cloudSetupContainsMcpRegistration(setup) {
+  let quote = null;
+  let ansiQuoted = false;
+  let escaped = false;
+  let wordStart = true;
+  let uncommented = "";
+  for (let index = 0; index < setup.length; index += 1) {
+    const character = setup[index];
+    if (escaped) {
+      uncommented += character;
+      escaped = false;
+      continue;
+    }
+    if (quote) {
+      uncommented += character;
+      if (character === quote) {
+        quote = null;
+        ansiQuoted = false;
+      } else if (character === "\\" && (quote === '"' || ansiQuoted)) escaped = true;
+      continue;
+    }
+    if (character === "#" && wordStart) {
+      while (index < setup.length && setup[index] !== "\n") index += 1;
+      uncommented += "\n";
+      wordStart = true;
+      continue;
+    }
+    uncommented += character;
+    if (character === "'" || character === '"') {
+      quote = character;
+      ansiQuoted = character === "'" && setup[index - 1] === "$";
+    } else if (character === "\\") escaped = true;
+    wordStart = /[\s;|&()]/.test(character);
+  }
+  return /\bmcp_servers\b/.test(uncommented);
+}
+
 function validateCloudSetupLifecycleContract(sources, errors) {
   const { setup, pythonSelector, maintenance } = sources;
   for (const [pattern, message] of [
@@ -930,11 +967,7 @@ function validateCloudSetupLifecycleContract(sources, errors) {
   for (const name of providerCredentialVariables) {
     if (!setup.includes(name)) errors.push(`Cloud setup must handle provider environment variable ${name}.`);
   }
-  const setupWithoutComments = setup
-    .split("\n")
-    .map((line) => (/^\s*#/.test(line) ? "" : line.replace(/\s+#.*$/, "")))
-    .join("\n");
-  if (/\bmcp_servers\b/.test(setupWithoutComments)) {
+  if (cloudSetupContainsMcpRegistration(setup)) {
     errors.push("Cloud setup must not generate MCP registrations; hosted apps are external to the repository.");
   }
   if (setup.includes("@railway/cli") || setup.includes('setup_step="railway-cli"')) {
