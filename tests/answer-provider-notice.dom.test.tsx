@@ -1,0 +1,28 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+
+import {
+  ANSWER_PROVIDER_NOTICE_TEXT,
+  AnswerProviderNotice,
+} from "@/components/clinical-dashboard/answer-provider-notice";
+
+/** The overseas-processing line under an answer (audit S3, 2026-10-13). */
+describe("AnswerProviderNotice", () => {
+  it("says where a question goes and asks for no patient details, as one quiet note", () => {
+    render(<AnswerProviderNotice />);
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent(
+      "Questions are sent to an overseas AI service (OpenAI) to search and write answers. Don't include patient details.",
+    );
+    expect(note).toHaveTextContent(ANSWER_PROVIDER_NOTICE_TEXT);
+  });
+
+  it("is mounted once, under the latest answer, and never in demo mode", () => {
+    const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
+    expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(1);
+    expect(source).toMatch(/explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/);
+  });
+});

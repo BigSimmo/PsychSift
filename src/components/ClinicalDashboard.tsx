@@ -58,6 +58,7 @@ import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboa
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
+import { AnswerProviderNotice } from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
   AnswerProgress,
@@ -3558,6 +3559,12 @@ function ClinicalDashboardContent({
                         generating={loading}
                         onScopeDocument={handleScopeDocument}
                       />
+                      {/* Once per page, under the latest answer: where a question goes (audit S3). */}
+                      {explicitDemoMode ||
+                      answer.demoMode === true ||
+                      answer.fallbackMode === "non_production_demo" ? null : (
+                        <AnswerProviderNotice className="mt-1" />
+                      )}
                     </>
                   ) : null
                 ) : null}
