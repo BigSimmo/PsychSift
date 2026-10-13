@@ -189,7 +189,7 @@ describe("Roster team journey", () => {
     render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
     expect(await screen.findByRole("heading", { name: "Team week · 12 to 18 Oct" })).toBeTruthy();
     expect(screen.getByTestId("roster-team-legend").textContent).toBe(
-      "D day · E evening · N night · C on call · L leave · W other work · blank is off.",
+      "D day · L evening · N night · OC on call · AL leave · W other work · blank is off.",
     );
   });
   it("lists who is on now, until when, and hides the list when nobody is on", async () => {

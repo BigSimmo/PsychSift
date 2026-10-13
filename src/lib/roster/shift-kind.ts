@@ -8,12 +8,17 @@ import { perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 export const SHIFT_KINDS = ["day", "evening", "night", "on_call", "leave", "other"] as const;
 export type ShiftKind = (typeof SHIFT_KINDS)[number];
 
+/**
+ * The code shown for each kind: the design system's shift codes (the `--work-shift-*` tokens in work-mode-tokens.css,
+ * the same as My Day's week strip): D day, L late (the evening shift), N night, OC on call,
+ * AL leave. Only the label changes; the stored kind stays `evening`, `on_call`, `leave`.
+ */
 export const SHIFT_LETTER: Readonly<Record<ShiftKind, string>> = {
   day: "D",
-  evening: "E",
+  evening: "L",
   night: "N",
-  on_call: "C",
-  leave: "L",
+  on_call: "OC",
+  leave: "AL",
   other: "W",
 };
 
