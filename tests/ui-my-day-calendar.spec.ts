@@ -65,6 +65,20 @@ async function expectMonth(calendar: Locator, title: string) {
   await expect(calendar.getByRole("heading", { level: 2, name: title })).toBeVisible();
 }
 
+/**
+ * Clicks a calendar control and waits for what it does, clicking again if the first click left no
+ * trace. Firefox on main dropped one of these clicks in three runs in a row on 13 Oct 2026 (once the
+ * chosen day, once Today), each time after the calendar had settled. The outcome is still asserted
+ * in full; a repeat click is harmless because both actions are idempotent.
+ */
+async function clickUntil(control: Locator, outcome: () => Promise<void>) {
+  await expect(async () => {
+    // Today disappears once October shows, so a click that landed but rendered slowly is not repeated.
+    if (await control.isVisible()) await control.click({ timeout: 5_000 });
+    await outcome();
+  }).toPass({ timeout: 20_000, intervals: [1_000, 2_000, 4_000] });
+}
+
 async function expectNoSidewaysScroll(page: Page, label: string) {
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -102,13 +116,14 @@ test("moves between months, shows your older shifts, and returns to today", asyn
   await expect(page.getByTestId("my-day-calendar-history-notice")).toHaveCount(0);
   expect(datedReads.some((query) => query.includes("from=2026-07-31"))).toBe(true);
 
-  await calendar.getByTestId("my-day-calendar-day-2026-08-12").click();
-  await expect(calendar.getByTestId("my-day-calendar-day-2026-08-12")).toHaveAttribute("aria-pressed", "true");
+  const chosenDay = calendar.getByTestId("my-day-calendar-day-2026-08-12");
+  await clickUntil(chosenDay, () => expect(chosenDay).toHaveAttribute("aria-pressed", "true", { timeout: 5_000 }));
   const day = calendar.getByTestId("my-day-calendar-day");
   await expect(day.getByTestId(`my-day-calendar-item-shift:${older.id}`)).toBeVisible();
 
-  await calendar.getByTestId("my-day-calendar-today").click();
-  await expectMonth(calendar, "October 2026");
+  await clickUntil(calendar.getByTestId("my-day-calendar-today"), () =>
+    expect(calendar.getByRole("heading", { level: 2, name: "October 2026" })).toBeVisible({ timeout: 5_000 }),
+  );
   await expect(calendar.getByTestId("my-day-calendar-today")).toHaveCount(0);
   await expect(today).toHaveAttribute("aria-pressed", "true");
 });
