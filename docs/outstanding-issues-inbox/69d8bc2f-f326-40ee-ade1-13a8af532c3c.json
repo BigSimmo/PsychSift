@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "69d8bc2f-f326-40ee-ade1-13a8af532c3c",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Small audit leftovers: merge needs zero human approvals and the 'Database / production' GitHub environment is not a real approval gate (L6-F2, L6-F3); reindex reaper has no protected environment (L6-F4); admin has two home pages (L4G-L1); thin browser tests for Compliance, records, Psychiatry and the MHA clock (L4G-L2); clinical-kb name in 47 files (F-L2-04); install prompt may cover password-reset and privacy pages on first paint (L4A-F2)",
+    "detail": "Settings changes in GitHub are the owner's. Browser-check L4A-F2 before changing anything. HYSWAF already tracks Railway deploying before checks finish (L6-F1).",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65ZGQ3AVEFG1X67PCV32E"
+  }
+}
