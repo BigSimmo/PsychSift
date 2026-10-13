@@ -1,9 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 import { DEFAULT_EVAL_OWNER_ID, loadAdminClient, resolveEvalOwnerId } from "./eval-utils";
 import { redactSensitiveText } from "./sensitive-text.mjs";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const supportedRetrievalRpcs = [
   "match_documents_for_query",
@@ -424,7 +424,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(sanitizeProfileError(error).message);
     process.exitCode = 1;

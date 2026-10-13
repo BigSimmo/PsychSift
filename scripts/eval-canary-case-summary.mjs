@@ -9,7 +9,7 @@
  */
 import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 /** The newest retrieval-quality-*.json that eval:quality wrote into `dir`, or null. */
 export function latestQualityReport(dir) {
@@ -72,4 +72,4 @@ function main() {
     );
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();
+if (isDirectEntrypoint(import.meta.url)) main();

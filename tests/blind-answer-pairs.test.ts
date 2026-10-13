@@ -140,8 +140,11 @@ describe("blind-answer-pairs argument parsing and paths", () => {
     const source = readFileSync(new URL("../scripts/blind-answer-pairs.ts", import.meta.url), "utf8");
     expect(source).toMatch(/isDirectEntrypoint|import\.meta\.url === pathToFileURL\(process\.argv\[1\]\)\.href/);
     // Every import must be a node: builtin — no src/, no sibling scripts, no @next/env, so the
-    // script can never pull provider env or clients.
-    expect(source).not.toMatch(/from "(?!node:)/);
+    // script can never pull provider env or clients. The one exception is the shared entrypoint
+    // helper, allowed because it is itself node:-only (asserted below), so it cannot pull them either.
+    expect(source).not.toMatch(/from "(?!node:|\.\/lib\/is-entrypoint\.mjs")/);
+    const helper = readFileSync(new URL("../scripts/lib/is-entrypoint.mjs", import.meta.url), "utf8");
+    expect(helper).not.toMatch(/from "(?!node:)/);
   });
 
   it("parses build and unblind modes strictly", () => {

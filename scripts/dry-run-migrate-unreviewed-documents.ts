@@ -5,10 +5,10 @@
  * "locally_reviewed" without a human reviewer, changing them to "imported_unreviewed"
  * (or "unverified" with endorsement basis), while preserving documents with recorded reviewers.
  */
-import { pathToFileURL } from "node:url";
 
 import { loadEnvConfig } from "@next/env";
 import { hasRecordedReviewerMarker } from "@/lib/clinical-validation-basis";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -178,7 +178,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);
