@@ -194,8 +194,8 @@ test("phone portaled addon focus pins the universal collapse owner during scroll
   await gotoPhoneSurface(page, "/differentials/diagnoses/delirium");
 
   const collapse = page.getByTestId("universal-header-collapse");
-  const addon = page.getByTestId("header-collapse-addon");
-  const backLink = addon.getByRole("link", { name: "Back to diagnoses" });
+  // Back sits in the top bar's leading slot, portaled there by the page.
+  const backLink = page.getByTestId("universal-header-collapse").getByRole("link", { name: "Back to diagnoses" });
   await expect(backLink).toBeVisible({ timeout: 20_000 });
   await addPhoneScrollRunway(page);
 
@@ -223,8 +223,8 @@ test("phone portaled addon focus clears when its focused control navigates away"
   await page.setViewportSize({ width: 320, height: 720 });
   await gotoPhoneSurface(page, "/differentials/diagnoses/delirium");
 
-  const addon = page.getByTestId("header-collapse-addon");
-  const backLink = addon.getByRole("link", { name: "Back to diagnoses" });
+  // Back sits in the top bar's leading slot, portaled there by the page.
+  const backLink = page.getByTestId("universal-header-collapse").getByRole("link", { name: "Back to diagnoses" });
   await expect(backLink).toBeVisible({ timeout: 20_000 });
   await backLink.focus();
   await expect(backLink).toBeFocused();
