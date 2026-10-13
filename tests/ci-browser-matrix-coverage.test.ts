@@ -132,8 +132,8 @@ describe("release-browser-matrix engine coverage", () => {
         .sort(),
     );
 
-    // `chromium` (the production project) is the one the ui-critical job already
-    // proved in this run. Re-running it here is the waste the primary path exists
+    // `chromium` (the production project) is the one the ui-critical job proves in
+    // this same run. Re-running it here is the waste the primary path exists
     // to avoid — but only Chromium, never the cross-engine backstop.
     expect([...byEngine.values()].flat()).not.toContain("chromium");
     expect([...byEngine.values()].flat()).toContain("firefox");
@@ -149,11 +149,11 @@ describe("release-browser-matrix engine coverage", () => {
       shard: number;
       total: number;
     }>;
-    expect(jobs).toHaveLength(21);
+    expect(jobs).toHaveLength(23);
     for (const [project, engine, total] of [
       ["chromium-mockups", "chromium", 1],
-      ["firefox", "firefox", 3],
-      ["webkit", "webkit", 3],
+      ["firefox", "firefox", 4],
+      ["webkit", "webkit", 4],
       ["mobile-webkit", "webkit", 5],
       ["mobile-pwa-standalone", "webkit", 5],
       ["tablet", "webkit", 4],
