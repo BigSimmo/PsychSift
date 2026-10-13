@@ -48,6 +48,34 @@ describe("main tree proof script", () => {
     expect(result.stdout).toContain("ci-main-tree-proof self-test passed.");
   });
 
+  it("exits non-zero when a self-test assertion fails, writing no GitHub outputs", () => {
+    const outDir = mkdtempSync(path.join(tmpdir(), "tree-proof-self-test-"));
+    const outputFile = path.join(outDir, "output");
+    const summaryFile = path.join(outDir, "summary");
+    writeFileSync(outputFile, "");
+    writeFileSync(summaryFile, "");
+    try {
+      const result = spawnSync(process.execPath, ["scripts/ci-main-tree-proof.mjs", "--self-test"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          CI_TREE_PROOF_SELF_TEST_FORCE_FAIL: "1",
+          GITHUB_OUTPUT: outputFile,
+          GITHUB_STEP_SUMMARY: summaryFile,
+        },
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("self-test FAILED");
+      expect(result.stderr).toMatch(/forced failure \(test hook\)[\r\n]\s+at /);
+      expect(result.stdout).not.toContain("self-test passed");
+      expect(result.stdout).not.toContain("coverage=");
+      expect(readFileSync(outputFile, "utf8")).toBe("");
+      expect(readFileSync(summaryFile, "utf8")).toBe("");
+    } finally {
+      rmSync(outDir, { recursive: true, force: true, maxRetries: 5 });
+    }
+  });
+
   it("names exactly the PR-run jobs each group skips, matching ci.yml job names", () => {
     const names = Object.values(jobs).map((job) => String((job as { name?: string }).name ?? ""));
     for (const name of [
