@@ -3500,7 +3500,7 @@ function ClinicalDashboardContent({
                           searchMode === "documents" && query.trim()
                             ? () => {
                                 setError(null);
-                                void ask(lastFailedQuery ?? query);
+                                void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
                               }
                             : undefined
                         }
