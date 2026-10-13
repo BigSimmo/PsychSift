@@ -163,6 +163,11 @@ if (idleTimeoutMs !== null) {
   console.log(`Idle shutdown enabled: this server exits after ${idleMinutes} min with no request/build activity.`);
 }
 
+const nodeOptions = process.env.NODE_OPTIONS ?? "";
+const effectiveNodeOptions = nodeOptions.includes("--max-old-space-size")
+  ? nodeOptions
+  : `${nodeOptions} --max-old-space-size=4096`.trim();
+
 const child = spawn(
   process.execPath,
   [
@@ -177,7 +182,7 @@ const child = spawn(
   ],
   {
     cwd: projectRoot,
-    env: { ...process.env, PORT: String(freePort) },
+    env: { ...process.env, PORT: String(freePort), NODE_OPTIONS: effectiveNodeOptions },
     // Idle-shutdown needs to observe output to detect activity, so it cannot
     // use "inherit"; everything read here is still forwarded byte-for-byte.
     stdio: idleTimeoutMs === null ? "inherit" : ["ignore", "pipe", "pipe"],
