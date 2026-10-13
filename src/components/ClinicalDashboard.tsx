@@ -192,7 +192,7 @@ import {
 } from "@/lib/private-search-scope";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
-import { hasCrisisWording } from "@/lib/crisis-wording";
+import { hasCrisisWording, hasOverdoseWording } from "@/lib/crisis-wording";
 import {
   clinicalQuestionPatientDetail,
   clinicalQuestionPatientDetailMessage,
@@ -1663,14 +1663,21 @@ function ClinicalDashboardContent({
     const trimmedQuery = searchText.trim();
     if (!trimmedQuery) return;
     const modeSearch = appModeSearchConfig(targetMode);
+    const isDifferentialsMode = modeSearch.resultKind === "differentials";
+    const isAnswerRequest = modeSearch.resultKind === "answer";
+    if (isAnswerRequest) {
+      const patientDetail = clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const targetQueryMode = appModeQueryMode(targetMode, queryModeOverride);
     const privateScopeRef =
       scopeRefOverride ??
       (selectedDocumentIds.length > 0 && auth.session?.user.id
         ? (persistPrivateSearchScope(window.sessionStorage, auth.session.user.id, selectedDocumentIds) ?? undefined)
         : undefined);
-    const isDifferentialsMode = modeSearch.resultKind === "differentials";
-    const isAnswerRequest = modeSearch.resultKind === "answer";
     // Note: no automatic mode-default label scope for Services/Forms. Applying
     // one on every search routed resolveSearchScope's label path over the whole
     // library, whose single `document_labels.in(<all ids>)` request produces an
@@ -2167,6 +2174,13 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
+    if (mode === "answer") {
+      const patientDetail = clinicalQuestionPatientDetail(crossQuery.trim());
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
@@ -3342,7 +3356,8 @@ function ClinicalDashboardContent({
 
                 {activeModeResultKind === "answer" &&
                 (loading || answer) &&
-                hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ? (
+                (hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ||
+                  hasOverdoseWording(answerLifecycle.query ?? latestAnswerQuery)) ? (
                   <AnswerCrisisBanner query={answerLifecycle.query ?? latestAnswerQuery} />
                 ) : null}
 
