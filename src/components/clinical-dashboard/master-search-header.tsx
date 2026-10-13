@@ -42,10 +42,7 @@ import {
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
-import {
-  clinicalQuestionPatientDetail,
-  clinicalQuestionPatientDetailMessage,
-} from "@/lib/clinical-question-patient-check";
+import { clinicalQuestionPatientDetail, composerPatientDetailWarning } from "@/lib/clinical-question-patient-check";
 import {
   splitFilterText,
   filterText,
@@ -402,9 +399,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     demoMode: false,
   });
   const trimmedQuery = query.trim();
-  // Clinical questions go to an overseas AI service, so in Answer mode a question that looks like it
-  // holds a patient detail is held back (Work's check, read for clinical questions; audit S2,
-  // 2026-10-13). Other modes keep the narrower advisory warning.
+  // Answer mode holds back a question that looks like it holds a patient detail (audit S2, 2026-10-13).
   const clinicalPatientDetail = useMemo(
     () => (searchMode === "answer" && query ? clinicalQuestionPatientDetail(query) : null),
     [query, searchMode],
@@ -2468,9 +2463,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             data-testid={composerPhiWarningId}
             className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
           >
-            {clinicalPatientDetail
-              ? clinicalQuestionPatientDetailMessage(clinicalPatientDetail)
-              : "Remove identifiable patient details before searching."}
+            {composerPatientDetailWarning(clinicalPatientDetail)}
           </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can

@@ -312,7 +312,7 @@
   gap: calc(var(--spacing) * 1.5);
   padding: 0 calc(var(--spacing) * 3);
   border: 1px solid var(--work-line, var(--border));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text);
   font: inherit;

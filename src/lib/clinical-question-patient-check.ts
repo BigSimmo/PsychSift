@@ -59,3 +59,10 @@ export function clinicalQuestionPatientDetailMessage(problem: PatientDetailProbl
   const finding = problem.title.replace(/^This looks like /, "").replace(/^This may be /, "");
   return `This question looks like it holds a patient detail (${finding}). Remove it and ask again: questions are sent to an overseas AI service. This check catches some details, not all.`;
 }
+
+/** The search box's warning line: the held-back sentence for a clinical question, else the advisory one. */
+export function composerPatientDetailWarning(problem: PatientDetailProblem | null): string {
+  return problem
+    ? clinicalQuestionPatientDetailMessage(problem)
+    : "Remove identifiable patient details before searching.";
+}
