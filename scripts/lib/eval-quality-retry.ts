@@ -74,7 +74,9 @@ export function blockingGateRetryCaseIds(
     } else if (failure.startsWith("RAG source_backed_review_fallback unaccounted")) {
       add(results.filter((result) => unaccounted.has(result.id)));
     } else if (failure.startsWith("RAG route_ceiling_failure_count")) {
-      add(results.filter((result) => result.routeCeilingExceeded));
+      // Every retried case keeps its first-attempt routeCeilingExceeded flag in the count, so a
+      // rerun can never clear this gate either; retrying would only add provider cost.
+      nonRetryable.push(failure);
     } else if (failure.startsWith("RAG grounded_supported_rate")) {
       add(results.filter((result) => result.supported && !isGroundedSupported(result, providerMode)));
     } else if (failure.startsWith("RAG unsupported_correct_rate")) {
@@ -200,6 +202,13 @@ export function finalBlockingFailures(args: {
   nonRetryable: readonly string[];
   retryError: string | null;
 }): string[] {
-  const standing = args.retryError ? args.initial : args.nonRetryable;
-  return [...args.merged, ...standing.filter((failure) => !args.merged.includes(failure))];
+  // One entry per gate: messages carry the measured value, so match on the gate with numbers masked.
+  const gate = (failure: string) => failure.replace(/\d+(?:\.\d+)?/g, "#");
+  if (args.retryError) {
+    // The first-attempt value is the verdict; a partial-retry value of the same gate is dropped.
+    const initialGates = new Set(args.initial.map(gate));
+    return [...args.initial, ...args.merged.filter((failure) => !initialGates.has(gate(failure)))];
+  }
+  const mergedGates = new Set(args.merged.map(gate));
+  return [...args.merged, ...args.nonRetryable.filter((failure) => !mergedGates.has(gate(failure)))];
 }

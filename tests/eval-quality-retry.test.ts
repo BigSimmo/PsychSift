@@ -228,4 +228,15 @@ describe("finalBlockingFailures", () => {
       finalBlockingFailures({ initial: [rate], merged: [], nonRetryable: [], retryError: "provider exploded" }),
     ).toEqual([rate]);
   });
+
+  it("lists a gate once when a crashed retry left it failing at a different value", () => {
+    expect(
+      finalBlockingFailures({
+        initial: [rate],
+        merged: ["RAG grounded_supported_rate 0.92 below 0.95"],
+        nonRetryable: [],
+        retryError: "provider exploded",
+      }),
+    ).toEqual([rate]);
+  });
 });
