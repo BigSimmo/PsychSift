@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 import { ContextualBackLink } from "@/components/contextual-back-link";
-import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame-header";
+import { universalHeaderLeadingSlotId } from "@/components/work-frame/universal-header-slot";
 import { useClaimWorkFrameBack } from "@/components/work-frame/work-frame-store";
 
 const subscribeNever = () => () => {};
