@@ -133,6 +133,14 @@ export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clock
  */
 export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
 /**
+ * localStorage — the "Recent pages" list shared by Work and Clinical (side menu, AI Search and the
+ * Clinical mode homes' Continue): a page's path without its query, the page's own title, its mode
+ * and section, and a time. Record and area pages only, never a search, a draft, call notes, a
+ * handover or an MHA clock; recorded only while "Save recent searches" is on, cleared with recent
+ * searches.
+ */
+export const RECENT_PAGES_STORAGE_KEY = "psychsift:recent-pages-v1";
+/**
  * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
  * counts, learning goals and "to raise" notes. Backed up to the account in `work_backups`
  * (`@/lib/work-sync`); the screen says no patient details. Cleared at sign-out, session expiry and
@@ -279,6 +287,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, RECENT_PAGES_STORAGE_KEY);
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   removeQuietly(() => window.localStorage, BELL_PHONE_QUEUE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);

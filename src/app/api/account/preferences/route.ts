@@ -95,6 +95,7 @@ const preferencesPatchSchema = z
     showRecentOnHome: z.boolean(),
     showProtocolsOnHome: z.boolean(),
     compactCitations: z.boolean(),
+    brightLight: z.boolean(),
     // Omitted keys are preserved from the stored account row on PUT — never
     // defaulted here, or a pre-change tab can overwrite a stored opt-out.
     saveRecentSearches: z.boolean(),

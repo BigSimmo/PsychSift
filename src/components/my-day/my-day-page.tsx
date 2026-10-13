@@ -671,7 +671,6 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 page={page}
                 onShowAll={showAll}
                 onRetry={state.retry}
-                onCustomise={page === "today" ? () => setSheet("customise") : undefined}
                 onRemindMe={openRemindMe}
                 onOpenReminders={() => setSheet("reminders")}
                 pendingReminders={pendingReminders}

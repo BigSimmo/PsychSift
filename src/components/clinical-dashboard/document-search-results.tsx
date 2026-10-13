@@ -58,17 +58,10 @@ import {
   DocumentBadge,
   documentActionClass,
 } from "@/components/clinical-dashboard/document-ui";
+import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import { useBatchSignedImageUrls } from "@/components/clinical-dashboard/use-batch-signed-urls";
 import { useSignedImageUrl } from "@/components/clinical-dashboard/use-signed-image-url";
-import {
-  cn,
-  floatingControl,
-  LoadingPanel,
-  metadataPillDensity,
-  Skeleton,
-  sourceCard,
-  textMuted,
-} from "@/components/ui-primitives";
+import { cn, floatingControl, metadataPillDensity, Skeleton, sourceCard, textMuted } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { compactBestUseTitle } from "@/lib/compact-best-use-title";
 import { withCatalogueDegradedNotice } from "@/lib/site-content/catalogue-degraded-notice";
@@ -1545,7 +1538,8 @@ function DocumentSearchResultsPanelImpl({
       ) : null}
 
       {loading ? (
-        <LoadingPanel label="Finding matching documents" />
+        // Rows shaped like the document results on their way, not a spinner over an empty page.
+        <ResultRowsPlaceholder label="Finding matching documents" rows={4} testId="document-results-placeholder" />
       ) : matches.length === 0 ? (
         // A services or forms search that matched records but no documents.
         // This branch used to render `null`, which stranded the reader: moving

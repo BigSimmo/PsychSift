@@ -15,7 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 
 import { CmeCategoryLegend, CmeYearSummary } from "@/components/cme/cme-dashboard-catch-up";
 import { CmeTodayDetailSheet, type CmeTodayDetail } from "@/components/cme/cme-dashboard-detail-sheet";
@@ -27,15 +27,16 @@ import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-lis
 import { hoursByCategory } from "@/components/cme/cme-progress-visuals";
 import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme-quick-log";
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
-import { CmeBandAction, CmeKvCard, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
+import { CmeBandAction, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
 import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
 import { WorkColumns } from "@/components/work-frame/work-desktop-layout";
 import { Button } from "@/components/ui/button";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { addDays, expandEvents } from "@/lib/calendar/calendar-event";
 import { cmeCalendarEvents } from "@/lib/cme/calendar-events";
 import { buildCmeCatchUpPlan } from "@/lib/cme/catch-up-plan";
-import { cpdYearOf, daysRemainingInCpdYear, formatCalendarDateShort, perthCalendarDate } from "@/lib/cme/cpd-year";
+import { formatCalendarDateShort, perthCalendarDate } from "@/lib/cme/cpd-year";
 import { evaluateYear } from "@/lib/cme/evaluate";
 import { useCmeModuleOrder, type CmeDashboardModuleId } from "@/lib/cme/module-order";
 import { cmeRoutineGapScenarios, cmeWeeklyPace } from "@/lib/cme/pace";
@@ -77,8 +78,12 @@ import {
  *   2. "To log": teaching sessions not yet logged and routines due today, each
  *      with its own Log, and "Snooze a week";
  *   3. "What's left": the next step first, then the year check's open items;
- *   4. "Records to tidy": chips (not marked copied, no reflection, drafts);
- *   5. "Also for you", then "About this year";
+ *   4. a drafts chip, when there are drafts to finish;
+ *   5. "Also for you", then a quiet footnote naming where the targets came from.
+ *
+ * Simplify plan (12 Oct 2026): "What's left" shows its top three, then "See all in End of year"; the
+ * copy and reflection chips and "About this year" went (they repeated What's left and the hero), and
+ * today's hours moved into the hero's kicker.
  *   6. the floating dock: "Log an activity" (it opens the quick-log sheet).
  *
  * What follows is the earlier (5 Oct) description, which still holds for the
@@ -245,7 +250,6 @@ export function CmeDashboard({
     };
   }, [set, entries, routines, today]);
   const { totalHours, statuses, unmet } = derived.evaluation;
-  const inRequestedYear = cpdYearOf(now) === set.year;
   const yearEntries = entries.filter((entry) => !entry.archivedAt && entry.date.startsWith(`${set.year}-`));
   const culturallySafePracticeToLog = set.requirements.some(
     (requirement) =>
@@ -301,7 +305,9 @@ export function CmeDashboard({
   const nextStepRowId = !offerYearEnd && showWhatsLeft ? nextStep.rowId : null;
   // Before anything is logged only the drafts chip can say something true, so it alone still shows.
   const yearChips = hasTarget ? buildCmeYearChips({ year: set.year, yearCheck, draftsToFinish }) : [];
-  const chips = nothingLogged ? yearChips.filter((chip) => chip.id === "drafts") : yearChips;
+  // Only the drafts chip says something "What's left" does not (12 Oct 2026 simplify plan: the copy and
+  // reflection chips repeated its rows).
+  const chips = yearChips.filter((chip) => chip.id === "drafts");
 
   const { nextDate, catchUp, weeklyPace, gapScenarios } = derived;
   const totalGap = catchUp.hoursToGo;
@@ -378,6 +384,8 @@ export function CmeDashboard({
       closed={Boolean(set.closedAt)}
       onOpenGap={() => setDetail("gap")}
       firstLogAction={nothingLogged ? logLink("Log your first activity", "work-button min-h-tap mt-2") : undefined}
+      todayHours={shows("audited-today") ? loggedTodayHours : 0}
+      showTimeLeft={shows("year-dates")}
     />
   );
 
@@ -565,74 +573,40 @@ export function CmeDashboard({
       )
     );
 
+  // "What's left" carries the only other link to End of year; when it is hidden this row keeps
+  // End of year (what is missing, evidence, handing it in) one tap away.
+  // Every target shown carries where it came from (the visual contract), so the source stays on the page as
+  // a quiet footnote under everything else; the Targets page itself lives in the band's More (12 Oct 2026).
   const home = readCpdHome(set.confirmedSource);
   const targetsLine = set.confirmedOn
     ? `You confirmed ${home.kind === "ranzcp" ? "the RANZCP starting set" : describeConfirmedSource(set.confirmedSource)} on ${formatCalendarDateShort(set.confirmedOn)}.${nothingLogged ? "" : " A personal record, not independent certification."}`
     : "No targets confirmed yet. Set them up whenever you like.";
+  const provenance = shows("provenance") ? (
+    <Link
+      href={`/cme/setup?year=${set.year}`}
+      data-testid="cme-provenance"
+      className="group mt-1 flex min-h-tap items-center gap-2 rounded-[var(--work-radius-card)] px-1 text-xs leading-relaxed text-[color:var(--text-muted)] no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+    >
+      <span className="min-w-0 flex-1">
+        <span className="font-semibold text-[color:var(--text)] group-hover:underline">Targets</span>
+        {` · ${targetsLine}`}
+      </span>
+      <ChevronRight aria-hidden="true" className="size-4 shrink-0" />
+    </Link>
+  ) : null;
 
-  const aboutFacts: { label: string; value: string; testId: string }[] = [];
-  if (shows("year-dates")) {
-    aboutFacts.push({
-      label: "Year",
-      value: `1 Jan to 31 Dec${inRequestedYear && !nothingLogged ? ` · ${daysRemainingInCpdYear(now, set.year)} days left` : ""}`,
-      testId: "cme-year-dates",
-    });
-  }
-  if (set.confirmedOn && (home.kind === "ranzcp" || home.name)) {
-    aboutFacts.push({
-      label: "CPD home",
-      value: home.kind === "ranzcp" ? "RANZCP" : home.name,
-      testId: "cme-cpd-home",
-    });
-  }
-  if (!nothingLogged && shows("audited-today")) {
-    aboutFacts.push({
-      label: "Today",
-      value:
-        loggedToday.length > 0
-          ? `${loggedToday.length} ${loggedToday.length === 1 ? "activity" : "activities"}, ${formatCmeHours(loggedTodayHours)} h`
-          : "Nothing logged yet",
-      testId: "cme-audited-today",
-    });
-  }
-  const aboutRows: ReactNode[] = [];
-  if (shows("provenance")) {
-    aboutRows.push(
-      <CmeFlatRow
-        key="targets"
-        testId="cme-provenance"
-        title="Targets"
-        subtitle={targetsLine}
-        href={`/cme/setup?year=${set.year}`}
-      />,
-    );
-  }
-  // "What's left" carries the only other link to End of year; when it is hidden this row keeps
-  // End of year (what is missing, evidence, handing it in) one tap away.
-  if (!showWhatsLeft) {
-    aboutRows.push(
-      <CmeFlatRow
-        key="check"
-        testId="cme-about-year-check"
-        title="End of year"
-        subtitle="What is missing, evidence to tidy, and handing it in"
-        href={`/cme/check?year=${set.year}`}
-      />,
-    );
-  }
-  const about =
-    aboutFacts.length > 0 || aboutRows.length > 0 || trainingLink ? (
-      <CmeGroup label="About this year" testId="cme-about-year">
-        {aboutFacts.length > 0 ? (
-          <CmeKvCard
-            label="This year"
-            rows={aboutFacts.map((fact) => ({ label: fact.label, value: fact.value, testId: fact.testId }))}
-          />
-        ) : null}
-        {aboutRows.length > 0 ? <CmeFlatList>{aboutRows}</CmeFlatList> : null}
-        {trainingLink}
-      </CmeGroup>
-    ) : null;
+  const endOfYearRow = !showWhatsLeft ? (
+    <CmeGroup label="End of year" testId="cme-about-year">
+      <CmeFlatList>
+        <CmeFlatRow
+          testId="cme-about-year-check"
+          title="End of year"
+          subtitle="What is missing, evidence to tidy, and handing it in"
+          href={`/cme/check?year=${set.year}`}
+        />
+      </CmeFlatList>
+    </CmeGroup>
+  ) : null;
 
   const byCategory = !hasTarget ? (
     <CmeGroup label="Logged by category" testId="cme-logged-by-category">
@@ -664,6 +638,9 @@ export function CmeDashboard({
             the dates and the year's details on the right (11 Oct 2026 layout audit). */}
         <WorkColumns>
           <div>
+            <NewWorkModeOnly>
+              <WorkSetupRow />
+            </NewWorkModeOnly>
             {summary}
             {nextStepNode}
             {toLog}
@@ -676,7 +653,9 @@ export function CmeDashboard({
             </NewWorkModeOnly>
             {byCategory}
             {alsoForYou}
-            {about}
+            {endOfYearRow}
+            {trainingLink}
+            {provenance}
           </div>
           {dock}
         </WorkColumns>

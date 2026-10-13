@@ -227,6 +227,13 @@ function DialTile({
           className={cn(focusRing, modePressable, "min-h-12 w-full rounded-md px-0.5")}
         >
           <span className={tileLabel}>{tile.title}</span>
+          {/* The number itself, so it can be read at a glance before the call (Work mode simplify plan, 12 Oct 2026). */}
+          <span
+            className={cn(modeNumberText, "block break-words text-xs text-[color:var(--text-muted)]")}
+            data-testid={`on-call-now-usual-number-${tile.id}`}
+          >
+            {(route ?? dial).display}
+          </span>
           {label ? <span className="block text-xs text-[color:var(--text-muted)]">{label}</span> : null}
           {calledAt ? (
             <span className={cn(modeNumberText, "block text-xs text-[color:var(--text-muted)]")}>

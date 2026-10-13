@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-11"
+    "committed_at": "2026-10-12"
   },
   "routes": {
     "modes": [
@@ -1394,11 +1394,6 @@
         "area": "mockup"
       },
       {
-        "path": "/on-call/refer",
-        "file": "src/app/(search-app)/on-call/refer/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/psychiatry",
         "file": "src/app/(search-app)/psychiatry/page.tsx",
         "area": "product"
@@ -1824,6 +1819,11 @@
         "path": "/dsm",
         "file": "src/app/(search-app)/dsm/page.tsx",
         "target": "/?mode=dsm"
+      },
+      {
+        "path": "/on-call/refer",
+        "file": "src/app/(search-app)/on-call/refer/page.tsx",
+        "target": "/on-call/call?show=refer"
       },
       {
         "path": "/specifiers",

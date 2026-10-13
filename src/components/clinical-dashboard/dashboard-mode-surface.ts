@@ -120,6 +120,8 @@ export type DashboardModeSurfaceInput = {
   activeModeResultKind: AppModeResultKind;
   answer: unknown;
   answerFollowUpSuggestionCount: number;
+  /** Differentials has a diagnosis ticked; the compare dock claims its band only then. */
+  differentialsCompareHasSelection?: boolean;
   answerLifecycleStatus: string;
   answerProgressCompleted: boolean;
   answerProgressEventCount: number;
@@ -314,7 +316,10 @@ export function resolveDashboardModeSurface(input: DashboardModeSurfaceInput): D
     centeredModeHome ||
     ((searchMode === "services" || searchMode === "forms") && !modeSearchSubmitted && !query.trim() && !loading);
   const differentialsCompareAddonActive =
-    searchMode === "differentials" && modeSearchSubmitted && Boolean(query.trim());
+    searchMode === "differentials" &&
+    modeSearchSubmitted &&
+    Boolean(query.trim()) &&
+    input.differentialsCompareHasSelection !== false;
   // Prescribing submitted searches render here (there is no standalone results
   // route), so this is where the Patient details pill docks for that mode.
   const patientDetailsAddonActive = searchMode === "prescribing" && modeSearchSubmitted && Boolean(query.trim());

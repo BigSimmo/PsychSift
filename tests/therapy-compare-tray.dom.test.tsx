@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -11,9 +11,8 @@ import { THERAPY_MAX_COMPARE } from "@/lib/therapy-compass-navigation";
 const tc = vi.hoisted(() => ({
   compareSlugs: [] as string[],
   compareTherapies: [] as Therapy[],
-  removeCompare: vi.fn(),
   clearCompare: vi.fn(),
-  goCompare: vi.fn(),
+  removeCompare: vi.fn(),
   pathname: "/therapy-compass/search",
 }));
 
@@ -25,9 +24,9 @@ vi.mock("@/components/therapy-compass/bindings", () => ({
   useTcBindings: () => ({
     compareSlugs: tc.compareSlugs,
     compareTherapies: tc.compareTherapies,
-    removeCompare: tc.removeCompare,
     clearCompare: tc.clearCompare,
-    goCompare: tc.goCompare,
+    removeCompare: tc.removeCompare,
+    workspaceHref: (href: string) => `${href}?compare=${tc.compareSlugs.join(",")}`,
   }),
 }));
 
@@ -62,23 +61,13 @@ beforeEach(() => {
 
 afterEach(() => {
   document.getElementById(therapyCompareAddonSlotId)?.remove();
-  tc.removeCompare.mockReset();
   tc.clearCompare.mockReset();
-  tc.goCompare.mockReset();
+  tc.removeCompare.mockReset();
 });
 
-describe("Therapy compare tray", () => {
-  it("does not exist until something is in it", () => {
+describe("Therapy compare tray (the shared Compare tray)", () => {
+  it("does not exist until something is ticked", () => {
     mountDockSlot();
-    render(<TherapyCompareTray />);
-
-    expect(screen.queryByTestId("therapy-compare-tray")).toBeNull();
-  });
-
-  it("renders nothing above the phone breakpoint, where there is no dock to sit in", () => {
-    installMatchMediaStub(false);
-    mountDockSlot();
-    select(CBT, ACT);
     render(<TherapyCompareTray />);
 
     expect(screen.queryByTestId("therapy-compare-tray")).toBeNull();
@@ -93,7 +82,7 @@ describe("Therapy compare tray", () => {
     expect(screen.queryByTestId("therapy-compare-tray")).toBeNull();
   });
 
-  it("docks inside the composer's addon slot rather than positioning itself", async () => {
+  it("on a phone docks inside the composer's addon slot rather than positioning itself", async () => {
     const slot = mountDockSlot();
     select(CBT);
     render(<TherapyCompareTray />);
@@ -104,33 +93,45 @@ describe("Therapy compare tray", () => {
     expect(slot.contains(tray)).toBe(true);
   });
 
+  it("on a phone with no dock slot renders nothing rather than covering the page", () => {
+    select(CBT, ACT);
+    render(<TherapyCompareTray />);
+
+    expect(screen.queryByTestId("therapy-compare-tray")).toBeNull();
+  });
+
+  it("on wider screens floats as a pill with a spacer keeping the last row clear", async () => {
+    installMatchMediaStub(false);
+    select(CBT, ACT);
+    render(<TherapyCompareTray />);
+
+    expect(await screen.findByTestId("therapy-compare-tray")).toBeInTheDocument();
+    expect(screen.getByTestId("therapy-compare-tray-spacer")).toBeInTheDocument();
+  });
+
   it("holds Compare back until there are two, and says why", async () => {
     mountDockSlot();
     select(CBT);
     render(<TherapyCompareTray />);
 
     const compare = await screen.findByTestId("therapy-compare-tray-compare");
+    expect(compare.tagName).toBe("BUTTON");
     expect(compare).toHaveAttribute("aria-disabled", "true");
     expect(compare).not.toBeDisabled();
-    expect(compare).toHaveAttribute("title", "Add one more therapy to compare");
-
-    await userEvent.click(compare);
-    expect(tc.goCompare).not.toHaveBeenCalled();
+    expect(compare).toHaveAccessibleDescription("Tick at least 2 therapies to compare.");
   });
 
-  it("opens the comparison once two are selected", async () => {
+  it("opens the existing compare page once two are selected", async () => {
     mountDockSlot();
     select(CBT, ACT);
     render(<TherapyCompareTray />);
 
     const compare = await screen.findByTestId("therapy-compare-tray-compare");
-    expect(compare).not.toHaveAttribute("aria-disabled");
-    await userEvent.click(compare);
-
-    expect(tc.goCompare).toHaveBeenCalledTimes(1);
+    expect(compare.tagName).toBe("A");
+    expect(compare).toHaveAttribute("href", "/therapy-compass/compare?compare=cbt,act");
   });
 
-  it("shows the record's abbreviation where it has one, and counts the set", async () => {
+  it("shows the record's abbreviation where it has one, counts the set, and clears it", async () => {
     mountDockSlot();
     select(CBT, ACT);
     render(<TherapyCompareTray />);
@@ -138,43 +139,24 @@ describe("Therapy compare tray", () => {
     const tray = await screen.findByTestId("therapy-compare-tray");
     expect(tray).toHaveTextContent("CBT · ACT");
     expect(tray).toHaveTextContent(`2 of ${THERAPY_MAX_COMPARE} selected`);
-    expect(screen.getByTestId("therapy-compare-tray-open")).toHaveAttribute(
-      "aria-label",
-      `Compare tray, 2 of ${THERAPY_MAX_COMPARE} selected`,
-    );
+    expect(tray).toHaveAttribute("role", "region");
+    expect(tray).toHaveAccessibleName("Compare selection");
+
+    await userEvent.click(screen.getByTestId("therapy-compare-tray-clear"));
+    expect(tc.clearCompare).toHaveBeenCalledTimes(1);
   });
 
-  it("removes and empties from the sheet, not from the one-row bar", async () => {
+  it("lists each selection in a sheet so one can be removed without clearing the rest", async () => {
+    const user = userEvent.setup();
     mountDockSlot();
     select(CBT, ACT);
     render(<TherapyCompareTray />);
 
-    await userEvent.click(await screen.findByTestId("therapy-compare-tray-open"));
-    await screen.findByTestId("therapy-compare-tray-sheet");
-
-    await userEvent.click(await screen.findByRole("button", { name: `Remove ${CBT.name} from the comparison` }));
-    expect(tc.removeCompare).toHaveBeenCalledWith(CBT.slug);
-    // Two were selected, so one removal leaves a tray — the sheet stays put.
-    expect(screen.getByTestId("therapy-compare-tray-sheet")).toBeInTheDocument();
-
-    // Emptying does not: the sheet belongs to a tray that is about to stop
-    // existing, so leaving it open would be a dialog over nothing.
-    await userEvent.click(await screen.findByRole("button", { name: "Empty the tray" }));
-    expect(tc.clearCompare).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.queryByTestId("therapy-compare-tray-sheet")).toBeNull());
-  });
-
-  it("closes the sheet when the tray it belongs to stops existing", async () => {
-    mountDockSlot();
-    select(CBT, ACT);
-    const { rerender } = render(<TherapyCompareTray />);
-
-    await userEvent.click(await screen.findByTestId("therapy-compare-tray-open"));
-    expect(await screen.findByTestId("therapy-compare-tray-sheet")).toBeInTheDocument();
-
-    select();
-    rerender(<TherapyCompareTray />);
-
-    await waitFor(() => expect(screen.queryByTestId("therapy-compare-tray-sheet")).toBeNull());
+    await user.click(screen.getByTestId("therapy-compare-tray-open"));
+    const sheet = await screen.findByTestId("therapy-compare-tray-sheet");
+    expect(sheet).toBeVisible();
+    await user.click(screen.getByRole("button", { name: /Remove ACT from the comparison/ }));
+    expect(tc.removeCompare).toHaveBeenCalledWith("act");
+    expect(tc.clearCompare).not.toHaveBeenCalled();
   });
 });

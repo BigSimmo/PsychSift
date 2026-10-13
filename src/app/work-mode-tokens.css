@@ -33,13 +33,15 @@
 /* Work-mode glass, hairline, shadow and toast colours (work-mode redesign,
    owner request 6 Oct 2026). The recipes that use them are in work-mode.css;
    the colour values live here, in the token layer, scoped like those recipes
-   so nothing reaches a clinical mode. Flat by the owner's decision: a card has
+   so nothing reaches a clinical page. The shared top bar is the one exception:
+   the Clinical header's round controls and pill wear the same glass
+   (clinical-mode.css, 12 Oct 2026), so every header carries these colours. Flat by the owner's decision: a card has
    a barely visible shadow, a sheet and the dock one very soft lift. */
 :root[data-work-frame],
 [data-work-frame],
 .work-band,
 .work-more-sheet,
-.universal-header[data-work-frame] {
+.universal-header {
   --work-glass-fill: rgb(255 255 255 / 72%);
   --work-glass-line: rgb(16 26 41 / 9%);
   --work-shadow-card: 0 1px 2px rgb(16 26 41 / 3%);
@@ -52,7 +54,7 @@
 .dark [data-work-frame],
 .dark .work-band,
 .dark .work-more-sheet,
-.dark .universal-header[data-work-frame] {
+.dark .universal-header {
   --work-glass-fill: color-mix(in srgb, var(--surface-raised) 78%, transparent);
   --work-glass-line: rgb(255 255 255 / 10%);
   --work-shadow-card: none;
