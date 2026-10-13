@@ -4,8 +4,7 @@ import { adminStyles } from "@/components/admin/admin-kit";
 import { AdminStatusShape, adminStatusColour } from "@/components/admin/admin-status-tag";
 import { requirementDateLine, requirementRowUrgency, shortDateFrom } from "@/components/admin/renewals/urgency";
 import { WorkCard } from "@/components/mode-kit/work";
-import { cn } from "@/components/ui-primitives";
-import { COMPLIANCE_BUCKET_LABELS, type ComplianceBucket } from "@/lib/admin/compliance-overview";
+import type { ComplianceBucket } from "@/lib/admin/compliance-overview";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import type { RequirementChecklistRow } from "@/lib/admin/requirements";
 
@@ -209,20 +208,26 @@ export function ChecklistSummary({
 
 /** The at-a-glance rows, most urgent first, as the mockup orders them. */
 const GLANCE_ORDER: readonly ComplianceBucket[] = ["date-passed", "start-renewing", "not-recorded", "recorded"];
+const GLANCE_WORDS: Readonly<Record<ComplianceBucket, string>> = {
+  "date-passed": "passed",
+  "start-renewing": "to renew",
+  "not-recorded": "not recorded",
+  recorded: "recorded",
+};
 
 /**
- * The count card at the top of the Checklist tab (Josh's locked mockup):
- * "At a glance · N items", four count rows (figure, shape, word) that filter
- * the list below, a Clear link while one is chosen, then "Next 12 months".
+ * The count card at the top of the Checklist tab: "At a glance · N items", then
+ * the four counts as small words with their shapes ("1 passed"), each filtering
+ * the list below, and a Clear link while one is chosen. The twelve-month dot
+ * timeline that followed was dropped for one month-grouped list (design audit
+ * D10, Josh approved the mockup 13 Oct 2026: "yes 10").
  * Counts come from the same buckets Compliance counts with, so the two pages
  * cannot disagree.
  */
 export function ChecklistAtAGlance({
-  rows,
   counts,
   total,
   notForThisJob,
-  now,
   active,
   onFilter,
   testId,
@@ -236,7 +241,6 @@ export function ChecklistAtAGlance({
   readonly onFilter: (bucket: ComplianceBucket | null) => void;
   readonly testId?: string;
 }) {
-  const soonest = rows.filter((row) => row.state === "needs-action");
   return (
     <WorkCard padded testId={testId}>
       <div className={adminStyles.glanceHead}>
@@ -254,7 +258,7 @@ export function ChecklistAtAGlance({
           <span className="work-label__count">{`${notForThisJob} not for this job`}</span>
         ) : null}
       </div>
-      <ul className={adminStyles.glance} aria-label="Filter the list">
+      <ul className={adminStyles.glanceWords} aria-label="Filter the list">
         {GLANCE_ORDER.map((bucket) => {
           const count = counts[bucket];
           const on = active === bucket;
@@ -266,21 +270,17 @@ export function ChecklistAtAGlance({
                 disabled={count === 0 && !on}
                 onClick={() => onFilter(on ? null : bucket)}
                 data-testid={testId ? `${testId}-count-${bucket}` : undefined}
-                className={adminStyles.glanceRow}
+                className={adminStyles.glanceWord}
               >
-                <span className={adminStyles.glanceFigure}>{count}</span>
                 <AdminStatusShape status={bucket} />
-                <span className={cn(count === 0 && "text-[color:var(--text-muted)]")}>
-                  {COMPLIANCE_BUCKET_LABELS[bucket]}
-                </span>
+                <span className="tabular-nums">{`${count} ${GLANCE_WORDS[bucket]}`}</span>
               </button>
             </li>
           );
         })}
       </ul>
       {/* Above the list on purpose: a clinical-governance review rejected a design that implied the app had checked these dates. */}
-      <p className="work-row__sub m-0">Dates you entered, not a check</p>
-      <ChecklistTimeline rows={soonest} now={now} testId={testId ? `${testId}-timeline` : undefined} />
+      <p className="work-row__sub m-0 mt-2">Dates you entered, not a check</p>
     </WorkCard>
   );
 }
