@@ -21,7 +21,7 @@ Two critical production call sites filter on bare columns rather than the concat
    ```typescript
    query = query.or(`title.ilike.${pattern},file_name.ilike.${pattern}`);
    ```
-2. **RAG Candidate Assembly** (`src/lib/rag/rag-candidate-sources.ts:485` - `fetchDocumentTitleAliasRows`):
+2. **RAG Candidate Assembly** (`src/lib/rag/rag-candidate-sources.ts:975` - `fetchDocumentTitleAliasRows`):
    ```typescript
    const filters = terms.flatMap((term) => [`title.ilike.%${term}%`, `file_name.ilike.%${term}%`]).join(",");
    query = query.or(filters).eq("status", "indexed").limit(12);
@@ -31,10 +31,13 @@ Because PostgreSQL GIN expression indexes can only be matched by predicates whos
 
 ### The Pagination Query Pattern
 
-Separately, `src/lib/search-scope.ts:271-277` executes paged queries:
+Separately, `src/lib/search-scope.ts:311-320` executes paged queries (page size `documentScopeQueryPageSize` = 1000):
 
 ```typescript
-query = query.eq("status", "indexed").order("id").limit(5000);
+documentQuery = documentQuery
+  .eq("status", "indexed")
+  .order("id", { ascending: true })
+  .range(offset, Math.min(offset + documentScopeQueryPageSize - 1, maxResolvedDocuments - 1));
 ```
 
 Without a composite index on `(status, id)`, PostgreSQL uses the single-column `documents_status_idx` and executes an in-memory or on-disk sort for `ORDER BY id`.
@@ -45,7 +48,7 @@ Without a composite index on `(status, id)`, PostgreSQL uses the single-column `
 
 > [!WARNING]
 > **Canary-Gated RAG Boundary**:
-> `fetchDocumentTitleAliasRows` (`src/lib/rag/rag-candidate-sources.ts:485`) executes an unordered `.limit(12)`.
+> `fetchDocumentTitleAliasRows` (`src/lib/rag/rag-candidate-sources.ts:975`) executes an unordered `.limit(12)`.
 > In PostgreSQL, an unordered `LIMIT` has no deterministic selection guarantee. Introducing an index alters query planner access paths, which can select a different set of 12 candidate documents to pass downstream into retrieval and synthesis.
 > Consequently, applying additive indexes to production is **canary-gated** and requires full RAG golden evaluation (`eval:retrieval:quality`) before promotion.
 
@@ -81,7 +84,7 @@ SELECT id, title, file_name, metadata
 FROM public.documents
 WHERE status = 'indexed'
 ORDER BY id
-LIMIT 5000;
+LIMIT 1000;
 ```
 
 **Expected Pre-Index Plan:**
@@ -167,7 +170,7 @@ SELECT id, title, file_name, metadata
 FROM public.documents
 WHERE status = 'indexed'
 ORDER BY id
-LIMIT 5000;
+LIMIT 1000;
 ```
 
 **Expected Post-Index Plan:**
