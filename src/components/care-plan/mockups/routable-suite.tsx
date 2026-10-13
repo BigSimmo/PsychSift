@@ -89,14 +89,21 @@ const PATIENT_PLAN_SEGMENTS = {
   },
 } as const;
 
+function carePlanBasePath(pathname: string): string | null {
+  if (pathname.startsWith("/admin/care-plan")) return "/admin/care-plan";
+  if (pathname.startsWith(CARE_PLAN_BASE)) return CARE_PLAN_BASE;
+  return null;
+}
+
 /**
  * Resolves a URL to its route definition from the path shape alone, so a route
  * reached by typing its address behaves exactly like one reached by a link.
  */
 export function resolveCarePlanRoute(pathname: string): CarePlanRouteDefinition {
   const trimmed = pathname.split("?")[0] ?? pathname;
-  if (!trimmed.startsWith(CARE_PLAN_BASE)) return ROUTE_DEFINITIONS.home;
-  const segments = trimmed.slice(CARE_PLAN_BASE.length).split("/").filter(Boolean);
+  const base = carePlanBasePath(trimmed);
+  if (!base) return ROUTE_DEFINITIONS.home;
+  const segments = trimmed.slice(base.length).split("/").filter(Boolean);
 
   if (segments.length === 0) return ROUTE_DEFINITIONS.home;
 
@@ -160,8 +167,9 @@ export function scenarioFromQuery(query: string): PrototypeScenario {
  */
 export function carePlanPatientIdFromPathname(pathname: string): string | null {
   const trimmed = pathname.split("?")[0] ?? pathname;
-  if (!trimmed.startsWith(CARE_PLAN_BASE)) return null;
-  const segments = trimmed.slice(CARE_PLAN_BASE.length).split("/").filter(Boolean);
+  const base = carePlanBasePath(trimmed);
+  if (!base) return null;
+  const segments = trimmed.slice(base.length).split("/").filter(Boolean);
   if (segments[0] !== "patients") return null;
   const candidate = segments[1];
   return candidate !== undefined && isSyntheticPatientId(candidate) ? candidate : null;

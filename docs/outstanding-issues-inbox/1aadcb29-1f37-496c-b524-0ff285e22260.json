@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "1aadcb29-1f37-496c-b524-0ff285e22260",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "70ce559e-b757-44e5-93a6-ca9772eaac69",
+    "reason": "Resolved: Relocated developer tools from /mockups to /admin/developer-hub and /admin/care-plan with backwards redirects."
+  }
+}

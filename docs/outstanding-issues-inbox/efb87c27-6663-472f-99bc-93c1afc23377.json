@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "efb87c27-6663-472f-99bc-93c1afc23377",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#MFV1Z2",
+    "outcome": "Resolved: Set NODE_OPTIONS=--max-old-space-size=4096 in package.json dev scripts and dev-free-port.mjs.",
+    "baseRowFingerprint": "16ab9a2222cef859f3376e6b91188af46d5b1ff6d6d412eb3fa1d25ed9688385"
+  }
+}
