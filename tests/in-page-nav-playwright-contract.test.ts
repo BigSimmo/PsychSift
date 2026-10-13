@@ -60,12 +60,14 @@ describe("in-page-nav Playwright contract", () => {
   });
 
   it("InPageNavHeader keeps the Back to ${label} aria-label contract", () => {
+    // Back is drawn in the top bar (header standard, 13 Oct 2026); WorkPageBack
+    // names it `Back to ${label}`, so the label is passed lowercased.
     const source = readFileSync(IN_PAGE_NAV_HEADER, "utf8");
-    expect(source).toContain("Back to ${back.label.toLowerCase()}");
+    expect(source).toContain("<WorkPageBack href={back.href} label={back.label.toLowerCase()}");
   });
 
-  it("InPageNavHeader floors the back control with min-w-tap for phone icon-only width", () => {
-    const source = readFileSync(IN_PAGE_NAV_HEADER, "utf8");
-    expect(source).toMatch(/min-h-tap\s+min-w-tap/);
+  it("InPageNavHeader's back control is the top bar's 48px round button", () => {
+    const source = readFileSync("src/components/work-frame/work-page-back.tsx", "utf8");
+    expect(source).toContain('className: "universal-header-icon-control work-frame-back"');
   });
 });
