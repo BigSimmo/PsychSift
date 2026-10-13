@@ -79085,7 +79085,7 @@
         "rows": [
           {
             "key": "Overview",
-            "val": "The most effective antipsychotic in existence. Reserved exclusively for Treatment-Resistant Schizophrenia (TRS). Fraught with lethal toxicities requiring intense national monitoring (CPMS).",
+            "val": "Antipsychotic for treatment-resistant schizophrenia. Serious, potentially fatal adverse effects require registration and blood monitoring through the clozapine monitoring service.",
             "tags": []
           },
           {
@@ -79095,7 +79095,7 @@
           },
           {
             "key": "Clinical Focus",
-            "val": "Lethal side effects include agranulocytosis, myocarditis, and fatal paralytic ileus (constipation). Never initiate outside a strictly controlled psychiatric setting.",
+            "val": "Serious adverse effects include agranulocytosis, myocarditis and paralytic ileus, which can be fatal. Start only with the monitoring the WA guideline requires (see the WA Health section below).",
             "tags": []
           },
           {
@@ -79152,7 +79152,7 @@
           },
           {
             "key": "Missed Dose Rule",
-            "val": "MANDATORY — If a patient misses exactly 48 HOURS of Clozapine, they lose their tolerance. You CANNOT restart their normal dose (it will cause cardiovascular collapse). You must re-titrate from 12.5 mg.",
+            "val": "If more than 48 hours since the last dose: psychiatric review before restarting, and re-titrate from 12.5 mg (see WA Health interruption guidance below).",
             "tags": []
           }
         ]
@@ -79189,7 +79189,7 @@
           },
           {
             "key": "Clinical Place",
-            "val": "The absolute last line of defense. The only antipsychotic proven to significantly reduce suicide rates.",
+            "val": "Reserved for treatment-resistant schizophrenia. Has evidence for reducing suicidal behaviour in schizophrenia.",
             "tags": []
           }
         ]
@@ -79565,7 +79565,7 @@
     "quick": [
       {
         "label": "Class & Role",
-        "value": "SGA / Dibenzodiazepine — The most effective antipsychotic in existence."
+        "value": "SGA / Dibenzodiazepine. Used for treatment-resistant schizophrenia."
       },
       {
         "label": "Route / Formulation",
