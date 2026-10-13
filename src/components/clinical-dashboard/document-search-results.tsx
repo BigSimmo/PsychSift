@@ -625,10 +625,10 @@ function SearchRecordResults({
    *  not include the most recent publication, and the heading says so. */
   degraded?: boolean;
 }) {
+  const [visibleCount, setVisibleCount] = useState(30);
   if (matches.length === 0) return null;
   const copy = searchRecordConfig[mode];
   const recordRoute = (slug: string) => `${copy.routePrefix}/${slug}`;
-  const [visibleCount, setVisibleCount] = useState(30);
   const renderedMatches = matches.length > 30 ? matches.slice(0, visibleCount) : matches;
   return (
     <section

@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";

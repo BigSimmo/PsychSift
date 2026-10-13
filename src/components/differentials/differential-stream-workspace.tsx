@@ -110,7 +110,7 @@ const StreamCard = memo(function StreamCard({
   showSelect,
   focusMode,
   outsideFilter = false,
-  isLongList = false,
+  isLongList: _isLongList = false,
   onFocus,
   onToggleSelect,
   onShowConnections,
@@ -202,7 +202,12 @@ const StreamCard = memo(function StreamCard({
             <span className="sr-only">
               {selected ? `Remove ${item.title} from comparison` : `Add ${item.title} to comparison`}
             </span>
-            <input type="checkbox" checked={selected} onChange={() => onToggleSelect(item.slug)} className="peer sr-only" />
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelect(item.slug)}
+              className="peer sr-only"
+            />
             <span
               data-testid="differential-selection-box"
               className={cn(
@@ -528,23 +533,32 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     return "neutral";
   }
 
-  const handleFocus = useCallback((slug: string) => {
-    setFocusedSlug(slug);
-  }, []);
+  const handleFocus = useCallback(
+    (slug: string) => {
+      setFocusedSlug(slug);
+    },
+    [setFocusedSlug],
+  );
 
-  const handleToggleSelect = useCallback((slug: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
-  }, []);
+  const handleToggleSelect = useCallback(
+    (slug: string) => {
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        if (next.has(slug)) next.delete(slug);
+        else next.add(slug);
+        return next;
+      });
+    },
+    [setSelectedIds],
+  );
 
-  const handleShowConnections = useCallback((slug: string) => {
-    setFocusedSlug(slug);
-    setFamilyMode(true);
-  }, []);
+  const handleShowConnections = useCallback(
+    (slug: string) => {
+      setFocusedSlug(slug);
+      setFamilyMode(true);
+    },
+    [setFocusedSlug, setFamilyMode],
+  );
 
   function applyPreset(presetQuery: string) {
     router.push(differentialRouteWithQuery("/differentials/diagnoses", presetQuery));

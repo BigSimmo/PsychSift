@@ -61,16 +61,15 @@ export function useQrMatrix(value: string | null): QrMatrix | null {
     if (!value || !qrcodeLib) return null;
     return getOrComputeMatrix(qrcodeLib.create, value);
   });
+  const [prevValue, setPrevValue] = useState<string | null>(value);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setMatrix(value && qrcodeLib ? getOrComputeMatrix(qrcodeLib.create, value) : null);
+  }
 
   useEffect(() => {
-    if (!value) {
-      setMatrix(null);
-      return;
-    }
-    if (qrcodeLib) {
-      setMatrix(getOrComputeMatrix(qrcodeLib.create, value));
-      return;
-    }
+    if (!value || qrcodeLib) return;
     let cancelled = false;
     loadQrCode().then((mod) => {
       if (!cancelled) {
