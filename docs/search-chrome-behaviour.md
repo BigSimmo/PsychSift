@@ -295,12 +295,10 @@ purpose: `DocumentViewer` (decided above) and the differentials presentations wo
 one item and the track would render one full-width segment. Omit `sections` and
 `InPageNavHeader` drops both and renders the breadcrumb shape instead — same row grammar,
 same single collapse owner, none of the section machinery. `usePageSectionWeights` observes
-nothing for an empty list, so those pages pay no measurement cost. Three optional props
-shape that row:
+nothing for an empty list, so those pages pay no measurement cost. Back is never in this
+row: `WorkPageBack` renders it as the top bar's round left button, with `back.label` as its
+accessible name. Two optional props shape the row:
 
-- `showBackLabel={false}` keeps the arrow alone at every width when the row also carries an
-  action or a mode, so the title owns the space. `back.label` is still the accessible name
-  and becomes the desktop tooltip.
 - `primaryAction` promotes exactly **one** page action. It is **not** the filled `--command`
   slab, because a control pinned to every scroll position should not be the page's heaviest.
   Its label is `sr-only` below `sm` so the accessible name does not change with the
