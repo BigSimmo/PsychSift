@@ -478,6 +478,15 @@ describe("missed session API contract", () => {
     expect(response.status).toBeLessThan(500);
   });
 
+  it("PATCH refuses an oversized body with 413 before touching the database", async () => {
+    const response = await patchMissed(
+      jsonRequest(`http://localhost/api/cme/missed/${SESSION_ID}`, "PATCH", { note: "x".repeat(300 * 1024) }),
+      { params: Promise.resolve({ id: SESSION_ID }) },
+    );
+    expect(response.status).toBe(413);
+    expect(routeMocks.from).not.toHaveBeenCalled();
+  });
+
   it("PATCH rejects an id that is not a uuid before touching the database", async () => {
     const response = await patchMissed(jsonRequest("http://localhost/api/cme/missed/nope", "PATCH", {}), {
       params: Promise.resolve({ id: "nope" }),

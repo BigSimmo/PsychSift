@@ -5,6 +5,7 @@ import { PublicApiError } from "@/lib/http";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { teachingErrorResponse, teachingNoStore } from "@/lib/teaching/api";
+import { readBoundedJson } from "@/lib/validation/body";
 import { defaultAssessmentRepository, projectAssessmentForActor } from "@/lib/teaching/assessments/dual-sign-off";
 
 export const runtime = "nodejs";
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
     const client = createAdminClient();
     const user = await requireAuthenticatedUser(request, client);
 
-    const body = await request.json().catch(() => null);
+    const body = await readBoundedJson(request);
     if (!body || typeof body !== "object") {
       throw new PublicApiError("Invalid JSON request body.", 400, { code: "invalid_json" });
     }
