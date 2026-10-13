@@ -71,7 +71,7 @@ describe("main tree proof script", () => {
       expect(readFileSync(outputFile, "utf8")).toBe("");
       expect(readFileSync(summaryFile, "utf8")).toBe("");
     } finally {
-      rmSync(outDir, { recursive: true, force: true });
+      rmSync(outDir, { recursive: true, force: true, maxRetries: 5 });
     }
   });
 
