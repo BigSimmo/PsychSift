@@ -89,6 +89,27 @@ describe("anonymous API rate-limit identity", () => {
 
     expect(padded).toBe(clean);
   });
+
+  it("incorporates RATE_LIMIT_SALT and produces distinct subject keys when salt changes", () => {
+    const originalEnv = process.env.RATE_LIMIT_SALT;
+    try {
+      delete process.env.RATE_LIMIT_SALT;
+      const defaultSaltKey = anonymousApiSubjectKey(anonymousRequest("198.51.100.10", "client"));
+
+      process.env.RATE_LIMIT_SALT = "custom-test-salt-123";
+      const customSaltKey = anonymousApiSubjectKey(anonymousRequest("198.51.100.10", "client"));
+
+      expect(customSaltKey).not.toBe(defaultSaltKey);
+      expect(customSaltKey).toMatch(/^anon:[0-9a-f]{32}$/);
+      expect(defaultSaltKey).toMatch(/^anon:[0-9a-f]{32}$/);
+    } finally {
+      if (originalEnv !== undefined) {
+        process.env.RATE_LIMIT_SALT = originalEnv;
+      } else {
+        delete process.env.RATE_LIMIT_SALT;
+      }
+    }
+  });
 });
 
 describe("withOwnerReadScope", () => {
