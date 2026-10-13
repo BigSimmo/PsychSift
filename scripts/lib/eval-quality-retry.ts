@@ -13,7 +13,12 @@
  *
  * Pure apart from types, so every branch is testable without a provider call.
  */
-import type { EvalQualityReport, RagQualityResult } from "../eval-quality";
+import {
+  isGroundedSupported,
+  type EvalQualityProviderMode,
+  type EvalQualityReport,
+  type RagQualityResult,
+} from "../eval-quality";
 
 export type GateRetryCase = {
   id: string;
@@ -41,7 +46,11 @@ const routeP95Pattern = /^RAG route (\S+) p95_latency_ms \S+ above (\d+(?:\.\d+)
  * The RAG case ids each blocking failure points at. A failure with no case-level owner (retrieval
  * gates, offline invariants, anything unrecognised) is returned as non-retryable.
  */
-export function blockingGateRetryCaseIds(report: EvalQualityReport, failureCategory: (message: string) => string) {
+export function blockingGateRetryCaseIds(
+  report: EvalQualityReport,
+  failureCategory: (message: string) => string,
+  providerMode: EvalQualityProviderMode = "openai",
+) {
   const results = report.rag.results as RagQualityResult[];
   const unaccounted = new Set(
     report.rag.summary.source_backed_review_fallback_unaccounted.map((entry: string) => entry.split(" (")[0]),
@@ -65,7 +74,7 @@ export function blockingGateRetryCaseIds(report: EvalQualityReport, failureCateg
     } else if (failure.startsWith("RAG route_ceiling_failure_count")) {
       add(results.filter((result) => result.routeCeilingExceeded));
     } else if (failure.startsWith("RAG grounded_supported_rate")) {
-      add(results.filter((result) => result.supported && !result.grounded));
+      add(results.filter((result) => result.supported && !isGroundedSupported(result, providerMode)));
     } else if (failure.startsWith("RAG unsupported_correct_rate")) {
       add(results.filter((result) => !result.supported && result.grounded));
     } else if (failure.startsWith("RAG numeric_grounding_failure_rate")) {
@@ -86,6 +95,21 @@ export function blockingGateRetryCaseIds(report: EvalQualityReport, failureCateg
     }
   }
   return { caseIds: [...ids].sort(), nonRetryable };
+}
+
+/** Return first-attempt latency samples that must remain in a latency gate's population. */
+export function latencySamplesForRetry(report: EvalQualityReport, caseIds: readonly string[]) {
+  const results = report.rag.results as RagQualityResult[];
+  const ids = new Set(caseIds);
+  const global = report.blocking_threshold_failures.some((failure) => p95Pattern.test(failure));
+  const routes = new Set(
+    report.blocking_threshold_failures
+      .map((failure) => routeP95Pattern.exec(failure)?.[1])
+      .filter((route): route is string => Boolean(route)),
+  );
+  return results
+    .filter((result) => ids.has(result.id) && (global || routes.has(result.latencyRoute)))
+    .map((result) => ({ route: result.latencyRoute, latencyMs: result.latencyMs }));
 }
 
 /** Substitute each retried case's single retry result for its first attempt, preserving case order. */

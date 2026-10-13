@@ -33,6 +33,7 @@ import { buildRagDiagnosticDumpRecord, resolveLocalDiagnosticOutputPath } from "
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import {
   blockingGateRetryCaseIds,
+  latencySamplesForRetry,
   mergeRetriedRagResults,
   renderGateRetryMarkdown,
   summarizeGateRetry,
@@ -644,10 +645,18 @@ function topResultGovernanceCounts(results: GoldenRetrievalResult[]) {
   };
 }
 
+export function isGroundedSupported(result: RagQualityResult, providerMode: EvalQualityProviderMode) {
+  if (providerMode === "offline") {
+    return result.model === null && result.expectedHit && result.citations > 0;
+  }
+  return result.grounded || (result.acceptSourceOnly && result.expectedHit && result.citations > 0);
+}
+
 function summarizeRagQualityResults(
   results: RagQualityResult[],
   providerMode: EvalQualityProviderMode,
   allowanceOverride?: ReadonlyArray<{ id: string; reason: string }>,
+  additionalLatencySamples: ReadonlyArray<{ route: string; latencyMs: number }> = [],
 ) {
   const fallbackAllowance = allowanceOverride ?? qualityThresholds.ragSourceBackedReviewFallbackAllowance;
   const supported = results.filter((result) => result.supported);
@@ -658,12 +667,7 @@ function summarizeRagQualityResults(
   // Requiring expectedHit keeps the guard honest: a real retrieval regression that
   // stops surfacing the expected docs is NOT accepted and still drags the rate below
   // threshold, hard-failing the canary.
-  const groundedSupported = supported.filter((result) => {
-    if (providerMode === "offline") {
-      return result.model === null && result.expectedHit && result.citations > 0;
-    }
-    return result.grounded || (result.acceptSourceOnly && result.expectedHit && result.citations > 0);
-  }).length;
+  const groundedSupported = supported.filter((result) => isGroundedSupported(result, providerMode)).length;
   const unsupportedCorrect = unsupported.filter((result) => !result.grounded).length;
   const citationFailures = results.filter((result) =>
     result.failures.some((failure) => qualityFailureCategory(failure) === "citation"),
@@ -707,7 +711,10 @@ function summarizeRagQualityResults(
   const comparisonSourceExtractiveFallbacks = results.filter((result) =>
     /(?:^|;\s*)comparison_source_extractive_fallback(?:;|$)/i.test(result.routingReason ?? ""),
   ).length;
-  const latencies = results.map((result) => result.latencyMs);
+  const latencies = [
+    ...results.map((result) => result.latencyMs),
+    ...additionalLatencySamples.map((sample) => sample.latencyMs),
+  ];
   const routeLatencyP95 = Object.fromEntries(
     Array.from(
       results.reduce((accumulator, result) => {
@@ -716,7 +723,18 @@ function summarizeRagQualityResults(
         accumulator.set(result.latencyRoute, current);
         return accumulator;
       }, new Map<string, number[]>()),
-    ).map(([route, routeLatencies]) => [route, percentile(routeLatencies, 95)]),
+    ).map(([route, routeLatencies]) => [
+      route,
+      percentile(
+        [
+          ...routeLatencies,
+          ...additionalLatencySamples
+            .filter((sample) => sample.route === route)
+            .map((sample) => sample.latencyMs),
+        ],
+        95,
+      ),
+    ]),
   );
   const estimatedCostUsd = results.some((result) => result.estimatedCostUsd === null)
     ? null
@@ -776,6 +794,8 @@ export function buildEvalQualityReport(args: {
   };
   /** Blocking-gate retry receipt (scripts/lib/eval-quality-retry.ts); null when no retry ran. */
   gateRetry?: GateRetrySummary | null;
+  /** First-attempt latency samples retained when latency-triggered cases are retried. */
+  additionalLatencySamples?: ReadonlyArray<{ route: string; latencyMs: number }>;
 }) {
   const providerMode = args.providerMode ?? "openai";
   const retrievalSummary = summarizeGoldenRetrievalResults(args.retrievalResults);
@@ -783,6 +803,7 @@ export function buildEvalQualityReport(args: {
     args.ragResults,
     providerMode,
     args.sourceBackedReviewFallbackAllowance,
+    args.additionalLatencySamples,
   );
   // `--rag-only` intentionally leaves retrieval metrics and gates empty. The
   // canary can still supply the preceding golden-retrieval artifact so this
@@ -1561,7 +1582,12 @@ async function main() {
         captureDiagnostics: Boolean(args.dumpRagCases),
       });
   const ragResults = ragRun.results;
-  const reportFor = (results: RagQualityResult[], gateRetry?: GateRetrySummary | null) =>
+  let retryDiagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> = [];
+  const reportFor = (
+    results: RagQualityResult[],
+    gateRetry?: GateRetrySummary | null,
+    additionalLatencySamples?: ReadonlyArray<{ route: string; latencyMs: number }>,
+  ) =>
     buildEvalQualityReport({
       retrievalResults,
       sourceGovernanceResults,
@@ -1577,18 +1603,29 @@ async function main() {
       ],
       scope: "scope" in ragRun ? ragRun.scope : undefined,
       gateRetry,
+      additionalLatencySamples,
     });
   let report = reportFor(ragResults);
   if (args.failOnThreshold && args.gateRetry && report.blocking_threshold_failures.length > 0) {
-    const { caseIds, nonRetryable } = blockingGateRetryCaseIds(report, qualityFailureCategory);
-    const retried = caseIds.length
-      ? (await runRagQualityCases({ ...args, ownerId, supabase, caseIds, captureDiagnostics: false })).results
-      : [];
+    const { caseIds, nonRetryable } = blockingGateRetryCaseIds(report, qualityFailureCategory, args.providerMode);
+    const retryRun = caseIds.length
+      ? await runRagQualityCases({
+          ...args,
+          ownerId,
+          supabase,
+          caseIds,
+          captureDiagnostics: Boolean(args.dumpRagCases),
+        })
+      : { results: [] as RagQualityResult[], diagnosticCases: [] };
+    const retried = retryRun.results;
+    retryDiagnosticCases = retryRun.diagnosticCases.map((record) => ({ ...record, attempt: "retry" }));
     const initial = report;
-    const merged = reportFor(mergeRetriedRagResults(ragResults, retried));
+    const additionalLatencySamples = latencySamplesForRetry(initial, caseIds);
+    const merged = reportFor(mergeRetriedRagResults(ragResults, retried), null, additionalLatencySamples);
     report = reportFor(
       mergeRetriedRagResults(ragResults, retried),
       summarizeGateRetry({ initial, final: merged, retried, nonRetryable }),
+      additionalLatencySamples,
     );
     console.error(
       `[eval:quality] blocking-gate retry: re-ran ${retried.length} case(s) [${caseIds.join(", ")}]; blocking before=${initial.blocking_threshold_failures.length} after=${report.blocking_threshold_failures.length}`,
@@ -1603,8 +1640,11 @@ async function main() {
       `${JSON.stringify(
         {
           generated_at: new Date().toISOString(),
-          case_count: ragRun.diagnosticCases.length,
-          cases: ragRun.diagnosticCases,
+          case_count: ragRun.diagnosticCases.length + retryDiagnosticCases.length,
+          cases: [
+            ...ragRun.diagnosticCases.map((record) => ({ ...record, attempt: "initial" })),
+            ...retryDiagnosticCases,
+          ],
         },
         null,
         2,

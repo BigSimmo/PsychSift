@@ -9,6 +9,7 @@ import {
 } from "../scripts/eval-quality";
 import {
   blockingGateRetryCaseIds,
+  latencySamplesForRetry,
   mergeRetriedRagResults,
   summarizeGateRetry,
 } from "../scripts/lib/eval-quality-retry";
@@ -114,7 +115,7 @@ describe("blocking-gate retry", () => {
     });
   });
 
-  it("clears a gate when the retried case passes, using p95 over the retry samples", () => {
+  it("keeps the original slow sample when a latency retry passes", () => {
     const first = [...healthy, ...refusals, slowRefusal];
     const initial = report(first);
     const retried = [{ ...slowRefusal, latencyMs: 280 }];
@@ -127,13 +128,16 @@ describe("blocking-gate retry", () => {
       retrievalResults: [],
       ragResults: merged,
       skippedComponents: ["retrieval"],
+      additionalLatencySamples: latencySamplesForRetry(initial, ["unsupported-coffee-machine"]),
       gateRetry: summarizeGateRetry({ initial, final, retried, nonRetryable: [] }),
     });
     const markdown = renderEvalQualityMarkdown(withRetry);
     expect(markdown).toContain("## Blocking-Gate Retry");
     expect(markdown).toContain("RAG route unsupported p95_latency_ms 6360 above 4000");
     expect(markdown).toMatch(/\| unsupported-coffee-machine \| none \| none \| 6360 \| 280 \|/);
-    expect(withRetry.gate_retry?.final_blocking_threshold_failures).toEqual([]);
+    expect(withRetry.gate_retry?.final_blocking_threshold_failures).toEqual([
+      "RAG route unsupported p95_latency_ms 6360 above 4000",
+    ]);
   });
 
   it("still blocks when the same case fails again", () => {
