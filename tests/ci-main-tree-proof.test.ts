@@ -15,6 +15,7 @@ import {
   PROOF_GROUPS,
   reconstructTestedTree,
   selectPullRequestCandidates,
+  skippedGroups,
   UNRELATED_INPUT_RULES,
 } from "../scripts/ci-main-tree-proof.mjs";
 
@@ -46,6 +47,15 @@ describe("main tree proof script", () => {
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("ci-main-tree-proof self-test passed.");
+  });
+
+  it("never lists the release matrix as skipped in the step summary", () => {
+    expect(skippedGroups({ coverage: true, ui: true, lighthouse: true, matrix: true })).toEqual([
+      "coverage",
+      "ui",
+      "lighthouse",
+    ]);
+    expect(skippedGroups({ coverage: false, ui: false, lighthouse: false, matrix: true })).toEqual([]);
   });
 
   it("exits non-zero when a self-test assertion fails, writing no GitHub outputs", () => {
@@ -232,7 +242,7 @@ describe("main tree proof script", () => {
     expect(result.stdout).toContain("coverage=false");
     expect(result.stdout).toContain("ui=false");
     expect(result.stdout).toContain("lighthouse=false");
-    expect(result.stdout).toContain("matrix=false");
+    expect(result.stdout).not.toContain("matrix=");
   });
 });
 
@@ -253,7 +263,8 @@ describe("main tree proof workflow wiring", () => {
     expect(jobs.changes.outputs.tree_proven_coverage).toBe("${{ steps.tree-proof.outputs.coverage }}");
     expect(jobs.changes.outputs.tree_proven_ui).toBe("${{ steps.tree-proof.outputs.ui }}");
     expect(jobs.changes.outputs.tree_proven_lighthouse).toBe("${{ steps.tree-proof.outputs.lighthouse }}");
-    expect(jobs.changes.outputs.tree_proven_matrix).toBe("${{ steps.tree-proof.outputs.matrix }}");
+    // The release matrix has no tree proof: every main push that changes UI, perf inputs or the lockfile runs it.
+    expect(jobs.changes.outputs.tree_proven_matrix).toBeUndefined();
     // The changes job checks out full history, which HEAD^1 and the ancestry check rely on.
     const checkout = steps.find((step) => String(step.uses ?? "").startsWith("actions/checkout@"));
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
@@ -292,17 +303,11 @@ describe("main tree proof workflow wiring", () => {
       "coverage",
       "coverage-shards",
       "lighthouse-budget",
-      "release-browser-matrix",
       "ui-critical",
       "ui-critical-fast",
     ]);
-    // The matrix is gated on its own dispatch-run proof, and only inside its main-push clause, so the
-    // weekly schedule, release branches and every dispatch still run it in full.
-    const matrixIf = ifOf("release-browser-matrix");
-    expect(matrixIf.match(/tree_proven_\w+/g)).toEqual(["tree_proven_matrix"]);
-    expect(matrixIf).toMatch(
-      /github\.ref == 'refs\/heads\/main' &&\s+needs\.changes\.outputs\.tree_proven_matrix != 'true' &&/,
-    );
+    // The Firefox/WebKit/phone matrix never runs on a PR, so no proof can skip it on main.
+    expect(ifOf("release-browser-matrix")).not.toMatch(/tree_proven_/);
     expect(ifOf("ui-critical-fast")).toContain("needs.changes.outputs.tree_proven_ui != 'true'");
   });
 
