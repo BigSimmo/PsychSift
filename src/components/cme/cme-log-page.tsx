@@ -643,12 +643,15 @@ export function CmeLogPage({
       <LogBody>
         <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
         {showFinish ? null : (
-          <CmePageAction
-            icon={SlidersHorizontal}
-            label="Filter your log"
-            onClick={openFilter}
-            testId="cme-log-filter-action"
-          />
+          // From 1024px the filter column sits beside the log, so the action that opens its sheet hides.
+          <div className="lg:hidden">
+            <CmePageAction
+              icon={SlidersHorizontal}
+              label="Filter your log"
+              onClick={openFilter}
+              testId="cme-log-filter-action"
+            />
+          </div>
         )}
         <div role="status" data-testid="cme-log-saved" className="contents">
           {justSaved ? <CmeBanner icon={Check}>Saved to your log.</CmeBanner> : null}

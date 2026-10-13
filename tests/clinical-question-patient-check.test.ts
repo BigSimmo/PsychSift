@@ -77,6 +77,8 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
     ["pt js 45m on lithium", ""],
     ["UMRN D4678677 clozapine bloods", ""],
     ["bed 12 agitation options", ""],
+    ["bed 12 male agitation options", ""],
+    ["Room 4 female on clozapine", ""],
     ["DOB: 01/02/1960 lithium dose", ""],
     ["call 0412 345 678 about clozapine", ""],
     ["Ms Jones on clozapine", "a name"],

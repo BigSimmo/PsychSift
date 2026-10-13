@@ -244,6 +244,11 @@ function loadClinicalQuestionPatientCheck() {
   return import("@/lib/clinical-question-patient-check");
 }
 
+// A question is never sent unchecked: when the check cannot load (a dropped connection),
+// Ask stops with this and the next Ask tries the download again.
+const PATIENT_CHECK_UNAVAILABLE =
+  "Could not check your question for patient details. Check your connection and try again.";
+
 export type { AnswerFeedbackType } from "@/lib/answer-feedback";
 export function ClinicalDashboard(props: ClinicalDashboardProps = {}) {
   return (
@@ -1669,8 +1674,12 @@ function ClinicalDashboardContent({
     if (isAnswerRequest) {
       // A mode switch, Stop or newer search while the check loads makes this submission stale.
       const submittedSeq = searchRequestSeqRef.current;
-      const patientCheck = await loadClinicalQuestionPatientCheck();
+      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
       if (submittedSeq !== searchRequestSeqRef.current) return;
+      if (!patientCheck) {
+        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        return;
+      }
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
         setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
@@ -2030,8 +2039,12 @@ function ClinicalDashboardContent({
     // (a link with ?run=1, a recent question). The answer API refuses it again.
     if (searchMode === "answer" && trimmedQuery) {
       const submittedSeq = searchRequestSeqRef.current;
-      const patientCheck = await loadClinicalQuestionPatientCheck();
+      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
       if (submittedSeq !== searchRequestSeqRef.current) return;
+      if (!patientCheck) {
+        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        return;
+      }
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
         setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });

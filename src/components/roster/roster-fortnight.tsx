@@ -165,7 +165,7 @@ export function RosterFortnight({
             </svg>
             Coming
           </span>
-          {hasLeave ? <span>L leave</span> : null}
+          {hasLeave ? <span>{SHIFT_LETTER.leave} leave</span> : null}
           <span className="ml-auto">Rostered hours</span>
         </p>
         <dl className="nums grid text-sm">

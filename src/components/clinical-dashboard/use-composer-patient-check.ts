@@ -17,9 +17,13 @@ export function useComposerPatientCheck(query: string, searchMode: AppModeId) {
   useEffect(() => {
     if (!needsPatientCheck) return;
     let live = true;
-    void import("@/lib/clinical-question-patient-check").then((mod) => {
-      if (live) setPatientCheck(mod);
-    });
+    // A failed download leaves the warning off here; Ask checks again and stops if it still fails.
+    import("@/lib/clinical-question-patient-check").then(
+      (mod) => {
+        if (live) setPatientCheck(mod);
+      },
+      () => undefined,
+    );
     return () => {
       live = false;
     };

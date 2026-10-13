@@ -641,7 +641,7 @@ function StagedAnswerResultSurfaceImpl({
                 text={projectedAnswer.leadText}
                 query={query}
                 preformatted={preformatted}
-                searchedCount={sourceSummary?.total_sources ?? sources.length}
+                searchedCount={sourceSummary?.total_sources ?? (sources.length || answer.sources.length)}
               />
             ) : answerState.kind === "ready" ? (
               <AnswerCard
