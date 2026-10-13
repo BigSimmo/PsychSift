@@ -516,9 +516,8 @@ html[data-motion="reduced"] .work-band__mark {
   line-height: var(--work-leading-meta);
   font-variant-numeric: tabular-nums;
   color: var(--work-ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Page state, never cut off (audit D19): a long line wraps. */
+  overflow-wrap: anywhere;
 }
 
 .work-band__title {
@@ -619,8 +618,7 @@ html[data-motion="reduced"] .work-band__mark {
   }
 
   /* The page's one glass action steps under the title, so a long title word
-     wraps whole instead of running under it, and the eyebrow wraps rather
-     than cutting off. */
+     wraps whole instead of running under it. */
   .work-band__head {
     flex-wrap: wrap;
   }
@@ -632,10 +630,6 @@ html[data-motion="reduced"] .work-band__mark {
   .work-band .mode-band__customise,
   .work-band__action {
     margin-left: auto;
-  }
-
-  .work-band__eyebrow {
-    white-space: normal;
   }
 }
 
