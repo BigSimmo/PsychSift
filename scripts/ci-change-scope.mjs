@@ -556,6 +556,11 @@ const containerPatterns = [
   /^worker\/.+/,
   "worker/python/requirements.in",
   "worker/python/requirements.txt",
+  // These inputs are copied into the isolated Docling venv/model layer of
+  // Dockerfile.worker; changing one must exercise the required image build.
+  "eval/docling/requirements.txt",
+  "eval/docling/verify-model-artifacts.mjs",
+  "eval/docling/model-artifacts.json",
   "scripts/app-container-smoke.mjs",
   "scripts/check-image-content-contract.mjs",
   "scripts/trivy-image-scan.mjs",
@@ -1647,6 +1652,14 @@ function assertDependencyAndContainerScopes() {
       build_changed: true,
     },
   );
+  for (const input of [
+    "eval/docling/requirements.txt",
+    "eval/docling/verify-model-artifacts.mjs",
+    "eval/docling/model-artifacts.json",
+  ]) {
+    assertScope(`docling-worker-input:${input}`, [input], { container_changed: true });
+  }
+  assertScope("docling-lab-documentation", ["eval/docling/README.md"], { container_changed: false });
 }
 
 function assertFallbackAndRenameScopes() {
