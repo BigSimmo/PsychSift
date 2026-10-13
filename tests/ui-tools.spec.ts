@@ -3129,7 +3129,10 @@ test.describe("PsychSift service detail page", () => {
       await expect(actions.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:139276");
       await expect(actions.getByRole("button", { name: "Use in navigator" })).toBeVisible();
       await expect(servicePage.getByRole("link", { name: "Call 13 92 76" })).toHaveAttribute("href", "tel:139276");
-      await expect(servicePage.getByRole("heading", { name: "Priority facts" })).toBeVisible();
+      // The priority facts are the shared At a glance card; the region keeps its established name.
+      await expect(
+        servicePage.getByLabel("Priority facts").getByRole("heading", { name: "At a glance" }),
+      ).toBeVisible();
       await expect(servicePage.getByRole("button", { name: /copy/i })).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(actions).toBeHidden();

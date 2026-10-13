@@ -175,10 +175,13 @@ export function RecordGlance({
   testId,
   valueTestId,
   titleId,
+  ariaLabel,
   footer,
 }: {
   facts: RecordGlanceFact[];
   title?: string;
+  /** Accessible name when it must differ from the visible title (a record's established section name). */
+  ariaLabel?: string;
   id?: string;
   testId?: string;
   titleId?: string;
@@ -192,7 +195,7 @@ export function RecordGlance({
     <section
       id={id}
       data-testid={testId}
-      aria-label={titleId ? undefined : title}
+      aria-label={titleId ? undefined : (ariaLabel ?? title)}
       aria-labelledby={titleId}
       className={cn(
         inPageAnchor,
