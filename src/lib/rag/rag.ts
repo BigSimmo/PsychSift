@@ -2352,7 +2352,13 @@ async function answerQuestionWithScopeUncoalesced(
   const emptyPanel = buildSmartPanel(answerFocusQuery, []);
   const relatedDocumentsPromise = buildRelatedDocumentsSafe({
     query: answerFocusQuery,
-    results: answerInputResults,
+    // Include any side-evidence top-up so a cited stage keeps its related-document entry.
+    results: withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected: answerInputResults,
+      candidates: sideEvidenceCandidates,
+    }),
     ownerId: args.ownerId,
   });
   const routingStartedAt = Date.now();
