@@ -1504,6 +1504,7 @@ export function NeedsYouCard({
   flagged = false,
   checked,
   checkedAt,
+  updated = null,
   incomplete = false,
   missing = [],
   offline = false,
@@ -1525,6 +1526,8 @@ export function NeedsYouCard({
   readonly checked: readonly string[];
   /** When the sources were last checked, "14:05". */
   readonly checkedAt?: string | null;
+  /** How old the data is, "4 min ago" (Ward Flow review item 5). Falls back to the clock time. */
+  readonly updated?: string | null;
   /** Some source failed: counts are "at least". */
   readonly incomplete?: boolean;
   /** The sources that did not load ("Roster"), for the stamp. */
@@ -1546,6 +1549,7 @@ export function NeedsYouCard({
   readonly onRetry: () => void;
   readonly onHide?: () => void;
 }) {
+  const age = updated ?? (checkedAt ? `at ${checkedAt}` : "just now");
   // Every source answered and nothing is waiting: the card and the time it checked are one line
   // (Work mode simplify plan, 12 Oct 2026). A part-read or offline check keeps its own stamp below.
   const allClear = total === 0 && checked.length > 0 && !incomplete && !offline;
@@ -1565,7 +1569,7 @@ export function NeedsYouCard({
           data-tone="ok"
           className="m-0 ml-auto text-2xs font-semibold text-[color:var(--text-muted)]"
         >
-          {`Checked ${checkedAt ?? "just now"}`}
+          {`Updated ${age}`}
           <span className="sr-only">{` · ${checked.join(", ")}`}</span>
         </p>
       </div>
@@ -1618,7 +1622,7 @@ export function NeedsYouCard({
   const stamp =
     checked.length === 0
       ? `Nothing checked yet${checkedAt ? ` · ${checkedAt}` : ""}`
-      : `Checked ${checkedAt ?? "just now"}${offline ? ", now offline" : ""} · ${
+      : `Updated ${age}${offline ? ", now offline" : ""} · ${
           incomplete && missing.length ? `${listNames(missing)} not loaded` : checked.join(", ")
         }`;
   return (

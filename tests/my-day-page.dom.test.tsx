@@ -526,8 +526,9 @@ describe("MyDayPage", () => {
     // The all-clear and when it checked are one line, said once (Work mode simplify plan, 12 Oct 2026).
     const stamp = screen.getByTestId("my-day-stamp");
     expect(empty.contains(stamp)).toBe(true);
-    expect(stamp.textContent).toMatch(/Checked \d{2}:\d{2}/);
-    expect(screen.getAllByText(/Checked \d{2}:\d{2}/)).toHaveLength(1);
+    // Ward Flow review item 5: the line says how old the data is, not only the clock time.
+    expect(stamp.textContent).toContain("Updated just now");
+    expect(screen.getAllByText(/Updated just now/)).toHaveLength(1);
   });
 
   it("names only the modes that were checked, and never says nothing needs you while one failed", () => {
