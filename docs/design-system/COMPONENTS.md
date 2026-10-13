@@ -1080,7 +1080,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `IconButton`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
 | `LinkAction`             | controls | yes   | yes                | no                    | yes            | no                 |               0 |
-| `LoadingPanel`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
+| `LoadingPanel`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `MissingValue`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |
 | `OverlayRoot`            | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `PageHeader`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
@@ -1095,7 +1095,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `SegmentedControl`       | controls | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
 | `Select`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |              16 |
 | `Sheet`                  | layout   | yes   | yes                | inherited-global-root | yes            | no                 |             137 |
-| `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
+| `Skeleton`               | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               9 |
 | `SourceDesignationBadge` | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
 | `SourceProvenance`       | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `SourceStatusBadge`      | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
