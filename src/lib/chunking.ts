@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.0.0-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.0.0-document";
+export const CHUNKER_VERSION = "1.1.0-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.1.0-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const paragraphBoundary = /\n{2,}/;
@@ -325,7 +325,9 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
         chunks.push(current.trim());
         const flushed = current.trim();
         const tail = readableOverlapTail(flushed, overlap);
-        current = tail ? `${tail}\n\n${paragraph}` : paragraph;
+        const successor = tail ? `${tail}\n\n${paragraph}` : paragraph;
+        // The full tail is already retained above; omit only redundant overlap if it cannot fit.
+        current = successor.length <= chunkSize * 1.35 ? successor : paragraph;
       } else {
         current = candidate;
       }
@@ -392,54 +394,47 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
     start += 1;
   }
 
-  // CHK-01: Check if the preceding text within the sentence contains a critical clinical prohibition
-  // (e.g. "DO NOT", "CONTRAINDICATED"). If so, extend overlap back to the prohibition so the successor
-  // chunk carries the governing prohibition rather than severing it into an unintended positive recommendation.
-  const lookbackLimit = Math.max(overlap * 3, 160);
-  const lookbackStart = Math.max(0, end - lookbackLimit);
-  const lookbackWindow = clean.slice(lookbackStart, end);
-  const lastBoundaryMatch = lookbackWindow.match(/(?:(?<=[.!?])\s+|^)(.*?)$/);
-  const sentenceFragment = lastBoundaryMatch ? lastBoundaryMatch[1] : lookbackWindow;
-  if (clinicalProhibitionPattern.test(sentenceFragment)) {
-    const prohibitionMatch = clinicalProhibitionPattern.exec(sentenceFragment);
-    if (prohibitionMatch) {
-      const sentenceFragOffset = lookbackWindow.length - sentenceFragment.length;
-      const candidateStart = lookbackStart + sentenceFragOffset + prohibitionMatch.index;
-      if (candidateStart < start && candidateStart < end) {
-        start = candidateStart;
-      }
-    }
+  // Keep the subject, condition and negation with the governing sentence, not just its keyword.
+  let sentenceStart = start;
+  while (
+    sentenceStart > 0 &&
+    !(/[.!?]/.test(clean[sentenceStart - 1] ?? "") && /\s/.test(clean[sentenceStart] ?? ""))
+  ) {
+    sentenceStart -= 1;
   }
+  while (sentenceStart < end && /\s/.test(clean[sentenceStart] ?? "")) sentenceStart += 1;
+  const sentenceWindow = clean.slice(sentenceStart, end);
+  const boundary = sentenceEndPattern.exec(sentenceWindow);
+  const governingSentence = sentenceWindow.slice(0, boundary?.index ?? sentenceWindow.length);
+  if (clinicalProhibitionPattern.test(governingSentence)) start = sentenceStart;
 
   return start < end ? start : Math.max(0, end - overlap);
 }
 
 function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) {
   const chunks: string[] = [];
+  // Record actual offsets once; never scan the remaining document for every chunk.
+  const sentenceEnds = Array.from(clean.matchAll(new RegExp(sentenceBoundary.source, "g")), (match) => match.index);
+  if (sentenceEnds.at(-1) !== clean.length) sentenceEnds.push(clean.length);
+  let boundaryIndex = 0;
   let start = 0;
 
   while (start < clean.length) {
-    let end = Math.min(start + chunkSize, clean.length);
-    const window = clean.slice(start, end);
-    const sentences = window.split(sentenceBoundary);
-
-    if (end < clean.length) {
-      // Look ahead to check if the trailing sentence completes within a modest elongation budget (up to 35% over chunkSize)
-      const lookahead = clean.slice(end);
-      const match = sentenceEndPattern.exec(lookahead);
-      if (match && end + match.index <= start + chunkSize * 1.35) {
-        end = end + match.index;
-      } else if (sentences.length > 1) {
-        const rebuilt = sentences.slice(0, -1).join(" ");
-        if (rebuilt.length > chunkSize * 0.55) {
-          end = start + rebuilt.length;
-        }
-      }
-    }
+    const nominalEnd = Math.min(start + chunkSize, clean.length);
+    while (sentenceEnds[boundaryIndex] < nominalEnd) boundaryIndex += 1;
+    const completingEnd = sentenceEnds[boundaryIndex];
+    const precedingEnd = boundaryIndex > 0 ? sentenceEnds[boundaryIndex - 1] : 0;
+    // Ordinary chunks retain the 35% elongation budget. An indivisible longer sentence is
+    // one atomic chunk: splitting or dropping it could change a clinical assertion's scope.
+    const end = completingEnd <= start + chunkSize * 1.35 || precedingEnd <= start ? completingEnd : precedingEnd;
 
     const chunk = clean.slice(start, end).trim();
     if (chunk) chunks.push(chunk);
     if (end >= clean.length) break;
+    if (end - start > chunkSize * 1.35) {
+      start = end;
+      continue;
+    }
     // Audit M17: when overlap >= chunkSize, readableOverlapStart can return a
     // position at or before the current start and the loop never advances,
     // hanging the ingestion worker on that document. Force strict forward
