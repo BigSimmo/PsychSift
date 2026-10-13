@@ -297,7 +297,7 @@ one item and the track would render one full-width segment. Omit `sections` and
 same single collapse owner, none of the section machinery. `usePageSectionWeights` observes
 nothing for an empty list, so those pages pay no measurement cost. Back is never in this
 row: `WorkPageBack` renders it as the top bar's round left button, with `back.label` as its
-accessible name. Two optional props shape the row:
+accessible name. The optional props below shape the row:
 
 - `primaryAction` promotes exactly **one** page action. It is **not** the filled `--command`
   slab, because a control pinned to every scroll position should not be the page's heaviest.
