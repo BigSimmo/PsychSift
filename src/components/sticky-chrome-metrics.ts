@@ -83,11 +83,13 @@ export function useStickyChromeMetrics({
       // sticky header be added so jumps do not land underneath it.
       const stickyHeaderHeight = isPhone() ? 0 : measureStickyHeader();
       // A header that pins its own tab rail (`data-pinned`, set by
-      // `useStickyWorkTabs`) stays in the page on phones instead of being
-      // portaled, and its rail rides under the bar. Jumps must clear that rail
-      // while the bar is showing; when the bar hides, the rail hides with it.
-      const anchorClearance =
-        collapseHeight + (collapseHidden ? stickyHeaderHeight : isPhone() ? measurePinnedRail() : 0);
+      // `useStickyWorkTabs`) stays in the page at every width, and its rail
+      // rides under the bar. Jumps must clear that rail while the bar is
+      // showing; when the bar hides, the rail hides with it.
+      const pinned = stickyHeader()?.hasAttribute("data-pinned") ?? false;
+      const anchorClearance = pinned
+        ? collapseHeight + (collapseHidden ? 0 : measurePinnedRail())
+        : collapseHeight + (collapseHidden ? stickyHeaderHeight : 0);
       root.style.setProperty(anchorOffsetProperty, `${Math.round(anchorClearance) + 16}px`);
       root.style.setProperty(stickyHeaderHeightProperty, `${Math.round(stickyHeaderHeight)}px`);
       // The live height of the universal collapse row, so page-owned sticky

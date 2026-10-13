@@ -18,6 +18,9 @@ export function usePortalSlotFocus(
     if (!slot || !enabled) return undefined;
     const slotHoldsFocus = () => document.activeElement instanceof Node && slot.contains(document.activeElement);
     const handleFocusIn = () => setFocused(true);
+    // Back may already hold focus when this starts (focus restored before the
+    // header enabled hiding); no focusin would follow, so read it now.
+    if (slotHoldsFocus()) queueMicrotask(() => setFocused(true));
     const handleFocusOut = (event: FocusEvent) => {
       const nextTarget = event.relatedTarget;
       if (!(nextTarget instanceof Node) || !slot.contains(nextTarget)) setFocused(false);

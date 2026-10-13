@@ -487,6 +487,13 @@ html {
   }
 }
 
+/* A jump to a section, a find or a focused field lands below the pinned row,
+   not under it, as on Work pages (work-mode.css). */
+html:has(:is(.mode-band, .inpage-nav-header)[data-pinned]),
+html:has(:is(.mode-band, .inpage-nav-header)[data-pinned]) #main-content {
+  scroll-padding-top: calc(var(--work-chrome-h) + var(--work-tabs-h, 0px));
+}
+
 :is(.mode-band, .inpage-nav-header)[data-pinned] {
   position: sticky;
   top: calc(var(--work-chrome-h) - var(--work-band-tabs-top, 0px));

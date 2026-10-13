@@ -581,7 +581,9 @@ function ModeBandHeader({
   // The tab row pins under the top bar and slides away and back with it, the
   // same mechanism as a Work band (header standard, 13 Oct 2026).
   const bandTabsRef = useRef<HTMLElement>(null);
-  useStickyWorkTabs(band, bandTabsRef);
+  // The row only renders with two or more tabs; keying the hook on that lets it
+  // start (or clean up) when the count crosses the line on the same band.
+  useStickyWorkTabs(tabEntries.length > 1 ? band : null, bandTabsRef);
   const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));
 
   const Icon = appModeIcons[modeId];
