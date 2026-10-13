@@ -558,6 +558,35 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     };
   }, [headerCollapseOwnsPhoneAddonFocus, hideOnScrollEnabled, phoneHeaderCollapseAddonHost]);
 
+  // Pages portal their Back control into the top bar's leading slot. React
+  // routes focus events from a portal through the page's tree, so the header's
+  // own focus capture never sees them; listen on the real DOM slot so a focused
+  // Back keeps the bar on screen like any other header control.
+  const leadingSlotRef = useRef<HTMLDivElement>(null);
+  const headerHidesOnScroll = Boolean(hideOnScroll);
+  useEffect(() => {
+    const slot = leadingSlotRef.current;
+    if (!slot || !headerHidesOnScroll) return undefined;
+    const slotHoldsFocus = () => document.activeElement instanceof Node && slot.contains(document.activeElement);
+    const handleFocusIn = () => setHeaderChromeFocused(true);
+    const handleFocusOut = (event: FocusEvent) => {
+      const nextTarget = event.relatedTarget;
+      if (!(nextTarget instanceof Node) || !slot.contains(nextTarget)) setHeaderChromeFocused(false);
+    };
+    // A focused Back that navigates away unmounts without a focusout.
+    const observer = new MutationObserver(() => {
+      if (!slotHoldsFocus()) setHeaderChromeFocused(false);
+    });
+    observer.observe(slot, { childList: true, subtree: true });
+    slot.addEventListener("focusin", handleFocusIn);
+    slot.addEventListener("focusout", handleFocusOut);
+    return () => {
+      slot.removeEventListener("focusin", handleFocusIn);
+      slot.removeEventListener("focusout", handleFocusOut);
+      observer.disconnect();
+    };
+  }, [headerHidesOnScroll]);
+
   useEffect(() => {
     onBottomComposerHiddenChange?.(bottomComposerHidden);
   }, [bottomComposerHidden, onBottomComposerHiddenChange]);
@@ -2607,7 +2636,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               button here (`WorkFrameBack`); CSS then stands the menu button
               down, so the round left control is one or the other. With the
               two-pane side menu both show, the menu first. */}
-          <div id="universal-header-leading" className="contents" />
+          <div ref={leadingSlotRef} id="universal-header-leading" className="contents" />
           <button
             type="button"
             onClick={onOpenMobileSidebar}
