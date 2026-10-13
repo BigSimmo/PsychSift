@@ -66,6 +66,11 @@ function cautionBody(therapy: Therapy): string {
   return cautions;
 }
 
+function cautionFace(body: string): string {
+  const stripped = extractCitations(body).text;
+  return summarise(stripped, 1) || stripped;
+}
+
 function hasExtraDetail(face: string, body: string): boolean {
   const faceText = face.trim();
   const bodyText = body.trim();
@@ -82,7 +87,10 @@ function hasExtraDetail(face: string, body: string): boolean {
  */
 export function therapyKeyFactCards(therapy: Therapy): TherapyKeyFactCard[] {
   const cautionsBody = cautionBody(therapy) || "Cautions not recorded";
-  const cautionsFace = cautionBody(therapy) ? glanceLine(cautionsBody) : "Cautions not recorded";
+  // Cautions is a safety cue, so its face is never cut to the glance budget: it shows the
+  // whole first sentence (citation markers lifted off), the same wording as the Avoid /
+  // modify line on search and Recommend. The full field sits directly under the tiles.
+  const cautionsFace = cautionBody(therapy) ? cautionFace(cautionsBody) : "Cautions not recorded";
 
   const formatText = therapy.sessionLength?.trim() || therapy.timeRequired?.trim() || "";
   const formatFace = formatText ? glanceLine(formatText) : "Format not recorded";

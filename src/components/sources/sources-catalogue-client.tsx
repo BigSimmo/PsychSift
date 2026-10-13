@@ -141,9 +141,19 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
     >
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-1.5">
-          <Chip size="compact" appearance={{ kind: "status", tone: SOURCE_BAND_TONES[entry.rating.band] }} dot>
-            {SOURCE_BAND_LABELS[entry.rating.band]}
-          </Chip>
+          {/* Colour only where a row differs (Clinical audit, 13 Oct 2026, item 8):
+              A, B and C are quiet grey text with the grade letter, so the green
+              pill no longer repeats on almost every row. D and Excluded keep
+              their coloured tag because they are the exception. */}
+          {entry.rating.band === "D" || entry.rating.band === "excluded" ? (
+            <Chip size="compact" appearance={{ kind: "status", tone: SOURCE_BAND_TONES[entry.rating.band] }} dot>
+              {SOURCE_BAND_LABELS[entry.rating.band]}
+            </Chip>
+          ) : (
+            <span data-source-band={entry.rating.band} className="text-xs font-semibold text-[color:var(--text-muted)]">
+              {SOURCE_BAND_LABELS[entry.rating.band]}
+            </span>
+          )}
           {flags.map((flag) => (
             <Chip key={flag.label} size="compact" appearance={{ kind: "status", tone: flag.tone }}>
               {flag.label}

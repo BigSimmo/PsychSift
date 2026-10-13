@@ -43,8 +43,6 @@ export function TherapyCompareAction({ therapy }: { therapy: Therapy }) {
         <Button
           variant="secondary"
           icon={Scale}
-          block={count < 2}
-          className={count < 2 ? undefined : "flex-1 min-w-[12rem]"}
           aria-pressed={inCompare}
           // A full tray states its reason and keeps its tab stop; native
           // `disabled` would drop the control out of reach of the explanation.
