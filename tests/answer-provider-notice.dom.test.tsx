@@ -23,6 +23,8 @@ describe("AnswerProviderNotice", () => {
   it("is mounted once, under the latest answer, and never in demo mode", () => {
     const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
     expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(1);
-    expect(source).toMatch(/explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/);
+    expect(source).toMatch(
+      /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,
+    );
   });
 });
