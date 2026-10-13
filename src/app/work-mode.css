@@ -1814,16 +1814,17 @@ a.work-hero:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Tags: small caps status words. Flat tints. */
+/* Tags: status words in sentence case (design audit D20, 13 Oct 2026: no
+   capitals, "Not started" rather than "NOT STARTED"). Flat tints. */
 .work-tag {
   display: inline-block;
   padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2);
   border-radius: var(--radius-pill);
   font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   line-height: var(--work-leading-tag);
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
   background: var(--mode-identity-soft);
   color: var(--mode-identity);
