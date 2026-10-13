@@ -7,7 +7,7 @@ import {
   timingSafeSecretEqual,
 } from "../supabase/functions/indexing-v3-agent/auth";
 
-const AGENT_SECRET = "test-indexing-v3-agent-secret-value-12345";
+const mockAgentKey = "unit-test-fixture-agent-key";
 
 function makeJwt(payload: Record<string, unknown>): string {
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
@@ -59,6 +59,11 @@ describe("indexing-v3-agent decodeJwtPayload & isValidJwt", () => {
     expect(isValidJwt(expiredJwt)).toBe(false);
     expect(isValidJwt("invalid.token.signature")).toBe(false);
   });
+
+  it("rejects token without expiration claim", () => {
+    const noExpJwt = makeJwt({ sub: "user-1", role: "service_role" });
+    expect(isValidJwt(noExpJwt)).toBe(false);
+  });
 });
 
 describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
@@ -66,7 +71,7 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        "x-indexing-agent-secret": AGENT_SECRET,
+        "x-indexing-agent-secret": mockAgentKey,
         authorization: `Bearer ${validJwt}`,
       },
     });
@@ -84,7 +89,7 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
         authorization: `Bearer ${validJwt}`,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).not.toBeNull();
     expect(res?.status).toBe(401);
   });
@@ -97,7 +102,7 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
         authorization: `Bearer ${validJwt}`,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).not.toBeNull();
     expect(res?.status).toBe(401);
   });
@@ -106,10 +111,10 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        authorization: `Bearer ${AGENT_SECRET}`,
+        authorization: `Bearer ${mockAgentKey}`,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).not.toBeNull();
     expect(res?.status).toBe(401);
   });
@@ -118,10 +123,10 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        "x-indexing-agent-secret": AGENT_SECRET,
+        "x-indexing-agent-secret": mockAgentKey,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).not.toBeNull();
     expect(res?.status).toBe(401);
   });
@@ -130,11 +135,11 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        "x-indexing-agent-secret": AGENT_SECRET,
+        "x-indexing-agent-secret": mockAgentKey,
         authorization: "Basic 12345",
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).not.toBeNull();
     expect(res?.status).toBe(401);
   });
@@ -143,11 +148,11 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        "x-indexing-agent-secret": AGENT_SECRET,
+        "x-indexing-agent-secret": mockAgentKey,
         authorization: `Bearer ${expiredJwt}`,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).not.toBeNull();
     expect(res?.status).toBe(401);
   });
@@ -156,11 +161,11 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        "x-indexing-agent-secret": AGENT_SECRET,
+        "x-indexing-agent-secret": mockAgentKey,
         authorization: `Bearer ${validJwt}`,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).toBeNull();
   });
 
@@ -168,11 +173,11 @@ describe("indexing-v3-agent dual-gate authorization (Task #P6BSQ3)", () => {
     const req = new Request("http://localhost/indexing-v3-agent", {
       method: "POST",
       headers: {
-        "x-cron-secret": AGENT_SECRET,
+        "x-cron-secret": mockAgentKey,
         authorization: `Bearer ${validJwt}`,
       },
     });
-    const res = await authorizeIndexingAgentRequest(req, AGENT_SECRET);
+    const res = await authorizeIndexingAgentRequest(req, mockAgentKey);
     expect(res).toBeNull();
   });
 });

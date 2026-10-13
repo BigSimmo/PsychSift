@@ -202,26 +202,25 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     expect(verifyProxyAuthHeader(`${payload}.${publicSignature}`)).toBeNull();
   });
 
-  it("uses dedicated PROXY_AUTH secret for signing and verifying proxy claims (#789SD7)", async () => {
-    process.env.PROXY_AUTH = "dedicated-proxy-auth-secret-value";
+  it("does not use wire token PROXY_AUTH to sign proxy claims, keeping signing keys off the wire (#789SD7)", async () => {
+    process.env.PROXY_AUTH = "unit-test-proxy-wire-token";
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const { signProxyAuthPayload, verifyProxyAuthHeader } = await import("../src/lib/supabase/proxy-auth-crypto");
+    const { signProxyAuthPayload } = await import("../src/lib/supabase/proxy-auth-crypto");
     const payload = Buffer.from(JSON.stringify({ id: "user-456", appMetadata: {} })).toString("base64");
-    const signed = signProxyAuthPayload(payload);
-    expect(signed).toBeTruthy();
-    expect(verifyProxyAuthHeader(signed!)).toBe(payload);
+    // Wire bearer secret PROXY_AUTH must never be an oracle for signing user claims
+    expect(signProxyAuthPayload(payload)).toBeNull();
   });
 
   it("timingSafeSecretEqual performs constant-time comparison", async () => {
     const { timingSafeSecretEqual } = await import("../src/lib/supabase/proxy-auth-crypto");
-    expect(timingSafeSecretEqual("secret123", "secret123")).toBe(true);
-    expect(timingSafeSecretEqual("secret123", "secret124")).toBe(false);
-    expect(timingSafeSecretEqual("short", "longer-secret")).toBe(false);
+    expect(timingSafeSecretEqual("token-abc", "token-abc")).toBe(true);
+    expect(timingSafeSecretEqual("token-abc", "token-xyz")).toBe(false);
+    expect(timingSafeSecretEqual("short", "longer-token-sample")).toBe(false);
     expect(() => timingSafeSecretEqual("é", "ab")).not.toThrow();
   });
 
   it("validates PROXY_AUTH header/token in /api/proxy route handler (#789SD7)", async () => {
-    process.env.PROXY_AUTH = "dedicated-proxy-secret-abc";
+    process.env.PROXY_AUTH = "unit-test-proxy-wire-token";
     const { GET, POST } = await import("../src/app/api/proxy/route");
 
     // 1. Missing secret token -> 401
@@ -232,7 +231,7 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     // 2. Wrong token -> 401
     const wrongReq = new Request("http://localhost/api/proxy", {
       method: "GET",
-      headers: { "x-proxy-auth": "wrong-secret" },
+      headers: { "x-proxy-auth": "wrong-token" },
     });
     const res2 = await GET(wrongReq);
     expect(res2.status).toBe(401);
@@ -240,7 +239,7 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     // 3. Valid x-proxy-auth header -> 200
     const validHeaderReq = new Request("http://localhost/api/proxy", {
       method: "GET",
-      headers: { "x-proxy-auth": "dedicated-proxy-secret-abc" },
+      headers: { "x-proxy-auth": "unit-test-proxy-wire-token" },
     });
     const res3 = await GET(validHeaderReq);
     expect(res3.status).toBe(200);
@@ -250,7 +249,7 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     // 4. Valid Authorization: Bearer token -> 200 on POST
     const validBearerReq = new Request("http://localhost/api/proxy", {
       method: "POST",
-      headers: { authorization: "Bearer dedicated-proxy-secret-abc" },
+      headers: { authorization: "Bearer unit-test-proxy-wire-token" },
     });
     const res4 = await POST(validBearerReq);
     expect(res4.status).toBe(200);

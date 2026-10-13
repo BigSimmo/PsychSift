@@ -25,6 +25,7 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.restoreAllMocks();
     // @ts-expect-error - clean up BarcodeDetector
     delete window.BarcodeDetector;
@@ -123,6 +124,5 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     });
 
     expect(onScan).toHaveBeenCalledWith("951753");
-    vi.useRealTimers();
   });
 });

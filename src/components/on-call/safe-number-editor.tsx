@@ -67,13 +67,13 @@ export function SafeNumberEditor({
   const isDirty = !sameSafeNumbers(currentGrid, confirmed);
 
   const handleStepperChange = useCallback(
-    (kind: SafeNumberKind, weekday: number, delta: number) => {
+    (kind: SafeNumberKind, delta: number) => {
       setSuccessMessage(null);
       setErrorMessage(null);
       setConflict(null);
-      const currentValue = currentGrid[kind][weekday - 1] ?? 0;
+      const currentValue = currentGrid[kind][0] ?? 0;
       const nextValue = Math.max(0, Math.min(SAFE_NUMBER_MAX, currentValue + delta));
-      setDraft(setSafeNumber(currentGrid, kind, [weekday], nextValue));
+      setDraft(setSafeNumber(currentGrid, kind, [1, 2, 3, 4, 5, 6, 7], nextValue));
     },
     [currentGrid],
   );
@@ -221,7 +221,7 @@ export function SafeNumberEditor({
                   type="button"
                   aria-label={`Decrease ${meta.label}`}
                   disabled={disabled || saving || weekdayVal <= 0}
-                  onClick={() => handleStepperChange(kind, 1, -1)}
+                  onClick={() => handleStepperChange(kind, -1)}
                   className={cn(toolbarButton, "rounded-full")}
                   data-testid={`stepper-minus-${kind}`}
                 >
@@ -237,7 +237,7 @@ export function SafeNumberEditor({
                   type="button"
                   aria-label={`Increase ${meta.label}`}
                   disabled={disabled || saving || weekdayVal >= SAFE_NUMBER_MAX}
-                  onClick={() => handleStepperChange(kind, 1, 1)}
+                  onClick={() => handleStepperChange(kind, 1)}
                   className={cn(toolbarButton, "rounded-full")}
                   data-testid={`stepper-plus-${kind}`}
                 >

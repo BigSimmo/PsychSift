@@ -86,9 +86,9 @@ export function calculateQtc(input: QtcInput): QtcResult {
     alerts.push("Bazett formula exhibits undercorrection at bradycardic heart rates (<60 bpm).");
   }
 
-  // Risk categorization (primarily based on Bazett as standard Australian baseline, with Fridericia comparison)
+  // Risk categorization (use Fridericia when HR > 85 bpm to avoid kinetic overcorrection; Bazett at normal/low rates)
   const isFemale = input.sex === "female";
-  const primaryQtc = bazett;
+  const primaryQtc = hr > 85 ? fridericia : bazett;
 
   let riskCategory: QtcRiskCategory;
   if (primaryQtc >= 500) {

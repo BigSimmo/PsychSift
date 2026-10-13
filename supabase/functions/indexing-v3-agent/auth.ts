@@ -30,10 +30,9 @@ export function decodeJwtPayload(token: string): JwtPayload | null {
 export function isValidJwt(token: string): boolean {
   const payload = decodeJwtPayload(token);
   if (!payload) return false;
-  if (typeof payload.exp === "number") {
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    if (payload.exp < nowSeconds) return false;
-  }
+  if (typeof payload.exp !== "number") return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (payload.exp < nowSeconds) return false;
   return true;
 }
 

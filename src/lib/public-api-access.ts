@@ -67,7 +67,14 @@ export function anonymousApiSubjectKey(request: Request) {
   // If no trusted proxy IP is available, every unknown caller intentionally
   // shares the same conservative quota rather than failing open.
   const source = requestIpSignal(request);
-  const salt = process.env.RATE_LIMIT_SALT || "psychsift-rate-limit-default-salt";
+  const salt =
+    process.env.RATE_LIMIT_SALT ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    (process.env.NODE_ENV === "production"
+      ? (() => {
+          throw new Error("RATE_LIMIT_SALT or SUPABASE_SERVICE_ROLE_KEY must be configured in production");
+        })()
+      : "dev-rate-limit-salt");
   return `anon:${createHmac("sha256", salt).update(source).digest("hex").slice(0, 32)}`;
 }
 

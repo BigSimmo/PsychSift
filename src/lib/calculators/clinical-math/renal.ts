@@ -21,8 +21,8 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
   if (!Number.isFinite(input.age) || input.age <= 0) {
     errors.push("Age must be greater than zero");
   } else if (input.age < 18) {
-    warnings.push(
-      "Cockcroft-Gault is validated for adult populations (>=18 years). Use Schwartz equation for pediatric patients.",
+    errors.push(
+      "Cockcroft-Gault is validated only for adult populations (>=18 years). Use bedside Schwartz equation for pediatric patients.",
     );
   } else if (input.age > 120) {
     errors.push("Age exceeds physiological bounds (>120 years)");
@@ -89,6 +89,10 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
 
   if (!Number.isFinite(input.age) || input.age <= 0 || input.age > 120) {
     errors.push("Age must be between 1 and 120 years");
+  } else if (input.age < 18) {
+    errors.push(
+      "CKD-EPI 2021 is validated only for adult populations (>=18 years). Use pediatric equations for patients under 18.",
+    );
   }
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");

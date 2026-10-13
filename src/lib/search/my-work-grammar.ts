@@ -32,7 +32,8 @@ const ALERT_PATTERN = /\b(assessment alerts?|assessment reminders?|overdue alert
 const GENERAL_ASSESSMENT_PATTERN = /\b(assessments?|assessed|evaluations?|appraisals?)\b/i;
 
 // Intent patterns
-const SUPERVISOR_QUERY_PATTERN = /\b(who is (?:my )?(?:supervisor|assessing me)|my supervisor)\b/i;
+const SUPERVISOR_QUERY_PATTERN =
+  /\b(who is (?:my )?(?:clinical )?(?:supervisor|assessing me)|my (?:clinical )?supervisor)\b/i;
 const DUE_PATTERN = /\b(due|overdue|pending|need to complete|deadline|expir\w*)\b/i;
 const COUNT_PATTERN = /\b(how many|count|number of|remaining|hours? left)\b/i;
 const NEXT_PATTERN = /\b(upcoming|when is (?:my )?next|when am i next)\b/i;

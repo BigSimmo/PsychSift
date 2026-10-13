@@ -1,7 +1,11 @@
 import { expect, test, type Locator, type Page } from "playwright/test";
 
 import { demoAnswer, demoDocuments } from "../src/lib/demo-data";
-import { projectClientAnswerPayload, type ClientRagAnswerPayload } from "../src/lib/answer-client-payload";
+import {
+  projectClientAnswerPayload,
+  toClientAnswerPayload,
+  type ClientRagAnswerPayload,
+} from "../src/lib/answer-client-payload";
 
 const readySetupChecks = [
   { id: "env", label: ".env.local configured", status: "ready", detail: "Synthetic test environment ready." },
@@ -112,7 +116,7 @@ async function mockSyntheticDashboardApis(page: Page) {
 }
 
 function adaptiveFixture(query: string, prefix: "Prior" | "Current"): ClientRagAnswerPayload {
-  const base = projectClientAnswerPayload(demoAnswer(query));
+  const base = toClientAnswerPayload(demoAnswer(query));
   if (!base) throw new Error(`Synthetic ${prefix.toLowerCase()} server fixture did not project to the client DTO`);
   const primary = base.sources[0];
   const secondary = base.sources[1];

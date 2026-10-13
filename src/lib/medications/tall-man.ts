@@ -32,7 +32,7 @@ export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Objec
   buspirone: "busPIRone",
 
   // Benzodiazepines & Sedatives
-  clonazepam: "clonazePAM",
+  clonazepam: "CLONazepam",
   lorazepam: "LORazepam",
   diazepam: "diazePAM",
   oxazepam: "oxazePAM",

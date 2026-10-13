@@ -4177,7 +4177,7 @@ export function sanitizePromptUserQuery(query: string): string {
   // markers (`<<<` / `>>>`) and the `<user_query>` tags the query sits inside.
   // Control characters go too (newline, tab and other unicode stay).
   return query
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u2028\u2029]/g, "")
     .replace(/<{3,}|>{3,}/g, "")
     .replace(/<\s*\/?\s*user_query\s*>/gi, "")
     .replace(/[ \t]{2,}/g, " ")

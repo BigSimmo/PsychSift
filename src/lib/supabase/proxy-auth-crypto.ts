@@ -30,7 +30,7 @@ const PROXY_AUTH_HKDF_INFO = "psychsift:proxy-auth-claims:v1";
  * env-parity check can vouch for.
  */
 function getProxyAuthSigningKey(): Buffer | null {
-  const secret = process.env.PROXY_AUTH?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!secret) return null;
   return Buffer.from(hkdfSync("sha256", Buffer.from(secret, "utf8"), Buffer.alloc(0), PROXY_AUTH_HKDF_INFO, 32));
 }
@@ -125,7 +125,7 @@ export type ProxyAuthResult = { ok: true } | { ok: false; status: 401 | 503; err
  * Returns 401 if token is missing or mismatched.
  */
 export function verifyProxyAuthSecret(request: Request): ProxyAuthResult {
-  const secret = process.env.PROXY_AUTH?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const secret = process.env.PROXY_AUTH?.trim();
   if (!secret) {
     return { ok: false, status: 503, error: "PROXY_AUTH secret is not configured" };
   }

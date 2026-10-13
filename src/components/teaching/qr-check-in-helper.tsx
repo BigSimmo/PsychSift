@@ -113,6 +113,7 @@ export function QrCheckInHelper({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
   const stopCamera = useCallback(() => {
     if (scanIntervalRef.current) {
@@ -123,7 +124,9 @@ export function QrCheckInHelper({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    setIsScanning(false);
+    if (mountedRef.current) {
+      setIsScanning(false);
+    }
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -131,20 +134,17 @@ export function QrCheckInHelper({
     setErrorMessage(null);
 
     const result = await requestMobileCameraStream();
+    if (!mountedRef.current) {
+      if (result.stream) {
+        result.stream.getTracks().forEach((track) => track.stop());
+      }
+      return;
+    }
     setPermissionStatus(result.status);
 
     if (result.stream) {
       streamRef.current = result.stream;
       setIsScanning(true);
-
-      if (videoRef.current) {
-        try {
-          videoRef.current.srcObject = result.stream;
-          videoRef.current.play?.().catch(() => {});
-        } catch {
-          // Handled safely
-        }
-      }
 
       // Check if native BarcodeDetector is available
       if (typeof window !== "undefined" && "BarcodeDetector" in window) {
@@ -177,7 +177,24 @@ export function QrCheckInHelper({
   }, [onScanCode, stopCamera]);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (isScanning && video && streamRef.current && video.srcObject !== streamRef.current) {
+      video.srcObject = streamRef.current;
+      try {
+        const playPromise = video.play?.();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      } catch {
+        // Handled safely
+      }
+    }
+  }, [isScanning]);
+
+  useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       stopCamera();
     };
   }, [stopCamera]);
@@ -204,7 +221,10 @@ export function QrCheckInHelper({
         {onClose && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              stopCamera();
+              onClose();
+            }}
             className={cn(
               "inline-flex min-h-tap items-center rounded-lg px-2 text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
               focusRing,

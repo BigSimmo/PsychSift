@@ -87,6 +87,21 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
       expect(negativeWeight.isValid).toBe(false);
     });
+
+    it("fails closed on pediatric age (<18 years) directing to Schwartz formula", () => {
+      const pediatric = calculateCockcroftGault({
+        age: 10,
+        weightKg: 35,
+        sex: "male",
+        serumCreatinine: 60,
+        creatinineUnit: "umol/L",
+      });
+
+      expect(pediatric.isValid).toBe(false);
+      expect(pediatric.crClMlMin).toBeNull();
+      expect(pediatric.stage).toBeNull();
+      expect(pediatric.errors).toEqual(expect.arrayContaining([expect.stringContaining("Schwartz")]));
+    });
   });
 
   describe("Renal Clearance: CKD-EPI 2021 eGFR", () => {
@@ -102,6 +117,20 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(result.isValid).toBe(true);
       expect(result.egfr).toBeGreaterThan(60);
       expect(result.stage).toBeDefined();
+    });
+
+    it("fails closed on pediatric age (<18 years) with no stage assigned", () => {
+      const pediatric = calculateCkdEpi2021({
+        age: 12,
+        sex: "female",
+        serumCreatinine: 50,
+        creatinineUnit: "umol/L",
+      });
+
+      expect(pediatric.isValid).toBe(false);
+      expect(pediatric.egfr).toBeNull();
+      expect(pediatric.stage).toBeNull();
+      expect(pediatric.errors).toEqual(expect.arrayContaining([expect.stringContaining("pediatric")]));
     });
   });
 
@@ -167,6 +196,22 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(result.alerts).toEqual(
         expect.arrayContaining([expect.stringContaining("Fridericia is clinically preferred")]),
       );
+    });
+
+    it("uses Fridericia rather than overcorrected Bazett for risk classification when HR > 85 bpm", () => {
+      // QT = 390 ms, HR = 120 bpm (RR = 0.5s):
+      // Bazett = 390 / sqrt(0.5) ~ 552 ms (would trigger critical >=500 alert)
+      // Fridericia = 390 / (0.5)^(1/3) ~ 491 ms (prolonged for male >470 ms, not critical)
+      const result = calculateQtc({
+        qtMs: 390,
+        heartRateBpm: 120,
+        sex: "male",
+      });
+
+      expect(result.isValid).toBe(true);
+      expect(result.bazettMs).toBeGreaterThan(500);
+      expect(result.fridericiaMs).toBeLessThan(500);
+      expect(result.riskCategory).toBe("prolonged");
     });
 
     it("fails closed on invalid HR or QT", () => {
@@ -257,6 +302,30 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(adjustment.isValid).toBe(true);
       expect(adjustment.suggestedDoseMg).toBe(1200);
       expect(adjustment.note).toContain("Linear kinetics");
+    });
+
+    it("withholds proportional dose suggestions when current lithium level is in the toxic range (>=1.2)", () => {
+      const toxicAdjustment = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 1.5,
+        targetLevelMmolL: 0.9,
+      });
+
+      expect(toxicAdjustment.isValid).toBe(false);
+      expect(toxicAdjustment.suggestedDoseMg).toBeNull();
+      expect(toxicAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic range")]));
+    });
+
+    it("fails closed when calculated proportional dose rounds to zero mg", () => {
+      const zeroAdjustment = calculateProportionalLithiumDose({
+        currentDoseMg: 20,
+        currentLevelMmolL: 0.8,
+        targetLevelMmolL: 0.8,
+      });
+
+      expect(zeroAdjustment.isValid).toBe(false);
+      expect(zeroAdjustment.suggestedDoseMg).toBeNull();
+      expect(zeroAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("rounds to zero")]));
     });
   });
 });

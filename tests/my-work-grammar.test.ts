@@ -76,6 +76,10 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(match?.category).toBe("supervisor_review");
       expect(match?.intent).toBe("supervisor");
       expect(match?.understood).toBe("Showing your assigned clinical supervisor and review schedule");
+
+      const clinicalMatch = parseMyWorkAssessmentGrammar("who is my clinical supervisor");
+      expect(clinicalMatch).not.toBeNull();
+      expect(clinicalMatch?.intent).toBe("supervisor");
     });
 
     it("parses count / progress query", () => {

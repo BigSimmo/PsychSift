@@ -93,6 +93,10 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
   }
   if (!Number.isFinite(input.currentLevelMmolL) || input.currentLevelMmolL <= 0) {
     errors.push("Current lithium level must be greater than zero mmol/L");
+  } else if (input.currentLevelMmolL >= 1.2) {
+    errors.push(
+      "Current lithium level is in the toxic range (>=1.2 mmol/L); evaluate for toxicity rather than titrating dose",
+    );
   }
   if (!Number.isFinite(input.targetLevelMmolL) || input.targetLevelMmolL <= 0) {
     errors.push("Target lithium level must be greater than zero mmol/L");
@@ -121,6 +125,14 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
     };
   }
   const suggestedDoseMg = Math.round(rawDose / 50) * 50;
+  if (suggestedDoseMg <= 0) {
+    return {
+      isValid: false,
+      suggestedDoseMg: null,
+      errors: ["Calculated dose rounds to zero; clinical review required"],
+      note: "Calculated dose rounds to zero; clinical review required.",
+    };
+  }
 
   return {
     isValid: true,

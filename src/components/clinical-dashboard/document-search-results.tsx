@@ -625,7 +625,13 @@ function SearchRecordResults({
    *  not include the most recent publication, and the heading says so. */
   degraded?: boolean;
 }) {
+  const [prevSearchKey, setPrevSearchKey] = useState(`${mode}:${query}`);
   const [visibleCount, setVisibleCount] = useState(30);
+  const currentSearchKey = `${mode}:${query}`;
+  if (prevSearchKey !== currentSearchKey) {
+    setPrevSearchKey(currentSearchKey);
+    setVisibleCount(30);
+  }
   if (matches.length === 0) return null;
   const copy = searchRecordConfig[mode];
   const recordRoute = (slug: string) => `${copy.routePrefix}/${slug}`;
