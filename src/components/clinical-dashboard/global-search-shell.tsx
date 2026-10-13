@@ -135,6 +135,7 @@ import {
   isAlwaysStandaloneShellPath,
   isDashboardOwnedModeHomePath,
   isDictionaryCataloguePath,
+  isDockedModeHomePath,
   isStandaloneModeHomePath,
   shouldRenderClinicalDashboard,
   shouldRenderDashboardSearch,
@@ -303,6 +304,19 @@ function GlobalSearchShellDashboardGate(props: GlobalSearchShellProps) {
   }
 
   return <GlobalStandaloneSearchShellClient {...props} />;
+}
+
+function subscribeOnlineStatus(listener: () => void): () => void {
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  return () => {
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+  };
+}
+
+function readBrowserOffline(): boolean {
+  return navigator.onLine === false;
 }
 
 function subscribeNoop() {
@@ -513,7 +527,13 @@ function GlobalStandaloneSearchShellBody({
   // Pathname-only: do not require searchMode === route. changeMode used to set
   // searchMode before router.push landed, which made isStandaloneModeHome false
   // for one frame (dock reserve + 200ms padding transition = choppy resize).
-  const isStandaloneModeHome = !hasSubmittedModeSearch && !rendersDashboardSearch && isStandaloneModeHomePath(pathname);
+  // A docked mode home (Psychiatry) takes the results-page search box: the
+  // compact bottom dock on phones and the page slot from tablet up.
+  const isStandaloneModeHome =
+    !hasSubmittedModeSearch &&
+    !rendersDashboardSearch &&
+    isStandaloneModeHomePath(pathname) &&
+    !isDockedModeHomePath(pathname);
   const isDictionaryCatalogue = isDictionaryCataloguePath(pathname);
   const isDifferentialPresentationWorkflow = pathname.startsWith("/differentials/presentations/");
   const shouldShowDesktopSidebar = !hideDesktopSidebar;
@@ -545,7 +565,9 @@ function GlobalStandaloneSearchShellBody({
   };
   const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
-  const isInfoPage = isInformationPage(pathname);
+  // Psychiatry stays an information page for its navigation, but its home now
+  // takes the search box (see `dockedModeHomePaths`).
+  const isInfoPage = isInformationPage(pathname) && !isDockedModeHomePath(pathname);
   // Information pages are read surfaces: the record has already been found, so a
   // composer there is chrome you cannot use without leaving the page. No mode is
   // an exception and no breakpoint is — the phone dock, the tablet/desktop page
@@ -555,8 +577,15 @@ function GlobalStandaloneSearchShellBody({
   // docks (`/services/search`, `/forms/search`) keep their composer because
   // `isSlugDetail` excludes the reserved `search` suffix, not because of any
   // route named here.
+  // Offline, Psychiatry's box could only fail after a tap; its page says search
+  // needs a connection, so the box steps aside until the browser is back online.
+  const browserOffline = useSyncExternalStore(subscribeOnlineStatus, readBrowserOffline, () => false);
   const shouldShowSearchComposer =
-    searchComposerVisible && pathname !== "/tools" && !isDifferentialPresentationWorkflow && !isInfoPage;
+    searchComposerVisible &&
+    pathname !== "/tools" &&
+    !isDifferentialPresentationWorkflow &&
+    !isInfoPage &&
+    !(browserOffline && isDockedModeHomePath(pathname));
   // `/tools` owns its catalogue controls rather than a shared composer. Keep
   // the sidebar's cross-guide search usable by returning to Answer first.
   const openSidebarSearch = pathname === "/tools" ? () => startNewAnswerChat() : () => focusComposerInput(inputRef);
@@ -567,7 +596,9 @@ function GlobalStandaloneSearchShellBody({
   // Dictionary catalogue keeps the usual compact phone dock; sm+ still
   // portals into the page-owned slot it renders under its mode nav, so it needs
   // no floating-composer clearance either.
-  const reservesFloatingComposer = shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue;
+  // Psychiatry, a docked home, likewise portals into its own page slot from tablet up.
+  const reservesFloatingComposer =
+    shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue && !isDockedModeHomePath(pathname);
   // Most standalone mode homes keep the in-flow hero pill at every width. Tools
   // deliberately has no shared composer. Document viewer routes own their own
   // floating composer, so
@@ -769,7 +800,9 @@ function GlobalStandaloneSearchShellBody({
 
   function submitSearch(queryOverride?: string) {
     const trimmedQuery = (queryOverride ?? query).trim();
-    navigateToMode(searchMode, {
+    // Psychiatry has no results page, so its box asks the question in Answer,
+    // as its old in-page box did.
+    navigateToMode(isDockedModeHomePath(pathname) && trimmedQuery ? "answer" : searchMode, {
       query: trimmedQuery || undefined,
       run: Boolean(trimmedQuery),
       // Running a search must not carry focus into the result dock — that pin
@@ -845,7 +878,11 @@ function GlobalStandaloneSearchShellBody({
 
   function pickRecentQuery(recentQuery: string) {
     setMobileMenuOpen(false);
-    navigateToMode(searchMode, { query: recentQuery, focus: false, run: true });
+    navigateToMode(isDockedModeHomePath(pathname) ? "answer" : searchMode, {
+      query: recentQuery,
+      focus: false,
+      run: true,
+    });
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
@@ -1203,7 +1240,11 @@ function GlobalStandaloneSearchShellBody({
               {/* The dictionary catalogue renders this same slot id itself, under
                   its own mode nav and above the Filter band, so the shell must not
                   emit a second element carrying it — one id, one portal host. */}
-              {shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue ? (
+              {/* Psychiatry's home renders it too, under its band. */}
+              {shouldShowSearchComposer &&
+              !isStandaloneModeHome &&
+              !isDictionaryCatalogue &&
+              !isDockedModeHomePath(pathname) ? (
                 <DesktopComposerPortalSlot
                   id={desktopPageComposerSlotId}
                   data-testid="desktop-page-search-composer-slot"
