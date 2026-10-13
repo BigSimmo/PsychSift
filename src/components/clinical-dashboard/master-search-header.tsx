@@ -404,7 +404,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // The check loads once the box has text, so pages that never type a question don't download it
   // (bundle budget). Until it arrives the server check still refuses the question.
   const [patientCheck, setPatientCheck] = useState<PatientCheckModule | null>(null);
-  const needsPatientCheck = Boolean(query) && !patientCheck;
+  const needsPatientCheck = searchMode === "answer" && Boolean(query) && !patientCheck;
   useEffect(() => {
     if (!needsPatientCheck) return;
     let live = true;
