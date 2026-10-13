@@ -41,7 +41,6 @@ import {
 
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
-import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import {
   splitFilterText,
   filterText,
@@ -54,6 +53,7 @@ import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-d
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
+import { useComposerPatientCheck } from "@/components/clinical-dashboard/use-composer-patient-check";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
@@ -176,8 +176,6 @@ const scopeSheetMediaQuery = "(max-width: 1023px)";
 const desktopPageComposerMediaQuery = "(min-width: 640px)";
 const modeHomeComposerMediaQuery = "(min-width: 0px)";
 const modeHomeComposerSmUpMediaQuery = "(min-width: 640px)";
-
-type PatientCheckModule = typeof import("@/lib/clinical-question-patient-check");
 
 export type MasterSearchHeaderScrollConfig = {
   strategy: "overlay" | "collapse";
@@ -400,26 +398,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     demoMode: false,
   });
   const trimmedQuery = query.trim();
-  // Answer mode holds back a question that looks like it holds a patient detail (audit S2, 2026-10-13).
-  // The check loads once the box has text, so pages that never type a question don't download it
-  // (bundle budget). Until it arrives the server check still refuses the question.
-  const [patientCheck, setPatientCheck] = useState<PatientCheckModule | null>(null);
-  const needsPatientCheck = searchMode === "answer" && Boolean(query) && !patientCheck;
-  useEffect(() => {
-    if (!needsPatientCheck) return;
-    let live = true;
-    void import("@/lib/clinical-question-patient-check").then((mod) => {
-      if (live) setPatientCheck(mod);
-    });
-    return () => {
-      live = false;
-    };
-  }, [needsPatientCheck]);
-  const clinicalPatientDetail = useMemo(
-    () => (searchMode === "answer" && query && patientCheck ? patientCheck.clinicalQuestionPatientDetail(query) : null),
-    [patientCheck, query, searchMode],
-  );
-  const hasPhiWarning = Boolean(clinicalPatientDetail || (query && identifierShapeWarning(query)));
+  const { clinicalPatientDetail, hasPhiWarning, phiWarningText } = useComposerPatientCheck(query, searchMode);
   const composerPhiWarningId = "composer-phi-warning";
   const selectedSearch = appModeSearchConfig(searchMode);
   // The trigger names the route the user is viewing. Session filtering still
@@ -2478,9 +2457,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             data-testid={composerPhiWarningId}
             className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
           >
-            {patientCheck
-              ? patientCheck.composerPatientDetailWarning(clinicalPatientDetail)
-              : "Remove identifiable patient details before searching."}
+            {phiWarningText}
           </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can
