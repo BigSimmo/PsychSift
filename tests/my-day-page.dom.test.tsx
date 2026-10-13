@@ -526,8 +526,24 @@ describe("MyDayPage", () => {
     // The all-clear and when it checked are one line, said once (Work mode simplify plan, 12 Oct 2026).
     const stamp = screen.getByTestId("my-day-stamp");
     expect(empty.contains(stamp)).toBe(true);
-    expect(stamp.textContent).toMatch(/Checked \d{2}:\d{2}/);
-    expect(screen.getAllByText(/Checked \d{2}:\d{2}/)).toHaveLength(1);
+    // Ward Flow review item 5: the line says how old the data is, not only the clock time.
+    expect(stamp.textContent).toContain("Updated just now");
+    expect(screen.getAllByText(/Updated just now/)).toHaveLength(1);
+  });
+
+  it("restamps the age when a retry answers, even when nothing visible changed", () => {
+    const later = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
+    const { rerender } = render(<MyDayPage now={NOW} />);
+    rerender(<MyDayPage now={later(5)} />);
+    expect(screen.getByTestId("my-day-stamp").textContent).toContain("Updated 5 min ago");
+    // While the retry reads again the earlier answer stays on screen, so its age stays too.
+    setState({ refreshing: true });
+    rerender(<MyDayPage now={later(6)} />);
+    expect(screen.getByTestId("my-day-stamp").textContent).toContain("Updated 6 min ago");
+    // The retry answers with the same statuses and item count: the age starts again.
+    setState({ refreshing: false });
+    rerender(<MyDayPage now={later(7)} />);
+    expect(screen.getByTestId("my-day-stamp").textContent).toContain("Updated just now");
   });
 
   it("names only the modes that were checked, and never says nothing needs you while one failed", () => {

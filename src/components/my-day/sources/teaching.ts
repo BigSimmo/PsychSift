@@ -121,6 +121,8 @@ function combine(resources: readonly { status: TeachingResourceStatus; code: str
 export function useTeachingMyDaySource({ enabled, now }: { enabled: boolean; now: Date }): {
   result: MyDaySourceResult;
   retry: () => void;
+  /** True while a retry is reading again over the answer still shown. */
+  refreshing: boolean;
 } {
   const unlogged = useTeachingResource<{ count: number }>(enabled ? "/api/teaching?view=unlogged-count" : null);
   // The depth routes refuse the synthetic demo build, so it is not asked (the answer is known).
@@ -166,5 +168,6 @@ export function useTeachingMyDaySource({ enabled, now }: { enabled: boolean; now
     retryFeedback();
     retryWeek();
   }, [retryUnlogged, retryTeach, retryFeedback, retryWeek]);
-  return { result, retry };
+  const refreshing = enabled && [unlogged, teach, feedback, week].some((read) => read.refreshing);
+  return { result, retry, refreshing };
 }
