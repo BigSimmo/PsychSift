@@ -8,6 +8,7 @@ import {
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { ActTopicList } from "@/components/forms/act-topic-list";
 import { ClinicalSplit } from "@/components/work-frame/work-desktop-layout";
+import { signOffDisplay } from "@/lib/sign-off-label";
 import type {
   ActReferenceGroup,
   ActReferenceSection,
@@ -86,6 +87,10 @@ function ActGroup({ group }: { group: ActReferenceGroup }) {
 }
 
 function StandardItem({ standard }: { standard: ChiefPsychiatristStandard }) {
+  // Signed off only for a named person and a date; a product attribution keeps "awaiting".
+  const signOff = standard.reviewed
+    ? signOffDisplay(standard.reviewedBy, standard.reviewedAt)
+    : { signedOff: false as const, text: "" };
   return (
     <li>
       <details
@@ -97,7 +102,7 @@ function StandardItem({ standard }: { standard: ChiefPsychiatristStandard }) {
           <span className="min-w-0 flex-1 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
             {standard.title}
           </span>
-          {standard.reviewed ? null : <span className={reviewBadge}>{AWAITING_REVIEW}</span>}
+          {signOff.signedOff ? null : <span className={reviewBadge}>{AWAITING_REVIEW}</span>}
           <ChevronDown
             className="h-4 w-4 shrink-0 text-[color:var(--text-muted)] transition group-open:rotate-180"
             aria-hidden
@@ -105,9 +110,9 @@ function StandardItem({ standard }: { standard: ChiefPsychiatristStandard }) {
         </summary>
         <div className="grid gap-2 border-t border-[color:var(--border)] px-3 py-3">
           <p className="text-sm leading-6 text-[color:var(--text)]">{standard.summary}</p>
-          {standard.reviewed ? (
+          {signOff.signedOff ? (
             <p className={cn("text-xs leading-5", textMuted)} data-testid={`cp-standard-reviewed-${standard.id}`}>
-              {`Drafted from the Office of the Chief Psychiatrist's published standard. Reviewed by ${standard.reviewedBy}.`}
+              {`Drafted from the Office of the Chief Psychiatrist's published standard. ${signOff.text}.`}
             </p>
           ) : (
             <p className={cn("text-xs leading-5", textMuted)}>

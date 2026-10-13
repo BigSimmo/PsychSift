@@ -21,6 +21,7 @@ import {
 } from "@/lib/forms-cultural-notes";
 import type { FormActSection, FormPriorityFactCard } from "@/lib/form-ranker";
 import { mhaActMetadata } from "@/lib/mha-act-sections";
+import { signOffDisplay } from "@/lib/sign-off-label";
 import type { ServiceSummaryCard } from "@/lib/service-ranker";
 
 function hasText(value: string | null | undefined): value is string {
@@ -406,8 +407,10 @@ function CulturalNoteText({ text }: { text: string }) {
 function CulturalNotesSection({ formCode }: { formCode: string | undefined }) {
   const notes = culturalNotesForForm(formCode);
   if (!notes.length) return null;
-  const reviewers = notes.map(culturalNoteReviewer);
-  const anySigned = reviewers.some((reviewer) => reviewer !== null);
+  // A note reads as signed off only when its sign-off names a real person and a date;
+  // a product attribution ("PsychSift") keeps the awaiting-review wording.
+  const signOffs = notes.map((note) => signOffDisplay(culturalNoteReviewer(note), note.reviewedAt));
+  const anySigned = signOffs.some((signOff) => signOff.signedOff);
 
   return (
     <section
@@ -441,7 +444,7 @@ function CulturalNotesSection({ formCode }: { formCode: string | undefined }) {
                 <CulturalNoteText text={note.text} />
                 {anySigned ? (
                   <p className={cn("mt-1 text-xs leading-5", textMuted)}>
-                    {reviewers[index] ? `Reviewed by ${reviewers[index]}.` : "Awaiting clinical review."}
+                    {signOffs[index]?.signedOff ? `${signOffs[index].text}.` : "Awaiting clinical review."}
                   </p>
                 ) : null}
               </div>
