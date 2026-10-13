@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "2226c4c7-40c1-4de1-99f6-0935db529194",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "The instruction-budget test timed out once under the full unit suite but passed 36 of 36 when run alone; unconfirmed flake (audit M5-1)",
+    "detail": "Not reproduced. If it recurs, find the slow step and make it robust; never skip or disable the test. Record the run id and timing on the next occurrence.",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4TNMPKEH38M3YCZHXHGCCPS"
+  }
+}
