@@ -11,6 +11,7 @@ import {
   useState,
   useLayoutEffect,
   useMemo,
+  useRef,
   useSyncExternalStore,
   Suspense,
   type CSSProperties,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/work-frame/areas";
 import { ExampleDataBanner } from "@/components/example-data/example-data-banner";
 import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
+import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import { WorkHelpHost } from "@/components/work-help/work-help-host";
 import { openWorkHelp } from "@/components/work-help/work-help-store";
@@ -572,6 +574,12 @@ function ModeBandHeader({
   }, [tabs, modeId, teachingRoles, rosterHasTeam, openShiftsPoster]);
 
   usePublishBandSurface(band, modeId);
+  // The tab row pins under the top bar and slides away and back with it, the
+  // same mechanism as a Work band (header standard, 13 Oct 2026).
+  const bandTabsRef = useRef<HTMLElement>(null);
+  // The row only renders with two or more tabs; keying the hook on that lets it
+  // start (or clean up) when the count crosses the line on the same band.
+  useStickyWorkTabs(tabEntries.length > 1 ? band : null, bandTabsRef);
   const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));
 
   const Icon = appModeIcons[modeId];
@@ -630,7 +638,12 @@ function ModeBandHeader({
         ) : null}
       </div>
       {tabEntries.length > 1 ? (
-        <nav aria-label={`${modeName} pages`} className="mode-band__tabs" data-testid="mode-band-tabs">
+        <nav
+          ref={bandTabsRef}
+          aria-label={`${modeName} pages`}
+          className="mode-band__tabs"
+          data-testid="mode-band-tabs"
+        >
           <div ref={tabRow} className="mode-band__tab-row">
             {tabEntries.map((entry) => {
               const count = counts?.[entry.id] ?? 0;

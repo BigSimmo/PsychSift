@@ -24,6 +24,9 @@ const internalArrowControls = new Set([
   // Returns from the finished handover table to the handover form on the
   // same page; nothing has been navigated to.
   "components/on-call/handover/handover-page.tsx",
+  // Closes the section sheet back to the page it overflows from; the page's own
+  // Back is drawn by WorkPageBack in the top bar.
+  "components/in-page-nav/in-page-nav-header.tsx",
 ]);
 
 function productionArrowFiles() {
