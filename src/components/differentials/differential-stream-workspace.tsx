@@ -157,10 +157,10 @@ const StreamCard = memo(function StreamCard({
       data-match={item.isMatch ? "true" : "false"}
       data-status={item.status}
       data-outside-filter={outsideFilter ? "true" : undefined}
-      className={cn(
-        "relative p-4 transition content-auto [contain-intrinsic-size:auto_140px]",
-        outsideFilter ? "" : cardTone,
-      )}
+      // Off-screen cards are skipped when the page's styles change (the header
+      // and bottom box slide on every scroll turn). With 200 cards that redraw
+      // held the header back for well over a second on a phone (13 Oct 2026).
+      className={`relative p-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_9rem] ${outsideFilter ? "" : cardTone}`}
       onFocus={() => onFocus(item.slug)}
     >
       <div className="flex items-start justify-between gap-3">

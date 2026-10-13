@@ -2,19 +2,21 @@
 
 import { ArrowLeft, ChevronDown, Ellipsis, type LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { DocumentSectionList, DocumentSectionTrack } from "@/components/document-viewer/section-nav";
 import { InPageSectionRail } from "@/components/in-page-nav/in-page-section-rail";
 import { toDocumentSections, type PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageChromeMetrics } from "@/components/in-page-nav/use-in-page-chrome-metrics";
 import { usePageSectionWeights } from "@/components/in-page-nav/use-page-section-weights";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import type { ModeNavDensityProfile } from "@/components/mode-nav/mode-nav-bands";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, pageContainer } from "@/components/ui-primitives";
+import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 type InPageNavHeaderSharedProps = {
   /**
@@ -30,14 +32,6 @@ type InPageNavHeaderSharedProps = {
    * here.
    */
   back?: { href: string; label: string };
-  /**
-   * `false` keeps the arrow alone at every width so the title owns the row.
-   * `back.label` is still required — it is the accessible name either way, and
-   * becomes the desktop tooltip. Breadcrumb pages that also carry a primary
-   * action and a view mode need that space; a page whose row holds only a title
-   * does not, which is why the label stays by default.
-   */
-  showBackLabel?: boolean;
   title: string;
   /**
    * Information pages keep their large record title in the body, so the header
@@ -219,7 +213,6 @@ export type InPageNavHeaderProps =
 export function InPageNavHeader(props: InPageNavHeaderProps) {
   const {
     back,
-    showBackLabel = true,
     title,
     titleAs = "span",
     titleHidden = false,
@@ -315,12 +308,117 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
   // With the title unpainted and nothing else claiming the row, drawing it
   // would cost 48px of empty band directly under the pill that already names
   // the page — which is the height this whole redesign went looking for.
-  const rowHasContent = !titleHidden || Boolean(back || primaryAction || actions || mode);
+  // Back lives in the top bar's round left button (one Back, in the top bar),
+  // so it no longer claims a place in this row.
+  const rowHasContent = !titleHidden || Boolean(primaryAction || actions || mode);
+
+  // Header standard (13 Oct 2026): a page with a tab rail behaves as a Work
+  // band does. The title row scrolls away with the page, the rail pins under
+  // the top bar, and the rail slides away and back with the bar. Under a mode
+  // band the band's own tabs are the pinned row, so this one stays in the page.
+  const underBand = useModeBandShown();
+  const pinRail = Boolean(rail) && !underBand;
+  const [pinnedHeader, setPinnedHeader] = useState<HTMLElement | null>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  useStickyWorkTabs(pinRail ? pinnedHeader : null, railRef);
+  // While only the rail shows, the page's actions ride at its end, so the one
+  // action worth reaching at any scroll position (a record's Save) is not
+  // clipped away with the title row.
+  const subscribeStuck = useCallback(
+    (notify: () => void) => {
+      if (!pinnedHeader || typeof MutationObserver === "undefined") return () => {};
+      const observer = new MutationObserver(notify);
+      observer.observe(pinnedHeader, { attributes: true, attributeFilter: ["data-stuck"] });
+      return () => observer.disconnect();
+    },
+    [pinnedHeader],
+  );
+  const railStuck = useSyncExternalStore(
+    subscribeStuck,
+    () => pinRail && Boolean(pinnedHeader?.hasAttribute("data-stuck")),
+    () => false,
+  );
+  // A row with no section navigation (a title and its actions) is a heading,
+  // not navigation: it scrolls away with the page, as a Work band's title does,
+  // so scrolling up brings back the top bar alone. Under a mode band the band's
+  // tabs are the pinned row, so a record's own header stays in the page too
+  // rather than returning beside them.
+  const scrollsAway = !rail && documentSections.length === 0;
+  const inFlow = pinRail || scrollsAway || underBand;
+  const HeaderHost = inFlow ? InFlowHeader : PhoneHeaderCollapsePortal;
+
+  const actionGroup =
+    primaryAction || actions ? (
+      // One joined group, not two free-standing controls. A bordered
+      // promoted action beside a borderless ellipsis reads as two
+      // unrelated things competing at the end of the row; a single
+      // border with a hairline between the members reads as one control
+      // with two actions. `sm:order-2` keeps the phone DOM order
+      // (verbs before mode) as the keyboard order while desktop still
+      // paints mode between the title and the verbs.
+      <span
+        data-testid={`${testIdPrefix}-action-group`}
+        className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] shadow-[var(--shadow-inset)] sm:order-2"
+      >
+        {primaryAction ? (
+          // Not the filled `--command` slab: a control pinned to every
+          // scroll position should not be the page's heaviest. The label
+          // is `sr-only` below `sm` so the accessible name never changes
+          // with the breakpoint.
+          <button
+            type="button"
+            onClick={primaryAction.onClick}
+            title={primaryAction.label}
+            aria-pressed={primaryAction.pressed}
+            data-testid={`${testIdPrefix}-primary-action`}
+            className={cn(
+              // Explicit focus styles rather than `focus-ring-tab`: that
+              // utility sets a `border-radius`, and a rounded child
+              // inside a rounded, clipped group paints a second corner
+              // against the group's own edge.
+              "flex min-h-tap items-center justify-center gap-2 px-3 text-sm font-bold text-[color:var(--text-heading)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+              primaryActionIconOnly ? "w-tap px-0" : "max-sm:w-tap max-sm:gap-0 max-sm:px-0",
+            )}
+          >
+            <primaryAction.icon
+              className={cn(
+                "h-5 w-5 shrink-0",
+                primaryAction.pressed
+                  ? "fill-current text-[color:var(--clinical-accent)]"
+                  : "text-[color:var(--text-muted)]",
+              )}
+              aria-hidden
+            />
+            <span className={primaryActionIconOnly ? "sr-only" : "max-sm:sr-only"}>{primaryAction.label}</span>
+          </button>
+        ) : null}
+        {actions ? (
+          <button
+            type="button"
+            ref={actionsTriggerRef}
+            onClick={() => setActionsOpen(true)}
+            aria-label={`Open ${actionsNoun} actions`}
+            aria-haspopup="dialog"
+            aria-expanded={actionsOpen}
+            title={`${actionsNoun.charAt(0).toUpperCase()}${actionsNoun.slice(1)} actions`}
+            data-testid={`${testIdPrefix}-actions-trigger`}
+            className={cn(
+              "grid h-tap w-tap shrink-0 place-items-center text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+              primaryAction && "border-l border-[color:var(--border)]",
+            )}
+          >
+            <Ellipsis className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          </button>
+        ) : null}
+      </span>
+    ) : null;
 
   return (
     <>
-      <PhoneHeaderCollapsePortal>
+      {back ? <WorkPageBack href={back.href} label={back.label.toLowerCase()} testId={`${testIdPrefix}-back`} /> : null}
+      <HeaderHost>
         <div
+          ref={pinRail ? setPinnedHeader : undefined}
           data-testid={`${testIdPrefix}-detail-header`}
           data-print-hide
           data-inpage-sticky-header=""
@@ -329,7 +427,8 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
             // safe-area). The collapse addon is a sibling of `.edge-glass-header`,
             // so this bar cannot inherit that inset — a literal `px-3` sat 4px
             // closer to the bezel than the hamburger / chat+ chrome above it.
-            "inpage-nav-header relative z-20 border-b border-[color:var(--border)] bg-[color:var(--surface)] sm:sticky sm:top-0 sm:px-6 lg:px-8",
+            "inpage-nav-header relative z-20 border-b border-[color:var(--border)] bg-[color:var(--surface)] sm:px-6 lg:px-8",
+            !inFlow && "sm:sticky sm:top-0",
             // With no row, the top padding is padding above a hairline, which
             // read as a divider floating loose under the chrome above. The bar
             // hangs off its own rule instead. From `sm` the bar is a bordered
@@ -346,24 +445,6 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
             <div
               className={cn(containerClassName ?? pageContainer, "flex min-h-12 min-w-0 flex-wrap items-center gap-2")}
             >
-              {back ? (
-                <ContextualBackLink
-                  fallbackHref={back.href}
-                  aria-label={`Back to ${back.label.toLowerCase()}`}
-                  title={showBackLabel ? undefined : back.label}
-                  className={cn(
-                    // `min-w-tap` is load-bearing on phones: the visible label is
-                    // `hidden sm:inline`, so without a width floor the control shrinks
-                    // to the icon + horizontal padding (~40px) and fails the production
-                    // tap-target contract that Production UI asserts on medications.
-                    "inline-flex min-h-tap min-w-tap shrink-0 items-center justify-center gap-1.5 rounded-full text-sm font-semibold text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)]",
-                    showBackLabel ? "pl-1.5 pr-3 max-sm:px-1.5" : "px-1.5",
-                  )}
-                >
-                  <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
-                  {showBackLabel ? <span className="hidden sm:inline">{back.label}</span> : null}
-                </ContextualBackLink>
-              ) : null}
               {rail && !titleHidden ? (
                 // With a rail, every section is already named in the row below, so
                 // from `sm` — where the whole rail fits — the disclosure would open
@@ -413,72 +494,7 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
                   {title}
                 </TitleTag>
               )}
-              {primaryAction || actions ? (
-                // One joined group, not two free-standing controls. A bordered
-                // promoted action beside a borderless ellipsis reads as two
-                // unrelated things competing at the end of the row; a single
-                // border with a hairline between the members reads as one control
-                // with two actions. `sm:order-2` keeps the phone DOM order
-                // (verbs before mode) as the keyboard order while desktop still
-                // paints mode between the title and the verbs.
-                <span
-                  data-testid={`${testIdPrefix}-action-group`}
-                  className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] shadow-[var(--shadow-inset)] sm:order-2"
-                >
-                  {primaryAction ? (
-                    // Not the filled `--command` slab: a control pinned to every
-                    // scroll position should not be the page's heaviest. The label
-                    // is `sr-only` below `sm` so the accessible name never changes
-                    // with the breakpoint.
-                    <button
-                      type="button"
-                      onClick={primaryAction.onClick}
-                      title={primaryAction.label}
-                      aria-pressed={primaryAction.pressed}
-                      data-testid={`${testIdPrefix}-primary-action`}
-                      className={cn(
-                        // Explicit focus styles rather than `focus-ring-tab`: that
-                        // utility sets a `border-radius`, and a rounded child
-                        // inside a rounded, clipped group paints a second corner
-                        // against the group's own edge.
-                        "flex min-h-tap items-center justify-center gap-2 px-3 text-sm font-bold text-[color:var(--text-heading)] transition hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-                        primaryActionIconOnly ? "w-tap px-0" : "max-sm:w-tap max-sm:gap-0 max-sm:px-0",
-                      )}
-                    >
-                      <primaryAction.icon
-                        className={cn(
-                          "h-5 w-5 shrink-0",
-                          primaryAction.pressed
-                            ? "fill-current text-[color:var(--clinical-accent)]"
-                            : "text-[color:var(--text-muted)]",
-                        )}
-                        aria-hidden
-                      />
-                      <span className={primaryActionIconOnly ? "sr-only" : "max-sm:sr-only"}>
-                        {primaryAction.label}
-                      </span>
-                    </button>
-                  ) : null}
-                  {actions ? (
-                    <button
-                      type="button"
-                      ref={actionsTriggerRef}
-                      onClick={() => setActionsOpen(true)}
-                      aria-label={`Open ${actionsNoun} actions`}
-                      aria-haspopup="dialog"
-                      aria-expanded={actionsOpen}
-                      title={`${actionsNoun.charAt(0).toUpperCase()}${actionsNoun.slice(1)} actions`}
-                      data-testid={`${testIdPrefix}-actions-trigger`}
-                      className={cn(
-                        "grid h-tap w-tap shrink-0 place-items-center text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-                        primaryAction && "border-l border-[color:var(--border)]",
-                      )}
-                    >
-                      <Ellipsis className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-                    </button>
-                  ) : null}
-                </span>
-              ) : null}
+              {railStuck ? null : actionGroup}
               {mode ? (
                 // Inline from `sm` only. Below that it renders inside the actions
                 // sheet instead — see the `mode` prop docs. `order-1` pulls it
@@ -502,24 +518,29 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
             </div>
           ) : null}
           {rail ? (
-            <InPageSectionRail
-              sections={sections}
-              activeId={activeSection?.id ?? null}
-              onSelect={(id) => onSelectSection?.(id)}
-              onOpenSectionSheet={openSectionSheet}
-              sectionSheetOpen={sectionSheetOpen}
-              label={rail.label}
-              density={rail.density}
-              countedLabels={rail.countedLabels}
-              modeIdentity={rail.modeIdentity}
-              flush={!rowHasContent}
-              testIdPrefix={testIdPrefix}
-            />
+            <div ref={railRef} className={cn(railStuck && "flex min-w-0 items-end gap-2")}>
+              <div className={cn(railStuck && "min-w-0 flex-1")}>
+                <InPageSectionRail
+                  sections={sections}
+                  activeId={activeSection?.id ?? null}
+                  onSelect={(id) => onSelectSection?.(id)}
+                  onOpenSectionSheet={openSectionSheet}
+                  sectionSheetOpen={sectionSheetOpen}
+                  label={rail.label}
+                  density={rail.density}
+                  countedLabels={rail.countedLabels}
+                  modeIdentity={rail.modeIdentity}
+                  flush={!rowHasContent}
+                  testIdPrefix={testIdPrefix}
+                />
+              </div>
+              {railStuck ? actionGroup : null}
+            </div>
           ) : documentSections.length > 0 ? (
             <DocumentSectionTrack sections={documentSections} activeId={activeSection?.id ?? null} />
           ) : null}
         </div>
-      </PhoneHeaderCollapsePortal>
+      </HeaderHost>
       {/* Both sheets are siblings of the portal, never children of it: a sheet
           inside the collapse row would be carried away with the header when the
           shared chrome scroll-hides. */}
@@ -607,4 +628,9 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
       ) : null}
     </>
   );
+}
+
+/** Keeps a pinned-rail header in the page, where its rail can stick under the top bar. */
+function InFlowHeader({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }
