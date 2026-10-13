@@ -150,9 +150,11 @@ describe("OnCallFreshnessBadge", () => {
 });
 
 describe("OnCallOfflineBanner", () => {
-  it("names the date the saved copy was taken", () => {
+  it("names when the saved copy was taken, in the app-wide wording", () => {
     render(<OnCallOfflineBanner savedAt="2026-08-20T00:00:00.000Z" />);
-    expect(screen.getByTestId("on-call-offline-banner")).toHaveTextContent(/20\/08\/2026/);
+    expect(screen.getByTestId("on-call-offline-banner")).toHaveTextContent(
+      /^Offline, showing what was saved on Thu 20 Aug( 2026)? at 08:00$/,
+    );
   });
 
   it("is not itself a live region — the visible banner carries no aria-live or status/alert role", () => {
@@ -167,7 +169,7 @@ describe("OnCallOfflineBanner", () => {
     const announcement = screen.getByTestId("on-call-offline-banner-announcement");
     expect(announcement).toHaveAttribute("aria-live", "polite");
     expect(announcement.className).toMatch(/\bsr-only\b/);
-    expect(announcement).toHaveTextContent(/20\/08\/2026/);
+    expect(announcement).toHaveTextContent(/Thu 20 Aug/);
   });
 });
 

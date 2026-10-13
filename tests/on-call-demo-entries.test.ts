@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
 import { onCallDetailsSchemaFor, onCallEntrySchema } from "@/lib/on-call/entry-model";
 import {
@@ -126,5 +127,14 @@ describe("the On Call demo corpus", () => {
   it("still offers a dated teaching session to the selector the home now uses", () => {
     const today = onCallLocalDateKey(new Date());
     expect(selectUpcomingTeachingSessions(DEMO_ON_CALL_ENTRIES, today).length).toBeGreaterThan(0);
+  });
+  it("names the overdue example item the same way Admin Today's card and list do", () => {
+    // Admin Today's top card shows the record's own title and the list below
+    // shows the requirement's title; the example once called one item two names.
+    const lapsed = DEMO_ON_CALL_ENTRIES.find((entry) => entry.slug === "demo-basic-life-support-module");
+    const requirementId = (lapsed?.details as { requirementId?: string } | undefined)?.requirementId;
+    const requirement = ADMIN_REQUIREMENTS_CATALOGUE.find((item) => item.id === requirementId);
+    expect(requirement).toBeDefined();
+    expect(lapsed?.title).toBe(requirement?.title);
   });
 });

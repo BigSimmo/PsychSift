@@ -242,7 +242,7 @@ export function StepRow({
   const goes = ("href" in action && !!action.href) || ("onClick" in action && !!action.onClick);
   const Glyph = state === "ok" ? Check : state === "now" ? ArrowRight : Clock;
   return (
-    <li className={cn("min-w-0", state === "lock" && "[&_.work-row__text]:opacity-60")}>
+    <li className="min-w-0" data-dim={state === "lock" ? "" : undefined}>
       <RowShell action={action}>
         <span
           aria-hidden="true"

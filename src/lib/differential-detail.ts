@@ -194,17 +194,6 @@ export function resolveSafetyFacts(
   return facts.slice(0, 4);
 }
 
-/** Compact phone labels for the Safety Snapshot metric strip. Longer labels
- *  wrap awkwardly in equal 3-column cells; the full label remains the
- *  accessible name via the fact's `label` field. */
-export const safetyFactCompactLabel: Partial<Record<DifferentialSafetyFact["id"], string>> = {
-  causes: "High-risk",
-  tests: "Core tests",
-  actions: "Actions",
-  related: "Related",
-  "high-risk": "High risk",
-};
-
 function normalizeSafetyToken(value: string): string {
   return value
     .replace(/\s+/g, " ")
@@ -421,6 +410,13 @@ export function resolveDoNowSteps(
 
 /** True when the record's own steps were replaced by authored ones, so the
  *  surface rendering them can say so. */
+/** Heading for the first-moves card. Authored steps are actions ("Do now");
+ *  generated text is written about the presentation group and reads as points,
+ *  not steps, so it is not labelled as actions. */
+export function doNowHeading(authored: boolean): string {
+  return authored ? "Do now" : "Points for this presentation";
+}
+
 export function doNowStepsAreCurated(curated: DifferentialCuratedEntry | null): boolean {
   return (curated?.doNow?.length ?? 0) > 0;
 }

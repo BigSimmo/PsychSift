@@ -43,8 +43,28 @@ for (const standalone of [false, true]) {
         const hidden = (await collapse.getAttribute("data-scroll-hidden")) === "true";
         expect((await band.getAttribute("data-bar-hidden")) !== null).toBe(hidden);
         if (hidden && (await band.getAttribute("data-stuck")) !== null) {
-          const bottom = await band.locator("nav").evaluate((nav) => nav.getBoundingClientRect().bottom);
-          expect(bottom, "hidden tabs leave no strip over the content").toBeLessThanOrEqual(1);
+          // On failure, report where the row is held and why, not only that it is visible, so a
+          // WebKit-only failure can be read from the CI log (no trace download from here).
+          await expect
+            .poll(
+              () =>
+                band.evaluate((element) => {
+                  const bottom = element.querySelector("nav")?.getBoundingClientRect().bottom ?? 0;
+                  if (bottom <= 1) return "gone";
+                  const style = getComputedStyle(element);
+                  return JSON.stringify({
+                    bottom,
+                    top: style.top,
+                    translate: style.translate,
+                    animations: element.getAnimations().length,
+                    focusWithin: element.matches(":focus-within"),
+                    hidden: element.hasAttribute("data-bar-hidden"),
+                    stuck: element.hasAttribute("data-stuck"),
+                  });
+                }),
+              { message: "hidden tabs leave no strip over the content", timeout: 1_000 },
+            )
+            .toBe("gone");
         }
       }
 
@@ -69,6 +89,9 @@ for (const standalone of [false, true]) {
       await expect(page).toHaveURL(/view=progress/);
       await expect(page.locator("[data-screen-heading]").first()).toBeFocused();
       await page.goto("/teaching/assessments");
+      // A streamed page can briefly hold a finished section twice (once still parked in React's hidden
+      // reveal container), which a strict locator rejects at once. Wait for the single settled copy.
+      await expect(page.getByTestId("assess-doctor-hero")).toHaveCount(1, { timeout: 15_000 });
       await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
       await page.getByRole("button", { name: /^Request an EPA From/ }).click();
       await expect(page.getByRole("dialog")).toBeVisible();

@@ -26,6 +26,7 @@ import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
 import { DictionaryResultRow } from "@/components/dictionary/dictionary-result-row";
+import { AlphabetStrip, alphabetStripTargetClass } from "@/components/mode-kit/alphabet-strip";
 import { InPageNavHeader } from "@/components/in-page-nav/in-page-nav-header";
 import { type PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-section-nav";
@@ -130,6 +131,10 @@ function dictionaryHitKey(hit: DictionarySearchHit) {
     : hit.type === "topic"
       ? `topic-${hit.topic.slug}`
       : `abbr-${hit.abbreviation}`;
+}
+
+function dictionaryLetterTargetId(letter: string) {
+  return `dictionary-letter-${letter === "#" ? "other" : letter}`;
 }
 
 /**
@@ -481,7 +486,11 @@ export function DictionaryCataloguePage() {
           {hits.length ? (
             <section aria-label="Dictionary catalogue" className="grid gap-5">
               {hitGroups.map((group) => (
-                <div key={group.letter ?? "results"} className="grid min-w-0 gap-2">
+                <div
+                  key={group.letter ?? "results"}
+                  id={group.letter ? dictionaryLetterTargetId(group.letter) : undefined}
+                  className={cn("grid min-w-0 gap-2", group.letter && alphabetStripTargetClass)}
+                >
                   {group.letter ? (
                     <h2 className="flex items-baseline gap-2.5 px-0.5">
                       <span className="font-mono text-2xl font-semibold leading-none text-[color:var(--clinical-accent)]">
@@ -568,6 +577,17 @@ export function DictionaryCataloguePage() {
             </div>
           )}
         </div>
+        {/* Phone A to Z strip (audit item 13): only while the list is grouped by
+            letter, and only the letters that are there. */}
+        {hitGroups.some((group) => group.letter) ? (
+          <AlphabetStrip
+            listId="dictionary-catalogue-results"
+            testId="dictionary-alphabet-strip"
+            entries={hitGroups.flatMap((group) =>
+              group.letter ? [{ letter: group.letter, targetId: dictionaryLetterTargetId(group.letter) }] : [],
+            )}
+          />
+        ) : null}
         {/* The catalogue shell is `bleed`, so every band owns its own container.
             Without one this cross-mode tray stretched the full viewport while
             the result list above it stayed inside the catalogue width, which
@@ -577,7 +597,8 @@ export function DictionaryCataloguePage() {
           <UniversalSearchAlsoMatches modeId="dictionary" query={params.q} className="mt-4" />
         </div>
         <InformationPageFooter>
-          All published entries link a source · Specialist clinical approval remains pending
+          Reference definitions, not clinical guidance or decision support · All published entries link a source ·
+          Specialist clinical approval remains pending
         </InformationPageFooter>
       </InformationPageShell>
       <ResultFilterSheet

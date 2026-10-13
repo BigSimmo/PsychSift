@@ -256,7 +256,7 @@ function CpdThisWeek({
             title={`${withUnit(week.older, week.older === 1 ? "older session" : "older sessions")} not in CPD yet`}
             meta="More than 7 days ago · on the review page"
             href="/teaching/review"
-            end={<WorkTag tone="amber">Overdue</WorkTag>}
+            end={<WorkTag tone="red">Overdue</WorkTag>}
           />
         </T5List>
       ) : null}

@@ -487,6 +487,8 @@ export const rosterActionSchema = z.union([
   openIdAction("open.approve"),
   openIdAction("open.decline"),
   openIdAction("open.cancel"),
+  // A doctor takes back their own request while it still waits for approval (roster_open_withdraw).
+  openIdAction("open.withdraw"),
   z.object({ action: z.literal("open.release"), openShiftId: uuid, urgent: z.boolean().optional() }).strict(),
   z.object({ action: z.literal("seen.mark"), publicationId: uuid }).strict(),
   // The team's safe number: replaces its whole list of cover needs. Manager only (the SQL checks).

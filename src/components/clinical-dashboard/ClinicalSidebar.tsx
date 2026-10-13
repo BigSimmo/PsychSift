@@ -56,6 +56,7 @@ import type { ThemePreference } from "@/lib/theme";
 import {
   CLINICAL_MENU_PANEL_ID,
   ClinicalMenuBell,
+  ClinicalMenuRecentPages,
   ClinicalMenuTabs,
   ClinicalMenuWorkAreas,
   clinicalMenuTabId,
@@ -339,14 +340,13 @@ const brandHeaderGround =
 /* Wordmark and strapline as one type pair, so the drawer and the sidebar cannot
  * drift into two different settings of the same two lines.
  *
- * The setting is not a new one: it is the `shared-home-brand` lockup from
- * `master-search-header`, matched line for line, because that is the same two
- * lines on the same product and the reasoning behind every value there was
- * measured rather than chosen — 18px/800 on the display tracking step for the
- * name, 12px/500 in --text-muted for the strapline. In particular the strapline
- * may not drop to --text-soft (3.07:1 on this ground, under the 4.5:1 floor) or
- * to an 11px step (bottom-light for no gain); see the note at that call site
- * before changing either.
+ * The setting is not a new one: it is the lockup the shared home's header drew
+ * until 12 Oct 2026 (the rail now carries the mark alone), matched line for
+ * line, and the reasoning behind every value was measured rather than chosen —
+ * 18px/800 on the display tracking step for the name, 12px/500 in --text-muted
+ * for the strapline. In particular the strapline may not drop to --text-soft
+ * (3.07:1 on this ground, under the 4.5:1 floor) or to an 11px step
+ * (bottom-light for no gain).
  *
  * The strapline is the bare catchphrase: under a wordmark it is an identity
  * label rather than a sentence, and `@/lib/brand` keeps the unpunctuated variant
@@ -987,6 +987,8 @@ export function ClinicalSidebarContent({
                 ) : null}
               </div>
             </section>
+
+            {drawer ? <ClinicalMenuRecentPages variant="clinical" onNavigate={() => onNavigate?.()} /> : null}
 
             <section className="min-w-0 shrink-0">
               <div className={sectionHeading}>

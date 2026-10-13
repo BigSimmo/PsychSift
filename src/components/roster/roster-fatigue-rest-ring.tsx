@@ -98,7 +98,7 @@ export function RosterFatigueRestRing({
       <div className="flex items-center justify-between gap-2">
         <h3 className={cn(eyebrowText, modeSummaryMutedText, "flex items-center gap-1.5")}>
           <Clock className="size-3.5" aria-hidden="true" />
-          Recovery and safe hours
+          Rest between shifts
         </h3>
         <span
           className={cn(
@@ -116,7 +116,7 @@ export function RosterFatigueRestRing({
           ) : (
             <>
               <ShieldCheck className="size-3" aria-hidden="true" />
-              {`${minRestHours} h safe recovery interval`}
+              {`${minRestHours} h minimum rest`}
             </>
           )}
         </span>
@@ -154,8 +154,8 @@ export function RosterFatigueRestRing({
           </div>
           <p className="text-2xs text-[color:var(--text-muted)] leading-tight">
             {isBreach
-              ? `This shift turnaround is under the ${minRestHours}-hour safe recovery window.`
-              : "Circadian recovery interval before your next rostered shift starts."}
+              ? `This turnaround is under the ${minRestHours}-hour minimum rest. The roster shows it; it is not a view on whether you are fit to work.`
+              : "Rest before your next rostered shift starts, against the minimum."}
           </p>
 
           {isBreach && (

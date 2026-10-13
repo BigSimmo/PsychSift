@@ -1,6 +1,16 @@
 "use client";
 
-import { BedDouble, BookOpen, ChevronRight, CircleHelp, Landmark, MonitorOff, Package } from "lucide-react";
+import {
+  BedDouble,
+  BookOpen,
+  ChevronRight,
+  CircleHelp,
+  Landmark,
+  MonitorOff,
+  Package,
+  Printer,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -12,8 +22,8 @@ import { handbookFirstLine, OnCallHandbookItemRow } from "@/components/on-call/f
 import { OnCallFirstNightPanel } from "@/components/on-call/find/first-night-panel";
 import { FirstWeekEntryLink } from "@/components/on-call/first-week/first-week-entry-link";
 import { onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
-import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
 import { modeInsetHairline, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -186,7 +196,7 @@ export function OnCallFindPage() {
   return (
     <OnCallHubPageFrame page="find" lead={<OnCallHospitalLine handbook={handbook} />}>
       <OnCallHandbookState handbook={handbook} page="find" />
-      {ready ? null : <OnCallCrisisLines />}
+      {ready ? null : <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} />}
 
       {ready ? (
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
@@ -235,6 +245,27 @@ export function OnCallFindPage() {
       ) : null}
       {ready ? rest.map(renderGroup) : null}
       {ready && !searching && (hasDeskOnly || hospitalPhone) ? <OnCallHospitalPhoneSwitch on={hospitalPhone} /> : null}
+
+      {/* Who's who and the Pocket card moved here from Contacts (Work mode simplify plan, owner approval
+          12 Oct 2026): reference about the hospital lives in its handbook. */}
+      {searching ? null : (
+        <ul role="list" className="work-card min-w-0" data-testid="on-call-find-reference">
+          <OnCallRow
+            href="/on-call/who-is-who"
+            title="Who's who"
+            subtitle="What the short role names mean"
+            leading={<Users aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
+            testId="on-call-find-whos-who"
+          />
+          <OnCallRow
+            href="/on-call/card"
+            title="Pocket card"
+            subtitle="The numbers flagged for it, to print"
+            leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
+            testId="on-call-find-pocket-card"
+          />
+        </ul>
+      )}
 
       <div className={cn(modeInsetHairline, "min-w-0")} data-testid="on-call-find-on-site">
         <Link

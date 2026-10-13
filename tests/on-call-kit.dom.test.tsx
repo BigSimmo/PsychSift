@@ -519,7 +519,7 @@ function handbook(status: HospitalHandbookState["status"]): HospitalHandbookStat
 
 describe("OnCallHandbookState", () => {
   it.each([
-    ["signed-out", /Hospital numbers are for signed-in members\./],
+    ["signed-out", /^Sign in to see your hospital's numbersSign in$/],
     ["expired", /Your session ended\. Sign in again to see your hospital's numbers\./],
     ["no-service", /You are not in a hospital handbook yet\./],
     ["unavailable", /could not be loaded/],
@@ -541,8 +541,10 @@ describe("OnCallHandbookState", () => {
       render(<OnCallHandbookState handbook={handbook(status)} page="call" />);
       const state = screen.getByTestId(`on-call-handbook-state-${status}`);
       expect(within(state).getByRole("button", { name: "Sign in" })).toBeInTheDocument();
-      expect(state).not.toHaveTextContent(/Nothing you saved|has been lost|Sign in to see/);
+      expect(state).not.toHaveTextContent(/Nothing you saved|has been lost|shared On Call entries/);
       expect(state.querySelectorAll("p")).toHaveLength(1);
+      // One slim line, not the page-sized card with a badge (site review 12 Oct 2026, item 2).
+      expect(state.querySelector(".work-empty")).toBeNull();
     },
   );
 

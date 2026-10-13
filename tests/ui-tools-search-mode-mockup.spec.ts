@@ -53,7 +53,7 @@ test.describe("Perfected Tools results mode mockup @mockup", () => {
     await expect(sheet).toHaveCount(0);
 
     await searchInput.fill("");
-    await expect(mockup.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(mockup.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     for (const group of ["Safety", "Look it up", "Assess", "Treat and plan", "Coordinate"]) {
       await expect(mockup.getByRole("region", { name: group, exact: true })).toBeVisible();
     }

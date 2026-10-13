@@ -1,7 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import * as nextEnv from "@next/env";
 import { auditSourceAuthorityDocuments, isRegistryRecordSource } from "@/lib/source-authority-metadata";
@@ -16,6 +15,7 @@ import {
   enumerateSpecifierAuditRecords,
   type CataloguePopulation,
 } from "./lib/governance-catalogue-audit";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export type AuditableRecord = {
   record: Record<string, unknown>;
@@ -1061,7 +1061,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (report.debt_policy && !report.debt_policy.passed) process.exitCode = 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

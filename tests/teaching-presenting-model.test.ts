@@ -12,6 +12,7 @@ import {
   upcomingTalkMeta,
 } from "@/components/teaching/presenting-model";
 import { demoFeedbackTotals, demoSupervision, demoTeach } from "@/lib/teaching/depth-demo";
+import { demoTeachingSessions } from "@/lib/teaching/demo-programme";
 
 /* Presenting against its mock-up (v5 screen 02), on the made-up presenter. Tue 6 Oct 2026 12:35 Perth. */
 
@@ -52,9 +53,39 @@ describe("Presenting's made-up presenter", () => {
     for (const talk of read.upcoming) expect(talk.venue).not.toMatch(/^Demo /);
   });
 
-  it("moves the talk to tomorrow once today's has ended", () => {
+  // Work mode simplify plan, 12 Oct 2026: Needs you said "You present Mon 12 Oct" while the programme ran
+  // the journal club on Tue 13 Oct. The made-up talk now sits on the programme's own journal club.
+  it("puts the made-up talk on the programme's journal club day", () => {
+    const monday = "2026-10-12";
+    expect(demoTeach(monday).upcoming[0].startsAt.slice(0, 10)).toBe("2026-10-13");
+    const club = demoTeachingSessions({ from: monday, to: "2026-10-18" }, new Date("2026-10-12T06:00:00Z")).find(
+      (row) => row.title === "Journal club",
+    );
+    expect(club?.startsAt).toBe(demoTeach(monday).upcoming[0].startsAt);
+    expect(club?.isPresenter).toBe(true);
+  });
+
+  it("keeps the made-up talk and the programme's You present on the same day mid-week and after the talk", () => {
+    for (const now of [new Date("2026-10-07T02:00:00Z"), new Date("2026-10-06T07:00:00Z")]) {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Perth" }).format(now);
+      const talk = demoTeach(today, now).upcoming[0];
+      const club = demoTeachingSessions({ from: today, to: "2026-10-31" }, now).filter((row) => row.isPresenter);
+      expect(club.map((row) => row.startsAt)).toEqual([talk.startsAt]);
+      expect(talk.startsAt.slice(0, 10)).toBe("2026-10-13");
+    }
+  });
+
+  it("keeps today's talk as yours while the session is still running (14:50 Perth)", () => {
+    const during = new Date("2026-10-06T06:50:00Z");
+    const talk = demoTeach(TODAY, during).upcoming[0];
+    const club = demoTeachingSessions({ from: TODAY, to: "2026-10-31" }, during).filter((row) => row.isPresenter);
+    expect(talk.startsAt.slice(0, 10)).toBe(TODAY);
+    expect(club.map((row) => row.startsAt)).toEqual([talk.startsAt]);
+  });
+
+  it("moves the talk to the next journal club once today's has ended", () => {
     const evening = new Date("2026-10-06T07:00:00Z"); // 15:00 Perth
-    expect(talkKicker(demoTeach(TODAY, evening).upcoming[0], evening, TODAY)).toBe("Your next talk · Wed 7 Oct 14:00");
+    expect(talkKicker(demoTeach(TODAY, evening).upcoming[0], evening, TODAY)).toBe("Your next talk · Tue 13 Oct 14:00");
   });
 
   it("shows 31 h of a 50 h target this year, the latest hour waiting and the group session confirmed", () => {

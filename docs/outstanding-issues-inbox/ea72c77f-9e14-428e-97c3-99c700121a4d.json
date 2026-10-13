@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ea72c77f-9e14-428e-97c3-99c700121a4d",
+  "createdOn": "2026-10-12",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Teaching dual sign-off keeps assessments in server memory; decide durable storage or keep as a gated prototype",
+    "detail": "The trainee-supervisor sign-off repository (src/lib/teaching/assessments/dual-sign-off.ts) is an in-memory Map used only by src/app/api/teaching/assessments/dual-sign-off/route.ts, which already returns 503 when NODE_ENV is production, so nothing is lost today and no screen calls it. Owner decision needed: build a Supabase table with RLS and owner scoping before enabling it, or keep it a gated prototype. Do not remove the production refusal until a durable store exists. Next action: owner chooses; if building, plan the migration inside an approved window (merging a supabase/ change deploys to the live database).",
+    "source": "Review of five Antigravity reports against main, 2026-10-12",
+    "issueUlid": "01M4R2M9Y3AW8SRK103GE4JH9E"
+  }
+}

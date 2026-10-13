@@ -35,6 +35,7 @@ import {
   eyebrowText,
   fieldLabel,
   fieldControlPlain,
+  ignoreUnavailableActivation,
   metadataPill,
   panelSubtle,
   primaryControl,
@@ -614,6 +615,11 @@ export function PatientSafetyPlan() {
   const exampleActive = planContainsSeedEntries(entries, reasons);
   const stepsComplete = filledSteps === STEPS.length;
   const ready = stepsComplete && !exampleActive;
+  // Name the real blocker: the example text fills all six steps, so a step
+  // count alone would read "6 of 6 complete" beside a button that is still off.
+  const finaliseUnavailableReason = exampleActive
+    ? "Replace the example text with the real plan to finalise it."
+    : `Complete all ${STEPS.length} steps to finalise plan (${filledSteps} of ${STEPS.length} complete).`;
   // Working plan content is browser-tab only and never persisted. Treat any
   // entered step/reason/date as dirty so the header back control cannot discard
   // an in-progress plan without an explicit confirmation.
@@ -928,16 +934,14 @@ export function PatientSafetyPlan() {
               </div>
             </div>
 
+            {/* aria-disabled, not disabled: a native disabled button leaves the tab order, so keyboard and
+                screen-reader users would never reach the reason it is unavailable. */}
             <button
               type="button"
-              onClick={() => setFinalised(true)}
-              disabled={!ready}
+              onClick={ready ? () => setFinalised(true) : ignoreUnavailableActivation}
+              aria-disabled={!ready ? true : undefined}
               aria-describedby={!ready ? finaliseUnavailableId : undefined}
-              title={
-                !ready
-                  ? `Complete all ${STEPS.length} steps to finalise plan (${filledSteps}/${STEPS.length} complete)`
-                  : undefined
-              }
+              title={!ready ? finaliseUnavailableReason : undefined}
               className={cn(primaryControl, "min-h-tap")}
             >
               {finalised ? (
@@ -949,7 +953,7 @@ export function PatientSafetyPlan() {
             </button>
             {!ready ? (
               <span id={finaliseUnavailableId} className="sr-only">
-                Complete all {STEPS.length} steps to finalise plan ({filledSteps} of {STEPS.length} steps complete).
+                {finaliseUnavailableReason}
               </span>
             ) : null}
           </div>

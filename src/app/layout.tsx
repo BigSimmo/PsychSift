@@ -17,6 +17,7 @@ import { ToastProvider } from "@/components/ui/toast";
 import { PUBLIC_APP_ROBOTS_METADATA } from "@/lib/crawler-policy";
 import { BRAND_DESCRIPTION, BRAND_NAME } from "@/lib/brand";
 import "./globals.css";
+import "./reading-aids.css";
 
 /**
  * Origin of the Supabase project, or null when the public env is absent (demo mode).
@@ -158,7 +159,7 @@ export default async function RootLayout({
           // read it), which reads as a hydration mismatch on this attribute.
           suppressHydrationWarning
           dangerouslySetInnerHTML={{
-            __html: `${THEME_BOOTSTRAP_SCRIPT}${GLASS_FALLBACK_SCRIPT}(function(){try{var p=JSON.parse(localStorage.getItem("clinical-kb-preferences")||"{}");if(p&&typeof p==="object"){if(p.density==="compact"||p.density==="spacious"){document.documentElement.setAttribute("data-density",p.density);}if(p.motion==="reduced"||p.motion==="full"){document.documentElement.setAttribute("data-motion",p.motion);}}}catch(e){/* storage blocked or stored preferences JSON corrupt - the default density/motion apply */}})();`,
+            __html: `${THEME_BOOTSTRAP_SCRIPT}${GLASS_FALLBACK_SCRIPT}(function(){try{var p=JSON.parse(localStorage.getItem("clinical-kb-preferences")||"{}");if(p&&typeof p==="object"){if(p.density==="compact"||p.density==="spacious"){document.documentElement.setAttribute("data-density",p.density);}if(p.motion==="reduced"||p.motion==="full"){document.documentElement.setAttribute("data-motion",p.motion);}if(p.brightLight===true){document.documentElement.setAttribute("data-bright","");}}}catch(e){/* storage blocked or stored preferences JSON corrupt - the default density/motion apply */}})();`,
           }}
         />
         <a

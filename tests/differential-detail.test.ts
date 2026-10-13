@@ -345,22 +345,25 @@ describe("getDifferentialDetailContext", () => {
   });
 });
 
-describe("Safety Snapshot compact layout", () => {
-  it("keeps the full fact label available to assistive tech when the compact label is shown", () => {
+describe("Safety facts in the shared record layout", () => {
+  it("shows every fact under its full label in the At a glance card, never a compact label", () => {
     const source = readFileSync(
       new URL("../src/components/differentials/differential-detail-page.tsx", import.meta.url),
       "utf8",
     );
-    expect(source).toContain("aria-label={fact.label}");
-    expect(source).toMatch(/sm:hidden[^>]*>\s*\{[\s\S]*compactLabel/);
+    expect(source).toContain("<RecordGlance");
+    expect(source).toContain("label: fact.label, value: fact.value");
+    expect(source).not.toContain("compactLabel");
   });
 
-  it("keeps four metrics on one row and omits the old review action", () => {
+  it("keeps the safety snapshot as the full cautions block and omits the old review action", () => {
     const source = readFileSync(
       new URL("../src/components/differentials/differential-detail-page.tsx", import.meta.url),
       "utf8",
     );
-    expect(source).toContain('if (count >= 4) return "grid-cols-4"');
+    expect(source).toContain('<RecordCautions title="Safety snapshot" testId="differential-safety-snapshot">');
+    // Watch-for items wrap, so none is cut off at the edge of a phone.
+    expect(source).toMatch(/flex-wrap[^"]*"[^>]*\n?[^>]*data-testid="differential-safety-watchlist"/);
     expect(source).not.toContain("Review must-not-miss causes");
     expect(source).not.toContain('data-testid="differential-safety-cta"');
   });
