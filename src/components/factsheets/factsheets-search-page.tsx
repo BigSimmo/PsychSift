@@ -17,6 +17,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FactsheetListRow } from "@/components/factsheets/factsheet-list-row";
 import {
   categoryTheme,
+  FACTSHEET_DEMO_NOTICE,
   factsheetCategories,
   factsheetDetailHref,
   filterFactsheets,
@@ -104,6 +105,11 @@ export function FactsheetsSearchPage({
     >
       <p className={pageHeadingEyebrowClass}>Find a sheet</p>
       <h1 className={cn("mt-1.5", pageHeadingTitleClass)}>Search patient information</h1>
+      {/* The detail and print pages carry this notice; the list must too, or browsing
+          reads as an approved library until a sheet is opened. */}
+      <p role="note" className="mt-2 text-xs font-bold text-[color:var(--warning)]">
+        {FACTSHEET_DEMO_NOTICE}
+      </p>
 
       <SearchResultsHeaderBand
         modeId="factsheets"

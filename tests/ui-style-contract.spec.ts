@@ -250,8 +250,15 @@ test.describe("unlayered style rules render their effect", () => {
     // all — the audit would enumerate an empty set and pass vacuously. The result
     // rows are where this repo's tap carriers actually live.
     const runAudit = async (): Promise<string[]> => {
+      // The "Also matches" strip below the results only mounts once its cross-mode lookup has
+      // answered, so it can arrive after the main rows have settled. Wait for that lookup too,
+      // or a slow first answer would leave its header out of one run and in the next.
+      const crossModeLookup = page
+        .waitForResponse((response) => response.url().includes("/api/search/universal"), { timeout: 20_000 })
+        .catch(() => null);
       await page.goto("/forms/search?q=transport&run=1", { waitUntil: "domcontentloaded" });
       await page.getByTestId("form-search-mobile-results").waitFor({ state: "visible", timeout: 20_000 });
+      await crossModeLookup;
       return waitForStableEnumeration();
     };
 

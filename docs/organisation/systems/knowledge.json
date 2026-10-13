@@ -125,6 +125,7 @@
     "tests/database-skills.test.ts",
     "tests/docs-*",
     "tests/github-shell-access.test.ts",
+    "tests/instruction-continuation-guards.test.ts",
     "tests/issues-report.test.ts",
     "tests/ledger-*",
     "tests/maturity-governance-docs.test.ts",

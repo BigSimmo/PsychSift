@@ -212,6 +212,8 @@ export function DictionaryComparePage({ a, b }: { a: DictionaryEntry | null; b: 
           title="Change comparison"
           description="Choose two source-linked entries"
           phone={picker.phone}
+          onDone={picker.close}
+          onReset={() => pushPair(null, null)}
           id="dictionary-compare-picker"
           testId="dictionary-compare-picker"
         >
@@ -226,6 +228,7 @@ export function DictionaryComparePage({ a, b }: { a: DictionaryEntry | null; b: 
             onChoose={choose}
             onDone={picker.close}
             onReset={() => pushPair(null, null)}
+            hideActions={picker.phone}
             searchPlaceholder="Search term or abbreviation"
             emptyHint="No matching terms."
             announcement={announcement}

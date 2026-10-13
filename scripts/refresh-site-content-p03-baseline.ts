@@ -11,6 +11,7 @@ import { recordToRow as registryToRow, type RegistryRecordRow } from "../src/lib
 import { serviceRecords } from "../src/lib/services";
 import { siteContentValueHash } from "../src/lib/site-content/site-content-manifest";
 import { canonicalDynamicSiteContentProjection } from "../src/lib/site-content/site-content-publication";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 /**
  * site-content:p03 — offline helpers for the frozen P03 seed blobs.
@@ -301,4 +302,4 @@ export function bootstrapReleaseUuid(digest: string) {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20, 32)}`;
 }
 
-if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) main();
+if (isDirectEntrypoint(import.meta.url)) main();

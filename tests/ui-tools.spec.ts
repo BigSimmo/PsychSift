@@ -87,7 +87,7 @@ function waitForDifferentialCatalogQuery(page: Page, query: string) {
 }
 
 async function submitDifferentialSearch(page: Page, query: string) {
-  const input = page.locator('input[placeholder="Ask or search a presentation..."]:visible').first();
+  const input = page.locator('input[placeholder="Search a presentation..."]:visible').first();
   const submit = page.locator('button[aria-label="Search differential presentations"]:visible');
 
   // Own the fill here rather than leaving it to callers. The server-rendered
@@ -480,7 +480,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       await gotoLauncher(page, "/tools");
 
       await expect(visibleByTestId(page, "tools-search-results-page")).toBeVisible();
-      await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
       await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
       await expect(page.locator("form.answer-footer-search-dock")).toHaveCount(0);
       await expectNoPageHorizontalOverflow(page);
@@ -503,7 +503,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       await gotoLauncher(page, "/tools");
 
       const results = visibleByTestId(page, "tools-search-results-page");
-      await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+      await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
       await expect(results.getByRole("region", { name: "Pinned", exact: true })).toBeVisible();
       // Safety has its own band ahead of the task groups, so nothing can filter it away.
       const safety = results.getByRole("region", { name: "Safety", exact: true });
@@ -540,7 +540,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const results = visibleByTestId(page, "tools-search-results-page");
     await expect(results).toBeVisible();
-    await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(results.getByRole("heading", { level: 3, name: "PsychSift Search" })).toBeVisible();
     await expect(results.getByRole("heading", { level: 3, name: "Medication Prescribing" })).toBeVisible();
     await expect(toolRowLink(results, "clinical-kb-search")).toHaveAttribute("href", "/?mode=answer");
@@ -597,7 +597,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const showAll = results.getByRole("link", { name: "Show all tools" });
     await expect(showAll).toHaveAttribute("href", "/tools");
     await Promise.all([page.waitForURL(/\/tools$/), showAll.click()]);
-    await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
   });
@@ -655,7 +655,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     for (const width of [320, 390, 639, 768, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
-      await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
       await expect(page.getByRole("region", { name: "Safety", exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { level: 3, name: "PsychSift Search" })).toBeVisible();
       await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
@@ -664,7 +664,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     }
 
     await page.emulateMedia({ reducedMotion: "reduce", forcedColors: "active" });
-    await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
   });
@@ -742,10 +742,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const sharedHome = visibleByTestId(page, "shared-home-empty-state");
     const searchInput = visibleGlobalSearchInput(page);
-    const sharedHomeBrand = page.getByTestId("shared-home-brand");
-    await expect(sharedHomeBrand).toBeVisible();
-    await expect(sharedHomeBrand).toContainText("PsychSift");
-    await expect(sharedHomeBrand).toContainText("From question to source");
+    // The rail carries the PsychSift mark, so the header does not repeat it
+    // (owner design review, 12 Oct 2026).
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Answers" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-sparkles\b/);
     await searchInput.fill("lithium draft");
@@ -765,7 +764,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(sharedHome).toBeVisible();
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Services" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-route\b/);
-    await expect(sharedHomeBrand).toContainText("PsychSift");
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(page.getByText("Services Navigator", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("services-home")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
@@ -939,7 +938,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const heroSearch = sharedHome.getByTestId("global-search-input");
     await expect(visibleGlobalSearchInput(page)).toHaveCount(1);
     await expect(heroSearch).toBeVisible();
-    await expect(heroSearch).toHaveAttribute("placeholder", "Describe the presentation or search a specifier...");
+    await expect(heroSearch).toHaveAttribute("placeholder", "Search specifiers...");
     await expect(page.getByTestId("specifiers-home")).toHaveCount(0);
 
     const expectSoundPhoneGeometry = async () => {
@@ -1028,10 +1027,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       sharedHome.getByText("Review criteria and exclusions before documenting", { exact: true }),
     ).toHaveCount(0);
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-tags\b/);
-    await expect(visibleGlobalSearchInput(page)).toHaveAttribute(
-      "placeholder",
-      "Describe the presentation or search a specifier...",
-    );
+    await expect(visibleGlobalSearchInput(page)).toHaveAttribute("placeholder", "Search specifiers...");
     await expect(page.getByTestId("specifiers-home")).toHaveCount(0);
 
     const specifiersHeadingBox = await sharedHome
@@ -1063,10 +1059,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     ).toBe(true);
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Formulation" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-network\b/);
-    await expect(visibleGlobalSearchInput(page)).toHaveAttribute(
-      "placeholder",
-      "Describe a pattern or clinical clue...",
-    );
+    await expect(visibleGlobalSearchInput(page)).toHaveAttribute("placeholder", "Describe a pattern...");
     await expect(page.getByTestId("formulation-home")).toHaveCount(0);
     await expect(visibleGlobalSearchInput(page)).toHaveCount(1);
     expect(await page.evaluate(() => window.history.length)).toBe(historyLengthBefore);
@@ -1241,8 +1234,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
       const icon = homeRegion.locator(".mode-home-icon").first();
       await expect(icon).toBeVisible();
-      const iconBox = await icon.boundingBox();
-      expect(iconBox, `${home.path} hero icon`).not.toBeNull();
+      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
+      // (48px since PR 5b), not a standalone pixel choice. The home can swap its subtree between the
+      // visibility check and a box read, so each sample is a fresh read of the settled icon.
+      await expect
+        .poll(
+          async () => {
+            const box = await icon.boundingBox();
+            return box && { width: Math.round(box.width), height: Math.round(box.height) };
+          },
+          { message: `${home.path} hero icon size` },
+        )
+        .toEqual({ width: 48, height: 48 });
 
       // ModeHomeHero gives its heading the deterministic id `<heroTestId>-title`
       // (role/name lookups can collide with sr-only section headings).
@@ -1271,16 +1274,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
         };
       });
 
-      const metrics = {
-        iconWidth: Math.round(iconBox?.width ?? 0),
-        iconHeight: Math.round(iconBox?.height ?? 0),
-        headingFontSize,
-      };
-      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
-      // (48px since PR 5b), not a standalone pixel choice.
-      expect(metrics.iconWidth).toBe(48);
-      expect(metrics.iconHeight).toBe(48);
-      expect(metrics.headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
+      expect(headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
       expect(subtitleFontSize).toBeCloseTo(expectedTypeSizes.subtitle, 1);
 
       await expectNoPageHorizontalOverflow(page);
@@ -1334,7 +1328,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await gotoLauncher(page, "/?mode=tools");
 
     await page.waitForURL(/\/tools$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
     await expect(page.locator("form.answer-footer-search-dock")).toHaveCount(0);
     await expect(page.getByTestId("tools-search-results-page").getByTestId("tools-local-search-input")).toBeVisible();
@@ -2065,7 +2059,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(visibleGlobalSearchInput(page)).toHaveCount(1);
     const heroSearch = sharedHome.getByTestId("global-search-input");
     await expect(heroSearch).toBeVisible();
-    await expect(heroSearch).toHaveAttribute("placeholder", "Ask or search a presentation...");
+    await expect(heroSearch).toHaveAttribute("placeholder", "Search a presentation...");
 
     // The hero heading sits above the composer, and the composer stays in the
     // upper two thirds — the same geometry contract every mode home is held to.
@@ -2513,7 +2507,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoLauncher(page, "/differentials");
 
-    const input = page.locator('input[placeholder="Ask or search a presentation..."]:visible');
+    const input = page.locator('input[placeholder="Search a presentation..."]:visible');
     const submit = page.locator('button[aria-label="Search differential presentations"]:visible');
     await expect(input).toHaveCount(1, { timeout: 15_000 });
     await expect(submit).toHaveCount(1, { timeout: 15_000 });
@@ -2527,15 +2521,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await submit.click();
     await searchResponse;
 
-    const compareAction = page.getByTestId("differentials-compare-selected-mobile");
+    const compareAction = page.getByTestId("differentials-compare-tray-compare");
     const dock = page.locator("form.answer-footer-search-dock");
     const scrollport = visibleByTestId(page, "differentials-search-results");
     const mainContent = page.locator("#main-content");
     await expect(scrollport).toBeVisible();
     await expect(scrollport.getByRole("region", { name: "Source status" })).toContainText("No indexed source matches");
     await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
+    // A submitted search pre-ticks its top two diagnoses, so the shared
+    // Compare tray is already showing with Compare ready.
+    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("2 selected");
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
 
     // Begin with the visible composer reserve. Document scrolling deliberately
@@ -2545,7 +2542,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     // settled range instead of polling a stale scrollTop.
     await input.focus();
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     // The visible dock/reserve can finish its layout commit after the first
     // endpoint scroll, increasing document height. Treat scrolling to the live
     // endpoint and measuring it as one retriable action; a persistent clearance
@@ -2557,7 +2554,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       expect(geometry.maxScrollTop - geometry.scrollTop).toBeLessThanOrEqual(1);
     }).toPass({ timeout: 15_000 });
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     const clearance = await page.evaluate(() => {
       const main = document.getElementById("main-content");
       const last = document.querySelector('[data-testid="differential-mobile-result-card"]:last-of-type');
@@ -2666,12 +2663,11 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       .toBe(true);
     await expectNoPageHorizontalOverflow(page);
 
-    // The result cards and compare bar remain in their non-desktop layout up
-    // to 1023px, so the composer must keep providing the portal host on tablet.
+    // From 640px the shared tray floats above the content instead of riding
+    // in the phone dock; it stays visible and tappable.
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
   });
 
   test("diagnosis detail actions stay tappable and tabs stay single-line", async ({ page }) => {
@@ -2697,12 +2693,21 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(safetySnapshot).toBeVisible();
     await expect(safetySnapshot.getByTestId("differential-safety-cta")).toHaveCount(0);
 
-    const safetyMetricItems = safetySnapshot.getByRole("list", { name: "Safety metrics" }).getByRole("listitem");
+    // The summary facts sit in the shared record layout's "At a glance" card,
+    // under their full labels: two up at 320px, one column with large text.
+    const atAGlance = detailPage.getByTestId("differential-at-a-glance");
+    await expect(atAGlance).toBeVisible();
+    const safetyMetricItems = atAGlance.locator("dl > div");
     await expect(safetyMetricItems).toHaveCount(4);
-    const metricRows = await safetyMetricItems.evaluateAll((items) => {
-      return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
-    });
-    expect(metricRows).toBe(1);
+    // Poll: WebKit can measure once before the grid reflows from the 1024px
+    // layout, which reads as one row per fact.
+    await expect
+      .poll(() =>
+        safetyMetricItems.evaluateAll((items) => {
+          return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
+        }),
+      )
+      .toBeLessThanOrEqual(2);
     const metricValuesStayWithinCells = await safetyMetricItems.evaluateAll((items) => {
       return items.every((item) => {
         const value = item.querySelector('[data-testid="differential-safety-value"]');
@@ -2716,18 +2721,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     });
     expect(metricValuesStayWithinCells).toBe(true);
 
-    const watchRowCenterSpread = await safetySnapshot
+    // Cautions are shown in full: every "Watch for" item wraps inside the
+    // snapshot rather than scrolling off its edge, so none is cut off.
+    const watchItemsFullyInside = await safetySnapshot
       .getByTestId("differential-safety-watchlist")
       .evaluate((watchlist) => {
-        const centers = Array.from(watchlist.children).map((item) => {
+        const box = watchlist.getBoundingClientRect();
+        return Array.from(watchlist.children).every((item) => {
           const bounds = item.getBoundingClientRect();
-          return bounds.top + bounds.height / 2;
+          return bounds.left >= box.left - 0.5 && bounds.right <= box.right + 0.5;
         });
-        return Math.max(...centers) - Math.min(...centers);
       });
-    expect(watchRowCenterSpread).toBeLessThan(1);
-    const safetySnapshotBox = await safetySnapshot.boundingBox();
-    expect(safetySnapshotBox?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(250);
+    expect(watchItemsFullyInside).toBe(true);
     await expect(detailPage.getByRole("tab", { name: "Overview" })).toBeHidden();
     // The header is portaled into the universal collapse row on phones, so it
     // lives outside the page root that `detailPage` scopes to.
@@ -2842,7 +2847,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const forcedColorsMetricRows = await safetyMetricItems.evaluateAll((items) => {
       return new Set(items.map((item) => Math.round(item.getBoundingClientRect().top))).size;
     });
-    expect(forcedColorsMetricRows).toBe(1);
+    expect(forcedColorsMetricRows).toBeLessThanOrEqual(2);
   });
 
   test("diagnosis map keeps labels contained and the selected inspector out of the canvas", async ({ page }) => {
@@ -3123,7 +3128,10 @@ test.describe("PsychSift service detail page", () => {
       await expect(actions.getByRole("link", { name: "Call" })).toHaveAttribute("href", "tel:139276");
       await expect(actions.getByRole("button", { name: "Use in navigator" })).toBeVisible();
       await expect(servicePage.getByRole("link", { name: "Call 13 92 76" })).toHaveAttribute("href", "tel:139276");
-      await expect(servicePage.getByRole("heading", { name: "Priority facts" })).toBeVisible();
+      // The priority facts are the shared At a glance card; the region keeps its established name.
+      await expect(
+        servicePage.getByLabel("Priority facts").getByRole("heading", { name: "At a glance" }),
+      ).toBeVisible();
       await expect(servicePage.getByRole("button", { name: /copy/i })).toHaveCount(0);
       await page.keyboard.press("Escape");
       await expect(actions).toBeHidden();

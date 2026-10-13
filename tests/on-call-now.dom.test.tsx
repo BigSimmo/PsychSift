@@ -476,6 +476,36 @@ describe("Now: the footer group", () => {
     expect(readOnCallShiftPick()?.period).toBe("night");
   });
 
+  it("says the service has no shift lists only once the handbook has loaded", async () => {
+    handbook.state = readyHandbook([], { status: "loading" });
+    const { unmount } = render(<OnCallHome now={IN_HOURS} />);
+    // The row itself must not claim "Not set up" while the handbook is still loading.
+    expect(screen.getByTestId("on-call-now-checklists")).not.toHaveTextContent("Not set up for this hospital");
+    expect(screen.getByTestId("on-call-now-checklists-pending")).toHaveTextContent("Not available right now");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Shift lists are not available right now.",
+    );
+    unmount();
+    handbook.state = readyHandbook([]);
+    render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Not set up for this hospital");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Your service has not added shift lists for this hospital yet.",
+    );
+  });
+
+  it("treats a reader with no service as not set up, with the handbook action, not as an outage", async () => {
+    handbook.state = readyHandbook([], { status: "no-service" });
+    render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Not set up for this hospital");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Your service has not added shift lists for this hospital yet.",
+    );
+  });
+
   it("keeps no ticks: a tick lives on the page only", async () => {
     handbook.state = readyHandbook(
       handbookItems([{ id: "o1", title: "Collect the pager", section: "orientation", phase: "first_shift" }]),

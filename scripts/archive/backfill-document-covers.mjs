@@ -27,8 +27,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import { isDirectEntrypoint } from "../lib/is-entrypoint.mjs";
 
 export function isMissingStorageObject(error) {
   if (!error || typeof error !== "object") return false;
@@ -525,7 +525,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error);
     process.exit(1);

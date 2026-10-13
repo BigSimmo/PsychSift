@@ -18,7 +18,11 @@ import {
 import { cmeModuleOrderChangedEvent, cmeModuleOrderStorageKey } from "@/lib/cme/module-order-keys";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), back: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation, usePathname: () => "/cme/customise" }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => navigation,
+  usePathname: () => "/cme/customise",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 afterEach(() => {
   cleanup();

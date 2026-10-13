@@ -563,15 +563,32 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // slug from the word in the bar and checks it against that `admin-help-`
     // prefix, which holds for every word this page's rail can show.
     await openBoard(page, ROUTES.logistics);
-    for (const label of await barWords(page, ADMIN_SECTION_HEADER_PREFIX)) {
-      const slug = label
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      if (!slug) continue;
-      await expect(page.locator(`#admin-help-${slug}`), `${label} is offered but absent`).toHaveCount(1);
-    }
+    // While the rows load, every section (Support included) is drawn as a skeleton. Once they
+    // arrive, Support drops out when it has no rows (admin-help-page.tsx), so read the bar only
+    // after loading has finished, or a slower engine reads a word the settled page no longer has.
+    await expect(page.locator('[data-testid^="admin-help-"][data-testid$="-loading"]')).toHaveCount(0, {
+      timeout: 20_000,
+    });
+    // The bar resolves its words from the rendered sections one animation frame after the page
+    // changes (use-resolved-page-sections.ts), so a single read can still hold Support for a
+    // frame after it left the page (WebKit, 12 Oct 2026). Poll until the two agree.
+    await expect
+      .poll(
+        async () => {
+          const absent: string[] = [];
+          for (const label of await barWords(page, ADMIN_SECTION_HEADER_PREFIX)) {
+            const slug = label
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+            if (slug && (await page.locator(`#admin-help-${slug}`).count()) !== 1) absent.push(label);
+          }
+          return absent;
+        },
+        { message: "words the bar offers but the page does not render", timeout: 10_000 },
+      )
+      .toEqual([]);
   });
 });
 

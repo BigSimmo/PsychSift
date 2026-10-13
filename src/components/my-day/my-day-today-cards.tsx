@@ -9,6 +9,7 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  ListChecks,
   Moon,
   Phone,
   Shield,
@@ -751,10 +752,13 @@ const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
   { label: "Roster", href: "/roster", icon: CalendarDays, testId: "my-day-qa-roster", mode: "roster" },
 ];
 
-/** During on call (the mockup's 03:10 screen): Handover and Remind me take CPD's and Roster's places. */
+/**
+ * During on call the hero already offers Log a call and Handover, so the tiles
+ * offer what it does not (site review 12 Oct 2026, item 7).
+ */
 const MY_DAY_ON_CALL_ACTIONS: readonly MyDayQuickAction[] = [
-  MY_DAY_QUICK_ACTIONS[0]!,
-  { label: "Handover", href: "/on-call/handover", icon: FileText, testId: "my-day-qa-handover", mode: "on-call" },
+  { label: "Playbook", href: "/on-call/playbook", icon: ListChecks, testId: "my-day-qa-playbook", mode: "on-call" },
+  { label: "Contacts", href: "/on-call/contacts", icon: Phone, testId: "my-day-qa-contacts", mode: "on-call" },
   MY_DAY_QUICK_ACTIONS[2]!,
   { label: "Remind me", icon: Bell, testId: "my-day-qa-remind", mode: "my-day" },
 ];
@@ -1400,12 +1404,9 @@ export function NeedsYouRow({
       subtitle={
         <>
           {line.late ? (
-            <span
-              className={cn(
-                "font-bold",
-                lapsed ? "text-[color:var(--danger-text)]" : "text-[color:var(--warning-text)]",
-              )}
-            >{`${line.late} · `}</span>
+            <span data-late={lapsed ? "passed" : "due"} className="font-bold text-[color:var(--work-ink)]">
+              {`${line.late} · `}
+            </span>
           ) : null}
           {line.rest}
         </>
@@ -1503,6 +1504,7 @@ export function NeedsYouCard({
   flagged = false,
   checked,
   checkedAt,
+  updated = null,
   incomplete = false,
   missing = [],
   offline = false,
@@ -1524,6 +1526,8 @@ export function NeedsYouCard({
   readonly checked: readonly string[];
   /** When the sources were last checked, "14:05". */
   readonly checkedAt?: string | null;
+  /** How old the data is, "4 min ago" (Ward Flow review item 5). Falls back to the clock time. */
+  readonly updated?: string | null;
   /** Some source failed: counts are "at least". */
   readonly incomplete?: boolean;
   /** The sources that did not load ("Roster"), for the stamp. */
@@ -1545,6 +1549,7 @@ export function NeedsYouCard({
   readonly onRetry: () => void;
   readonly onHide?: () => void;
 }) {
+  const age = updated ?? (checkedAt ? `at ${checkedAt}` : "just now");
   // Every source answered and nothing is waiting: the card and the time it checked are one line
   // (Work mode simplify plan, 12 Oct 2026). A part-read or offline check keeps its own stamp below.
   const allClear = total === 0 && checked.length > 0 && !incomplete && !offline;
@@ -1564,7 +1569,7 @@ export function NeedsYouCard({
           data-tone="ok"
           className="m-0 ml-auto text-2xs font-semibold text-[color:var(--text-muted)]"
         >
-          {`Checked ${checkedAt ?? "just now"}`}
+          {`Updated ${age}`}
           <span className="sr-only">{` · ${checked.join(", ")}`}</span>
         </p>
       </div>
@@ -1617,7 +1622,7 @@ export function NeedsYouCard({
   const stamp =
     checked.length === 0
       ? `Nothing checked yet${checkedAt ? ` · ${checkedAt}` : ""}`
-      : `Checked ${checkedAt ?? "just now"}${offline ? ", now offline" : ""} · ${
+      : `Updated ${age}${offline ? ", now offline" : ""} · ${
           incomplete && missing.length ? `${listNames(missing)} not loaded` : checked.join(", ")
         }`;
   return (
@@ -1827,7 +1832,9 @@ export function RenewalsRunwayCard({
             title={point.title}
             subtitle={
               point.passed ? (
-                <span className="font-bold text-[color:var(--danger-text)]">{`Date passed · ${fullDate(point.date)}`}</span>
+                <span data-late="passed" className="font-bold text-[color:var(--work-ink)]">
+                  {`Date passed · ${fullDate(point.date)}`}
+                </span>
               ) : (
                 `${relativeDays(point.date, today).replace(/^i/, "I").replace(/^t/, "T")} · ${fullDate(point.date)}`
               )

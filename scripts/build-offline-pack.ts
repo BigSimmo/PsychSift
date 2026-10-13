@@ -31,12 +31,12 @@
 // searches, answers, documents or patient data."
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { format, resolveConfig } from "prettier";
 
 import { WA_CRISIS_CONTACTS, type PublicCrisisContact } from "@/lib/crisis-contacts";
 import { isReviewedTimeframe, type MhaTimeframeEntry } from "@/lib/mha-timeline";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const OFFLINE_PAGE_PATH = "public/offline.html";
 export const DEFAULT_TIMEFRAMES_PATH = "data/mha-timeframes.json";
@@ -310,7 +310,7 @@ async function main() {
 }
 
 // Guarded so unit tests can import the pure functions above without executing the CLI.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((cause) => {
     console.error(cause);
     process.exit(1);

@@ -335,10 +335,22 @@ export function WorkMiniRing({ value, fraction, tone, accessibleLabel }: WorkMin
 
 /* ------------------------------------------------------------------- tag */
 
-/** A small-caps status word on a flat tint. Always a word, never colour alone. */
-export function WorkTag({ tone = "mode", children }: { readonly tone?: WorkTone; readonly children: ReactNode }) {
+/**
+ * A small-caps status word on a flat tint. Always a word, never colour alone.
+ * Red, amber and green tags carry a status shape; `plain` keeps a coloured
+ * label (a place, or a tag with its own icon) free of one.
+ */
+export function WorkTag({
+  tone = "mode",
+  plain = false,
+  children,
+}: {
+  readonly tone?: WorkTone;
+  readonly plain?: boolean;
+  readonly children: ReactNode;
+}) {
   return (
-    <span className="work-tag" data-tone={toneAttr(tone)}>
+    <span className="work-tag" data-tone={toneAttr(tone)} data-plain={plain || undefined}>
       {children}
     </span>
   );

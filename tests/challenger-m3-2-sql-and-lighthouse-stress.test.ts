@@ -396,14 +396,27 @@ describe("Challenger M3-2 Empirical Stress Test: SQL Comment Stripping (#81A3YJ)
       const largeSql = statements.join("\n");
       expect(largeSql.length).toBeGreaterThan(150000);
 
-      const start = performance.now();
-      const stripped = stripMigrationSql(largeSql);
-      const duration = performance.now() - start;
+      // Warm up once to avoid measuring cold-start noise, then require the median of five warm
+      // runs to stay below the limit. A slow stripper (or catastrophic backtracking) slows every
+      // run, so the median still catches it, while one garbage-collection or scheduler pause on a
+      // loaded coverage runner no longer fails the build (a single run reached 107 ms, 12 Oct 2026).
+      stripMigrationSql(largeSql);
+      let stripped = "";
+      const durations: number[] = [];
+      for (let run = 0; run < 5; run++) {
+        const start = performance.now();
+        stripped = stripMigrationSql(largeSql);
+        durations.push(performance.now() - start);
+      }
 
       expect(stripped).toContain("https://example.com/item--1999");
       expect(stripped).toContain("Note with ''quotes'' and -- dashes");
       expect(stripped).not.toContain("trailing comment");
-      expect(duration).toBeLessThan(100); // Must be very fast, well below 100ms
+      const median = [...durations].sort((a, b) => a - b)[Math.floor(durations.length / 2)];
+      expect(median).toBeLessThan(100);
+      // An outlier ceiling still fails a run that is pathologically slow, which no runner pause
+      // explains.
+      expect(Math.max(...durations)).toBeLessThan(300);
     });
 
     it("handles long unclosed comment or string safely without catastrophic backtracking", () => {

@@ -481,7 +481,7 @@ test.describe("PsychSift accessibility coverage", () => {
     await mockDifferentialSearch(page);
     await gotoApp(page, "/differentials");
 
-    const presentationInput = page.locator('input[placeholder="Ask or search a presentation..."]:visible').first();
+    const presentationInput = page.locator('input[placeholder="Search a presentation..."]:visible').first();
     const differentialSubmit = page.locator('button[aria-label="Search differential presentations"]:visible');
     await expect(async () => {
       await presentationInput.fill("acute confusion");
@@ -535,7 +535,7 @@ test.describe("PsychSift accessibility coverage", () => {
     // Retry fill-then-enabled together: the server-rendered composer is visible
     // before React controls it, and a fill landing in that gap is discarded by
     // hydration, leaving the search button disabled and the click a no-op.
-    const presentationInput = page.locator('input[placeholder="Ask or search a presentation..."]:visible').first();
+    const presentationInput = page.locator('input[placeholder="Search a presentation..."]:visible').first();
     const differentialSubmit = page.locator('button[aria-label="Search differential presentations"]:visible');
     await expect(async () => {
       await presentationInput.fill("acute confusion");
@@ -806,72 +806,37 @@ test.describe("PsychSift accessibility coverage", () => {
     expect(editableOutline).not.toBe("none");
     await expectNoBlockingAxeViolations(page, testInfo);
   });
-  // The accent must actually win the cascade. Tailwind's utilities layer outranks
-  // `@layer components` regardless of specificity, and `.search-band-lead` is
-  // deliberately unlayered, so a layered rule degrades it to a zero-width box
-  // while every class-presence assertion still passes — the same failure the old
-  // border-top version of this test caught, in the same place. Assert computed
-  // style, not classes.
-  //
-  // It also asserts the fault signal, which the border-top version could not: a
-  // border has no style to change, and the state tile that used to carry a
-  // CircleAlert is gone. Under forced colors --clinical-accent resolves to
-  // LinkText and --warning is not remapped at all, so hue cannot carry state
-  // there; the mark carries it as stroke count instead.
-  test("search results band renders the accent rail and survives forced colors", async ({ page }) => {
+  // A healthy search is one plain line since 12 Oct 2026: no accent mark and no
+  // card fill, so the count reads like a Work section header. The band keeps a
+  // real (transparent) border, so forced colours still draw its edge, which is
+  // what the fault test below doubles. Assert computed style, not classes.
+  test("search results band is one plain line that keeps its edge in forced colors", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/services?q=CMHT&run=1", { waitUntil: "domcontentloaded" });
     const band = page.locator('[data-testid="search-query-ribbon"]:visible').first();
     await expect(band).toBeVisible({ timeout: 20_000 });
+    await expect(band.getByRole("status")).toHaveText(/\d/);
 
-    const lead = band.locator(".search-band-lead").first();
-    await expect(lead).toBeAttached();
-
-    const rail = await lead.evaluate((node) => {
+    await expect(band.locator(".search-band-lead")).toHaveCount(0);
+    const plain = await band.evaluate((node) => {
       const style = getComputedStyle(node);
-      const card = node.closest('[data-testid="search-query-ribbon"]') as HTMLElement;
-      // Reading the custom property off the element can hand back another
-      // `var(...)`; resolve it through a real colour property instead so the
-      // comparison is between two computed rgb values.
-      const probe = document.createElement("span");
-      probe.style.color = "var(--clinical-accent)";
-      card.appendChild(probe);
-      const accent = getComputedStyle(probe).color;
-      probe.remove();
       return {
-        width: style.borderLeftWidth,
-        style: style.borderLeftStyle,
-        color: style.borderLeftColor,
-        accent,
-        neutral: getComputedStyle(card).borderTopColor,
-        cardTopWidth: getComputedStyle(card).borderTopWidth,
-        height: Math.round(node.getBoundingClientRect().height),
-        tone: node.getAttribute("data-tone"),
+        background: style.backgroundColor,
+        shadow: style.boxShadow,
+        borderColor: style.borderTopColor,
+        borderWidth: style.borderTopWidth,
       };
     });
+    expect(plain.background, "the healthy band has no card fill").toBe("rgba(0, 0, 0, 0)");
+    expect(plain.shadow, "the healthy band has no card shadow").toBe("none");
+    expect(plain.borderColor, "the healthy band draws no visible edge").toBe("rgba(0, 0, 0, 0)");
+    expect(plain.borderWidth, "the band keeps a real edge for forced colours").toBe("1px");
 
-    // Assert the probe produced real values before trusting any comparison: a
-    // silently-null measurement is exactly the kind of evidence that reads as a
-    // pass. This suite has been burned by one.
-    expect(rail.accent, "the accent probe returned nothing to compare against").toMatch(/^rgba?\(/);
-    expect(rail.tone, "a healthy search must render the accent tone").toBe("accent");
-    expect(rail.width, "lead rule must be 2px, not a collapsed or inert border").toBe("2px");
-    expect(rail.style, "one stroke is a healthy search; two means degraded").toBe("solid");
-    expect(rail.height, "lead rule must be 18px tall, not stretched or zero").toBe(18);
-    expect(rail.color, "lead rule must resolve to --clinical-accent").toBe(rail.accent);
-    expect(rail.color, "lead rule must not degrade to the card's neutral border").not.toBe(rail.neutral);
-    expect(rail.color, "lead rule must not be inert/transparent").not.toBe("rgba(0, 0, 0, 0)");
-    // The accent lives inside the padding now. A 2px top border here would be the
-    // old full-width rail leaking back alongside the new mark.
-    expect(rail.cardTopWidth, "the card keeps its 1px neutral border, not a second accent rail").toBe("1px");
-
-    // Poll: the forced-colors style recalc does not always land on the first read
-    // after emulateMedia resolves.
     await page.emulateMedia({ forcedColors: "active" });
     await expect
-      .poll(async () => lead.evaluate((node) => getComputedStyle(node).borderLeftWidth), { timeout: 10_000 })
-      .toBe("2px");
-    await expect(lead).toHaveCSS("border-left-style", "solid");
+      .poll(async () => band.evaluate((node) => getComputedStyle(node).borderTopStyle), { timeout: 10_000 })
+      .toBe("solid");
+    await expect(band).toHaveCSS("border-top-width", "1px");
     await page.emulateMedia({ forcedColors: "none" });
   });
 

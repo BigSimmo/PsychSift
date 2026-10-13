@@ -44,6 +44,12 @@ describe("MedicinesHome", () => {
     expect(links[1]).toHaveTextContent("1 factsheet");
   });
 
+  it("links once to the plain list of every tool", () => {
+    render(<MedicinesHome counts={counts} now={now} />);
+    expect(screen.getAllByRole("link", { name: "All tools" })).toHaveLength(1);
+    expect(screen.getByTestId("medicines-all-tools")).toHaveAttribute("href", "/tools");
+  });
+
   it("sends a typed medicine to the medication search, and ignores an empty box", () => {
     render(<MedicinesHome counts={counts} now={now} />);
     const input = screen.getByTestId("medicines-find-input");
