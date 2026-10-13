@@ -20,8 +20,8 @@
     "  3. Replace this file's contents with that block and commit it.",
     "From that commit on, any change to the upstream weights fails the image build."
   ],
-  "doclingVersion": "2.132.0",
-  "recordedAt": "2026-10-08",
+  "doclingVersion": "2.135.0",
+  "recordedAt": "2026-10-13",
   "treeDigest": ["18f460fe2383e627", "d909732ef3d21f27", "b3fc4549599a2845", "74bf8fb0bb1ef7c4"],
   "files": {
     "RapidOcr/PP-OCRv6_det_small.onnx": [

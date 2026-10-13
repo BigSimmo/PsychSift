@@ -19,9 +19,9 @@ describe("container delivery contract", () => {
   });
 
   it("does not rebuild containers for Docling lab documentation alone", () => {
-    expect(execFileSync("node", ["scripts/ci-change-scope.mjs", "--files", "eval/docling/README.md"], { encoding: "utf8" })).toContain(
-      "container_changed=false",
-    );
+    expect(
+      execFileSync("node", ["scripts/ci-change-scope.mjs", "--files", "eval/docling/README.md"], { encoding: "utf8" }),
+    ).toContain("container_changed=false");
   });
 
   it("routes container-affecting pull requests through the required CI aggregate", () => {
