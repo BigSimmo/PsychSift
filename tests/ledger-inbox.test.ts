@@ -318,7 +318,7 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
         payload: { pri: "P2", type: "task", summary: "New issue", issueUlid: "01M31F4Y1HABC123DBX940FYMC" },
       };
       const plan = planRequestBatch([close, add]);
-      expect(plan.active.map((request: { action: string }) => request.action)).toEqual(["add", "done"]);
+      expect(plan.active.map((request) => (request as { action: string }).action)).toEqual(["add", "done"]);
     });
   });
 
