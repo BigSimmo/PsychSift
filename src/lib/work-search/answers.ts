@@ -829,6 +829,9 @@ function formatHours(hours: number): string {
 const NOT_ABOUT_SHIFTS = /\b(teaching|session|meeting|form|cpd|cme|talk|presenting|renewal|course|exam|journal)\b/;
 
 function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch): WorkAnswer {
+  const gap = notReady(input, ["teaching"]);
+  if (gap) return unavailableAnswer("teaching", "due", match.understood, gap);
+
   const catLabel =
     match.category === "epa"
       ? "EPA milestone"
@@ -842,24 +845,48 @@ function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch)
               ? "assessment alert"
               : "assessment";
 
-  const targetHref = match.targetArea === "alerts" ? "/teaching/alerts" : "/teaching/assessments";
-  const matchingItems = input.items.filter(
-    (item) =>
-      item.area === "teaching" &&
-      match.matchedTerms.some((term) => item.title.toLowerCase().includes(term.toLowerCase())),
-  );
+  const targetHref = match.targetArea === "alerts" ? "/my-day/alerts" : "/teaching/assessments";
+  const actionLabel = match.targetArea === "alerts" ? "Open alerts" : "Open Teaching";
+
+  const range = match.timeframe ? parseDateRange(match.timeframe, input.today) : null;
+  const wantsAhead = match.intent === "next" || match.intent === "due";
+  const isOverdue = match.timeframe === "overdue";
+
+  const matchingItems = input.items
+    .filter(
+      (item) =>
+        item.area === "teaching" &&
+        match.matchedTerms.some((term) => item.title.toLowerCase().includes(term.toLowerCase())),
+    )
+    .filter((item) => {
+      if (isOverdue) return item.date !== null && item.date < input.today;
+      if (range) return item.date !== null && item.date >= range.from && item.date <= range.to;
+      if (wantsAhead) return item.date !== null && item.date >= input.today;
+      return true;
+    })
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+
+  const headline =
+    matchingItems.length === 0
+      ? isOverdue
+        ? `No overdue ${catLabel.toLowerCase()}s found`
+        : wantsAhead
+          ? `No upcoming ${catLabel.toLowerCase()}s scheduled`
+          : `No ${catLabel.toLowerCase()}s found`
+      : match.understood;
 
   return {
     area: "teaching",
     icon: "due",
     label: catLabel,
-    headline: match.understood,
+    headline,
     sub: match.timeframe ? `Timeframe: ${match.timeframe}` : "Teaching assessments, EPAs and supervisor milestones.",
     meta: [match.category.toUpperCase().replace(/_/g, " "), match.intent],
     items: matchingItems,
     understood: match.understood,
     source: "From your Teaching and assessment portfolio",
-    action: { label: "Open Teaching", href: targetHref },
+    action: { label: actionLabel, href: targetHref },
+    ...(matchingItems[0]?.date ? { date: matchingItems[0].date } : {}),
   };
 }
 

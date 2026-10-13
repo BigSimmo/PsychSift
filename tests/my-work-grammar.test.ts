@@ -78,7 +78,7 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
     it("routes next EPA query through Search My Work answerWorkQuestion", () => {
       const answer = answerWorkQuestion("next EPA", {
         items: [],
-        areas: [],
+        areas: [{ area: "teaching", status: "ready", sample: false }],
         today: "2026-10-14",
         cpd: null,
       });
@@ -87,6 +87,81 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(answer?.label).toBe("EPA milestone");
       expect(answer?.understood).toContain("EPA milestones");
       expect(answer?.action?.href).toBe("/teaching/assessments");
+      expect(answer?.action?.label).toBe("Open Teaching");
+      expect(answer?.headline).toBe("No upcoming epa milestones scheduled");
+    });
+
+    it("returns honest unavailable answer when teaching area is not ready", () => {
+      const loading = answerWorkQuestion("next EPA", {
+        items: [],
+        areas: [],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(loading).not.toBeNull();
+      expect(loading?.label).toBe("Can't check yet");
+      expect(loading?.unavailable).toBe("Still loading Teaching.");
+    });
+
+    it("routes assessment alert queries to alerts page", () => {
+      const answer = answerWorkQuestion("assessment alerts", {
+        items: [],
+        areas: [{ area: "teaching", status: "ready", sample: false }],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.action?.href).toBe("/my-day/alerts");
+      expect(answer?.action?.label).toBe("Open alerts");
+    });
+
+    it("filters and sorts assessments by timeframe and date for next/due queries", () => {
+      const sampleItems = [
+        {
+          id: "t:session:1",
+          area: "teaching" as const,
+          kind: "session" as const,
+          title: "Past EPA review",
+          detail: null,
+          date: "2026-10-01",
+          href: "/teaching/assessments/1",
+          tags: [],
+          text: [],
+        },
+        {
+          id: "t:session:2",
+          area: "teaching" as const,
+          kind: "session" as const,
+          title: "Upcoming EPA milestone",
+          detail: null,
+          date: "2026-10-20",
+          href: "/teaching/assessments/2",
+          tags: [],
+          text: [],
+        },
+        {
+          id: "t:session:3",
+          area: "teaching" as const,
+          kind: "session" as const,
+          title: "Far EPA milestone",
+          detail: null,
+          date: "2026-10-25",
+          href: "/teaching/assessments/3",
+          tags: [],
+          text: [],
+        },
+      ];
+      const answer = answerWorkQuestion("next EPA", {
+        items: sampleItems,
+        areas: [{ area: "teaching", status: "ready", sample: false }],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.items).toHaveLength(2);
+      expect(answer?.items[0].id).toBe("t:session:2");
+      expect(answer?.items[1].id).toBe("t:session:3");
+      expect(answer?.date).toBe("2026-10-20");
     });
 
     it("parses assessment due question with timeframe", () => {
