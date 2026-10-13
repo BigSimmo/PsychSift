@@ -2746,13 +2746,17 @@ function ClinicalDashboardContent({
     ],
   );
   const answerProgressCompleted = answerProgressEvents.at(-1)?.stage === "complete";
-  // A failed documents search. The documents results own that message (one calm
-  // "not a reliable nothing found" state with Retry and Browse, or the band's partial
-  // line when earlier matches are still listed), so the generic red "Search unavailable"
-  // box above them is not stacked on top once a search has actually been submitted.
+  // A failed documents search with nothing listed. The documents results own that
+  // message (one calm "not a reliable nothing found" state with Retry and Browse), so the
+  // generic red "Search unavailable" box is not stacked on top. When earlier matches are
+  // still listed they belong to the previous query, so the red box stays and says so.
   const documentsSearchFailed = searchMode === "documents" && Boolean(error) && errorKind !== "no-results";
   const documentsResultsOwnError =
-    documentsSearchFailed && activeModeResultKind === "documents" && modeSearchSubmitted && Boolean(query.trim());
+    documentsSearchFailed &&
+    activeModeResultKind === "documents" &&
+    modeSearchSubmitted &&
+    Boolean(query.trim()) &&
+    documentMatches.length === 0;
   const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
   const {
     showAuthPanel,
@@ -3493,7 +3497,7 @@ function ClinicalDashboardContent({
                         searchFailed={documentsSearchFailed}
                         searchFailureReason={documentsSearchFailed ? error : null}
                         onRetrySearch={
-                          documentsSearchFailed && query.trim()
+                          searchMode === "documents" && query.trim()
                             ? () => {
                                 setError(null);
                                 void ask(lastFailedQuery ?? query);
