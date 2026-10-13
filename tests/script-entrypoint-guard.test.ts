@@ -63,7 +63,7 @@ describe("script entrypoint guard", () => {
 
 describe("isDirectEntrypoint", () => {
   const dir = mkdtempSync(path.join(tmpdir(), "entrypoint-guard-"));
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+  afterAll(() => rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
 
   const helperUrl = new URL("../scripts/lib/is-entrypoint.mjs", import.meta.url).href;
   const script = path.join(dir, "probe.mjs");
