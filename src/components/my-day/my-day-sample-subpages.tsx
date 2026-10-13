@@ -24,7 +24,7 @@ export function MyDaySubpageSampleView({
   readonly children: (sample: MyDaySubpageSample) => ReactNode;
 }) {
   const { zone } = useWorkTimeZone();
-  const sample = useMemo(() => buildMyDaySample(zonedDateOf(now, zone), now), [now, zone]);
+  const sample = useMemo(() => buildMyDaySample(zonedDateOf(now, zone), now, zone), [now, zone]);
   return (
     <div className="grid gap-5" data-testid={testId}>
       {children(sample)}
