@@ -106,7 +106,7 @@ describe("ledger inbox intake and lock admission", () => {
       expect(readFileSync(path.join(lockPath, "owner.json"), "utf8")).toBe(owner);
     } finally {
       release?.();
-      rmSync(fixture, { recursive: true, force: true });
+      rmSync(fixture, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 
@@ -121,7 +121,7 @@ describe("ledger inbox intake and lock admission", () => {
       expect(() => acquireReconcileLock({ lockPath })).toThrow(/obtain reviewed recovery/);
       expect(readFileSync(path.join(lockPath, "owner.json"), "utf8")).toBe(owner);
     } finally {
-      rmSync(fixture, { recursive: true, force: true });
+      rmSync(fixture, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 });
