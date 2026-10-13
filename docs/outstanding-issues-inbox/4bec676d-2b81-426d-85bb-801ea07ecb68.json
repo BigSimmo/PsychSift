@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "4bec676d-2b81-426d-85bb-801ea07ecb68",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#1RWC0H",
+    "outcome": "Resolved: Added keyed HMAC with salt for IP rate-limit subject keys and 7-day retention purge function.",
+    "baseRowFingerprint": "efe5c2ee39bfc576f6cb0b54fa491991cbae0c18886fe9bfda4fb0b8027413c4"
+  }
+}

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import {
   consumeSubjectApiRateLimit,
@@ -67,7 +67,8 @@ export function anonymousApiSubjectKey(request: Request) {
   // If no trusted proxy IP is available, every unknown caller intentionally
   // shares the same conservative quota rather than failing open.
   const source = requestIpSignal(request);
-  return `anon:${createHash("sha256").update(source).digest("hex").slice(0, 32)}`;
+  const salt = process.env.RATE_LIMIT_SALT || "psychsift-rate-limit-default-salt";
+  return `anon:${createHmac("sha256", salt).update(source).digest("hex").slice(0, 32)}`;
 }
 
 const OWNER_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
