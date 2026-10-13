@@ -16,6 +16,7 @@ import {
 } from "@/components/clinical-dashboard/answer-evidence-preview";
 import type { VerifiedEvidencePreviewUnit } from "@/lib/answer-stream-contract";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
+import { useModeResultsWarmup } from "@/components/clinical-dashboard/use-mode-results-warmup";
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { LazyMyDayHomeCard } from "@/components/my-day/my-day-home-card-lazy";
 import { ShowAllChip } from "@/components/show-all-chip";
@@ -67,6 +68,9 @@ export function SharedHomeEmptyState({
       : [];
   const presentation: SharedHomePresentation = sharedHomePresentation[modeId];
   const catalogueChip = sharedHomeCatalogueChips[modeId];
+  // Load what this mode's results page needs while the home is open, so the first
+  // search does not wait for it. Local chunks and catalogue only; never a query.
+  useModeResultsWarmup(modeId);
 
   return (
     <ModeHomeTemplate
