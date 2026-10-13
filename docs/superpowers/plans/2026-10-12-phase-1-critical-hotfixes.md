@@ -42,7 +42,7 @@
 - [ ] **Step 1: Write failing test proving setup file is loaded in Node environment**
       Create `tests/setup-node.test.ts` that verifies mock isolation and stub restoration.
 - [ ] **Step 2: Create `tests/setup/node.setup.ts`**
-      Implement `afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); })`.
+      Implement `afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); })`.
 - [ ] **Step 3: Update `vitest.config.mts`**
       Add `setupFiles: ["tests/setup/node.setup.ts"]` to the `node` project in `vitest.config.mts`.
 - [ ] **Step 4: Run focused test to verify**

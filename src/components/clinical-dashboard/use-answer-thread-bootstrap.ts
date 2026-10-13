@@ -87,6 +87,7 @@ export function useAnswerThreadBootstrap({
 }) {
   const previousAnswerThreadOwnerIdRef = useRef(answerThreadOwnerId);
   useEffect(() => {
+    activeAnswerThreadOwnerIdRef.current = answerThreadOwnerId ?? null;
     const previousOwnerId = previousAnswerThreadOwnerIdRef.current;
     previousAnswerThreadOwnerIdRef.current = answerThreadOwnerId;
     const isGuestDemoTransition =

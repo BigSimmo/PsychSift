@@ -58,7 +58,6 @@ export function rowToOnCallEntry(
     includeOnCard: row.include_on_card ?? false,
     sortOrder: row.sort_order ?? 0,
     lastVerifiedAt: (row.last_verified_at as string | null) ?? null,
-    view: typeof row.view === "string" ? row.view : undefined,
   });
   // A row whose details do not match its section is shown without them rather
   // than with a half-parsed shape a renderer would have to guess at.

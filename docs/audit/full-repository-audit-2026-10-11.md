@@ -174,7 +174,7 @@ The audit highlighted multiple exceptional engineering patterns in PsychSift:
    - Replace unbounded module `Map` instances in `src/lib/rag/rag-cache.ts`, `src/lib/openai.ts`, and `src/lib/signed-url-cache.ts` with bounded LRU caches (e.g. `lru-cache` with `max: 500`, `ttl: 1000 * 60 * 15`).
    - Add explicit `.finally(() => inFlight.delete(key))` and timeout hooks to in-flight promise maps.
 2. **Vitest Test Suite Mock Isolation (TS-01):**
-   - Add a global setup file to `vitest.config.mts` for the `node` environment containing `afterEach(() => { vi.restoreAllMocks(); vi.clearAllTimers(); })`.
+   - Add a global setup file to `vitest.config.mts` for the `node` environment containing `afterEach(() => { vi.restoreAllMocks(); vi.clearAllTimers(); vi.useRealTimers(); })`.
 3. **Clinical Math Calculator Scaffolding (CS-001):**
    - Implement core psychiatric medical math utilities in `src/lib/calculators/`:
      - Cockcroft-Gault creatinine clearance formula & CKD-EPI eGFR.

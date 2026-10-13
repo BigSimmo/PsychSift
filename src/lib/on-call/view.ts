@@ -30,7 +30,6 @@ export function onCallViewStorageSection(view: OnCallPageView): OnCallSection {
 export function onCallViewForEntry(
   entry: Pick<OnCallEntry, "section"> & Partial<Pick<OnCallEntry, "view" | "details">>,
 ): OnCallPageView {
-  if (entry.view) return entry.view;
   if (isComplianceEntry(entry as OnCallEntry)) return "compliance";
   if (isRoleExplainerEntry(entry as OnCallEntry)) return "who-is-who";
   return entry.section;

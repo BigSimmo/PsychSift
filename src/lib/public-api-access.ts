@@ -70,11 +70,8 @@ export function anonymousApiSubjectKey(request: Request) {
   const salt =
     process.env.RATE_LIMIT_SALT ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    (process.env.NODE_ENV === "production"
-      ? (() => {
-          throw new Error("RATE_LIMIT_SALT or SUPABASE_SERVICE_ROLE_KEY must be configured in production");
-        })()
-      : "dev-rate-limit-salt");
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    "ps-anon-subject";
   return `anon:${createHmac("sha256", salt).update(source).digest("hex").slice(0, 32)}`;
 }
 
