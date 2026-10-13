@@ -15,6 +15,9 @@ import {
   clearPersistedAnswerThread,
   loadPersistedAnswerThread,
   maxStoredAnswerTurns,
+  normalizeLatestTurn,
+  normalizePersistedAnswerThread,
+  normalizeStoredAnswerTurn,
   resolveAnswerThreadOwnerId,
   savePersistedAnswerThread,
   type PersistedAnswerThread,
@@ -26,11 +29,12 @@ const sampleAnswer = {
   confidence: "high",
   citations: [],
   sources: [],
+  strongSupportLabelCapped: false,
 } satisfies RagAnswer;
 
 function createSampleThread(overrides: Partial<PersistedAnswerThread> = {}): PersistedAnswerThread {
   return {
-    version: 2,
+    version: 3,
     priorTurns: [
       {
         id: "answer-turn-1",
@@ -93,7 +97,7 @@ describe("answer thread storage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("FR5 purges a seeded V2 invalid latest turn even with valid prior turns", () => {
+  it("FR5 purges a seeded V3 invalid latest turn even with valid prior turns", () => {
     const thread = createSampleThread();
     const key = `${answerThreadStorageKey}:owner-1`;
     storage.set(
@@ -776,61 +780,128 @@ describe("answer thread storage", () => {
     expect(storage.has(`${answerThreadStorageKey}:user-a`)).toBe(false);
   });
 
-  it("migrates a fresh v1 thread only for its exact unscoped answer URL", () => {
-    const savedAt = Date.now() - 1_000;
-    const legacyThread = {
+  it("cleanly drops legacy version 1 and version 2 threads from sessionStorage", () => {
+    const key = `${answerThreadStorageKey}:user-a`;
+    const v1Thread = {
       version: 1,
       priorTurns: createSampleThread().priorTurns,
       latestTurn: createSampleThread().latestTurn,
       collapsedTurnIds: ["answer-turn-1"],
-      savedAt,
-    };
-    storage.set(`${answerThreadStorageKey}:user-a`, JSON.stringify(legacyThread));
-
-    const migrated = loadPersistedAnswerThread("user-a", {
-      expectedSubmissionSignature: "answer:what about renal impairment?:",
-    });
-    expect(migrated).toMatchObject({
-      version: 2,
-      latestSubmissionSignature: "answer:what about renal impairment?:",
-      expiresAt: savedAt + answerThreadTtlMs,
-    });
-    expect(JSON.parse(storage.get(`${answerThreadStorageKey}:user-a`) ?? "{}").version).toBe(2);
-  });
-
-  it("rejects v1 snapshots on answer home, query mismatch, scoped URL, or expiry", () => {
-    const legacyThread = {
-      version: 1,
-      priorTurns: [],
-      latestTurn: createSampleThread().latestTurn,
-      collapsedTurnIds: [],
       savedAt: Date.now(),
     };
+    storage.set(key, JSON.stringify(v1Thread));
+    expect(
+      loadPersistedAnswerThread("user-a", {
+        expectedSubmissionSignature: "answer:what about renal impairment?:",
+      }),
+    ).toBeNull();
+    expect(storage.has(key)).toBe(false);
+
+    const v2Thread = {
+      ...createSampleThread(),
+      version: 2,
+    };
+    storage.set(key, JSON.stringify(v2Thread));
+    expect(
+      loadPersistedAnswerThread("user-a", {
+        expectedSubmissionSignature: "answer:what about renal impairment?:",
+      }),
+    ).toBeNull();
+    expect(storage.has(key)).toBe(false);
+  });
+
+  it("discards legacy cached turns lacking strongSupportLabelCapped or with version < 3", () => {
     const key = `${answerThreadStorageKey}:user-a`;
+    const uncappedAnswer = {
+      answer: "Legacy cached answer text.",
+      grounded: true,
+      confidence: "high",
+      citations: [],
+      sources: [],
+    };
 
-    for (const expectedSubmissionSignature of [
-      undefined,
-      "answer:different question?:",
-      "answer:what about renal impairment?:scope.medications=lithium",
-    ]) {
-      storage.set(key, JSON.stringify(legacyThread));
-      expect(loadPersistedAnswerThread("user-a", { expectedSubmissionSignature })).toBeNull();
-      expect(storage.has(key)).toBe(false);
-    }
-
-    storage.set(key, JSON.stringify({ ...legacyThread, savedAt: Date.now() - answerThreadTtlMs - 1 }));
+    // Stored turn without strongSupportLabelCapped returns null
     expect(
-      loadPersistedAnswerThread("user-a", {
-        expectedSubmissionSignature: "answer:what about renal impairment?:",
+      normalizeStoredAnswerTurn({
+        id: "turn-legacy",
+        query: "lithium",
+        answer: uncappedAnswer,
+        sources: [],
       }),
     ).toBeNull();
 
-    storage.set(key, JSON.stringify({ ...legacyThread, savedAt: Date.now() + 60_000 }));
+    // Latest turn without strongSupportLabelCapped returns null
     expect(
-      loadPersistedAnswerThread("user-a", {
-        expectedSubmissionSignature: "answer:what about renal impairment?:",
+      normalizeLatestTurn({
+        query: "lithium",
+        answer: uncappedAnswer,
+        sources: [],
       }),
     ).toBeNull();
+
+    // Invalid non-boolean strongSupportLabelCapped also returns null
+    expect(
+      normalizeStoredAnswerTurn({
+        id: "turn-legacy",
+        query: "lithium",
+        answer: { ...uncappedAnswer, strongSupportLabelCapped: "invalid" },
+        sources: [],
+      }),
+    ).toBeNull();
+
+    // normalizePersistedAnswerThread rejects version < 3
+    expect(
+      normalizePersistedAnswerThread({
+        version: 1,
+        priorTurns: [],
+        latestTurn: createSampleThread().latestTurn,
+      }),
+    ).toBeNull();
+    expect(
+      normalizePersistedAnswerThread({
+        version: 2,
+        priorTurns: [],
+        latestTurn: createSampleThread().latestTurn,
+      }),
+    ).toBeNull();
+
+    // A thread whose latestTurn lacks strongSupportLabelCapped is purged from storage
+    const threadWithUncappedLatest = {
+      ...createSampleThread(),
+      latestTurn: {
+        query: "what about renal impairment?",
+        answer: uncappedAnswer,
+        sources: [],
+      },
+    };
+    storage.set(key, JSON.stringify(threadWithUncappedLatest));
+    expect(loadPersistedAnswerThread("user-a")).toBeNull();
+    expect(storage.has(key)).toBe(false);
+
+    // Prior turns lacking strongSupportLabelCapped are discarded while valid turns are retained
+    const validTurn = {
+      id: "turn-valid",
+      query: "valid query",
+      answer: sampleAnswer,
+      sources: [],
+    };
+    const threadWithMixedPriors = {
+      ...createSampleThread(),
+      priorTurns: [
+        {
+          id: "turn-legacy",
+          query: "legacy query",
+          answer: uncappedAnswer,
+          sources: [],
+        },
+        validTurn,
+      ],
+    };
+    storage.set(key, JSON.stringify(threadWithMixedPriors));
+    const restored = loadPersistedAnswerThread("user-a");
+    expect(restored).not.toBeNull();
+    expect(restored?.priorTurns).toHaveLength(1);
+    expect(restored?.priorTurns[0].id).toBe("turn-valid");
   });
 
   it("keeps no more than 12 completed turns including the latest", () => {

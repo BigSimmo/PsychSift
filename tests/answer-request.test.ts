@@ -58,7 +58,7 @@ describe("requestAnswerStream", () => {
           expect(answerRequestSchema.safeParse(body).success).toBe(true);
           requests.push(body.query);
           return new Response(
-            `event: final\ndata: ${JSON.stringify({ answer: "PRIOR_MODEL_PROSE_CANARY", grounded: true, confidence: "medium", citations: [], sources: [] })}\n\n`,
+            `event: final\ndata: ${JSON.stringify({ answer: "PRIOR_MODEL_PROSE_CANARY", grounded: true, confidence: "medium", citations: [], sources: [], strongSupportLabelCapped: false })}\n\n`,
             { headers: { "Content-Type": "text/event-stream" } },
           );
         }),
@@ -80,7 +80,7 @@ describe("requestAnswerStream", () => {
       const first = await send("lithium dosing");
       const second = await send(buildAnswerFollowUpQuery(first.query, `what about ${topic}?`));
       savePersistedAnswerThread("fixture-owner", {
-        version: 2,
+        version: 3,
         priorTurns: [],
         latestTurn: {
           query: `what about ${topic}?`,
