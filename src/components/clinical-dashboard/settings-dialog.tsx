@@ -68,7 +68,15 @@ import {
 } from "@/components/clinical-dashboard/use-app-preferences";
 import { useScrollHideReporter } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { clearMedicineVisits, countMedicineVisits } from "@/lib/medicines-recent";
+import { clearRecentPages, countRecentPages } from "@/lib/recent-pages";
 import { clearPsychiatryVisits, countPsychiatryVisits } from "@/lib/psychiatry-hub/visits";
+import {
+  getPatientProfileSnapshot,
+  getServerPatientProfileSnapshot,
+  patientProfileHasContent,
+  resetPatientProfile,
+  subscribePatientProfile,
+} from "@/lib/patient-profile-storage";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
@@ -128,6 +136,7 @@ const APP_PREFERENCE_RESET_KEYS: ReadonlyArray<keyof AppPreferences> = [
   "showRecentOnHome",
   "showProtocolsOnHome",
   "compactCitations",
+  "brightLight",
 ];
 
 /** Every preference the full reset covers. Excludes the `saveRecentSearches`
@@ -191,8 +200,8 @@ function forgetWorkSearchRecents() {
 
 function readRecentQueryCount(): number {
   if (typeof window === "undefined") return 0;
-  // The Psychiatry and Medicines hubs' recently opened records ride on the same switch and the same Clear.
-  return countRecentQueries() + countPsychiatryVisits() + countMedicineVisits();
+  // The Psychiatry and Medicines hubs' recently opened records, and Recent pages, ride on the same switch and the same Clear.
+  return countRecentQueries() + countPsychiatryVisits() + countMedicineVisits() + countRecentPages();
 }
 
 /**
@@ -307,6 +316,15 @@ export function SettingsDialog({
   const [pendingProvider, setPendingProvider] = useState<SsoProvider | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>("account");
   const [recentQueryCount, setRecentQueryCount] = useState<number>(() => readRecentQueryCount());
+  // The prescribing profile (physiology, allergies, medications) lives in this
+  // tab's sessionStorage and is not a "recent search", so it has its own row:
+  // on a shared computer, clearing searches must not leave a patient's details.
+  const patientProfile = useSyncExternalStore(
+    subscribePatientProfile,
+    getPatientProfileSnapshot,
+    getServerPatientProfileSnapshot,
+  );
+  const hasPatientProfile = patientProfileHasContent(patientProfile);
   const [privacyNotice, setPrivacyNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<"clear-saved" | "reset" | null>(null);
@@ -634,9 +652,19 @@ export function SettingsDialog({
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
+    clearRecentPages();
     forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
+  }
+
+  function handleClearPatientProfile() {
+    const cleared = resetPatientProfile();
+    setPrivacyNotice(
+      cleared
+        ? "Prescribing patient profile cleared."
+        : "The prescribing patient profile could not be cleared. Please try again.",
+    );
   }
 
   /**
@@ -654,6 +682,7 @@ export function SettingsDialog({
     clearRecentQueries();
     clearPsychiatryVisits();
     clearMedicineVisits();
+    clearRecentPages();
     forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches turned off and existing ones cleared.");
@@ -1197,6 +1226,18 @@ export function SettingsDialog({
                       options={APPEARANCE_OPTIONS}
                     />
                   </SettingsField>
+                  <SettingsToggleField
+                    icon={Sun}
+                    label="Bright light"
+                    description="For glare on a ward or in sun: solid screens, darker lines and heavier text. Uses light mode."
+                    // Bright light only paints in light mode, so a synced "on" from another
+                    // device reads as off here while this device shows dark.
+                    checked={preferences.brightLight && theme !== "dark"}
+                    onChange={(next) => {
+                      setPreference("brightLight", next);
+                      if (next) setThemePreference("light");
+                    }}
+                  />
                   {/* The label stays "Interface density" — it is the accessible
                     name pinned by the DOM and Playwright suites. What was
                     missing is that this is also the app's text-size control: it
@@ -1344,6 +1385,14 @@ export function SettingsDialog({
                     actionLabel="Clear recent searches"
                     onClick={handleClearRecent}
                     disabled={recentQueryCount === 0}
+                  />
+                  <SettingsActionRow
+                    icon={Trash2}
+                    label="Clear prescribing patient profile"
+                    meta={hasPatientProfile ? "Entered" : "None"}
+                    actionLabel="Clear prescribing patient profile"
+                    onClick={handleClearPatientProfile}
+                    disabled={!hasPatientProfile}
                   />
                   <SettingsActionRow
                     icon={Trash2}
@@ -1791,7 +1840,11 @@ function SettingsField({
         </div>
       </div>
       {children ? (
-        <div className={cn(stacked ? "w-full" : "w-full md:w-auto md:shrink-0")}>{children}</div>
+        // Below 360px a stacked control borrows most of the row's side padding: at the 12px type
+        // floor a three-way choice such as "Comprehensive" needs every pixel of its third.
+        <div className={cn(stacked ? "w-full max-[359px]:-mx-3 max-[359px]:w-auto" : "w-full md:w-auto md:shrink-0")}>
+          {children}
+        </div>
       ) : valueText ? (
         <span className="shrink-0 pl-12 text-sm-minus font-medium leading-5 text-[color:var(--text-muted)] md:pl-0 md:text-right">
           {valueText}

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "c1826f3b-80a3-4ec2-b84c-1e1e087578e7",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "On Call has overlapping homes for numbers (Call vs Contacts) and referrals (Refer vs Referrals), and its menu 'Now' goes to /on-call while 'Who to call now' lives at /on-call/now (audit L4D-01 to L4D-03)",
+    "detail": "Owner decision on one home per job and the naming, then a single navigation change. Also covers /roster/calendar showing On Call dates under a Roster address (L4E-F3).",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65Z4ZK66YES8XZ2JVX874"
+  }
+}

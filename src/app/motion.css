@@ -1,0 +1,60 @@
+/*
+ * Quiet, consistent motion (site recommendations, 12 Oct 2026, item 9).
+ *
+ * One small set, on the design system's motion tokens:
+ * - Tab content cross-fades in (--duration-quick, 150 ms) when a tab changes:
+ *   a role="tab" switch, or a move between two Work pages (Work's tabs are
+ *   pages). `src/components/motion/motion-enter.tsx` marks the new content with
+ *   `data-motion-enter`; only opacity moves, so nothing shifts position and no
+ *   layout or composer timing changes.
+ * - A tapped list row lights at once and lets go slowly (--duration-deliberate),
+ *   so the highlight is still visible as the next page opens.
+ * - Bottom sheets already rise with a soft settle: the shared Sheet's
+ *   `sheet-up` (250 ms on --ease-standard's curve). Nothing is added here.
+ *
+ * Everything is off under prefers-reduced-motion, and under the in-app Motion
+ * setting's "reduced"; the in-app "full" opts back in, matching the
+ * motion-safe variant in globals.css. The search composer is never targeted.
+ */
+
+@keyframes motion-enter-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="reduced"]) [data-motion-enter] {
+    animation: motion-enter-fade var(--duration-quick) var(--ease-standard) both;
+  }
+
+  html:not([data-motion="reduced"]) a.work-row,
+  html:not([data-motion="reduced"]) button.work-row {
+    transition: background-color var(--duration-deliberate) var(--ease-standard);
+  }
+
+  html:not([data-motion="reduced"]) a.work-row:active,
+  html:not([data-motion="reduced"]) button.work-row:active {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion="full"] [data-motion-enter] {
+    animation: motion-enter-fade var(--duration-quick) var(--ease-standard) both;
+  }
+
+  html[data-motion="full"] a.work-row,
+  html[data-motion="full"] button.work-row {
+    transition: background-color var(--duration-deliberate) var(--ease-standard);
+  }
+
+  html[data-motion="full"] a.work-row:active,
+  html[data-motion="full"] button.work-row:active {
+    transition: none;
+  }
+}

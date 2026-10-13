@@ -78,8 +78,8 @@ export function MonthView({
                   cell.mine.length > 0
                     ? "min-w-0 rounded-lg bg-[color:var(--surface-wash)] ring-2 ring-inset ring-[color:var(--mode-identity)]"
                     : "min-w-0 rounded-lg ring-1 ring-inset ring-[color:var(--border)]",
-                  !cell.inMonth && "opacity-60",
                 )}
+                data-dim={cell.inMonth ? undefined : ""}
               >
                 <button
                   type="button"

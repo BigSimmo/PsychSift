@@ -64,6 +64,12 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { SettingsDialog } from "@/components/clinical-dashboard/settings-dialog";
+import {
+  EMPTY_PATIENT_PROFILE,
+  getPatientProfileSnapshot,
+  resetPatientProfile,
+  writePatientProfile,
+} from "@/lib/patient-profile-storage";
 
 function renderDialog(identityOverrides: Record<string, unknown> = {}) {
   const onSignOut = vi.fn();
@@ -87,6 +93,7 @@ function renderDialog(identityOverrides: Record<string, unknown> = {}) {
 
 afterEach(async () => {
   cleanup();
+  resetPatientProfile();
   // Sheet cleanup restores focus in requestAnimationFrame and performs one
   // defensive retry 50 ms later. Queue our timer from the following frame so
   // it cannot overtake that nested retry when the CI event loop is delayed.
@@ -152,6 +159,71 @@ describe("SettingsDialog — destructive and account actions", () => {
     const button = screen.getByRole("button", { name: "Clear recent searches" });
     expect(button).toBeDisabled();
     mockRecentCount.set(3); // Reset for other tests
+  });
+
+  // The prescribing profile is physiology, allergies and medications typed for a
+  // patient. It is not a "recent search", so it needs its own clear: on a shared
+  // computer the searches button alone used to leave a patient's details behind.
+  it("clears the prescribing patient profile through its own privacy action", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    renderDialog();
+    const button = screen.getByRole("button", { name: "Clear prescribing patient profile" });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: null, medications: [] });
+    expect(screen.getByText("Prescribing patient profile cleared.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();
+  });
+
+  it("reports when the prescribing profile clear cannot be persisted", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
+    const removeItem = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("storage unavailable");
+    });
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
+    expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: 72, medications: ["lithium"] });
+    expect(
+      screen.getByText("The prescribing patient profile could not be cleared. Please try again."),
+    ).toBeInTheDocument();
+    setItem.mockRestore();
+    removeItem.mockRestore();
+  });
+
+  it("still clears the profile by deleting it when writing the empty profile fails", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
+    setItem.mockRestore();
+    expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: null, medications: [] });
+    expect(screen.queryByText(/could not be cleared/)).not.toBeInTheDocument();
+  });
+
+  it("counts a completed delete as cleared even when reading the key back throws", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    renderDialog();
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("reads unavailable");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
+    getItem.mockRestore();
+    setItem.mockRestore();
+    expect(screen.queryByText(/could not be cleared/)).not.toBeInTheDocument();
+    expect(screen.getByText("Prescribing patient profile cleared.")).toBeInTheDocument();
+  });
+
+  it("disables the prescribing profile clear when nothing has been entered", () => {
+    renderDialog();
+    expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();
   });
 
   // Clearing saved items deletes every favourite with no undo, so the row now

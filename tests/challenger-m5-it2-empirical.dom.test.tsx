@@ -133,8 +133,8 @@ describe("Milestone M5-It2 Challenger: useSyncExternalStore Mount Guard & Hydrat
       );
 
       // Verify the mobile compare strip is completely absent from server HTML
-      expect(ssrOutput).not.toContain("dsm-mobile-compare-strip");
-      expect(ssrOutput).not.toContain("dsm-search-compare-mobile");
+      expect(ssrOutput).not.toContain("shared-compare-tray-layer");
+      expect(ssrOutput).not.toContain("dsm-compare-tray");
     });
 
     it("mounts the compare strip cleanly in the client DOM with zero hydration errors", () => {
@@ -151,10 +151,10 @@ describe("Milestone M5-It2 Challenger: useSyncExternalStore Mount Guard & Hydrat
         </PhoneFooterLayerFrame>,
       );
 
-      const compareLink = screen.getByTestId("dsm-search-compare-mobile");
+      const compareLink = screen.getByTestId("dsm-compare-tray-compare");
       expect(compareLink).toBeInTheDocument();
       expect(compareLink.getAttribute("href")).toBe("/dsm/compare?ids=mdd%2Cbipolar-1");
-      expect(compareLink.textContent).toContain("2");
+      expect(screen.getByTestId("dsm-compare-tray-count").textContent).toContain("2");
 
       // Verify no React hydration errors or cascading render warnings occurred
       const hydrationErrors = consoleErrorSpy.mock.calls.filter((call) =>
@@ -175,36 +175,37 @@ describe("Milestone M5-It2 Challenger: useSyncExternalStore Mount Guard & Hydrat
         </PhoneFooterLayerFrame>,
       );
 
-      // Initially 0 items: strip should not exist
-      expect(screen.queryByTestId("dsm-search-compare-mobile")).not.toBeInTheDocument();
+      // Initially 0 items: the tray should not exist
+      expect(screen.queryByTestId("dsm-compare-tray")).not.toBeInTheDocument();
 
       const compareButtons = screen.getAllByRole("button", { name: /Add .* to comparison/i });
       expect(compareButtons).toHaveLength(4);
 
-      // Select 1st item
+      // Select 1st item: the tray appears, Compare waits for a second (with its reason)
       await user.click(compareButtons[0]);
-      expect(screen.getByTestId("dsm-search-compare-mobile")).toBeInTheDocument();
-      expect(screen.getByTestId("dsm-search-compare-mobile").textContent).toContain("1");
-      expect(screen.getByTestId("dsm-search-compare-mobile").getAttribute("href")).toBe("/dsm/compare?ids=mdd");
+      expect(screen.getByTestId("dsm-compare-tray")).toBeInTheDocument();
+      expect(screen.getByTestId("dsm-compare-tray-count").textContent).toContain("1");
+      expect(screen.getByTestId("dsm-compare-tray-compare")).toHaveAttribute("aria-disabled", "true");
+      expect(screen.getByTestId("dsm-compare-tray-compare").getAttribute("href")).toBeNull();
 
       // Select 2nd item
       await user.click(compareButtons[1]);
-      expect(screen.getByTestId("dsm-search-compare-mobile").textContent).toContain("2");
-      expect(screen.getByTestId("dsm-search-compare-mobile").getAttribute("href")).toBe(
+      expect(screen.getByTestId("dsm-compare-tray-count").textContent).toContain("2");
+      expect(screen.getByTestId("dsm-compare-tray-compare").getAttribute("href")).toBe(
         "/dsm/compare?ids=mdd%2Cbipolar-1",
       );
 
       // Select 3rd item
       await user.click(compareButtons[2]);
-      expect(screen.getByTestId("dsm-search-compare-mobile").textContent).toContain("3");
-      expect(screen.getByTestId("dsm-search-compare-mobile").getAttribute("href")).toBe(
+      expect(screen.getByTestId("dsm-compare-tray-count").textContent).toContain("3");
+      expect(screen.getByTestId("dsm-compare-tray-compare").getAttribute("href")).toBe(
         "/dsm/compare?ids=mdd%2Cbipolar-1%2Cgad",
       );
 
       // Select 4th item -> FIFO rotation removes 1st item (mdd)
       await user.click(compareButtons[3]);
-      expect(screen.getByTestId("dsm-search-compare-mobile").textContent).toContain("3");
-      expect(screen.getByTestId("dsm-search-compare-mobile").getAttribute("href")).toBe(
+      expect(screen.getByTestId("dsm-compare-tray-count").textContent).toContain("3");
+      expect(screen.getByTestId("dsm-compare-tray-compare").getAttribute("href")).toBe(
         "/dsm/compare?ids=bipolar-1%2Cgad%2Cptsd",
       );
 
@@ -215,7 +216,7 @@ describe("Milestone M5-It2 Challenger: useSyncExternalStore Mount Guard & Hydrat
       }
 
       // Returns to null when selection empties
-      expect(screen.queryByTestId("dsm-search-compare-mobile")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("dsm-compare-tray")).not.toBeInTheDocument();
     });
 
     it("respects PhoneFooterLayerFrame scroll-hide contract", () => {
@@ -230,23 +231,24 @@ describe("Milestone M5-It2 Challenger: useSyncExternalStore Mount Guard & Hydrat
         </PhoneFooterLayerFrame>,
       );
 
-      const compareStrip = document.querySelector(".dsm-mobile-compare-strip");
+      const compareStrip = document.querySelector(".shared-compare-tray-layer");
       expect(compareStrip).not.toBeNull();
       expect(compareStrip?.getAttribute("data-scroll-hidden")).toBe("true");
     });
   });
 
   describe("4. Static Code Verification", () => {
-    const sourceCode = readFileSync("src/components/dsm/dsm-search-page.tsx", "utf8");
+    // The DSM strip became the shared Compare tray, which keeps the same mount guard.
+    const sourceCode = readFileSync("src/components/compare/shared-compare-tray.tsx", "utf8");
 
     it("confirms useSyncExternalStore is imported from react", () => {
       expect(sourceCode).toMatch(/import\s*\{[^}]*useSyncExternalStore[^}]*\}\s*from\s*"react"/);
     });
 
-    it("confirms NO useState/useEffect mount pattern in DsmMobileCompareStrip", () => {
+    it("confirms NO useState/useEffect mount pattern in the shared Compare tray", () => {
       const stripSlice = sourceCode.slice(
-        sourceCode.indexOf("function DsmMobileCompareStrip"),
-        sourceCode.indexOf("export function DsmSearchPage"),
+        sourceCode.indexOf("export function SharedCompareTray"),
+        sourceCode.indexOf("function useDockSlot"),
       );
 
       expect(stripSlice).not.toMatch(/useEffect\s*\(\s*\(\)\s*=>\s*\{\s*setMounted/);

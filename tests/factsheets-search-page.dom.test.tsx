@@ -10,7 +10,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { FactsheetsSearchPage } from "@/components/factsheets/factsheets-search-page";
-import { filterFactsheets } from "@/components/factsheets/factsheets-data";
+import { FACTSHEET_DEMO_NOTICE, filterFactsheets } from "@/components/factsheets/factsheets-data";
 
 // Cross-mode "also matches" panel is an AuthProvider-backed component of its own;
 // it is exercised by tests/ui-universal-search.spec.ts, not by this page's unit test.
@@ -27,6 +27,11 @@ const naturalLanguageQuery = "I worry all the time";
 const naturalLanguageExpansions = ["generalised anxiety disorder", "worry", "anxiety"];
 
 describe("FactsheetsSearchPage category filter", () => {
+  it("carries the demonstration notice on the list, not only on opened sheets", () => {
+    render(<FactsheetsSearchPage query={query} results={results} />);
+    expect(screen.getByRole("note")).toHaveTextContent(FACTSHEET_DEMO_NOTICE);
+  });
+
   it("derives the shared desktop and phone options from categories available at the current query", async () => {
     const user = userEvent.setup();
     render(<FactsheetsSearchPage query={query} results={results} />);

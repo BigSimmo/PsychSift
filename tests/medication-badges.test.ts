@@ -609,3 +609,20 @@ describe("medication source-freshness badges", () => {
     expect(displaced).toEqual([]);
   });
 });
+
+describe("medicationAccessFields formulation", () => {
+  it("keeps decimal strengths and every form, never cutting at a full stop", async () => {
+    const { medicationAccessFields } = await import("@/lib/medication-badges");
+    const record = {
+      sections: [
+        {
+          type: "form",
+          title: "Formulation & Access",
+          rows: [{ key: "Oral Routes", val: "Tablets (12.5, 25, 50 mg). Oral liquid." }],
+        },
+      ],
+    } as unknown as Parameters<typeof medicationAccessFields>[0];
+    const formulation = medicationAccessFields(record).find((field) => field.label === "Formulation");
+    expect(formulation?.value).toBe("Tablets (12.5, 25, 50 mg). Oral liquid.");
+  });
+});

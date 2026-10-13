@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
 
 import { planAcquisition } from "@/lib/public-source-acquisition";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 type InputDocument = {
   catalogueKey: string;
@@ -63,7 +63,7 @@ async function main() {
   process.stdout.write(manifest);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : "Public source planning failed.");
     process.exit(1);

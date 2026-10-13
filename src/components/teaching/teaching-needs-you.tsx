@@ -83,14 +83,24 @@ export function NeedsYouRow({
   );
 }
 
-export function NeedsYou({ live, today, catchUp = 0 }: { live: boolean; today?: string; catchUp?: number }) {
+export function NeedsYou({
+  live,
+  today,
+  now,
+  catchUp = 0,
+}: {
+  live: boolean;
+  today?: string;
+  now?: Date;
+  catchUp?: number;
+}) {
   const unlogged = useTeachingResource<{ count: number }>(live ? "/api/teaching?view=unlogged-count" : null);
   const teach = useTeachingResource<TeachRead>(live ? "/api/teaching/depth?view=teach" : null);
   const feedback = useTeachingResource<{ sessions: SessionRef[] }>(
     live ? "/api/teaching/depth?view=feedback-open" : null,
   );
   const count = unlogged.data?.count ?? 0;
-  const teachRead = live ? teach.data : today ? demoTeach(today) : null;
+  const teachRead = live ? teach.data : today ? demoTeach(today, now) : null;
   const owed = live ? (feedback.data?.sessions ?? []) : today ? demoFeedbackOpen(today) : [];
   const prep = teachRead ? presenterPrep(teachRead, today ?? null) : null;
 

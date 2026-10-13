@@ -81,14 +81,18 @@ describe("overlay and global CSS contracts", () => {
   it("keeps one authoritative 430px composer-action sizing block", () => {
     expect(occurrenceCount(globalStylesSource, "@media (max-width: 430px)")).toBe(1);
     const phoneComposerBlock = cssBlock(globalStylesSource, "@media (max-width: 430px)");
-    expect(phoneComposerBlock).toMatch(/\.chat-composer-input\s*\{[\s\S]*?min-height:\s*2\.75rem;/);
+    // Each size is its normal value capped in px for large text; the cap sits above
+    // every density's value, so at 15-17px roots the composer is unchanged.
+    expect(phoneComposerBlock).toMatch(/\.chat-composer-input\s*\{[\s\S]*?min-height:\s*min\(2\.75rem, 48px\);/);
     expect(phoneComposerBlock).toMatch(
-      /\.chat-composer-icon-button,[\s\S]*?\.chat-send-button\s*\{[\s\S]*?min-height:\s*2\.75rem;/,
+      /\.chat-composer-icon-button,[\s\S]*?\.chat-send-button\s*\{[\s\S]*?min-height:\s*min\(2\.75rem, 48px\);/,
     );
     // 20px on the icon scale, not the old fractional 1.1rem (17.6px) that put
     // lucide's 2px stroke on sub-pixel boundaries and rendered the "+" and send
     // glyphs soft. The button itself stays pinned at 2.75rem above.
-    expect(phoneComposerBlock).toMatch(/\.chat-composer-icon-button svg,[\s\S]*?height:\s*var\(--spacing-icon-lg\);/);
+    expect(phoneComposerBlock).toMatch(
+      /\.chat-composer-icon-button svg,[\s\S]*?height:\s*min\(var\(--spacing-icon-lg\), 24px\);/,
+    );
   });
 
   it("lets contextual composer surfaces own their resting and focus border colors", () => {

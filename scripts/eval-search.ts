@@ -1,5 +1,4 @@
 import { loadEnvConfig } from "@next/env";
-import { pathToFileURL } from "node:url";
 import { buildVisualEvidence } from "@/lib/evidence";
 import {
   loadCapturedRagEvalCases,
@@ -17,6 +16,7 @@ import {
   percentile,
   resolveEvalOwnerId,
 } from "./eval-utils";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -318,7 +318,7 @@ async function main() {
   if (args.failOnThreshold && thresholdFailures.length > 0) process.exit(1);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

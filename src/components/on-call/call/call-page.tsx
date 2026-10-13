@@ -2,11 +2,11 @@
 
 import { currentCover } from "@/lib/on-call/service-availability";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
-import { ListChecks, Phone, Plus, Printer, Shield, Users } from "lucide-react";
+import { ListChecks, Phone, Plus, Shield } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { useOptionalAccountData } from "@/components/account-data-provider";
 import { focusRing } from "@/components/card-recipes";
@@ -38,11 +38,12 @@ import { modeInsetHairline, modeRowHeight } from "@/components/mode-kit/recipes"
 import { modeSecondaryText } from "@/components/mode-kit/type";
 import { onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { useHospitalHandbook, type HospitalHandbookState } from "@/components/on-call/use-hospital-handbook";
+import { OnCallReferSections, onCallReferralMatchCount } from "@/components/on-call/refer/refer-page";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import { RosterWhosOnEntryLink } from "@/components/on-call/roster-whos-on/roster-whos-on-entry-link";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { NewWorkModeOnly, useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { searchOnCallEntries } from "@/lib/on-call/entry-search";
 import { cacheOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
@@ -71,13 +72,32 @@ export const ON_CALL_OLD_HANDOVER_HASH = "#on-call-handover-heading";
 
 const noSubscription = () => () => {};
 
-type PeopleTab = "hospital" | "outside" | "mine";
+type PeopleTab = "hospital" | "refer" | "outside" | "mine";
 
+// Contacts holds Refer as a tab (Work mode simplify plan, owner approval 12 Oct 2026): one place for
+// "who and where", with one search box across numbers and referrals. Short labels fit four at 320px.
 const PEOPLE_TABS: readonly { value: PeopleTab; label: string }[] = [
   { value: "hospital", label: "Hospital" },
-  { value: "outside", label: "Outside lines" },
+  { value: "refer", label: "Refer" },
+  { value: "outside", label: "Outside" },
   { value: "mine", label: "Mine" },
 ];
+
+/**
+ * Follows `?show=` whenever the address changes, including a redirect from the old Refer page onto an already
+ * mounted Contacts page. Its own Suspense boundary keeps the rest of the page server-rendered.
+ */
+function PeopleTabFromAddress({ onAsked }: { readonly onAsked: (asked: string | null) => void }) {
+  const asked = useSearchParams()?.get("show") ?? null;
+  useEffect(() => onAsked(asked), [asked, onAsked]);
+  return null;
+}
+
+/** The tab an address asks for: `/on-call/call?show=refer` opens Refer (the old Refer page lands there). */
+function peopleTabFor(asked: string | null, withRefer = true): PeopleTab {
+  if (asked === "refer" && !withRefer) return "hospital";
+  return PEOPLE_TABS.some((option) => option.value === asked) ? (asked as PeopleTab) : "hospital";
+}
 
 function hospitalName(handbook: HospitalHandbookState): string | null {
   return handbook.siteName ?? handbook.serviceName;
@@ -264,7 +284,25 @@ export function OnCallCallPage() {
   const entries = useOnCallEntries();
   const hospitalPhone = useOnCallHospitalPhone();
   const [query, setQuery] = useState("");
-  const [tab, setTab] = useState<PeopleTab>("hospital");
+  // Refer inside Contacts is a new work mode screen; classic readers keep the standalone Refer page.
+  const withRefer = useNewWorkMode();
+  const peopleTabs = withRefer ? PEOPLE_TABS : PEOPLE_TABS.filter((option) => option.value !== "refer");
+  const [tab, setTabState] = useState<PeopleTab>("hospital");
+  const followAddress = useCallback((asked: string | null) => setTabState(peopleTabFor(asked, withRefer)), [withRefer]);
+  // Keep the address in step with the chosen tab, so a refresh reopens the same one.
+  const setTab = useCallback(
+    (next: PeopleTab) => {
+      setTabState(next);
+      const params = new URLSearchParams(window.location.search);
+      if (next === "hospital") params.delete("show");
+      else params.set("show", next);
+      const search = params.toString();
+      router.replace(`${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`, {
+        scroll: false,
+      });
+    },
+    [router],
+  );
   const [adding, setAdding] = useState(false);
   const [clock, setClock] = useState(() => new Date());
   // The time in "Cover as of 21:40" is drawn after hydration only, so the server's minute never mismatches the phone's.
@@ -341,14 +379,22 @@ export function OnCallCallPage() {
     !entries.loading && !signedOut && !entries.sample && entries.loadError === null && checkQueue.assessed > 0;
 
   const hospitalCount = groups.reduce((sum, group) => sum + group.items.length, 0);
-  const resultCount = cover.length + hospitalCount + external.length + (signedOut ? 0 : mine.length);
+  // Referral routes are searched here too (Refer lives inside Contacts), so they count towards the result.
+  const referralCount = onCallReferralMatchCount({
+    items: ready && withRefer ? handbook.items : [],
+    entries: withRefer ? entries.entries : [],
+    query,
+    signedOut,
+  });
+  const resultCount = cover.length + hospitalCount + external.length + (signedOut ? 0 : mine.length) + referralCount;
 
   const showHospital = searching || tab === "hospital";
   const showOutside = searching || tab === "outside";
   const showMine = searching ? !signedOut && mine.length > 0 : tab === "mine";
   // The crisis lines show whenever the hospital's numbers are not on screen,
   // unless the Outside lines list (which holds them) already is.
-  const showCrisis = !showOutside && (!ready || tab === "mine" || hospitalCount + cover.length === 0);
+  const showCrisis =
+    !showOutside && (!ready || tab === "mine" || tab === "refer" || hospitalCount + cover.length === 0);
 
   const canAdd = Boolean(account?.isAuthenticated) && !signedOut && !entries.demoMode;
 
@@ -405,11 +451,14 @@ export function OnCallCallPage() {
 
   return (
     <OnCallHubPageFrame page="call" lead={<OnCallHospitalLine handbook={handbook} />}>
+      <Suspense fallback={null}>
+        <PeopleTabFromAddress onAsked={followAddress} />
+      </Suspense>
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
         <div data-testid="on-call-call-search">
           <SearchField
             label="Search people"
-            placeholder="Search numbers, wards, roles"
+            placeholder={withRefer ? "Search numbers, referrals, roles" : "Search numbers, roles"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onClear={() => setQuery("")}
@@ -426,7 +475,7 @@ export function OnCallCallPage() {
             layout="equal"
             value={tab}
             onChange={setTab}
-            options={PEOPLE_TABS}
+            options={peopleTabs}
             ariaControls="on-call-people-list"
           />
         )}
@@ -549,6 +598,8 @@ export function OnCallCallPage() {
             <OnCallRow href="/on-call/contacts" title="Your own numbers" testId="on-call-call-mine-link" />
           </OnCallGroupedList>
         ) : null}
+
+        {withRefer && (searching || tab === "refer") ? <OnCallReferSections query={query} /> : null}
       </div>
 
       {searching ? null : (
@@ -559,20 +610,6 @@ export function OnCallCallPage() {
           </NewWorkModeOnly>
           <ul role="list" className="work-card min-w-0">
             <OnCallIsobarRow />
-            <OnCallRow
-              href="/on-call/who-is-who"
-              title="Who's who"
-              subtitle="What the short role names mean"
-              leading={<Users aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
-              testId="on-call-call-whos-who"
-            />
-            <OnCallRow
-              href="/on-call/card"
-              title="Pocket card"
-              subtitle="The numbers flagged for it, to print"
-              leading={<Printer aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
-              testId="on-call-call-pocket-card"
-            />
             <OnCallRow
               href="/on-call/check"
               title="Numbers to check"

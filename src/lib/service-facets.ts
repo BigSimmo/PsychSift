@@ -96,6 +96,27 @@ export function serviceFacetValueLabel(dimension: ServiceFacetDimension, value: 
   return dimensionValueLabels[dimension][value] ?? humanizeToken(value);
 }
 
+/**
+ * Plain words for a raw catalogue tag shown on its own, outside any facet
+ * dimension (the service record's tag list). Returns the existing label only
+ * when exactly one dimension map above carries the token; returns `null` for
+ * any other machine token (snake_case, slug-style or bare lower-case words
+ * such as `general`, whose meaning depends on a dimension
+ * the flat list no longer carries) so the caller hides it instead of printing
+ * computer wording. Human-written tags ("Regional WA") pass through unchanged.
+ * No new wording is made up here — unmapped tokens such as specialist-group
+ * ids are hidden, never humanised.
+ */
+export function serviceTagDisplayLabel(tag: string): string | null {
+  const value = tag.trim();
+  if (!value) return null;
+  if (!/^[a-z0-9]+(?:[_-][a-z0-9]+)*$/.test(value)) return value;
+  const labels = Object.values(dimensionValueLabels)
+    .map((map) => map[value])
+    .filter((label): label is string => Boolean(label));
+  return labels.length === 1 ? labels[0]! : null;
+}
+
 export function serviceSubstanceLensValueLabel(value: string): string {
   if (value === "all") return "All programs";
   return substanceLensValueLabels[value] ?? humanizeToken(value);

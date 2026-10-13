@@ -1,5 +1,3 @@
-import { pathToFileURL } from "node:url";
-
 import { loadEnvConfig } from "@next/env";
 import { WA_DOCUMENT_CONTROL_ENDORSEMENT_BASIS, hasRecordedReviewerMarker } from "@/lib/clinical-validation-basis";
 import {
@@ -15,6 +13,7 @@ import {
   deriveUnknownStatus,
   unknownStatusDerivationBasis,
 } from "@/lib/unknown-status-derivation";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 type DocumentRow = {
   id: string;
@@ -793,7 +792,7 @@ export async function main(argv = process.argv.slice(2)) {
   console.log(JSON.stringify(summary, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

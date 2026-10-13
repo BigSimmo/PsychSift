@@ -1,6 +1,6 @@
 import { loadEnvConfig } from "@next/env";
 import { randomUUID } from "node:crypto";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "../lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -366,7 +366,7 @@ async function main() {
   console.log("[July8 Live Batch] PASS: all July 8 batch probes green.");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error("[July8 Live Batch] FAIL:", error instanceof Error ? error.message : error);
     console.error("[July8 Live Batch] Runbook: docs/archive/operator-apply-july8-batch.md");

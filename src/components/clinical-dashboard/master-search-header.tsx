@@ -54,7 +54,6 @@ import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-d
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
-import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
@@ -623,13 +622,20 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
    */
   const onCallEditor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   /** What the mode pill names (the page, the mode or a work area) and this address's work frame. */
-  const { activeModePage, pillShowsAreaOnly, pillModeLabel, routeWorkArea, routeWorkFrame, routeWorkFramed } =
-    useHeaderModePill({
-      modeId: selectedAppMode.id,
-      modeLabel: selectedAppMode.label,
-      pathname: currentPathname ?? "",
-      modeOwnPages,
-    });
+  const {
+    activeModePage,
+    pillPageLine,
+    pillShowsAreaOnly,
+    pillModeLabel,
+    routeWorkArea,
+    routeWorkFrame,
+    routeWorkFramed,
+  } = useHeaderModePill({
+    modeId: selectedAppMode.id,
+    modeLabel: selectedAppMode.label,
+    pathname: currentPathname ?? "",
+    modeOwnPages,
+  });
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
   const pendingModeSelectionFocusRef = useRef<AppModeId | null>(null);
@@ -677,7 +683,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // One task-oriented placeholder per mode (PT-14): the follow-up composer must
   // not swap to brand copy that hides what the input actually does.
   const queryPlaceholder = composerPlaceholder ?? selectedSearch.placeholder;
-  const SelectedAppModeIcon = appModeIcons[selectedAppMode.id];
+  const SelectedAppModeIcon = appModeIcons[routeWorkArea?.identity ?? selectedAppMode.id]; // Open shifts wears Roster's badge
   const actionMenuModeOptions: ModeActionModeOption[] = visibleAppModeOptions.map((mode) => ({
     id: mode.id,
     label: mode.label,
@@ -2438,7 +2444,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             <PrivacyInputNotice
               id={composerPrivacyWarningId}
               testId={composerPrivacyWarningId}
-              className="mt-1.5 justify-center px-3 text-center"
+              className="mt-1.5 justify-center px-3 text-center sm:px-0"
               returnMode={searchMode === "answer" ? undefined : searchMode}
             />
           </div>
@@ -2610,30 +2616,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           >
             <Menu aria-hidden="true" className="size-icon-lg" />
           </button>
-          {sharedHomeIdentity ? (
-            <div data-testid="shared-home-brand" className="hidden min-w-0 items-center gap-3 lg:flex">
-              <BrandMark tone="emphasis" className="h-10 w-10" />
-              <span className="min-w-0">
-                {/* The name leads and the strapline supports, which is a weight and a
-                    colour apart, not just a size. The wordmark takes the display
-                    tracking the rest of the interface's headings use — at 20px/800 the
-                    untracked default reads loose. The strapline drops from 600 to 500:
-                    at 600 it sat almost level with the name and the two lines competed.
-                    The colour stays --text-muted and the size stays 12px, both measured
-                    rather than chosen — on this surface --text-soft composites to
-                    #8894a6 and gives 3.07:1 against the header, under the 4.5:1 floor,
-                    and 11px made the block bottom-light for no gain. Tracking stays on
-                    the ladder's zero step; positive tracking belongs to uppercase
-                    labels, and this is a sentence. */}
-                <span className="block truncate text-lg font-extrabold leading-5 tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
-                  PsychSift
-                </span>
-                <span className="block truncate text-xs font-medium text-[color:var(--text-muted)]">
-                  From question to source
-                </span>
-              </span>
-            </div>
-          ) : isServicesMode ? (
+          {/* The shared home draws no wordmark here (owner design review, 12 Oct
+              2026): the side rail already carries the PsychSift mark on every
+              desktop page, so a second lockup in the header showed the logo twice. */}
+          {sharedHomeIdentity ? null : isServicesMode ? (
             <div className="hidden min-w-0 items-center gap-3 lg:flex">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
                 <ShieldCheck className="h-5 w-5" aria-hidden />
@@ -2660,7 +2646,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) return;
             closeModeMenu();
           }}
-          className="relative z-[60] min-w-0 justify-self-center"
+          className="universal-header-mode relative z-[60] min-w-0 justify-self-center"
         >
           <button
             ref={modeButtonRef}
@@ -2668,7 +2654,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             onClick={toggleModeMenu}
             onKeyDown={handleModeTriggerKeyDown}
             className={cn(
-              "universal-header-mode-button inline-grid h-12 w-auto min-w-0 max-w-[calc(100vw-9rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:pr-3",
+              "universal-header-mode-button inline-grid h-tap w-auto min-w-0 max-w-[calc(100vw-9rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:pr-3",
             )}
             aria-haspopup="dialog"
             aria-expanded={modeMenuOpen}
@@ -2703,7 +2689,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
             </span>
             <span className="min-w-0">
-              {activeModePage ? (
+              {pillPageLine ? (
                 // Page first, mode underneath. The order is the point: the big
                 // line answers "where am I", which changes, and the small
                 // coloured line answers "which mode", which does not. Reversing
@@ -2716,7 +2702,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                 // stops naming it.
                 <>
                   <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                    {activeModePage.label}
+                    {pillPageLine.label}
                   </span>
                   <span className="universal-header-mode-area block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
                     {pillModeLabel}
@@ -2876,8 +2862,11 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             </button>
           ) : null}
           {appModeHasWorkSearch(selectedAppMode.id) ? <StaffWorkHeaderControls modeId={selectedAppMode.id} /> : null}
-          {/* At large text, work pages let cut-off labels wrap (work-mode.css). */}
-          {appModeHasWorkSearch(selectedAppMode.id) ? <LargeTextFlag /> : null}
+          {/* At large text, work pages let cut-off labels wrap (work-mode.css).
+              Favourites is drawn with the work tokens and rows, so it opts in
+              too: at 320px with large text its tiles and labels were cut off
+              (12 Oct 2026). Clinical reference pages stay untouched. */}
+          {appModeHasWorkSearch(selectedAppMode.id) || selectedAppMode.id === "favourites" ? <LargeTextFlag /> : null}
         </div>
       </div>
 

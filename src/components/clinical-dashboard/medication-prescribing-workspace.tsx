@@ -4,7 +4,6 @@ import {
   Activity,
   Ban,
   CalendarDays,
-  CircleCheck,
   ChevronRight,
   FileSearch,
   Lock,
@@ -33,6 +32,7 @@ import {
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
+import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import {
   medicationVerdictRingClass,
   PatientVerdictSignal,
@@ -50,12 +50,7 @@ import {
   type MedicationVerdict,
 } from "@/lib/medication-interactions";
 import { evaluatePatientAlerts } from "@/lib/medication-patient-alerts";
-import {
-  BadgeCluster,
-  ClinicalBadge,
-  type ClinicalBadgeItem,
-  type ClinicalBadgeTone,
-} from "@/components/clinical-dashboard/clinical-badge";
+import { BadgeCluster, type ClinicalBadgeItem } from "@/components/clinical-dashboard/clinical-badge";
 import { medicationIdentityBadges, type MedicationRecord } from "@/lib/medications";
 import {
   medicationMatchValues,
@@ -475,14 +470,15 @@ function ResultToneIcon({ result, accent }: { result: MedicationResult; accent?:
   return <IconTile icon={Pill} tone={tone} className="h-9 w-9" />;
 }
 
-const matchBadgeTone: Record<MedicationResult["tone"], ClinicalBadgeTone> = {
-  teal: "clinical",
-  blue: "info",
-  slate: "neutral",
-};
-
+// The match label is quiet grey text, not a coloured pill (Clinical audit, 13 Oct
+// 2026, item 8): it describes how the search matched, not a clinical status.
+// The words come from src/lib/medications.ts unchanged.
 function ResultMatchBadge({ result }: { result: MedicationResult }) {
-  return <ClinicalBadge label={result.match} tone={matchBadgeTone[result.tone]} icon={CircleCheck} />;
+  return (
+    <span data-medication-match={result.tone} className="text-xs font-semibold text-[color:var(--text-muted)]">
+      {result.match}
+    </span>
+  );
 }
 
 // Small leading icon for the prescribing-action text: contraindication content is
@@ -880,11 +876,11 @@ function MedicationResults({
       <PatientDetailsDockAction />
 
       {/* The error branch moved into the band's fault panel, which carries the
-          same message and announces it once. Loading copy stays here. */}
+          same message and announces it once. While the first response is on its way the
+          list shows rows shaped like the results it is waiting for, not a line of text
+          over an empty page. */}
       {initialCatalogLoading ? (
-        <div className="medication-results-inset">
-          <p className="text-sm text-[color:var(--text-muted)]">Loading medication catalogue…</p>
-        </div>
+        <ResultRowsPlaceholder label="Loading medication results" rows={4} testId="medication-results-placeholder" />
       ) : null}
 
       {!initialCatalogLoading && !catalog.error && resultCount === 0 ? (
@@ -1040,7 +1036,7 @@ function MedicationResults({
           const cardClassName = cn(
             "medication-mobile-result min-w-0 w-full rounded-lg border bg-[color:var(--surface-raised)] p-2 text-left shadow-[var(--shadow-inset)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
             selected
-              ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]/35"
+              ? "border-[color:var(--border)]"
               : result.href
                 ? "border-[color:var(--border)] hover:border-[color:var(--border-strong)]"
                 : "border-[color:var(--border)] opacity-80",
@@ -1117,7 +1113,11 @@ function MedicationResults({
         })}
       </div>
 
-      <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+      {/* Mounted (so its lookup runs in parallel) but kept out of view until the medication
+          list itself has arrived: it fills in underneath the results, never ahead of them. */}
+      <div hidden={initialCatalogLoading}>
+        <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+      </div>
 
       <StatusNotice
         realDataReady={realDataReady}

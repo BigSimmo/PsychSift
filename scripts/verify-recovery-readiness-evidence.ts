@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { closeSync, openSync, readSync, realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { pathToFileURL } from "node:url";
 import { TextDecoder } from "node:util";
 import { z } from "zod";
 
@@ -11,6 +10,7 @@ import {
   parseRecoveryReadinessEvidence,
   type RecoveryOperation,
 } from "../src/lib/recovery-readiness-evidence";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const MAX_ARTIFACT_BYTES = 65_536;
 const MAX_OPERATION_MANIFEST_VALIDITY_SECONDS = 86_400;
@@ -264,5 +264,5 @@ export function runRecoveryReadinessEvidenceCli(argv: readonly string[], depende
   }
 }
 
-const isDirectExecution = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+const isDirectExecution = isDirectEntrypoint(import.meta.url);
 if (isDirectExecution) process.exitCode = runRecoveryReadinessEvidenceCli(process.argv.slice(2));

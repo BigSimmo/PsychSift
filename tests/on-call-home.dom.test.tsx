@@ -242,13 +242,13 @@ describe("On Call home layout", () => {
     expect(screen.queryByTestId("on-call-roster-right-now")).toBeNull();
   });
 
-  it("puts Your usual above the footer group, because last shift predicts this shift", () => {
+  it("puts Your usual above the shift tools, because last shift predicts this shift", () => {
     storeState.entries = [contact("reg", "After-hours registrar", ["call-first"], "9000 0030")];
 
     render(<OnCallHome />);
 
     const usual = screen.getByTestId("on-call-home-recent");
-    const footer = screen.getByTestId("on-call-now-footer");
+    const footer = screen.getByTestId("on-call-now-shift-tools");
     // Node.DOCUMENT_POSITION_FOLLOWING === 4: `footer` comes after `usual`.
     expect(usual.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -325,12 +325,13 @@ describe("On Call home layout", () => {
     expect(screen.queryByTestId("on-call-now-usual-empty")).toBeNull();
   });
 
-  it("keeps the pocket card on the page and in the pages sheet", () => {
+  it("keeps the pocket card in the pages sheet, and off Now (it lives in the Handbook)", () => {
     storeState.entries = [contact("reg", "After-hours registrar", ["call-first"], "9000 0030")];
 
     const { container } = render(<OnCallHome />);
 
-    expect(container.querySelector('a[href="/on-call/card"]')).not.toBeNull();
+    // Work mode simplify plan, owner approval 12 Oct 2026: Now carries no link list.
+    expect(container.querySelector('a[href="/on-call/card"]')).toBeNull();
     expect(modeSecondaryNavigationRegistry["on-call"].some((entry) => entry.href === "/on-call/card")).toBe(true);
   });
 
@@ -479,17 +480,17 @@ describe("Now's links after the My Work move and the v6 rebuild", () => {
   // page and the mode switcher reaches My Work. First night keeps its one link
   // here, in the footer group, because it is that page's only way in.
 
-  it("keeps First night one tap away, and neither Check these nor Calendar", () => {
+  it("carries neither a link list, Check these nor Calendar; First night is in Starting here", () => {
     storeState.entries = [...DEMO_ON_CALL_ENTRIES];
     render(<OnCallHome />);
 
-    const footer = screen.getByTestId("on-call-now-footer");
-    expect(within(footer).getByTestId("on-call-home-first-night")).toHaveAttribute("href", "/on-call/first-night");
-
+    // Work mode simplify plan, owner approval 12 Oct 2026: First night is reached from Starting here
+    // (its chip) and the Handbook's First night panel, so Now keeps no footer for it.
+    expect(screen.queryByTestId("on-call-now-footer")).toBeNull();
+    expect(screen.queryByTestId("on-call-home-first-night")).toBeNull();
     expect(screen.queryByTestId("on-call-home-tools")).toBeNull();
     expect(screen.queryByTestId("on-call-home-check")).toBeNull();
     expect(screen.queryByTestId("on-call-home-calendar")).toBeNull();
-    expect(within(footer).queryByText("Check these")).toBeNull();
   });
 
   it("draws no tile grid; the pill's pages sheet lists the pages", () => {
@@ -583,13 +584,12 @@ describe("On Call home tools after the header ellipsis left", () => {
     expect(screen.queryByTestId("on-call-page-menu-trigger")).toBeNull();
   });
 
-  it("keeps My shifts, Pocket card, and Calendar on the page footer", () => {
+  it("leaves My shifts and Calendar to Roster and the Pocket card to the Handbook", () => {
     render(<OnCallHome now={new Date("2026-06-01T09:00:00+08:00")} />);
-    expect(screen.getByTestId("on-call-now-footer-shifts").getAttribute("href")).toBe("/roster");
-    expect(screen.getByTestId("on-call-now-footer-card").getAttribute("href")).toBe("/on-call/card");
-    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026):
-    // straight to the real page, not through the /on-call/calendar redirect.
-    expect(screen.getByTestId("on-call-now-footer-calendar").getAttribute("href")).toBe("/roster/calendar");
+    // Work mode simplify plan, owner approval 12 Oct 2026: each lives on the page that owns it.
+    expect(screen.queryByTestId("on-call-now-footer-shifts")).toBeNull();
+    expect(screen.queryByTestId("on-call-now-footer-card")).toBeNull();
+    expect(screen.queryByTestId("on-call-now-footer-calendar")).toBeNull();
   });
 });
 

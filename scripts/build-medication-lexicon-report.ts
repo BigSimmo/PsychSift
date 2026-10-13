@@ -23,12 +23,12 @@
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { format } from "prettier";
 
 import { INTERACTION_LEXICON, selectCatalogueSlugs, type LexiconTerm } from "../src/lib/medication-interaction-lexicon";
 import type { MedicationRecord } from "../src/lib/medications";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const SNAPSHOT_PATH = "data/medications-snapshot.json";
 const INDEX_PATH = "data/medication-interaction-index.json";
@@ -751,7 +751,7 @@ function coverageSection(records: readonly MedicationRecord[], index: IndexShape
   return lines;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(`[lexicon-report] ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);

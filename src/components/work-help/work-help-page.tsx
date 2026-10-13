@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Clock3,
   Compass,
+  Keyboard,
   Search,
   SearchX,
   ShieldCheck,
@@ -42,6 +43,7 @@ import {
 } from "@/lib/work-help";
 import { workSetupCount, workSetupCountLabel } from "@/lib/work-setup/progress";
 import { looksLikePatientDetail } from "@/lib/work-text/patient-detail-check";
+import { OPEN_KEYBOARD_SHORTCUTS_EVENT } from "@/lib/keyboard-shortcuts";
 
 const subscribeNothing = () => () => undefined;
 function useHydrated(): boolean {
@@ -266,6 +268,26 @@ function GetStarted() {
   );
 }
 
+/** Keyboard shortcuts, only where there is a mouse or trackpad (a phone has no use for them). */
+function OnAComputer() {
+  return (
+    <section className="hidden gap-2 pointer-fine:grid" data-testid="work-help-computer">
+      <WorkSectionLabel>On a computer</WorkSectionLabel>
+      <WorkCard as="ul" aria-label="On a computer">
+        <li>
+          <WorkIconRow
+            icon={Keyboard}
+            title="Keyboard shortcuts"
+            sub="Press / to search, ? for the list"
+            onClick={() => window.dispatchEvent(new Event(OPEN_KEYBOARD_SHORTCUTS_EVENT))}
+            testId="work-help-keyboard-shortcuts"
+          />
+        </li>
+      </WorkCard>
+    </section>
+  );
+}
+
 function HelpHome() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -345,6 +367,7 @@ function HelpHome() {
       ) : (
         <>
           <GetStarted />
+          <OnAComputer />
           <TopicList label={others.length > 0 ? "Your areas" : "Areas"} topics={yours} />
           <TopicList label="Other areas" topics={others} />
           <GuideList topics={WORK_HELP_GUIDE_TOPICS} />

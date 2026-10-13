@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 
 import {
@@ -31,6 +30,7 @@ import { answerRouteBudgetMs } from "@/lib/rag/rag-route-budget";
 import type { AnswerRouteMode } from "@/lib/rag/rag-routing";
 import type { RagAnswer } from "@/lib/types";
 import { buildRagDiagnosticDumpRecord, resolveLocalDiagnosticOutputPath } from "./eval-answer-quality";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -1581,7 +1581,7 @@ async function main() {
   if (args.failOnThreshold && report.blocking_threshold_failures.length > 0) process.exitCode = 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;

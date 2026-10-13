@@ -485,7 +485,12 @@ export function medicationAccessFields(record: MedicationRecord): Array<{ label:
 
   const routes = firstRowValue(record, "form", "oral routes");
   if (routes) {
-    fields.push({ label: "Formulation", value: routes.replace(/\*\*/g, "").split(".")[0]?.trim() ?? routes });
+    // The whole field: forms can sit in separate sentences ("Oral liquid… Tablets…"),
+    // and a record row must never hide one. A "." split once cut "Tablets (12.5…" short.
+    fields.push({
+      label: "Formulation",
+      value: routes.replace(/\*\*/g, "").replace(/\s+/g, " ").trim() || routes,
+    });
   }
 
   return fields;
