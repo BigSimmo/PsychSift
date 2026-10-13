@@ -131,8 +131,10 @@ big title. For `InPageNavHeader` that means:
   button (the 11 Oct "one Back, in the top bar" rule), never in the page's own row.
 - **A tab rail pins in the page.** With `rail`, the header stays in page flow and
   `useStickyWorkTabs` (the Work band mechanism, not a new scroll-hide owner) pins the rail
-  under the bar; the title row scrolls away. Under a mode band the band's tabs are the pinned
-  row, so the header is not pinned there.
+  under the bar; the title row scrolls away. Once the rail is stuck, the header's actions
+  (Save, the ⋯ menu) move to the end of the pinned rail. Under a mode band the band's tabs
+  are the pinned row, so the record's header, rail and actions included, scrolls away (owner
+  decision, 13 Oct 2026, keep as built).
 - **Section navigation without a rail rides the collapse row** through
   `PhoneHeaderCollapsePortal`, as before: the title disclosure is that page's navigation.
 - **A row with no section navigation scrolls away** in page flow, like a band title.
