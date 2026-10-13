@@ -107,6 +107,9 @@ jobs:
       tree_proven_coverage: ${{ steps.tree-proof.outputs.coverage }}
       tree_proven_ui: ${{ steps.tree-proof.outputs.ui }}
       tree_proven_lighthouse: ${{ steps.tree-proof.outputs.lighthouse }}
+      # True only when a green full-suite dispatch run already passed every release-matrix leg on
+      # this exact tree (the merged PR's head). Proved separately because PR runs never run it.
+      tree_proven_matrix: ${{ steps.tree-proof.outputs.matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1919,6 +1922,7 @@ jobs:
         startsWith(github.ref, 'refs/heads/release/') ||
         (
           github.ref == 'refs/heads/main' &&
+          needs.changes.outputs.tree_proven_matrix != 'true' &&
           (
             needs.changes.outputs.ui_changed == 'true' ||
             needs.changes.outputs.perf_changed == 'true' ||

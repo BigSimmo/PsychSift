@@ -22,7 +22,8 @@ import {
  * Main tree proof: a push to `main` skips only the jobs the merged PR's own CI run already passed
  * on a byte-identical tree. Everything here pins the fail-closed shape — an absent or partial proof
  * must leave the push doing the full job set it did before, and the jobs with main-only behaviour
- * (Build + deployment boot smoke, the Firefox/WebKit release matrix) must never become skippable.
+ * (Build + deployment boot smoke) must never become skippable. The Firefox/WebKit release matrix
+ * is skippable only on its own proof: a green full-suite dispatch run on the identical tree.
  */
 const workflowText = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 const workflow = createRequire(import.meta.url)("js-yaml").load(workflowText);
@@ -156,13 +157,13 @@ describe("main tree proof script", () => {
     };
     const result = await evaluate({ env: env as unknown as NodeJS.ProcessEnv, now, request, runGit, runGitOk });
     expect(fetched).toEqual(["+refs/pull/42/head:refs/remotes/tree-proof/42"]);
-    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true });
+    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true, matrix: false });
     expect(result.runUrl).toBe("https://example.test/run/9");
 
     // Same evidence, one byte of tree drift: nothing is proven.
     gitTable["rev-parse HEAD^{tree}"] = "e".repeat(40);
     const drifted = await evaluate({ env: env as unknown as NodeJS.ProcessEnv, now, request, runGit, runGitOk });
-    expect(drifted.proof).toEqual({ coverage: false, ui: false, lighthouse: false });
+    expect(drifted.proof).toEqual({ coverage: false, ui: false, lighthouse: false, matrix: false });
   });
 
   it("propagates API errors so the step's catch turns them into a full run", async () => {
@@ -203,6 +204,7 @@ describe("main tree proof script", () => {
     expect(result.stdout).toContain("coverage=false");
     expect(result.stdout).toContain("ui=false");
     expect(result.stdout).toContain("lighthouse=false");
+    expect(result.stdout).toContain("matrix=false");
   });
 });
 
@@ -223,6 +225,7 @@ describe("main tree proof workflow wiring", () => {
     expect(jobs.changes.outputs.tree_proven_coverage).toBe("${{ steps.tree-proof.outputs.coverage }}");
     expect(jobs.changes.outputs.tree_proven_ui).toBe("${{ steps.tree-proof.outputs.ui }}");
     expect(jobs.changes.outputs.tree_proven_lighthouse).toBe("${{ steps.tree-proof.outputs.lighthouse }}");
+    expect(jobs.changes.outputs.tree_proven_matrix).toBe("${{ steps.tree-proof.outputs.matrix }}");
     // The changes job checks out full history, which HEAD^1 and the ancestry check rely on.
     const checkout = steps.find((step) => String(step.uses ?? "").startsWith("actions/checkout@"));
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
@@ -261,21 +264,22 @@ describe("main tree proof workflow wiring", () => {
       "coverage",
       "coverage-shards",
       "lighthouse-budget",
+      "release-browser-matrix",
       "ui-critical",
       "ui-critical-fast",
     ]);
+    // The matrix is gated on its own dispatch-run proof, and only inside its main-push clause, so the
+    // weekly schedule, release branches and every dispatch still run it in full.
+    const matrixIf = ifOf("release-browser-matrix");
+    expect(matrixIf.match(/tree_proven_\w+/g)).toEqual(["tree_proven_matrix"]);
+    expect(matrixIf).toMatch(
+      /github\.ref == 'refs\/heads\/main' &&\s+needs\.changes\.outputs\.tree_proven_matrix != 'true' &&/,
+    );
     expect(ifOf("ui-critical-fast")).toContain("needs.changes.outputs.tree_proven_ui != 'true'");
   });
 
-  it("keeps Build (deployment boot smoke) and the release browser matrix running on proven pushes", () => {
-    for (const job of [
-      "build",
-      "release-browser-matrix",
-      "static-pr",
-      "safety",
-      "ui-playwright-build",
-      "visual-baseline",
-    ]) {
+  it("keeps Build (deployment boot smoke) running on proven pushes, and the matrix on a PR-only proof", () => {
+    for (const job of ["build", "static-pr", "safety", "ui-playwright-build", "visual-baseline"]) {
       expect(ifOf(job)).not.toContain("tree_proven");
     }
     // The matrix does not wait on Production UI at all (it runs alongside it), so a proof-skipped
@@ -386,7 +390,7 @@ describe("PR branch update reuse", () => {
 
   it("carries every group when the newly tested tree is identical to a recorded green one", async () => {
     const result = await evaluatePullRequestUpdate(setup());
-    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true });
+    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true, matrix: false });
     expect(result.runUrl).toBe("https://example.test/run/5");
   });
 
@@ -394,7 +398,7 @@ describe("PR branch update reuse", () => {
     const result = await evaluatePullRequestUpdate(
       setup({ changed: ["README.md", "worker/requirements.txt", "eval/docling/pyproject.toml"] }),
     );
-    expect(result.proof).toEqual({ coverage: false, ui: true, lighthouse: true });
+    expect(result.proof).toEqual({ coverage: false, ui: true, lighthouse: true, matrix: false });
   });
 
   it("runs everything when any changed path could be an input", async () => {
@@ -410,12 +414,12 @@ describe("PR branch update reuse", () => {
       "scripts/ci-main-tree-proof.mjs",
     ]) {
       const result = await evaluatePullRequestUpdate(setup({ changed: ["README.md", input] }));
-      expect(result.proof, input).toEqual({ coverage: false, ui: false, lighthouse: false });
+      expect(result.proof, input).toEqual({ coverage: false, ui: false, lighthouse: false, matrix: false });
     }
   });
 
   it("fails open to the full run on every doubt", async () => {
-    const none = { coverage: false, ui: false, lighthouse: false };
+    const none = { coverage: false, ui: false, lighthouse: false, matrix: false };
     expect((await evaluatePullRequestUpdate({ ...setup(), env: { ...env, PR_ACTION: "opened" } })).proof).toEqual(none);
     expect((await evaluatePullRequestUpdate({ ...setup(), env: { ...env, PR_HEAD_REPO: "fork/r" } })).proof).toEqual(
       none,
