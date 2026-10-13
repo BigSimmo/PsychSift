@@ -685,18 +685,8 @@ export function CmeLogPage({
               <Plus aria-hidden="true" strokeWidth={2.2} />
               <span>Log an activity</span>
             </Link>
-            {!showFinish && !showArchived && uncopied.length > 0 ? (
-              <button
-                type="button"
-                onClick={openCopySheet}
-                data-testid="cme-log-dock-copy"
-                className="work-button min-h-tap"
-                data-variant="secondary"
-              >
-                <Copy aria-hidden="true" strokeWidth={2.2} />
-                Copy next
-              </button>
-            ) : null}
+            {/* One docked button only (design audit D09, 13 Oct 2026): Copy next lives in the
+                "not marked copied" card above the list, never floating as well. */}
           </div>
         </div>
       </LogBody>
