@@ -2,6 +2,10 @@
 
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { buttonFaceClass } from "@/components/ui/button-face";
+import { cn, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primitives";
+
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
 
 export interface NoteEditorProps {
@@ -168,22 +172,23 @@ export function ClinicalNoteEditor({
   }, []);
 
   return (
-    <div className={`clinical-note-editor flex flex-col gap-2 ${className}`} data-testid="clinical-note-editor">
-      <div className="flex justify-between items-center text-xs">
-        <label htmlFor="clinical-note-textarea" className="font-semibold text-gray-700">
+    <div className={cn("clinical-note-editor flex flex-col gap-2", className)} data-testid="clinical-note-editor">
+      <div className="flex items-center justify-between text-xs">
+        <label htmlFor="clinical-note-textarea" className="font-semibold text-[color:var(--text)]">
           {label}
         </label>
         <div className="flex items-center gap-2">
           <span
-            className={`font-mono text-xs px-2 py-0.5 rounded ${
+            className={cn(
+              "rounded border px-2 py-0.5 font-mono text-xs",
               saveStatus === "saving"
-                ? "bg-amber-100 text-amber-800"
+                ? toneWarning
                 : saveStatus === "saved"
-                  ? "bg-green-100 text-green-800"
+                  ? toneSuccess
                   : saveStatus === "error"
-                    ? "bg-red-100 text-red-800"
-                    : "text-gray-500"
-            }`}
+                    ? toneDanger
+                    : "border-transparent text-[color:var(--text-muted)]",
+            )}
             data-testid="note-editor-status"
           >
             {saveStatus === "saving"
@@ -200,7 +205,7 @@ export function ClinicalNoteEditor({
             type="button"
             onClick={() => performSave(currentValue)}
             disabled={readOnly || saveStatus === "saving" || saveStatus === "saved"}
-            className="px-2 py-1 text-xs border rounded bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={buttonFaceClass({ variant: "secondary", size: "sm" })}
             data-testid="note-editor-save-btn"
           >
             Save now
@@ -221,7 +226,10 @@ export function ClinicalNoteEditor({
         onClick={recordSelection}
         readOnly={readOnly}
         placeholder={placeholder}
-        className="w-full min-h-[160px] p-3 text-sm font-sans border rounded-md border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white resize-y"
+        className={cn(
+          "min-h-40 w-full resize-y rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3 font-sans text-sm text-[color:var(--text)]",
+          focusRing,
+        )}
         data-testid="note-editor-textarea"
         spellCheck={false}
       />

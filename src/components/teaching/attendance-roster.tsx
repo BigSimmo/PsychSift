@@ -2,6 +2,9 @@
 
 import React, { useMemo, useState } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { cn, fieldControlPlain, panelSubtle, subtleStatusPill, toneWarning } from "@/components/ui-primitives";
+
 export interface RegistrarMember {
   userId: string;
   name: string;
@@ -17,6 +20,13 @@ export interface AttendanceRosterProps {
   onSelectRegistrar?: (member: RegistrarMember) => void;
   className?: string;
 }
+
+const filterPill =
+  "inline-flex min-h-tap items-center rounded-full border px-3 text-xs transition motion-reduce:transition-none";
+const filterPillOff =
+  "border-[color:var(--border)] bg-[color:var(--surface)] font-semibold text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]";
+const filterPillOn =
+  "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] font-bold text-[color:var(--clinical-accent)]";
 
 /**
  * Registrar Attendance Roster with Attendance-Gap Filter View (#WVS32F).
@@ -66,13 +76,13 @@ export function AttendanceRoster({
 
   return (
     <div
-      className={`teaching-attendance-roster flex flex-col gap-3 p-4 border rounded-lg bg-white shadow-sm ${className}`}
+      className={cn("teaching-attendance-roster flex flex-col gap-3 p-4", panelSubtle, className)}
       data-testid="teaching-attendance-roster"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
+      <div className="flex flex-col justify-between gap-2 border-b border-[color:var(--border)] pb-3 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-base font-semibold text-gray-900">Registrar Attendance Roster</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Registrar Attendance Roster</h2>
+          <p className="text-xs text-[color:var(--text-muted)]">
             {gapCount === 0
               ? "All registered doctors have recorded check-ins."
               : `${gapCount} doctor${gapCount === 1 ? "" : "s"} with no check-in recorded this term.`}
@@ -84,11 +94,8 @@ export function AttendanceRoster({
           <button
             type="button"
             onClick={() => setGapsOnly(false)}
-            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-              !gapsOnly
-                ? "bg-blue-50 text-blue-700 border-blue-200 font-medium"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-            }`}
+            aria-pressed={!gapsOnly}
+            className={cn(filterPill, !gapsOnly ? filterPillOn : filterPillOff, focusRing)}
             data-testid="roster-view-all-btn"
           >
             All Registrars ({registrarList.length})
@@ -96,11 +103,8 @@ export function AttendanceRoster({
           <button
             type="button"
             onClick={() => setGapsOnly(true)}
-            className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-              gapsOnly
-                ? "bg-amber-50 text-amber-800 border-amber-300 font-medium"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-            }`}
+            aria-pressed={gapsOnly}
+            className={cn(filterPill, gapsOnly ? cn(toneWarning, "font-bold") : filterPillOff, focusRing)}
             data-testid="attendance-gap-filter-toggle"
           >
             Attendance Gaps ({gapCount})
@@ -116,7 +120,7 @@ export function AttendanceRoster({
           onChange={(e) => setFilterQuery(e.target.value)}
           placeholder="Filter registrars by name..."
           aria-label="Filter registrars"
-          className="w-full text-xs px-3 py-2 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+          className={fieldControlPlain}
           data-testid="attendance-roster-search"
           spellCheck={false}
         />
@@ -124,7 +128,10 @@ export function AttendanceRoster({
           <button
             type="button"
             onClick={() => setFilterQuery("")}
-            className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1"
+            className={cn(
+              "inline-flex min-h-tap items-center rounded-lg px-2 text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
+              focusRing,
+            )}
           >
             Clear
           </button>
@@ -132,23 +139,24 @@ export function AttendanceRoster({
       </div>
 
       {/* Roster List */}
-      <div className="flex flex-col divide-y divide-gray-100 mt-1">
+      <div className="mt-1 flex flex-col divide-y divide-[color:var(--border)]">
         {displayedRegistrars.length > 0 ? (
           displayedRegistrars.map((registrar) => (
             <div
               key={registrar.userId}
               onClick={() => onSelectRegistrar?.(registrar)}
-              className={`py-2.5 px-3 flex items-center justify-between transition-colors rounded ${
+              className={cn(
+                "flex items-center justify-between rounded px-3 py-2.5 transition-colors motion-reduce:transition-none",
                 registrar.hasGap
-                  ? "bg-amber-50/50 hover:bg-amber-50 border-l-4 border-amber-400 pl-2"
-                  : "hover:bg-gray-50"
-              }`}
+                  ? "border-l-4 border-[color:var(--warning)] bg-[color:var(--warning-soft)] pl-2"
+                  : "hover:bg-[color:var(--surface-subtle)]",
+              )}
               data-testid={`attendance-roster-row-${registrar.userId}`}
               data-has-gap={registrar.hasGap ? "true" : "false"}
             >
               <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-900">{registrar.name}</span>
-                <span className="text-xs text-gray-500">
+                <span className="text-sm font-medium text-[color:var(--text-heading)]">{registrar.name}</span>
+                <span className="text-xs text-[color:var(--text-muted)]">
                   {registrar.hasGap
                     ? "No check-in recorded this term"
                     : `${registrar.count} check-in${registrar.count === 1 ? "" : "s"} recorded`}
@@ -158,21 +166,25 @@ export function AttendanceRoster({
               <div>
                 {registrar.hasGap ? (
                   <span
-                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800"
+                    className={cn(
+                      "inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold",
+                      toneWarning,
+                    )}
                     data-testid="attendance-gap-badge"
                   >
                     Attendance gap
                   </span>
                 ) : (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs text-gray-600 bg-gray-100">
-                    {registrar.count} attended
-                  </span>
+                  <span className={subtleStatusPill}>{registrar.count} attended</span>
                 )}
               </div>
             </div>
           ))
         ) : (
-          <div className="py-6 text-center text-sm text-gray-500" data-testid="attendance-roster-empty">
+          <div
+            className="py-6 text-center text-sm text-[color:var(--text-muted)]"
+            data-testid="attendance-roster-empty"
+          >
             {filterQuery
               ? "No registrar matches that filter."
               : gapsOnly

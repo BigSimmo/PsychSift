@@ -2,6 +2,8 @@
 
 import { AlertCircle, Minus, Moon, Plus, Sun, Sunset, type LucideIcon } from "lucide-react";
 import { useCallback, useState } from "react";
+import { buttonFaceClass } from "@/components/ui/button-face";
+import { cn, panelSubtle, toneDanger, toolbarButton } from "@/components/ui-primitives";
 import {
   checkOptimisticLock,
   ConcurrencyConflictError,
@@ -165,18 +167,18 @@ export function SafeNumberEditor({
       {conflict ? (
         <div
           role="alert"
-          className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900"
+          className={cn("flex items-start gap-3 rounded-lg border p-4 text-sm", toneDanger)}
           data-testid="safe-number-conflict-alert"
         >
-          <AlertCircle className="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+          <AlertCircle className="mt-0.5 size-icon-lg shrink-0" aria-hidden="true" />
           <div className="flex-1">
-            <p className="font-semibold text-red-800">Concurrency conflict detected</p>
+            <p className="font-semibold">Concurrency conflict detected</p>
             <p className="mt-1">{conflict}</p>
             {onFetchLatest ? (
               <button
                 type="button"
                 onClick={() => void handleRefresh()}
-                className="mt-3 inline-flex items-center rounded bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                className={cn(buttonFaceClass({ variant: "danger", size: "sm" }), "mt-3")}
                 data-testid="safe-number-refresh-button"
               >
                 Refresh &amp; review changes
@@ -187,13 +189,13 @@ export function SafeNumberEditor({
       ) : null}
 
       {errorMessage ? (
-        <p role="alert" className="text-sm text-red-600" data-testid="safe-number-error-message">
+        <p role="alert" className="text-sm text-[color:var(--danger-text)]" data-testid="safe-number-error-message">
           {errorMessage}
         </p>
       ) : null}
 
       {successMessage ? (
-        <p role="status" className="text-sm text-green-700" data-testid="safe-number-status-message">
+        <p role="status" className="text-sm text-[color:var(--success)]" data-testid="safe-number-status-message">
           {successMessage}
         </p>
       ) : null}
@@ -207,12 +209,12 @@ export function SafeNumberEditor({
           return (
             <div
               key={kind}
-              className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
+              className={cn("flex items-center justify-between p-3", panelSubtle)}
               data-testid={`safe-number-row-${kind}`}
             >
               <div className="flex items-center gap-3">
-                <Icon className="size-5 text-gray-500" aria-hidden="true" />
-                <span className="font-medium text-gray-800">{meta.label}</span>
+                <Icon className="size-icon-lg text-[color:var(--text-muted)]" aria-hidden="true" />
+                <span className="font-medium text-[color:var(--text-heading)]">{meta.label}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -220,10 +222,10 @@ export function SafeNumberEditor({
                   aria-label={`Decrease ${meta.label}`}
                   disabled={disabled || saving || weekdayVal <= 0}
                   onClick={() => handleStepperChange(kind, 1, -1)}
-                  className="rounded-full border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                  className={cn(toolbarButton, "rounded-full")}
                   data-testid={`stepper-minus-${kind}`}
                 >
-                  <Minus className="size-4" aria-hidden="true" />
+                  <Minus className="size-icon-md" aria-hidden="true" />
                 </button>
                 <span
                   className="min-w-8 text-center text-sm font-semibold tabular-nums"
@@ -236,10 +238,10 @@ export function SafeNumberEditor({
                   aria-label={`Increase ${meta.label}`}
                   disabled={disabled || saving || weekdayVal >= SAFE_NUMBER_MAX}
                   onClick={() => handleStepperChange(kind, 1, 1)}
-                  className="rounded-full border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                  className={cn(toolbarButton, "rounded-full")}
                   data-testid={`stepper-plus-${kind}`}
                 >
-                  <Plus className="size-4" aria-hidden="true" />
+                  <Plus className="size-icon-md" aria-hidden="true" />
                 </button>
               </div>
             </div>
@@ -252,7 +254,7 @@ export function SafeNumberEditor({
           type="button"
           disabled={disabled || saving || !isDirty}
           onClick={() => void handleSave()}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className={buttonFaceClass({ variant: "primary", size: "md" })}
           data-testid="safe-number-save-button"
         >
           {saving ? "Saving…" : "Save safe numbers"}

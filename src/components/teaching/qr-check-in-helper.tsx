@@ -2,6 +2,10 @@
 
 import React, { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
+import { focusRing } from "@/components/card-recipes";
+import { buttonFaceClass } from "@/components/ui/button-face";
+import { cn, fieldControlPlain, panelSubtle } from "@/components/ui-primitives";
+
 export type CameraPermissionStatus = "prompt" | "granted" | "denied" | "unsupported";
 
 export interface CameraStreamResult {
@@ -192,16 +196,19 @@ export function QrCheckInHelper({
 
   return (
     <div
-      className={`qr-check-in-helper flex flex-col gap-3 p-4 bg-white rounded-lg border border-gray-200 shadow-sm max-w-md mx-auto ${className}`}
+      className={cn("qr-check-in-helper mx-auto flex max-w-md flex-col gap-3 p-4", panelSubtle, className)}
       data-testid="qr-check-in-helper"
     >
-      <div className="flex justify-between items-center border-b pb-2">
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      <div className="flex items-center justify-between border-b border-[color:var(--border)] pb-2">
+        <h3 className="text-sm font-semibold text-[color:var(--text-heading)]">{title}</h3>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className={cn(
+              "inline-flex min-h-tap items-center rounded-lg px-2 text-xs text-[color:var(--text-muted)] hover:text-[color:var(--text)]",
+              focusRing,
+            )}
             data-testid="qr-helper-close-btn"
           >
             Close
@@ -211,7 +218,7 @@ export function QrCheckInHelper({
 
       {/* Camera Viewport / Fallback View */}
       <div
-        className="qr-scanning-viewport relative w-full h-56 bg-black rounded-lg overflow-hidden flex items-center justify-center"
+        className="qr-scanning-viewport relative flex h-56 w-full items-center justify-center overflow-hidden rounded-lg bg-[color:var(--surface-inset)]"
         data-testid="qr-scanning-viewport"
       >
         {isScanning ? (
@@ -221,33 +228,33 @@ export function QrCheckInHelper({
               playsInline
               muted
               autoPlay
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
               data-testid="qr-camera-video"
             />
             {/* Viewfinder Target Reticle */}
             <div
-              className="absolute inset-0 border-2 border-dashed border-white/60 m-8 rounded-lg pointer-events-none flex items-center justify-center"
+              className="pointer-events-none absolute inset-0 m-8 flex items-center justify-center rounded-lg border-2 border-dashed border-[color:var(--clinical-accent)]"
               data-testid="qr-viewfinder-reticle"
             >
-              <span className="text-[10px] text-white/80 bg-black/60 px-2 py-0.5 rounded">
+              <span className="rounded bg-[color:var(--surface-raised)] px-2 py-0.5 text-xs text-[color:var(--text-muted)]">
                 Point at session QR code
               </span>
             </div>
           </>
         ) : (
           <div
-            className="p-4 text-center text-xs text-gray-300 flex flex-col items-center gap-2"
+            className="flex flex-col items-center gap-2 p-4 text-center text-xs text-[color:var(--text-muted)]"
             data-testid="qr-viewport-fallback"
           >
             {errorMessage ? (
-              <p className="text-amber-300 font-medium">{errorMessage}</p>
+              <p className="font-semibold text-[color:var(--warning-text)]">{errorMessage}</p>
             ) : (
               <p>Camera is currently inactive.</p>
             )}
             <button
               type="button"
               onClick={startCamera}
-              className="px-3 py-1.5 text-xs bg-white text-gray-900 font-medium rounded shadow hover:bg-gray-100 transition-colors"
+              className={buttonFaceClass({ variant: "secondary", size: "sm" })}
               data-testid="start-camera-scan-btn"
             >
               {permissionStatus === "denied" ? "Retry Camera Access" : "Open Camera Scanner"}
@@ -261,7 +268,10 @@ export function QrCheckInHelper({
         <button
           type="button"
           onClick={stopCamera}
-          className="text-xs text-gray-600 hover:text-gray-800 underline self-center"
+          className={cn(
+            "inline-flex min-h-tap items-center self-center rounded-lg px-2 text-xs text-[color:var(--text-muted)] underline hover:text-[color:var(--text)]",
+            focusRing,
+          )}
           data-testid="stop-camera-scan-btn"
         >
           Stop camera
@@ -269,8 +279,11 @@ export function QrCheckInHelper({
       )}
 
       {/* Fallback to 6-digit Code Entry */}
-      <div className="border-t pt-3 flex flex-col gap-2" data-testid="qr-typed-code-fallback">
-        <span className="text-xs font-medium text-gray-700">Or check in with 6-digit code:</span>
+      <div
+        className="flex flex-col gap-2 border-t border-[color:var(--border)] pt-3"
+        data-testid="qr-typed-code-fallback"
+      >
+        <span className="text-xs font-semibold text-[color:var(--text)]">Or check in with 6-digit code:</span>
         <form onSubmit={handleTypedSubmit} className="flex gap-2">
           <input
             type="text"
@@ -284,12 +297,12 @@ export function QrCheckInHelper({
             }}
             placeholder="e.g. 842103"
             aria-label="6-digit check-in code"
-            className="text-xs px-3 py-1.5 border rounded-md border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono tracking-wider w-32"
+            className={cn(fieldControlPlain, "w-32 font-mono tracking-wider")}
             data-testid="qr-typed-code-input"
           />
           <button
             type="submit"
-            className="px-3 py-1.5 text-xs bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className={buttonFaceClass({ variant: "primary", size: "sm" })}
             disabled={typedCode.replace(/\D/g, "").length !== 6}
             data-testid="qr-typed-code-submit-btn"
           >
@@ -297,7 +310,7 @@ export function QrCheckInHelper({
           </button>
         </form>
         {codeError && (
-          <span className="text-[11px] text-red-600 font-medium" data-testid="qr-code-error">
+          <span className="text-xs font-semibold text-[color:var(--danger-text)]" data-testid="qr-code-error">
             {codeError}
           </span>
         )}

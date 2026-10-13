@@ -17,7 +17,7 @@
   [data-statutory-metadata] {
     display: block !important;
     visibility: visible !important;
-    color: #000000 !important;
+    color: black !important;
     background: transparent !important;
     opacity: 1 !important;
     -webkit-print-color-adjust: exact !important;
@@ -39,14 +39,14 @@
     margin: 0 !important;
     padding: 0 !important;
     font-size: 11pt;
-    line-height: 1.4;
-    color: #000000;
+    line-height: var(--leading-snug);
+    color: black;
   }
 
   .form-print-section {
     page-break-inside: avoid;
     break-inside: avoid;
-    margin-bottom: 1rem;
+    margin-bottom: calc(var(--spacing) * 4);
   }
 
   .form-print-table {
@@ -58,9 +58,9 @@
 
   .form-print-table th,
   .form-print-table td {
-    border: 1px solid #000000;
-    padding: 4px 8px;
-    color: #000000;
+    border: 1px solid black;
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 2);
+    color: black;
   }
 
   /* Hide screen-only interactive elements */
