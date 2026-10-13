@@ -784,15 +784,15 @@ describe.skipIf(process.platform === "win32")("PR required aggregate — cancell
     expect(proven.status).toBe(0);
     expect(proven.output).toContain("Proven on the identical tree");
     expect(proven.output).toContain("coverage production-ui lighthouse-budget");
-    expect(
-      runAggregate({
-        ...heavyMainPush,
-        TREE_PROVEN_COVERAGE: "true",
-        TREE_PROVEN_UI: "true",
-        TREE_PROVEN_LIGHTHOUSE: "true",
-        TREE_PROVEN_MATRIX: "true",
-      }).output,
-    ).toContain("lighthouse-budget Firefox/WebKit release matrix");
+    const matrixProven = runAggregate({
+      ...heavyMainPush,
+      TREE_PROVEN_COVERAGE: "true",
+      TREE_PROVEN_UI: "true",
+      TREE_PROVEN_LIGHTHOUSE: "true",
+      TREE_PROVEN_MATRIX: "true",
+    });
+    expect(matrixProven.status).toBe(0);
+    expect(matrixProven.output).toContain("lighthouse-budget Firefox/WebKit release matrix");
 
     // Without proof the same skips stay red - one group at a time, so no proof leaks across jobs.
     expect(runAggregate(heavyMainPush).status).not.toBe(0);
