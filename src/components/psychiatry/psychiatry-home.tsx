@@ -242,8 +242,8 @@ function useOffline(): boolean {
 }
 
 /**
- * Offline, the search box at the bottom cannot answer, so the page says so once
- * rather than failing after a tap.
+ * Offline, the shell hides the search box because it cannot answer, so the page
+ * says why once.
  */
 function OfflineNote() {
   return (

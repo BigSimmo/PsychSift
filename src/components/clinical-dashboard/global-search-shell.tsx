@@ -306,6 +306,19 @@ function GlobalSearchShellDashboardGate(props: GlobalSearchShellProps) {
   return <GlobalStandaloneSearchShellClient {...props} />;
 }
 
+function subscribeOnlineStatus(listener: () => void): () => void {
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
+  return () => {
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+  };
+}
+
+function readBrowserOffline(): boolean {
+  return navigator.onLine === false;
+}
+
 function subscribeNoop() {
   return () => undefined;
 }
@@ -564,8 +577,15 @@ function GlobalStandaloneSearchShellBody({
   // docks (`/services/search`, `/forms/search`) keep their composer because
   // `isSlugDetail` excludes the reserved `search` suffix, not because of any
   // route named here.
+  // Offline, Psychiatry's box could only fail after a tap; its page says search
+  // needs a connection, so the box steps aside until the browser is back online.
+  const browserOffline = useSyncExternalStore(subscribeOnlineStatus, readBrowserOffline, () => false);
   const shouldShowSearchComposer =
-    searchComposerVisible && pathname !== "/tools" && !isDifferentialPresentationWorkflow && !isInfoPage;
+    searchComposerVisible &&
+    pathname !== "/tools" &&
+    !isDifferentialPresentationWorkflow &&
+    !isInfoPage &&
+    !(browserOffline && isDockedModeHomePath(pathname));
   // `/tools` owns its catalogue controls rather than a shared composer. Keep
   // the sidebar's cross-guide search usable by returning to Answer first.
   const openSidebarSearch = pathname === "/tools" ? () => startNewAnswerChat() : () => focusComposerInput(inputRef);
@@ -576,7 +596,9 @@ function GlobalStandaloneSearchShellBody({
   // Dictionary catalogue keeps the usual compact phone dock; sm+ still
   // portals into the page-owned slot it renders under its mode nav, so it needs
   // no floating-composer clearance either.
-  const reservesFloatingComposer = shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue;
+  // Psychiatry, a docked home, likewise portals into its own page slot from tablet up.
+  const reservesFloatingComposer =
+    shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue && !isDockedModeHomePath(pathname);
   // Most standalone mode homes keep the in-flow hero pill at every width. Tools
   // deliberately has no shared composer. Document viewer routes own their own
   // floating composer, so

@@ -277,6 +277,12 @@ test.describe("previously uncovered production routes", () => {
       // 36156676861). A same-origin request cannot fail an access-control check, so only
       // this app's own host is excused; anything cross-origin still fails.
       if (browserName === "webkit" && sameOriginLoadAbortedByNavigation(error.message, appHost)) return;
+      // WebKit keeps a `contain-intrinsic-size: auto` row's last size with its own
+      // resize observer, and reports that observer's deferred notifications as a page
+      // error (run 38371739748, Differentials). The spec calls this a notice, not a
+      // failure, and no app code throws it, so only this exact WebKit message is excused.
+      if (browserName === "webkit" && error.message === "ResizeObserver loop completed with undelivered notifications.")
+        return;
       problems.push(`pageerror ${error.message}`);
     });
     await blockExternalRequests(page, problems, baseURL);
