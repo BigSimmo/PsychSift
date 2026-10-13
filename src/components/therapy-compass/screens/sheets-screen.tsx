@@ -330,6 +330,7 @@ function TherapyPicker() {
           "flex w-full items-center justify-between py-0 px-3.5 border border-[color:var(--border-strong)] rounded-lg bg-[color:var(--surface)] text-[color:var(--text)] text-sm-minus font-semibold cursor-pointer",
         )}
         aria-expanded={open}
+        data-testid="therapy-sheet-builder-picker"
         onClick={() => setOpen((v) => !v)}
       >
         <span className="flex items-center gap-2.5 min-w-0">
