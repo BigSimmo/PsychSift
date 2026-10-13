@@ -74,6 +74,11 @@ it is the owner, in the Railway dashboard:
    or failure notification reaches chat at all** — the same silence that cost three days on
    2026-09-13.
 
+**Code regression, 2026-10-06 to 2026-10-13.** A hardening commit (`9a8d291ac`) switched the
+receiver to header-only authentication, which rejected every Railway delivery regardless of the
+secret, because Railway cannot send headers. The `?token=` query parameter is accepted again and is
+pinned by `tests/webhooks-railway-route.test.ts`; the owner steps above are still needed.
+
 All four are now reported by the app itself — the first two as `logger.warn`/`logger.error`
 from the route, the third from `postChatNotification` — and warn/error reach Sentry, which
 does not depend on any of the variables above. Before that they were visible only in

@@ -52,7 +52,7 @@ function serviceName(payload: z.infer<typeof railwayWebhookSchema>): string {
 
 export async function POST(request: Request) {
   try {
-    const auth = verifyWebhookSecret(request, env.RAILWAY_WEBHOOK_SECRET, { allowQueryToken: false });
+    const auth = verifyWebhookSecret(request, env.RAILWAY_WEBHOOK_SECRET, { allowQueryToken: true });
     if (!auth.ok) {
       if (auth.reason === "misconfigured") {
         logger.error("Railway webhook rejected: RAILWAY_WEBHOOK_SECRET is not set on this service");
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       // Railway webhook whose header has drifted from the service variable sends something
       // that does not match. The token itself is never logged.
       logger.warn("Railway webhook rejected: presented secret did not match RAILWAY_WEBHOOK_SECRET", {
-        tokenPresented: Boolean(presentedWebhookSecret(request, { allowQueryToken: false })),
+        tokenPresented: Boolean(presentedWebhookSecret(request, { allowQueryToken: true })),
       });
       return publicErrorResponse("Unauthorized.", 401);
     }

@@ -44,10 +44,20 @@ describe("POST /api/webhooks/railway", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejects query token authentication when header authentication is enforced", async () => {
+  // Railway can only be configured with a target URL (no custom headers), so the
+  // `?token=` query parameter is the only way its deploy webhooks can authenticate.
+  it("accepts the shared secret as a ?token= query parameter", async () => {
     const { route } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
     const response = await route.POST(
-      post(`http://localhost/api/webhooks/railway?token=${SECRET}`, { status: "SUCCESS" }),
+      post(`http://localhost/api/webhooks/railway?token=${SECRET}`, { status: "BUILDING" }),
+    );
+    expect(response.status).toBe(200);
+  });
+
+  it("rejects a wrong ?token= query parameter", async () => {
+    const { route } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
+    const response = await route.POST(
+      post("http://localhost/api/webhooks/railway?token=wrong", { status: "SUCCESS" }),
     );
     expect(response.status).toBe(401);
   });
