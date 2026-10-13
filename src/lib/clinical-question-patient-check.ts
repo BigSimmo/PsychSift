@@ -45,8 +45,9 @@ const AGE_PHRASES: readonly RegExp[] = [
  */
 const UNIT_PHRASES: readonly RegExp[] = [
   // Not after a place word ("bed 4 ms smith", "Ward: 12 ms ..."): there the number is a patient location,
-  // and removing it would let a location-plus-name question through the second pass.
-  /(?<!\b(?:[Bb]ed|[Bb]ay|[Rr]oom|[Rr]m|[Cc]ubicle|[Cc]ube|[Cc]ot|[Cc]hair|[Tt]rolley|[Rr]ecliner|[Ww]ard|[Uu]nit|BED|BAY|ROOM|WARD|UNIT)\s*[:#.-]?\s*)\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b/gu,
+  // and removing it would let a location-plus-name question through the second pass. Every place word is
+  // listed lowercase, capitalised and in capitals ("RM 4 ms smith", "CHAIR 3 ms jones" stay refused).
+  /(?<!\b(?:[Bb]ed|[Bb]ay|[Rr]oom|[Rr]m|[Cc]ubicle|[Cc]ube|[Cc]ot|[Cc]hair|[Tt]rolley|[Rr]ecliner|[Ww]ard|[Uu]nit|BED|BAY|ROOM|RM|CUBICLE|CUBE|COT|CHAIR|TROLLEY|RECLINER|WARD|UNIT)\s*[:#.-]?\s*)\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b/gu,
 ];
 
 /** Words that follow "pt" or the diagnosis "MS" in a question, and never start a name. */

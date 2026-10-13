@@ -27,6 +27,9 @@ describe("AnswerProviderNotice", () => {
   });
 
   it("is mounted under the latest answer and on the Answer home, never in demo mode", () => {
+    // Source check as a stopgap: mounting the full ClinicalDashboard in each mode is too heavy for a unit
+    // test. Cost: harmless reformatting can break it, and it cannot tell live code from dead code; the
+    // Production UI tests cover the rendered notice.
     const source = readFileSync(resolve(process.cwd(), "src/components/ClinicalDashboard.tsx"), "utf8");
     expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(2);
     // Before the first question: on the shared home, only in Answer mode, never in demo mode.

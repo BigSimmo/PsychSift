@@ -116,7 +116,14 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
   });
 
   it("keeps a place number that looks like a millisecond reading (bed 4 ms smith)", () => {
-    for (const question of ["bed 4 ms smith clozapine", "ward 4 ms jones lithium", "Bed: 12 ms Smith"]) {
+    for (const question of [
+      "bed 4 ms smith clozapine",
+      "ward 4 ms jones lithium",
+      "Bed: 12 ms Smith",
+      "BED 4 ms smith clozapine",
+      "RM 4 ms smith clozapine",
+      "CHAIR 3 ms jones lithium",
+    ]) {
       expect(clinicalQuestionPatientDetail(question), question).not.toBeNull();
     }
     expect(clinicalQuestionPatientDetail("QTc 480 ms ECG monitoring")).toBeNull();
