@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { FormDetailPage } from "@/components/forms/form-detail-page";
+import { priorityFactBody } from "@/components/forms/form-priority-facts-section";
 import { getFormRecord } from "@/lib/forms";
 
 vi.mock("@/components/account-data-provider", () => ({
@@ -18,7 +19,7 @@ vi.mock("@/components/account-data-provider", () => ({
 }));
 
 describe("Form 1A priority facts", () => {
-  it("opens condensed fact detail and per-section Act detail sheets", async () => {
+  it("shows the fact wording in full on the card and opens per-section Act detail sheets", async () => {
     const user = userEvent.setup();
     const form = getFormRecord("form-1a");
     if (!form) throw new Error("Expected Form 1A");
@@ -33,11 +34,12 @@ describe("Form 1A priority facts", () => {
     expect(within(priorityFacts).getByText("Act sections")).toBeInTheDocument();
     expect(within(priorityFacts).getByText(/Authority under the Act/i)).toBeInTheDocument();
 
-    await user.click(within(priorityFacts).getByRole("button", { name: /Clock \/ review.*Open detail/i }));
-    const factSheet = await screen.findByTestId("form-priority-fact-sheet");
-    expect(factSheet).toHaveTextContent(/72 hours from referral/i);
-
-    await user.click(within(factSheet).getByRole("button", { name: /close/i }));
+    // The longer wording is on the card itself now: no "Tap for detail", no fact sheet.
+    expect(within(priorityFacts).queryByText("Tap for detail")).not.toBeInTheDocument();
+    expect(within(priorityFacts).queryByRole("button", { name: /Clock \/ review.*Open detail/i })).toBeNull();
+    expect(screen.queryByTestId("form-priority-fact-sheet")).not.toBeInTheDocument();
+    const clockBody = priorityFactBody(form, "clock")!.body;
+    expect(within(priorityFacts).getByText(clockBody)).toBeInTheDocument();
 
     await user.click(within(priorityFacts).getByRole("button", { name: /Section 26:/i }));
     const sectionSheet = await screen.findByTestId("form-act-section-sheet");
@@ -66,8 +68,7 @@ describe("Operational guidance review state", () => {
     expect(within(priorityFacts).queryByText(/Official form source/i)).not.toBeInTheDocument();
   });
 
-  it("repeats the caveat beside the full text in the detail sheet", async () => {
-    const user = userEvent.setup();
+  it("keeps the caveat beside the full text on the card", () => {
     const form = getFormRecord("form-3c");
     if (!form) throw new Error("Expected Form 3C");
 
@@ -77,17 +78,18 @@ describe("Operational guidance review state", () => {
       />,
     );
     const priorityFacts = screen.getByLabelText("Priority facts");
-    await user.click(within(priorityFacts).getByRole("button", { name: /Clock \/ review.*Open detail/i }));
-
-    const factSheet = await screen.findByTestId("form-priority-fact-sheet");
-    expect(factSheet).toHaveTextContent(/72 hours/i);
-    expect(factSheet).toHaveTextContent(/awaiting clinical review/i);
+    expect(priorityFacts).toHaveTextContent(/72 hours/i);
+    expect(priorityFacts).toHaveTextContent(/awaiting clinical review/i);
+    expect(
+      within(priorityFacts).getByText(
+        "Confirm against the current Act and approved form before clinical or legal use.",
+      ),
+    ).toBeInTheDocument();
   });
 });
 
 describe("Priority facts on forms without curated copy", () => {
-  it("drops the empty sub-line and only offers detail where there is more to show", async () => {
-    const user = userEvent.setup();
+  it("drops the empty sub-line and only prints longer wording where there is more to show", () => {
     // Form 4C's catalogue row is boilerplate: no indexedClock, and its clock prose is
     // the generic sentence. It is the shape 34 of the 47 archived forms have.
     const form = getFormRecord("transfer-order");
@@ -99,16 +101,14 @@ describe("Priority facts on forms without curated copy", () => {
     // "Not listed" read as a fact about the form rather than an absence of one.
     expect(within(priorityFacts).queryByText("Not listed")).not.toBeInTheDocument();
 
-    // The clock card's title is its whole body, so it must not promise detail.
-    expect(
-      within(priorityFacts).queryByRole("button", { name: /Clock \/ review.*Open detail/i }),
-    ).not.toBeInTheDocument();
+    // The clock fact's title is its whole body, so the body is not printed twice.
+    const clockTitle = (form.summaryCards ?? []).find((card) => card.id === "clock")?.title?.trim();
+    expect(clockTitle).toBeTruthy();
+    expect(within(priorityFacts).getAllByText(clockTitle!)).toHaveLength(1);
 
-    // The authority card composes maker + authorises + does-not-authorise, which is
-    // strictly more than its title — so every form gets a working popup here.
-    await user.click(within(priorityFacts).getByRole("button", { name: /Made by \/ authority.*Open detail/i }));
-    const factSheet = await screen.findByTestId("form-priority-fact-sheet");
-    expect(factSheet).toHaveTextContent(/Does not replace linked forms/i);
+    // The authority fact composes maker + authorises + does-not-authorise, which is
+    // strictly more than its title — so every form shows that wording in full.
+    expect(priorityFacts).toHaveTextContent(/Does not replace linked forms/i);
   });
 });
 

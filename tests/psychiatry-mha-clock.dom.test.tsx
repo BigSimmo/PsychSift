@@ -594,7 +594,7 @@ describe("Psychiatry hub · For a shift", () => {
     );
   });
 
-  it("keeps Safety plan and MHA forms out of the builders, and First Nations in them", () => {
+  it("keeps Safety plan, MHA forms and First Nations out of the builders", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
     const actions = within(screen.getByRole("list", { name: "Builders" }));
     expect(actions.queryByText("Medication")).toBeNull();
@@ -602,6 +602,8 @@ describe("Psychiatry hub · For a shift", () => {
     expect(actions.queryByText("Safety plan")).toBeNull();
     expect(actions.queryByText("MHA forms")).toBeNull();
     expect(screen.getByTestId("psychiatry-shift-safety-plan").getAttribute("href")).toBe("/safety-plan");
-    expect(actions.getByText("First Nations")).toBeTruthy();
+    // First Nations is listed once, in Sections (Clinical audit, 13 Oct 2026, item 15).
+    expect(actions.queryByText("First Nations")).toBeNull();
+    expect(screen.getByTestId("psychiatry-section-first-nations")).toBeTruthy();
   });
 });

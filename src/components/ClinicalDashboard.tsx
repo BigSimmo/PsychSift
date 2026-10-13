@@ -2778,6 +2778,17 @@ function ClinicalDashboardContent({
     ],
   );
   const answerProgressCompleted = answerProgressEvents.at(-1)?.stage === "complete";
+  // A failed documents search with nothing listed. The documents results own that
+  // message (one calm "not a reliable nothing found" state with Retry and Browse), so the
+  // generic red "Search unavailable" box is not stacked on top. When earlier matches are
+  // still listed they belong to the previous query, so the red box stays and says so.
+  const documentsSearchFailed = searchMode === "documents" && Boolean(error) && errorKind !== "no-results";
+  const documentsResultsOwnError =
+    documentsSearchFailed &&
+    activeModeResultKind === "documents" &&
+    modeSearchSubmitted &&
+    Boolean(query.trim()) &&
+    documentMatches.length === 0;
   const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
   const {
     showAuthPanel,
@@ -3317,7 +3328,7 @@ function ClinicalDashboardContent({
                       </>
                     }
                   />
-                ) : error ? (
+                ) : error && !documentsResultsOwnError ? (
                   <EmptyState
                     icon={CircleAlert}
                     title={activeModeResultKind === "answer" ? "Answer unavailable" : "Search unavailable"}
@@ -3516,7 +3527,16 @@ function ClinicalDashboardContent({
                         onDocumentFiltersApply={searchMode === "documents" ? handleDocumentFiltersApply : undefined}
                         showHome={searchMode === "documents" && !modeSearchSubmitted}
                         desktopComposerSlotId={desktopHomeComposerSlotId}
-                        searchFailed={searchMode === "documents" && Boolean(error) && errorKind !== "no-results"}
+                        searchFailed={documentsSearchFailed}
+                        searchFailureReason={documentsSearchFailed ? error : null}
+                        onRetrySearch={
+                          searchMode === "documents" && query.trim()
+                            ? () => {
+                                setError(null);
+                                void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
+                              }
+                            : undefined
+                        }
                       />
                     </>
                   )
