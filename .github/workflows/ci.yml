@@ -1929,9 +1929,15 @@ jobs:
       needs.changes.result == 'success' &&
       needs.static-pr.result == 'success' &&
       (needs.build.result == 'success' || needs.build.result == 'skipped') &&
-      (needs.ui-playwright-build.result == 'success' || needs.ui-playwright-build.result == 'skipped') &&
-      (needs.ui-critical.result == 'success' || needs.ui-critical.result == 'skipped')
-    needs: [changes, static-pr, build, ui-playwright-build, ui-critical]
+      (needs.ui-playwright-build.result == 'success' || needs.ui-playwright-build.result == 'skipped')
+    # Starts as soon as the shared Playwright build is ready, ALONGSIDE Production UI rather than
+    # after it. Waiting for Production UI bought nothing: these legs only read the shared build,
+    # and the run still fails on a red Production UI (it is required in its own right). Measured
+    # 2026-10-13: main run 38352161182 had the build ready at minute 4.1, but every leg waited until
+    # minute 15.2 for the three Chromium shards and the run ended at 34.1; dispatch runs
+    # 38369056741 and 38370421833 had one red Chromium shard, so the whole Firefox/WebKit matrix
+    # was skipped and its verdict deferred to another full round after the fix.
+    needs: [changes, static-pr, build, ui-playwright-build]
     runs-on: ubuntu-24.04
     # Per ENGINE, not for the whole matrix. Before 2026-09-07 one job ran
     # chromium-mockups + firefox + webkit sequentially under `workers: 1` /
@@ -1992,14 +1998,21 @@ jobs:
         # merge (main runs took 36-40 min). Tablet now splits four ways (~12 min
         # each by its new timing table) and webkit three ways (19.5 -> 13 min by
         # its existing table), so every tablet test runs and main finishes sooner.
+        #
+        # 2026-10-13: with the matrix no longer queued behind Production UI, desktop WebKit and
+        # Firefox were the slowest legs (main run 38352161182: webkit 17.2/13.0/14.2 min of tests,
+        # firefox 13.4/9.0/8.7). Both now split four ways, which brings them under the iPhone legs
+        # (their slowest single file, ui-smoke, is ~11 min and sets the floor).
         include:
           - { engine: chromium, project: chromium-mockups, shard: 1, total: 1 }
-          - { engine: firefox, project: firefox, shard: 1, total: 3 }
-          - { engine: firefox, project: firefox, shard: 2, total: 3 }
-          - { engine: firefox, project: firefox, shard: 3, total: 3 }
-          - { engine: webkit, project: webkit, shard: 1, total: 3 }
-          - { engine: webkit, project: webkit, shard: 2, total: 3 }
-          - { engine: webkit, project: webkit, shard: 3, total: 3 }
+          - { engine: firefox, project: firefox, shard: 1, total: 4 }
+          - { engine: firefox, project: firefox, shard: 2, total: 4 }
+          - { engine: firefox, project: firefox, shard: 3, total: 4 }
+          - { engine: firefox, project: firefox, shard: 4, total: 4 }
+          - { engine: webkit, project: webkit, shard: 1, total: 4 }
+          - { engine: webkit, project: webkit, shard: 2, total: 4 }
+          - { engine: webkit, project: webkit, shard: 3, total: 4 }
+          - { engine: webkit, project: webkit, shard: 4, total: 4 }
           - { engine: webkit, project: mobile-webkit, shard: 1, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 2, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 3, total: 5 }
@@ -2104,9 +2117,11 @@ jobs:
           # includes mockups, whose public flag is baked in, so it builds its own.
           # If the producer was out of scope, the wrapper also builds normally.
           PLAYWRIGHT_REUSE_BUILD: ${{ matrix.engine != 'chromium' && needs.ui-playwright-build.result == 'success' }}
-          # "true" only when this main push skipped Production UI because the identical tree already
-          # passed it on the merged PR (Main tree proof) — the same proof the primary path relies on.
-          UI_PROVEN_BY_PR: ${{ needs.changes.outputs.tree_proven_ui }}
+          # When UI changed, production Chromium is proven either by Production UI in this same run
+          # (it runs whenever UI changed and no proof exists, and the run fails if it fails) or, on a
+          # main push, by the merged PR's identical tree (Main tree proof). Either way this matrix
+          # need not repeat it.
+          UI_CHANGED: ${{ needs.changes.outputs.ui_changed }}
         run: |
           # Both paths below are exhaustive across playwright.config.ts projects
           # for their own path, and disjoint between engines. The fail-safe union
@@ -2114,9 +2129,9 @@ jobs:
           # vanish from CI silently, so
           # `tests/ci-browser-matrix-coverage.test.ts` re-derives both unions from
           # this file plus playwright.config.ts and fails closed on any drift.
-          if [ "${{ needs.changes.outputs.ui_changed }}" = "true" ] && { [ "${{ needs.ui-critical.result }}" = "success" ] || [ "$UI_PROVEN_BY_PR" = "true" ]; }; then
-            # Production Chromium already passed — in this run, or on the merged PR's
-            # byte-identical tree. Keep mockup Chromium plus the cross-browser
+          if [ "$UI_CHANGED" = "true" ]; then
+            # Production Chromium is proven by Production UI in this run, or on the merged
+            # PR's byte-identical tree. Keep mockup Chromium plus the cross-browser
             # backstop without repeating it.
             case "$ENGINE" in
               chromium) PROJECTS="--project=chromium-mockups" ;;

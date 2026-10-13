@@ -278,16 +278,20 @@ describe("main tree proof workflow wiring", () => {
     ]) {
       expect(ifOf(job)).not.toContain("tree_proven");
     }
-    // The matrix tolerates the proof-skipped Production UI and still runs on main...
-    expect(ifOf("release-browser-matrix")).toContain("needs.ui-critical.result == 'skipped'");
+    // The matrix does not wait on Production UI at all (it runs alongside it), so a proof-skipped
+    // Production UI cannot hold it back, and it still runs on main...
+    expect(ifOf("release-browser-matrix")).not.toContain("ui-critical");
+    expect(jobs["release-browser-matrix"].needs).not.toContain("ui-critical");
     expect(ifOf("release-browser-matrix")).toContain("github.ref == 'refs/heads/main'");
-    // ...and takes its primary (mockups-only Chromium) path when the PR proved production Chromium,
+    // ...and takes its primary (mockups-only Chromium) path whenever UI changed, because production
+    // Chromium is then proven by Production UI in the same run or by the merged PR's identical tree,
     // instead of re-running production Chromium unsharded on the fail-safe path.
     const matrixStep = (jobs["release-browser-matrix"].steps as Step[]).find(
       (step) => step.name === "Full browser UI matrix",
     );
-    expect(matrixStep?.env?.UI_PROVEN_BY_PR).toBe("${{ needs.changes.outputs.tree_proven_ui }}");
-    expect(matrixStep?.run).toContain('[ "$UI_PROVEN_BY_PR" = "true" ]');
+    expect(matrixStep?.env?.UI_CHANGED).toBe("${{ needs.changes.outputs.ui_changed }}");
+    expect(matrixStep?.run).toContain('if [ "$UI_CHANGED" = "true" ]; then');
+    expect(ifOf("ui-critical")).toContain("needs.changes.outputs.ui_changed == 'true'");
   });
 
   it("keeps the scheduled full run and the push-run concurrency unchanged", () => {
