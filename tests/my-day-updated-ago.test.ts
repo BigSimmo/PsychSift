@@ -17,9 +17,20 @@ describe("myDayUpdatedAgo", () => {
     expect(myDayUpdatedAgo(after(59), at, "10:05")).toBe("59 min ago");
   });
 
-  it("gives the clock time once the data is an hour old", () => {
-    expect(myDayUpdatedAgo(after(60), at, "10:05")).toBe("at 10:05");
+  it("gives the clock time and date once the data is an hour old", () => {
+    expect(myDayUpdatedAgo(after(60), at, "10:05")).toBe("at 10:05, Tue 13 Oct");
+    // A day later the date is what tells yesterday's 10:05 apart from today's.
+    expect(myDayUpdatedAgo(after(24 * 60), at, "10:05")).toBe("at 10:05, Tue 13 Oct");
     expect(myDayUpdatedAgo(after(60), at, null)).toBe("over an hour ago");
+  });
+
+  it("dates the moment on the Perth calendar, not UTC", () => {
+    // 23:30 Perth on Mon 12 Oct is still 12 Oct, though it is 15:30Z.
+    const late = Date.parse("2026-10-12T15:30:00Z");
+    expect(myDayUpdatedAgo(new Date(late + 90 * 60_000), late, "23:30")).toBe("at 23:30, Mon 12 Oct");
+    // 07:30 Perth on Tue 13 Oct is 23:30Z on 12 Oct.
+    const early = Date.parse("2026-10-12T23:30:00Z");
+    expect(myDayUpdatedAgo(new Date(early + 90 * 60_000), early, "07:30")).toBe("at 07:30, Tue 13 Oct");
   });
 
   it("falls back to the clock time, or just now, with no moment recorded", () => {

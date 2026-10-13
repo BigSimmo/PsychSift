@@ -9,6 +9,7 @@ import { cn } from "@/components/ui-primitives";
 import { appModeDefinition } from "@/lib/app-modes";
 import { formatMyDayDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
+import { formatPerthDay, perthDateOf } from "@/lib/perth-time";
 
 /*
  * The small pieces the My Day page, its dashboard and the home card share.
@@ -32,14 +33,15 @@ export function useMyDayNow(nowProp?: Date): Date {
 /**
  * How old My Day's data is, for the "Updated … · On Call, Roster" line (Ward Flow review item 5,
  * owner approved 12 Oct 2026): "just now", then "4 min ago", then the clock time once it is an
- * hour old. `at` is when the sources last answered; `clock` is that moment as "14:05".
+ * hour old, with its day ("at 14:05, Tue 13 Oct"). `at` is when the sources last answered; `clock` is that moment as "14:05".
  */
 export function myDayUpdatedAgo(now: Date, at: number | null, clock: string | null): string {
   if (at === null) return clock ? `at ${clock}` : "just now";
   const minutes = Math.floor((now.getTime() - at) / 60_000);
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
-  return clock ? `at ${clock}` : "over an hour ago";
+  // Past the hour the clock alone is ambiguous (yesterday's 14:05 reads like today's), so give the day too.
+  return clock ? `at ${clock}, ${formatPerthDay(perthDateOf(at))}` : "over an hour ago";
 }
 
 export function myDayModeLabel(mode: MyDaySourceMode): string {
