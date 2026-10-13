@@ -425,7 +425,9 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   }));
   if (loaded.key !== loadedKey) {
     const ready = state.status === "ready";
-    setLoaded({ key: loadedKey, at: ready ? perthTimeOf(now) : null, atMs: ready ? now.getTime() : null });
+    // The minute tick can be up to a minute stale, so record the real moment unless a clock is injected.
+    const answered = nowProp ?? new Date();
+    setLoaded({ key: loadedKey, at: ready ? perthTimeOf(answered) : null, atMs: ready ? answered.getTime() : null });
   }
   // "Updated 4 min ago": re-read on the minute tick, so the age keeps moving while the time stays.
   const updated = loaded.at ? myDayUpdatedAgo(now, loaded.atMs, loaded.at) : null;
