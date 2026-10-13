@@ -26,6 +26,7 @@ export function CompareCatalogPicker({
   title,
   titleId,
   starters,
+  hideActions = false,
 }: {
   items: readonly CompareCatalogItem[];
   query: string;
@@ -44,6 +45,12 @@ export function CompareCatalogPicker({
   title?: string;
   titleId?: string;
   starters?: readonly CompareStarterChip[];
+  /**
+   * Leave Done and Reset out of the body. The phone sheet passes them as its pinned
+   * footer instead (see `ComparePickerActions`), so they stay on screen while the list
+   * scrolls above them.
+   */
+  hideActions?: boolean;
 }) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -230,31 +237,37 @@ export function CompareCatalogPicker({
           })
         )}
       </div>
-      {onDone || onReset ? (
-        <div className="flex items-center justify-end gap-2">
-          {onReset ? (
-            <button
-              type="button"
-              onClick={onReset}
-              className="mr-auto inline-flex min-h-tap items-center rounded-lg px-2 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]"
-            >
-              Reset
-            </button>
-          ) : null}
-          {onDone ? (
-            <button
-              type="button"
-              onClick={onDone}
-              className="inline-flex min-h-tap items-center justify-center rounded-lg bg-[color:var(--command)] px-6 text-sm font-bold text-[color:var(--command-contrast)] transition-colors hover:bg-[color:var(--command-hover)]"
-            >
-              Done
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {!hideActions ? <ComparePickerActions onDone={onDone} onReset={onReset} /> : null}
       <p className="sr-only" aria-live="polite">
         {announcement ?? ""}
       </p>
+    </div>
+  );
+}
+
+/** Done and Reset for the compare picker: inline on wider screens, the pinned sheet footer on phones. */
+export function ComparePickerActions({ onDone, onReset }: { onDone?: () => void; onReset?: () => void }) {
+  if (!onDone && !onReset) return null;
+  return (
+    <div className="flex items-center justify-end gap-2">
+      {onReset ? (
+        <button
+          type="button"
+          onClick={onReset}
+          className="mr-auto inline-flex min-h-tap items-center rounded-lg px-2 text-sm font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text-heading)]"
+        >
+          Reset
+        </button>
+      ) : null}
+      {onDone ? (
+        <button
+          type="button"
+          onClick={onDone}
+          className="inline-flex min-h-tap items-center justify-center rounded-lg bg-[color:var(--command)] px-6 text-sm font-bold text-[color:var(--command-contrast)] transition-colors hover:bg-[color:var(--command-hover)]"
+        >
+          Done
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -267,8 +267,12 @@ describe("calculator mode copy", () => {
 
     for (const notice of screen.getAllByText(/Calculator answers remain in this browser session/)) {
       expect(notice).toHaveTextContent(
-        "Calculator answers remain in this browser session and are not intentionally submitted by this calculator interface. Application telemetry and clinical-record documentation are governed separately.",
+        "Calculator answers remain in this browser session and are not intentionally submitted by this calculator interface. The app’s usage logs, and anything you document in the clinical record, are covered separately.",
       );
     }
+    // The calculators still in review, in plain words rather than "governance-gated".
+    expect(
+      screen.getAllByText(/more calculators? (?:is|are) waiting for version, rights and workflow checks/)[0],
+    ).toBeInTheDocument();
   });
 });

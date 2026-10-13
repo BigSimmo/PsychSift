@@ -294,7 +294,8 @@ function CardCell({
         <Icon size={13} strokeWidth={1.9} aria-hidden="true" />
         <Eyebrow tone={tone === "muted" ? "neutral" : tone}>{eyebrow}</Eyebrow>
       </div>
-      <p className="line-clamp-2">{text}</p>
+      {/* The warning cell is a safety cue: never clamped, matching the compact row (October 2026). */}
+      <p className={tone === "warning" ? undefined : "line-clamp-2"}>{text}</p>
     </div>
   );
 }

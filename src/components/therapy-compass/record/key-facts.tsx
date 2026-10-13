@@ -21,8 +21,13 @@ const ICONS: Record<TherapyKeyFactId, LucideIcon> = {
 const cardSurface =
   "flex min-h-[5.75rem] flex-col rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-1.5 shadow-[var(--shadow-inset)] sm:min-h-[7rem] sm:p-3";
 
+// Phone: Cautions carries a whole sentence, so it takes the full row; Suits then takes the
+// last row so the three glance tiles do not leave a hole. Wider screens keep one row of four.
+const PHONE_FULL_ROW: ReadonlySet<TherapyKeyFactId> = new Set(["cautions", "suits"]);
+
 function FactCard({ card, onOpen }: { card: TherapyKeyFactCard; onOpen?: () => void }) {
   const Icon = ICONS[card.id];
+  const surface = cn(cardSurface, PHONE_FULL_ROW.has(card.id) && "col-span-2 sm:col-span-1");
   const warning = card.id === "cautions";
   const isInteractive = Boolean(card.hasDetail && onOpen);
 
@@ -64,7 +69,7 @@ function FactCard({ card, onOpen }: { card: TherapyKeyFactCard; onOpen?: () => v
 
   if (!isInteractive) {
     return (
-      <article className={cardSurface}>
+      <article className={surface}>
         {header}
         {body}
         <CardFootnote />
@@ -73,7 +78,7 @@ function FactCard({ card, onOpen }: { card: TherapyKeyFactCard; onOpen?: () => v
   }
 
   return (
-    <article className={cardSurface}>
+    <article className={surface}>
       <button
         type="button"
         onClick={onOpen}

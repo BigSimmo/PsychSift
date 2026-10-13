@@ -87,8 +87,11 @@ function DeliverySection({ therapy }: { therapy: Therapy }) {
  * it is appended only when it adds something new, so the block does not echo
  * itself. `alternatives` is deliberately not rendered: it is byte-identical to
  * `limitations` in every record in the catalogue.
+ *
+ * Rendered by the detail screen directly under the key-fact tiles, not at the foot of
+ * the body, and never clamped: it is a safety cue and reads in full without a tap.
  */
-function SafetySection({ therapy }: { therapy: Therapy }) {
+export function TherapySafetySection({ therapy }: { therapy: Therapy }) {
   const cautions = therapy.contraindicationsOrCautions?.trim() ?? "";
   const limitations = therapy.limitations?.trim() ?? "";
   const text = limitations && !cautions.includes(limitations) ? `${cautions} ${limitations}`.trim() : cautions;
@@ -102,7 +105,7 @@ function SafetySection({ therapy }: { therapy: Therapy }) {
       </span>
       <div className="min-w-0 flex-1">
         <h2 className="mb-1 text-sm font-semibold text-[color:var(--warning-text)]">Safety &amp; cautions</h2>
-        {text ? <ProseBlock text={text} label="Safety and cautions" tone="warning" /> : null}
+        {text ? <ProseBlock text={text} label="Safety and cautions" tone="warning" clamp={false} /> : null}
         {warnings.length ? (
           <ul className="m-0 mt-2.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-[color:var(--warning-text)]">
             {warnings.map((warning) => (
@@ -151,7 +154,6 @@ export function TherapyRecordSections({ therapy }: { therapy: Therapy }) {
         <TextSection icon={TriangleAlert} title="Common pitfalls" body={therapy.commonPitfalls} />
         <TextSection icon={ArrowUpRight} title="Stepping up or switching" body={therapy.homework} />
       </div>
-      <SafetySection therapy={therapy} />
     </div>
   );
 }
