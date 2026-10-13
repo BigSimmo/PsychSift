@@ -1,0 +1,68 @@
+/* Reading aids from the Ward Flow review (owner decision 12 Oct 2026): paler
+   fades and the Bright light setting. Imported after globals.css in the root
+   layout so these rules keep the last word in the cascade. */
+
+/* Dimmed content takes a paler colour, never opacity, so the text keeps its
+   contrast (opacity multiplies against whatever sits behind it). Put
+   `data-dim` on the row or cell; status colours inside it go quiet too. */
+[data-dim] {
+  --dim-ink: var(--text-muted);
+  --text-heading: var(--dim-ink);
+  --text: var(--dim-ink);
+  --work-ink: var(--dim-ink);
+  --clinical-accent: var(--dim-ink);
+  --mode-identity: var(--dim-ink);
+  --mode-identity-soft: var(--surface-subtle);
+  --mode-identity-border: var(--border);
+  --mode-identity-contrast: var(--surface);
+  --success: var(--dim-ink);
+  --success-text: var(--dim-ink);
+  --warning: var(--dim-ink);
+  --info: var(--dim-ink);
+  --danger-text: var(--dim-ink);
+  --danger-bg: var(--surface-subtle);
+  --danger-border: var(--border);
+  --info-text: var(--dim-ink);
+  --info-bg: var(--surface-subtle);
+  --info-border: var(--border);
+  --warning-text: var(--dim-ink);
+  --warning-bg: var(--surface-subtle);
+  color: var(--dim-ink);
+}
+
+/* Bright light (Settings, App preferences): for glare on a ward or in sun.
+   Owner decision 12 Oct 2026, from the Ward Flow review. Solid surfaces with
+   no glass or blur, darker lines and secondary text, body text one step
+   heavier. It is a light-only look: turning it on pins light mode, and it
+   stands down if the reader later picks dark. The selector out-ranks the
+   `.ckb-v2.ckb-v2` token layer so the overrides win. */
+html.ckb-v2.ckb-v2[data-bright]:not(.dark) {
+  --border: var(--neutral-400);
+  --border-strong: var(--neutral-500);
+  --neutral-300: var(--neutral-400);
+  --text-muted: var(--text);
+  --decoration-soft: var(--neutral-500);
+  --surface-glass: var(--surface-raised);
+}
+html.ckb-v2.ckb-v2[data-bright]:not(.dark) [data-dim] {
+  /* Bright light makes secondary text full strength, so a fade needs its
+     own paler ink to stay distinct. */
+  --dim-ink: var(--neutral-500);
+}
+html[data-bright]:not(.dark) body {
+  font-weight: 500;
+}
+html[data-bright]:not(.dark) *,
+html[data-bright]:not(.dark) *::before,
+html[data-bright]:not(.dark) *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html[data-bright]:not(.dark) .work-band,
+html[data-bright]:not(.dark) .universal-header {
+  background: var(--surface-raised) !important;
+  background-image: none !important;
+}
+html[data-bright]:not(.dark) .work-card {
+  box-shadow: none;
+}

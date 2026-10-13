@@ -4,7 +4,7 @@ import { Briefcase, CalendarDays, CalendarRange, Moon, Printer, WifiOff } from "
 import Link from "next/link";
 
 import { focusRing } from "@/components/card-recipes";
-import { onCallActionLink, onCallChipShape, onCallChipTap, onCallLeadingIcon } from "@/components/on-call/kit/calm";
+import { onCallActionLink, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallRow } from "@/components/on-call/kit/grouped-list";
 import { NowShiftLists } from "@/components/on-call/now/shift-lists";
 import { ON_CALL_FIND_DOWNTIME_HREF, ON_CALL_ON_SITE_HREF } from "@/components/on-call/on-call-section-identity";
@@ -15,11 +15,11 @@ import { onCallFirstNightProgress } from "@/lib/on-call/first-night";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import type { OnCallShiftContext } from "@/lib/on-call/shift-context";
 
-/** One situation chip: a ladder the reader or the hospital recorded. */
+/** One situation row: a ladder the reader or the hospital recorded. */
 export type OnCallSituation = { readonly id: string; readonly title: string; readonly href: string };
 
 /**
- * "Who do I call now?" (mock-up v10 Now): one chip per recorded situation,
+ * "Who do I call now?" (mock-up v10 Now): one row per recorded situation,
  * each opening its ladder, and "Escalation ladder" at the right. Situations come
  * only from ladders that exist (the reader's own Playbook and the hospital's);
  * with none, the action still opens the page that says so.
@@ -56,17 +56,15 @@ export function NowWhoToCall({
         </p>
       ) : null}
       {situations.length > 0 ? (
-        <ul role="list" className="flex min-w-0 flex-wrap gap-x-2 px-1">
+        // One grouped list, a row per situation (polish pass, 12 Oct 2026): chips stacked unevenly at 320px.
+        <ul role="list" className="work-card min-w-0">
           {situations.map((situation) => (
-            <li key={situation.id} className="min-w-0">
-              <Link
-                href={situation.href}
-                data-testid={`on-call-now-situation-${situation.id}`}
-                className={cn(onCallChipTap, focusRing, "rounded-md no-underline")}
-              >
-                <span className={onCallChipShape}>{situation.title}</span>
-              </Link>
-            </li>
+            <OnCallRow
+              key={situation.id}
+              title={situation.title}
+              href={situation.href}
+              testId={`on-call-now-situation-${situation.id}`}
+            />
           ))}
         </ul>
       ) : null}
@@ -75,6 +73,9 @@ export function NowWhoToCall({
 }
 
 /**
+ * Unused since 12 Oct 2026: Now dropped this list (Work mode simplify plan, owner approval) and kept
+ * only the shift lists, in the shift tools card. Kept under the 30-day dead-code rule.
+ *
  * "More for this shift" (mock-up v10 Now): the shift lists with their bar,
  * Systems down, First night with its real tick count, and the one-line On site
  * link to Admin. Handover and Shift pulse moved up the page as their own

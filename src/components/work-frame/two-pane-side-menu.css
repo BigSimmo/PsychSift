@@ -251,6 +251,17 @@
   white-space: nowrap;
 }
 
+/* A recent page's section ("Roster", "DSM-5"), quiet beside its name. */
+.two-pane-menu__meta {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .two-pane-menu__row--danger,
 .two-pane-menu__row--danger > svg {
   color: var(--danger);

@@ -242,10 +242,9 @@ describe("On Call mockup conformance ledger", () => {
       "on-call-now-hospital",
       "on-call-now-emergency",
       "on-call-now-right-now",
-      "on-call-now-footer",
-      "on-call-now-footer-shifts",
-      "on-call-now-footer-card",
-      "on-call-now-footer-calendar",
+      // "More for this shift" (the footer and its My shifts, Pocket card and Calendar rows) left Now in
+      // the Work mode simplify plan (owner approval 12 Oct 2026); the shift tools card holds what stayed.
+      "on-call-now-shift-tools",
       // Coming up (`on-call-home-upcoming`) left the On Call boards when
       // `/on-call/education` hard-redirected to Teaching Week — see the
       // deviation rows in mockup-conformance.md.

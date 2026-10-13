@@ -220,7 +220,8 @@ describe("mobile composer reserve contract", () => {
 
   it("keeps differentials compare clearance shared across hosts", () => {
     expect(mobileComposerVisibleReserve.differentialsCompare).toBe(mobileComposerDifferentialsCompareReserve);
-    expect(mobileComposerDifferentialsCompareReserve).toContain("12.5rem");
+    // The shared Compare tray is one row tall, the same geometry as Therapy's.
+    expect(mobileComposerDifferentialsCompareReserve).toContain("9rem");
     expect(mobileComposerDifferentialsCompareReserve).toContain("var(--safe-area-bottom)");
     expect(mobileComposerDifferentialsCompareReserve).toContain("var(--keyboard-height, 0px)");
     expect(mobileComposerDifferentialsCompareReserve).not.toContain("env(safe-area-inset-bottom)");

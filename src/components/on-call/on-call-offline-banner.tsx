@@ -1,9 +1,9 @@
 "use client";
 
-import { CloudOff } from "lucide-react";
+import { CloudOff, WifiOff } from "lucide-react";
 
 import { cn } from "@/components/ui-primitives";
-import { formatClinicalDate } from "@/lib/source-metadata";
+import { savedLine } from "@/lib/offline-line";
 
 export interface OnCallOfflineBannerProps {
   /** ISO timestamp of when the shown copy was cached, or `null` if unknown. */
@@ -16,7 +16,9 @@ export interface OnCallOfflineBannerProps {
 
 /**
  * Shown when contacts render from the offline cache rather than a live fetch
- * (spec §6, §8.5). Names the date the saved copy was taken.
+ * (spec §6, §8.5). Names when the saved copy was taken, in the one wording the
+ * whole app uses for a saved copy ("Offline, showing what was saved at 19:02";
+ * an earlier day is named too).
  *
  * The visible banner is deliberately NOT itself a live region — no `role`,
  * no `aria-live` on this element — because the page can mount it already
@@ -31,11 +33,8 @@ export function OnCallOfflineBanner({
   reason = "offline",
   testId = "on-call-offline-banner",
 }: OnCallOfflineBannerProps) {
-  const savedLabel = savedAt ? formatClinicalDate(savedAt) : "an earlier date";
-  const message =
-    reason === "failed"
-      ? `Couldn't reach the server. Showing a saved copy from ${savedLabel}.`
-      : `You are offline. Showing a saved copy from ${savedLabel}.`;
+  const message = savedLine({ reason, savedAt });
+  const Icon = reason === "failed" ? CloudOff : WifiOff;
 
   return (
     <>
@@ -45,7 +44,7 @@ export function OnCallOfflineBanner({
           "flex min-h-tap items-center gap-2 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-2 text-sm font-semibold text-[color:var(--warning)]",
         )}
       >
-        <CloudOff className="size-icon-sm shrink-0" aria-hidden />
+        <Icon className="size-icon-sm shrink-0" aria-hidden />
         <span>{message}</span>
       </div>
       <span data-testid={`${testId}-announcement`} role="status" aria-live="polite" className="sr-only">

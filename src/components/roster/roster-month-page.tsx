@@ -1,10 +1,12 @@
 "use client";
 
-import { Clock, FileUp, Phone, Plus, TriangleAlert, Users } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ChevronRight, Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 
+import { focusRing } from "@/components/card-recipes";
 import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
@@ -17,8 +19,8 @@ import {
   WorkGlassButton,
   WorkIconRow,
   WorkSectionLabel,
-  WorkTag,
 } from "@/components/mode-kit/work";
+import { cn } from "@/components/ui-primitives";
 import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-calendar-entries";
 import { monthGridRange, monthKeyOf, shiftMonth } from "@/lib/calendar/month-grid";
 import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
@@ -66,6 +68,12 @@ import { useRosterSettings } from "./use-roster-settings";
 import { useRosterShifts } from "./use-roster-shifts";
 import { useRosterRead, useRosterTeamRules, useRosterTeams } from "./use-roster-team";
 
+// Open shifts reads every team's list, so its Month row loads only after the page (12 Oct 2026).
+const OpenShiftsFitLine = dynamic(
+  () => import("@/components/open-shifts/open-shifts-fit-line").then((module) => module.OpenShiftsFitLine),
+  { ssr: false },
+);
+
 /**
  * Roster's Month tab (work-mode redesign, owner request 6 Oct 2026; mockup
  * `rost_month`). What needs you first (your next shift, a rest warning, a
@@ -83,6 +91,9 @@ const LOADED_PAST_DAYS = 21;
 /** Team rules look back up to 21 days from a shift (see roster-shifts-page). */
 const TEAM_RULE_LOOKBACK_DAYS = 21;
 const AHEAD_DAYS = 14;
+
+/** Rows in Coming up: shifts, a run of nights and leave together. */
+const COMING_UP_ROWS = 3;
 
 function maxDate(a: string, b: string): string {
   return a > b ? a : b;
@@ -127,7 +138,10 @@ function MonthLoading() {
   );
 }
 
-/** The four kind columns, then Days off and Public holidays worked (owner idea 9). */
+/**
+ * The month's counts as one line: "October: 9 day, 4 night, 4 on call, 14 off". Kinds with none
+ * are left out; Hours and rest has the full counts (Work mode simplify plan, 12 Oct 2026).
+ */
 function MonthTotalsCard({
   totals,
   partial,
@@ -138,49 +152,44 @@ function MonthTotalsCard({
   readonly month: string;
 }) {
   const atLeast = partial ? "at least " : "";
+  const monthName = new Intl.DateTimeFormat("en-AU", { month: "long", timeZone: "UTC" }).format(
+    new Date(`${month}-01T00:00:00Z`),
+  );
   const kinds: readonly [ShiftKind & keyof MonthTotals, number][] = [
     ["day", totals.day],
     ["evening", totals.evening],
     ["night", totals.night],
     ["on_call", totals.on_call],
   ];
-  const monthName = new Intl.DateTimeFormat("en-AU", { month: "long", timeZone: "UTC" }).format(
-    new Date(`${month}-01T00:00:00Z`),
-  );
+  const worked = kinds.filter(([, count]) => count > 0);
   return (
     <WorkCard as="section" aria-label={`${monthName} totals`} testId="roster-month-totals">
-      <dl className="m-0 grid grid-cols-4 px-1 pb-1.5 pt-2.5 text-center">
-        {kinds.map(([kind, count]) => (
-          <div key={kind} className="grid gap-0.5">
-            <dt className="text-3xs font-semibold text-[color:var(--text-muted)]">{SHIFT_KIND_LABEL[kind]}</dt>
-            <dd className="nums m-0 text-lg font-bold text-[color:var(--text-heading)]">
-              <span className="sr-only">{atLeast}</span>
-              {count}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <dl className="m-0 grid grid-cols-2 border-t border-[color:var(--border)] px-1 pb-2.5 pt-2 text-center">
-        <div className="grid gap-0.5">
-          <dt className="text-3xs font-semibold text-[color:var(--text-muted)]">Days off</dt>
-          <dd className="nums m-0 text-lg font-bold text-[color:var(--text-heading)]" data-testid="roster-month-off">
+      <Link
+        href="/roster?view=hours"
+        className={cn(
+          focusRing,
+          "flex min-h-12 w-full min-w-0 items-center gap-2.5 px-3.5 py-2 text-sm-minus text-[color:var(--text-heading)] no-underline",
+        )}
+      >
+        <span className="nums min-w-0 flex-1">
+          <span className="font-bold">{`${monthName}: `}</span>
+          {partial ? <span className="sr-only">{atLeast}</span> : null}
+          {worked.map(([kind, count]) => `${count} ${SHIFT_KIND_LABEL[kind].toLowerCase()}`).join(", ")}
+          {worked.length ? ", " : ""}
+          <span data-testid="roster-month-off">
             {partial ? <span className="sr-only">at most </span> : null}
-            {totals.off}
-          </dd>
-        </div>
-        <div className="grid gap-0.5">
-          <dt className="text-3xs font-semibold text-[color:var(--text-muted)]">Public holidays worked</dt>
-          <dd
-            className="nums m-0 text-lg font-bold text-[color:var(--text-heading)]"
-            data-testid="roster-month-holidays"
-          >
-            <span className="sr-only">{atLeast}</span>
-            {totals.holidaysWorked}
-          </dd>
-        </div>
-      </dl>
+            {`${totals.off} off`}
+          </span>
+          {totals.holidaysWorked > 0 ? (
+            <span data-testid="roster-month-holidays">
+              {`, ${atLeast}${totals.holidaysWorked} public ${totals.holidaysWorked === 1 ? "holiday" : "holidays"} worked`}
+            </span>
+          ) : null}
+        </span>
+        <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
+      </Link>
       {totals.countedFrom || partial ? (
-        <p className="m-0 border-t border-[color:var(--border)] px-3 py-2 text-center text-2xs text-[color:var(--text-muted)]">
+        <p className="m-0 border-t border-[color:var(--border)] px-3.5 py-2 text-2xs text-[color:var(--text-muted)]">
           {[
             totals.countedFrom
               ? `Counted from ${formatPerthDay(totals.countedFrom)}, as far back as your roster loads.`
@@ -367,23 +376,44 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
                 : `${SHIFT_KIND_LABEL[kind]} today`
               : date === addDaysToDate(today, 1)
                 ? `${SHIFT_KIND_LABEL[kind]} tomorrow`
-                : "Next shift";
-          const place = leadDisplay.workplace ?? leadDisplay.location;
+                : `${SHIFT_KIND_LABEL[kind]} ${dayWords(date)}`;
           const tag = onNow
             ? `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`
-            : `In ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
+            : `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
+          // One slim line: My Day and On Call already show this shift in full (Work mode simplify plan,
+          // 12 Oct 2026). Tapping it opens the day; Who is on sits beside it, one tap from Team.
           return (
-            <WorkDateRow
-              month={weekdayOf(date)}
-              day={Number(date.slice(8, 10))}
-              title={title}
-              sub={[shiftSpan(leadDisplay), onNow || date === today ? null : SHIFT_KIND_LABEL[kind], place]
-                .filter(Boolean)
-                .join(" · ")}
-              end={<WorkTag>{tag}</WorkTag>}
-              onClick={() => openDay(date)}
-              testId="roster-month-lead"
-            />
+            <div className="flex min-w-0 items-stretch">
+              <button
+                type="button"
+                onClick={() => openDay(date)}
+                data-testid="roster-month-lead"
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 min-w-0 flex-1 items-center gap-2.5 px-3.5 py-2 text-left text-[color:var(--text-heading)]",
+                )}
+              >
+                <RosterShiftChip kind={kind} />
+                <span className="grid min-w-0 flex-1">
+                  <span className="truncate text-sm-minus font-bold">{title}</span>
+                  <span className="nums text-2xs text-[color:var(--text-muted)]">{`${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
+                </span>
+                <span className="nums shrink-0 text-2xs font-bold text-[color:var(--mode-identity)]">{tag}</span>
+                <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
+              </button>
+              <Link
+                href="/roster/team"
+                data-testid="roster-month-who"
+                className={cn(
+                  focusRing,
+                  "flex min-h-12 shrink-0 items-center gap-1.5 border-l border-[color:var(--work-line)] px-3.5 text-xs font-bold text-[color:var(--mode-identity)]",
+                )}
+              >
+                <Users aria-hidden="true" className="size-icon-sm" />
+                {/* Icon only on the narrowest phones, so the shift line keeps to one line. */}
+                <span className="max-[23.75rem]:sr-only">Who is on</span>
+              </Link>
+            </div>
           );
         })()
       : null;
@@ -403,15 +433,6 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           <WorkCard>
             {leadRow}
             {restRow}
-            {/* Today's two buttons, folded into Month with the Today page (owner decision, 11 Oct 2026). */}
-            <div className="flex flex-wrap gap-2 px-4 pb-3.5 pt-1" data-testid="roster-month-lead-actions">
-              <WorkButton variant="secondary" icon={Users} href="/roster/team">
-                Who is on
-              </WorkButton>
-              <WorkButton variant="secondary" icon={Phone} href="/on-call/contacts">
-                Phone numbers
-              </WorkButton>
-            </div>
           </WorkCard>
         ) : null}
         {waitingSwap ? (
@@ -536,18 +557,24 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           </li>
         ),
       });
-    // Stable sort: on the same day, a shift stays ahead of the leave that follows it.
+    // Stable sort: on the same day, a shift stays ahead of the leave that follows it. Only the next
+    // three show: the calendar above has the month (Work mode simplify plan, 12 Oct 2026).
+    for (const edge of edges)
+      rows.push({
+        date: edge.date,
+        node: (
+          <li key={`${edge.entry.id}:${edge.edge}`}>
+            <RosterEntryEdgeRow edge={edge} />
+          </li>
+        ),
+      });
     rows.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
+    rows.splice(COMING_UP_ROWS);
     return (
       <>
         <WorkSectionLabel>Coming up</WorkSectionLabel>
         <WorkCard as="ul" testId="roster-month-coming">
           {rows.map((row) => row.node)}
-          {edges.map((edge) => (
-            <li key={`${edge.entry.id}:${edge.edge}`}>
-              <RosterEntryEdgeRow edge={edge} />
-            </li>
-          ))}
         </WorkCard>
       </>
     );
@@ -674,6 +701,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
         </div>
         <div className="grid min-w-0 gap-2.25">
           {comingUp()}
+          <OpenShiftsFitLine />
           <MonthTotalsCard totals={totals} partial={partial} month={month} />
           {shifts.sample ? null : (
             <p className="m-0 px-1 text-center text-2xs font-medium text-[color:var(--text-muted)]">

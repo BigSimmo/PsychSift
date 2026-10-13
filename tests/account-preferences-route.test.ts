@@ -286,6 +286,14 @@ describe("PUT /api/account/preferences work stage", () => {
     expect(database.currentPreferences()).toMatchObject({ workStage: null, ranzcpStage: null });
   });
 
+  it("saves Bright light alone and inside the full first-sync preferences", async () => {
+    const database = mockPreferencesRoute(null);
+    const { PUT } = await import("@/app/api/account/preferences/route");
+    expect((await PUT(put({ ...DEFAULT_PREFERENCES, brightLight: false }))).status).toBe(200);
+    expect((await PUT(put({ brightLight: true }))).status).toBe(200);
+    expect(database.currentPreferences()).toMatchObject({ brightLight: true });
+  });
+
   it.each([
     ["an unknown stage", { workStage: "chief" }],
     ["a RANZCP stage out of range", { ranzcpStage: 4 }],

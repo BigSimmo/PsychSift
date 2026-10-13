@@ -240,22 +240,36 @@ describe("SearchResultsHeaderBand", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  // The accent was first an absolutely-positioned bar inside an overflow:hidden
-  // rounded card, so the corner arc sliced its ends; then the card's own
-  // border-top; and now an 18px lead mark inside the padding, because at 58px a
-  // line across the full width reads as a divider between the composer and the
-  // results rather than as the band's accent. Still in flow, never absolute —
-  // that is what the clipping fix bought and it must not be spent again.
-  it("carries the accent as an in-flow lead rule, not a clipped overlay bar", () => {
+  // One plain line since 12 Oct 2026: a healthy search draws no accent and no
+  // card, so the count reads like a Work section header. The band keeps a
+  // transparent border so forced colours can still draw its edge. Nothing is
+  // absolutely positioned, so the corner can never clip a mark.
+  it("is one plain line with no accent mark while the search is healthy", () => {
     render(<SearchResultsHeaderBand modeId="services" query="CMHT" matchCount={10} />);
 
     const region = screen.getByRole("region", { name: "Search results for CMHT" });
-    expect(region).toHaveClass("search-band");
+    expect(region).toHaveClass("search-band", "border-transparent");
+    expect(region.className).not.toMatch(/\bbg-|shadow-/);
     expect(region.querySelector("span.absolute")).toBeNull();
-    const lead = region.querySelector(".search-band-lead");
-    expect(lead).not.toBeNull();
-    expect(lead).toHaveAttribute("data-tone", "accent");
-    expect(lead).toHaveAttribute("aria-hidden");
+    expect(region.querySelector(".search-band-lead")).toBeNull();
+  });
+
+  it("states a browse count alone, keeping its subject as the screen-reader heading", () => {
+    render(
+      <SearchResultsHeaderBand
+        modeId="dsm"
+        query=""
+        emptyQuerySubject="DSM diagnoses"
+        matchCount={146}
+        headingLevel={1}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Browse DSM diagnoses" })).toBeTruthy();
+    expect(screen.getByRole("status")).toHaveTextContent("146 DSM diagnoses");
+    const heading = screen.getByRole("heading", { level: 1, name: "DSM diagnoses" });
+    expect(heading).toHaveClass("sr-only");
+    expect(document.querySelector(".search-band-rule")).toBeNull();
   });
 
   // The tile is gone, and with it the shape channel it carried: alert when the
@@ -268,13 +282,19 @@ describe("SearchResultsHeaderBand", () => {
     ["error" as const, "warning", "Couldn’t search"],
     ["unauthorized" as const, "warning", "Sign in to search"],
     ["partial" as const, "warning", "6 services"],
-    ["ready" as const, "accent", "6 services"],
-    ["refetching" as const, "accent", "6 services"],
+    ["ready" as const, null, "6 services"],
+    ["refetching" as const, null, "6 services"],
   ])("carries %s state as shape, not only hue", (status, tone, text) => {
     render(<SearchResultsHeaderBand modeId="services" query="CMHT" matchCount={6} status={status} />);
 
     const region = screen.getByRole("region", { name: "Search results for CMHT" });
-    expect(region.querySelector(".search-band-lead")).toHaveAttribute("data-tone", tone);
+    const lead = region.querySelector(".search-band-lead");
+    if (tone) {
+      expect(lead).toHaveAttribute("data-tone", tone);
+      expect(lead).toHaveAttribute("aria-hidden");
+    } else {
+      expect(lead).toBeNull();
+    }
     expect(screen.getByRole("status")).toHaveTextContent(text);
 
     // The clinical invariant, restated where the shape is: a faulted search has

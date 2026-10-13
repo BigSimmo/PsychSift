@@ -10,11 +10,11 @@ import {
 } from "@/lib/work-frame/side-nav";
 
 describe("work side menu and rail", () => {
-  it("lists the seven work areas in the mockup's order, each opening its area's first tab", () => {
+  // Open shifts became a Roster tab (12 Oct 2026), so the rail lost its "Shifts" row.
+  it("lists the six work areas in the mockup's order, each opening its area's first tab", () => {
     expect(WORK_SIDE_AREAS.map((entry) => entry.label)).toEqual([
       "My Day",
       "On Call",
-      "Open shifts",
       "Roster",
       "Teaching",
       "CPD",
@@ -27,7 +27,6 @@ describe("work side menu and rail", () => {
   it("lights the parent's row for inner areas that are not modes", () => {
     expect(workSideAreaId("manage")).toBe("rost");
     expect(workSideAreaId("assess")).toBe("teach");
-    expect(workSideAreaId("open")).toBe("open");
     expect(workSideAreaId("day")).toBe("day");
     expect(workSideAreaId("notify")).toBe("day");
   });
@@ -36,7 +35,8 @@ describe("work side menu and rail", () => {
     expect(workAreaIdForPath("/roster")).toBe("rost");
     expect(workAreaIdForPath("/roster/manage")).toBe("manage");
     expect(workAreaIdForPath("/teaching/assessments")).toBe("assess");
-    expect(workAreaIdForPath("/open-shifts")).toBe("open");
+    expect(workAreaIdForPath("/open-shifts")).toBe("rost");
+    expect(workAreaIdForPath("/open-shifts/post")).toBe("rost");
     expect(workAreaIdForPath("/dsm")).toBeNull();
   });
 

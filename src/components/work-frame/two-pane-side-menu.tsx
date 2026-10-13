@@ -29,6 +29,7 @@ import {
 } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { useSidebarPins } from "@/components/clinical-dashboard/use-sidebar-pins";
+import { useRecentPages } from "@/components/recent-pages/use-recent-pages";
 import { Sheet } from "@/components/ui/sheet";
 import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import {
@@ -44,6 +45,7 @@ import { appModeIds, type AppModeId } from "@/lib/app-modes";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
+import { RECENT_PAGE_SECTION_LABEL, RECENT_PAGES_SHOWN, type RecentPage } from "@/lib/recent-pages";
 import { clearRecentQueries, removeRecentQuery } from "@/lib/recent-query-storage";
 import { WORK_AREAS, type WorkAreaId } from "@/lib/work-frame/areas";
 import {
@@ -139,6 +141,7 @@ export function TwoPaneSideMenu({
   const { pinnedModeIds, togglePinnedMode, movePinnedMode } = useSidebarPins();
   const { theme, next: nextTheme, cycle: cycleTheme } = useThemeCycle();
   const runReminders = useOpenReminders();
+  const recentPages = useRecentPages({ limit: RECENT_PAGES_SHOWN });
   const firstSide: ModeMenuSideId = workAvailable ? startSide : "clinical";
   const [pane, setPane] = useState<Pane>(firstSide);
   const [find, setFind] = useState("");
@@ -414,7 +417,7 @@ export function TwoPaneSideMenu({
 
           <section aria-labelledby={`${titleId}-recent`}>
             <div className="two-pane-menu__label">
-              <h3 id={`${titleId}-recent`}>Recent</h3>
+              <h3 id={`${titleId}-recent`}>Recent questions</h3>
               {recentQueries.length && !confirmClear ? (
                 <button
                   type="button"
@@ -464,6 +467,8 @@ export function TwoPaneSideMenu({
               <p className="two-pane-menu__empty">Your questions will appear here.</p>
             )}
           </section>
+
+          <RecentPagesGroup headingId={`${titleId}-recent-pages`} pages={recentPages} onNavigate={close} />
 
           <section aria-labelledby={`${titleId}-shortcuts`}>
             <div className="two-pane-menu__label">
@@ -615,6 +620,8 @@ export function TwoPaneSideMenu({
           ) : null}
         </ul>
       </nav>
+
+      <RecentPagesGroup headingId={`${titleId}-work-recent-pages`} pages={recentPages} onNavigate={close} />
     </>
   );
 
@@ -943,6 +950,58 @@ function RecentRow({
         <span>{query}</span>
       </button>
     </div>
+  );
+}
+
+/**
+ * The last few pages opened on this device, across Work and Clinical, in both
+ * panes. Hidden when there are none: an empty heading says nothing useful.
+ */
+function RecentPagesGroup({
+  headingId,
+  pages,
+  onNavigate,
+}: {
+  readonly headingId: string;
+  readonly pages: readonly RecentPage[];
+  readonly onNavigate: () => void;
+}) {
+  if (pages.length === 0) return null;
+  return (
+    <section aria-labelledby={headingId} data-testid="two-pane-menu-recent-pages">
+      <div className="two-pane-menu__label">
+        <h3 id={headingId}>Recent pages</h3>
+      </div>
+      <ul className="two-pane-menu__list">
+        {pages.map((page) => {
+          const Icon = appModeIcons[page.section];
+          const sectionLabel = RECENT_PAGE_SECTION_LABEL[page.section];
+          return (
+            <li key={page.path}>
+              <Link
+                href={page.path}
+                onClick={onNavigate}
+                data-mode-identity={page.mode === "work" ? page.section : undefined}
+                className="two-pane-menu__row"
+              >
+                <Icon
+                  aria-hidden="true"
+                  className={page.mode === "work" ? "two-pane-menu__area-icon size-icon-md" : "size-icon-md"}
+                  strokeWidth={2}
+                />
+                <span className="two-pane-menu__name">{page.title}</span>
+                {sectionLabel !== page.title ? (
+                  <span className="two-pane-menu__meta">
+                    <span className="sr-only">, </span>
+                    {sectionLabel}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

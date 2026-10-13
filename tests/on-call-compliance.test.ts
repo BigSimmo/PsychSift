@@ -514,7 +514,7 @@ describe("recordedExpiryHasPassed", () => {
  * machinery rather than on the reader's standing, so the compliance vocabulary
  * is the wrong ruler for them:
  *
- *  - `on-call-offline-banner.tsx` ("Showing a saved copy from …") is about the
+ *  - `on-call-offline-banner.tsx` ("Offline, showing what was saved at …") is about the
  *    cache. A future "this copy is not up to date" would be true of the cache
  *    and no claim at all about a registration.
  *  - `on-call-page-sections.ts` owns the band headings, which ARE compliance

@@ -247,6 +247,22 @@ describe("writing to a team", () => {
     });
   });
 
+  it("sends a doctor's take-back of their open-shift request (open.withdraw) to its own function", async () => {
+    mocks.rpc.mockResolvedValue({ data: { openShiftId: SWAP, status: "open" }, error: null });
+    const response = await POST(jsonRequest({ action: "open.withdraw", openShiftId: SWAP }), ctx());
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc).toHaveBeenCalledWith("roster_open_withdraw", {
+      p_actor_id: ALEX,
+      p_service_id: SERVICE,
+      p_open_shift_id: SWAP,
+    });
+    expect((await POST(jsonRequest({ action: "open.withdraw", openShiftId: "not-an-id" }), ctx())).status).toBe(400);
+    expect((await POST(jsonRequest({ action: "open.withdraw", openShiftId: SWAP, userId: ALEX }), ctx())).status).toBe(
+      400,
+    );
+  });
+
   it("answers a safe number saved over a stale read with 409 roster_conflict", async () => {
     mocks.rpc.mockResolvedValue({ data: null, error: { message: "roster_conflict" } });
     const response = await POST(jsonRequest({ action: "needs.set", expectedIds: [], needs: [] }), ctx());
