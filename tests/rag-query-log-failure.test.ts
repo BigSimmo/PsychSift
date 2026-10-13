@@ -20,7 +20,7 @@
 // (`rag-programme-telemetry.ts` routes to `setRagQueryObservation` otherwise), and the live answer
 // routes all pass one. So this is a narrow path, not the main one. The unread `error` is the
 // general defect and is fixed for every caller of `insertRagQuery`.
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ insert: vi.fn() }));
 
@@ -28,11 +28,12 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({ from: () => ({ insert: mocks.insert }) }),
 }));
 
-const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+let warn: MockInstance<Console["warn"]>;
 
 beforeEach(() => {
   mocks.insert.mockReset();
-  warn.mockClear();
+  // Created per test: the global node setup restores every spy after each test.
+  warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 afterEach(() => {

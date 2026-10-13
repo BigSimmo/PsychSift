@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import "./setup/node.setup";
+// node.setup.ts is registered for the whole Node project in vitest.config.mts.
 
 const sampleObj = { calculate: () => 42 };
 
