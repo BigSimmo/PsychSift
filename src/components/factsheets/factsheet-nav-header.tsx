@@ -159,7 +159,6 @@ export function FactsheetNavHeader({
   return (
     <InPageNavHeader
       back={{ href: "/factsheets/search", label: "All factsheets" }}
-      showBackLabel={false}
       title={factsheet.title}
       sections={sections}
       activeId={activeId}

@@ -5,16 +5,18 @@ import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState, type ReactNode } from "react";
 
 import { PhoneHeaderCollapsePortal } from "@/components/clinical-dashboard/phone-header-collapse-portal";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { DocumentSectionList, DocumentSectionTrack } from "@/components/document-viewer/section-nav";
 import { InPageSectionRail } from "@/components/in-page-nav/in-page-section-rail";
 import { toDocumentSections, type PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageChromeMetrics } from "@/components/in-page-nav/use-in-page-chrome-metrics";
 import { usePageSectionWeights } from "@/components/in-page-nav/use-page-section-weights";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import type { ModeNavDensityProfile } from "@/components/mode-nav/mode-nav-bands";
 import { SegmentedControl, type SegmentedControlOption } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
 import { cn, pageContainer } from "@/components/ui-primitives";
+import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 type InPageNavHeaderSharedProps = {
   /**
@@ -30,14 +32,6 @@ type InPageNavHeaderSharedProps = {
    * here.
    */
   back?: { href: string; label: string };
-  /**
-   * `false` keeps the arrow alone at every width so the title owns the row.
-   * `back.label` is still required — it is the accessible name either way, and
-   * becomes the desktop tooltip. Breadcrumb pages that also carry a primary
-   * action and a view mode need that space; a page whose row holds only a title
-   * does not, which is why the label stays by default.
-   */
-  showBackLabel?: boolean;
   title: string;
   /**
    * Information pages keep their large record title in the body, so the header
@@ -219,7 +213,6 @@ export type InPageNavHeaderProps =
 export function InPageNavHeader(props: InPageNavHeaderProps) {
   const {
     back,
-    showBackLabel = true,
     title,
     titleAs = "span",
     titleHidden = false,
@@ -315,12 +308,31 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
   // With the title unpainted and nothing else claiming the row, drawing it
   // would cost 48px of empty band directly under the pill that already names
   // the page — which is the height this whole redesign went looking for.
-  const rowHasContent = !titleHidden || Boolean(back || primaryAction || actions || mode);
+  // Back lives in the top bar's round left button (one Back, in the top bar),
+  // so it no longer claims a place in this row.
+  const rowHasContent = !titleHidden || Boolean(primaryAction || actions || mode);
+
+  // Header standard (13 Oct 2026): a page with a tab rail behaves as a Work
+  // band does. The title row scrolls away with the page, the rail pins under
+  // the top bar, and the rail slides away and back with the bar. Under a mode
+  // band the band's own tabs are the pinned row, so this one stays in the page.
+  const underBand = useModeBandShown();
+  const pinRail = Boolean(rail) && !underBand;
+  const [pinnedHeader, setPinnedHeader] = useState<HTMLElement | null>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  useStickyWorkTabs(pinRail ? pinnedHeader : null, railRef);
+  // A row with no section navigation (a title and its actions) is a heading,
+  // not navigation: it scrolls away with the page, as a Work band's title does,
+  // so scrolling up brings back the top bar alone.
+  const scrollsAway = !rail && documentSections.length === 0;
+  const HeaderHost = pinRail || scrollsAway ? InFlowHeader : PhoneHeaderCollapsePortal;
 
   return (
     <>
-      <PhoneHeaderCollapsePortal>
+      {back ? <WorkPageBack href={back.href} label={back.label.toLowerCase()} testId={`${testIdPrefix}-back`} /> : null}
+      <HeaderHost>
         <div
+          ref={pinRail ? setPinnedHeader : undefined}
           data-testid={`${testIdPrefix}-detail-header`}
           data-print-hide
           data-inpage-sticky-header=""
@@ -329,7 +341,8 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
             // safe-area). The collapse addon is a sibling of `.edge-glass-header`,
             // so this bar cannot inherit that inset — a literal `px-3` sat 4px
             // closer to the bezel than the hamburger / chat+ chrome above it.
-            "inpage-nav-header relative z-20 border-b border-[color:var(--border)] bg-[color:var(--surface)] sm:sticky sm:top-0 sm:px-6 lg:px-8",
+            "inpage-nav-header relative z-20 border-b border-[color:var(--border)] bg-[color:var(--surface)] sm:px-6 lg:px-8",
+            !pinRail && !scrollsAway && "sm:sticky sm:top-0",
             // With no row, the top padding is padding above a hairline, which
             // read as a divider floating loose under the chrome above. The bar
             // hangs off its own rule instead. From `sm` the bar is a bordered
@@ -346,24 +359,6 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
             <div
               className={cn(containerClassName ?? pageContainer, "flex min-h-12 min-w-0 flex-wrap items-center gap-2")}
             >
-              {back ? (
-                <ContextualBackLink
-                  fallbackHref={back.href}
-                  aria-label={`Back to ${back.label.toLowerCase()}`}
-                  title={showBackLabel ? undefined : back.label}
-                  className={cn(
-                    // `min-w-tap` is load-bearing on phones: the visible label is
-                    // `hidden sm:inline`, so without a width floor the control shrinks
-                    // to the icon + horizontal padding (~40px) and fails the production
-                    // tap-target contract that Production UI asserts on medications.
-                    "inline-flex min-h-tap min-w-tap shrink-0 items-center justify-center gap-1.5 rounded-full text-sm font-semibold text-[color:var(--text-muted)] transition hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)]",
-                    showBackLabel ? "pl-1.5 pr-3 max-sm:px-1.5" : "px-1.5",
-                  )}
-                >
-                  <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
-                  {showBackLabel ? <span className="hidden sm:inline">{back.label}</span> : null}
-                </ContextualBackLink>
-              ) : null}
               {rail && !titleHidden ? (
                 // With a rail, every section is already named in the row below, so
                 // from `sm` — where the whole rail fits — the disclosure would open
@@ -502,24 +497,26 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
             </div>
           ) : null}
           {rail ? (
-            <InPageSectionRail
-              sections={sections}
-              activeId={activeSection?.id ?? null}
-              onSelect={(id) => onSelectSection?.(id)}
-              onOpenSectionSheet={openSectionSheet}
-              sectionSheetOpen={sectionSheetOpen}
-              label={rail.label}
-              density={rail.density}
-              countedLabels={rail.countedLabels}
-              modeIdentity={rail.modeIdentity}
-              flush={!rowHasContent}
-              testIdPrefix={testIdPrefix}
-            />
+            <div ref={railRef}>
+              <InPageSectionRail
+                sections={sections}
+                activeId={activeSection?.id ?? null}
+                onSelect={(id) => onSelectSection?.(id)}
+                onOpenSectionSheet={openSectionSheet}
+                sectionSheetOpen={sectionSheetOpen}
+                label={rail.label}
+                density={rail.density}
+                countedLabels={rail.countedLabels}
+                modeIdentity={rail.modeIdentity}
+                flush={!rowHasContent}
+                testIdPrefix={testIdPrefix}
+              />
+            </div>
           ) : documentSections.length > 0 ? (
             <DocumentSectionTrack sections={documentSections} activeId={activeSection?.id ?? null} />
           ) : null}
         </div>
-      </PhoneHeaderCollapsePortal>
+      </HeaderHost>
       {/* Both sheets are siblings of the portal, never children of it: a sheet
           inside the collapse row would be carried away with the header when the
           shared chrome scroll-hides. */}
@@ -607,4 +604,9 @@ export function InPageNavHeader(props: InPageNavHeaderProps) {
       ) : null}
     </>
   );
+}
+
+/** Keeps a pinned-rail header in the page, where its rail can stick under the top bar. */
+function InFlowHeader({ children }: { children: ReactNode }) {
+  return <>{children}</>;
 }

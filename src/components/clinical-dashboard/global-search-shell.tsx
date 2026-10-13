@@ -135,6 +135,7 @@ import {
   isAlwaysStandaloneShellPath,
   isDashboardOwnedModeHomePath,
   isDictionaryCataloguePath,
+  isDockedModeHomePath,
   isStandaloneModeHomePath,
   shouldRenderClinicalDashboard,
   shouldRenderDashboardSearch,
@@ -513,7 +514,13 @@ function GlobalStandaloneSearchShellBody({
   // Pathname-only: do not require searchMode === route. changeMode used to set
   // searchMode before router.push landed, which made isStandaloneModeHome false
   // for one frame (dock reserve + 200ms padding transition = choppy resize).
-  const isStandaloneModeHome = !hasSubmittedModeSearch && !rendersDashboardSearch && isStandaloneModeHomePath(pathname);
+  // A docked mode home (Psychiatry) takes the results-page search box: the
+  // compact bottom dock on phones and the page slot from tablet up.
+  const isStandaloneModeHome =
+    !hasSubmittedModeSearch &&
+    !rendersDashboardSearch &&
+    isStandaloneModeHomePath(pathname) &&
+    !isDockedModeHomePath(pathname);
   const isDictionaryCatalogue = isDictionaryCataloguePath(pathname);
   const isDifferentialPresentationWorkflow = pathname.startsWith("/differentials/presentations/");
   const shouldShowDesktopSidebar = !hideDesktopSidebar;
@@ -545,7 +552,9 @@ function GlobalStandaloneSearchShellBody({
   };
   const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
   const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
-  const isInfoPage = isInformationPage(pathname);
+  // Psychiatry stays an information page for its navigation, but its home now
+  // takes the search box (see `dockedModeHomePaths`).
+  const isInfoPage = isInformationPage(pathname) && !isDockedModeHomePath(pathname);
   // Information pages are read surfaces: the record has already been found, so a
   // composer there is chrome you cannot use without leaving the page. No mode is
   // an exception and no breakpoint is — the phone dock, the tablet/desktop page
@@ -769,7 +778,9 @@ function GlobalStandaloneSearchShellBody({
 
   function submitSearch(queryOverride?: string) {
     const trimmedQuery = (queryOverride ?? query).trim();
-    navigateToMode(searchMode, {
+    // Psychiatry has no results page, so its box asks the question in Answer,
+    // as its old in-page box did.
+    navigateToMode(isDockedModeHomePath(pathname) && trimmedQuery ? "answer" : searchMode, {
       query: trimmedQuery || undefined,
       run: Boolean(trimmedQuery),
       // Running a search must not carry focus into the result dock — that pin
@@ -1203,7 +1214,11 @@ function GlobalStandaloneSearchShellBody({
               {/* The dictionary catalogue renders this same slot id itself, under
                   its own mode nav and above the Filter band, so the shell must not
                   emit a second element carrying it — one id, one portal host. */}
-              {shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue ? (
+              {/* Psychiatry's home renders it too, under its band. */}
+              {shouldShowSearchComposer &&
+              !isStandaloneModeHome &&
+              !isDictionaryCatalogue &&
+              !isDockedModeHomePath(pathname) ? (
                 <DesktopComposerPortalSlot
                   id={desktopPageComposerSlotId}
                   data-testid="desktop-page-search-composer-slot"

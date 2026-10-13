@@ -7,7 +7,6 @@ import {
   LifeBuoy,
   Map as MapIcon,
   Network,
-  Search,
   ShieldCheck,
   Tags,
   Timer,
@@ -17,8 +16,8 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useSyncExternalStore, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import type { DashQuickAction } from "@/components/dashboard-kit/quick-actions";
@@ -51,8 +50,9 @@ import {
   type PsychiatryVisit,
   type PsychiatryVisitKind,
 } from "@/lib/psychiatry-hub/visits";
-import { sharedHomePresentation } from "@/lib/ui-copy";
 import { PageTitleUnderBand, useModeBandCurrentTab, WithoutModeBand } from "@/components/mode-band/mode-band";
+import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
+import { desktopPageComposerSlotId, modeHomeComposerReservePendingValue } from "@/lib/mode-home-composer";
 
 /**
  * The Psychiatry hub, in two pages: Home and Saved (owner design review, 12 October 2026, which
@@ -241,89 +241,22 @@ function useOffline(): boolean {
   );
 }
 
-function AskSearch({ offline }: { readonly offline: boolean }) {
-  const router = useRouter();
-  const [query, setQuery] = useState("");
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const trimmed = query.trim();
-    if (!trimmed || offline) return;
-    router.push(appModeHomeHref("answer", { query: trimmed, run: true }));
-  };
+/**
+ * Offline, the search box at the bottom cannot answer, so the page says so once
+ * rather than failing after a tap.
+ */
+function OfflineNote() {
   return (
-    <form
-      role="search"
-      aria-label="Ask a psychiatry question"
-      onSubmit={submit}
-      className="grid min-w-0 gap-2"
-      data-testid="psychiatry-card-ask"
+    <p
+      className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm text-[color:var(--dash-muted)] forced-colors:border"
+      data-testid="psychiatry-offline"
     >
-      {offline ? (
-        <p
-          className="flex items-start gap-2.5 rounded-lg bg-[color:var(--dash-card)] px-3 py-2.5 text-sm text-[color:var(--dash-muted)] forced-colors:border"
-          data-testid="psychiatry-offline"
-        >
-          <WifiOff aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
-          <span>
-            <b className="font-semibold text-[color:var(--dash-ink)]">Offline.</b> Search needs a connection. Other
-            pages may not open until you reconnect.
-          </span>
-        </p>
-      ) : null}
-      <div
-        className={cn(
-          "flex min-h-12 items-center gap-2 rounded-lg border pl-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[color:var(--focus)] forced-colors:border",
-          offline
-            ? "border-dashed border-[color:var(--dash-line-strong)] bg-[color:var(--dash-card)]"
-            : "border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)]",
-        )}
-      >
-        <Search aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-ink)]" />
-        <label htmlFor="psychiatry-ask-input" className="sr-only">
-          Your question
-        </label>
-        <input
-          id="psychiatry-ask-input"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={offline ? "Search is offline" : "Ask a psychiatry question"}
-          disabled={offline}
-          autoComplete="off"
-          enterKeyHint="search"
-          data-testid="psychiatry-ask-input"
-          className="min-h-12 min-w-0 flex-1 bg-transparent text-sm text-[color:var(--dash-ink)] outline-none focus-visible:outline-none focus-visible:shadow-none placeholder:text-[color:var(--dash-muted)] disabled:cursor-not-allowed"
-        />
-        <button
-          type="submit"
-          disabled={offline}
-          data-testid="psychiatry-ask-submit"
-          className={cn(
-            focusRing,
-            "min-h-12 shrink-0 rounded-lg px-3 text-sm font-semibold text-[color:var(--dash-ink)] disabled:text-[color:var(--dash-muted)]",
-          )}
-        >
-          Ask
-        </button>
-      </div>
-      {offline ? null : (
-        <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="psychiatry-ask-try">
-          <span className="text-[color:var(--dash-muted)]">Try</span>
-          {sharedHomePresentation.psychiatry.suggestions.map((suggestion) => (
-            <Link
-              key={suggestion}
-              href={appModeHomeHref("answer", { query: suggestion, run: true })}
-              className={cn(
-                focusRing,
-                "inline-flex min-h-12 items-center rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-4 font-medium text-[color:var(--dash-ink)] no-underline",
-              )}
-            >
-              {suggestion}
-            </Link>
-          ))}
-        </div>
-      )}
-    </form>
+      <WifiOff aria-hidden="true" className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
+      <span>
+        <b className="font-semibold text-[color:var(--dash-ink)]">Offline.</b> Search needs a connection. Other pages
+        may not open until you reconnect.
+      </span>
+    </p>
   );
 }
 
@@ -552,7 +485,7 @@ function AskPage({
   return (
     <div className="grid items-start gap-5 lg:grid-cols-2 lg:gap-x-8">
       <div className="grid min-w-0 gap-5">
-        <AskSearch offline={offline} />
+        {offline ? <OfflineNote /> : null}
         {latest ? <ResumeRow latest={latest} now={now} /> : null}
         <section aria-labelledby="psychiatry-shift-title" className="grid gap-2">
           <FlatLabel id="psychiatry-shift-title" title="For a shift" />
@@ -644,6 +577,15 @@ export function PsychiatryHome({
   return (
     <InformationPageShell testId="psychiatry-home">
       <div className={cn("mx-auto grid w-full max-w-5xl gap-5 sm:gap-6", dashSurface)}>
+        {/* From tablet up the search box sits here, under the band and above the
+            page, as it does under a Clinical search page's title. Phones use the
+            usual bottom box. */}
+        <DesktopComposerPortalSlot
+          id={desktopPageComposerSlotId}
+          data-testid="psychiatry-composer"
+          data-composer-reserve={modeHomeComposerReservePendingValue}
+          className="desktop-page-composer-slot mx-auto hidden w-full min-w-0 sm:block sm:min-h-0 sm:data-[composer-reserve=pending]:min-h-[var(--spacing-mode-home-composer-wide)] sm:[&:not(:empty)]:min-h-[var(--spacing-mode-home-composer-wide)]"
+        />
         <header className="grid min-w-0 gap-0.5" data-testid="psychiatry-header">
           <WithoutModeBand>
             <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{now ? LONG_DATE.format(now) : null}</p>

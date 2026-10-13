@@ -26,6 +26,7 @@ import {
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 import { clearPsychiatryVisits, recordPsychiatryVisit } from "@/lib/psychiatry-hub/visits";
+import { desktopPageComposerSlotId } from "@/lib/mode-home-composer";
 
 const counts: PsychiatrySectionCounts = {
   dsm: 146,
@@ -79,11 +80,12 @@ describe("PsychiatryHome", () => {
     expect(links[1]).toHaveTextContent("201 diagnoses · 31 presentations");
   });
 
-  it("sends a question to the cited answer search", () => {
+  it("draws no search box of its own: the shared Clinical box asks the question", () => {
+    // Owner request, 13 Oct 2026: the bottom box on phones, under the band from
+    // tablet up, and no second box at the top of the page.
     render(<PsychiatryHome counts={counts} now={now} />);
-    fireEvent.change(screen.getByTestId("psychiatry-ask-input"), { target: { value: "  lithium monitoring  " } });
-    fireEvent.click(screen.getByTestId("psychiatry-ask-submit"));
-    expect(push).toHaveBeenCalledWith(appModeHomeHref("answer", { query: "lithium monitoring", run: true }));
+    expect(screen.queryByRole("search")).toBeNull();
+    expect(screen.getByTestId("psychiatry-composer")).toHaveAttribute("id", desktopPageComposerSlotId);
   });
 
   it("shows no history figures until this device has recorded something", () => {
@@ -157,8 +159,6 @@ describe("PsychiatryHome", () => {
     try {
       render(<PsychiatryHome counts={counts} now={now} />);
       expect(screen.getByTestId("psychiatry-offline")).toHaveTextContent("Search needs a connection.");
-      expect(screen.getByTestId("psychiatry-ask-input")).toBeDisabled();
-      expect(screen.queryByTestId("psychiatry-ask-try")).toBeNull();
     } finally {
       onLine.mockRestore();
     }
@@ -167,24 +167,23 @@ describe("PsychiatryHome", () => {
   it("draws no tab row of its own: the band's Home and Saved tabs switch the page by ?page=", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
     expect(screen.queryByRole("tablist")).toBeNull();
-    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Psychiatry sections" })).toBeTruthy();
   });
 
   it("opens the page named by ?page=, and falls back to Home for anything else", () => {
     pageParam = "saved";
     const { unmount } = render(<PsychiatryHome counts={counts} now={now} />);
-    expect(screen.queryByTestId("psychiatry-ask-input")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Psychiatry sections" })).toBeNull();
     unmount();
     pageParam = "nonsense";
     render(<PsychiatryHome counts={counts} now={now} />);
-    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Psychiatry sections" })).toBeTruthy();
   });
 
   it("lands an old ?page=tools link on Home, with the tools it used to hold", () => {
     expect(parsePsychiatryPage("tools", "saved")).toBe("ask");
     pageParam = "tools";
     render(<PsychiatryHome counts={counts} now={now} />);
-    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
     expect(screen.getByRole("list", { name: "Psychiatry sections" })).toBeTruthy();
     expect(screen.getByRole("list", { name: "Builders" })).toBeTruthy();
   });

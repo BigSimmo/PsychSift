@@ -609,11 +609,12 @@ export const appModeDefinitions = [
       // catalogue of its own, so it borrows the benign "tools" command kind,
       // as On Call and CME do.
       kind: "tools",
-      placeholder: "Open a psychiatry section...",
-      inputAriaLabel: "Open a psychiatry section",
-      submitIdleLabel: "Psychiatry",
-      submitBusyLabel: "Psychiatry",
-      submitAriaLabel: "Open a psychiatry section",
+      // Its box asks a question in Answer (owner request, 13 Oct 2026).
+      placeholder: "Ask a psychiatry question",
+      inputAriaLabel: "Ask a psychiatry question",
+      submitIdleLabel: "Ask",
+      submitBusyLabel: "Asking",
+      submitAriaLabel: "Ask a psychiatry question",
       emptyTitle: "Choose a psychiatry section",
       readyTitle: "Diagnosis, formulation, therapy and forms",
       progressLabel: "Opening the section.",
