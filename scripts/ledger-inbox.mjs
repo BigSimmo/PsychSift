@@ -553,12 +553,12 @@ function assertFreshReconciliationBase() {
  * This provides a pre-flight remote interlock so concurrent `issues:reconcile`
  * branches are not created simultaneously against the same base (issue #EH9VA6).
  *
- * When offline or when git ls-remote fails, it fails open (returns an empty list)
- * so offline workflows and tests are not blocked.
+ * Default offline behavior returns an empty list. Explicit strict admission instead
+ * requires every candidate commit and applied tree to be inspectable.
  *
  * @param {{
  *   lsRemoteOutput?: string,
- *   runner?: (args: string[]) => string,
+ *   runner?: (args: string[], options?: {input?: string}) => string,
  *   originRef?: string,
  *   currentBranch?: string,
  *   warn?: (message: string) => void,
@@ -570,11 +570,12 @@ function assertFreshReconciliationBase() {
 export function findUnmergedRemoteReconciliations(options = {}) {
   const runner =
     options.runner ??
-    ((args) =>
+    ((args, executionOptions = {}) =>
       execFileSync("git", args, {
         cwd: ROOT,
         encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
+        stdio: [executionOptions.input === undefined ? "ignore" : "pipe", "pipe", "ignore"],
+        ...executionOptions,
       }).trim());
 
   let lsRemoteText = options.lsRemoteOutput;
@@ -640,13 +641,81 @@ export function findUnmergedRemoteReconciliations(options = {}) {
     const ref = parts[1];
     const branchName = ref.replace(/^refs\/heads\//, "");
     if (!/^[0-9a-f]{40}$/i.test(sha)) continue;
-    if (branchName === "main" || branchName === "master" || (currentBranch && branchName === currentBranch)) continue;
+    if (
+      branchName === "main" ||
+      (!options.strictRemote && branchName === "master") ||
+      (currentBranch && branchName === currentBranch)
+    )
+      continue;
 
     candidateBranches.push({ branch: branchName, sha });
     shasToCheck.push(sha);
   }
 
   if (candidateBranches.length === 0) return [];
+
+  if (options.strictRemote) {
+    let mainApplied;
+    try {
+      mainApplied = new Set(
+        runner(["ls-tree", "-r", "--name-only", originMainRef, "--", APPLIED_DIR]).split(/\r?\n/).filter(Boolean),
+      );
+    } catch {
+      throw new Error("cannot inspect the current-main applied inbox; preserved-source admission is blocked");
+    }
+
+    const uniqueShas = [...new Set(shasToCheck)];
+    let available;
+    try {
+      available = runner(["cat-file", "--batch-check=%(objectname) %(objecttype)"], {
+        input: uniqueShas.join("\n") + "\n",
+      })
+        .split(/\r?\n/)
+        .filter(Boolean);
+    } catch {
+      throw new Error("cannot inspect remote commit availability; preserved-source admission is blocked");
+    }
+    // cat-file exits successfully for missing objects. Verify its complete output,
+    // including ordinary branch names, rather than treating exit status as proof.
+    const availableShas = new Set(available.map((entry) => entry.split(" ")[0]));
+    if (
+      available.length !== uniqueShas.length ||
+      available.some((entry) => !/^[0-9a-f]{40} commit$/i.test(entry)) ||
+      availableShas.size !== uniqueShas.length ||
+      uniqueShas.some((sha) => !availableShas.has(sha))
+    ) {
+      const branches = candidateBranches.map((candidate) => candidate.branch).join(", ");
+      throw new Error(
+        `cannot inspect every remote candidate commit (${branches}); fetch remote heads and recheck; preserved-source admission is blocked`,
+      );
+    }
+
+    const detected = [];
+    for (const candidate of candidateBranches) {
+      let applied;
+      try {
+        // Inspect the tip directly: a later edit to an already-landed record must
+        // not hide an earlier unmerged record still present on this branch.
+        applied = runner(["ls-tree", "-r", "--name-only", candidate.sha, "--", APPLIED_DIR])
+          .split(/\r?\n/)
+          .filter(Boolean);
+      } catch {
+        throw new Error(
+          `cannot inspect the applied inbox on remote branch ${candidate.branch}; preserved-source admission is blocked`,
+        );
+      }
+      const unmerged = applied.filter((path) => !mainApplied.has(path));
+      if (unmerged.length) {
+        detected.push({
+          branch: candidate.branch,
+          sha: candidate.sha,
+          unmergedCount: unmerged.length,
+          reason: `carries ${unmerged.length} unmerged applied inbox record(s) under ${APPLIED_DIR}`,
+        });
+      }
+    }
+    return detected;
+  }
 
   let mainApplied = new Set();
   try {

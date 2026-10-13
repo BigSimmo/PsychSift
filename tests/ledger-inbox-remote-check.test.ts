@@ -1,3 +1,7 @@
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { assertSafeRemoteReconciliation, findUnmergedRemoteReconciliations } from "../scripts/ledger-inbox.mjs";
@@ -134,6 +138,9 @@ function sourceEvidence(
     sourceType?: string;
     allHeads?: string;
     currentBranch?: string;
+    unavailableShas?: string[];
+    batchOutput?: string;
+    unreadableTree?: string;
   } = {},
 ) {
   const pr = overrides.pr ?? closedSource();
@@ -142,9 +149,25 @@ function sourceEvidence(
   return {
     lsRemoteOutput: overrides.allHeads ?? `${sourceSha}\trefs/heads/${sourceBranch}`,
     currentBranch: overrides.currentBranch ?? "codex/reconciliation-replacement",
-    runner: (args: string[]) => {
+    runner: (args: string[], executionOptions: { input?: string } = {}) => {
       if (args[0] === "remote") return "https://github.com/BigSimmo/PsychSift.git";
-      if (args[0] === "cat-file") return overrides.sourceType ?? "commit";
+      if (args[0] === "cat-file") {
+        if (args[1] === "-t") return overrides.sourceType ?? "commit";
+        return (
+          overrides.batchOutput ??
+          (executionOptions.input ?? "")
+            .trim()
+            .split("\n")
+            .map((sha) => `${sha} ${overrides.unavailableShas?.includes(sha) ? "missing" : "commit"}`)
+            .join("\n")
+        );
+      }
+      if (args[0] === "ls-tree") {
+        if (args[3] === overrides.unreadableTree) throw new Error("unreadable tree");
+        const applied = "docs/outstanding-issues-inbox/applied/";
+        if (args[3] === "refs/remotes/origin/main") return `${applied}landed.json`;
+        return `${applied}landed.json\n${applied}${args[3] === sourceSha ? "preserved" : "competing"}.json`;
+      }
       if (args[0] === "ls-remote") return overrides.remoteRef ?? `${sourceSha}\trefs/heads/${sourceBranch}`;
       throw new Error(`unexpected test Git command: ${args[0]}`);
     },
@@ -189,6 +212,49 @@ describe("pinned preserved-source admission", () => {
     const allHeads = `${sourceSha}\trefs/heads/${sourceBranch}\n${"2".repeat(40)}\trefs/heads/claude/ledger-reconcile-active`;
     expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads }))).toThrow(
       /ledger-reconcile-active/,
+    );
+  });
+
+  it("fails closed for an unfetched ordinary branch even when cat-file succeeds", () => {
+    const otherSha = "2".repeat(40);
+    const allHeads = `${sourceSha}\trefs/heads/${sourceBranch}\n${otherSha}\trefs/heads/chore/batch-20261013`;
+    expect(() =>
+      assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads, unavailableShas: [otherSha] })),
+    ).toThrow(/cannot inspect every remote candidate commit.*chore\/batch-20261013/);
+  });
+
+  it("checks master as a competing branch when main is the verified canonical base", () => {
+    const allHeads = `${sourceSha}\trefs/heads/${sourceBranch}\n${"2".repeat(40)}\trefs/heads/master`;
+    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads }))).toThrow(/master/);
+  });
+
+  it.each([
+    `${sourceSha} missing`,
+    `${sourceSha} blob`,
+    "",
+    `${sourceSha} commit\n${sourceSha} commit`,
+    `${"2".repeat(40)} commit`,
+    "malformed availability",
+  ])("rejects incomplete or invalid successful commit-availability output", (batchOutput) => {
+    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ batchOutput }))).toThrow(
+      /cannot inspect every remote candidate commit/,
+    );
+  });
+
+  it.each(["refs/remotes/origin/main", sourceSha])(
+    "fails closed for an unreadable applied tree %s",
+    (unreadableTree) => {
+      expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ unreadableTree }))).toThrow(
+        /cannot inspect.*applied inbox/,
+      );
+    },
+  );
+
+  it("accepts shared candidate tips without mistaking repeated SHAs for missing objects", () => {
+    const allHeads = `${sourceSha}\trefs/heads/${sourceBranch}\n${sourceSha}\trefs/heads/chore/another-preserved-copy`;
+    // The second branch still carries unmerged applied records and is not exempt.
+    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads }))).toThrow(
+      /another-preserved-copy/,
     );
   });
 
@@ -312,10 +378,60 @@ describe("pinned preserved-source admission", () => {
     const evidence = sourceEvidence();
     const { lsRemoteOutput: _listing, ...options } = evidence;
     const runner = options.runner;
-    options.runner = (args) => {
+    options.runner = (args, executionOptions) => {
       if (args[0] === "ls-remote" && args.length === 3) throw new Error("offline");
-      return runner(args);
+      return runner(args, executionOptions);
     };
     expect(() => assertSafeRemoteReconciliation(sourceArgs, options)).toThrow(/remote branch status is unavailable/);
+  });
+});
+
+describe("strict candidate history regression", () => {
+  it("blocks an earlier unmerged record when a later commit only edits a landed record", () => {
+    const fixture = mkdtempSync(join(tmpdir(), "ledger-remote-history-"));
+    const runGit = (args: string[], executionOptions: { input?: string } = {}) =>
+      execFileSync("git", args, {
+        cwd: fixture,
+        encoding: "utf8",
+        stdio: [executionOptions.input === undefined ? "ignore" : "pipe", "pipe", "ignore"],
+        ...executionOptions,
+      }).trim();
+    try {
+      runGit(["init", "--quiet"]);
+      runGit(["config", "user.name", "Ledger regression fixture"]);
+      runGit(["config", "user.email", "ledger-fixture@example.invalid"]);
+      runGit(["config", "commit.gpgsign", "false"]);
+      const applied = "docs/outstanding-issues-inbox/applied";
+      mkdirSync(join(fixture, applied), { recursive: true });
+      writeFileSync(join(fixture, applied, "landed.json"), "{}\n");
+      runGit(["add", "."]);
+      runGit(["commit", "--quiet", "-m", "Main already contains landed record Y"]);
+      const mainSha = runGit(["rev-parse", "HEAD"]);
+      writeFileSync(join(fixture, applied, "unmerged.json"), "{}\n");
+      runGit(["add", "."]);
+      runGit(["commit", "--quiet", "-m", "Earlier commit adds unmerged record X"]);
+      writeFileSync(join(fixture, applied, "landed.json"), '{"updated":true}\n');
+      runGit(["add", "."]);
+      runGit(["commit", "--quiet", "-m", "Latest commit only touches already-landed record Y"]);
+      const tip = runGit(["rev-parse", "HEAD"]);
+
+      const detected = findUnmergedRemoteReconciliations({
+        lsRemoteOutput: `${tip}\trefs/heads/chore/batch-20261013`,
+        currentBranch: "codex/reconciliation-writer",
+        originRef: mainSha,
+        strictRemote: true,
+        runner: runGit,
+      });
+      expect(detected).toEqual([
+        {
+          branch: "chore/batch-20261013",
+          sha: tip,
+          unmergedCount: 1,
+          reason: `carries 1 unmerged applied inbox record(s) under ${applied}`,
+        },
+      ]);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
   });
 });

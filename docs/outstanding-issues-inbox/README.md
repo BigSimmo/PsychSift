@@ -18,7 +18,9 @@ A retained source branch can still carry unmerged applied records after its PR c
 
 The check requires configured `gh` access and applicable authorisation for read-only GitHub metadata. It verifies the source PR is closed and unmerged, targets this repository's `main`, and has the exact pinned head. It checks all pages for an open PR using that head branch, rereads the source PR, and verifies the preserved local commit and remote branch. Missing, unavailable, malformed or changed evidence blocks admission. Only that exact source branch/SHA is admitted; other competing reconciliations still block. The source branch cannot be the reconciliation writer, and the selectors cannot be combined with concurrent/skip overrides. The freshness, immutable-request, journal and repository-wide lock checks remain unchanged.
 
-After correction requests and this guard are reviewed and landed, fetch current main and the retained source into the same repository, start a clean dedicated branch from current main, and use:
+Strict admission also requires all remote candidate commits and applied trees to be available locally. It compares every candidate tip's applied paths against current main, regardless of its branch name or latest applied-directory commit. An unfetched or uninspectable candidate blocks admission; fetch remote heads without pruning or deleting preserved branches, then recheck.
+
+After correction requests and this guard are reviewed and landed, fetch current main and all remote heads into the same repository, start a clean dedicated branch from current main, and use:
 
 ```sh
 npm run issues:reconcile -- --dry-run --preserved-source-pr 3509 --preserved-source-sha db2d180360b3d3dc7ef805f6faae227b4e4b0e8b
