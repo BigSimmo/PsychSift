@@ -155,7 +155,7 @@ A schema restore is not operationally complete until all five environment-owned 
      supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
      supabase functions deploy site-content-sync --project-ref <PROJECT_REF>
      ```
-   - Sanity check: Verify function list via `supabase functions list` and run non-mutating health probes.
+   - Sanity check: Verify function list via `supabase functions list`, and confirm `OPENAI_API_KEY` appears in `supabase secrets list --project-ref <PROJECT_REF>` (names and digests only); restore it through the approved secret-management procedure if missing. Do not `POST` to `site-content-sync` as a probe: it has no read-only endpoint and a `POST` claims queued outbox events, so invoking it needs separate approval.
 5. **Dashboard-owned configuration:**
    - Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating secrets), connection-pool caps (auth pool pinned at 10 connections), per-project API keys (`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), and `E2E_USER_*` test credentials.
    - Sanity check: Run `npm run check:env-parity` and names-only checks to verify all consuming environments have valid references without logging secrets.

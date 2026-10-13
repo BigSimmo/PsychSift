@@ -108,7 +108,7 @@ A schema restore is not operationally complete until all five environment-owned 
   supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
   supabase functions deploy site-content-sync --project-ref <PROJECT_REF>
   ```
-- **Sanity check:** Verify both `indexing-v3-agent` and `site-content-sync` are present and active via `supabase functions list` and run health probes without mutating data.
+- **Sanity check:** Verify both `indexing-v3-agent` and `site-content-sync` are present and active via `supabase functions list`. Run `supabase secrets list --project-ref <PROJECT_REF>` (it prints names and digests only, never values) and confirm `OPENAI_API_KEY` is present; `site-content-sync` needs it to embed new or changed content and otherwise records `provider_failure`. If it is missing, restore it through the approved secret-management procedure without printing its value. `site-content-sync` has no read-only health endpoint: it accepts only `POST`, and a `POST` records an invocation and claims queued outbox events, so invoking it is an operational action that needs separate approval, not a health probe.
 
 ### 5. Dashboard-owned configuration
 
