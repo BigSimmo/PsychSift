@@ -15,6 +15,9 @@ import type { MyDayNeedsYouItem } from "@/lib/my-day/needs-you-feed";
 import { withMyDayReturn } from "@/lib/my-day/return-link";
 import { addDaysToDate, formatPerthDay } from "@/lib/roster/shifts/perth-time";
 import { demoMyShifts } from "@/lib/roster/team/demo-team-core";
+import { zonedDateOf, zonedTimeOf, zonedWallToIso } from "@/lib/work-time/format";
+import { DEFAULT_WORK_TIME_ZONE } from "@/lib/work-time/zones";
+import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 import type { SessionSummary } from "@/lib/teaching/model";
 
 /**
@@ -46,17 +49,32 @@ export interface MyDaySampleData {
 const WORKPLACE = "Example Hospital";
 const NO_HELP: readonly AdminHelpItem[] = [];
 
-/** An ISO instant for a Perth wall-clock time on a Perth date. */
-function perthAt(date: string, time: string): string {
-  return `${date}T${time}:00+08:00`;
+/** An ISO instant for a wall-clock time on a date in the work zone (Perth's fixed offset if the zone skips that time). */
+function zonedAt(date: string, time: string, zone: string): string {
+  return zonedWallToIso(date, time, zone) ?? `${date}T${time}:00+08:00`;
 }
 
-/** The one example roster: tonight's on call (the hero's shift), day shifts, a night and days off. */
-function sampleShifts(now: Date): MyShift[] {
-  return demoMyShifts(now);
+/**
+ * The one example roster: tonight's on call (the hero's shift), day shifts, a night and days off.
+ * The example roster is laid out on Perth's dates and wall times; it is moved onto the work zone's
+ * `today` at the same wall times, so the whole sample is one invented day in one zone.
+ */
+function sampleShifts(now: Date, today: string, zone: string): MyShift[] {
+  const shifts = demoMyShifts(now);
+  if (zone === DEFAULT_WORK_TIME_ZONE) return shifts;
+  const perthToday = zonedDateOf(now, DEFAULT_WORK_TIME_ZONE);
+  const offset = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${perthToday}T00:00:00Z`)) / 86_400_000);
+  const move = (instant: string) =>
+    zonedAt(
+      addDaysToDate(zonedDateOf(instant, DEFAULT_WORK_TIME_ZONE), offset),
+      zonedTimeOf(instant, DEFAULT_WORK_TIME_ZONE),
+      zone,
+    );
+  return shifts.map((shift) => ({ ...shift, startsAt: move(shift.startsAt), endsAt: move(shift.endsAt) }));
 }
 
 function session(
+  zone: string,
   id: string,
   date: string,
   start: string,
@@ -71,8 +89,8 @@ function session(
     occurrenceId: `00000000-0000-4000-8000-${id}`,
     serviceId: "sample-teaching",
     title,
-    startsAt: perthAt(date, start),
-    endsAt: perthAt(date, end),
+    startsAt: zonedAt(date, start, zone),
+    endsAt: zonedAt(date, end, zone),
     venue,
     hasJoinLink: false,
     status: "scheduled",
@@ -185,13 +203,13 @@ function sampleCpd(today: string): MyDayDashboardSources["cpd"] {
 }
 
 /** The whole sample, built around the page clock so it always reads as today. */
-export function buildMyDaySample(today: string, now: Date): MyDaySampleData {
+export function buildMyDaySample(today: string, now: Date, zone: string = DEFAULT_WORK_TIME_ZONE): MyDaySampleData {
   const day = (offset: number) => addDaysToDate(today, offset);
   const ahead = [
-    session("000000000001", today, "14:00", "15:00", "Registrar teaching: agitation", "Seminar room 3", false),
-    session("000000000002", day(5), "12:30", "13:30", "Journal club", "Library", false),
-    session("000000000003", day(12), "14:00", "15:00", "Lithium toxicity", "Seminar room 3", true),
-    session("000000000004", day(19), "12:30", "13:30", "Grand round", "Lecture theatre", false),
+    session(zone, "000000000001", today, "14:00", "15:00", "Registrar teaching: agitation", "Seminar room 3", false),
+    session(zone, "000000000002", day(5), "12:30", "13:30", "Journal club", "Library", false),
+    session(zone, "000000000003", day(12), "14:00", "15:00", "Lithium toxicity", "Seminar room 3", true),
+    session(zone, "000000000004", day(19), "12:30", "13:30", "Grand round", "Lecture theatre", false),
   ];
   const hoursFromNow = (hours: number) => new Date(now.getTime() + hours * 3_600_000).toISOString();
   return {
@@ -203,7 +221,7 @@ export function buildMyDaySample(today: string, now: Date): MyDaySampleData {
       { entryId: "sample-indemnity", title: "Indemnity cover", date: day(126), href: "/admin/renewals" },
     ],
     sources: {
-      roster: { status: "ready", shifts: sampleShifts(now), sample: true },
+      roster: { status: "ready", shifts: sampleShifts(now, today, zone), sample: true },
       teaching: {
         status: "ready",
         sessions: ahead.filter((item) => item.startsAt.startsWith(today)),
@@ -264,7 +282,8 @@ export function MyDaySampleDashboard({
   readonly onShowAll: () => void;
   readonly renderFullList: (items: readonly MyDayNeedsYouItem[], checked: readonly string[]) => ReactNode;
 }) {
-  const sample = useMemo(() => buildMyDaySample(today, now), [today, now]);
+  const { zone } = useWorkTimeZone();
+  const sample = useMemo(() => buildMyDaySample(today, now, zone), [today, now, zone]);
   if (view === "all") return <>{renderFullList(needsYou, sample.checked)}</>;
   return (
     <MyDayDashboard
