@@ -21,7 +21,9 @@ describe("myDayUpdatedAgo", () => {
     expect(myDayUpdatedAgo(after(60), at, "10:05")).toBe("at 10:05, Tue 13 Oct");
     // A day later the date is what tells yesterday's 10:05 apart from today's.
     expect(myDayUpdatedAgo(after(24 * 60), at, "10:05")).toBe("at 10:05, Tue 13 Oct");
-    expect(myDayUpdatedAgo(after(60), at, null)).toBe("over an hour ago");
+    // The time comes from the recorded moment, not a clock string captured earlier (maybe in another zone).
+    expect(myDayUpdatedAgo(after(60), at, null)).toBe("at 10:05, Tue 13 Oct");
+    expect(myDayUpdatedAgo(after(60), at, "stale")).toBe("at 10:05, Tue 13 Oct");
   });
 
   it("dates the moment on the Perth calendar, not UTC", () => {

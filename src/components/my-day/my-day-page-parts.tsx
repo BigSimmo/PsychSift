@@ -9,7 +9,7 @@ import { cn } from "@/components/ui-primitives";
 import { appModeDefinition } from "@/lib/app-modes";
 import { formatMyDayDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
-import { formatPerthDay, perthDateOf } from "@/lib/perth-time";
+import { formatPerthDay, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 
 /*
  * The small pieces the My Day page, its dashboard and the home card share.
@@ -41,7 +41,8 @@ export function myDayUpdatedAgo(now: Date, at: number | null, clock: string | nu
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
   // Past the hour the clock alone is ambiguous (yesterday's 14:05 reads like today's), so give the day too.
-  return clock ? `at ${clock}, ${formatPerthDay(perthDateOf(at))}` : "over an hour ago";
+  // Time and day both come from `at` in the current work zone, so a zone change can't mix the two.
+  return `at ${perthTimeOf(at)}, ${formatPerthDay(perthDateOf(at))}`;
 }
 
 export function myDayModeLabel(mode: MyDaySourceMode): string {
