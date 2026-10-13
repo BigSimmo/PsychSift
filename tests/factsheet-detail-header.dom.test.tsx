@@ -76,11 +76,17 @@ describe("factsheet detail header", () => {
     }
   });
 
-  it("names the way back without spending the row on its label", () => {
+  it("names the way back in the top bar, without spending a row on its label", () => {
+    // Back is drawn in the top bar's round left slot (header standard, 13 Oct 2026).
+    const slot = document.createElement("div");
+    slot.id = "universal-header-leading";
+    document.body.append(slot);
     renderFactsheet("sertraline");
     const back = screen.getByRole("link", { name: "Back to all factsheets" });
     expect(back).toHaveAttribute("href", "/factsheets/search");
     expect(within(back).queryByText("All factsheets")).toBeNull();
+    expect(back.closest("#universal-header-leading")).not.toBeNull();
+    slot.remove();
   });
 
   it("switches the body copy between reading levels", async () => {
