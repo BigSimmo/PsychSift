@@ -30,6 +30,7 @@ const SUPERVISOR_PATTERN =
   /\b(supervisors? (?:review|assessment|meeting|report)|clinical supervisors?|dct review|director of clinical training)\b/i;
 const ALERT_PATTERN = /\b(assessment alerts?|assessment reminders?|overdue alerts?|training alerts?)\b/i;
 const GENERAL_ASSESSMENT_PATTERN = /\b(assessments?|assessed|evaluations?|appraisals?)\b/i;
+const ROSTER_SUBJECT_PATTERN = /\b(shifts?|nights?|evenings?|days? off|free days?)\b/i;
 
 // Intent patterns
 const SUPERVISOR_QUERY_PATTERN =
@@ -72,6 +73,7 @@ export function isAssessmentQuery(query: string): boolean {
     SUPERVISOR_QUERY_PATTERN.test(q) ||
     ALERT_PATTERN.test(q) ||
     (GENERAL_ASSESSMENT_PATTERN.test(q) &&
+      !ROSTER_SUBJECT_PATTERN.test(q) &&
       (NEXT_PATTERN.test(q) || DUE_PATTERN.test(q) || COUNT_PATTERN.test(q) || /\b(my|pending|complete)\b/i.test(q)))
   );
 }
@@ -89,13 +91,13 @@ export function parseMyWorkAssessmentGrammar(query: string): AssessmentGrammarMa
 
   if (EPA_PATTERN.test(text)) {
     category = "epa";
-    matchedTerms.push(text.match(EPA_PATTERN)![0]);
+    matchedTerms.push("epa", "entrustable");
   } else if (WBA_PATTERN.test(text)) {
     category = "wba";
-    matchedTerms.push(text.match(WBA_PATTERN)![0]);
+    matchedTerms.push("wba", "mini-cex", "cbd", "dops", "assessment");
   } else if (TERM_ASSESSMENT_PATTERN.test(text)) {
     category = "term_assessment";
-    matchedTerms.push(text.match(TERM_ASSESSMENT_PATTERN)![0]);
+    matchedTerms.push("term", "ita", "assessment");
   } else if (SUPERVISOR_PATTERN.test(text) || SUPERVISOR_QUERY_PATTERN.test(text)) {
     category = "supervisor_review";
     matchedTerms.push("supervisor");
@@ -104,7 +106,7 @@ export function parseMyWorkAssessmentGrammar(query: string): AssessmentGrammarMa
     matchedTerms.push("alert");
   } else if (GENERAL_ASSESSMENT_PATTERN.test(text)) {
     category = "general_assessment";
-    matchedTerms.push(text.match(GENERAL_ASSESSMENT_PATTERN)![0]);
+    matchedTerms.push("assessment");
   }
 
   // Detect query intent: supervisor > count > due > next > status > list

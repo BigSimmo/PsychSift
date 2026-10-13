@@ -158,10 +158,41 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
         cpd: null,
       });
       expect(answer).not.toBeNull();
+      expect(answer?.headline).toBe("Upcoming EPA milestone");
+      expect(answer?.action?.href).toBe("/teaching/assessments/2");
+      expect(answer?.action?.label).toBe("Open EPA milestone");
       expect(answer?.items).toHaveLength(2);
       expect(answer?.items[0].id).toBe("t:session:2");
       expect(answer?.items[1].id).toBe("t:session:3");
       expect(answer?.date).toBe("2026-10-20");
+    });
+
+    it("preserves roster shift count answer when question primary intent is shifts", () => {
+      const shiftItems = [
+        {
+          id: "r:shift:1",
+          area: "roster" as const,
+          kind: "shift" as const,
+          title: "Day shift",
+          detail: null,
+          date: "2026-10-15",
+          href: "/roster/shifts/1",
+          tags: [],
+          text: [],
+          facet: "day",
+        },
+      ];
+      const answer = answerWorkQuestion("how many shifts this week before my assessment?", {
+        items: shiftItems,
+        areas: [
+          { area: "roster", status: "ready", sample: false },
+          { area: "teaching", status: "ready", sample: false },
+        ],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.area).toBe("roster");
     });
 
     it("parses assessment due question with timeframe", () => {
