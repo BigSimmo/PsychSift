@@ -413,7 +413,10 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.
   // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
-  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
+  // A retry that is still reading adds its own mark, so the answer it brings back restamps the time even when
+  // nothing visible changed; until it answers, the earlier time stays.
+  const refreshing = state.refreshing === true;
+  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}${refreshing ? "|refreshing" : ""}`;
   const [loaded, setLoaded] = useState<{
     readonly key: string;
     readonly at: string | null;
@@ -423,7 +426,9 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
     at: state.status === "ready" ? perthTimeOf(now) : null,
     atMs: state.status === "ready" ? now.getTime() : null,
   }));
-  if (loaded.key !== loadedKey) {
+  if (loaded.key !== loadedKey && refreshing) {
+    setLoaded({ ...loaded, key: loadedKey });
+  } else if (loaded.key !== loadedKey) {
     const ready = state.status === "ready";
     // The minute tick can be up to a minute stale, so record the real moment unless a clock is injected.
     const answered = nowProp ?? new Date();
