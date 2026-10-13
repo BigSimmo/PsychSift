@@ -559,11 +559,7 @@ function getDesktopViewportSnapshot(): boolean {
 }
 
 function useDesktopViewport(): boolean {
-  return useSyncExternalStore(
-    subscribeDesktopViewport,
-    getDesktopViewportSnapshot,
-    () => true,
-  );
+  return useSyncExternalStore(subscribeDesktopViewport, getDesktopViewportSnapshot, () => true);
 }
 
 function MedicationResults({
@@ -1109,7 +1105,10 @@ function MedicationResults({
                     <MaximumDose value={result.ceiling} />
                   </div>
                   <p className="line-clamp-2 break-words text-pretty text-xs leading-normal text-[color:var(--text-muted)]">
-                    <ActionToneIcon tone={result.actionTone} className="mr-1 inline-block h-3.5 w-3.5 align-[-0.15em]" />
+                    <ActionToneIcon
+                      tone={result.actionTone}
+                      className="mr-1 inline-block h-3.5 w-3.5 align-[-0.15em]"
+                    />
                     {result.action}
                   </p>
                 </div>

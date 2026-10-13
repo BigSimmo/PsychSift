@@ -5,7 +5,16 @@ import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-subm
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
-import { type CSSProperties, useCallback, useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
 import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
