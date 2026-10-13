@@ -17,7 +17,7 @@ const sampleAnswer = {
 
 function sampleThread(overrides: Partial<PersistedAnswerThread> = {}): PersistedAnswerThread {
   return {
-    version: 2,
+    version: 3,
     priorTurns: [
       { id: "answer-turn-3", query: "earlier", answer: sampleAnswer, sources: [] },
       { id: "answer-turn-7", query: "later", answer: sampleAnswer, sources: [] },

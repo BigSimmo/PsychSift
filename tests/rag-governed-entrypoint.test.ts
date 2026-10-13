@@ -633,7 +633,7 @@ describe("P12C same-evidence legacy and adaptive delivery", () => {
         }
         expect(
           savePersistedAnswerThread("p12c", {
-            version: 2,
+            version: 3,
             priorTurns: priorTurns.slice(0, 1),
             latestTurn: priorTurns[1]!,
             collapsedTurnIds: [],
@@ -673,7 +673,7 @@ describe("P12C same-evidence legacy and adaptive delivery", () => {
       );
       expect(
         savePersistedAnswerThread("p12c", {
-          version: 2,
+          version: 3,
           priorTurns,
           latestTurn: {
             query: rawQuery,
