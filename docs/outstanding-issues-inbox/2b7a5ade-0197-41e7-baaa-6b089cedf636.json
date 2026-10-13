@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "2b7a5ade-0197-41e7-baaa-6b089cedf636",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Gate wiring: sast.yml is entirely continue-on-error and eslint-rules/ is not linted by lint:internal",
+    "detail": "A non-blocking repo-wide Semgrep job means no finding from the broad scan blocks a merge (the blocking Ingestion SAST job covers the upload surface only; SECURITY.md names the advisory job). package.json lint:internal does not include eslint-rules/. Next action: owner decision on whether sast.yml should block, and add eslint-rules to lint:internal.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NGF237JN5WCKWM2JCFC"
+  }
+}

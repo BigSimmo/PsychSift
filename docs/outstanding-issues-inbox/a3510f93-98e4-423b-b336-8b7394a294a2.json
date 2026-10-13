@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "a3510f93-98e4-423b-b336-8b7394a294a2",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "teaching_command('display.revoke') authorisation guard passes when display link created_by is NULL",
+    "detail": "supabase/migrations/20260926225609_teaching_mode.sql:1473 uses 'if not (v_link.created_by = p_actor_id or v_role = organiser) then raise'. created_by is nullable (on delete set null), so NULL or false is NULL and the raise never fires: a non-organiser can revoke a link whose creator was deleted. The same pattern was repaired in two other functions by a null-guards migration. Next action (needs an approved migration window, a Supabase migration reaches the live clinical database on merge): coalesce(v_link.created_by = p_actor_id, false) is not true and v_role <> 'organiser'. Fix before the teaching surface opens.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67MXDVDAXJX3GX37BA6DV"
+  }
+}

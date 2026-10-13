@@ -37,7 +37,7 @@ The six columns are fixed: **Date · Branch or ref · Reviewed HEAD · Scope · 
 
 Record the **Reviewed HEAD** as the full 40-character SHA. `see PR head`, `pending final head`, and 8-character abbreviations are what made the throttle unreliable: no lookup can match them, so the review runs again. When the head genuinely does not exist yet, write `n/a - <reason>` and append a real record once it does.
 
-`npm run check:branch-review-ledger` (in `verify:cheap` and CI) enforces the `ledger` merge attribute, six cells per record, clean UTF-8 (no mojibake from a non-UTF-8 append), table-row records only, real dates, and no duplicates. Records dated 2026-07-29 or later must additionally carry a resolvable HEAD. The merge driver is installed by `npm install` / `hooks:install` (`merge.ledger.driver`). Archives under `docs/archive/branch-review-ledger-*.md` are checked for the same structural rules.
+`npm run check:branch-review-ledger` (in `verify:full` and CI) enforces the `ledger` merge attribute, six cells per record, clean UTF-8 (no mojibake from a non-UTF-8 append), table-row records only, real dates, and no duplicates. Records dated 2026-07-29 or later must additionally carry a resolvable HEAD. The merge driver is installed by `npm install` / `hooks:install` (`merge.ledger.driver`). Archives under `docs/archive/branch-review-ledger-*.md` are checked for the same structural rules.
 
 ### Rotation
 
