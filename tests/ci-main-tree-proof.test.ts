@@ -66,7 +66,7 @@ describe("main tree proof script", () => {
       });
       expect(result.status).toBe(1);
       expect(result.stderr).toContain("self-test FAILED");
-    expect(result.stderr).toMatch(/forced failure \(test hook\)[\r\n]\s+at /);
+      expect(result.stderr).toMatch(/forced failure \(test hook\)[\r\n]\s+at /);
       expect(result.stdout).not.toContain("self-test passed");
       expect(result.stdout).not.toContain("coverage=");
       expect(readFileSync(outputFile, "utf8")).toBe("");
