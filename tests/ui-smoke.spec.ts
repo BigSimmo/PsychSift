@@ -3110,13 +3110,15 @@ test.describe("PsychSift UI smoke coverage", () => {
         );
       }
       // The overseas-processing line under the answer (audit S3) is real content too.
+      // It sits in a `space-y-4` stack, so the space it adds is measured from the bottom
+      // of the answer above it: the stack's gap collapses with its own top margin.
       let providerNoticeHeight = 0;
       if (providerNotice instanceof HTMLElement) {
         const box = providerNotice.getBoundingClientRect();
         const styles = window.getComputedStyle(providerNotice);
-        providerNoticeHeight = Math.ceil(
-          box.height + (Number.parseFloat(styles.marginTop) || 0) + (Number.parseFloat(styles.marginBottom) || 0),
-        );
+        const above = providerNotice.previousElementSibling;
+        const top = above ? above.getBoundingClientRect().bottom : box.top - (Number.parseFloat(styles.marginTop) || 0);
+        providerNoticeHeight = Math.ceil(box.bottom - top + (Number.parseFloat(styles.marginBottom) || 0));
       }
       return {
         headerBottom: header ? Math.round(header.getBoundingClientRect().bottom) : 0,
