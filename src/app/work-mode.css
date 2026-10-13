@@ -522,7 +522,8 @@ html[data-motion="reduced"] .work-band__mark {
 
 .work-band__title {
   margin: 0;
-  font-size: 1.5625rem;
+  /* Scales with the band only when large text would cut it off (see .mode-band__title). */
+  font-size: min(1.5625rem, 10cqi);
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: var(--work-leading-title);

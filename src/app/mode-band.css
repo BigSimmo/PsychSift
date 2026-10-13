@@ -116,9 +116,13 @@
   cursor: pointer;
 }
 
+/* A long one-word title ("Psychiatry") never cuts off at 320 px with large text:
+   it scales with the band's width, which only bites when the text is enlarged,
+   then breaks inside the word as a last resort. */
 .mode-band__title {
   margin: 0;
-  font-size: var(--text-3xl, 1.875rem);
+  font-size: min(var(--text-3xl, 1.875rem), 12cqi);
+  overflow-wrap: break-word;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: var(--mode-band-title-leading);
