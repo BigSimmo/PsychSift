@@ -398,8 +398,11 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   const lookbackLimit = Math.max(overlap * 3, 160);
   const lookbackStart = Math.max(0, end - lookbackLimit);
   const lookbackWindow = clean.slice(lookbackStart, end);
-  const lastBoundaryMatch = lookbackWindow.match(/(?:(?<=[.!?])\s+|^)(.*?)$/);
-  const sentenceFragment = lastBoundaryMatch ? lastBoundaryMatch[1] : lookbackWindow;
+  const boundaryMatches = [...lookbackWindow.matchAll(/[.!?]\s+/g)];
+  const lastBoundary = boundaryMatches.at(-1);
+  const sentenceFragment = lastBoundary
+    ? lookbackWindow.slice(lastBoundary.index! + lastBoundary[0].length)
+    : lookbackWindow;
   if (clinicalProhibitionPattern.test(sentenceFragment)) {
     const prohibitionMatch = clinicalProhibitionPattern.exec(sentenceFragment);
     if (prohibitionMatch) {
