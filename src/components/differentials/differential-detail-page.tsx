@@ -50,6 +50,7 @@ import {
   cleanDifferentialItem,
   curatedContentNote,
   curatedProvenanceFor,
+  doNowHeading,
   doNowStepsAreCurated,
   detailTabCounts,
   differentialGroupLabel,
@@ -216,8 +217,16 @@ function SectionItems({
  * discriminator. Labelling it is what keeps the page from asserting it of this
  * diagnosis. See tests/differentials-presentation-scope.test.ts.
  */
+/** Short per-row marker for a section written about the presentation group. The
+ *  full sentence ("Applies to the … group — not specific to …") is shown once at
+ *  the top of the Clinical review list instead of on every row. */
 function ScopeNote({ label }: { label: string }) {
-  return <p className="mt-1 text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">{label}</p>;
+  return (
+    <p className="mt-1 text-2xs font-semibold text-[color:var(--text-muted)]" title={label}>
+      <span className="sr-only">{label}. </span>
+      <span aria-hidden>Whole group</span>
+    </p>
+  );
 }
 
 function SectionRow({
@@ -456,7 +465,7 @@ function PhoneDoNow({ record, curated }: { record: DifferentialRecord; curated: 
     <RecordSection
       testId="differential-do-now-phone"
       headingId="differential-do-now-title"
-      title="Do now"
+      title={doNowHeading(authored)}
       className="lg:hidden"
     >
       {authored ? null : (
@@ -1313,6 +1322,14 @@ export function DifferentialDetailPage({
                   }
                 >
                   <div className="border-t border-[color:var(--border)]">
+                    {!bodyWithheld && record.sections.some((section) => sectionScopeLabel(section, record)) ? (
+                      <p
+                        data-testid="differential-group-scope-note"
+                        className="border-b border-[color:var(--border)] px-3 py-2 text-xs leading-5 text-[color:var(--text-muted)] sm:px-4"
+                      >
+                        Rows marked “Whole group”: {differentialGroupScopeNote(record)}
+                      </p>
+                    ) : null}
                     {bodyWithheld ? (
                       <WithheldBody onOpenSource={() => changeTab("source")} />
                     ) : (
