@@ -568,15 +568,16 @@ describe("Psychiatry hub · For a shift", () => {
     );
   });
 
-  it("signposts Medicines and keeps Safety plan and MHA forms out of the quick actions", () => {
+  it("keeps Safety plan, MHA forms and First Nations out of the builders", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
-    const actions = within(screen.getByRole("list", { name: "Quick actions" }));
+    const actions = within(screen.getByRole("list", { name: "Builders" }));
     expect(actions.queryByText("Medication")).toBeNull();
     expect(actions.queryByText("Calculators")).toBeNull();
     expect(actions.queryByText("Safety plan")).toBeNull();
     expect(actions.queryByText("MHA forms")).toBeNull();
     expect(screen.getByTestId("psychiatry-shift-safety-plan").getAttribute("href")).toBe("/safety-plan");
-    expect(actions.getByText("First Nations")).toBeTruthy();
-    expect(screen.getByTestId("psychiatry-medicines-signpost").getAttribute("href")).toBe("/medicines");
+    // First Nations is listed once, in Sections (Clinical audit, 13 Oct 2026, item 15).
+    expect(actions.queryByText("First Nations")).toBeNull();
+    expect(screen.getByTestId("psychiatry-section-first-nations")).toBeTruthy();
   });
 });

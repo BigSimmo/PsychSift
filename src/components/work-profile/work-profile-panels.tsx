@@ -33,6 +33,7 @@ import {
 import type { WorkProfileData, WorkProfilePreferences } from "@/components/work-profile/use-work-profile-data";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { JURISDICTION_OPTIONS, workStageLabel } from "@/lib/account-preferences";
+import { clearRecentPages, countRecentPages } from "@/lib/recent-pages";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { countAllRecents, forgetAllRecents } from "@/lib/work-search/memory";
 import { FATIGUE_RULE_SET } from "@/lib/roster/fatigue-rules-source";
@@ -402,9 +403,10 @@ export function PrivacyPanel({
 
   const clearSearches = () => {
     // Clinical search's recent queries and AI Search's Recent (kept in this tab's memory) together.
-    const count = countRecentQueries() + countAllRecents();
+    const count = countRecentQueries() + countAllRecents() + countRecentPages();
     clearRecentQueries();
     forgetAllRecents();
+    clearRecentPages();
     setCleared(count > 0 ? "Recent searches cleared" : "No recent searches to clear");
   };
 
@@ -432,7 +434,12 @@ export function PrivacyPanel({
           title="Save recent searches"
           subtitle="Kept only in this browser tab, never on your account"
           enabled={preferences.saveRecentSearches}
-          onToggle={() => setPreference("saveRecentSearches", !preferences.saveRecentSearches)}
+          onToggle={() => {
+            const next = !preferences.saveRecentSearches;
+            setPreference("saveRecentSearches", next);
+            // Turning saving off also forgets the pages already kept, as Settings does.
+            if (!next) clearRecentPages();
+          }}
         />
         <WorkProfileRow
           title="Clear recent searches"

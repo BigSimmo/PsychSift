@@ -129,12 +129,17 @@ describe("serviceCallTarget", () => {
 });
 
 describe("services result card call button", () => {
-  it("puts a tel: call link with the visible number on a card whose record has a phone", () => {
+  it("puts a compact tel: phone button, named for the service, on a card whose record has a phone", () => {
+    // Clinical audit, 13 Oct 2026, item 8: the full-width blue Call bar became a
+    // 48px phone button on the row. Same tel: action; the number stays visible and
+    // in the accessible name, since touch and screen-reader users never get a tooltip.
     render(<ServicesNavigatorPage />);
     const card = screen.getByTestId(`service-search-result-${withPhone.slug}`);
-    const call = within(card).getByRole("link", { name: /^Call 1800 199 008/ });
+    const call = within(card).getByRole("link", { name: `Call 1800 199 008, ${withPhone.title}` });
     expect(call).toHaveAttribute("href", "tel:1800199008");
-    expect(call).toHaveTextContent("Call 1800 199 008");
+    expect(call).toHaveTextContent("1800 199 008");
+    expect(call.className).toContain("min-h-12");
+    expect(call.className).toContain("min-w-12");
   });
 
   it("shows no call link when the record has no dialable phone", () => {

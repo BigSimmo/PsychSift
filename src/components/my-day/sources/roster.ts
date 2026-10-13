@@ -193,12 +193,14 @@ async function loadRosterTeams(signal: AbortSignal): Promise<Loaded | null> {
 export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: Date }): {
   result: MyDaySourceResult;
   retry: () => void;
+  /** True while a retry is reading again over the answer still shown. */
+  refreshing: boolean;
 } {
   const { authEpoch } = useAuthSession();
   // A sick report links to Sick for tomorrow, a new work mode screen the classic work mode does not have.
   const routeVisible = useWorkModeRouteVisible();
   const { zone } = useWorkTimeZone();
-  const [stored, setStored] = useState<{ epoch: number; loaded: Loaded } | null>(null);
+  const [stored, setStored] = useState<{ epoch: number; generation: number; loaded: Loaded } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retry = useCallback(() => setGeneration((value) => value + 1), []);
 
@@ -206,15 +208,16 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
     if (!enabled) return;
     const controller = new AbortController();
     void loadRoster(controller.signal, ruleEnginesOn(new Date()).fatigue).then((next) => {
-      if (next && !controller.signal.aborted) setStored({ epoch: authEpoch, loaded: next });
+      if (next && !controller.signal.aborted) setStored({ epoch: authEpoch, generation, loaded: next });
     });
     return () => controller.abort();
   }, [enabled, generation, authEpoch]);
 
-  if (!enabled) return { result: signedOut, retry };
+  if (!enabled) return { result: signedOut, retry, refreshing: false };
   // Data from another account (a different auth epoch) is never shown.
-  if (!stored || stored.epoch !== authEpoch) return { result: loading, retry };
+  if (!stored || stored.epoch !== authEpoch) return { result: loading, retry, refreshing: false };
   const loaded = stored.loaded;
+  const refreshing = stored.generation !== generation;
   if (loaded.status === "ready") {
     return {
       result: {
@@ -223,7 +226,8 @@ export function useRosterMyDaySource({ enabled, now }: { enabled: boolean; now: 
         items: rosterMyDayItems(loaded.input, now, zone).filter((item) => routeVisible(item.href)),
       },
       retry,
+      refreshing,
     };
   }
-  return { result: { mode: "roster", status: loaded.status, items: [] }, retry };
+  return { result: { mode: "roster", status: loaded.status, items: [] }, retry, refreshing };
 }

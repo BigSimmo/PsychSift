@@ -165,14 +165,15 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
           AI Search
         </span>
       </button>
-      {/* Below 640px the note would sit over the page title and first row, so phones get only the
-          ring above; tapping the button still marks the note as read. From 640px it shows as before. */}
+      {/* Below 1024px the note would sit over the page title or the end of the tab row (on a
+          tablet it hid More), so phones and upright tablets get only the ring above; tapping the
+          button still marks the note as read. From 1024px it shows below the button. */}
       {coach ? (
         <span
           ref={coachRef}
           id="work-search-coach"
           role="note"
-          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 hidden w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)] sm:grid"
+          className="pointer-events-none absolute right-0 top-full z-[var(--z-popover)] mt-3 hidden w-[min(14.75rem,calc(100vw-2rem))] gap-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-3.5 text-left shadow-[var(--e4)] lg:grid"
         >
           <span
             aria-hidden="true"

@@ -36,8 +36,8 @@ export function timeOfDay(startsAt: string): TimeOfDay {
   return "night";
 }
 
-/** The browse window: today and the 13 days after, as Perth dates. */
-export const WINDOW_DAYS = 14;
+/** The browse window: today and the 27 days after, as Perth dates (four weeks since 12 Oct 2026). */
+export const WINDOW_DAYS = 28;
 
 export function windowOf(today: string): { start: string; end: string } {
   return { start: today, end: addDaysToDate(today, WINDOW_DAYS - 1) };

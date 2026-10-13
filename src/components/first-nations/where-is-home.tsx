@@ -129,7 +129,7 @@ export function WhereIsHomePanel({ regions, map, interpreter, mapSource = null }
   const region = regions.find((r) => r.id === regionId) ?? null;
   const copy = (text: string) =>
     copyTextToClipboard(text).then(
-      () => setNote("Copied"),
+      () => setNote("Copied. This app does not save it; it is on your device clipboard."),
       () => setNote("Copying isn't available on this phone"),
     );
   const regionLabels = useMemo(() => Object.fromEntries(regions.map((r) => [r.id, r.label])), [regions]);

@@ -41,6 +41,28 @@ function composer(page: Page) {
   return visibleByTestId(page, "global-search-input");
 }
 
+/**
+ * Typing or pressing Enter before React attaches the composer's handlers is lost
+ * on slower engines (WebKit), so wait for both the input and its form to be live.
+ */
+async function expectComposerHandlers(input: ReturnType<typeof composer>) {
+  await expect(input).toBeVisible();
+  for (const [control, eventName] of [
+    [input, "onChange"],
+    [input.locator("xpath=ancestor::form[1]"), "onSubmit"],
+  ] as const) {
+    await expect
+      .poll(() =>
+        control.evaluate((element, handlerName) => {
+          const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
+          const props = propsKey ? (element as unknown as Record<string, Record<string, unknown>>)[propsKey] : null;
+          return typeof props?.[handlerName] === "function";
+        }, eventName),
+      )
+      .toBe(true);
+  }
+}
+
 function searchOwner(page: Page, mode: (typeof localOnlySmartModes)[number][0]) {
   return mode === "tools" ? page.getByRole("textbox", { name: "Search tools" }) : composer(page);
 }
@@ -67,21 +89,7 @@ test("@critical keeps natural-language Smart search inside all seven selected mo
   for (const [mode, pathname, query] of smartModes) {
     await page.goto(`/?mode=${mode}`);
     const input = composer(page);
-    await expect(input).toBeVisible();
-    for (const [control, eventName] of [
-      [input, "onChange"],
-      [input.locator("xpath=ancestor::form[1]"), "onSubmit"],
-    ] as const) {
-      await expect
-        .poll(() =>
-          control.evaluate((element, handlerName) => {
-            const propsKey = Object.keys(element).find((key) => key.startsWith("__reactProps$"));
-            const props = propsKey ? (element as unknown as Record<string, Record<string, unknown>>)[propsKey] : null;
-            return typeof props?.[handlerName] === "function";
-          }, eventName),
-        )
-        .toBe(true);
-    }
+    await expectComposerHandlers(input);
     await input.fill(query);
     await expect(page.getByTestId("smart-search-intent-cue")).toContainText("Smart search");
     await expect(page.getByRole("button", { name: "Get Smart answer" })).toHaveCount(0);
@@ -199,6 +207,7 @@ test("@critical keeps compact codes literal and uses the ordinary Forms result r
 
   await page.goto("/?mode=forms");
   const input = composer(page);
+  await expectComposerHandlers(input);
   await input.fill("form 4A?");
   await expect(page.getByTestId("smart-search-intent-cue")).toHaveCount(0);
   await input.press("Enter");
@@ -214,9 +223,9 @@ test("@critical keeps unsupported modes free of a Smart promise", async ({ page 
     const input = composer(page);
     await input.fill("Which document should I read for this presentation?");
     await expect(page.getByTestId("smart-search-intent-cue")).toHaveCount(0);
-    // The shared home ticker line may render, but it must read as an ordinary
-    // example search with no Smart wording in these dormant modes.
-    const ticker = page.getByTestId("search-example-ticker");
+    // The shared home's example ticker may render, but it must read as an
+    // ordinary example search with no Smart wording in these dormant modes.
+    const ticker = page.getByTestId("smart-search-phone-ticker");
     if (await ticker.count()) await expect(ticker).not.toContainText("Smart");
   }
 });

@@ -74,11 +74,11 @@ for (const colorScheme of ["light", "dark"] as const) {
         /Didn't connect at \d{2}:\d{2}/,
       );
 
-      // People: search, then the Hospital / Outside lines / Mine switch; no call log here any more.
+      // Contacts: search, then the Hospital / Refer / Outside / Mine switch; no call log here any more.
       await expect(main.getByRole("radio", { name: "Hospital" })).toHaveAttribute("aria-checked", "true");
       await expect(main).toContainText("Off: you're on your mobile, so full numbers are dialled");
       await expect(main.getByTestId("on-call-call-handover")).toHaveCount(0);
-      await clickWhenHydrated(main.getByRole("radio", { name: "Outside lines" }));
+      await clickWhenHydrated(main.getByRole("radio", { name: "Outside" }));
       await expect(main.getByTestId("on-call-call-external")).toContainText("Lifeline");
       await clickWhenHydrated(main.getByRole("radio", { name: "Hospital" }));
 
@@ -87,9 +87,12 @@ for (const colorScheme of ["light", "dark"] as const) {
       if (colorScheme === "dark") expect(await brightBlocksOver48(main)).toEqual([]);
     });
 
+    // Refer is a tab of Contacts (Work mode simplify plan, owner approval 12 Oct 2026); its old address lands there.
     test("Refer opens a referral's detail in a sheet", async ({ page }) => {
       await open(page, "/on-call/refer", colorScheme);
-      const main = page.getByTestId("on-call-refer-main");
+      await expect(page).toHaveURL(/\/on-call\/call\?show=refer$/);
+      const main = page.getByTestId("on-call-call-main");
+      await expect(main.getByRole("radio", { name: "Refer" })).toHaveAttribute("aria-checked", "true");
       await clickWhenHydrated(main.getByRole("button", { name: /Example internal referral route/ }));
       await expect(page.getByTestId("on-call-refer-detail")).toBeVisible();
       await page.keyboard.press("Escape");

@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { open } from "node:fs/promises";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import {
   classifyFeedbackForEval,
   validFeedbackInteractionId,
@@ -12,6 +11,7 @@ import {
   expectedSupabaseProject,
   type SupabaseProjectConfig,
 } from "../src/lib/supabase/project";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const limits = Object.freeze({
   maxWindowMs: 7 * 24 * 60 * 60_000,
@@ -518,7 +518,7 @@ export async function runFeedbackReport(
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   void runFeedbackReport(process.argv.slice(2)).then((result) => {
     process.stdout.write(`${JSON.stringify(result.output, null, 2)}\n`);
     process.exitCode = result.exitCode;

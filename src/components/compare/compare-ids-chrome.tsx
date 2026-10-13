@@ -144,6 +144,8 @@ export function CompareIdsChrome({
         title={pickerTitle}
         description={pickerDescription}
         phone={picker.phone}
+        onDone={picker.close}
+        onReset={() => commit(padCompareIds([], maxCount))}
         id={pickerId}
         testId={pickerTestId}
       >
@@ -158,6 +160,7 @@ export function CompareIdsChrome({
           onChoose={choose}
           onDone={picker.close}
           onReset={() => commit(padCompareIds([], maxCount))}
+          hideActions={picker.phone}
           searchPlaceholder={searchPlaceholder}
           emptyHint="No matching items."
           announcement={announcement}

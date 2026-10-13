@@ -50,7 +50,7 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
 
     // Blank plan — the patient copy is clearly marked a draft.
     expect(screen.getByText(draftPattern)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("keeps Load example non-shareable so fake crisis numbers cannot look print-ready", async () => {
@@ -70,14 +70,14 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     expect(screen.getByText(examplePattern)).toBeTruthy();
     expect(screen.queryByText(/^Ready to share$/)).toBeNull();
     expect(screen.getByText(/Example — not for handover/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getAllByText(/0400 000 000/).length).toBeGreaterThan(0);
 
     // Date-only edits must not clear the example guard while seeded contacts remain.
     await user.type(screen.getByLabelText(/Plan date/i), "12 Aug 2026");
     expect(screen.getByText(examplePattern)).toBeTruthy();
     expect(screen.queryByText(/^Ready to share$/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
 
     await user.click(screen.getByRole("button", { name: /^Copy$/ }));
     const copied = String(writeText.mock.calls[0]?.[0] ?? "");
@@ -103,7 +103,7 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     await user.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
 
     expect(screen.getByText(examplePattern)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("marks an incomplete contact plan as a draft once every seeded row is gone", async () => {
@@ -118,7 +118,46 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     await user.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
 
     expect(screen.getByText(draftPattern)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps Finalise plan reachable by keyboard while unavailable, and explains why", async () => {
+    const user = userEvent.setup();
+    render(<PatientSafetyPlan />);
+
+    const finalise = screen.getByRole("button", { name: /Finalise plan/i });
+    // aria-disabled keeps the tab stop; a native disabled button would drop it and hide the reason.
+    expect(finalise).not.toBeDisabled();
+    expect(finalise).toHaveAttribute("aria-disabled", "true");
+    const reasonId = finalise.getAttribute("aria-describedby");
+    expect(reasonId).toBeTruthy();
+    expect(document.getElementById(reasonId as string)?.textContent).toMatch(/Complete all 6 steps.*0 of 6 complete/);
+
+    finalise.focus();
+    expect(document.activeElement).toBe(finalise);
+
+    // Activating it does nothing: the plan is not finalised.
+    await user.keyboard("{Enter}");
+    await user.click(finalise);
+    expect(screen.queryByText(/^Plan finalised$/)).toBeNull();
+  });
+
+  it("names the example text, not the step count, as the blocker while the example is loaded", async () => {
+    const user = userEvent.setup();
+    render(<PatientSafetyPlan />);
+
+    await user.click(screen.getByRole("button", { name: /Load example/ }));
+
+    // The example fills all six steps, so a step count would read "6 of 6 complete" beside an off button.
+    const finalise = screen.getByRole("button", { name: /Finalise plan/i });
+    expect(finalise).toHaveAttribute("aria-disabled", "true");
+    const reason = document.getElementById(finalise.getAttribute("aria-describedby") as string)?.textContent ?? "";
+    expect(reason).toMatch(/Replace the example text/i);
+    expect(reason).not.toMatch(/6 of 6/);
+    expect(finalise.getAttribute("title")).toMatch(/Replace the example text/i);
+
+    await user.click(finalise);
+    expect(screen.queryByText(/^Plan finalised$/)).toBeNull();
   });
 
   it("marks copied text as a draft when the plan is incomplete", async () => {

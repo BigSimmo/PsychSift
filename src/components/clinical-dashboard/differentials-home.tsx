@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   Activity,
   BrainCircuit,
   Check,
   ChevronRight,
   FlaskConical,
-  GitCompareArrows,
   HeartPulse,
   Info,
   Search,
@@ -34,6 +32,7 @@ import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/univ
 import { useDifferentialSearch } from "@/components/clinical-dashboard/use-differential-catalog";
 import { useResultSort } from "@/components/use-result-sort";
 import { stretchedRowLinkClass } from "@/components/card-recipes";
+import { SharedCompareTray } from "@/components/compare/shared-compare-tray";
 import { Chip as DesignChip } from "@/components/ui/chip";
 import { cn } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
@@ -43,6 +42,7 @@ import {
   differentialSelectedCompareHref,
   syncDifferentialSelectionIdsToUrl,
 } from "@/lib/differentials-navigation";
+import { usePublishDifferentialsCompareCount } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId } from "@/lib/mode-home-composer";
 import {
   composeDifferentialSearchResults,
@@ -81,71 +81,6 @@ const candidateIconBySlug: Array<[string, LucideIcon]> = [
   ["thyroid", HeartPulse],
   ["delirium", BrainCircuit],
 ];
-
-/**
- * Mobile/tablet compare action. Portals into the search composer's addon slot
- * so it sits above the search pill as dock chrome and hides/reveals with it.
- */
-function DifferentialsMobileCompareBar({
-  selectedCount,
-  selectedIds,
-  query,
-}: {
-  selectedCount: number;
-  selectedIds: Set<string>;
-  query: string;
-}) {
-  const [host, setHost] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const phoneMediaQuery = window.matchMedia("(max-width: 1023px)");
-    const sync = () => {
-      setHost(phoneMediaQuery.matches ? document.getElementById(differentialsMobileCompareAddonSlotId) : null);
-    };
-    sync();
-    phoneMediaQuery.addEventListener("change", sync);
-    const observer = new MutationObserver(sync);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => {
-      phoneMediaQuery.removeEventListener("change", sync);
-      observer.disconnect();
-    };
-  }, []);
-
-  if (!host) return null;
-
-  const hasSelection = selectedCount > 0;
-
-  return createPortal(
-    <div aria-live="polite" className="differentials-mobile-compare-fab">
-      {hasSelection ? (
-        <Link
-          href={differentialSelectedCompareHref(query, selectedIds)}
-          data-testid="differentials-compare-selected-mobile"
-          className="differentials-mobile-compare-fab__button"
-        >
-          <GitCompareArrows className="h-5 w-5 shrink-0" aria-hidden />
-          <span className="truncate">Compare selected</span>
-          <span className="nums grid h-7 min-w-7 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-contrast)]/20 px-1.5 text-xs font-extrabold">
-            {selectedCount}
-          </span>
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[color:var(--clinical-accent-contrast)]/15">
-            <ChevronRight className="h-5 w-5" aria-hidden />
-          </span>
-        </Link>
-      ) : (
-        <p
-          data-testid="differentials-compare-selected-mobile"
-          className="differentials-mobile-compare-fab__button differentials-mobile-compare-fab__button--empty"
-        >
-          <GitCompareArrows className="h-5 w-5 shrink-0 text-[color:var(--decoration-soft)]" aria-hidden />
-          <span className="truncate">Tick results to compare</span>
-        </p>
-      )}
-    </div>,
-    host,
-  );
-}
 
 function statusLabel(status: DifferentialRecord["status"]) {
   if (status === "emergent") return "Emergent";
@@ -985,6 +920,7 @@ function SearchResultsView({
   const filterReachRouter = useRouter();
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  usePublishDifferentialsCompareCount(selectedIds.size);
   // Capture cold-load URL ids in state so a loading catalogue cannot wipe `ids`
   // via replaceState before the first result set hydrates selection.
   const [initialUrlIds] = useState(() =>
@@ -1467,25 +1403,6 @@ function SearchResultsView({
                 View all catalogue matches ({results.length})
                 <ChevronRight className="h-4 w-4" aria-hidden />
               </Link>
-
-              {selectedCount > 0 ? (
-                <Link
-                  href={differentialSelectedCompareHref(query, comparisonIds)}
-                  className="hidden min-h-14 w-full items-center justify-center gap-3 rounded-lg bg-[color:var(--clinical-accent)] px-4 text-base font-extrabold text-[color:var(--clinical-accent-contrast)] shadow-[var(--shadow-elevated)] transition hover:bg-[color:var(--clinical-accent-hover)] lg:inline-flex"
-                >
-                  <GitCompareArrows className="h-5 w-5" aria-hidden />
-                  Compare selected
-                  <span className="nums grid h-7 min-w-7 place-items-center rounded-full bg-[color:var(--clinical-accent-contrast)]/20 px-1.5 text-sm">
-                    {selectedCount}
-                  </span>
-                  <ChevronRight className="ml-auto h-5 w-5" aria-hidden />
-                </Link>
-              ) : (
-                <p className="hidden min-h-14 w-full items-center justify-center gap-3 rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 text-sm font-bold text-[color:var(--text-muted)] lg:inline-flex">
-                  <GitCompareArrows className="h-5 w-5 text-[color:var(--decoration-soft)]" aria-hidden />
-                  Tick results to compare them side by side
-                </p>
-              )}
             </section>
 
             <InterpretationRail
@@ -1499,7 +1416,19 @@ function SearchResultsView({
       )}
 
       {best ? (
-        <DifferentialsMobileCompareBar selectedCount={selectedCount} selectedIds={comparisonIds} query={query} />
+        // The shared Compare tray: on a phone it rides in the search dock's
+        // addon slot; wider screens get the floating pill.
+        <SharedCompareTray
+          count={selectedCount}
+          names={results
+            .filter((result) => result.kind === "diagnosis" && comparisonIds.has(result.id))
+            .map((result) => result.title)}
+          compareHref={differentialSelectedCompareHref(query, comparisonIds)}
+          onClear={() => setSelectedIds(new Set())}
+          noun="diagnoses"
+          phonePlacement={{ dockSlotId: differentialsMobileCompareAddonSlotId }}
+          testId="differentials-compare-tray"
+        />
       ) : null}
 
       <UniversalSearchAlsoMatches modeId="differentials" query={query} />

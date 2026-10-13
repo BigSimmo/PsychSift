@@ -18,11 +18,13 @@ import { Bell, BriefcaseMedical, Stethoscope, type LucideIcon } from "lucide-rea
 import Link from "next/link";
 import { useRef, type KeyboardEvent } from "react";
 
-import { cn } from "@/components/ui-primitives";
+import { useRecentPages } from "@/components/recent-pages/use-recent-pages";
+import { cn, sidebarItem } from "@/components/ui-primitives";
 import { rememberedWorkAreaPage, type WorkSideCountsState } from "@/components/work-frame/work-frame-store";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { notificationBadgeText } from "@/lib/needs-you/feed";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
+import { RECENT_PAGE_SECTION_LABEL, RECENT_PAGES_SHOWN } from "@/lib/recent-pages";
 import { WORK_AREAS, type WorkAreaId } from "@/lib/work-frame/areas";
 import {
   WORK_SIDE_AREAS,
@@ -197,6 +199,23 @@ export function ClinicalMenuWorkAreas({
   onNavigate: () => void;
 }) {
   return (
+    <>
+      <WorkAreasNav counts={counts} currentArea={currentArea} onNavigate={onNavigate} />
+      <ClinicalMenuRecentPages variant="work" onNavigate={onNavigate} />
+    </>
+  );
+}
+
+function WorkAreasNav({
+  counts,
+  currentArea,
+  onNavigate,
+}: {
+  counts: WorkSideCountsState | null;
+  currentArea: WorkAreaId | null;
+  onNavigate: () => void;
+}) {
+  return (
     <nav aria-labelledby="clinical-menu-work-areas" className="min-w-0 shrink-0" data-testid="clinical-menu-work">
       <p
         id="clinical-menu-work-areas"
@@ -229,6 +248,83 @@ export function ClinicalMenuWorkAreas({
         })}
       </ul>
     </nav>
+  );
+}
+
+/**
+ * "Recent pages" in the phone menu: the last five pages opened on this device,
+ * across Work and Clinical, under the work areas on the Work tab and under the
+ * recent chats on the Clinical tab. Paths and page titles only; hidden when
+ * there are none.
+ */
+export function ClinicalMenuRecentPages({
+  variant,
+  onNavigate,
+}: {
+  variant: "clinical" | "work";
+  onNavigate: () => void;
+}) {
+  const pages = useRecentPages({ limit: RECENT_PAGES_SHOWN });
+  if (pages.length === 0) return null;
+  const headingId = `clinical-menu-recent-pages-${variant}`;
+  return (
+    <section
+      aria-labelledby={headingId}
+      className="min-w-0 shrink-0"
+      data-testid={`clinical-menu-recent-pages-${variant}`}
+    >
+      <h3
+        id={headingId}
+        className="flex h-9 items-center px-1 text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]"
+      >
+        Recent pages
+      </h3>
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
+        {pages.map((page) => {
+          const Icon = appModeIcons[page.section];
+          const sectionLabel = RECENT_PAGE_SECTION_LABEL[page.section];
+          const work = page.mode === "work";
+          return (
+            <li key={page.path}>
+              <Link
+                href={page.path}
+                onClick={onNavigate}
+                title={page.title}
+                data-mode-identity={work ? page.section : undefined}
+                className={cn(
+                  sidebarItem,
+                  "border border-transparent",
+                  variant === "work" && "gap-3 px-2 text-[color:var(--text-heading)]",
+                )}
+              >
+                {variant === "work" ? (
+                  <span
+                    className={cn(
+                      "grid size-7.5 shrink-0 place-items-center rounded-lg",
+                      work
+                        ? "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]"
+                        : "bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
+                    )}
+                    aria-hidden="true"
+                  >
+                    <Icon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+                  </span>
+                ) : (
+                  <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                )}
+                <span className="min-w-0 flex-1 truncate text-left">{page.title}</span>
+                {sectionLabel !== page.title ? (
+                  <span className="max-w-[40%] shrink-0 truncate text-xs font-medium text-[color:var(--text-muted)]">
+                    <span className="sr-only">, </span>
+                    {sectionLabel}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

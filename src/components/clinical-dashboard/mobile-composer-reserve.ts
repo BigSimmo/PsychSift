@@ -23,9 +23,13 @@ export const mobileComposerHiddenReserve = "0rem";
 /** Routes with no floating bottom dock (info pages, the answer home hero). */
 export const mobileComposerIdleReserve = "2rem";
 
-/** Differentials Compare selected bar + compact search pill. */
+/**
+ * Differentials: the shared Compare tray + compact search pill. The tray is one
+ * row tall, the same geometry as Therapy's, so the figure matches theirs. Keep
+ * it equal to --phone-dock-differentials-compare-clearance in globals.css.
+ */
 export const mobileComposerDifferentialsCompareReserve =
-  "calc(12.5rem + var(--safe-area-bottom) + var(--keyboard-height, 0px))";
+  "calc(9rem + var(--safe-area-bottom) + var(--keyboard-height, 0px))";
 
 /**
  * Medication surfaces: Patient details pill + compact search pill.

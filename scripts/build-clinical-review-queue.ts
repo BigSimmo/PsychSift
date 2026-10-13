@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { pathToFileURL } from "node:url";
 
 import { buildClinicalReviewQueue, buildTopLocalReviewEvidenceManifest } from "@/lib/clinical-review-queue";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 type Args = { input?: string; output?: string; sourceArtifact?: string; topLocalManifest: boolean; help: boolean };
 
@@ -57,7 +57,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

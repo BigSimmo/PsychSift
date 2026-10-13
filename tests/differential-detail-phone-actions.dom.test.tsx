@@ -56,6 +56,27 @@ function renderRecord(slug: string, knownRelatedSlugs: string[]) {
  * to replace.
  */
 describe("the authored Do now steps on a phone", () => {
+  it("heads authored steps 'Do now' and generated group points 'Points for this presentation'", () => {
+    renderRecord(SEROTONIN, []);
+    expect(within(screen.getByTestId("differential-do-now-phone")).getByRole("heading")).toHaveTextContent(/^Do now$/);
+  });
+
+  it("does not label generated group-level points as actions", () => {
+    renderRecord("drug-induced-parkinsonism", []);
+    expect(within(screen.getByTestId("differential-do-now-phone")).getByRole("heading")).toHaveTextContent(
+      /^Points for this presentation$/,
+    );
+  });
+
+  it("states the group scope once, and marks each group-level row 'Whole group'", () => {
+    const record = getDifferentialRecord("drug-induced-parkinsonism")!;
+    renderRecord("drug-induced-parkinsonism", []);
+    const notes = screen.queryAllByTestId("differential-group-scope-note");
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toHaveTextContent(differentialGroupScopeNote(record));
+    expect(screen.getAllByText("Whole group").length).toBeGreaterThan(0);
+  });
+
   it("renders every authored step, escalation included", () => {
     renderRecord(SEROTONIN, []);
 

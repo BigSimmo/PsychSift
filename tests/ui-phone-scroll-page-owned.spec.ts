@@ -33,7 +33,7 @@ test("DSM compare strip follows the shared phone scroll-hide state", async ({ pa
   await page.setViewportSize(phoneViewport);
   await gotoPhoneSurface(page, "/dsm/search?q=depression&ids=major-depressive-disorder,bipolar-ii-disorder");
 
-  const strip = page.locator(".dsm-mobile-compare-strip");
+  const strip = page.locator(".shared-compare-tray-layer");
   await expect(strip).toBeVisible({ timeout: 20_000 });
   await addPhoneScrollRunway(page);
   const visible = await strip.evaluate((element) => {

@@ -8,7 +8,11 @@ import {
   MODE_NAV_MIN_ITEMS,
   planModeNavBands,
 } from "@/components/mode-nav/mode-nav-bands";
-import { MODE_NAV_ADOPTED_MODES, modeSecondaryNavigationEntries } from "@/lib/mode-secondary-navigation";
+import {
+  groupModeSecondaryNavigationEntries,
+  MODE_NAV_ADOPTED_MODES,
+  modeSecondaryNavigationEntries,
+} from "@/lib/mode-secondary-navigation";
 import { sourceFrom, sourceSegment } from "./helpers/source-contract";
 
 const read = (relativePath: string) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
@@ -400,12 +404,11 @@ describe("ModeNav density coverage", () => {
     for (const modeId of MODE_NAV_ADOPTED_MODES) {
       expect(covered.has(modeId), `${modeId} adopted the bar but the density spec never loads it`).toBe(true);
     }
-    // Therapy uses the shared registry and exposes five workspace
-    // destinations: the four clinical ones plus Review, the curation queue that
-    // would otherwise have no inbound link once this PR takes it off the
-    // Pathways header. Record-owned outputs (briefs, patient sheets) still
-    // require a selected therapy and stay off the global mode bar.
-    expect(covered.get("therapy-compass")).toBe(5);
+    // Therapy's bar shows the four clinical destinations. Review, the
+    // curation queue, stays registered (group "more") but leaves the bar; its
+    // inbound link is on the Therapy search page. Record-owned outputs (briefs,
+    // patient sheets) still require a selected therapy and stay off the bar.
+    expect(covered.get("therapy-compass")).toBe(4);
   });
 
   it("keeps each mode's declared destination count in step with the registry", () => {
@@ -413,7 +416,10 @@ describe("ModeNav density coverage", () => {
     // drifts, the spec asserts the wrong arity and a missing slot reads as a
     // pass.
     for (const modeId of MODE_NAV_ADOPTED_MODES) {
-      const routed = modeSecondaryNavigationEntries(modeId).filter((entry) => entry.href).length;
+      // The bar shows the ungrouped entries only (`RegistryModeNav`).
+      const routed = groupModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId)).main.filter(
+        (entry) => entry.href,
+      ).length;
       expect(covered.get(modeId), `${modeId} destination count`).toBe(routed);
     }
   });
