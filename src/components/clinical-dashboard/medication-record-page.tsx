@@ -23,6 +23,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { BadgeCluster } from "@/components/clinical-dashboard/clinical-badge";
+import { formatTallMan } from "@/lib/medications/tall-man";
 import {
   MedicationConsiderations,
   MedicationInteractionCallout,
@@ -371,7 +372,7 @@ function MedicationRecordDetail({
               </span>
               <div className="min-w-0 flex-1">
                 <h1 className="break-words text-lg font-semibold leading-tight tracking-normal text-balance text-[color:var(--text-heading)] sm:text-xl">
-                  {record.name}
+                  {formatTallMan(record.name)}
                 </h1>
                 <p className="mt-1 text-sm-minus font-medium leading-5 text-[color:var(--text-muted)] sm:text-sm">
                   {record.subclass || record.class}
