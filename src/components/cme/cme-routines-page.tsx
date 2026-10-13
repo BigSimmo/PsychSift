@@ -3,7 +3,7 @@
 import { Archive, CalendarClock, ChevronRight, Plus, Repeat } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { CmeBandAction, CmeDot, CmeHint } from "@/components/cme/cme-work-kit";
+import { CmeDot, CmeHint } from "@/components/cme/cme-work-kit";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkBody } from "@/components/mode-kit/work";
 import { cpdYearOf, perthCalendarDate } from "@/lib/cme/cpd-year";
@@ -134,7 +134,6 @@ export function CmeRoutinesPage({
 
   return (
     <main data-mode-identity="cme" data-testid="cme-routines-page" className="w-full">
-      <CmeBandAction icon={Plus} label="New routine" onClick={onNewRoutine} testId="cme-routines-new-action" />
       <WorkBody>
         <h1 className="sr-only">Routines</h1>
 

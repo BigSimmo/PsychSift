@@ -6,8 +6,7 @@ import { useMemo, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeBandAction } from "@/components/mode-band/mode-band";
-import { WorkGlassButton, WorkMiniRing, WorkRing, useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkMiniRing, WorkRing, useWorkUndoToast } from "@/components/mode-kit/work";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -17,6 +16,7 @@ import {
   T5Heading,
   T5Icon,
   T5Kicker,
+  T5Link,
   T5List,
   T5Meta,
   T5Meter,
@@ -501,17 +501,13 @@ function TodayHero({
         ) : null}
       </T5Panel>
       {canCheckIn && !mark && !offline && checkInWindow ? (
-        <ModeBandAction>
-          {() => (
-            <WorkGlassButton
-              icon={QrCode}
-              label="Type a check-in code"
-              className="work-band__action"
-              onClick={() => setCodeOpen(true)}
-              testId="teaching-today-code"
-            />
-          )}
-        </ModeBandAction>
+        // Under the session, not in the band's corner, which is for Favourite only (audit D18).
+        <div className="flex justify-end">
+          <T5Link onClick={() => setCodeOpen(true)} testId="teaching-today-code">
+            <QrCode aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+            Type a check-in code
+          </T5Link>
+        </div>
       ) : null}
       {canCheckIn ? (
         <TeachingCodeSheet

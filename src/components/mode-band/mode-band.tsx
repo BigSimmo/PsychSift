@@ -77,7 +77,6 @@ const DATE_AREAS: ReadonlySet<WorkArea["id"]> = new Set(["day", "rost", "open", 
 
 /** Where the band's status line is drawn; `ModeBandStatus` portals into it. */
 export const modeBandStatusSlotId = "mode-band-status";
-const modeBandActionSlotId = "mode-band-action";
 
 export type ModeBandLead =
   /** A child of another page: a small back link in the mode colour. */
@@ -522,10 +521,9 @@ function WorkModeBandHeader({
           <Link href={customiseHref} className="work-glass-button work-band__action" aria-label="Customise">
             <SlidersHorizontal aria-hidden="true" className="size-icon-md" strokeWidth={2} />
           </Link>
-        ) : (
-          // A page's own action (My Day's Edit) takes the glass action's place.
-          <span id={modeBandActionSlotId} className="work-band__action-slot" />
-        )
+        ) : // The band's corner is the page's Favourite heart alone (audit D18, 13 Oct 2026):
+        // a page's own tools sit in the page or in More.
+        null
       }
     />
   );
@@ -610,10 +608,7 @@ function ModeBandHeader({
                 Customise
               </span>
             </Link>
-          ) : (
-            // A page's own action (My Day's Edit) takes Customise's place.
-            <span id={modeBandActionSlotId} className="contents" />
-          )}
+          ) : null}
         </div>
         {/* Not a heading: each page keeps its own h1 naming the page, which the
             top bar's pill also names; this is the mode's name. */}
@@ -821,18 +816,6 @@ export function PageTitleUnderBand({ className, children }: { className?: string
       {children}
     </h1>
   );
-}
-
-/**
- * A page's one header action, drawn opposite the date in its mode band (where
- * Customise sits on other modes) and styled like Customise there. With no
- * band it is drawn where it is placed, with the page's own look.
- */
-export function ModeBandAction({ children }: { children: (underBand: boolean) => ReactNode }) {
-  const shown = useModeBandShown();
-  const host = useModeBandHost(modeBandActionSlotId);
-  if (!shown) return <>{children(false)}</>;
-  return host ? createPortal(children(true), host) : null;
 }
 
 /** Draws its children only on a page with no mode band above it. */

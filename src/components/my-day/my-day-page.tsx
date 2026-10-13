@@ -1,6 +1,6 @@
 "use client";
 
-import { History, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
+import { History, Plus, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,15 +9,10 @@ import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import {
-  ModeBandAction,
-  PageTitleUnderBand,
-  useModeBandCurrentTab,
-  useModeBandHeading,
-} from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkButton, useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
 import { listNames, myDayModeLabel, myDayUpdatedAgo, useMyDayNow } from "@/components/my-day/my-day-page-parts";
@@ -367,40 +362,6 @@ function longDate(date: string): string {
 
 type MyDaySheet = "customise" | "quick-add" | "remind-me" | "reminders";
 
-/** A round glass button in the band (plus, sliders); a plain round icon button where there is no band. */
-function BandButton({
-  label,
-  icon: Icon,
-  onClick,
-  testId,
-}: {
-  readonly label: string;
-  readonly icon: LucideIcon;
-  readonly onClick: () => void;
-  readonly testId: string;
-}) {
-  return (
-    <ModeBandAction>
-      {(underBand) => (
-        <button
-          type="button"
-          onClick={onClick}
-          aria-label={label}
-          aria-haspopup="dialog"
-          data-testid={testId}
-          className={
-            underBand
-              ? "work-glass-button work-band__action"
-              : cn(focusRing, "grid size-12 place-items-center rounded-full text-[color:var(--mode-identity)]")
-          }
-        >
-          <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
-        </button>
-      )}
-    </ModeBandAction>
-  );
-}
-
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
   const { status: authStatus, authEpoch } = useAuthSession();
@@ -552,16 +513,14 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
         <div data-testid="my-day-header" className="contents">
           <PageTitleUnderBand className="sr-only">My Day</PageTitleUnderBand>
         </div>
+        {/* Quick add sits in the page, not the band's corner, which is for Favourite only
+            (audit D18). Customise is in More. */}
         {ready && view === "dashboard" && page === "today" ? (
-          <BandButton label="Quick add" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add" />
-        ) : null}
-        {ready && view === "all" ? (
-          <BandButton
-            label="Customise My Day"
-            icon={SlidersHorizontal}
-            onClick={() => setSheet("customise")}
-            testId="my-day-all-customise"
-          />
+          <div className="flex justify-end">
+            <WorkButton variant="secondary" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add">
+              Quick add
+            </WorkButton>
+          </div>
         ) : null}
 
         {authStatus === "loading" ||

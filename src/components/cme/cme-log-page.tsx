@@ -36,7 +36,7 @@ import { CmeMissedSessionsSection } from "@/components/cme/cme-missed-sessions-s
 import { useCmeFinishCount } from "@/components/cme/cme-page-tabs";
 import { CME_LOG_TRIGGER_ATTRIBUTE, CmeQuickLog } from "@/components/cme/cme-quick-log";
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
-import { CmeBandAction, CmeBanner, CmeHint, CmeNoteLine } from "@/components/cme/cme-work-kit";
+import { CmePageAction, CmeBanner, CmeHint, CmeNoteLine } from "@/components/cme/cme-work-kit";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useWorkUndoToast, WorkBody } from "@/components/mode-kit/work";
 import { WorkWidePage } from "@/components/work-frame/work-desktop-layout";
@@ -639,16 +639,16 @@ export function CmeLogPage({
 
   return (
     <main data-testid="cme-log-page" data-mode-identity="cme" className="w-full">
-      {showFinish ? null : (
-        <CmeBandAction
-          icon={SlidersHorizontal}
-          label="Filter your log"
-          onClick={openFilter}
-          testId="cme-log-filter-action"
-        />
-      )}
       <LogBody>
         <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
+        {showFinish ? null : (
+          <CmePageAction
+            icon={SlidersHorizontal}
+            label="Filter your log"
+            onClick={openFilter}
+            testId="cme-log-filter-action"
+          />
+        )}
         <div role="status" data-testid="cme-log-saved" className="contents">
           {justSaved ? <CmeBanner icon={Check}>Saved to your log.</CmeBanner> : null}
           {missedLinkFailed ? (
