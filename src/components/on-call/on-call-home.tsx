@@ -145,7 +145,7 @@ const OnCallNowSignedOutExample = dynamic(() => import("@/components/on-call/now
 function OnCallHomeSignedOutExample() {
   return (
     <InformationPageShell testId="on-call-home-main">
-      <h1 className="sr-only">Now</h1>
+      <h1 className="sr-only">On Call</h1>
       <p className="px-1 text-sm text-[color:var(--text-muted)]" data-testid="on-call-now-real-lines">
         These crisis lines are real. Everything after them is made up and cannot be called.
       </p>
@@ -308,7 +308,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   if (!pinnedNow && !mounted) {
     return (
       <InformationPageShell testId="on-call-home-main">
-        <h1 className="sr-only">Now</h1>
+        <h1 className="sr-only">On Call</h1>
         <p role="status">Loading current on-call context…</p>
         {/* Public lines do not depend on the historical hydration anchor. */}
         <NowCrisisLines />
@@ -319,7 +319,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
   return (
     <>
       <InformationPageShell testId="on-call-home-main">
-        <h1 className="sr-only">Now</h1>
+        <h1 className="sr-only">On Call</h1>
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
         {loadFailed ? <OnCallLoadFailed reason={loadError} onRetry={retry} /> : null}
 

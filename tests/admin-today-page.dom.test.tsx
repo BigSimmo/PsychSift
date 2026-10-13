@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
-// Admin's Today (mode id `my-work`): the owner-approved order — a quiet
-// greeting, the "Renew next" answer card, "Needs you", "Requirements" and,
+// Admin's Today (mode id `my-work`): the owner-approved order — the page
+// title, the "Renew next" answer card, "Needs you", "Requirements" and,
 // only once a start date is set, "New job progress". Nothing else renders
 // here: no timeline, no Pay, no Help block, no ask box.
 
@@ -113,11 +113,12 @@ describe("AdminTodayPage", () => {
     }
   });
 
-  it("opens with a greeting and the date, no summary number, and no tabs", () => {
+  it("is titled Admin, not a greeting, with the date, no summary number, and no tabs", () => {
     state.entries = [registration, indemnity];
     render(<AdminTodayPage now={NOW} />);
     const greeting = screen.getByTestId("admin-today-greeting");
-    expect(greeting.textContent).toContain("Good morning");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Admin");
+    expect(greeting.textContent).not.toContain("Good morning");
     expect(greeting.textContent).toContain("Saturday 26 September");
     expect(greeting.textContent).not.toMatch(/\d+ (items|renewals|due)/);
     expect(screen.queryByRole("navigation", { name: "Sections of this page" })).toBeNull();
@@ -454,7 +455,7 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     expect(within(act).queryByTestId("admin-today-at-a-glance")).toBeNull();
     expect(within(ahead).getByTestId("admin-today-coming-up")).toBeTruthy();
     expect(within(screen.getByTestId("admin-today-coming-up")).getByTestId("admin-today-at-a-glance")).toBeTruthy();
-    // The greeting stays the page's only h1.
+    // The title stays the page's only h1.
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 

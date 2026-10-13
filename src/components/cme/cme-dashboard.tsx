@@ -334,7 +334,7 @@ export function CmeDashboard({
   const status = (
     <>
       {/* The band above the page names the mode and the page; the h1 still names it for screen readers. */}
-      <h1 className="sr-only">Year</h1>
+      <h1 className="sr-only">CPD</h1>
       <ModeBandStatus
         testId="cme-data-freshness"
         value={
