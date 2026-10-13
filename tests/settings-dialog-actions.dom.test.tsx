@@ -177,13 +177,15 @@ describe("SettingsDialog — destructive and account actions", () => {
 
   it("reports when the prescribing profile clear cannot be persisted", () => {
     writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
-    const setItem = vi.spyOn(window.sessionStorage, "setItem").mockImplementationOnce(() => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new Error("storage unavailable");
     });
     renderDialog();
     fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
     expect(getPatientProfileSnapshot()).toMatchObject({ ageYears: 72, medications: ["lithium"] });
-    expect(screen.getByText("The prescribing patient profile could not be cleared. Please try again.")).toBeInTheDocument();
+    expect(
+      screen.getByText("The prescribing patient profile could not be cleared. Please try again."),
+    ).toBeInTheDocument();
     setItem.mockRestore();
   });
 

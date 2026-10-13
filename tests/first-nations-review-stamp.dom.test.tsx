@@ -41,6 +41,3 @@ describe("First Nations review stamp", () => {
     expect(container.textContent).toBe("");
   });
 });
-r.textContent).toBe("");
-  });
-});
