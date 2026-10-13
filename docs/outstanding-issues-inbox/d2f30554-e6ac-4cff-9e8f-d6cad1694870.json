@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "d2f30554-e6ac-4cff-9e8f-d6cad1694870",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "4d2480b9-8b62-488b-9e65-ede8dc16fd22",
+    "reason": "PR3509 rebuild: reject full closure of #VMG7D8. The parser change does not replace the committed 201-record export snapshot; data correction and verification remain open. Preserve the original request and existing issue history. Source: https://github.com/BigSimmo/PsychSift/pull/3509 at db2d180360b3d3dc7ef805f6faae227b4e4b0e8b."
+  }
+}
