@@ -413,7 +413,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.
   // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
-  const loadedKey = `${state.readRevision}|${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
+  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
   const [loaded, setLoaded] = useState<{
     readonly key: string;
     readonly at: string | null;
@@ -429,18 +429,8 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
     const answered = nowProp ?? new Date();
     setLoaded({ key: loadedKey, at: ready ? perthTimeOf(answered) : null, atMs: ready ? answered.getTime() : null });
   }
-  // Keep the age boundary tied to the answer rather than to the page clock's last tick.
-  const [, setAgeTick] = useState(0);
-  useEffect(() => {
-    if (nowProp || loaded.atMs === null) return;
-    const elapsed = Date.now() - loaded.atMs;
-    const delay = Math.max(1, 60_000 - (elapsed % 60_000));
-    const timer = setTimeout(() => setAgeTick((value) => value + 1), delay);
-    return () => clearTimeout(timer);
-  }, [loaded.atMs, nowProp]);
-  // "Updated 4 min ago": use the real clock for the age, while `now` remains the page clock.
-  const updatedNow = nowProp ?? (loaded.atMs === null ? now : new Date());
-  const updated = loaded.at ? myDayUpdatedAgo(updatedNow, loaded.atMs, loaded.at) : null;
+  // "Updated 4 min ago": re-read on the minute tick, so the age keeps moving while the time stays.
+  const updated = loaded.at ? myDayUpdatedAgo(now, loaded.atMs, loaded.at) : null;
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";

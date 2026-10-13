@@ -84,8 +84,6 @@ export interface MyDayState {
   /** Merged and sorted with `mergeMyDayItems`. */
   readonly items: readonly MyDayItem[];
   readonly sources: readonly MyDaySourceResult[];
-  /** Increases after each source read is requested, including reads with unchanged results. */
-  readonly readRevision: number;
   /** True when any source is showing demo/sample data. */
   readonly demoMode: boolean;
   readonly retry: () => void;

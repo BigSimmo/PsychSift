@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useCmeMyDaySource } from "@/components/my-day/sources/cme";
 import { useEntriesMyDaySources } from "@/components/my-day/sources/entries";
@@ -64,11 +64,7 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
   const retryRoster = roster.retry;
   const retryCme = cme.retry;
   const retryTeaching = teaching.retry;
-  const [readRevision, setReadRevision] = useState(0);
   const retry = useCallback(() => {
-    // A retry can answer with exactly the same statuses and item count. Keep a
-    // revision separate from the result so the page can record that answer.
-    setReadRevision((value) => value + 1);
     retryEntries();
     retryRoster();
     retryCme();
@@ -81,7 +77,6 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
     status: signedOut ? "signed-out" : loading ? "loading" : "ready",
     items: signedOut ? [] : items,
     sources,
-    readRevision,
     // Only a source that actually loaded sample data makes the view "demo".
     demoMode: sources.some((source) => source.status === "ready" && source.sample === true),
     retry,
