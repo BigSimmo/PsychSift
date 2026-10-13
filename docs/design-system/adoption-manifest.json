@@ -2223,6 +2223,7 @@
         "tests/empirical-challenger-m1.dom.test.tsx",
         "tests/eval-process-safety.test.ts",
         "tests/favourites-page-actions.dom.test.tsx",
+        "tests/note-editor-caret.dom.test.tsx",
         "tests/search-results-header-band.dom.test.tsx",
         "tests/ui-cme-phone.spec.ts",
         "tests/ui-formulation.spec.ts",

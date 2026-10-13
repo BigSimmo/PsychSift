@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "563d11b8-515b-402e-a3ae-ef8ba5991105",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#ZTDZ4Z",
+    "outcome": "Teaching: in-app QR scanner check-in helper added in QrCheckInHelper with mobile camera constraints, permissions handling, and typed fallback.",
+    "baseRowFingerprint": "5866e928aba2f47f268b7377b698902fd4b7235d876bd048ae6d1691ea1e8951"
+  }
+}
