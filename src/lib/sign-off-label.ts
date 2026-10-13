@@ -30,11 +30,7 @@ export function signOffDisplay(
   reviewedAt: string | null | undefined,
 ): SignOffDisplay {
   const name = typeof reviewer === "string" ? reviewer.trim().replace(/\s+/g, " ") : "";
-  if (
-    !isNamedPerson(name) ||
-    !isUtcIsoTimestamp(reviewedAt) ||
-    Date.parse(reviewedAt) > Date.now()
-  ) {
+  if (!isNamedPerson(name) || !isUtcIsoTimestamp(reviewedAt) || Date.parse(reviewedAt) > Date.now()) {
     return { signedOff: false, text: NOT_SIGNED_OFF_LABEL };
   }
   const day = formatDayMonthYear(perthDay.format(new Date(reviewedAt)));
