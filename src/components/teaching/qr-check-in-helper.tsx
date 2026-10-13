@@ -109,8 +109,13 @@ export function QrCheckInHelper({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+  // Bumped by every start/stop, so a permission prompt that resolves after the user stopped or
+  // left cannot leave the camera running.
+  const cameraRequestRef = useRef(0);
 
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current += 1;
     if (scanIntervalRef.current) {
       clearInterval(scanIntervalRef.current);
       scanIntervalRef.current = null;
@@ -126,21 +131,18 @@ export function QrCheckInHelper({
     stopCamera();
     setErrorMessage(null);
 
+    const request = cameraRequestRef.current;
     const result = await requestMobileCameraStream();
+    if (!mountedRef.current || request !== cameraRequestRef.current) {
+      result.stream?.getTracks().forEach((track) => track.stop());
+      return;
+    }
     setPermissionStatus(result.status);
 
     if (result.stream) {
       streamRef.current = result.stream;
+      // The <video> mounts only once isScanning renders; the effect below attaches the stream.
       setIsScanning(true);
-
-      if (videoRef.current) {
-        try {
-          videoRef.current.srcObject = result.stream;
-          videoRef.current.play?.().catch(() => {});
-        } catch {
-          // Handled safely
-        }
-      }
 
       // Check if native BarcodeDetector is available
       if (typeof window !== "undefined" && "BarcodeDetector" in window) {
@@ -173,7 +175,19 @@ export function QrCheckInHelper({
   }, [onScanCode, stopCamera]);
 
   useEffect(() => {
+    if (!isScanning || !videoRef.current || !streamRef.current) return;
+    try {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play?.().catch(() => {});
+    } catch {
+      // Handled safely
+    }
+  }, [isScanning]);
+
+  useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       stopCamera();
     };
   }, [stopCamera]);

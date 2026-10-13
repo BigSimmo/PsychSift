@@ -60,17 +60,18 @@ const FORM_METADATA = {
  */
 export function WaMhaFormPrint({
   formCode,
-  patientName = "Smith, John",
-  patientDob = "1985-04-12",
-  patientId = "UMRN-984210",
-  facilityName = "Perth Mental Health Service",
-  treatingPsychiatrist = "Dr. C. Reynolds (Consultant Psychiatrist)",
+  patientName = "",
+  patientDob = "",
+  patientId = "",
+  facilityName = "",
+  treatingPsychiatrist = "",
   orderDateTime = new Date().toISOString().slice(0, 16).replace("T", " "),
   expiryDateTime,
   isChild = false,
-  leastRestrictiveReasoning = "Voluntary options exhausted; severe risk of serious deterioration without inpatient compulsory treatment.",
-  physicalHealthJustification = "Requires active intravenous therapy and cardiac monitoring requiring general medical ward detention.",
-  chiefPsychiatristConsent = true,
+  leastRestrictiveReasoning = "",
+  physicalHealthJustification = "",
+  // A statutory form never defaults to invented patient facts or to consent having been obtained.
+  chiefPsychiatristConsent = false,
   className = "",
 }: WaMhaFormPrintProps) {
   const meta = FORM_METADATA[formCode];

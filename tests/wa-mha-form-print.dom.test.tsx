@@ -46,6 +46,14 @@ describe("WaMhaFormPrint (#C4CFFP)", () => {
     expect(screen.getAllByText(/Chief Psychiatrist Consent/i).length).toBeGreaterThanOrEqual(1);
   });
 
+  it("prints no invented patient facts and never defaults consent to obtained", () => {
+    render(<WaMhaFormPrint formCode="6B" />);
+    const root = screen.getByTestId("wa-mha-form-print-root");
+    expect(root).not.toHaveTextContent("Smith, John");
+    expect(root).not.toHaveTextContent("UMRN-984210");
+    expect(root).not.toHaveTextContent("Obtained and documented in clinical record.");
+  });
+
   it("print.css enforces visible display for form headers, titles, and statutory metadata in @media print", () => {
     const cssPath = resolve(process.cwd(), "src/styles/print.css");
     const printCss = readFileSync(cssPath, "utf8");
