@@ -14,7 +14,10 @@ import { afterAll, describe, expect, it } from "vitest";
  * without checking anything, were both caught by it.
  */
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const RAW_PATTERN = "pathToFileURL(process.argv[1])";
+// Any pathToFileURL(...) call whose argument involves process.argv[1], including wrapped forms such as
+// pathToFileURL(path.resolve(process.argv[1])) or pathToFileURL(process.argv[1] ?? ""): all of them
+// compare a path the launcher spelled one way with a URL spelled another.
+const RAW_PATTERN = /pathToFileURL\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*process\.argv\[1\]/;
 
 // Files that may keep the raw comparison, each with the reason. Remove an entry when the file is
 // converted; the second test below fails if an entry no longer needs to be here.
@@ -42,7 +45,7 @@ function scriptFiles(dir: string): string[] {
 }
 
 const rawUsers = scriptFiles(path.join(root, "scripts"))
-  .filter((file) => readFileSync(file, "utf8").includes(RAW_PATTERN))
+  .filter((file) => RAW_PATTERN.test(readFileSync(file, "utf8")))
   .map((file) => path.relative(root, file).split(path.sep).join("/"))
   .sort();
 
