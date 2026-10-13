@@ -46,8 +46,10 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   dictionary: 401,
   // The 89 written items and universals were signed off; 514 placeholders remain.
   specifiers: 514,
-  // 54 records were signed off. The 47 that remain have no sign-off tool.
-  therapy: 47,
+  // 54 records were signed off. The 47 that remain have no sign-off tool, plus five
+  // records edited on #3510 that went back to needs_review rather than being re-signed
+  // (owner decision, 13 Oct 2026 10:23 PM AWST).
+  therapy: 52,
   // All 93 signable candidates were reviewed; six Indigenous sources remain held.
   sources: 6,
 };

@@ -115,7 +115,9 @@ describe("the real queue", () => {
     // that gained guideline references on 2026-10-09 are the only signable
     // rows; everything else still waiting is an Indigenous governance hold or
     // has no sign-off tool. A change in this set should update this pin.
-    expect(signable.map((item) => item.family)).toEqual(Array(22).fill("therapy"));
+    // 13 Oct 2026: +5 Therapy records edited on #3510 went back to needs_review
+    // (owner decision, 10:23 PM AWST) and are signable again.
+    expect(signable.map((item) => item.family)).toEqual(Array(27).fill("therapy"));
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
