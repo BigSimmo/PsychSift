@@ -429,7 +429,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
     setLoaded({ key: loadedKey, at: ready ? perthTimeOf(answered) : null, atMs: ready ? answered.getTime() : null });
   }
   // "Updated 4 min ago": re-read on the minute tick, so the age keeps moving while the time stays.
-  const updated = loaded.at ? myDayUpdatedAgo(now, loaded.atMs, loaded.at) : null;
+  const updated = loaded.at ? myDayUpdatedAgo(now, loaded.atMs, loaded.at, zone) : null;
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
