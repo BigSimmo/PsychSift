@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpenText, ClipboardList, Clock3, Languages, MapPin, Scale, UserRound } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { BookOpenText, Languages, UserRound } from "lucide-react";
+import { useId, useState } from "react";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { cn, textMuted } from "@/components/ui-primitives";
@@ -25,38 +25,6 @@ import type { ServiceSummaryCard } from "@/lib/service-ranker";
 
 function hasText(value: string | null | undefined): value is string {
   return Boolean(value && value.trim().length > 0);
-}
-
-const PRIORITY_FACT_ICONS = {
-  clock: Clock3,
-  authority: UserRound,
-  criteria: Scale,
-  "act-sections": BookOpenText,
-} as const;
-
-function summaryIcon(card: ServiceSummaryCard) {
-  // Match the card id before the prose. The old heuristic searched the title too, so
-  // Form 4C's authority card — whose title reads "Check the official form signature block
-  // and Act sections." — drew the Act-sections book instead of the person.
-  const known = PRIORITY_FACT_ICONS[card.id as keyof typeof PRIORITY_FACT_ICONS];
-  if (known) {
-    const KnownIcon = known;
-    return <KnownIcon className="h-5 w-5" aria-hidden />;
-  }
-  const label = `${card.id} ${card.label} ${card.title}`.toLowerCase();
-  const Icon =
-    label.includes("act-section") || label.includes("act section")
-      ? BookOpenText
-      : label.includes("clock")
-        ? Clock3
-        : label.includes("destination") || label.includes("place") || label.includes("route")
-          ? MapPin
-          : label.includes("authority") || label.includes("maker")
-            ? UserRound
-            : label.includes("criteria") || label.includes("threshold")
-              ? Scale
-              : ClipboardList;
-  return <Icon className="h-5 w-5" aria-hidden />;
 }
 
 /**
@@ -102,14 +70,11 @@ export function priorityFactBody(
 }
 
 /**
- * Whether a card should offer "Tap for detail".
+ * Whether the longer wording says anything the fact's title does not.
  *
- * This used to be gated on the form having a curated `priorityFacts` block, which is
- * why only Form 1A had working popups. The honest test is whether the sheet would show
- * anything the card face does not already say: on a form whose catalogue row is
- * boilerplate, the clock card's title IS its whole body, so it stays inert rather than
- * promising detail that does not exist. The authority card composes maker + authorises
- * + does-not-authorise, which is strictly more than its title on every form.
+ * On a form whose catalogue row is boilerplate, the clock fact's title IS its whole
+ * body, so the body is not printed a second time. The authority fact composes maker +
+ * authorises + does-not-authorise, which is strictly more than its title on every form.
  */
 function hasExtraDetail(card: ServiceSummaryCard, detail: { body: string } | null) {
   const body = detail?.body?.trim();
@@ -118,114 +83,29 @@ function hasExtraDetail(card: ServiceSummaryCard, detail: { body: string } | nul
 }
 
 /**
- * The four cards sit in one stretched grid row, so the card with the most to say sets the
- * height for all of them. Left alone that reads as three ragged boxes beside a full one:
- * a two-line clock card printed its text at the top and left 150px of dead space below,
- * while an interactive card's text floated to the middle because a `<button>` centres its
- * own content. So the anatomy is fixed in three zones rather than flowed:
+ * One label/value pair in the At a glance card, shown in full.
  *
- *   header    pinned to the top, identical on every card
- *   body      centred in whatever height the tallest sibling imposes
- *   footnote  pinned to the bottom, and always occupying a line even when a card has no
- *             hint to show, so the four baselines agree
- *
- * Text stays left-aligned inside that: these are clinical sentences to be read, not stat
- * tiles to be glanced at, and centred ragged prose is harder to scan.
+ * The longer wording used to sit behind "Tap for detail" in a sheet; the shared record
+ * layout shows it whole under the title instead, so nothing on the screen a clinician
+ * reads first is cut short.
  */
-function DetailCardShell({
-  card,
-  children,
-  footer,
-}: {
-  card: ServiceSummaryCard;
-  children?: ReactNode;
-  footer?: ReactNode;
-}) {
-  return (
-    <article className="flex min-h-[5.75rem] flex-col rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-1.5 shadow-[var(--shadow-inset)] sm:min-h-[7rem] sm:p-3">
-      <div className="mb-1 flex items-start gap-1.5 sm:mb-2 sm:gap-2">
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] sm:h-9 sm:w-9">
-          {summaryIcon(card)}
-        </span>
-        <p className="min-w-0 pt-0.5 text-2xs font-bold uppercase leading-4 text-[color:var(--text-muted)]">
-          {hasText(card.label) ? card.label.trim() : "Priority fact"}
-        </p>
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col justify-center">{children}</div>
-      <CardFootnote>{footer}</CardFootnote>
-    </article>
-  );
-}
-
-/**
- * The bottom line of a card. It renders even with nothing to say, because a card that
- * drops the line is 1rem shorter in its body zone than its neighbours and the row stops
- * lining up. The blank stays out of the accessibility tree.
- */
-function CardFootnote({ children }: { children?: ReactNode }) {
-  return (
-    <p className={cn("mt-auto pt-1 text-2xs font-medium leading-4 sm:pt-1.5", textMuted)}>
-      {children ?? <span aria-hidden>&nbsp;</span>}
-    </p>
-  );
-}
-
-function DetailCard({
-  card,
-  onOpenDetail,
-  hasDetail,
-}: {
-  card: ServiceSummaryCard;
-  onOpenDetail?: () => void;
-  hasDetail?: boolean;
-}) {
+function GlanceFact({ card, body }: { card: ServiceSummaryCard; body: string | null }) {
   const label = hasText(card.label) ? card.label.trim() : "Priority fact";
   const title = hasText(card.title) ? card.title.trim() : "";
-  const isInteractive = Boolean(hasDetail && onOpenDetail);
-
-  const titleNode = isInteractive ? (
-    <span className="block text-xs font-semibold leading-tight text-[color:var(--text-heading)] sm:text-sm sm:leading-5">
-      {title}
-    </span>
-  ) : (
-    <h3 className="text-xs font-semibold leading-tight text-[color:var(--text-heading)] sm:text-sm sm:leading-5">
-      {title}
-    </h3>
-  );
-
-  const content = (
-    <>
-      {titleNode}
-      {/* Rendered only when there is a sub-line. The 34 forms with no indexed clock cue
-          used to print "Not listed" here, which reads as a fact about the form rather
-          than an absence of one, and there is no honest substitute in the catalogue. */}
-      {hasText(card.detail) ? (
-        <p className={cn("mt-0.5 text-2xs font-medium leading-4 sm:mt-1 sm:text-xs sm:leading-5", textMuted)}>
-          {card.detail.trim()}
-        </p>
-      ) : null}
-    </>
-  );
-
-  if (!isInteractive || !onOpenDetail) {
-    return <DetailCardShell card={card}>{content}</DetailCardShell>;
-  }
-
   return (
-    <DetailCardShell card={card} footer="Tap for detail">
-      {/* `block`, not `flex-1`: a stretched button centres its own content under the UA
-          stylesheet, which is what made this card's text sit lower than its neighbours'.
-          The shell owns the centring now, so every card resolves it the same way. */}
-      <button
-        type="button"
-        onClick={onOpenDetail}
-        aria-haspopup="dialog"
-        className="block w-full min-w-0 rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-        aria-label={`${label}: ${title}${hasText(card.detail) ? ` — ${card.detail.trim()}` : ""}. Open detail.`}
-      >
-        {content}
-      </button>
-    </DetailCardShell>
+    <div className={cn("flex min-w-0 flex-col gap-0.5", body && "@[15rem]:col-span-2")}>
+      <dt className="text-xs text-[color:var(--text-muted)]">{label}</dt>
+      <dd className="m-0 min-w-0 break-words">
+        <h3 className="m-0 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">{title}</h3>
+        {/* Rendered only when there is a sub-line. The 34 forms with no indexed clock cue
+            used to print "Not listed" here, which reads as a fact about the form rather
+            than an absence of one, and there is no honest substitute in the catalogue. */}
+        {hasText(card.detail) ? (
+          <p className={cn("m-0 text-xs font-medium leading-5", textMuted)}>{card.detail.trim()}</p>
+        ) : null}
+        {body ? <p className="m-0 mt-1.5 text-sm leading-6 text-[color:var(--text)]">{body}</p> : null}
+      </dd>
+    </div>
   );
 }
 
@@ -273,46 +153,48 @@ function ActSectionsCard({
   const awaitingReview = sections.some((entry) => entry.reviewStatus === "drafted");
 
   return (
-    <DetailCardShell
-      card={card}
-      footer={awaitingReview ? "Tap a section — awaiting clinical review" : "Tap a section for authority detail"}
-    >
-      <h3
-        id={groupLabelId}
-        className="text-xs font-semibold leading-tight text-[color:var(--text-heading)] sm:text-sm sm:leading-5"
-      >
-        {hasText(card.title) ? card.title.trim() : "Authority under the Act"}
-      </h3>
-      <div
-        className={cn("mt-1 grid gap-1", actTileColumns(visible.length + (overflow > 0 ? 1 : 0)))}
-        role="group"
-        aria-labelledby={groupLabelId}
-      >
-        {visible.map((entry) => (
-          <button
-            key={entry.section}
-            type="button"
-            onClick={() => onOpenSection(entry.section)}
-            aria-haspopup="dialog"
-            className={actChipClass}
-            aria-label={`Section ${entry.section}: ${entry.title}. Open detail.`}
-          >
-            {entry.section}
-          </button>
-        ))}
-        {overflow > 0 ? (
-          <button
-            type="button"
-            onClick={onOpenIndex}
-            aria-haspopup="dialog"
-            className={actChipClass}
-            aria-label={`Show all ${sections.length} Act sections. Open detail.`}
-          >
-            {`+${overflow}`}
-          </button>
-        ) : null}
-      </div>
-    </DetailCardShell>
+    <div className="flex min-w-0 flex-col gap-0.5 @[15rem]:col-span-2">
+      <dt className="text-xs text-[color:var(--text-muted)]">
+        {hasText(card.label) ? card.label.trim() : "Act sections"}
+      </dt>
+      <dd className="m-0 min-w-0">
+        <h3 id={groupLabelId} className="m-0 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
+          {hasText(card.title) ? card.title.trim() : "Authority under the Act"}
+        </h3>
+        <div
+          className={cn("mt-1.5 grid max-w-sm gap-1.5", actTileColumns(visible.length + (overflow > 0 ? 1 : 0)))}
+          role="group"
+          aria-labelledby={groupLabelId}
+        >
+          {visible.map((entry) => (
+            <button
+              key={entry.section}
+              type="button"
+              onClick={() => onOpenSection(entry.section)}
+              aria-haspopup="dialog"
+              className={actChipClass}
+              aria-label={`Section ${entry.section}: ${entry.title}. Open detail.`}
+            >
+              {entry.section}
+            </button>
+          ))}
+          {overflow > 0 ? (
+            <button
+              type="button"
+              onClick={onOpenIndex}
+              aria-haspopup="dialog"
+              className={actChipClass}
+              aria-label={`Show all ${sections.length} Act sections. Open detail.`}
+            >
+              {`+${overflow}`}
+            </button>
+          ) : null}
+        </div>
+        <p className={cn("m-0 mt-1.5 text-xs font-medium leading-5", textMuted)}>
+          {awaitingReview ? "Tap a section — awaiting clinical review" : "Tap a section for authority detail"}
+        </p>
+      </dd>
+    </div>
   );
 }
 
@@ -403,7 +285,7 @@ function CulturalNoteText({ text }: { text: string }) {
  * all of them; once any is signed, each note says for itself whether it was
  * reviewed (and by whom) or is still awaiting review.
  */
-function CulturalNotesSection({ formCode }: { formCode: string | undefined }) {
+export function CulturalNotesSection({ formCode }: { formCode: string | undefined }) {
   const notes = culturalNotesForForm(formCode);
   if (!notes.length) return null;
   const reviewers = notes.map(culturalNoteReviewer);
@@ -466,10 +348,8 @@ export function PriorityFactsSection({ form, cards }: { form: FormRecord; cards:
   // catalogPayload arrives from the owner-record path as an unchecked cast, bypassing
   // the actSections() coercer, so a malformed stored entry must not render a bare chip.
   const actSections = (details?.actSections ?? []).filter((entry) => hasText(entry?.section) && hasText(entry?.title));
-  const [activeFactId, setActiveFactId] = useState<string | null>(null);
   const [actSheet, setActSheet] = useState<ActSheetState>(null);
 
-  const activeFact = activeFactId ? priorityFactBody(form, activeFactId) : null;
   const activeSection =
     actSheet?.mode === "section" ? (actSections.find((entry) => entry.section === actSheet.section) ?? null) : null;
   const pdfHref = details?.officialPdfUrl ?? details?.officialRegisterUrl;
@@ -482,17 +362,18 @@ export function PriorityFactsSection({ form, cards }: { form: FormRecord; cards:
       <section
         id="form-priority-facts"
         aria-label="Priority facts"
-        className={cn(inPageAnchor, "space-y-2.5 sm:space-y-3")}
+        className={cn(
+          inPageAnchor,
+          "@container rounded-2xl border border-[color:var(--clinical-accent-border)] bg-[color:color-mix(in_srgb,var(--clinical-accent-soft)_55%,var(--surface))] p-5",
+        )}
       >
-        <h2 className="text-base-minus font-semibold leading-5 text-[color:var(--text-heading)] sm:text-base">
-          Priority facts
-        </h2>
+        <h2 className="m-0 text-xs font-bold text-[color:var(--clinical-accent)]">At a glance</h2>
         {contentAwaitingReview ? (
-          <p className={cn("text-xs leading-5", textMuted)}>
+          <p className={cn("m-0 mt-1 text-xs leading-5", textMuted)}>
             Drafted from the Act and the approved form, awaiting clinical review.
           </p>
         ) : null}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
+        <dl className="m-0 mt-3.5 grid grid-cols-1 gap-x-5 gap-y-4 @[15rem]:grid-cols-2">
           {cards.map((card) => {
             if (card.id === "act-sections" && actSections.length) {
               return (
@@ -506,41 +387,17 @@ export function PriorityFactsSection({ form, cards }: { form: FormRecord; cards:
               );
             }
             const detail = priorityFactBody(form, card.id);
-            const hasDetail = hasExtraDetail(card, detail);
-            return (
-              <DetailCard
-                key={card.id}
-                card={card}
-                hasDetail={hasDetail}
-                onOpenDetail={hasDetail ? () => setActiveFactId(card.id) : undefined}
-              />
-            );
+            return <GlanceFact key={card.id} card={card} body={hasExtraDetail(card, detail) ? detail!.body : null} />;
           })}
-        </div>
-      </section>
-
-      <CulturalNotesSection formCode={details?.form} />
-
-      <Sheet
-        open={Boolean(activeFact)}
-        onClose={() => setActiveFactId(null)}
-        title={activeFact?.title?.trim() || "Priority fact"}
-        description={activeFact?.detail}
-        testId="form-priority-fact-sheet"
-        mobilePlacement="bottom"
-      >
-        {activeFact ? (
-          <div className="space-y-3">
-            <p className="text-sm leading-6 text-[color:var(--text)]">{activeFact.body}</p>
-            {contentAwaitingReview ? (
-              <p className={cn("text-xs leading-5", textMuted)}>
-                Drafted from the Act text and the approved form, and awaiting clinical review. Confirm against the
-                current Act and approved form before clinical or legal use.
-              </p>
-            ) : null}
-          </div>
+        </dl>
+        {contentAwaitingReview ? (
+          // The full wording used to carry this caveat inside its detail sheet; it now
+          // sits with the full wording on the card.
+          <p className={cn("m-0 mt-4 text-xs leading-5", textMuted)}>
+            Confirm against the current Act and approved form before clinical or legal use.
+          </p>
         ) : null}
-      </Sheet>
+      </section>
 
       <Sheet
         open={Boolean(actSheet)}

@@ -344,7 +344,7 @@ export function CalculatorSearchHome({
 
       <p className="text-center text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
         Calculator answers remain in this browser session and are not intentionally submitted by this calculator
-        interface. Application telemetry and clinical-record documentation are governed separately.
+        interface. The app’s usage logs, and anything you document in the clinical record, are covered separately.
       </p>
     </main>
   );

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { ComparePickerActions } from "@/components/compare/compare-catalog-picker";
 import { Sheet } from "@/components/ui/sheet";
 
 export function ComparePickerShell({
@@ -13,6 +14,8 @@ export function ComparePickerShell({
   id,
   testId,
   footer,
+  onDone,
+  onReset,
   children,
 }: {
   open: boolean;
@@ -23,16 +26,31 @@ export function ComparePickerShell({
   id?: string;
   testId?: string;
   footer?: ReactNode;
+  /**
+   * Phone only: Done and Reset are pinned as the sheet footer so they never fall below the
+   * screen edge. Pass the same handlers to the picker with `hideActions={phone}`; on wider
+   * screens the picker keeps them inline and these are ignored.
+   */
+  onDone?: () => void;
+  onReset?: () => void;
   children: ReactNode;
 }) {
   if (phone) {
+    const pinnedActions = onDone || onReset ? <ComparePickerActions onDone={onDone} onReset={onReset} /> : null;
     return (
       <Sheet
         open={open}
         onClose={onClose}
         title={title}
         description={description}
-        footer={footer}
+        footer={
+          footer || pinnedActions ? (
+            <>
+              {footer}
+              {pinnedActions}
+            </>
+          ) : undefined
+        }
         portal
         placement="responsive-right"
         id={id}
