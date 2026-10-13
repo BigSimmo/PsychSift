@@ -89,6 +89,8 @@ const documentedRedirectTargets: Record<string, string> = {
   // for the same reason as the entries above it: the target is computed, not a
   // string literal the `redirect("…")` regex can read.
   "/medications": "/?mode=prescribing",
+  // The target is computed from the current route, so pin it here for route discovery.
+  "/my-work": "/admin",
 };
 
 const routeDescriptions: Record<string, string> = {
