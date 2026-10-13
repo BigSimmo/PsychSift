@@ -11,6 +11,7 @@ import {
 import {
   compareRecordsHref,
   RecordBody,
+  RecordBulletList,
   RecordCautions,
   RecordGlance,
   RecordIntro,
@@ -83,7 +84,7 @@ export function SpecifierRecordPage({ record }: { record: SpecifierRecord }) {
 
           {record.notFit.length ? (
             <RecordCautions title="When this may not fit">
-              <BulletList items={record.notFit} tone="warning" />
+              <RecordBulletList items={record.notFit} tone="warning" />
             </RecordCautions>
           ) : null}
 
@@ -94,13 +95,13 @@ export function SpecifierRecordPage({ record }: { record: SpecifierRecord }) {
               body="Start with the deciding signal, then test chronology, competing explanations, and the effect on diagnostic wording."
             />
             <RecordSection title="When this fits" headingLevel="h3">
-              <BulletList items={record.fit} />
+              <RecordBulletList items={record.fit} />
             </RecordSection>
             <RecordSection title="Focused checks" headingLevel="h3">
-              <BulletList items={record.checks} />
+              <RecordBulletList items={record.checks} />
             </RecordSection>
             <RecordSection title="Patient language" headingLevel="h3">
-              <BulletList items={record.patientLanguage.map((item) => `“${item}”`)} />
+              <RecordBulletList items={record.patientLanguage.map((item) => `“${item}”`)} />
             </RecordSection>
           </section>
 
@@ -156,27 +157,5 @@ export function SpecifierRecordPage({ record }: { record: SpecifierRecord }) {
         </RecordBody>
       </SpecifierPageShell>
     </>
-  );
-}
-
-/** A plain bulleted list in the shared record style. */
-function BulletList({ items, tone = "default" }: { items: string[]; tone?: "default" | "warning" }) {
-  return (
-    <ul className="m-0 grid list-none gap-2 p-0 text-sm font-medium leading-6">
-      {items.map((item) => (
-        <li key={item} className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2">
-          <span
-            className={cn(
-              "mt-2.5 h-1.5 w-1.5 rounded-full",
-              tone === "warning" ? "bg-[color:var(--warning-text)]" : "bg-[color:var(--clinical-accent)]",
-            )}
-            aria-hidden
-          />
-          <span className={tone === "warning" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}>
-            {item}
-          </span>
-        </li>
-      ))}
-    </ul>
   );
 }

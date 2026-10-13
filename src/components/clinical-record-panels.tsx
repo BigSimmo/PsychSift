@@ -1,75 +1,15 @@
-import { ChevronDown, TriangleAlert, Waypoints, type LucideIcon } from "lucide-react";
+import { TriangleAlert, Waypoints } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 
-/**
- * Presentation blocks shared by the clinical record families (formulation
- * mechanisms, specifiers). The families own their own data, copy, and shells,
- * but their record facts, guidance accordions, pathway strips, and compare links
- * are the same design-system surface, so they live here rather than being
- * re-typed per family and drifting apart.
+/*
+ * Presentation blocks shared by the clinical record families. The families own
+ * their own data, copy, and shells, but their record layout, pathway strips and
+ * compare links are the same design-system surface, so they live here rather
+ * than being re-typed per family and drifting apart.
  */
-export function RecordFact({ icon: Icon, label, body }: { icon: LucideIcon; label: string; body: string }) {
-  return (
-    <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 px-4 py-3.5">
-      <span className="grid h-9 w-9 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
-      <span>
-        <span className="block text-xs font-bold text-[color:var(--text-heading)]">{label}</span>
-        <span className="mt-0.5 block text-xs font-medium leading-5 text-[color:var(--text-muted)]">{body}</span>
-      </span>
-    </div>
-  );
-}
-
-export function GuidanceSection({
-  icon: Icon,
-  title,
-  items,
-  tone = "default",
-  open = false,
-}: {
-  icon: LucideIcon;
-  title: string;
-  items: string[];
-  tone?: "default" | "success" | "warning";
-  open?: boolean;
-}) {
-  const toneClass =
-    tone === "success"
-      ? "text-[color:var(--success)] bg-[color:var(--success-soft)]"
-      : tone === "warning"
-        ? "text-[color:var(--warning)] bg-[color:var(--warning-soft)]"
-        : "text-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]";
-
-  return (
-    <details open={open} className="group border-b border-[color:var(--border)] last:border-b-0">
-      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)] sm:px-5 [&::-webkit-details-marker]:hidden">
-        <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", toneClass)}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1 text-sm font-extrabold text-[color:var(--text-heading)]">{title}</span>
-        <ChevronDown
-          className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open:rotate-180 motion-reduce:transition-none"
-          aria-hidden
-        />
-      </summary>
-      <div className="px-4 pb-4 pl-[4.25rem] sm:px-5 sm:pb-5 sm:pl-[4.75rem]">
-        <ul className="grid gap-2.5 text-sm font-medium leading-6 text-[color:var(--text-muted)]">
-          {items.map((item) => (
-            <li key={item} className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2">
-              <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[color:var(--clinical-accent)]" aria-hidden />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </details>
-  );
-}
 
 /** Numbered "work through it in this order" strip on a mode home page. */
 export function ClinicalPathwayStrip({
@@ -234,12 +174,14 @@ export function RecordGlance({
   id,
   testId,
   valueTestId,
+  titleId,
   footer,
 }: {
   facts: RecordGlanceFact[];
   title?: string;
   id?: string;
   testId?: string;
+  titleId?: string;
   /** Optional test id on every value, for records whose browser tests pin them. */
   valueTestId?: string;
   footer?: ReactNode;
@@ -250,13 +192,16 @@ export function RecordGlance({
     <section
       id={id}
       data-testid={testId}
-      aria-label={title}
+      aria-label={titleId ? undefined : title}
+      aria-labelledby={titleId}
       className={cn(
         inPageAnchor,
         "@container rounded-2xl border border-[color:var(--clinical-accent-border)] bg-[color:color-mix(in_srgb,var(--clinical-accent-soft)_55%,var(--surface))] p-5",
       )}
     >
-      <h2 className="m-0 text-xs font-bold text-[color:var(--clinical-accent)]">{title}</h2>
+      <h2 id={titleId} className="m-0 text-xs font-bold text-[color:var(--clinical-accent)]">
+        {title}
+      </h2>
       {shown.length ? (
         <dl className="m-0 mt-3.5 grid grid-cols-1 gap-x-5 gap-y-4 @[15rem]:grid-cols-2">
           {shown.map((fact) => {
@@ -356,5 +301,27 @@ export function RecordSection({
       </div>
       <div className="mt-2 min-w-0">{children}</div>
     </section>
+  );
+}
+
+/** A plain bulleted list in the shared record style. */
+export function RecordBulletList({ items, tone = "default" }: { items: string[]; tone?: "default" | "warning" }) {
+  return (
+    <ul className="m-0 grid list-none gap-2 p-0 text-sm font-medium leading-6">
+      {items.map((item) => (
+        <li key={item} className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2">
+          <span
+            className={cn(
+              "mt-2.5 h-1.5 w-1.5 rounded-full",
+              tone === "warning" ? "bg-[color:var(--warning-text)]" : "bg-[color:var(--clinical-accent)]",
+            )}
+            aria-hidden
+          />
+          <span className={tone === "warning" ? "text-[color:var(--warning-text)]" : "text-[color:var(--text-muted)]"}>
+            {item}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
