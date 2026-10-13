@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach, onTestFinished } from "vitest";
 
 import { CopyResultButton } from "@/components/calculators/calculator-ui";
 import { calculators } from "@/components/calculators/calculator-fixtures";
@@ -122,6 +122,11 @@ describe("UX Audit 4 Findings Verification", () => {
   describe("Finding 5: CPD Log Activity return path", () => {
     it("renders Back to CPD log navigation link", async () => {
       const { CmeNewEntryRoute } = await import("@/components/cme/cme-new-entry-route");
+      // Back is drawn in the top bar's round left slot, which the shell provides.
+      const slot = document.createElement("div");
+      slot.id = "universal-header-leading";
+      document.body.append(slot);
+      onTestFinished(() => slot.remove());
       render(
         <CmeNewEntryRoute
           set={{
