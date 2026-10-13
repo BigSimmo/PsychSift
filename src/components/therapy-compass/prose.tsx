@@ -5,30 +5,9 @@ import { useId, useState } from "react";
 import { cn } from "@/components/ui-primitives";
 import { interactiveRowBase } from "@/components/ui/interactive-row";
 
-/**
- * A source marker the catalogue writes inline at the end of a sentence, e.g.
- * "… as unsupported self-help. (PubMed)".
- *
- * Left in the running text these repeat every two or three sentences and read
- * as an interruption; removed outright they would strip the record's
- * provenance, which this repository never does. So they are lifted out of the
- * sentence and re-rendered as chips — the same information, out of the reading
- * line.
- *
- * Recognition is **structural, not a list of publisher names**. The catalogue
- * cites at least Phoenix Australia, PubMed, NCBI, PMC, NICE, RANZCP, VA/DoD and
- * several government departments, and a closed list silently stops working the
- * day a new one is imported — which is the wrong failure for a provenance
- * surface. What every marker shares is its position: a short bracketed name
- * that *follows a sentence ending*.
- *
- * That position is also what separates a citation from ordinary prose. An
- * abbreviation gloss sits mid-sentence after a word — "cognitive behavioural
- * therapy (CBT)" — and an aside like "(see below)" does too, so neither
- * matches. Content may not contain sentence punctuation, so a whole bracketed
- * sentence is left where the author put it.
- */
-const AUTHORITY_PATTERN = /(?<=[.!?])\s*\(([A-Z0-9][^().!?]{0,58})\)/g;
+import { AUTHORITY_PATTERN, splitSourceCitations, type SourceCitation } from "@/lib/therapy-source-governance";
+
+export { splitSourceCitations, type SourceCitation };
 
 type ProseSentence = {
   text: string;
@@ -109,46 +88,6 @@ export function splitParagraphs(text: string, sentencesPerParagraph = 2): ProseP
       };
     })
     .filter((paragraph) => paragraph.text.length > 0 || paragraph.citations.length > 0);
-}
-
-export type SourceCitation = { text: string; authority: string };
-
-/**
- * Split a record's reference blob into individual citations.
- *
- * The catalogue stores every record's references as one run of prose in which
- * each citation ends with its authority in brackets — which is why the old
- * provenance card rendered as a single unreadable paragraph. Splitting on the
- * authority marker recovers the list the author wrote.
- *
- * Text after the final marker is not a citation and is returned separately
- * rather than dropped: in this catalogue that tail is usually the import
- * artefact "Your attached prior chat for sequence and locked format
- * continuity.", which must not be presented to a clinician as a source, and
- * must not be silently deleted either.
- */
-export function splitSourceCitations(text: string): { citations: SourceCitation[]; notes: string[] } {
-  const citations: SourceCitation[] = [];
-  const notes: string[] = [];
-  let cursor = 0;
-
-  // `AUTHORITY_PATTERN` is global; reset so repeated calls start from the top.
-  AUTHORITY_PATTERN.lastIndex = 0;
-  for (const match of text.matchAll(AUTHORITY_PATTERN)) {
-    const start = match.index ?? 0;
-    const body = text.slice(cursor, start).trim();
-    cursor = start + match[0].length;
-    if (body) citations.push({ text: body, authority: match[1] });
-  }
-
-  const tail = text.slice(cursor).trim();
-  if (tail) {
-    // No marker anywhere: the whole blob is one unattributed reference, so keep
-    // it as a citation rather than demoting a real source to a note.
-    if (!citations.length) citations.push({ text: tail, authority: "" });
-    else notes.push(tail);
-  }
-  return { citations, notes };
 }
 
 /** Above this, a block is clamped and gets a Show more control. */

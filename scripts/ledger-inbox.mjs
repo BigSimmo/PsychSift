@@ -23,6 +23,7 @@ import {
   queueRowFingerprint,
 } from "./check-outstanding-issues.mjs";
 import {
+  displayIdForUlid,
   isIssueDisplayId,
   isIssueUlid,
   issueUlid,
@@ -872,6 +873,8 @@ function requestTargetId(argv) {
   const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
   const rawTargetId = argValue(argv, "id") ?? positionalId;
   if (!rawTargetId) return undefined;
+  const stripped = rawTargetId.startsWith("#") ? rawTargetId.slice(1) : rawTargetId;
+  if (isIssueUlid(stripped)) return displayIdForUlid(stripped);
   return rawTargetId.startsWith("#") || rawTargetId.includes("-") ? rawTargetId : `#${rawTargetId}`;
 }
 
@@ -935,19 +938,34 @@ function attachIssueFingerprint(action, payload) {
   }
 
   const isArchived = isArchivedIssue(current, payload.id);
-  if (!isArchived) throw new Error(`ledger request rejected: ${payload.id} is not in Open items`);
-  if (action === "done") {
-    // Carry archive-aware intent so reconcile merges the outcome instead of
-    // no-oping via the idempotent archived fast-path.
-    payload.allowArchived = true;
+  if (isArchived) {
+    if (action === "done") {
+      // Carry archive-aware intent so reconcile merges the outcome instead of
+      // no-oping via the idempotent archived fast-path.
+      payload.allowArchived = true;
+      return;
+    }
+    const archiveFingerprint = archiveRowFingerprint(current, payload.id);
+    if (archiveFingerprint) {
+      payload.baseRowFingerprint = archiveFingerprint;
+      payload.allowArchived = true;
+      payload.targetTable = "archive";
+      return;
+    }
+  }
+
+  const targetDisplayId = normalizeIssueDisplayId(payload.id);
+  const pending = loadPending();
+  const pendingMatch = pending.find(({ request }) => {
+    if (request?.action !== "add" || !request?.payload?.issueUlid) return false;
+    const derived = displayIdForUlid(request.payload.issueUlid);
+    return derived === targetDisplayId;
+  });
+  if (pendingMatch) {
     return;
   }
-  const archiveFingerprint = archiveRowFingerprint(current, payload.id);
-  if (archiveFingerprint) {
-    payload.baseRowFingerprint = archiveFingerprint;
-    payload.allowArchived = true;
-    payload.targetTable = "archive";
-  }
+
+  throw new Error(`ledger request rejected: ${payload.id} is not in Open items`);
 }
 
 function attachQueueFingerprint(action, payload) {
