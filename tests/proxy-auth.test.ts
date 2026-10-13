@@ -266,6 +266,15 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     });
     const res5 = await GET(unconfiguredReq);
     expect(res5.status).toBe(503);
+
+    // 6. PROXY_AUTH unset: the service-role key is never accepted as the proxy bearer -> 503
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "unit-test-service-role-key";
+    const masterKeyReq = new Request("http://localhost/api/proxy", {
+      method: "GET",
+      headers: { authorization: "Bearer unit-test-service-role-key" },
+    });
+    const res6 = await GET(masterKeyReq);
+    expect(res6.status).toBe(503);
   });
 
   it("keeps /api routes inside the proxy matcher even when the last segment looks like an image", async () => {

@@ -121,11 +121,12 @@ export type ProxyAuthResult = { ok: true } | { ok: false; status: 401 | 503; err
 
 /**
  * Validates inbound proxy requests using constant-time comparison against PROXY_AUTH.
- * Fails closed (503) if neither PROXY_AUTH nor fallback server secret is configured.
+ * Fails closed (503) when PROXY_AUTH is not configured. There is deliberately no fallback to the
+ * service-role key: that would make the public /api/proxy route accept the database master key.
  * Returns 401 if token is missing or mismatched.
  */
 export function verifyProxyAuthSecret(request: Request): ProxyAuthResult {
-  const secret = process.env.PROXY_AUTH?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const secret = process.env.PROXY_AUTH?.trim();
   if (!secret) {
     return { ok: false, status: 503, error: "PROXY_AUTH secret is not configured" };
   }
