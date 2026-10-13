@@ -203,7 +203,7 @@ export function AlphabetStrip({
                   jumpTo(index, true);
                 }}
                 onFocus={() => setFocusIndex(index)}
-                className="block w-4 rounded-sm text-center font-mono text-3xs leading-[1.35] font-semibold text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-[color:var(--focus)]"
+                className="block w-4 rounded-sm text-center font-mono text-3xs leading-snug font-semibold text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-[color:var(--focus)]"
               >
                 {entry.letter}
               </button>
