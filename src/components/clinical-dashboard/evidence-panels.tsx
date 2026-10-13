@@ -151,7 +151,10 @@ export function AnswerUtilityActions({
           name rather than "Thumbs up". Evidence gaps are NOT here: they are a
           statement about the answer's evidence and belong with the safety chip
           in the header, which is also what keeps this row to one line. */}
-      <div className={cn(chatActionRow, "flex-nowrap")} aria-label="Answer actions">
+      {/* `chatActionRow` wraps. It used to be forced onto one line, which at 320px with
+          large text pushed "Report a problem" off the right edge (audit D17,
+          2026-10-13); at ordinary sizes the row still fits on one line. */}
+      <div className={chatActionRow} aria-label="Answer actions">
         <button type="button" onClick={onCopy} className={chatMicroAction} aria-label="Copy answer with source status">
           <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
           {/* Below 360px (small phones) the full label truncated to "Copy …".

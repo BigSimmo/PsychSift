@@ -351,7 +351,9 @@ function StagedAnswerResultSurfaceImpl({
       <section
         data-testid="answer-clinical-points"
         aria-label={`Key points — ${safetyFindings.length} ${safetyFindings.length === 1 ? "point" : "points"}`}
-        className="flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-none"
+        // Wraps rather than scrolling sideways: with large text at 320px a hidden-scrollbar
+        // strip pushed "Open key points" past the right edge (audit D17, 2026-10-13).
+        className="flex min-w-0 flex-wrap items-center gap-x-2"
       >
         <span className="shrink-0 text-3xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
           Key points
