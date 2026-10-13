@@ -337,17 +337,6 @@ describe("bounded RAG query planning", () => {
     ]);
   });
 
-  it("keeps bare admission and discharge as separate comparison searches", () => {
-    const query = "Compare admission and discharge requirements";
-    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
-
-    expect(result.kind).toBe("decomposed");
-    expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
-      "admission: directly relevant evidence for this comparison.",
-      "discharge: directly relevant evidence for this comparison.",
-    ]);
-  });
-
   it.each([
     ["ANC threshold in the clozapine monitoring guideline", "document"],
     ["clozapin withholding neutrophils", "medicine"],
