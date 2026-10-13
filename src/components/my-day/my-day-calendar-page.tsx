@@ -3,7 +3,7 @@
 import { CalendarPlus, ChevronLeft, ChevronRight, Download, Info } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useJuniorRosterLeave } from "@/components/admin/junior/use-roster-leave";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
@@ -36,8 +36,10 @@ import { appModeDefinition } from "@/lib/app-modes";
 import { CALENDAR_TIME_ZONE } from "@/lib/calendar/calendar-event";
 import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
+import type { MyDayItem } from "@/lib/my-day/model";
 import { mergeMyDayItems } from "@/lib/my-day/merge";
 import { shiftTitle } from "@/lib/my-day/quiet-figures";
+import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
 import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 import { useAuthSession } from "@/lib/supabase/client";
 import { useAdminPaperwork } from "@/lib/work-screens/admin/paperwork-store";
@@ -95,6 +97,12 @@ function monthEnd(month: string): string {
 }
 
 const areaLabel = (area: MainCalendarArea) => (area === "my-day" ? "Reminders" : appModeDefinition(area).label);
+
+/** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
+const MyDayCalendarSample = dynamic(
+  () => import("@/components/my-day/my-day-sample-subpages").then((module) => module.MyDaySubpageSampleView),
+  { ssr: false },
+);
 
 /** The private calendar link's card, loaded only when the page draws it. */
 const CalendarSubscribe = dynamic(
@@ -189,6 +197,22 @@ export function MyDayCalendarPage({ now }: { now?: Date } = {}) {
       testId="my-day-calendar"
       now={now}
       wide
+      signedOutSample={{
+        render: (at) => (
+          <MyDayCalendarSample now={at} testId="my-day-calendar-sample">
+            {(sample) => (
+              <SampleCalendar
+                now={at}
+                shifts={sample.sources.roster.shifts}
+                sessions={sample.sources.teaching.ahead ?? []}
+                items={sample.items}
+                shownMonth={shownMonth}
+                onMonth={setShownMonth}
+              />
+            )}
+          </MyDayCalendarSample>
+        ),
+      }}
       signedOut={{
         title: "Sign in to see your calendar",
         body: "Your shifts, leave, rotations, courses, teaching, CPD and Admin dates show here together once you sign in.",
@@ -199,6 +223,55 @@ export function MyDayCalendarPage({ now }: { now?: Date } = {}) {
     >
       {(at) => <CalendarBody key={accountKey} now={at} shownMonth={shownMonth} onMonth={setShownMonth} />}
     </MyDayFrame>
+  );
+}
+
+/**
+ * The signed-out sample: the same calendar drawn from My Day's invented day (a sample
+ * doctor's shifts, teaching and dated items), read from no server and kept nowhere.
+ * Exports and Add to calendar are refused, as on every example.
+ */
+function SampleCalendar({
+  now,
+  shifts,
+  sessions,
+  items,
+  shownMonth,
+  onMonth,
+}: {
+  readonly now: Date;
+  readonly shifts: readonly MyShift[];
+  readonly sessions: readonly SessionSummaryRead[];
+  readonly items: readonly MyDayItem[];
+  readonly shownMonth: string | null;
+  readonly onMonth: (month: string) => void;
+}) {
+  const { zone } = useWorkTimeZone();
+  const routeVisible = useWorkModeRouteVisible();
+  const today = zonedDateOf(now, zone);
+  const all = useMemo(
+    () =>
+      visibleCalendarItems(
+        mergeCalendarItems([
+          shifts.map((shift) => shiftItem(shift, zone)),
+          sessions.map((session) => sessionItem(session, zone)),
+          myDayCalendarItems(items, areaLabel, zone),
+        ]),
+        routeVisible,
+      ),
+    [shifts, sessions, items, zone, routeVisible],
+  );
+  return (
+    <CalendarScreen
+      month={shownMonth ?? today.slice(0, 7)}
+      today={today}
+      all={all}
+      loading={false}
+      example
+      sample
+      reminders={DEFAULT_REMINDER_SETTINGS}
+      onMonth={onMonth}
+    />
   );
 }
 
@@ -218,14 +291,6 @@ function CalendarBody({
   const to = monthEnd(month);
   // Roster's team read and Teaching read Perth dates: a day either side keeps a month edge covered in another zone.
   const range = useMemo(() => ({ from: addDaysToDate(from, -1), to: addDaysToDate(to, 1) }), [from, to]);
-  const [view, setView] = useState<CalendarView>("month");
-  const [chosen, setSelected] = useState(today);
-  // The chosen day stays in the shown month, even when the clock passes midnight into the next one.
-  const selected = chosen.startsWith(month) ? chosen : today.startsWith(month) ? today : `${month}-01`;
-  const [hidden, setHidden] = useState<ReadonlySet<MainCalendarArea>>(() => new Set());
-  const [adding, setAdding] = useState<MainCalendarItem | null>(null);
-  const addReturn = useRef<HTMLElement | null>(null);
-
   const items = useMyDayItems({ enabled: true, now });
   const shifts = useRosterShifts(range, { ownHistory: true });
   const teaching = useTeachingWeek(range, { demoMode: false }, now);
@@ -303,9 +368,6 @@ function CalendarBody({
       routeVisible,
     ],
   );
-  const present = MAIN_CALENDAR_AREAS.filter((area) => all.some((item) => item.area === area));
-  const shown = useMemo(() => filterByArea(all, hidden), [all, hidden]);
-
   const loading =
     items.status === "loading" ||
     shifts.status === "loading" ||
@@ -356,6 +418,79 @@ function CalendarBody({
     calendar.retry();
   };
 
+  return (
+    <CalendarScreen
+      month={month}
+      today={today}
+      all={all}
+      loading={loading}
+      example={example}
+      reminders={reminders}
+      onMonth={onMonth}
+      notices={
+        <>
+          {failed.length > 0 ? (
+            <div className="grid gap-2" data-testid="my-day-calendar-failed-notice">
+              <ModeNotice tone="warning">{`Couldn't load: ${listNames(failed)}. Showing the rest.`}</ModeNotice>
+              <div>
+                <Button variant="secondary" onClick={retry}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {sampleOmitted ? (
+            <ModeNotice testId="my-day-calendar-sample-notice">
+              Roster is showing example shifts only, so your shifts aren&apos;t shown here.
+            </ModeNotice>
+          ) : null}
+          {teaching.status === "setup" ? (
+            <ModeNotice>Teaching isn&apos;t available yet, so its sessions aren&apos;t shown.</ModeNotice>
+          ) : null}
+        </>
+      }
+    />
+  );
+}
+
+/**
+ * The calendar itself, drawn from items already gathered: the signed-in page
+ * passes the reader's own, the signed-out sample passes invented ones.
+ */
+function CalendarScreen({
+  month,
+  today,
+  all,
+  loading,
+  example,
+  reminders,
+  onMonth,
+  notices,
+  sample = false,
+}: {
+  readonly month: string;
+  readonly today: string;
+  readonly all: readonly MainCalendarItem[];
+  readonly loading: boolean;
+  readonly example: boolean;
+  readonly reminders: ReminderSettings;
+  readonly onMonth: (month: string) => void;
+  readonly notices?: ReactNode;
+  /** The signed-out sample: no account, so no private calendar link. */
+  readonly sample?: boolean;
+}) {
+  const from = `${month}-01`;
+  const to = monthEnd(month);
+  const [view, setView] = useState<CalendarView>("month");
+  const [chosen, setSelected] = useState(today);
+  // The chosen day stays in the shown month, even when the clock passes midnight into the next one.
+  const selected = chosen.startsWith(month) ? chosen : today.startsWith(month) ? today : `${month}-01`;
+  const [hidden, setHidden] = useState<ReadonlySet<MainCalendarArea>>(() => new Set());
+  const [adding, setAdding] = useState<MainCalendarItem | null>(null);
+  const addReturn = useRef<HTMLElement | null>(null);
+  const present = MAIN_CALENDAR_AREAS.filter((area) => all.some((item) => item.area === area));
+  const shown = useMemo(() => filterByArea(all, hidden), [all, hidden]);
+
   const addingEvent = adding ? calendarItemEvent(adding) : null;
   const openAdd = (item: MainCalendarItem, from: HTMLElement) => {
     addReturn.current = from;
@@ -387,25 +522,7 @@ function CalendarBody({
         label="Show the month or a list"
         testId="my-day-calendar-view"
       />
-      {failed.length > 0 ? (
-        <div className="grid gap-2" data-testid="my-day-calendar-failed-notice">
-          <ModeNotice tone="warning">{`Couldn't load: ${listNames(failed)}. Showing the rest.`}</ModeNotice>
-          <div>
-            <Button variant="secondary" onClick={retry}>
-              Retry
-            </Button>
-          </div>
-        </div>
-      ) : null}
-      {sampleOmitted ? (
-        <ModeNotice testId="my-day-calendar-sample-notice">
-          Roster is showing example shifts only, so your shifts aren&apos;t shown here.
-        </ModeNotice>
-      ) : null}
-      {teaching.status === "setup" ? (
-        <ModeNotice>Teaching isn&apos;t available yet, so its sessions aren&apos;t shown.</ModeNotice>
-      ) : null}
-
+      {notices}
       {present.length > 1 ? (
         <div
           role="group"
@@ -469,6 +586,7 @@ function CalendarBody({
         // The whole month, whatever areas are hidden on screen.
         items={all.filter((item) => item.start <= to && item.end >= from)}
         updating={loading}
+        subscribe={!sample}
         onDownload={(events) => {
           if (loading || !guardExampleAction(example, "export")) return;
           downloadIcs(events, `PsychSift ${monthTitle(month)}`, reminders);
@@ -929,10 +1047,13 @@ function CalendarExport({
   month,
   items,
   updating,
+  subscribe,
   onDownload,
 }: {
   readonly month: string;
   readonly items: readonly MainCalendarItem[];
+  /** False for the signed-out sample: the private link belongs to an account. */
+  readonly subscribe: boolean;
   /** True while the shown month is still loading, so a download can't miss part of it. */
   readonly updating: boolean;
   readonly onDownload: (events: ReturnType<typeof calendarExportEvents>) => void;
@@ -966,7 +1087,7 @@ function CalendarExport({
           </Button>
         </div>
       </div>
-      <CalendarSubscribe testId="my-day-calendar-subscribe" />
+      {subscribe ? <CalendarSubscribe testId="my-day-calendar-subscribe" /> : null}
     </section>
   );
 }
