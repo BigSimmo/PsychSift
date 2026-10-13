@@ -20,7 +20,6 @@ describe("GitHub Action pin validation", () => {
     );
   });
 
-
   it("accepts a reviewed immutable action reference with its exact version comment", () => {
     expect(
       validateActionReference("        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0"),
