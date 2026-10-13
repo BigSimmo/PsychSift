@@ -5,6 +5,7 @@ import {
   workAreaFor,
   workAreaItems,
   workAreaParent,
+  workAreaPillName,
   workFrameCurrentItem,
   workFrameExtraTabs,
   workFrameTabLabel,
@@ -66,6 +67,12 @@ describe("work frame navigation", () => {
     for (const area of areas)
       for (const item of workAreaItems(area))
         if (item.opens) expect(WORK_AREAS[item.opens].parent, item.label).toBe(area.id);
+  });
+
+  it("keeps the parent area's pill on every inner area (audit D21)", () => {
+    for (const area of areas.filter((entry) => entry.parent)) {
+      expect(workAreaPillName(area), area.name).toBe(workAreaPillName(workAreaParent(area)!));
+    }
   });
 
   it("draws Manage team as its own area, and Open shifts as a Roster tab", () => {

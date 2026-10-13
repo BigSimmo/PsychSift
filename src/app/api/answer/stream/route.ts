@@ -33,6 +33,7 @@ import { safeErrorLogDetails } from "@/lib/privacy";
 import { buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
 import { startSseHeartbeat } from "@/lib/sse-heartbeat";
 import { parseJsonBody } from "@/lib/validation/body";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 import { answerRequestSchema, type AnswerRequestBody } from "@/lib/validation/answer-request";
 import type { AnswerStreamEventMap, AnswerStreamEventName } from "@/lib/answer-stream-contract";
 import { toPublicAnswerProgressEvent } from "@/lib/answer-progress-public";
@@ -309,6 +310,9 @@ function streamAnswer(
 export async function POST(request: Request) {
   try {
     const body = await parseJsonBody(request, answerRequestSchema, "Invalid answer request.");
+    // Refuse a question that looks like it holds a patient detail before it reaches the
+    // AI service (audit S2, 2026-10-13). The page checks first; this is the backstop.
+    rejectPatientDetailQuestion(body);
     const streamAbortController = new AbortController();
     const streamSignal = mergeAbortSignals([request.signal, streamAbortController.signal]);
     if (isDemoMode()) return streamAnswer(body, resolveRetrievalAccessScope(), streamSignal, streamAbortController);

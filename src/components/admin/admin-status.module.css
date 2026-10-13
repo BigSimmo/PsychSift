@@ -33,7 +33,8 @@
   --admin-status-ink: var(--text-muted);
 }
 
-/* The small-caps word on a flat tint, with the shape first. */
+/* The word in sentence case on a flat tint, with the shape first (design
+   audit D20, 13 Oct 2026: no capitals in Work pills). */
 .tag {
   display: inline-flex;
   width: fit-content;
@@ -46,9 +47,8 @@
   color: var(--admin-status-ink);
   font-size: var(--text-3xs);
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   line-height: var(--work-leading-tag);
-  text-transform: uppercase;
   white-space: nowrap;
 }
 

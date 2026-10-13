@@ -125,7 +125,11 @@ export function AssessmentsHome({ s, openSheet, dct }: ScreenProps) {
   const signOff = s.sigs.doc ? samSignOff(dct) : null;
   return (
     <>
-      <AssessHeader eyebrow={`${SAMPLE_DOCTOR.grade} 2026 · term ${withUnit(4, "of")} 5`} title={t.name} />
+      {/* The band names the area; the rotation goes on the line above (audit D15). */}
+      <AssessHeader
+        eyebrow={`${t.name} · ${SAMPLE_DOCTOR.grade} 2026 · term ${withUnit(4, "of")} 5`}
+        title="Assessments"
+      />
       <WorkHero
         testId="assess-doctor-hero"
         eyebrow={`${t.categoryName} (${t.category})`}

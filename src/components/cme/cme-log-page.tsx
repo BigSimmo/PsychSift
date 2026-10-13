@@ -36,7 +36,7 @@ import { CmeMissedSessionsSection } from "@/components/cme/cme-missed-sessions-s
 import { useCmeFinishCount } from "@/components/cme/cme-page-tabs";
 import { CME_LOG_TRIGGER_ATTRIBUTE, CmeQuickLog } from "@/components/cme/cme-quick-log";
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
-import { CmeBandAction, CmeBanner, CmeHint, CmeNoteLine } from "@/components/cme/cme-work-kit";
+import { CmePageAction, CmeBanner, CmeHint, CmeNoteLine } from "@/components/cme/cme-work-kit";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { useWorkUndoToast, WorkBody } from "@/components/mode-kit/work";
 import { WorkWidePage } from "@/components/work-frame/work-desktop-layout";
@@ -409,6 +409,7 @@ export function CmeLogPage({
           role="group"
           aria-label="Narrow the log"
           className="work-chips flex-wrap"
+          data-large-text-wrap=""
           data-beside-filters={wide ? "" : undefined}
         >
           {yearChip}
@@ -481,7 +482,7 @@ export function CmeLogPage({
               onClick={openCopySheet}
               data-testid="cme-log-copy-next"
               className="work-button min-h-tap shrink-0"
-              data-variant="tinted"
+              data-variant="grey"
             >
               Copy next
             </button>
@@ -593,7 +594,7 @@ export function CmeLogPage({
                       type="button"
                       onClick={openCopySheet}
                       className="work-button min-h-tap shrink-0"
-                      data-variant="tinted"
+                      data-variant="grey"
                     >
                       Copy next
                     </button>
@@ -639,16 +640,19 @@ export function CmeLogPage({
 
   return (
     <main data-testid="cme-log-page" data-mode-identity="cme" className="w-full">
-      {showFinish ? null : (
-        <CmeBandAction
-          icon={SlidersHorizontal}
-          label="Filter your log"
-          onClick={openFilter}
-          testId="cme-log-filter-action"
-        />
-      )}
       <LogBody>
         <PageTitleUnderBand className={cmePageTitle}>{showFinish ? "To finish" : "Log"}</PageTitleUnderBand>
+        {showFinish ? null : (
+          // From 1024px the filter column sits beside the log, so the action that opens its sheet hides.
+          <div className="lg:hidden">
+            <CmePageAction
+              icon={SlidersHorizontal}
+              label="Filter your log"
+              onClick={openFilter}
+              testId="cme-log-filter-action"
+            />
+          </div>
+        )}
         <div role="status" data-testid="cme-log-saved" className="contents">
           {justSaved ? <CmeBanner icon={Check}>Saved to your log.</CmeBanner> : null}
           {missedLinkFailed ? (
@@ -685,18 +689,8 @@ export function CmeLogPage({
               <Plus aria-hidden="true" strokeWidth={2.2} />
               <span>Log an activity</span>
             </Link>
-            {!showFinish && !showArchived && uncopied.length > 0 ? (
-              <button
-                type="button"
-                onClick={openCopySheet}
-                data-testid="cme-log-dock-copy"
-                className="work-button min-h-tap"
-                data-variant="secondary"
-              >
-                <Copy aria-hidden="true" strokeWidth={2.2} />
-                Copy next
-              </button>
-            ) : null}
+            {/* One docked button only (design audit D09, 13 Oct 2026): Copy next lives in the
+                "not marked copied" card above the list, never floating as well. */}
           </div>
         </div>
       </LogBody>

@@ -142,16 +142,22 @@ describe("AdminRenewalsPage — the checklist", () => {
   // Amended for the work-mode redesign, owner request 6 Oct 2026: the list now
   // leads with "Needs action · soonest first", and recorded rows collapse into
   // kind groups that carry their counts and open on a tap.
-  it("lists what needs action soonest first, then recorded rows in kind groups with their counts", () => {
+  // Design audit D10 (Josh approved 13 Oct 2026): what needs action is one list grouped by month,
+  // passed dates first and undated rows last; recorded rows stay in kind groups with their counts.
+  it("lists what needs action by month, passed first, then recorded rows in kind groups with their counts", () => {
     renderPage();
     const groups = screen.getByTestId("admin-renewals-checklist");
-    const needs = within(groups).getByTestId("admin-renewals-checklist-needs-action");
-    const titles = within(needs)
-      .getAllByRole("listitem")
-      .map((item) => item.textContent ?? "");
-    expect(titles[0]).toMatch(/Working with Children Check/);
-    expect(titles[1]).toMatch(/ALS course certification/);
-    expect(within(needs).getAllByText("Not recorded yet").length).toBeGreaterThan(0);
+    const passed = within(groups).getByTestId("admin-renewals-checklist-month-passed");
+    expect(passed).toHaveTextContent("Date passed");
+    expect(within(passed).getAllByRole("listitem")[0]).toHaveTextContent(/Working with Children Check/);
+    const october = within(groups).getByTestId("admin-renewals-checklist-month-2026-10");
+    expect(october).toHaveTextContent("October");
+    expect(within(october).getAllByRole("listitem")[0]).toHaveTextContent(/ALS course certification/);
+    const undated = within(groups).getByTestId("admin-renewals-checklist-month-no-date");
+    expect(undated).toHaveTextContent("No date yet");
+    expect(within(undated).getAllByText("Not recorded yet").length).toBeGreaterThan(0);
+    expect(passed.compareDocumentPosition(october) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(october.compareDocumentPosition(undated) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const registration = within(groups).getByTestId("admin-renewals-checklist-group-registration-toggle");
     expect(registration).toHaveAttribute("aria-expanded", "false");
     expect(registration).toHaveAccessibleName("Registration · 2");
@@ -167,14 +173,14 @@ describe("AdminRenewalsPage — the checklist", () => {
   it("puts the item to act on first in Needs action, with what comes after it", () => {
     renderPage();
     expect(screen.queryByTestId("admin-renew-next")).toBeNull();
-    const needs = screen.getByTestId("admin-renewals-checklist-needs-action");
-    const rows = within(needs).getAllByRole("listitem");
-    // WWC's date passed on 3 Sep, so it leads; ALS is inside its renewing window.
-    expect(rows[0]).toHaveTextContent("Date passed: Working with Children Check");
-    expect(rows[0]).toHaveTextContent("Passed 3 Sep · 3 weeks ago");
-    expect(rows[0]?.querySelector('[data-admin-status="date-passed"]')).not.toBeNull();
-    expect(rows[1]).toHaveTextContent("Start renewing: ALS course certification");
-    expect(rows[1]).toHaveTextContent("Renew by 14 Oct · in 2 weeks");
+    // WWC's date passed on 3 Sep, so its group leads; ALS is inside its renewing window, in October.
+    const passed = within(screen.getByTestId("admin-renewals-checklist-month-passed")).getAllByRole("listitem");
+    expect(passed[0]).toHaveTextContent("Date passed: Working with Children Check");
+    expect(passed[0]).toHaveTextContent("Passed 3 Sep · 3 weeks ago");
+    expect(passed[0]?.querySelector('[data-admin-status="date-passed"]')).not.toBeNull();
+    const october = within(screen.getByTestId("admin-renewals-checklist-month-2026-10")).getAllByRole("listitem");
+    expect(october[0]).toHaveTextContent("Start renewing: ALS course certification");
+    expect(october[0]).toHaveTextContent("Renew by 14 Oct · in 2 weeks");
   });
 
   it("says how many items have no date beside Nothing to renew right now", () => {
@@ -207,43 +213,44 @@ describe("AdminRenewalsPage — the checklist", () => {
   it("draws urgency as shapes and words, colouring only through the shared status mark", () => {
     renderPage();
     expect(screen.getAllByText("Date passed").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Start renewing").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("admin-renewals-summary-count-start-renewing")).toHaveTextContent("1 to renew");
     expect(document.body.innerHTML).not.toMatch(/--danger|--warning/);
     expect(document.querySelector('[data-admin-status="date-passed"] [data-mark="triangle"]')).not.toBeNull();
     expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="dot"]')).not.toBeNull();
   });
 
-  it("marks the timeline by shape, not shade: a triangle for a passed date, a dot otherwise (M8)", () => {
+  // Design audit D10: the dot timeline is gone; the counts carry the same shapes as words.
+  it("draws each count with its row's shape: a triangle for passed, a dot to renew, a dashed ring not recorded", () => {
     renderPage();
-    const timeline = screen.getByTestId("admin-renewals-summary-timeline");
-    const marks = Array.from(timeline.querySelectorAll("[data-mark]")).map((mark) => mark.getAttribute("data-mark"));
-    // WWC's date passed on 3 Sep; the others are still ahead.
-    expect(marks).toContain("triangle");
-    expect(marks).toContain("dot");
-    expect(timeline.querySelector("svg.lucide-triangle")).not.toBeNull();
-    expect(timeline.querySelector("svg.lucide-circle")).not.toBeNull();
+    const shapeOf = (bucket: string) =>
+      screen
+        .getByTestId(`admin-renewals-summary-count-${bucket}`)
+        .querySelector("[data-admin-status]")
+        ?.getAttribute("data-admin-status");
+    expect(shapeOf("date-passed")).toBe("date-passed");
+    expect(shapeOf("start-renewing")).toBe("start-renewing");
+    expect(shapeOf("not-recorded")).toBe("not-recorded");
+    expect(screen.queryByTestId("admin-renewals-summary-timeline")).toBeNull();
   });
 
-  it("charts the soonest dates within twelve months, never pinning a later date to the edge", () => {
+  it("groups a date beyond this year under its month and year, never in a passed or undated group", () => {
     const later = complianceFixture(
       "Code of Conduct",
-      { category: "job", expiresOn: "2028-03-01", requirementId: "code-of-conduct" },
+      { category: "job", expiresOn: "2027-01-10", requirementId: "code-of-conduct", leadTimeDays: 120 },
       { slug: "conduct" },
     );
     storeState.entries = [later, ...ALL];
     renderPage();
-    const timeline = screen.getByTestId("admin-renewals-summary-timeline");
-    const listed = within(timeline).getByRole("list", { name: "Coming up in the next twelve months" });
-    const names = within(listed)
-      .getAllByRole("listitem")
-      .map((item) => item.textContent?.split(":")[0]);
-    // Soonest first (WWC passed 3 Sep, then ALS, indemnity, registration); 2028 is beyond the chart.
-    expect(names).toEqual([
-      "Working with Children Check",
-      "ALS course certification",
-      "Indemnity insurance declaration",
-      "Medical registration renewal",
-    ]);
+    const groups = screen.getAllByTestId(/^admin-renewals-checklist-month-/).map((group) => group.dataset.testid);
+    expect(groups[0]).toBe("admin-renewals-checklist-month-passed");
+    expect(groups.at(-1)).toBe("admin-renewals-checklist-month-no-date");
+    const months = screen
+      .getAllByTestId(/^admin-renewals-checklist-month-\d{4}-\d{2}$/)
+      .map((group) => group.dataset.testid);
+    expect(months).toEqual([...months].sort());
+    // The cross-year group must actually be present, after this year's months.
+    expect(months).toContain("admin-renewals-checklist-month-2027-01");
+    expect(months.at(-1)).toBe("admin-renewals-checklist-month-2027-01");
   });
 
   it("filters the checklist to one kind", () => {
@@ -692,23 +699,16 @@ describe("AdminRenewalsPage — header menu", () => {
 });
 
 describe("AdminRenewalsPage — readable timeline, wrapping chips, short Not recorded group", () => {
-  it("names each timeline row in full, with three-letter months and a Today line", () => {
+  it("names each month group in full, adding the year only outside this year", () => {
+    const later = complianceFixture(
+      "Code of Conduct",
+      { category: "job", expiresOn: "2027-01-10", requirementId: "code-of-conduct", leadTimeDays: 120 },
+      { slug: "conduct" },
+    );
+    storeState.entries = [later, ...ALL];
     renderPage();
-    const timeline = screen.getByTestId("admin-renewals-summary-timeline");
-    expect(within(timeline).getAllByText("Working with Children Check").length).toBeGreaterThan(0);
-    const months = within(timeline).getByTestId("admin-renewals-summary-timeline-months");
-    expect(months.children).toHaveLength(12);
-    // Amended for the work-mode redesign, owner request 6 Oct 2026: the axis
-    // shows the mockup's month initials, each naming its month in full.
-    expect(months.children[0]?.textContent).toBe("S");
-    expect(months.children[0]?.getAttribute("title")).toBe("September");
-    expect(months.children[1]?.textContent).toBe("O");
-    expect(months.children[1]?.getAttribute("title")).toBe("October");
-    expect(timeline.querySelector("[data-today-line]")).not.toBeNull();
-    expect(within(timeline).getByText("Today")).toBeInTheDocument();
-    // A words-only equivalent for screen readers.
-    const list = within(timeline).getByRole("list", { name: "Coming up in the next twelve months" });
-    expect(list.textContent).toMatch(/Working with Children Check: 3 Sep 2026.*Date passed/);
+    expect(screen.getByTestId("admin-renewals-checklist-month-2026-10")).toHaveTextContent(/^October/);
+    expect(screen.getByTestId("admin-renewals-checklist-month-2027-01")).toHaveTextContent(/^January 2027/);
   });
 
   // Design pass, October 2026: chip rows stay on one line and scroll sideways

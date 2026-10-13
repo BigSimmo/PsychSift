@@ -1,6 +1,6 @@
 "use client";
 
-import { History, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
+import { History, Plus, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,15 +9,10 @@ import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import {
-  ModeBandAction,
-  PageTitleUnderBand,
-  useModeBandCurrentTab,
-  useModeBandHeading,
-} from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkButton, useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
 import { listNames, myDayModeLabel, myDayUpdatedAgo, useMyDayNow } from "@/components/my-day/my-day-page-parts";
@@ -334,12 +329,45 @@ function MyDayFullList({
 
 // ---------------------------------------------------------------- the page
 
+/** The page's loading shape: grey blocks where the day's cards go. */
+function MyDayLoadingSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
+      <div className="col-span-2">
+        <ModeModuleSkeleton rows={2} twoLine eyebrow />
+      </div>
+      <ModeModuleSkeleton rows={2} eyebrow />
+      <ModeModuleSkeleton rows={2} eyebrow />
+      <div className="col-span-2">
+        <ModeModuleSkeleton rows={3} twoLine eyebrow />
+      </div>
+    </div>
+  );
+}
+
 /** The dashboard's own reads, mounted only for an enabled reader and remounted per sign-in. */
 function MyDayDashboardView({
   allowSample,
   ...props
 }: Omit<MyDayDashboardProps, "sources"> & { readonly allowSample: boolean }) {
   const sources = useMyDayDashboardSources({ today: props.today, now: props.now, allowSample });
+  // Today keeps the loading shape until its own reads (roster, teaching, CPD) have answered. Drawn
+  // earlier, the hero and This week arrived about a second later and pushed Quick actions and Needs
+  // you down the screen (design audit 13 Oct 2026, D16: layout shift 0.13 to 0.17). Only the first
+  // load waits: a later re-read (Try again, a new day) keeps the cards on screen as before.
+  const settling = [sources.roster.status, sources.teaching.status, sources.cpd.status].includes("loading");
+  const [settledOnce, setSettledOnce] = useState(!settling);
+  if (!settling && !settledOnce) setSettledOnce(true);
+  if (props.page === "today" && settling && !settledOnce) {
+    return (
+      <>
+        <span role="status" className="sr-only">
+          Loading My Day
+        </span>
+        <MyDayLoadingSkeleton />
+      </>
+    );
+  }
   return <MyDayDashboard {...props} sources={sources} />;
 }
 
@@ -366,40 +394,6 @@ function longDate(date: string): string {
 }
 
 type MyDaySheet = "customise" | "quick-add" | "remind-me" | "reminders";
-
-/** A round glass button in the band (plus, sliders); a plain round icon button where there is no band. */
-function BandButton({
-  label,
-  icon: Icon,
-  onClick,
-  testId,
-}: {
-  readonly label: string;
-  readonly icon: LucideIcon;
-  readonly onClick: () => void;
-  readonly testId: string;
-}) {
-  return (
-    <ModeBandAction>
-      {(underBand) => (
-        <button
-          type="button"
-          onClick={onClick}
-          aria-label={label}
-          aria-haspopup="dialog"
-          data-testid={testId}
-          className={
-            underBand
-              ? "work-glass-button work-band__action"
-              : cn(focusRing, "grid size-12 place-items-center rounded-full text-[color:var(--mode-identity)]")
-          }
-        >
-          <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
-        </button>
-      )}
-    </ModeBandAction>
-  );
-}
 
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
@@ -552,16 +546,14 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
         <div data-testid="my-day-header" className="contents">
           <PageTitleUnderBand className="sr-only">My Day</PageTitleUnderBand>
         </div>
+        {/* Quick add sits in the page, not the band's corner, which is for Favourite only
+            (audit D18). Customise is in More. */}
         {ready && view === "dashboard" && page === "today" ? (
-          <BandButton label="Quick add" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add" />
-        ) : null}
-        {ready && view === "all" ? (
-          <BandButton
-            label="Customise My Day"
-            icon={SlidersHorizontal}
-            onClick={() => setSheet("customise")}
-            testId="my-day-all-customise"
-          />
+          <div className="flex justify-end">
+            <WorkButton variant="secondary" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add">
+              Quick add
+            </WorkButton>
+          </div>
         ) : null}
 
         {authStatus === "loading" ||
@@ -570,16 +562,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             <span role="status" className="sr-only">
               Loading My Day
             </span>
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
-              <div className="col-span-2">
-                <ModeModuleSkeleton rows={2} twoLine eyebrow />
-              </div>
-              <ModeModuleSkeleton rows={2} eyebrow />
-              <ModeModuleSkeleton rows={2} eyebrow />
-              <div className="col-span-2">
-                <ModeModuleSkeleton rows={3} twoLine eyebrow />
-              </div>
-            </div>
+            <MyDayLoadingSkeleton />
           </>
         ) : null}
 

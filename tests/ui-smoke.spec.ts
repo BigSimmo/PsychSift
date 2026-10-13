@@ -830,25 +830,14 @@ async function openMobileClinicalGuideMenu(page: Page) {
       .getByRole("link")
       .evaluateAll((links) => links.map((link) => ({ name: link.textContent, href: link.getAttribute("href") }))),
   ).toEqual([
-    // Design review 2026-10-03, item 4: My Day leads the default shortcuts.
-    { name: "My Day", href: "/my-day" },
-    { name: "Answer", href: "/?mode=answer" },
-    // Owner decision 2026-08-27: Documents joins the other consolidated modes and
-    // links at the shared home. `/documents` still exists and still paints its
-    // browse/recent workspace, but it is a second landing page — same subtitle,
-    // different title — and reaching it from the sidebar read as the wrong screen.
-    // It keeps its route and its inbound link from the Tools directory.
-    // Medication also redirects now — through its own bespoke proxy fast-path
-    // rather than the shared consolidatedModeHomePaths map, since /medications has
-    // no /search sub-route (src/proxy.ts, medicationsHomeTarget()) — and the
-    // pinned sidebar entry points straight at the shared home now too, matching
-    // Documents/Services above (ClinicalSidebar.tsx).
-    { name: "Documents", href: "/?mode=documents" },
-    { name: "Services", href: "/?mode=services" },
-    { name: "Psychiatry", href: "/psychiatry" },
-    { name: "Medication", href: "/?mode=prescribing" },
-    { name: "Factsheets", href: "/?mode=factsheets" },
+    // Design audit D14 (13 Oct 2026): until the reader edits their shortcuts, the phone menu
+    // offers the urgent tools instead of default pins that only repeated the groups below.
+    // Crisis numbers open in place, so they are a summary, not a link.
+    { name: "MHA time limits", href: "/psychiatry/mha-clock" },
+    { name: "Safety plan", href: "/safety-plan" },
+    { name: "Forms", href: "/forms" },
   ]);
+  await expect(navigation.getByTestId("sidebar-urgent-crisis")).toContainText("Crisis numbers");
   // The phone menu (owner pick "variant C", 11 Oct 2026): Clinical | Work tabs in
   // the brand band, an alerts bell beside the close cross, and every clinical page
   // listed under its group in place of the More modes sheet.
@@ -1246,9 +1235,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await waitForDemoDashboardReady(page);
 
     const menu = await openMobileClinicalGuideMenu(page);
-    // The menu lists Medication twice by design: once as a pinned shortcut and once
-    // under its group. The shortcut is the one this test is about.
-    await menu.getByRole("navigation", { name: "Pinned shortcuts" }).getByRole("link", { name: "Medication" }).click();
+    // Since design audit D14 the default phone shortcuts are the urgent tools, so Medication
+    // is reached under its group.
+    await menu
+      .getByRole("navigation", { name: "Medicines", exact: true })
+      .getByRole("link", { name: "Medication" })
+      .click();
 
     await expect.poll(() => new URL(page.url()).pathname, { timeout: 30_000 }).toBe("/");
     await expect.poll(() => new URL(page.url()).searchParams.get("mode"), { timeout: 30_000 }).toBe("prescribing");
@@ -3086,6 +3078,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       const alsoMatches = document.querySelector('[data-testid="universal-also-matches"]');
       const supportLabel = document.querySelector('[data-testid="answer-card-support"]');
       const sourceRail = document.querySelector('[data-testid="answer-source-rail"]');
+      const providerNotice = document.querySelector('[data-testid="answer-provider-notice"]');
       // Include vertical margins: the phone bottom clearance (`max-sm:mb-4`) sits
       // outside getBoundingClientRect().height and still consumes scroll budget.
       let alsoMatchesHeight = 0;
@@ -3116,12 +3109,24 @@ test.describe("PsychSift UI smoke coverage", () => {
           box.height + (Number.parseFloat(styles.marginTop) || 0) + (Number.parseFloat(styles.marginBottom) || 0),
         );
       }
+      // The overseas-processing line under the answer (audit S3) is real content too.
+      // It sits in a `space-y-4` stack, so the space it adds is measured from the bottom
+      // of the answer above it: the stack's gap collapses with its own top margin.
+      let providerNoticeHeight = 0;
+      if (providerNotice instanceof HTMLElement) {
+        const box = providerNotice.getBoundingClientRect();
+        const styles = window.getComputedStyle(providerNotice);
+        const above = providerNotice.previousElementSibling;
+        const top = above ? above.getBoundingClientRect().bottom : box.top - (Number.parseFloat(styles.marginTop) || 0);
+        providerNoticeHeight = Math.ceil(box.bottom - top + (Number.parseFloat(styles.marginBottom) || 0));
+      }
       return {
         headerBottom: header ? Math.round(header.getBoundingClientRect().bottom) : 0,
         surfaceTop: surface ? Math.round(surface.getBoundingClientRect().top) : 0,
         alsoMatchesHeight,
         supportLabelHeight,
         sourceRailHeight,
+        providerNoticeHeight,
       };
     });
     // Content-sized section => no unexplained phantom scroll. Submitted universal
@@ -3139,7 +3144,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     // always-rendered content, not phantom scroll. The flat 8px unexplained-
     // overflow allowance is deliberately unchanged — that is the part of this
     // guard the redesign must not be allowed to spend.
-    const permittedOverflow = geo.alsoMatchesHeight + geo.supportLabelHeight + geo.sourceRailHeight + 8;
+    const permittedOverflow =
+      geo.alsoMatchesHeight + geo.supportLabelHeight + geo.sourceRailHeight + geo.providerNoticeHeight + 8;
     expect(scrollGeometry.owner).toBe("document");
     expect(scrollGeometry.maxScrollTop).toBeLessThanOrEqual(permittedOverflow);
     // Top-aligned: the answer sits just under the header, not pushed toward the dock
@@ -3430,10 +3436,19 @@ test.describe("PsychSift UI smoke coverage", () => {
     const compactCrossModeLinks = compactCrossModeRail.getByRole("link");
     const compactCrossModeActions = compactCrossModeRail.getByRole("button");
     await expect.poll(() => compactCrossModeLinks.count()).toBeGreaterThan(0);
+    // A phone row keeps a compact Search control (owner decision 13 Oct 2026, audit D07),
+    // sized to the 48px target below and visible beside the open arrow.
     await expect.poll(() => compactCrossModeActions.count()).toBeGreaterThan(0);
+    await expect(compactCrossModeActions.first()).toBeVisible();
     for (const control of await compactCrossModeLinks.all()) {
       await expectMinTouchTarget(control, 48);
     }
+    for (const control of await compactCrossModeActions.all()) {
+      await expectMinTouchTarget(control, 48);
+    }
+    // Same at 390px, the common phone width the owner asked to be checked.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectNoPageHorizontalOverflow(page);
     for (const control of await compactCrossModeActions.all()) {
       await expectMinTouchTarget(control, 48);
     }

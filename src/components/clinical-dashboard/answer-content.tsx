@@ -259,6 +259,7 @@ export function NaturalLanguageAnswer({
   openSourceIndex = null,
   showCopyAction = true,
   isRefusal = false,
+  hideSourceRail = false,
 }: {
   // Raw answer text (server bold intact); this component owns display
   // sanitization so <SafeBoldText> can render the high-yield emphasis.
@@ -309,6 +310,11 @@ export function NaturalLanguageAnswer({
    * "Documents searched" rather than as support for an answer that was not given.
    */
   isRefusal?: boolean;
+  /**
+   * "Not in your sources" (audit D03): the searched documents do not answer the question,
+   * so the list of them is left off rather than shown as if it backed something.
+   */
+  hideSourceRail?: boolean;
 }) {
   const { preferences } = useAppPreferences();
   const fragments = primaryAnswerDisplayFragments(text, { preformatted, preserveBold: true });
@@ -385,14 +391,16 @@ export function NaturalLanguageAnswer({
             chip's own label is what carries `Source-only` and `Review due`
             there. Do not shorten that label to a bare count. */}
         {clinicalPoints}
-        <AnswerSourceRail
-          sources={railSources}
-          query={query}
-          onOpenSource={onOpenRailSource ?? onOpenSource}
-          activeIndex={openSourceIndex}
-          compact={preferences.compactCitations}
-          isRefusal={isRefusal}
-        />
+        {hideSourceRail ? null : (
+          <AnswerSourceRail
+            sources={railSources}
+            query={query}
+            onOpenSource={onOpenRailSource ?? onOpenSource}
+            activeIndex={openSourceIndex}
+            compact={preferences.compactCitations}
+            isRefusal={isRefusal}
+          />
+        )}
         {showCopyAction ? (
           <div className={cn(chatActionRow, "mt-0.5")} aria-label="Answer actions">
             <button

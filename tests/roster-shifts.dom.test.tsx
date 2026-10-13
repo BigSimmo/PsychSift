@@ -302,7 +302,7 @@ describe("Roster Shifts", () => {
     render(<RosterShiftsPage now={new Date("2026-10-15T15:40:00Z")} />);
     const note = await screen.findByTestId("roster-after-night-note");
     expect(note).toHaveTextContent(
-      "Your next evening shift starts 8 h after this shift ends, under the 24 hours free in clause 15(6)(g).",
+      "Your next late shift starts 8 h after this shift ends, under the 24 hours free in clause 15(6)(g).",
     );
   });
 
@@ -606,7 +606,7 @@ describe("Roster Shifts", () => {
       shift: {
         startsAt: "2026-10-13T06:00:00.000Z",
         endsAt: "2026-10-13T14:30:00.000Z",
-        title: "Evening",
+        title: "Late",
         location: null,
         sourceUid: null,
         kind: "evening",

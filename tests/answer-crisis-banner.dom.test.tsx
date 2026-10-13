@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { AnswerCrisisBanner } from "@/components/clinical-dashboard/answer-crisis-banner";
-import { hasCrisisWording } from "@/lib/crisis-wording";
+import { hasCrisisWording, hasOverdoseWording } from "@/lib/crisis-wording";
 
 describe("hasCrisisWording", () => {
   it.each([
@@ -43,5 +43,27 @@ describe("AnswerCrisisBanner", () => {
     expect(html).toContain("13 11 14");
     expect(html).toContain('href="tel:1300555788"');
     expect(html).toContain('role="status"');
+    expect(html).not.toContain("tel:131126");
+  });
+
+  it("adds the Poisons Information Centre after 000 on overdose or poisoning wording", () => {
+    const html = renderToStaticMarkup(<AnswerCrisisBanner query="paracetamol overdose psychiatric review" />);
+    expect(html).toContain('href="tel:131126"');
+    expect(html.indexOf("tel:000")).toBeLessThan(html.indexOf("tel:131126"));
+    expect(html.indexOf("tel:131126")).toBeLessThan(html.indexOf("tel:131114"));
+  });
+
+  it("gives every number its own 48px call link", () => {
+    const html = renderToStaticMarkup(<AnswerCrisisBanner query="I want to kill myself" />);
+    expect(html.match(/aria-label="Call /g)?.length).toBe(3);
+  });
+});
+
+describe("hasOverdoseWording", () => {
+  it.each(["paracetamol overdose", "suspected poisoning", "ingested lithium tablets"])("matches %j", (query) => {
+    expect(hasOverdoseWording(query)).toBe(true);
+  });
+  it.each(["lithium dose in renal impairment", "I want to kill myself", "", null])("does not match %j", (query) => {
+    expect(hasOverdoseWording(query)).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import { fetchRosterRead, useRosterTeams } from "@/components/roster/use-roster-
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { useSignedOutSample } from "@/components/mode-kit/use-signed-out-sample";
 import type { OpenShiftListing } from "@/lib/open-shifts/model";
+import { useAuthIfAvailable, useExampleData } from "@/lib/example-data/store";
 import { sampleListings, sampleRoster } from "@/lib/open-shifts/sample";
 import type { FatigueShift } from "@/lib/roster/fatigue-rules";
 import type { RosterTeam } from "@/lib/roster/team/model";
@@ -77,6 +78,10 @@ async function loadTeam(team: RosterTeam): Promise<OpenShiftListing[] | null> {
 
 export function useOpenShifts(): OpenShiftsState {
   const example = useSignedOutSample("rost");
+  // Nobody signed in, and sign-in has settled: signed out, expired, or a build with no accounts.
+  const authStatus = useAuthIfAvailable()?.status;
+  const noAccount = authStatus === "signed_out" || authStatus === "expired" || authStatus === "unconfigured";
+  const exampleMode = useExampleData().mode;
   const online = useOnlineStatus();
   const teams = useRosterTeams();
   const shifts = useRosterShifts();
@@ -184,8 +189,12 @@ export function useOpenShifts(): OpenShiftsState {
 
   const rosterStatus = shifts.status === "ready" ? "ready" : shifts.status === "loading" ? "loading" : "error";
 
-  // With example data off, `useRosterTeams` hides the made-up team, so this falls to "No teams yet".
-  if (releaseHeld && example) {
+  // The server sent its made-up team to a reader with no account (design audit
+  // 13 Oct 2026, D13: Open shifts showed a lone "No teams yet" card where Roster
+  // beside it showed examples). Show the example open shifts, labelled on the
+  // page. An explicit "off" is honoured, and a signed-in reader with example data
+  // off keeps "No teams yet", because `useRosterTeams` hides the made-up team.
+  if (releaseHeld && noAccount && exampleMode !== "off") {
     return {
       ...base,
       status: "ready",

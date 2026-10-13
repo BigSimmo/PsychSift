@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
@@ -16,7 +16,6 @@ import {
   WorkCard,
   WorkDateRow,
   WorkEmpty,
-  WorkGlassButton,
   WorkIconRow,
   WorkSectionLabel,
 } from "@/components/mode-kit/work";
@@ -395,7 +394,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
               >
                 <RosterShiftChip kind={kind} />
                 <span className="grid min-w-0 flex-1">
-                  <span className="truncate text-sm-minus font-bold">{title}</span>
+                  <span className="text-sm-minus leading-snug font-bold break-words">{title}</span>
                   <span className="nums text-2xs text-[color:var(--text-muted)]">{`${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
                 </span>
                 <span className="nums shrink-0 text-2xs font-bold text-[color:var(--mode-identity)]">{tag}</span>
@@ -726,22 +725,18 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
       <div className="work-body" data-page-width="wide" data-page-padded="" data-testid="roster-month-main">
         <h1 className="sr-only">Roster, month</h1>
         {canEdit ? (
-          <ModeBandAction>
-            {(underBand) =>
-              underBand ? (
-                <WorkGlassButton
-                  icon={Plus}
-                  label="Add to your roster"
-                  onClick={() => setAddView("menu")}
-                  testId="roster-month-add"
-                />
-              ) : (
-                <WorkButton variant="tinted" icon={Plus} onClick={() => setAddView("menu")} testId="roster-month-add">
-                  Add
-                </WorkButton>
-              )
-            }
-          </ModeBandAction>
+          // In the page, not the band's corner, which is for Favourite only (audit D18).
+          <div className="flex justify-end">
+            <WorkButton
+              variant="tinted"
+              icon={Plus}
+              onClick={() => setAddView("menu")}
+              aria-label="Add to your roster"
+              testId="roster-month-add"
+            >
+              Add
+            </WorkButton>
+          </div>
         ) : null}
         {importing ? (
           <RosterImportFlow
