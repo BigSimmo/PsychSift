@@ -68,19 +68,19 @@ function withoutComments(text) {
 }
 
 function findInteractiveTapLiterals(file) {
-  const sourceText = fs.readFileSync(file.absolutePath, "utf8");
+  const sourceText = textAt(file.relativePath);
   return findInteractiveTapLiteralsInSource(file.relativePath, sourceText);
 }
 
 function findInteractiveTapFloorDeclarations(file) {
-  const sourceText = fs.readFileSync(file.absolutePath, "utf8");
+  const sourceText = textAt(file.relativePath);
   return findInteractiveTapFloorDeclarationsInSource(file.relativePath, sourceText);
 }
 
 function findTherapyButtonsWithoutBaseClass(file) {
   if (!file.relativePath.startsWith("src/components/therapy-compass/") || !file.relativePath.endsWith(".tsx"))
     return [];
-  const sourceText = fs.readFileSync(file.absolutePath, "utf8");
+  const sourceText = textAt(file.relativePath);
   const source = ts.createSourceFile(file.relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const findings = [];
 

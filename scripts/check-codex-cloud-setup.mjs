@@ -68,10 +68,51 @@ function parseTomlScalar(value) {
   const trimmed = value.trim();
   if (trimmed === "true") return true;
   if (trimmed === "false") return false;
-  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+  if (isQuotedTomlScalar(trimmed)) {
     return trimmed.slice(1, -1);
   }
   return trimmed;
+}
+
+function isQuotedTomlScalar(value) {
+  const quote = value[0];
+  return (quote === '"' || quote === "'") && value.endsWith(quote);
+}
+
+function parseCodexMcpTableHeader(line, state) {
+  const nested = line.match(/^\[mcp_servers\.([A-Za-z0-9_-]+)\./);
+  if (nested) {
+    state.current = nested[1];
+    state.servers[state.current] ??= {};
+    state.nestedServers.add(state.current);
+    return true;
+  }
+  const table = line.match(/^\[mcp_servers\.([A-Za-z0-9_-]+)\]$/);
+  if (table) {
+    state.current = table[1];
+    state.servers[state.current] ??= {};
+    return true;
+  }
+  if (!line.startsWith("[")) return false;
+  state.current = null;
+  return true;
+}
+
+function parseCodexMcpSetting(line, state) {
+  if (!state.current) {
+    const dotted = line.match(/^mcp_servers\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_.-]+)\s*=\s*(.+)$/);
+    if (dotted) {
+      state.servers[dotted[1]] ??= {};
+      state.servers[dotted[1]][dotted[2]] = parseTomlScalar(dotted[3]);
+    }
+    return;
+  }
+  const keyValue = line.match(/^([A-Za-z0-9_.-]+)\s*=\s*(.+)$/);
+  if (!keyValue) {
+    state.unparsedServers.add(state.current);
+    return;
+  }
+  state.servers[state.current][keyValue[1]] = parseTomlScalar(keyValue[2]);
 }
 
 /**
@@ -85,45 +126,12 @@ export function parseCodexProjectMcpServers(text) {
   const servers = {};
   const nestedServers = new Set();
   const unparsedServers = new Set();
-  let current = null;
+  const state = { servers, nestedServers, unparsedServers, current: null };
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (!line || line.startsWith("#")) continue;
-
-    const nested = line.match(/^\[mcp_servers\.([A-Za-z0-9_-]+)\./);
-    if (nested) {
-      current = nested[1];
-      servers[current] ??= {};
-      nestedServers.add(current);
-      continue;
-    }
-
-    const table = line.match(/^\[mcp_servers\.([A-Za-z0-9_-]+)\]$/);
-    if (table) {
-      current = table[1];
-      servers[current] ??= {};
-      continue;
-    }
-
-    if (line.startsWith("[")) {
-      current = null;
-      continue;
-    }
-    if (!current) {
-      const dotted = line.match(/^mcp_servers\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_.-]+)\s*=\s*(.+)$/);
-      if (dotted) {
-        servers[dotted[1]] ??= {};
-        servers[dotted[1]][dotted[2]] = parseTomlScalar(dotted[3]);
-      }
-      continue;
-    }
-
-    const kv = line.match(/^([A-Za-z0-9_.-]+)\s*=\s*(.+)$/);
-    if (!kv) {
-      unparsedServers.add(current);
-      continue;
-    }
-    servers[current][kv[1]] = parseTomlScalar(kv[2]);
+    if (parseCodexMcpTableHeader(line, state)) continue;
+    parseCodexMcpSetting(line, state);
   }
   return { servers, nestedServers, unparsedServers };
 }
@@ -153,14 +161,7 @@ function validateSupabaseMcpUrl(urlString, label, errors) {
   }
 }
 
-/**
- * Project `.codex/config.toml` must register the approved Desktop/CLI MCP surface
- * as disabled URL-only templates. Hosted tools require separately installed apps.
- * @param {string} text
- * @returns {string[]}
- */
-export function validateCodexProjectMcpConfiguration(text) {
-  const errors = [];
+function validateProjectModelDefaults(text, errors) {
   const rootConfiguration = text.split(/^\s*\[/m, 1)[0];
   if (
     /^\s*(?:(?:model|model_reasoning_effort)|(["'])(?:model|model_reasoning_effort)\1)\s*=/m.test(rootConfiguration)
@@ -169,67 +170,75 @@ export function validateCodexProjectMcpConfiguration(text) {
       ".codex/config.toml must not set repository-wide model or model_reasoning_effort; leave them to the task or desktop picker.",
     );
   }
-  const { servers, nestedServers, unparsedServers } = parseCodexProjectMcpServers(text);
-  const expectedNames = Object.keys(expectedCodexProjectMcpServers).sort();
+}
+
+function validateProjectMcpServerNames(servers, expectedNames, errors) {
   const actualNames = Object.keys(servers).sort();
-  if (JSON.stringify(actualNames) !== JSON.stringify(expectedNames)) {
-    const unexpectedNames = actualNames.filter((name) => !expectedNames.includes(name));
-    const missingNames = expectedNames.filter((name) => !actualNames.includes(name));
-    const details = [
-      unexpectedNames.length ? `unexpected: ${unexpectedNames.join(", ")}` : null,
-      missingNames.length ? `missing: ${missingNames.join(", ")}` : null,
-    ]
-      .filter(Boolean)
-      .join("; ");
+  if (JSON.stringify(actualNames) === JSON.stringify(expectedNames)) return;
+  const unexpectedNames = actualNames.filter((name) => !expectedNames.includes(name));
+  const missingNames = expectedNames.filter((name) => !actualNames.includes(name));
+  const details = [
+    unexpectedNames.length ? `unexpected: ${unexpectedNames.join(", ")}` : null,
+    missingNames.length ? `missing: ${missingNames.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
+  errors.push(
+    `.codex/config.toml must register exactly these MCP servers: ${expectedNames.join(", ")}.${details ? ` ${details}.` : ""} Use the canonical railway template name; stale railway_cloud registrations are host-local OAuth apps and must not be reintroduced here.`,
+  );
+}
+
+function validateProjectMcpServer(name, server, nestedServers, unparsedServers, errors) {
+  if (!server) return;
+  const label = `.codex/config.toml ${name}`;
+  const expected = expectedCodexProjectMcpServers[name];
+  if (server.enabled !== false) {
     errors.push(
-      `.codex/config.toml must register exactly these MCP servers: ${expectedNames.join(", ")}.${details ? ` ${details}.` : ""} Use the canonical railway template name; stale railway_cloud registrations are host-local OAuth apps and must not be reintroduced here.`,
+      `${label} must set enabled = false (opt in via $CODEX_HOME/config.toml or a never-committed local edit; do not commit enabled = true).`,
     );
   }
-
-  for (const name of expectedNames) {
-    const server = servers[name];
-    if (!server) continue;
-    const label = `.codex/config.toml ${name}`;
-    const expected = expectedCodexProjectMcpServers[name];
-
-    if (server.enabled !== false) {
-      errors.push(
-        `${label} must set enabled = false (opt in via $CODEX_HOME/config.toml or a never-committed local edit; do not commit enabled = true).`,
-      );
-    }
-    if (server.default_tools_approval_mode !== expected.approvalMode) {
-      const reason =
-        expected.approvalMode === "writes"
-          ? "write-capable tools require explicit approval"
-          : "the production server is constrained read-only";
-      errors.push(`${label} must set default_tools_approval_mode = "${expected.approvalMode}" because ${reason}.`);
-    }
-    for (const key of Object.keys(server)) {
-      const rootKey = key.split(".")[0];
-      if (forbiddenCodexProjectMcpKeys.includes(rootKey)) {
-        errors.push(`${label} must not embed ${rootKey}; keep OAuth credentials in the host store.`);
-      } else if (!allowedCodexProjectMcpKeys.includes(key)) {
-        errors.push(`${label} must be URL-only; unsupported key ${key}.`);
-      }
-    }
-    if (nestedServers.has(name)) {
-      errors.push(`${label} must not declare nested tool override tables in the shared project config.`);
-    }
-    if (unparsedServers.has(name)) {
-      errors.push(`${label} contains unsupported or unparsed entries.`);
-    }
-    if (typeof server.url !== "string" || !server.url) {
-      errors.push(`${label} must declare a secret-free url.`);
-      continue;
-    }
-
-    if (expected.kind === "supabase") {
-      validateSupabaseMcpUrl(server.url, label, errors);
-    } else if (server.url !== expected.url) {
-      errors.push(`${label} must use the pinned endpoint ${expected.url}.`);
+  if (server.default_tools_approval_mode !== expected.approvalMode) {
+    const reason =
+      expected.approvalMode === "writes"
+        ? "write-capable tools require explicit approval"
+        : "the production server is constrained read-only";
+    errors.push(`${label} must set default_tools_approval_mode = "${expected.approvalMode}" because ${reason}.`);
+  }
+  for (const key of Object.keys(server)) {
+    const rootKey = key.split(".")[0];
+    if (forbiddenCodexProjectMcpKeys.includes(rootKey)) {
+      errors.push(`${label} must not embed ${rootKey}; keep OAuth credentials in the host store.`);
+    } else if (!allowedCodexProjectMcpKeys.includes(key)) {
+      errors.push(`${label} must be URL-only; unsupported key ${key}.`);
     }
   }
+  if (nestedServers.has(name)) {
+    errors.push(`${label} must not declare nested tool override tables in the shared project config.`);
+  }
+  if (unparsedServers.has(name)) errors.push(`${label} contains unsupported or unparsed entries.`);
+  if (typeof server.url !== "string" || !server.url) {
+    errors.push(`${label} must declare a secret-free url.`);
+    return;
+  }
+  if (expected.kind === "supabase") validateSupabaseMcpUrl(server.url, label, errors);
+  else if (server.url !== expected.url) errors.push(`${label} must use the pinned endpoint ${expected.url}.`);
+}
 
+/**
+ * Project `.codex/config.toml` must register the approved Desktop/CLI MCP surface
+ * as disabled URL-only templates. Hosted tools require separately installed apps.
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function validateCodexProjectMcpConfiguration(text) {
+  const errors = [];
+  validateProjectModelDefaults(text, errors);
+  const { servers, nestedServers, unparsedServers } = parseCodexProjectMcpServers(text);
+  const expectedNames = Object.keys(expectedCodexProjectMcpServers).sort();
+  validateProjectMcpServerNames(servers, expectedNames, errors);
+  for (const name of expectedNames) {
+    validateProjectMcpServer(name, servers[name], nestedServers, unparsedServers, errors);
+  }
   return errors;
 }
 
@@ -450,41 +459,43 @@ export function parseMcpServerMetadata(text) {
   if (!servers || Array.isArray(servers) || typeof servers !== "object") {
     throw new Error(".mcp.json must contain an mcpServers object.");
   }
-  return Object.entries(servers).map(([name, server]) => {
-    let endpoint = "none";
-    let queryNames = [];
-    if (typeof server?.url === "string") {
-      const url = new URL(server.url);
-      endpoint = `${url.origin}${url.pathname}`;
-      queryNames = [...url.searchParams.keys()].sort();
-    }
-    return {
-      name,
-      type: typeof server?.type === "string" ? server.type : typeof server?.command === "string" ? "stdio" : "invalid",
-      command: typeof server?.command === "string" ? server.command : "none",
-      endpoint,
-      queryNames,
-      environmentNames:
-        server?.env && !Array.isArray(server.env) && typeof server.env === "object"
-          ? Object.keys(server.env).sort()
-          : [],
-    };
-  });
+  return Object.entries(servers).map(([name, server]) => mcpServerMetadata(name, server));
 }
 
-export function validateMcpConfiguration(text) {
-  const errors = [];
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch (error) {
-    return [`.mcp.json is invalid JSON: ${error instanceof Error ? error.message : String(error)}`];
+function mcpServerMetadata(name, server) {
+  let endpoint = "none";
+  let queryNames = [];
+  if (typeof server?.url === "string") {
+    const url = new URL(server.url);
+    endpoint = `${url.origin}${url.pathname}`;
+    queryNames = [...url.searchParams.keys()].sort();
   }
-  const servers = parsed?.mcpServers;
-  if (!servers || Array.isArray(servers) || typeof servers !== "object") {
-    return [".mcp.json must contain an mcpServers object."];
-  }
+  let type = "invalid";
+  if (typeof server?.type === "string") type = server.type;
+  else if (typeof server?.command === "string") type = "stdio";
+  const validEnvironment = server?.env && !Array.isArray(server.env) && typeof server.env === "object";
+  return {
+    name,
+    type,
+    command: typeof server?.command === "string" ? server.command : "none",
+    endpoint,
+    queryNames,
+    environmentNames: validEnvironment ? Object.keys(server.env).sort() : [],
+  };
+}
 
+function parseMcpConfiguration(text) {
+  try {
+    return { parsed: JSON.parse(text), error: null };
+  } catch (error) {
+    return {
+      parsed: null,
+      error: `.mcp.json is invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+function validateMcpServerInventory(servers, errors) {
   const serverNames = Object.keys(servers).sort();
   if (JSON.stringify(serverNames) !== JSON.stringify(["railway", "supabase"])) {
     errors.push("Desktop/CLI .mcp.json must contain only Railway and Supabase.");
@@ -494,39 +505,33 @@ export function validateMcpConfiguration(text) {
       errors.push(`${name} MCP must use OAuth without embedded environment variables or headers.`);
     }
   }
+}
 
-  const railway = servers.railway;
+function validateRailwayMcpServer(railway, errors) {
   if (railway?.type !== "http" || railway?.url !== expectedMcpConfiguration.railwayUrl.replace(/\/$/, "")) {
     errors.push("Railway MCP must use Railway's official remote OAuth endpoint.");
   }
+}
 
-  const supabase = servers.supabase;
+function validateSupabaseMcpServer(supabase, errors) {
   if (supabase?.type !== "http" || typeof supabase?.url !== "string") {
     errors.push("Supabase MCP must use the hosted HTTP endpoint.");
-    return errors;
+    return;
   }
-  try {
-    const url = new URL(supabase.url);
-    if (`${url.origin}${url.pathname}` !== expectedMcpConfiguration.supabaseUrl) {
-      errors.push("Supabase MCP must use the official hosted endpoint.");
-    }
-    if (url.searchParams.get("project_ref") !== expectedMcpConfiguration.supabaseProjectRef) {
-      errors.push("Supabase MCP must be scoped to the expected project.");
-    }
-    if (url.searchParams.get("read_only") !== "true") {
-      errors.push("Supabase MCP must keep the production project read-only.");
-    }
-    const queryNames = [...url.searchParams.keys()].sort();
-    if (JSON.stringify(queryNames) !== JSON.stringify(["features", "project_ref", "read_only"])) {
-      errors.push("Supabase MCP must not include additional query parameters.");
-    }
-    const features = (url.searchParams.get("features") ?? "").split(",").filter(Boolean).sort();
-    if (JSON.stringify(features) !== JSON.stringify(expectedMcpConfiguration.supabaseFeatures)) {
-      errors.push("Supabase MCP must expose only the approved read-only feature groups.");
-    }
-  } catch {
-    errors.push("Supabase MCP URL must be valid.");
+  validateSupabaseMcpUrl(supabase.url, "Supabase MCP", errors);
+}
+
+export function validateMcpConfiguration(text) {
+  const errors = [];
+  const { parsed, error } = parseMcpConfiguration(text);
+  if (error) return [error];
+  const servers = parsed?.mcpServers;
+  if (!servers || Array.isArray(servers) || typeof servers !== "object") {
+    return [".mcp.json must contain an mcpServers object."];
   }
+  validateMcpServerInventory(servers, errors);
+  validateRailwayMcpServer(servers.railway, errors);
+  validateSupabaseMcpServer(servers.supabase, errors);
   return errors;
 }
 
@@ -753,27 +758,23 @@ export function pythonWorkerVersionLine(pythonCommand, run = spawnSync) {
     : "python.worker_versions=unavailable";
 }
 
-export function validateCloudNpmInstallContract(setupText) {
-  const errors = [];
+function cloudSetupLogicalLines(setupText) {
   const setup = setupText.replace(/\\\r?\n[\t ]*/gu, " ");
-  const logicalLines = setup
+  return setup
     .split(/\r?\n/gu)
     .map((line, index) => ({ text: line.trim(), index }))
     .filter(({ text }) => text && !text.startsWith("#"));
+}
+
+function cloudProjectInstallCommands(logicalLines) {
   const installCommands = logicalLines.filter(({ text }) => /\bnpm\s+(?:ci|install|i)(?:\s|$)/u.test(text));
-  const projectInstallCommands = installCommands.filter(({ text }) => {
+  return installCommands.filter(({ text }) => {
     const tokens = text.split(/\s+/u);
     return !tokens.includes("--global") && !tokens.includes("-g");
   });
+}
 
-  if (projectInstallCommands.length !== 1) {
-    errors.push(
-      `Cloud setup must contain exactly one project dependency install; found ${projectInstallCommands.length}.`,
-    );
-    return errors;
-  }
-
-  const command = projectInstallCommands[0];
+function validateCloudInstallPlacement(logicalLines, command, errors) {
   const nodeDependenciesStart = logicalLines.findIndex(({ text }) => text === 'setup_step="node-dependencies"');
   const nextStep = logicalLines.findIndex(
     ({ text }, index) => index > nodeDependenciesStart && /^setup_step=/u.test(text),
@@ -786,54 +787,71 @@ export function validateCloudNpmInstallContract(setupText) {
   ) {
     errors.push('Cloud project dependency install must run inside the "node-dependencies" setup step.');
   }
+}
 
+function validateCloudInstallCommand(command, errors) {
   if (/[;&|`$()]/u.test(command.text)) {
     errors.push("Cloud project dependency install must be a direct, unchained command without expansion.");
-    return errors;
+    return;
   }
-
   const tokens = command.text.split(/\s+/u);
   const expectedFlags = ["--include=dev", "--prefer-offline", "--no-audit", "--no-fund"];
   const actualFlags = tokens.slice(2);
-  if (
-    tokens[0] !== "npm" ||
-    tokens[1] !== "ci" ||
-    actualFlags.length !== expectedFlags.length ||
-    expectedFlags.some((flag) => !actualFlags.includes(flag)) ||
-    new Set(actualFlags).size !== expectedFlags.length
-  ) {
+  const commandIsNpmCi = tokens[0] === "npm" && tokens[1] === "ci";
+  const flagsMatch =
+    actualFlags.length === expectedFlags.length &&
+    expectedFlags.every((flag) => actualFlags.includes(flag)) &&
+    new Set(actualFlags).size === expectedFlags.length;
+  if (!commandIsNpmCi || !flagsMatch) {
     errors.push(
       `Cloud project dependency install must be npm ci with exactly these flags: ${expectedFlags.join(" ")}.`,
     );
   }
+}
 
+export function validateCloudNpmInstallContract(setupText) {
+  const errors = [];
+  const logicalLines = cloudSetupLogicalLines(setupText);
+  const projectInstallCommands = cloudProjectInstallCommands(logicalLines);
+  if (projectInstallCommands.length !== 1) {
+    errors.push(
+      `Cloud setup must contain exactly one project dependency install; found ${projectInstallCommands.length}.`,
+    );
+    return errors;
+  }
+  const command = projectInstallCommands[0];
+  validateCloudInstallPlacement(logicalLines, command, errors);
+  validateCloudInstallCommand(command, errors);
   return errors;
 }
 
-export function validateCodexCloudSetup() {
-  const errors = [];
-  const packageJson = JSON.parse(read("package.json"));
-  const nodeVersion = read(".node-version").trim();
-  const nvmVersion = read(".nvmrc").trim();
-  const setup = read("scripts/setup-codex-cloud.sh");
-  const pythonSelector = read("scripts/select-codex-cloud-python.sh");
-  const maintenance = read("scripts/maintain-codex-cloud.sh");
-  const commandShims = read("scripts/install-codex-cloud-command-shims.sh");
-  const checkoutBaseRefresh = read("scripts/refresh-codex-cloud-base.sh");
-  const rawEnvironmentProbe = read("scripts/check-codex-cloud-raw-env.sh");
-  const githubShellAccess = read("scripts/check-github-shell-access.mjs");
-  const patDelete = read("scripts/delete-codex-cloud-branch-with-pat.sh");
-  const guide = read("docs/codex-cloud.md");
-  const agents = read("AGENTS.md");
-  const modularCloudAgents = read("docs/agents/codex-cloud-environment.md");
-  const envExample = read(".env.example");
-  const gitignore = read(".gitignore");
-  const mcp = read(".mcp.json");
-  const codexProjectConfig = read(".codex/config.toml");
+function readCodexCloudSetupSources() {
+  return {
+    packageJson: JSON.parse(read("package.json")),
+    nodeVersion: read(".node-version").trim(),
+    nvmVersion: read(".nvmrc").trim(),
+    setup: read("scripts/setup-codex-cloud.sh"),
+    pythonSelector: read("scripts/select-codex-cloud-python.sh"),
+    maintenance: read("scripts/maintain-codex-cloud.sh"),
+    commandShims: read("scripts/install-codex-cloud-command-shims.sh"),
+    checkoutBaseRefresh: read("scripts/refresh-codex-cloud-base.sh"),
+    rawEnvironmentProbe: read("scripts/check-codex-cloud-raw-env.sh"),
+    githubShellAccess: read("scripts/check-github-shell-access.mjs"),
+    patDelete: read("scripts/delete-codex-cloud-branch-with-pat.sh"),
+    guide: read("docs/codex-cloud.md"),
+    agents: read("AGENTS.md"),
+    modularCloudAgents: read("docs/agents/codex-cloud-environment.md"),
+    envExample: read(".env.example"),
+    gitignore: read(".gitignore"),
+    mcp: read(".mcp.json"),
+    codexProjectConfig: read(".codex/config.toml"),
+  };
+}
 
-  // engines.node declares a minor-level floor (">=24.15.0 <25") rather than a
-  // bare major, because dev dependencies carry a floor a "24.x" range cannot
-  // express. Validate the shape and that its major still tracks .node-version.
+function validateCloudToolchainContract(sources, errors) {
+  const { packageJson, nodeVersion, nvmVersion, gitignore } = sources;
+  // engines.node declares a minor-level floor rather than a bare major because
+  // dev dependencies carry a floor that a "24.x" range cannot express.
   const engineRange = String(packageJson.engines?.node ?? "");
   const engineFloor = engineRange.match(/>=\s*(\d+)\.(\d+)\.(\d+)/);
   const engineCeiling = engineRange.match(/<\s*(\d+)/);
@@ -850,7 +868,82 @@ export function validateCodexCloudSetup() {
   }
   if (nvmVersion !== nodeVersion) errors.push(".nvmrc and .node-version must match.");
   requireMatch(errors, gitignore, /^\/error\.log$/m, "Codex Cloud diagnostic error.log must stay ignored.");
+}
 
+export function cloudSetupContainsMcpRegistration(setup) {
+  let quote = null;
+  let ansiQuoted = false;
+  let escaped = false;
+  let wordStart = true;
+  let uncommented = "";
+  const substitutions = [];
+  for (let index = 0; index < setup.length; index += 1) {
+    const character = setup[index];
+    if (escaped) {
+      uncommented += character;
+      escaped = false;
+      continue;
+    }
+    if (quote !== "'" && character === "$" && ["(", "{"].includes(setup[index + 1])) {
+      const opening = setup[++index];
+      substitutions.push({ quote, closing: opening === "(" ? ")" : "}", depth: 1 });
+      quote = null;
+      ansiQuoted = false;
+      uncommented += `$${opening}`;
+      wordStart = true;
+      continue;
+    }
+    if (quote !== "'" && character === "`") {
+      const active = substitutions.at(-1);
+      if (!quote && active?.closing === "`") {
+        quote = substitutions.pop().quote;
+        wordStart = false;
+      } else {
+        substitutions.push({ quote, closing: "`", depth: 1 });
+        quote = null;
+        wordStart = true;
+      }
+      ansiQuoted = false;
+      uncommented += character;
+      continue;
+    }
+    if (quote) {
+      uncommented += character;
+      if (character === quote) {
+        quote = null;
+        ansiQuoted = false;
+      } else if (character === "\\" && (quote === '"' || ansiQuoted)) escaped = true;
+      continue;
+    }
+    const active = substitutions.at(-1);
+    if (active && active.closing !== "`") {
+      if (character === active.closing) {
+        active.depth -= 1;
+        if (active.depth === 0) quote = substitutions.pop().quote;
+        uncommented += character;
+        wordStart = false;
+        continue;
+      }
+      if (character === (active.closing === ")" ? "(" : "{")) active.depth += 1;
+    }
+    if (character === "#" && wordStart && active?.closing !== "}") {
+      while (index < setup.length && setup[index] !== "\n") index += 1;
+      uncommented += "\n";
+      wordStart = true;
+      continue;
+    }
+    uncommented += character;
+    if (character === "'" || character === '"') {
+      quote = character;
+      ansiQuoted = character === "'" && setup[index - 1] === "$";
+    } else if (character === "\\") escaped = true;
+    wordStart = /[\s;|&()]/.test(character);
+  }
+  return /\bmcp_servers\b/.test(uncommented);
+}
+
+function validateCloudSetupLifecycleContract(sources, errors) {
+  const { setup, pythonSelector, maintenance } = sources;
   for (const [pattern, message] of [
     [/expected_node_range=/, "Cloud setup must read the complete Node engine range."],
     [/node_version_supported/, "Cloud setup must validate the complete Node engine range."],
@@ -909,20 +1002,7 @@ export function validateCodexCloudSetup() {
   for (const name of providerCredentialVariables) {
     if (!setup.includes(name)) errors.push(`Cloud setup must handle provider environment variable ${name}.`);
   }
-  // Reject any executable (non-comment) reference that would write MCP tables.
-  // Strip full-line comments and whitespace-prefixed trailing comments so an
-  // inline note cannot false-trip the guard. Text-level only: a `#` inside a
-  // quoted shell string is also stripped, and split/concatenated table names
-  // would not match. The generated-config behavioural test (fresh temp $HOME
-  // asserting no `[mcp_servers.` after connected setup) is the stronger proof.
-  const setupWithoutComments = setup
-    .split("\n")
-    .map((line) => {
-      if (/^\s*#/.test(line)) return "";
-      return line.replace(/\s+#.*$/, "");
-    })
-    .join("\n");
-  if (/\bmcp_servers\b/.test(setupWithoutComments)) {
+  if (cloudSetupContainsMcpRegistration(setup)) {
     errors.push("Cloud setup must not generate MCP registrations; hosted apps are external to the repository.");
   }
   if (setup.includes("@railway/cli") || setup.includes('setup_step="railway-cli"')) {
@@ -933,6 +1013,9 @@ export function validateCodexCloudSetup() {
       "Cloud lifecycle scripts must not persist setup-only GitHub credentials for the agent phase; use the native connector.",
     );
   }
+}
+
+function validateGithubShellAccessContract(githubShellAccess, errors) {
   for (const [pattern, message] of [
     [/expectedIdentity = "BigSimmo"/, "GitHub shell acceptance must pin the intended identity."],
     [/repository = "BigSimmo\/PsychSift"/, "GitHub shell acceptance must pin the intended repository."],
@@ -966,6 +1049,10 @@ export function validateCodexCloudSetup() {
       errors.push(`GitHub shell acceptance must not read credentials or permit history rewriting (${forbidden}).`);
     }
   }
+}
+
+function validateProviderScrubAndInventory(sources, errors) {
+  const { setup, envExample } = sources;
   const providerScrubIndex = setup.indexOf("unset OPENAI_API_KEY");
   const accessProfileBranchIndex = setup.indexOf('if [ "\\$CODEX_CLOUD_ACCESS_PROFILE" = "connected" ]');
   if (providerScrubIndex < 0 || accessProfileBranchIndex < 0 || providerScrubIndex > accessProfileBranchIndex) {
@@ -979,51 +1066,32 @@ export function validateCodexCloudSetup() {
       errors.push(`Cloud credential inventory must include .env.example variable ${name}.`);
     }
   }
-  requireMatch(
-    errors,
-    maintenance,
-    /exec bash scripts\/setup-codex-cloud\.sh/,
-    "Maintenance must repair the full toolchain.",
-  );
-  requireMatch(
-    errors,
-    maintenance,
-    /ensure-codex-cloud-git-remote\.mjs/,
-    "Maintenance must preserve the safe origin remote.",
-  );
-  requireMatch(
-    errors,
-    maintenance,
-    /refresh-codex-cloud-base\.sh/,
-    "Maintenance must refresh and pin the task checkout base.",
-  );
-  requireMatch(
-    errors,
-    commandShims,
-    /nvm version/,
-    "Cloud command shims must resolve the selected Node version without following their own wrappers.",
-  );
-  requireMatch(
-    errors,
-    commandShims,
-    /clean_path=.*\.local.*bin/,
-    "Cloud command shims must remove their directory before running child npm scripts.",
-  );
-  requireMatch(
-    errors,
-    commandShims,
-    /mkdir -p "\$HOME\/\.local\/bin"/,
-    "Cloud command shims must create their destination directory.",
-  );
-  requireMatch(
-    errors,
-    commandShims,
-    /\.clinical-kb-codex-cloud\.sh/,
-    "Cloud command shims must load the generated profile.",
-  );
+}
+
+function validateMaintenanceAndCommandShims(sources, errors) {
+  const { maintenance, commandShims } = sources;
+  for (const [pattern, message] of [
+    [/exec bash scripts\/setup-codex-cloud\.sh/, "Maintenance must repair the full toolchain."],
+    [/ensure-codex-cloud-git-remote\.mjs/, "Maintenance must preserve the safe origin remote."],
+    [/refresh-codex-cloud-base\.sh/, "Maintenance must refresh and pin the task checkout base."],
+  ]) {
+    requireMatch(errors, maintenance, pattern, message);
+  }
+  for (const [pattern, message] of [
+    [/nvm version/, "Cloud command shims must resolve the selected Node version without following their own wrappers."],
+    [/clean_path=.*\.local.*bin/, "Cloud command shims must remove their directory before running child npm scripts."],
+    [/mkdir -p "\$HOME\/\.local\/bin"/, "Cloud command shims must create their destination directory."],
+    [/\.clinical-kb-codex-cloud\.sh/, "Cloud command shims must load the generated profile."],
+  ]) {
+    requireMatch(errors, commandShims, pattern, message);
+  }
   if (!commandShims.includes('exec "$node_bin/$command_name" "\\$@"')) {
     errors.push("Cloud command shims must execute absolute Node commands.");
   }
+}
+
+function validateCheckoutAndRawEnvironmentContracts(sources, errors) {
+  const { checkoutBaseRefresh, patDelete, rawEnvironmentProbe } = sources;
   requireMatch(
     errors,
     checkoutBaseRefresh,
@@ -1072,44 +1140,31 @@ export function validateCodexCloudSetup() {
       errors.push(`Raw Cloud environment probe must cover provider environment variable ${name}.`);
     }
   }
-  requireMatch(
-    errors,
-    patDelete,
-    /\[\[ "\$branch" != -\* \]\]/,
-    "PAT deletion helper must reject option-like branch names.",
-  );
-  requireMatch(errors, patDelete, /git check-ref-format --branch/, "PAT deletion helper must validate branch names.");
-  requireMatch(
-    errors,
-    patDelete,
-    /git remote get-url --push --all origin/,
-    "PAT deletion helper must validate effective push URLs.",
-  );
-  requireMatch(errors, patDelete, /GIT_ASKPASS/, "PAT deletion helper must use a temporary askpass program.");
-  requireMatch(
-    errors,
-    patDelete,
-    /core\.hooksPath=\/dev\/null/,
-    "PAT deletion helper must disable Git hooks before the token-bearing push.",
-  );
-  requireMatch(
-    errors,
-    patDelete,
-    /https:\/\/github\.com\/BigSimmo\/PsychSift\.git/,
-    "PAT deletion helper must require the credential-free origin.",
-  );
-  requireMatch(errors, guide, /bash scripts\/setup-codex-cloud\.sh/, "The guide must provide the setup command.");
-  requireMatch(
-    errors,
-    guide,
-    /install-codex-cloud-command-shims\.sh/,
-    "The guide must document the command-shim workaround.",
-  );
-  requireMatch(errors, guide, /CODEX_CLOUD_ACCESS_PROFILE=connected/, "The guide must document connected access.");
-  requireMatch(errors, guide, /CODEX_CLOUD_GITHUB_PAT/, "The guide must document the narrowly scoped PAT exception.");
-  requireMatch(errors, guide, /GitHub connector/, "The guide must document GitHub connector access.");
-  requireMatch(errors, guide, /Personal Pro/, "The guide must identify the active Personal Pro workspace.");
-  requireMatch(errors, guide, /split control plane/, "The guide must document the Personal Pro provider workaround.");
+  for (const [pattern, message] of [
+    [/\[\[ "\$branch" != -\* \]\]/, "PAT deletion helper must reject option-like branch names."],
+    [/git check-ref-format --branch/, "PAT deletion helper must validate branch names."],
+    [/git remote get-url --push --all origin/, "PAT deletion helper must validate effective push URLs."],
+    [/GIT_ASKPASS/, "PAT deletion helper must use a temporary askpass program."],
+    [/core\.hooksPath=\/dev\/null/, "PAT deletion helper must disable Git hooks before the token-bearing push."],
+    [/https:\/\/github\.com\/BigSimmo\/PsychSift\.git/, "PAT deletion helper must require the credential-free origin."],
+  ]) {
+    requireMatch(errors, patDelete, pattern, message);
+  }
+}
+
+function validateGuideAndMcpContracts(sources, errors) {
+  const { guide, mcp, codexProjectConfig } = sources;
+  for (const [pattern, message] of [
+    [/bash scripts\/setup-codex-cloud\.sh/, "The guide must provide the setup command."],
+    [/install-codex-cloud-command-shims\.sh/, "The guide must document the command-shim workaround."],
+    [/CODEX_CLOUD_ACCESS_PROFILE=connected/, "The guide must document connected access."],
+    [/CODEX_CLOUD_GITHUB_PAT/, "The guide must document the narrowly scoped PAT exception."],
+    [/GitHub connector/, "The guide must document GitHub connector access."],
+    [/Personal Pro/, "The guide must identify the active Personal Pro workspace."],
+    [/split control plane/, "The guide must document the Personal Pro provider workaround."],
+  ]) {
+    requireMatch(errors, guide, pattern, message);
+  }
   try {
     parseMcpServerMetadata(mcp);
   } catch (error) {
@@ -1117,7 +1172,10 @@ export function validateCodexCloudSetup() {
   }
   errors.push(...validateMcpConfiguration(mcp));
   errors.push(...validateCodexProjectMcpConfiguration(codexProjectConfig));
+}
 
+function validateForbiddenCloudBootstrapUsage(sources, errors) {
+  const { setup, maintenance } = sources;
   for (const command of [
     "check:supabase-project",
     "test:live",
@@ -1130,7 +1188,6 @@ export function validateCodexCloudSetup() {
       errors.push(`Cloud bootstrap scripts must not invoke provider-capable command ${command}.`);
     }
   }
-
   for (const pattern of [
     /sjrfecxgysukkwxsowpy/i,
     /5deaad0b-675a-4c13-978e-5ca2b5b877f9/i,
@@ -1141,19 +1198,37 @@ export function validateCodexCloudSetup() {
       errors.push(`Cloud bootstrap scripts contain a live provider identifier matching ${pattern}.`);
     }
   }
+}
 
-  const cloudHeadingCount = (modularCloudAgents.match(/^## Codex Cloud environment$/gm) ?? []).length;
+function validateCloudAgentHeadings(sources, errors) {
+  const cloudHeadingCount = (sources.modularCloudAgents.match(/^## Codex Cloud environment$/gm) ?? []).length;
   if (cloudHeadingCount !== 1) {
     errors.push(
       `docs/agents/codex-cloud-environment.md must contain exactly one Codex Cloud environment section; found ${cloudHeadingCount}.`,
     );
   }
-  const rootHeadingCount = (agents.match(/^## Codex Cloud environment$/gm) ?? []).length;
+  const rootHeadingCount = (sources.agents.match(/^## Codex Cloud environment$/gm) ?? []).length;
   if (rootHeadingCount !== 1) {
     errors.push(
       `AGENTS.md must contain exactly one Codex Cloud environment pointer section; found ${rootHeadingCount}.`,
     );
   }
+}
+
+export function validateCodexCloudSetup() {
+  const errors = [];
+  const sources = readCodexCloudSetupSources();
+  validateCloudToolchainContract(sources, errors);
+
+  validateCloudSetupLifecycleContract(sources, errors);
+  validateGithubShellAccessContract(sources.githubShellAccess, errors);
+  validateProviderScrubAndInventory(sources, errors);
+  validateMaintenanceAndCommandShims(sources, errors);
+  validateCheckoutAndRawEnvironmentContracts(sources, errors);
+  validateGuideAndMcpContracts(sources, errors);
+
+  validateForbiddenCloudBootstrapUsage(sources, errors);
+  validateCloudAgentHeadings(sources, errors);
   return errors;
 }
 
@@ -1177,12 +1252,7 @@ function repositoryCommand(command, args) {
   return `${command} ${args.join(" ")} failed: ${output || `exit ${result.status}`}`;
 }
 
-export async function validateCodexCloudRuntime(env = process.env) {
-  const errors = validateCodexCloudEnvironment(env);
-
-  // Hosted Railway access is the OAuth ChatGPT/Codex app, not CLI token auth.
-  // Do not reintroduce `railway --version` or RAILWAY_API_TOKEN-vs-RAILWAY_TOKEN
-  // substitution checks here unless a future workflow restores CLI token auth.
+function appendRuntimeCommandErrors(errors) {
   for (const error of [
     commandVersion("deno", ["--version"], /^deno 2\./m),
     commandVersion("tesseract", ["--version"], /^tesseract \d+\./m),
@@ -1190,26 +1260,34 @@ export async function validateCodexCloudRuntime(env = process.env) {
   ]) {
     if (error) errors.push(error);
   }
+}
+
+function appendPythonWorkerErrors(env, errors) {
   const pythonError = pythonWorkerImportError(env.CODEX_CLOUD_OCR_PYTHON);
   if (pythonError) errors.push(pythonError);
   else errors.push(...pythonWorkerDependencyErrors(env.CODEX_CLOUD_OCR_PYTHON));
+}
 
+function appendRepositoryRuntimeErrors(errors) {
   for (const error of [
     repositoryCommand(process.execPath, ["scripts/run-tsx.mjs", "scripts/check-runtime.ts"]),
     repositoryCommand(process.execPath, ["scripts/check-installed-lock-parity.mjs"]),
   ]) {
     if (error) errors.push(error);
   }
+}
 
-  if (env.CODEX_CLOUD_SKIP_BROWSER_INSTALL !== "1") {
-    try {
-      const { chromium, firefox, webkit } = await import("playwright");
-      errors.push(...(await playwrightBrowserErrors({ chromium, firefox, webkit })));
-    } catch (error) {
-      errors.push(`Playwright browser validation failed: ${error.message}`);
-    }
+async function appendBrowserRuntimeErrors(env, errors) {
+  if (env.CODEX_CLOUD_SKIP_BROWSER_INSTALL === "1") return;
+  try {
+    const { chromium, firefox, webkit } = await import("playwright");
+    errors.push(...(await playwrightBrowserErrors({ chromium, firefox, webkit })));
+  } catch (error) {
+    errors.push(`Playwright browser validation failed: ${error.message}`);
   }
+}
 
+function appendCheckoutRuntimeErrors(env, errors) {
   const obsoleteProxyNames = obsoleteNpmProxyVariables(env);
   if (obsoleteProxyNames.length > 0) {
     errors.push(`Obsolete npm proxy variable names are set: ${obsoleteProxyNames.join(", ")}.`);
@@ -1226,10 +1304,27 @@ export async function validateCodexCloudRuntime(env = process.env) {
   if (checkout.expectedBaseAncestor === "false") {
     errors.push("CODEX_CLOUD_EXPECTED_BASE_SHA is not an ancestor of the current HEAD.");
   }
+}
+
+function appendOriginRuntimeErrors(errors) {
   const origin = inspectOriginRemote(repoRoot);
   if (!origin.configured) errors.push("origin is unavailable in the Cloud checkout.");
   else if (origin.credentialsEmbedded) errors.push("origin contains embedded credentials.");
   else if (!origin.repositoryMatch) errors.push(`origin must identify ${CODEX_CLOUD_REPOSITORY}.`);
+}
+
+export async function validateCodexCloudRuntime(env = process.env) {
+  const errors = validateCodexCloudEnvironment(env);
+
+  // Hosted Railway access is the OAuth ChatGPT/Codex app, not CLI token auth.
+  // Do not reintroduce `railway --version` or RAILWAY_API_TOKEN-vs-RAILWAY_TOKEN
+  // substitution checks here unless a future workflow restores CLI token auth.
+  appendRuntimeCommandErrors(errors);
+  appendPythonWorkerErrors(env, errors);
+  appendRepositoryRuntimeErrors(errors);
+  await appendBrowserRuntimeErrors(env, errors);
+  appendCheckoutRuntimeErrors(env, errors);
+  appendOriginRuntimeErrors(errors);
   return errors;
 }
 
