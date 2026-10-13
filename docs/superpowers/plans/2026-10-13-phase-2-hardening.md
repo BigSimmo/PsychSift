@@ -24,7 +24,7 @@
 
 ## Review Focus
 
-1. **Tall Man Lettering Accuracy:** Verify standard capitalization on high-risk pairs (`cloZAPine`, `cloNIDine`, `hydrOXYzine`, `hydrALAZINE`, `fluOXEtine`, `fluvOXAMine`).
+1. **Tall Man Lettering Accuracy:** Verify standard capitalization on high-risk pairs (`cloZAPine`, `cloNIDine`, `hydrOXYzine`, `hydrALAZINE`, `FLUoxetine`, `fluvoxaMINE`).
 2. **Chunking Negation Boundary:** Verify sentences with clinical prohibitions are preserved intact within a single chunk.
 3. **Prompt Fencing:** Verify user queries containing adversarial instructions do not break out of `<user_query>` tags.
 4. **Hydration Parity:** Verify server and client initial render HTML match byte-for-byte on cold reload.

@@ -59,6 +59,18 @@ describe("privacy-safe logging helpers", () => {
     expect(queryTextForStorage("MRN pending; monitor lithium")).toBe("MRN pending; monitor lithium");
   });
 
+  it.each(["MRN 12 3456", "MRN: 12 34 56", "UR 12 3456", "UMRN 12\t3456"])(
+    "redacts the complete grouped identifier %s in both storage helpers without consuming following text",
+    async (identifier) => {
+      vi.doMock("@/lib/env", () => ({ env: { RAG_PERSIST_RAW_QUERY_TEXT: true } }));
+      const { queryTextForStorage, normalizedQueryTextForStorage } = await import("../src/lib/query-privacy");
+      const query = `Patient ${identifier} needs lithium review`;
+
+      expect(queryTextForStorage(query)).toBe("Patient [REDACTED_MRN] needs lithium review");
+      expect(normalizedQueryTextForStorage(query)).toBe("patient [redacted_mrn] needs lithium review");
+    },
+  );
+
   it("logs ingestion jobs by job id without document filenames", () => {
     const message = safeIngestionJobLog("job-123");
 

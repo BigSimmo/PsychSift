@@ -4088,7 +4088,7 @@
     "bestUsedFor": "Best as a specialist adjunctive intervention for selected depressive episodes where rapid mood improvement is clinically useful and the service can monitor the patient safely. Evidence supports rapid antidepressant effects, but it is not a routine first-line depression treatment in Australian psychiatric practice and should not be presented as equivalent to CBT, antidepressants, ECT, or rTMS.",
     "targetSymptoms": "Depressed mood, circadian dysregulation, hypersomnia or disrupted sleep–wake timing, melancholic/biological rhythm features, treatment-resistant depressive symptoms, and mood states linked to abnormal sleep/circadian regulation.",
     "indications": "Best as a specialist adjunctive intervention for selected depressive episodes where rapid mood improvement is clinically useful and the service can monitor the patient safely. Evidence supports rapid antidepressant effects, but it is not a routine first-line depression treatment in Australian psychiatric practice and should not be presented as equivalent to CBT, antidepressants, ECT, or rTMS. Depressed mood, circadian dysregulation, hypersomnia or disrupted sleep–wake timing, melancholic/biological rhythm features, treatment-resistant depressive symptoms, and mood states linked to abnormal sleep/circadian regulation. Produce rapid short-term antidepressant improvement, realign circadian rhythm where relevant, and then sustain gains through sleep phase advance, bright-light therapy, pharmacotherapy, rhythm stabilisation, and ongoing depression treatment.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [

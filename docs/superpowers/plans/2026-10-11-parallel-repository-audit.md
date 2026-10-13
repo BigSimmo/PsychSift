@@ -4,7 +4,7 @@
 
 **Goal:** Execute an exhaustive, evidence-backed, parallel multi-subagent audit across the entire PsychSift repository (`BigSimmo/PsychSift`) to identify all latent bugs, security vulnerabilities, clinical safety hazards, accessibility issues, performance bottlenecks, and architectural debt without mutating source code.
 
-**Architecture:** Decompose repository auditing into seven orthogonal, non-overlapping investigation domains executed concurrently via specialized read-only subagents (`dispatching-parallel-agents`, `review-swarm`). A central orchestrator aggregates, forensically verifies, deduplicates, and ranks all findings into a unified, reproducible report (`docs/codex-review-protocol.md`).
+**Architecture:** Decompose repository auditing into seven orthogonal, non-overlapping investigation domains executed concurrently via specialized read-only subagents (`dispatching-parallel-agents`, `review-swarm`). A central orchestrator aggregates, forensically verifies, deduplicates, and ranks all findings into a unified, reproducible report (`docs/audit/full-repository-audit-2026-10-11.md`).
 
 **Tech Stack:** Next.js 16 (App Router, RSC/Client boundaries), React 19, TypeScript 5.8, Tailwind CSS, Supabase (PostgreSQL, pgvector, RLS), Vitest, Playwright, Python worker (`worker/python`), Docker, GitHub Actions CI.
 

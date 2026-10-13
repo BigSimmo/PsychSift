@@ -42,6 +42,7 @@ describe("Semantic Chunking Negation Boundary Preservation (CHK-01)", () => {
   it.each([
     "For adults with stable renal function, lithium is not contraindicated when the specified monitoring conditions are met.",
     "For adults without acute toxicity, do not cease lithium before the responsible clinician has reviewed the current results.",
+    "For adults with unstable renal function, lithium should not be administered before the responsible clinician has reviewed the current results.",
   ])("preserves the entire governing sentence in the actual successor: %s", (governing) => {
     const prefix = "General clinical context introduces the following guidance.";
     const following = "The next review records the agreed monitoring plan and the responsible clinician.";

@@ -23,7 +23,7 @@ PsychSift displays **exceptional engineering maturity** in several foundational 
 
 ### Primary Risks & Critical Vulnerabilities
 
-Despite these strengths, the audit identified **3 Critical Blockers (P0)** and **9 High-Severity Issues (P1)** that warrant immediate attention:
+Despite these strengths, the audit identified **3 Critical Blockers (P0)** and **11 High-Severity Issues (P1)** that warrant immediate attention:
 
 1. **Unbounded Serverless Memory Leak (P0 / MEM-01):** Module-level in-memory `Map` caches (`answerCache`, `queryEmbeddingCache`, `signedUrlCache`) accumulate entries indefinitely across requests in warm serverless instances, leading to heap exhaustion (OOM crashes) and cross-tenant memory leakage.
 2. **Total Absence of Medical Math / Clinical Calculators (P0 / CS-001):** While psychometric rating scales (PHQ-9, GAD-7, K10) are implemented, all clinical dosing calculators (renal clearance / Cockcroft-Gault, eGFR, QTc interval correction formulas, and lithium/clozapine titration helpers) are completely absent from `src/lib/calculators/`.

@@ -188,6 +188,21 @@ describe("Clinical Math Calculators (CS-001)", () => {
   });
 
   describe("Lithium Dosing & Therapeutic Range Helper", () => {
+    it.each([-0.1, -1])("rejects negative serum lithium levels (%s) without titration guidance", (serumLevelMmolL) => {
+      const result = evaluateLithiumLevel({ serumLevelMmolL, indication: "maintenance", age: 35 });
+
+      expect(result.status).toBe("invalid");
+      expect(result.isWithinTarget).toBe(false);
+      expect(result.targetRange).toEqual({ min: 0, max: 0 });
+      expect(result.clinicalGuidance.join(" ")).not.toMatch(/titration/i);
+    });
+
+    it("still classifies zero serum lithium as subtherapeutic", () => {
+      expect(evaluateLithiumLevel({ serumLevelMmolL: 0, indication: "maintenance", age: 35 }).status).toBe(
+        "subtherapeutic",
+      );
+    });
+
     it("evaluates therapeutic maintenance range (0.6 - 0.8 mmol/L)", () => {
       const result = evaluateLithiumLevel({
         serumLevelMmolL: 0.7,

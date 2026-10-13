@@ -7,13 +7,13 @@ describe("ISMP Tall Man Lettering for Psychotropic Safety (CS-002)", () => {
     expect(formatTallMan("clozapine")).toBe("cloZAPine");
     expect(formatTallMan("clonidine")).toBe("cloNIDine");
     expect(formatTallMan("clonazepam")).toBe("clonazePAM");
-    expect(formatTallMan("lorazepam")).toBe("lorazePAM");
+    expect(formatTallMan("lorazepam")).toBe("LORazepam");
     expect(formatTallMan("hydroxyzine")).toBe("hydrOXYzine");
     expect(formatTallMan("hydralazine")).toBe("hydrALAZINE");
-    expect(formatTallMan("fluoxetine")).toBe("fluOXEtine");
-    expect(formatTallMan("fluvoxamine")).toBe("fluvOXAMine");
-    expect(formatTallMan("olanzapine")).toBe("olanzaPINE");
-    expect(formatTallMan("quetiapine")).toBe("queTIApine");
+    expect(formatTallMan("fluoxetine")).toBe("FLUoxetine");
+    expect(formatTallMan("fluvoxamine")).toBe("fluvoxaMINE");
+    expect(formatTallMan("olanzapine")).toBe("OLANZapine");
+    expect(formatTallMan("quetiapine")).toBe("QUEtiapine");
     expect(formatTallMan("bupropion")).toBe("buPROPion");
     expect(formatTallMan("buspirone")).toBe("busPIRone");
   });
@@ -38,6 +38,6 @@ describe("ISMP Tall Man Lettering for Psychotropic Safety (CS-002)", () => {
     expect(ISMP_TALL_MAN_MEDICATIONS["clozapine"]).toBe("cloZAPine");
     expect(ISMP_TALL_MAN_MEDICATIONS["clonidine"]).toBe("cloNIDine");
     expect(ISMP_TALL_MAN_MEDICATIONS["valproate"]).toBe("VALproate");
-    expect(ISMP_TALL_MAN_MEDICATIONS["carbamazepine"]).toBe("carbaMAZEpine");
+    expect(ISMP_TALL_MAN_MEDICATIONS["carbamazepine"]).toBe("carBAMazepine");
   });
 });

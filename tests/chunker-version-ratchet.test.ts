@@ -29,6 +29,7 @@ const corpus = [
 
 const recorded: Record<string, string> = {
   "1.1.0-page|1.1.0-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
+  "1.1.1-page|1.1.1-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
 };
 
 function fingerprint() {
