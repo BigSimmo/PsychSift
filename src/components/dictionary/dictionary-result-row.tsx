@@ -17,8 +17,12 @@ const neutralTag =
 // Rows are divided by a hairline, never boxed. 48 px is the floor for a row
 // that is itself a link target. `relative` is added at each row, where the
 // stretched-link contract test can see it.
+// `content-visibility: auto` lets the browser skip rows that are off screen
+// when the page's styles change. Every scroll up or down changes them (the
+// search box at the bottom slides), and with hundreds of rows that redraw held
+// the header back for over half a second on a phone (measured 13 Oct 2026).
 const rowShell =
-  "flex min-h-12 min-w-0 items-start gap-3 border-b border-[color:var(--border)] px-3 py-3.5 last:border-b-0 sm:px-4 sm:py-4";
+  "flex min-h-12 min-w-0 items-start gap-3 border-b border-[color:var(--border)] px-3 py-3.5 last:border-b-0 sm:px-4 sm:py-4 [content-visibility:auto] [contain-intrinsic-size:auto_6rem]";
 
 // The small area-tinted mark at the left of each row. Hidden at
 // phone widths, where its 44 px is better spent on the definition and on
