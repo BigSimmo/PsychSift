@@ -45,6 +45,12 @@ const sections: PageSection[] = [
 ];
 
 function renderHeader(props: Partial<Parameters<typeof InPageNavHeader>[0]> = {}) {
+  // The top bar's round left slot, where Back is drawn.
+  if (!document.getElementById("universal-header-leading")) {
+    const slot = document.createElement("div");
+    slot.id = "universal-header-leading";
+    document.body.append(slot);
+  }
   return render(
     <InPageNavHeader
       back={{ href: "/services", label: "Services" }}
@@ -153,13 +159,12 @@ describe("InPageNavHeader", () => {
     expect(screen.getByTestId("service-section-rail")).toHaveClass("mt-2");
   });
 
-  it("keeps the phone-icon back control at the production tap-target floor", () => {
-    // The visible label is `hidden sm:inline`. Without min-w-tap the hit target
-    // collapses to ~40×48 on a phone and Production UI fails expectMinTouchTarget.
+  it("draws Back in the top bar, not in the page's own row", () => {
+    // One Back, in the top bar (11 Oct 2026 rule, header standard 13 Oct 2026).
     renderHeader();
     const back = screen.getByRole("link", { name: "Back to services" });
-    expect(back.className).toMatch(/\bmin-h-tap\b/);
-    expect(back.className).toMatch(/\bmin-w-tap\b/);
+    expect(back.closest("#universal-header-leading")).not.toBeNull();
+    expect(within(screen.getByTestId("service-detail-header")).queryByRole("link", { name: /^Back to/ })).toBeNull();
   });
 
   it("leaves the page's single h1 to the record body", () => {
@@ -268,10 +273,10 @@ describe("InPageNavHeader", () => {
     expect(screen.getByText("Community Alcohol and Drug Services (CADS) network")).toBeInTheDocument();
   });
 
-  it("keeps the back destination named when its label is hidden", () => {
-    // Hiding the text must not cost the accessible name — it is the only thing
-    // that says where the arrow goes.
-    renderHeader({ sections: undefined, activeId: undefined, onSelectSection: undefined, showBackLabel: false });
+  it("keeps the back destination named, as an icon-only control", () => {
+    // The arrow has no visible words, so its accessible name is the only thing
+    // that says where it goes.
+    renderHeader({ sections: undefined, activeId: undefined, onSelectSection: undefined });
 
     const back = screen.getByRole("link", { name: "Back to services" });
     expect(back).toHaveAttribute("href", "/services");
@@ -356,7 +361,7 @@ describe("InPageNavHeader", () => {
       return el.getAttribute("aria-label") || el.textContent?.replace(/\s+/g, " ").trim() || "";
     });
 
-    expect(names).toEqual(["Back to services", "Download PDF", "Open factsheet actions", "Easy read", "Standard"]);
+    expect(names).toEqual(["Download PDF", "Open factsheet actions", "Easy read", "Standard"]);
   });
 
   it("accepts plain node actions from a Server Component page", async () => {

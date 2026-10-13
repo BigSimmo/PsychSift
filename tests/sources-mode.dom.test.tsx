@@ -13,6 +13,7 @@ import {
 } from "@/components/sources/sources-pages";
 import { SOURCE_RATING_WEIGHTS, type ClinicalSourceCatalogueEntry } from "@/lib/sources/catalogue-types";
 import { projectSourceCatalogueForClient } from "@/lib/sources/catalogue-view";
+import { withTopBarLeadingSlot } from "./helpers/top-bar-slot";
 
 // Cross-mode "also matches" panel is an AuthProvider-backed component of its own;
 // it is exercised by tests/ui-universal-search.spec.ts, not by this page's unit test.
@@ -404,6 +405,8 @@ describe("Sources browse tabs", () => {
 });
 
 describe("Sources method and record", () => {
+  withTopBarLeadingSlot();
+
   it("publishes every weight, threshold and limitation on Method", () => {
     render(<SourcesMethodPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Method" })).toHaveClass("sr-only");

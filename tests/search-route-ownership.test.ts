@@ -396,7 +396,10 @@ describe("shared-search route ownership", () => {
     expect(dictionaryCatalogueSource).not.toContain("mode-home-composer-slot");
     // Exactly one element carries the page slot id: the shell suppresses its own
     // copy on this route, and the shell no longer hands the catalogue the home slot.
-    expect(shellSource).toContain("shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue ? (");
+    // Psychiatry's docked home renders the slot itself too, under its band.
+    expect(shellSource.replace(/\s+/g, " ")).toContain(
+      "shouldShowSearchComposer && !isStandaloneModeHome && !isDictionaryCatalogue && !isDockedModeHomePath(pathname) ? (",
+    );
     expect(shellSource).toContain(
       "desktopHomeComposerSlotId={isStandaloneModeHome ? modeHomeDesktopComposerSlotId : undefined}",
     );
