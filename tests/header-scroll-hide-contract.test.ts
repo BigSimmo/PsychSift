@@ -385,7 +385,14 @@ describe("shared header hide/reveal wiring", () => {
     // had dropped its navigation entirely.
     expect(differentialDetailSource).toContain("<InPageNavHeader");
     expect(differentialDetailSource).toContain('testIdPrefix="differential"');
-    expect(inPageNavHeaderSource).toContain("<PhoneHeaderCollapsePortal>");
+    // Header standard (13 Oct 2026): section navigation without a rail still
+    // rides the collapse row; a rail pins in the page under the bar (the Work
+    // band mechanism), a row with no section navigation scrolls away, and under
+    // a mode band the band's tabs are the pinned row, so the header stays put.
+    expect(inPageNavHeaderSource).toContain("const inFlow = pinRail || scrollsAway || underBand;");
+    expect(inPageNavHeaderSource).toContain("const HeaderHost = inFlow ? InFlowHeader : PhoneHeaderCollapsePortal;");
+    expect(inPageNavHeaderSource).toContain("useStickyWorkTabs(pinRail ? pinnedHeader : null, railRef);");
+    expect(inPageNavHeaderSource).toContain("<HeaderHost>");
     expect(inPageNavHeaderSource).toContain("`${testIdPrefix}-detail-header`");
     // `relative`, not the older `max-sm:static`: the weighted segment track is
     // absolutely positioned against this header, so a static phone header would
@@ -424,8 +431,8 @@ describe("shared header hide/reveal wiring", () => {
     // Both sheets must be siblings of the portal, never inside it — a sheet
     // portaled into the collapse row is carried away when the chrome hides.
     const portalBlock = inPageNavHeaderSource.slice(
-      inPageNavHeaderSource.indexOf("<PhoneHeaderCollapsePortal>"),
-      inPageNavHeaderSource.indexOf("</PhoneHeaderCollapsePortal>"),
+      inPageNavHeaderSource.indexOf("<HeaderHost>"),
+      inPageNavHeaderSource.indexOf("</HeaderHost>"),
     );
     expect(portalBlock).not.toContain("<Sheet");
     expect(portalBlock).not.toContain("DocumentSectionList");

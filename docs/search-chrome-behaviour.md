@@ -123,6 +123,24 @@ the rendered heights, or pass explicit weights when the sections are discrete ta
 with no on-screen height to measure. Ownership and reserves for that chrome are the
 “Document section navigation” row above.
 
+**Header standard (owner decision, 13 Oct 2026).** Every header hides on a scroll down and
+comes back on a scroll up; what comes back is the top bar plus the page's tab row, never a
+big title. For `InPageNavHeader` that means:
+
+- **Back is in the top bar.** `back` is drawn by `WorkPageBack` in the top bar's round left
+  button (the 11 Oct "one Back, in the top bar" rule), never in the page's own row.
+- **A tab rail pins in the page.** With `rail`, the header stays in page flow and
+  `useStickyWorkTabs` (the Work band mechanism, not a new scroll-hide owner) pins the rail
+  under the bar; the title row scrolls away. Once the rail is stuck, the header's actions
+  (Save, the ⋯ menu) move to the end of the pinned rail. Under a mode band the band's tabs
+  are the pinned row, so the record's header, rail and actions included, scrolls away (owner
+  decision, 13 Oct 2026, keep as built).
+- **Section navigation without a rail rides the collapse row** through
+  `PhoneHeaderCollapsePortal`, as before: the title disclosure is that page's navigation.
+- **A row with no section navigation scrolls away** in page flow, like a band title.
+
+Psychiatry, Medicines and First Nations bands (`ModeBandHeader`) pin their tabs the same way.
+
 Sections that the reader can jump to carry `inPageAnchor`
 (`src/components/in-page-nav/in-page-nav-classes.ts`), which is
 `scroll-mt-[var(--inpage-anchor-offset,6rem)]`. The property is published from the live chrome
@@ -277,12 +295,10 @@ purpose: `DocumentViewer` (decided above) and the differentials presentations wo
 one item and the track would render one full-width segment. Omit `sections` and
 `InPageNavHeader` drops both and renders the breadcrumb shape instead — same row grammar,
 same single collapse owner, none of the section machinery. `usePageSectionWeights` observes
-nothing for an empty list, so those pages pay no measurement cost. Three optional props
-shape that row:
+nothing for an empty list, so those pages pay no measurement cost. Back is never in this
+row: `WorkPageBack` renders it as the top bar's round left button, with `back.label` as its
+accessible name. The optional props below shape the row:
 
-- `showBackLabel={false}` keeps the arrow alone at every width when the row also carries an
-  action or a mode, so the title owns the space. `back.label` is still the accessible name
-  and becomes the desktop tooltip.
 - `primaryAction` promotes exactly **one** page action. It is **not** the filled `--command`
   slab, because a control pinned to every scroll position should not be the page's heaviest.
   Its label is `sr-only` below `sm` so the accessible name does not change with the

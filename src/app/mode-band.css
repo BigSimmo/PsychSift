@@ -469,3 +469,49 @@ html:not([data-mode-band])
   .universal-header[data-clinical-band]:not(:has(~ #phone-header-collapse-addon-slot .mode-nav-rail)) {
   box-shadow: inset 0 -1px 0 var(--clinical-band-line);
 }
+
+/* Pinned tabs on Clinical pages (header standard, 13 Oct 2026). Psychiatry,
+   Medicines and First Nations bands, and record pages with a tab rail, behave
+   as a Work band does: once the title has scrolled under the top bar, only the
+   tab row stays, pinned just below the bar, and it slides away and back with
+   the bar. use-sticky-work-tabs.ts measures the offsets; the rules mirror
+   `.work-band` in work-mode.css, which also sets `--work-chrome-h` for Work
+   pages. Every other page takes it from here. */
+html {
+  --work-chrome-h: calc(var(--safe-area-top, 0px) + var(--work-bar-h, var(--shell-header-h)));
+}
+
+@media (max-width: 639px) {
+  html {
+    --work-chrome-h: var(--phone-overlay-chrome-h);
+  }
+}
+
+/* A jump to a section, a find or a focused field lands below the pinned row,
+   not under it, as on Work pages (work-mode.css). */
+html:has(:is(.mode-band, .inpage-nav-header)[data-pinned]),
+html:has(:is(.mode-band, .inpage-nav-header)[data-pinned]) #main-content {
+  scroll-padding-top: calc(var(--work-chrome-h) + var(--work-tabs-h, 0px));
+}
+
+:is(.mode-band, .inpage-nav-header)[data-pinned] {
+  position: sticky;
+  top: calc(var(--work-chrome-h) - var(--work-band-tabs-top, 0px));
+  z-index: calc(var(--z-raised, 10) + 1);
+}
+
+:is(.mode-band, .inpage-nav-header)[data-stuck] {
+  clip-path: inset(var(--work-band-tabs-top, 0px) 0 0 0);
+}
+
+.mode-band[data-stuck] .mode-band__mark {
+  opacity: 0;
+}
+
+:is(.mode-band, .inpage-nav-header)[data-pinned][data-bar-hidden]:not(:focus-within) {
+  top: calc(-1 * (var(--work-band-tabs-top, 0px) + var(--work-tabs-h, 0px)));
+}
+
+:is(.mode-band, .inpage-nav-header)[data-stuck][data-bar-hidden]:not(:focus-within) {
+  pointer-events: none;
+}
