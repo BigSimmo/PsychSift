@@ -33,7 +33,7 @@ import {
   resultFilterFacetGroup,
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
-import { Chip as DesignChip, type ChipStatusTone } from "@/components/ui/chip";
+import { StatusTag, type StatusTagShape } from "@/components/mode-kit/status-tag";
 import { cn } from "@/components/ui-primitives";
 import { useResultSort } from "@/components/use-result-sort";
 import { compactBestUseTitle } from "@/lib/compact-best-use-title";
@@ -79,9 +79,19 @@ function compactText(value: string | null | undefined, maxLength: number, fallba
   return trimmed ? compactBestUseTitle(trimmed, maxLength) : fallback;
 }
 
-function chipTone(tone: ServiceStatusChip["tone"] | undefined | null): ChipStatusTone {
-  if (tone === "danger" || tone === "info" || tone === "warning" || tone === "success") return tone;
-  return "neutral";
+/**
+ * One status shape per chip, only where a shape means something (Clinical audit,
+ * 13 Oct 2026, item 8): crisis or urgent is a red triangle, an unverified
+ * availability is a dashed ring, an active service is a tick. Every other chip
+ * (acuity, setting, region) is a plain grey word. The chip words themselves are
+ * unchanged.
+ */
+function serviceChipShape(chip: ServiceStatusChip): StatusTagShape {
+  const label = chip.label?.toLowerCase() ?? "";
+  if (/\b(crisis|urgent|emergency)\b/.test(label)) return "urgent";
+  if (/unverified|not verified|unconfirmed/.test(label)) return "unrecorded";
+  if (/^active$/.test(label.trim())) return "done";
+  return "none";
 }
 
 function serviceChipLabel(chip: ServiceStatusChip) {
@@ -147,7 +157,9 @@ function ServiceCard({
         // it doubles as the shortlist checkmark. Services also has no single
         // category axis — records carry facets — so there is nothing honest to
         // put there instead.
-        (selected || showBestFit) && cardSelected,
+        // Only the shortlist tints a card. "Best fit" is a grey word beside the
+        // title, so colour keeps meaning "you picked this" (item 8).
+        selected && cardSelected,
       )}
     >
       <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]">
@@ -156,7 +168,7 @@ function ServiceCard({
             "grid h-9 w-9 place-items-center rounded-lg border text-sm font-extrabold",
             selected
               ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
-              : "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+              : "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-heading)]",
           )}
           aria-label={`Result ${index + 1}${selected ? ", shortlisted" : ""}`}
         >
@@ -177,11 +189,7 @@ function ServiceCard({
                 {service.title}
               </Link>
             </h2>
-            {showBestFit ? (
-              <span className="rounded-full bg-[color:var(--clinical-accent)] px-2 py-0.5 text-2xs font-bold text-[color:var(--clinical-accent-contrast)]">
-                Best fit
-              </span>
-            ) : null}
+            {showBestFit ? <StatusTag>Best fit</StatusTag> : null}
           </div>
           {/* A fixed 150-character cut clipped short records mid-word at every
               width ("Immedia…" on 13YARN, ledger #8RWKA0). Clamp by lines on a
@@ -193,18 +201,6 @@ function ServiceCard({
               "Open the record to review service fit and referral details.",
             )}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {(service.statusChips ?? []).slice(0, 3).map((chip) => (
-              <DesignChip
-                key={`${service.slug}-${chip.label}`}
-                size="compact"
-                appearance={{ kind: "status", tone: chipTone(chip.tone) }}
-                dot
-              >
-                {serviceChipLabel(chip)}
-              </DesignChip>
-            ))}
-          </div>
         </div>
         {/* Favourite, not shortlist: the bookmark persists to the account
             across sessions, while the shortlist below is this search's
@@ -260,16 +256,26 @@ function ServiceCard({
           no number anywhere. The card now leads with the phone number and a
           call button; "Review referral" and "Add to shortlist" sit behind
           "More" (the whole card still opens the record). */}
-      <div className="mt-3 flex items-stretch gap-2">
+      {/* Tags, then the call and "More" on the same row (item 8): the call is
+          a compact 48px phone button rather than a full-width blue bar, so
+          252 cards no longer read as a wall of colour. Same tel: action. */}
+      <div className="mt-2 flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 pl-12 sm:pl-[3.25rem]">
+          {(service.statusChips ?? []).slice(0, 3).map((chip) => (
+            <StatusTag key={`${service.slug}-${chip.label}`} shape={serviceChipShape(chip)}>
+              {serviceChipLabel(chip)}
+            </StatusTag>
+          ))}
+        </div>
         {call ? (
           <a
             href={call.href}
-            aria-label={`Call ${call.display}, ${service.title}`}
+            aria-label={`Call ${service.title}`}
+            title={`Call ${call.display}`}
             data-testid={`service-call-${service.slug}`}
-            className="relative z-10 inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] px-3 text-sm font-bold text-[color:var(--clinical-accent-contrast)] hover:bg-[color:var(--clinical-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:flex-none"
+            className="relative z-10 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
             <Phone className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate tabular-nums">Call {call.display}</span>
           </a>
         ) : null}
         <button
@@ -278,7 +284,7 @@ function ServiceCard({
           aria-expanded={moreOpen}
           aria-controls={morePanelId}
           aria-label={`More actions for ${service.title}`}
-          className="relative z-10 ml-auto inline-flex min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          className="relative z-10 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           <span className="hidden sm:inline">More</span>
           <ChevronDown className={cn("h-4 w-4 transition-transform", moreOpen && "rotate-180")} aria-hidden />

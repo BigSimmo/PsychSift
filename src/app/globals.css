@@ -3150,10 +3150,12 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
     padding-right: max(1rem, var(--safe-area-right));
   }
 
+  /* The top hit is a plain card like the rest (Clinical audit, 13 Oct 2026,
+     item 8): no blue rail and no blue wash, because being first is not a
+     status. The rule stays so the verdict rules below still win by order. */
   .medication-mobile-result[data-selected="true"] {
     border-color: var(--border);
-    background: color-mix(in srgb, var(--clinical-accent-soft) 42%, var(--surface-raised));
-    box-shadow: inset 3px 0 0 var(--clinical-accent);
+    background: var(--surface-raised);
   }
 
   /* The patient verdict owns the card edge and surface, including on the selected row.
