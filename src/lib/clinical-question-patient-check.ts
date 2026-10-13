@@ -33,8 +33,9 @@ const AGE_PHRASES: readonly RegExp[] = [
   /\b\d{1,3}\s?-?\s?(?:yo|y\/o|y\.o\.?)(?=[\s,.;:)]|$)(?:\s+(?:male|female|man|woman|boy|girl)\b)?/gi,
   /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred)(?:[\s-]+(?:one|two|three|four|five|six|seven|eight|nine))?[\s-]*(?:years?|yrs?)[\s-]*old\b/gi,
   /\b(?:aged?|age:)\s*\d{1,3}\b/gi,
-  // Only when nothing labels the number as a place ("bed 12 male" keeps its bed number and is refused).
-  /(?<!\b(?:bed|room|ward|unit|bay|cot)\s?)\b\d{1,3}\s?(?:years?|yrs?)?\s?(?:male|female|man|woman|boy|girl)\b/gi,
+  // Only when no place word (as Work's check knows them, marked or not) labels the number, so "bed 12 male" and
+  // "Bed: 12 male" keep their bed number and are refused.
+  /(?<!\b(?:bed|bay|room|rm|cubicle|cube|cot|chair|trolley|recliner|ward|unit)\s*[:#.-]?\s*)\b\d{1,3}\s?(?:years?|yrs?)?\s?(?:male|female|man|woman|boy|girl)\b/gi,
 ];
 
 /**
