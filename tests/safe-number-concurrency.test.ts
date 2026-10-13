@@ -167,7 +167,7 @@ describe("SafeNumberEditor component optimistic locking", () => {
 
   it("steps every weekday, not just Monday, and shows a mixed week as a range", async () => {
     const onSave = vi.fn(async () => ({ ok: true, version: 2 }));
-    const mixed = setSafeNumber(initialRecord.grid, "night", [6, 7], 4);
+    const mixed = setSafeNumber(initialGrid, "night", [6, 7], 4);
     render(React.createElement(SafeNumberEditor, { initialRecord: { ...initialRecord, grid: mixed }, onSave }));
 
     const before = mixed.night;
