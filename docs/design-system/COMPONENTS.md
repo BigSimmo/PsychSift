@@ -1065,7 +1065,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `CitationList`           | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `ConfirmDialog`          | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
-| `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
+| `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `Disclosure`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `DisclosureGroup`        | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `DoseLine`               | answer   | yes   | yes                | no                    | yes            | no                 |               0 |

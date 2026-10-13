@@ -12,7 +12,6 @@ import { PrivacySectionIndex } from "@/components/privacy/section-index";
 import { usePrivacyHashSection, writePrivacyHashSection } from "@/components/privacy/use-privacy-hash-section";
 import { PrivacyPageBackButton } from "@/components/privacy-page-back-button";
 import { Button } from "@/components/ui/button";
-import { DateDisplay } from "@/components/ui/date-display";
 import { cn, eyebrowText, pageContainer, searchPageCanvas, searchFocusRing } from "@/components/ui-primitives";
 import {
   PRIVACY_CLOSING_NOTE,
@@ -49,6 +48,18 @@ const atmosphere =
   "bg-[radial-gradient(ellipse_at_8%_-8%,color-mix(in_srgb,var(--clinical-accent-soft)_62%,transparent),transparent_34%),radial-gradient(ellipse_at_92%_4%,color-mix(in_srgb,var(--surface-inset)_58%,transparent),transparent_42%),linear-gradient(180deg,color-mix(in_srgb,var(--surface)_55%,transparent),transparent_18rem),var(--background)]";
 
 const pagePadX = "px-4 sm:px-6 lg:px-8";
+
+/** "1 September 2026": the plain Australian long date (design audit 13 Oct 2026, D22). */
+const AS_OF_FORMAT = new Intl.DateTimeFormat("en-AU", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const asOfLabel = AS_OF_FORMAT.format(new Date(`${PRIVACY_CONTENT_AS_OF}T00:00:00Z`));
+
+/** Sentence-case small labels (design audit 13 Oct 2026, D22): no capitals, no letter spacing. */
+const labelText = "text-xs font-semibold text-[color:var(--text-muted)]";
 /** Same safe-area top pad as `searchPageShellStandalone` — owned here for sticky chrome. */
 const pagePadTop = "pt-[max(0.75rem,var(--safe-area-top))] sm:pt-[max(1.25rem,var(--safe-area-top))]";
 
@@ -245,7 +256,7 @@ export function PrivacyQuietSignalPage() {
               />
               <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:gap-10">
                 <div className="min-w-0">
-                  <p className={cn(eyebrowText, "text-[color:var(--clinical-accent)]")}>Privacy overview</p>
+                  <p className="text-xs font-semibold text-[color:var(--clinical-accent)]">Privacy overview</p>
                   <h1
                     id="privacy-page-title"
                     className="mt-2 max-w-[var(--measure-trust-heading)] text-balance text-2xl font-extrabold leading-tight tracking-tight text-[color:var(--text-heading)] sm:text-3xl lg:text-4xl"
@@ -260,17 +271,15 @@ export function PrivacyQuietSignalPage() {
 
                 <dl className="grid self-end overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]/80 shadow-[var(--shadow-inset)]">
                   <div className="grid gap-1 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline sm:gap-3 lg:grid-cols-1">
-                    <dt className="text-3xs font-extrabold uppercase tracking-kicker text-[color:var(--text-muted)]">
-                      Describes configured behaviour as of
-                    </dt>
+                    <dt className={labelText}>Describes how PsychSift is set up as of</dt>
                     <dd className="text-sm font-semibold text-[color:var(--text-heading)]">
-                      <DateDisplay value={PRIVACY_CONTENT_AS_OF} kind="generated" />
+                      <time dateTime={PRIVACY_CONTENT_AS_OF} data-testid="privacy-as-of">
+                        {asOfLabel}
+                      </time>
                     </dd>
                   </div>
                   <div className="border-t border-[color:var(--border)] px-3 py-2.5">
-                    <dt className="text-3xs font-extrabold uppercase tracking-kicker text-[color:var(--text-muted)]">
-                      Coverage
-                    </dt>
+                    <dt className={labelText}>Coverage</dt>
                     <dd className="mt-1 text-sm font-semibold text-[color:var(--text-heading)]">
                       Applies to every PsychSift mode
                     </dd>
@@ -292,17 +301,10 @@ export function PrivacyQuietSignalPage() {
               aria-labelledby="privacy-important-heading"
               className="border-t border-[color:var(--warning-border)] bg-[color:var(--warning-bg)]"
             >
-              <div className="grid grid-cols-[0.25rem_1rem_minmax(0,1fr)] items-start gap-x-2.5 gap-y-1 px-4 py-3.5 sm:flex sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-4 lg:px-8">
-                <span
-                  aria-hidden="true"
-                  className="row-span-2 mt-0.5 w-1 shrink-0 self-stretch rounded-full bg-[color:var(--warning)] sm:row-auto"
-                />
+              <div className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-2.5 gap-y-1 px-4 py-3.5 sm:flex sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-4 lg:px-8">
                 <ShieldAlert className="mt-0.5 size-icon-sm shrink-0 text-[color:var(--warning)]" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <h2
-                    id="privacy-important-heading"
-                    className="text-2xs font-extrabold uppercase tracking-kicker text-[color:var(--warning-text)]"
-                  >
+                  <h2 id="privacy-important-heading" className="text-sm font-bold text-[color:var(--warning-text)]">
                     Before you use PsychSift
                   </h2>
                   <p className="mt-1 max-w-[var(--measure)] text-sm font-semibold leading-5 text-[color:var(--text-heading)] sm:leading-6">
@@ -315,7 +317,7 @@ export function PrivacyQuietSignalPage() {
                   aria-expanded={noticeOpen}
                   aria-controls={noticeId}
                   className={cn(
-                    "col-start-3 inline-flex min-h-tap shrink-0 items-center justify-center gap-1 justify-self-start rounded-lg px-3 text-2xs font-extrabold uppercase tracking-eyebrow text-[color:var(--warning-text)] transition hover:bg-[color:var(--surface-raised)]/70 sm:col-auto sm:self-center sm:justify-self-auto print:hidden",
+                    "col-start-2 inline-flex min-h-tap shrink-0 items-center justify-center gap-1 justify-self-start rounded-lg px-3 text-sm font-semibold text-[color:var(--warning-text)] transition hover:bg-[color:var(--surface-raised)]/70 sm:col-auto sm:self-center sm:justify-self-auto print:hidden",
                     searchFocusRing,
                   )}
                 >
@@ -361,16 +363,14 @@ export function PrivacyQuietSignalPage() {
             className="hidden h-fit rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-2.5 shadow-[var(--shadow-inset)] lg:sticky lg:block print:hidden"
             style={{ top: chromeSticky ? stickyChromeHeightPx + 12 : 12 }}
           >
-            <p className="mb-1.5 px-2.5 pt-1.5 text-3xs font-extrabold uppercase tracking-kicker text-[color:var(--text-muted)]">
-              On this page
-            </p>
+            <p className={cn(labelText, "mb-1.5 px-2.5 pt-1.5")}>On this page</p>
             <PrivacySectionIndex activeId={activeId} onSelect={openSection} idPrefix={`${sectionIdPrefix}-desktop`} />
           </aside>
 
           <div className="min-w-0 space-y-4 sm:space-y-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="min-w-0">
-                <p className={eyebrowText}>Privacy details</p>
+                <p className={labelText}>Privacy details</p>
                 <h2 className="mt-1 text-lg font-semibold tracking-display text-[color:var(--text-heading)] sm:text-xl">
                   How your information is handled
                 </h2>

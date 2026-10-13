@@ -116,8 +116,13 @@ describe("privacy UI", () => {
     expect(markup).not.toContain("zero-retention arrangement is in place");
     expect(markup).not.toContain("not used for training");
 
-    // Status line: describes configured behaviour, never asserts a review.
-    expect(markup).toContain("Describes configured behaviour as of");
+    // Status line: describes how PsychSift is set up, never asserts a review. Plain words and a
+    // plain Australian date (design audit 13 Oct 2026, D22).
+    expect(markup).toContain("Describes how PsychSift is set up as of");
+    expect(markup).toContain('<time dateTime="2026-09-01" data-testid="privacy-as-of">1 September 2026</time>');
+    expect(markup).toContain("based on how PsychSift is set up.");
+    expect(markup).not.toContain("repository&#x27;s configured behaviour");
+    expect(markup).not.toContain("01/09/2026");
     expect(markup).not.toContain("Reviewed on");
     expect(metadata.description).toContain("current provider controls");
     expect(metadata.description).toContain("pending privacy approvals");

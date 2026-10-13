@@ -895,13 +895,11 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
-        "src/components/privacy-quiet-signal-page.tsx",
         "src/components/ui/retrieval-state-banner.tsx",
         "src/components/ui/verification-notice.tsx"
       ],
       "productImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
-        "src/components/privacy-quiet-signal-page.tsx",
         "src/components/ui/retrieval-state-banner.tsx",
         "src/components/ui/verification-notice.tsx"
       ],

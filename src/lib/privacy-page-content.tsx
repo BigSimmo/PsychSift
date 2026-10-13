@@ -16,12 +16,13 @@ import type { ReactNode } from "react";
  */
 
 export const PRIVACY_DRAFT_DISCLAIMER =
-  "This is draft product information based on the repository's configured behaviour. It is not legal advice, a final privacy policy, or an assertion of governance approval.";
+  "This is draft product information based on how PsychSift is set up. It is not legal advice, a final privacy policy, or an assertion of governance approval.";
 
 /**
  * ISO date the copy below was last checked against the repository. Rendered as
- * "describes configured behaviour as of …" — deliberately not "reviewed", which
- * would imply a governance sign-off that PIA-5 records as still outstanding.
+ * "Describes how PsychSift is set up as of 1 September 2026" — deliberately not
+ * "reviewed", which would imply a governance sign-off that PIA-5 records as
+ * still outstanding.
  */
 export const PRIVACY_CONTENT_AS_OF = "2026-09-01";
 
