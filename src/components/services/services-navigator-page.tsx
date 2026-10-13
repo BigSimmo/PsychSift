@@ -267,7 +267,7 @@ function ServiceCard({
           a compact 48px phone button rather than a full-width blue bar, so
           252 cards no longer read as a wall of colour. Same tel: action. */}
       <div className="mt-2 flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 pl-12 sm:pl-[3.25rem]">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 pl-12 sm:pl-13">
           {(service.statusChips ?? []).slice(0, 3).map((chip) => (
             <StatusTag key={`${service.slug}-${chip.label}`} shape={serviceChipShape(chip)}>
               {serviceChipLabel(chip)}
