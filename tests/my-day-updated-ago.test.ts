@@ -39,4 +39,13 @@ describe("myDayUpdatedAgo", () => {
     expect(myDayUpdatedAgo(after(5), null, "10:05")).toBe("at 10:05");
     expect(myDayUpdatedAgo(after(5), null, null)).toBe("just now");
   });
+
+  it("formats the time and date in the zone it is given", () => {
+    // 02:05Z is 13:05 in Sydney (AEDT, UTC+11) on Tue 13 Oct.
+    expect(myDayUpdatedAgo(after(60), at, "10:05", "Australia/Sydney")).toBe("at 13:05, Tue 13 Oct");
+    // 15:30Z on 12 Oct is already 13 Oct in Sydney (02:30) but still 12 Oct in Perth (23:30).
+    const late = Date.parse("2026-10-12T15:30:00Z");
+    expect(myDayUpdatedAgo(new Date(late + 90 * 60_000), late, null, "Australia/Sydney")).toBe("at 02:30, Tue 13 Oct");
+    expect(myDayUpdatedAgo(new Date(late + 90 * 60_000), late, null, "Australia/Perth")).toBe("at 23:30, Mon 12 Oct");
+  });
 });
