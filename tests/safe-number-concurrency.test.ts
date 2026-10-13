@@ -181,6 +181,19 @@ describe("SafeNumberEditor component optimistic locking", () => {
     expect(saved.night).toEqual(before.map((value) => value + 1));
   });
 
+  it("steps a total already above the cap by one instead of collapsing it to the cap", async () => {
+    const onSave = vi.fn(async () => ({ ok: true, version: 2 }));
+    const overCap = setSafeNumber(setSafeNumber(initialGrid, "night", [1, 2, 3, 4, 5, 6, 7], 3), "night", [1], 3);
+    const grid = { ...overCap, night: overCap.night.map((value, index) => (index === 0 ? 350 : value)) };
+    render(React.createElement(SafeNumberEditor, { initialRecord: { ...initialRecord, grid }, onSave }));
+    fireEvent.click(screen.getByTestId("stepper-minus-night"));
+    fireEvent.click(screen.getByTestId("safe-number-save-button"));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const saved = (onSave.mock.calls[0] as unknown as [{ night: number[] }])[0];
+    expect(saved.night[0]).toBe(349);
+    expect(saved.night[1]).toBe(2);
+  });
+
   it("blocks save and shows alert when another clinician modified the record", async () => {
     // onFetchLatest returns version 2 (while editor was opened at version 1)
     const onFetchLatest = vi.fn(async () => ({

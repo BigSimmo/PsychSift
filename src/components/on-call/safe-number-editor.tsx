@@ -74,8 +74,9 @@ export function SafeNumberEditor({
       setConflict(null);
       let next = currentGrid;
       currentGrid[kind].forEach((currentValue, index) => {
-        const nextValue = Math.max(0, Math.min(SAFE_NUMBER_MAX, (currentValue ?? 0) + delta));
-        next = setSafeNumber(next, kind, [index + 1], nextValue);
+        // setSafeNumber owns the bounds: it keeps a total already above SAFE_NUMBER_MAX (needs added
+        // up) stepping by one instead of collapsing it to the cap.
+        next = setSafeNumber(next, kind, [index + 1], (currentValue ?? 0) + delta);
       });
       setDraft(next);
     },
