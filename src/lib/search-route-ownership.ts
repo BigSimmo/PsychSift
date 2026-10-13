@@ -165,6 +165,18 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
   }
 }
 
+/**
+ * Mode homes that keep the usual compact bottom search box instead of a box in
+ * the page (owner request, 13 Oct 2026: Psychiatry uses the Clinical search box
+ * at the bottom, and its own box at the top went). Psychiatry has no results
+ * page of its own, so its box asks a question, as the box it replaced did.
+ */
+export const dockedModeHomePaths = ["/psychiatry"] as const;
+
+export function isDockedModeHomePath(pathname: string): boolean {
+  return dockedModeHomePaths.includes(pathname as (typeof dockedModeHomePaths)[number]);
+}
+
 export function isStandaloneModeHomePath(pathname: string): boolean {
   return standaloneModeHomePaths.includes(pathname as (typeof standaloneModeHomePaths)[number]);
 }
