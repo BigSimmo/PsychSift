@@ -500,8 +500,13 @@ test.describe("previously uncovered production routes", () => {
         // the URL: a same-route `?ids=` soft navigation fires no document load, which
         // `waitForURL` waits for, and inside `Promise.all` its timeout also hid whether the
         // click itself ever landed (WebKit, 12 Oct 2026).
-        await remove.click();
-        await expect(currentPage).toHaveURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, { timeout: 30_000 });
+        // iPad WebKit on main dropped this click once on 13 Oct 2026 (URL unchanged for 30 s), so a
+        // click that leaves no trace is repeated while the button is still there. Removal must still
+        // land on exactly the remaining id.
+        await expect(async () => {
+          if (await remove.isVisible()) await remove.click({ timeout: 5_000 });
+          await expect(currentPage).toHaveURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, { timeout: 10_000 });
+        }).toPass({ timeout: 40_000, intervals: [1_000, 2_000, 4_000] });
         // Empty dashed panel is suppressed in favour of the compact slot rail
         // and inline starter chips when fewer than two diagnoses remain.
         await expect(currentPage.getByTestId("compare-slot-tile-compact").first()).toBeVisible();
