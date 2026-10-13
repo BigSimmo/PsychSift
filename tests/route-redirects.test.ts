@@ -43,10 +43,15 @@ describe("routes people type that would otherwise 404", () => {
     const { existsSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     for (const entry of await redirects()) {
-      const path = entry.destination.split("?")[0]!;
+      // A catch-all (`/x/:path*`) forwards to whatever lives under `/x`, so its base page has to exist.
+      const path = entry.destination.split("?")[0]!.replace(/\/:[^/]+\*$/, "");
       const segment = path === "/" ? "" : path.replace(/^\//, "");
       const candidates = segment
-        ? [`src/app/${segment}/page.tsx`, `src/app/(search-app)/${segment}/page.tsx`]
+        ? [
+            `src/app/${segment}/page.tsx`,
+            `src/app/(search-app)/${segment}/page.tsx`,
+            `src/app/(admin)/${segment}/page.tsx`,
+          ]
         : ["src/app/(search-app)/page.tsx"];
       expect(
         candidates.some((candidate) => existsSync(resolve(process.cwd(), candidate))),

@@ -21,7 +21,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Confirm teams and appoint roster managers",
     group: "work",
     phase: 1,
-    href: "/mockups/development/roster-teams",
+    href: "/admin/developer-hub/roster-teams",
   },
   {
     id: "task-ledger",
@@ -29,7 +29,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Outstanding work, in recommended order",
     group: "work",
     phase: 1,
-    href: "/mockups/development/ledger",
+    href: "/admin/developer-hub/ledger",
   },
   // `decision-log` (phase 4) was removed 2026-08-25, along with `errors`,
   // `budgets` and `commands` below, and `database-drift` (phase 3) for the
@@ -50,7 +50,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Quality feedback, source-change impact, and content maturity",
     group: "clinical",
     phase: 1,
-    href: "/mockups/development/clinical-trust",
+    href: "/admin/developer-hub/clinical-trust",
   },
   // Named for its evidence, not for its subject. It reports open ledger items
   // that name one of the repository's own clinical eval cases -- not "every
@@ -68,7 +68,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Entries never confirmed, or last confirmed over twelve months ago",
     group: "clinical",
     phase: 1,
-    href: "/mockups/development/on-call-freshness",
+    href: "/admin/developer-hub/on-call-freshness",
   },
   {
     id: "clinical-answer-failures",
@@ -76,7 +76,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Open problems recorded against a named clinical question",
     group: "clinical",
     phase: 1,
-    href: "/mockups/development/clinical-answer-failures",
+    href: "/admin/developer-hub/clinical-answer-failures",
   },
   // Kept, unlike the five removed above, and settled: the owner ruled on
   // 2026-08-26 that the hazard register belongs in the developer hub rather
@@ -94,7 +94,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Known clinical risks, their controls, and the ones nothing controls yet",
     group: "clinical",
     phase: 1,
-    href: "/mockups/development/hazards",
+    href: "/admin/developer-hub/hazards",
   },
   // Named for the question it answers -- what is waiting on a person -- and
   // scoped to the seven record families this repository holds on disk. It is a
@@ -109,7 +109,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Records waiting on a person, in the review vocabulary each one uses",
     group: "clinical",
     phase: 1,
-    href: "/mockups/development/clinical-sign-off",
+    href: "/admin/developer-hub/clinical-sign-off",
   },
 
   // No `environment` card: the environment strip renders as its own section on
@@ -123,7 +123,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Stuck, failed, and queued document jobs",
     group: "system",
     phase: 1,
-    href: "/mockups/development/ingestion",
+    href: "/admin/developer-hub/ingestion",
   },
   // Named for the question it answers -- which of my documents are broken -- and
   // scoped to that. The ingestion card above shows documents *moving*; this one
@@ -137,7 +137,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Documents that finished indexing and produced nothing usable",
     group: "system",
     phase: 1,
-    href: "/mockups/development/corpus-health",
+    href: "/admin/developer-hub/corpus-health",
   },
   // Live and administrator-only: it reads the running server's settings on each
   // request and shows only Set/Missing/On/Off or an allow-listed mode name. The
@@ -148,7 +148,7 @@ export const HUB_PANELS: readonly HubPanel[] = [
     summary: "Whether each production switch is on and each secret is in place — never the values",
     group: "system",
     phase: 1,
-    href: "/mockups/development/settings",
+    href: "/admin/developer-hub/settings",
   },
   // `work-in-flight` (Review state), `test-health`, `documentation` and `routes`
   // were retired 2026-09-26 on the owner's decision (see mockups/README.md,

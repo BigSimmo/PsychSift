@@ -115,7 +115,7 @@ describe("SettingsDialog — destructive and account actions", () => {
     expect(development).toHaveTextContent("Synthetic data only");
 
     const prototypeLink = screen.getByTestId("settings-row-development-page");
-    expect(prototypeLink).toHaveAttribute("href", "/mockups/development");
+    expect(prototypeLink).toHaveAttribute("href", "/admin/developer-hub");
     expect(prototypeLink).toHaveTextContent("Owner panel");
     expect(development?.contains(prototypeLink)).toBe(true);
 
