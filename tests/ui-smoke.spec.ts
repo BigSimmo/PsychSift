@@ -830,25 +830,14 @@ async function openMobileClinicalGuideMenu(page: Page) {
       .getByRole("link")
       .evaluateAll((links) => links.map((link) => ({ name: link.textContent, href: link.getAttribute("href") }))),
   ).toEqual([
-    // Design review 2026-10-03, item 4: My Day leads the default shortcuts.
-    { name: "My Day", href: "/my-day" },
-    { name: "Answer", href: "/?mode=answer" },
-    // Owner decision 2026-08-27: Documents joins the other consolidated modes and
-    // links at the shared home. `/documents` still exists and still paints its
-    // browse/recent workspace, but it is a second landing page — same subtitle,
-    // different title — and reaching it from the sidebar read as the wrong screen.
-    // It keeps its route and its inbound link from the Tools directory.
-    // Medication also redirects now — through its own bespoke proxy fast-path
-    // rather than the shared consolidatedModeHomePaths map, since /medications has
-    // no /search sub-route (src/proxy.ts, medicationsHomeTarget()) — and the
-    // pinned sidebar entry points straight at the shared home now too, matching
-    // Documents/Services above (ClinicalSidebar.tsx).
-    { name: "Documents", href: "/?mode=documents" },
-    { name: "Services", href: "/?mode=services" },
-    { name: "Psychiatry", href: "/psychiatry" },
-    { name: "Medication", href: "/?mode=prescribing" },
-    { name: "Factsheets", href: "/?mode=factsheets" },
+    // Design audit D14 (13 Oct 2026): until the reader edits their shortcuts, the phone menu
+    // offers the urgent tools instead of default pins that only repeated the groups below.
+    // Crisis numbers open in place, so they are a summary, not a link.
+    { name: "MHA time limits", href: "/psychiatry/mha-clock" },
+    { name: "Safety plan", href: "/safety-plan" },
+    { name: "Forms", href: "/forms" },
   ]);
+  await expect(navigation.getByTestId("sidebar-urgent-crisis")).toContainText("Crisis numbers");
   // The phone menu (owner pick "variant C", 11 Oct 2026): Clinical | Work tabs in
   // the brand band, an alerts bell beside the close cross, and every clinical page
   // listed under its group in place of the More modes sheet.
@@ -1246,9 +1235,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await waitForDemoDashboardReady(page);
 
     const menu = await openMobileClinicalGuideMenu(page);
-    // The menu lists Medication twice by design: once as a pinned shortcut and once
-    // under its group. The shortcut is the one this test is about.
-    await menu.getByRole("navigation", { name: "Pinned shortcuts" }).getByRole("link", { name: "Medication" }).click();
+    // Since design audit D14 the default phone shortcuts are the urgent tools, so Medication
+    // is reached under its group.
+    await menu
+      .getByRole("navigation", { name: "Medicines", exact: true })
+      .getByRole("link", { name: "Medication" })
+      .click();
 
     await expect.poll(() => new URL(page.url()).pathname, { timeout: 30_000 }).toBe("/");
     await expect.poll(() => new URL(page.url()).searchParams.get("mode"), { timeout: 30_000 }).toBe("prescribing");
