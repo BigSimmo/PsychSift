@@ -248,6 +248,33 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(answer?.headline).toBe("No upcoming term assessments scheduled");
     });
 
+    it("matches teaching records by full phrase titles such as Case-Based Discussion", () => {
+      const cbdSession = [
+        {
+          id: "t:session:6",
+          area: "teaching" as const,
+          kind: "session" as const,
+          title: "Case-Based Discussion with Dr. Smith",
+          detail: "Schizophrenia management review",
+          date: "2026-10-22",
+          href: "/teaching/assessments/6",
+          tags: [],
+          text: [],
+        },
+      ];
+      const answer = answerWorkQuestion("when is my next case-based discussion", {
+        items: cbdSession,
+        areas: [{ area: "teaching", status: "ready", sample: false }],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.headline).toBe("Case-Based Discussion with Dr. Smith");
+      expect(answer?.sub).toContain("Schizophrenia management review");
+      expect(answer?.action?.href).toBe("/teaching/assessments/6");
+      expect(answer?.date).toBe("2026-10-22");
+    });
+
     it("parses assessment due question with timeframe", () => {
       const match = parseMyWorkAssessmentGrammar("what assessments are due this month");
       expect(match).not.toBeNull();

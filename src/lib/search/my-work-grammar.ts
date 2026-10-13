@@ -91,13 +91,31 @@ export function parseMyWorkAssessmentGrammar(query: string): AssessmentGrammarMa
 
   if (EPA_PATTERN.test(text)) {
     category = "epa";
-    matchedTerms.push("epa", "entrustable");
+    matchedTerms.push("epa", "entrustable", "entrustable professional activity");
   } else if (WBA_PATTERN.test(text)) {
     category = "wba";
-    matchedTerms.push("wba", "mini-cex", "cbd", "dops");
+    matchedTerms.push(
+      "wba",
+      "mini-cex",
+      "cbd",
+      "dops",
+      "case-based discussion",
+      "case based discussion",
+      "workplace-based assessment",
+      "workplace based assessment",
+    );
   } else if (TERM_ASSESSMENT_PATTERN.test(text)) {
     category = "term_assessment";
-    matchedTerms.push("term assessment", "term review", "term evaluation", "ita", "mid-term", "end-of-term");
+    matchedTerms.push(
+      "term assessment",
+      "term review",
+      "term evaluation",
+      "ita",
+      "mid-term",
+      "mid term",
+      "end-of-term",
+      "end of term",
+    );
   } else if (SUPERVISOR_PATTERN.test(text) || SUPERVISOR_QUERY_PATTERN.test(text)) {
     category = "supervisor_review";
     matchedTerms.push("supervisor");
