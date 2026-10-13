@@ -56,9 +56,7 @@ describe("POST /api/webhooks/railway", () => {
 
   it("rejects a wrong ?token= query parameter", async () => {
     const { route } = await loadRoute({ RAILWAY_WEBHOOK_SECRET: SECRET });
-    const response = await route.POST(
-      post("http://localhost/api/webhooks/railway?token=wrong", { status: "SUCCESS" }),
-    );
+    const response = await route.POST(post("http://localhost/api/webhooks/railway?token=wrong", { status: "SUCCESS" }));
     expect(response.status).toBe(401);
   });
 
