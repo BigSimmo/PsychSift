@@ -74,6 +74,12 @@ describe("partitioned unit coverage verdict", () => {
   const partitions = workflow.jobs["coverage-shards"];
   const aggregate = workflow.jobs.coverage;
 
+  it("keeps the composite and direct setup-node releases identical", () => {
+    const reference = "uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0";
+    expect(readFileSync(".github/actions/setup-node-cached/action.yml", "utf8")).toContain(reference);
+    expect(readFileSync(".github/workflows/ci.yml", "utf8")).toContain(reference);
+  });
+
   it("keeps the full test inventory and defers only coverage reporting and thresholds", () => {
     expect(shardConfig).toEqual({
       ...fullConfig,
