@@ -196,7 +196,7 @@ describe("recalculate-answer-support-labels", () => {
 
   it("recalculates all turns in a persisted answer thread", () => {
     const mockThread: PersistedAnswerThread = {
-      version: 2,
+      version: 3,
       priorTurns: [
         {
           id: "turn-1",
