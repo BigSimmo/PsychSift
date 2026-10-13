@@ -258,7 +258,7 @@ ref:
 
 **New with the generated index — the first partial enforcement.** `docs/branch-review-index.md`
 links every record it lists with a relative Markdown link, and `npm run docs:check-links`
-(which runs in `verify:cheap` and in CI) resolves relative link targets and fails when one does
+(which runs in `verify:full` and in CI) resolves relative link targets and fails when one does
 not exist. Deleting a record that the index lists therefore now breaks a required check. Be
 honest about the limit: this catches only deletions of records the index **already lists**, so
 a record appended and deleted before the index is next regenerated remains completely
