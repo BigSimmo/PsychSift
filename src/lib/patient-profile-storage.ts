@@ -290,7 +290,14 @@ export function resetPatientProfile(): boolean {
     // not leave patient details behind because of that: remove the key instead.
     try {
       window.sessionStorage.removeItem(PATIENT_PROFILE_STORAGE_KEY);
-      cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === null;
+      // A completed delete is a completed clear; the read-back below only catches a
+      // key that is somehow still present, and a read that throws proves nothing.
+      cleared = true;
+      try {
+        cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === null;
+      } catch {
+        // Verification unavailable; the delete itself did not throw.
+      }
     } catch {
       // Storage entirely unavailable; report the failed clear to the caller.
     }

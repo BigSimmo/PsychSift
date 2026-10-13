@@ -205,6 +205,22 @@ describe("SettingsDialog — destructive and account actions", () => {
     expect(screen.queryByText(/could not be cleared/)).not.toBeInTheDocument();
   });
 
+  it("counts a completed delete as cleared even when reading the key back throws", () => {
+    writePatientProfile({ ...EMPTY_PATIENT_PROFILE, ageYears: 72, medications: ["lithium"] });
+    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota exceeded");
+    });
+    renderDialog();
+    const getItem = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("reads unavailable");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Clear prescribing patient profile" }));
+    getItem.mockRestore();
+    setItem.mockRestore();
+    expect(screen.queryByText(/could not be cleared/)).not.toBeInTheDocument();
+    expect(screen.getByText("Prescribing patient profile cleared.")).toBeInTheDocument();
+  });
+
   it("disables the prescribing profile clear when nothing has been entered", () => {
     renderDialog();
     expect(screen.getByRole("button", { name: "Clear prescribing patient profile" })).toBeDisabled();
