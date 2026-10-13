@@ -33,6 +33,7 @@ import {
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
+import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import {
   medicationVerdictRingClass,
   PatientVerdictSignal,
@@ -880,11 +881,11 @@ function MedicationResults({
       <PatientDetailsDockAction />
 
       {/* The error branch moved into the band's fault panel, which carries the
-          same message and announces it once. Loading copy stays here. */}
+          same message and announces it once. While the first response is on its way the
+          list shows rows shaped like the results it is waiting for, not a line of text
+          over an empty page. */}
       {initialCatalogLoading ? (
-        <div className="medication-results-inset">
-          <p className="text-sm text-[color:var(--text-muted)]">Loading medication catalogue…</p>
-        </div>
+        <ResultRowsPlaceholder label="Loading medication results" rows={4} testId="medication-results-placeholder" />
       ) : null}
 
       {!initialCatalogLoading && !catalog.error && resultCount === 0 ? (
@@ -1117,7 +1118,11 @@ function MedicationResults({
         })}
       </div>
 
-      <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+      {/* Mounted (so its lookup runs in parallel) but kept out of view until the medication
+          list itself has arrived: it fills in underneath the results, never ahead of them. */}
+      <div hidden={initialCatalogLoading}>
+        <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+      </div>
 
       <StatusNotice
         realDataReady={realDataReady}
