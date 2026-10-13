@@ -32,6 +32,7 @@ const jurisdictionSignal =
 const settingSignal = /\b(?:inpatient|outpatient|community|hospital|ward|emergency department|ED|clinic)\b/i;
 const administrativeFormSignal =
   /\b(?:application|assessment|consent|referral|template)\s+forms?\b|\bforms?\s+(?:is\s+)?(?:downloadable|needed|required|template)\b|\b(?:complete|download|submit|upload)\b(?:\s+\w+){0,3}\s+forms?\b/i;
+const carePathwayStageSignal = /^(?:the\s+)?(?:admission|discharge)$/i;
 
 function isSimpleDefinitionQuery(query: string, analysis: ClinicalQueryAnalysis) {
   if (analysis.intent !== "definition") return false;
@@ -141,6 +142,7 @@ function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysi
   }
   if (analysis.medications.some((medicine) => side.toLowerCase().includes(medicine.toLowerCase()))) return true;
   if (hasClinicalPopulationSignal(side) || jurisdictionSignal.test(side) || settingSignal.test(side)) return true;
+  if (carePathwayStageSignal.test(side.trim())) return true;
   if (/\b(?:guideline|policy|procedure|protocol|form|service|therapy|medication)\b/i.test(side)) return true;
   return /^[A-Z][A-Z0-9-]{1,}$/.test(side.trim());
 }
