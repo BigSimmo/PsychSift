@@ -132,6 +132,7 @@ function adaptiveFixture(query: string, prefix: "Prior" | "Current"): ClientRagA
       // (v3) refuses any turn that does not, so a fixture without it would never survive a reload.
       strongSupportLabelCapped: false,
       demoMode: true,
+      claimMarks: [],
       visualEvidence: [],
       quoteCards: [],
       citations: [base.citations[0]!],
