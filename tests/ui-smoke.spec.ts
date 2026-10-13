@@ -3078,6 +3078,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       const alsoMatches = document.querySelector('[data-testid="universal-also-matches"]');
       const supportLabel = document.querySelector('[data-testid="answer-card-support"]');
       const sourceRail = document.querySelector('[data-testid="answer-source-rail"]');
+      const providerNotice = document.querySelector('[data-testid="answer-provider-notice"]');
       // Include vertical margins: the phone bottom clearance (`max-sm:mb-4`) sits
       // outside getBoundingClientRect().height and still consumes scroll budget.
       let alsoMatchesHeight = 0;
@@ -3108,12 +3109,22 @@ test.describe("PsychSift UI smoke coverage", () => {
           box.height + (Number.parseFloat(styles.marginTop) || 0) + (Number.parseFloat(styles.marginBottom) || 0),
         );
       }
+      // The overseas-processing line under the answer (audit S3) is real content too.
+      let providerNoticeHeight = 0;
+      if (providerNotice instanceof HTMLElement) {
+        const box = providerNotice.getBoundingClientRect();
+        const styles = window.getComputedStyle(providerNotice);
+        providerNoticeHeight = Math.ceil(
+          box.height + (Number.parseFloat(styles.marginTop) || 0) + (Number.parseFloat(styles.marginBottom) || 0),
+        );
+      }
       return {
         headerBottom: header ? Math.round(header.getBoundingClientRect().bottom) : 0,
         surfaceTop: surface ? Math.round(surface.getBoundingClientRect().top) : 0,
         alsoMatchesHeight,
         supportLabelHeight,
         sourceRailHeight,
+        providerNoticeHeight,
       };
     });
     // Content-sized section => no unexplained phantom scroll. Submitted universal
@@ -3131,7 +3142,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     // always-rendered content, not phantom scroll. The flat 8px unexplained-
     // overflow allowance is deliberately unchanged — that is the part of this
     // guard the redesign must not be allowed to spend.
-    const permittedOverflow = geo.alsoMatchesHeight + geo.supportLabelHeight + geo.sourceRailHeight + 8;
+    const permittedOverflow =
+      geo.alsoMatchesHeight + geo.supportLabelHeight + geo.sourceRailHeight + geo.providerNoticeHeight + 8;
     expect(scrollGeometry.owner).toBe("document");
     expect(scrollGeometry.maxScrollTop).toBeLessThanOrEqual(permittedOverflow);
     // Top-aligned: the answer sits just under the header, not pushed toward the dock
@@ -3422,7 +3434,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     const compactCrossModeLinks = compactCrossModeRail.getByRole("link");
     const compactCrossModeActions = compactCrossModeRail.getByRole("button");
     await expect.poll(() => compactCrossModeLinks.count()).toBeGreaterThan(0);
-    await expect.poll(() => compactCrossModeActions.count()).toBeGreaterThan(0);
+    // A phone row shows the open arrow alone (audit D07): the search-in-mode button is
+    // hidden below sm, so no button remains to size here; the links are swept above.
+    await expect(compactCrossModeActions).toHaveCount(0);
     for (const control of await compactCrossModeLinks.all()) {
       await expectMinTouchTarget(control, 48);
     }
