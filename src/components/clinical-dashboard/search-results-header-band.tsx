@@ -1,6 +1,17 @@
 "use client";
 
-import { Bookmark, CircleAlert, CircleMinus, Funnel, LayoutList, LoaderCircle, Search, Table2, X } from "lucide-react";
+import {
+  Bookmark,
+  CircleAlert,
+  CircleMinus,
+  Funnel,
+  LayoutList,
+  LoaderCircle,
+  RefreshCw,
+  Search,
+  Table2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { searchCommandSurfaceConfig } from "@/lib/search-command-surface";
@@ -895,6 +906,8 @@ export function SearchResultsEmptyState({
   onBrowseAll,
   browseAllLabel = "Browse all sources",
   degraded = false,
+  degradedReason,
+  onRetry,
 }: {
   modeId: AppModeId;
   query: string;
@@ -935,6 +948,11 @@ export function SearchResultsEmptyState({
    * be available when the search never actually ran.
    */
   degraded?: boolean;
+  /** Degraded only: the specific failure the page was given ("Search setup not ready."),
+      shown quietly under the fixed copy so the one message keeps the actual reason. */
+  degradedReason?: string | null;
+  /** Degraded only: re-run the same search. Offered first, ahead of browsing. */
+  onRetry?: () => void | Promise<void>;
 }) {
   const config = searchCommandSurfaceConfig(modeId);
   const crossModes = (config?.crossModes ?? []).filter((target) => canAccessFavourites || target !== "favourites");
@@ -998,7 +1016,33 @@ export function SearchResultsEmptyState({
     const frame = requestAnimationFrame(() => setLiveMessage(`${emptyTitle}. ${emptyBody}`));
     return () => cancelAnimationFrame(frame);
   }, [filtered, emptyTitle, emptyBody]);
+  const [retrying, setRetrying] = useState(false);
+  const retry = async () => {
+    if (!onRetry) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } catch {
+      // This degraded state stays the failure surface; a rejected retry must not escape.
+    } finally {
+      setRetrying(false);
+    }
+  };
   const secondary = [
+    degraded && onRetry ? (
+      <AsyncButton
+        key="retry"
+        type="button"
+        busy={retrying}
+        busyLabel="Retrying…"
+        onClick={retry}
+        data-testid="search-results-empty-retry"
+        idleIcon={<RefreshCw className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+        className={cn(emptyStateAction, focusRing)}
+      >
+        Retry
+      </AsyncButton>
+    ) : null,
     config?.examples[0] && onTryExample ? (
       <button
         key="example"
@@ -1055,18 +1099,21 @@ export function SearchResultsEmptyState({
           + `w-0` makes the border the entire width. Exactly one width class per
           branch: two would both emit `border-left-width` and the winner would be
           stylesheet order rather than the branch. */}
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 box-content w-0",
-          degraded
-            ? "border-l-[6px] border-double border-l-[color:var(--warning)]"
-            : filtered
+      {/* No side mark on the degraded state (no coloured side bars, 11 Oct): it is one calm
+          message, told apart from a real zero by its heading, glyph and copy, all of which
+          survive forced colours. */}
+      {degraded ? null : (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-0 left-0 box-content w-0",
+            filtered
               ? "border-l-[3px] border-solid border-l-[color:var(--clinical-accent)]"
               : "border-l-[3px] border-solid border-l-[color:var(--border-strong)]",
-          "forced-colors:border-l-[color:CanvasText]",
-        )}
-      />
+            "forced-colors:border-l-[color:CanvasText]",
+          )}
+        />
+      )}
       {/* Visible copy is never inside the live region: a region that mounts
           already populated is silent in most screen readers, and wrapping the
           visible tree would flash empty for a frame. The sr-only live region
@@ -1099,6 +1146,9 @@ export function SearchResultsEmptyState({
         <div className="min-w-0">
           <Title className="text-sm font-semibold text-[color:var(--text-heading)]">{emptyTitle}</Title>
           <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">{emptyBody}</p>
+          {degraded && degradedReason?.trim() ? (
+            <p className="mt-1 text-xs text-[color:var(--text-muted)]">Reason: {degradedReason.trim()}</p>
+          ) : null}
         </div>
       </div>
       {!filtered ? (

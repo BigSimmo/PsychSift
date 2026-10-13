@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "56912b2e-3649-4133-aec8-5194240837a1",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Possible dead code: older calculator mockups (audit M5-2) and On Call Education, Compliance and Logistics screens said to be unreachable (audit L4D-05)",
+    "detail": "Recheck first: the On Call sections are still used by calendar events and tests, so L4D-05 may be wrong. Delete nothing without npm run check:dead-code-candidate (see docs/agents/dead-code-deletion.md).",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65ZAJ1WAA0ZT0K247WJPJ"
+  }
+}

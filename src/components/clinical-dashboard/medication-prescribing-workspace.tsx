@@ -4,7 +4,6 @@ import {
   Activity,
   Ban,
   CalendarDays,
-  CircleCheck,
   ChevronRight,
   FileSearch,
   Lock,
@@ -51,12 +50,7 @@ import {
   type MedicationVerdict,
 } from "@/lib/medication-interactions";
 import { evaluatePatientAlerts } from "@/lib/medication-patient-alerts";
-import {
-  BadgeCluster,
-  ClinicalBadge,
-  type ClinicalBadgeItem,
-  type ClinicalBadgeTone,
-} from "@/components/clinical-dashboard/clinical-badge";
+import { BadgeCluster, type ClinicalBadgeItem } from "@/components/clinical-dashboard/clinical-badge";
 import { medicationIdentityBadges, type MedicationRecord } from "@/lib/medications";
 import {
   medicationMatchValues,
@@ -476,14 +470,15 @@ function ResultToneIcon({ result, accent }: { result: MedicationResult; accent?:
   return <IconTile icon={Pill} tone={tone} className="h-9 w-9" />;
 }
 
-const matchBadgeTone: Record<MedicationResult["tone"], ClinicalBadgeTone> = {
-  teal: "clinical",
-  blue: "info",
-  slate: "neutral",
-};
-
+// The match label is quiet grey text, not a coloured pill (Clinical audit, 13 Oct
+// 2026, item 8): it describes how the search matched, not a clinical status.
+// The words come from src/lib/medications.ts unchanged.
 function ResultMatchBadge({ result }: { result: MedicationResult }) {
-  return <ClinicalBadge label={result.match} tone={matchBadgeTone[result.tone]} icon={CircleCheck} />;
+  return (
+    <span data-medication-match={result.tone} className="text-xs font-semibold text-[color:var(--text-muted)]">
+      {result.match}
+    </span>
+  );
 }
 
 // Small leading icon for the prescribing-action text: contraindication content is
@@ -1041,7 +1036,7 @@ function MedicationResults({
           const cardClassName = cn(
             "medication-mobile-result min-w-0 w-full rounded-lg border bg-[color:var(--surface-raised)] p-2 text-left shadow-[var(--shadow-inset)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
             selected
-              ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]/35"
+              ? "border-[color:var(--border)]"
               : result.href
                 ? "border-[color:var(--border)] hover:border-[color:var(--border-strong)]"
                 : "border-[color:var(--border)] opacity-80",
