@@ -34,7 +34,7 @@ export const SHIFT_LETTER_TONE: Readonly<Record<ShiftKind, string>> = {
 
 export const SHIFT_KIND_LABEL: Readonly<Record<ShiftKind, string>> = {
   day: "Day",
-  evening: "Evening",
+  evening: "Late",
   night: "Night",
   on_call: "On call",
   leave: "Leave",
