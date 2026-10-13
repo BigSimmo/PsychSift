@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "cc5a466d-68c6-4c38-86e7-b3f520afbc74",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Three gate-script headers claim verify:cheap membership that is false (they are verify:full steps)",
+    "detail": "scripts/check-type-scale.mjs:15, scripts/check-codebase-index-coverage.mjs:16 and scripts/check-docs-links.mjs:20 assert a verify:cheap chain they are not in; scripts/check-docs-script-refs.mjs:40 also exempts test:e2e:advisory on a false 'renamed' comment (both test:e2e:advisory and test:e2e:regression exist). These are code files, so left for owner approval. Next action: correct the comments.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NMXVWNEQ020K49BAEXW"
+  }
+}

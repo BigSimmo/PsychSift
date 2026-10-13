@@ -5,8 +5,9 @@ of truth is `adoption-contract.json`; the generated manifest and marked tables i
 must match it exactly.
 
 - **Date:** 12 August 2026
-- **Current state:** 55 visual references are locally registered; all 51 production page routes
-  are owned across 14 surface families, with 59 route/component roots scanned; every declared
+- **Current state:** 55 visual references are locally registered; all 224 production page routes
+  are owned across 14 surface families, with 232 route/component roots scanned (the generated
+  table below is authoritative if these drift); every declared
   root uses the v2 shell and has declared proof with no committed visual baseline.
 - **Phase 1 blockers resolved first, in their own commits:** `#207` ungrounded `AnswerState`,
   `#208` clipboard composition. See [SPEC.md](SPEC.md) §13 PR 6 clinical review, blockers 1–2.
