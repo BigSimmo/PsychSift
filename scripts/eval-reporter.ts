@@ -87,7 +87,6 @@ export function extractDomainCases(summary?: CanaryDomainSummary): EvalCaseResul
 
   // If no explicit passed/failed arrays, but case_count is given with failed_cases
   if (passed.length === 0 && failed.length === 0 && summary.case_count > 0) {
-    const failedIds = new Set(failed.map((f) => f.id));
     for (const item of failed) {
       results.push({
         id: item.id,

@@ -1,4 +1,4 @@
-import type { RagAnswer, SearchResult, SupportedClaim } from "../src/lib/types";
+import type { RagAnswer, SupportedClaim } from "../src/lib/types";
 import type { ClientRagAnswerPayload } from "../src/lib/answer-client-payload";
 import { type AnswerSupportStrength } from "../src/components/ui/answer-card";
 import { type AnswerRenderTrust } from "../src/lib/answer-render-policy";

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateCaseMetrics,
-  formatCaseBreakdown,
   formatCaseLine,
   renderCanaryReleaseReport,
   type CanaryEvalReport,

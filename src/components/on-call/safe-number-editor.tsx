@@ -43,7 +43,6 @@ export type SafeNumberEditorProps = {
 };
 
 export function SafeNumberEditor({
-  serviceId: _serviceId,
   initialRecord,
   onSave,
   onFetchLatest,

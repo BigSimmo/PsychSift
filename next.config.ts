@@ -219,8 +219,6 @@ const nextConfig: NextConfig = {
       // Developer-gated tools relocated from /mockups to /admin (Task #0QXGAN).
       { source: "/mockups/development", destination: "/admin/developer-hub", permanent: true },
       { source: "/mockups/development/:path*", destination: "/admin/developer-hub/:path*", permanent: true },
-      { source: "/mockups/care-plan", destination: "/admin/care-plan", permanent: true },
-      { source: "/mockups/care-plan/:path*", destination: "/admin/care-plan/:path*", permanent: true },
     ];
   },
 

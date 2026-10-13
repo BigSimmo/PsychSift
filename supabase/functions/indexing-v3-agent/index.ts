@@ -34,7 +34,7 @@ import {
   type MissingArtifactPlan,
 } from "./behavior.ts";
 
-import { authorizeIndexingAgentRequest, timingSafeSecretEqual, decodeJwtPayload, isValidJwt } from "./auth.ts";
+import { authorizeIndexingAgentRequest } from "./auth.ts";
 
 type ClaimedJob = {
   id: string;

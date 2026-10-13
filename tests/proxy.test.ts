@@ -226,13 +226,6 @@ describe("developer-area header (x-developer-area)", () => {
     expect(adminDevResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
     expect(adminDevResponse.headers.get("x-middleware-request-x-developer-area-path")).toBe("/admin/developer-hub");
 
-    const adminCarePlanRequest = requestFor("/admin/care-plan/patients/SYN-PATIENT-001/presentations");
-    const adminCarePlanResponse = await proxy(adminCarePlanRequest);
-    expect(adminCarePlanResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
-    expect(adminCarePlanResponse.headers.get("x-middleware-request-x-developer-area-path")).toBe(
-      "/admin/care-plan/patients/SYN-PATIENT-001/presentations",
-    );
-
     const carePlanLookAlikeResponse = await proxy(requestFor("/mockups/care-plan-archive"));
     expect(carePlanLookAlikeResponse.headers.get("x-middleware-request-x-developer-area")).toBeNull();
 

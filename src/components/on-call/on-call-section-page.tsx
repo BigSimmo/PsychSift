@@ -41,8 +41,6 @@ import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
 import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule";
-import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
-import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
 import { zonedToday } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";

@@ -286,7 +286,6 @@ describe("Care Plan route registration", () => {
 
   it("gates only the Care Plan prefix, leaving similarly prefixed paths outside the developer area", () => {
     expect(DEVELOPER_GATED_PATH_PREFIXES).toContain("/mockups/care-plan");
-    expect(DEVELOPER_GATED_PATH_PREFIXES).toContain("/admin/care-plan");
     // Never widened to the whole mockup tree: each entry names one subtree.
     // `tests/proxy.test.ts` proves the look-alike prefixes stay blocked.
     for (const prefix of DEVELOPER_GATED_PATH_PREFIXES) {

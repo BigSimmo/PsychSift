@@ -1,9 +1,9 @@
 /** @vitest-environment jsdom */
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { QrCheckInHelper, requestMobileCameraStream } from "@/components/teaching/qr-check-in-helper";
+import { QrCheckInHelper } from "@/components/teaching/qr-check-in-helper";
 
 describe("QrCheckInHelper (#ZTDZ4Z)", () => {
   let mockTracks: { stop: ReturnType<typeof vi.fn> }[];

@@ -25,7 +25,6 @@ export const DEVELOPER_AREA_PATH_HEADER = "x-developer-area-path";
  *  widen this to `/mockups`. */
 export const DEVELOPER_GATED_PATH_PREFIXES = [
   "/admin/developer-hub",
-  "/admin/care-plan",
   "/mockups/development",
   "/mockups/care-plan",
 ] as const;

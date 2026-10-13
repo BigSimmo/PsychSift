@@ -596,7 +596,6 @@ describe("the committed repository", () => {
   it("still declares the developer-gated prefixes the policy depends on", () => {
     const prefixes = readDeveloperGatedPrefixes(process.cwd());
     expect(prefixes).toContain("/admin/developer-hub");
-    expect(prefixes).toContain("/admin/care-plan");
     expect(prefixes).toContain("/mockups/development");
     expect(prefixes).toContain("/mockups/care-plan");
   });
