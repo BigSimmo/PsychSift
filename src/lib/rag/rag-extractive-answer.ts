@@ -2262,7 +2262,8 @@ export function withAdmissionDischargeSideEvidence(args: {
     additions.push(
       ...sourceBoundComparisonFacts({ ...side, results: unselected })
         .map((fact) => fact.result)
-        .filter((result) => !additions.includes(result))
+        // One chunk can yield several facts; add each chunk once.
+        .filter((result, index, side) => side.indexOf(result) === index && !additions.includes(result))
         .slice(0, 3),
     );
   }

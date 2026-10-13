@@ -169,6 +169,20 @@ describe("admission/discharge fallback keeps both sides in its evidence", () => 
     expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
   });
 
+  it("adds a chunk with several bound requirements only once", () => {
+    const multiFact = {
+      ...admissionBound,
+      content: `${ADMISSION_BOUND} ${ADMISSION_BOUND.replace("Medical", "Risk")}`,
+    };
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: dischargeOnly,
+      candidates: [...dischargeOnly, multiFact],
+    });
+    expect(selected.map((item) => item.id)).toEqual(["discharge-chunk", "discharge-2", "admission-chunk"]);
+  });
+
   it("does not count a dual-title policy as the admission side", () => {
     const dual = result({
       id: "dual-chunk",
