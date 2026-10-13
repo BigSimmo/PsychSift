@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "7f3c2e91-6d84-4b7a-9f12-c8e5a4d6b701",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "583946a8-bde3-44cd-b804-efa1a4cd48f3",
+    "reason": "The newer done request supersedes this pending update."
+  }
+}
