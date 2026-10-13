@@ -1701,6 +1701,11 @@
     ],
     "redirects": [
       {
+        "path": "/my-work",
+        "file": "src/app/(search-app)/my-work/page.tsx",
+        "target": "/admin"
+      },
+      {
         "path": "/calculators",
         "file": "src/app/(search-app)/calculators/page.tsx",
         "target": "/?mode=calculators"
@@ -1859,11 +1864,6 @@
         "path": "/on-call/logistics",
         "file": "src/app/(search-app)/on-call/logistics/page.tsx",
         "target": "/admin/help"
-      },
-      {
-        "path": "/my-work",
-        "file": "src/app/(search-app)/my-work/page.tsx",
-        "target": "/admin"
       }
     ],
     "api": [
@@ -27552,13 +27552,6 @@
         "ref": "PR #1297 / `motion-audit-fixes-clean`",
         "head": "tip-after-ledger-dedupe",
         "scope": "Ledger hygiene",
-        "outcome": "Dropped 1 exact-duplicate #1306 row introduced by ledger merge=union during main sync; first copy retained.",
-        "checks": "check:branch-review-ledger PASS; no provider checks."
-      }
-    ]
-  }
-}
-       "scope": "Ledger hygiene",
         "outcome": "Dropped 1 exact-duplicate #1306 row introduced by ledger merge=union during main sync; first copy retained.",
         "checks": "check:branch-review-ledger PASS; no provider checks."
       }
