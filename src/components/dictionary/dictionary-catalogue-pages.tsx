@@ -577,7 +577,8 @@ export function DictionaryCataloguePage() {
           <UniversalSearchAlsoMatches modeId="dictionary" query={params.q} className="mt-4" />
         </div>
         <InformationPageFooter>
-          All published entries link a source · Specialist clinical approval remains pending
+          Reference definitions, not clinical guidance or decision support · All published entries link a source ·
+          Specialist clinical approval remains pending
         </InformationPageFooter>
       </InformationPageShell>
       <ResultFilterSheet

@@ -33,6 +33,10 @@ import { assessDocumentIndexQuality } from "../src/lib/index-quality";
 import { classifyAndCaptionImageFromBase64, embedTexts } from "../src/lib/openai";
 import { safeErrorLogDetails, safeIngestionJobLog, redactCaptionIdentifiers } from "../src/lib/privacy";
 import { isAtomicReindexCandidate } from "../src/lib/reindex-pipeline";
+// Deliberate exception to the "ingestion does not import rag.ts" rule in the archived
+// architecture handover: after a document commits, the worker must drop that owner's cached
+// retrieval results, and the cache lives in rag.ts. This one call is the only use; keep the
+// import narrow and do not reach for other rag.ts exports from the worker.
 import { invalidateRagCachesForDocumentMutation } from "../src/lib/rag/rag";
 import { createAdminClient } from "../src/lib/supabase/admin";
 import { probeSupabaseHealth } from "../src/lib/supabase/health";

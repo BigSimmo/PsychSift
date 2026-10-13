@@ -70,6 +70,13 @@ import { useScrollHideReporter } from "@/components/clinical-dashboard/use-hide-
 import { clearMedicineVisits, countMedicineVisits } from "@/lib/medicines-recent";
 import { clearRecentPages, countRecentPages } from "@/lib/recent-pages";
 import { clearPsychiatryVisits, countPsychiatryVisits } from "@/lib/psychiatry-hub/visits";
+import {
+  getPatientProfileSnapshot,
+  getServerPatientProfileSnapshot,
+  patientProfileHasContent,
+  resetPatientProfile,
+  subscribePatientProfile,
+} from "@/lib/patient-profile-storage";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
 import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
@@ -309,6 +316,15 @@ export function SettingsDialog({
   const [pendingProvider, setPendingProvider] = useState<SsoProvider | null>(null);
   const [activeSection, setActiveSection] = useState<SettingsSectionId>("account");
   const [recentQueryCount, setRecentQueryCount] = useState<number>(() => readRecentQueryCount());
+  // The prescribing profile (physiology, allergies, medications) lives in this
+  // tab's sessionStorage and is not a "recent search", so it has its own row:
+  // on a shared computer, clearing searches must not leave a patient's details.
+  const patientProfile = useSyncExternalStore(
+    subscribePatientProfile,
+    getPatientProfileSnapshot,
+    getServerPatientProfileSnapshot,
+  );
+  const hasPatientProfile = patientProfileHasContent(patientProfile);
   const [privacyNotice, setPrivacyNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [pendingConfirm, setPendingConfirm] = useState<"clear-saved" | "reset" | null>(null);
@@ -640,6 +656,15 @@ export function SettingsDialog({
     forgetWorkSearchRecents();
     refreshRecentQueryCount();
     setPrivacyNotice("Recent searches cleared.");
+  }
+
+  function handleClearPatientProfile() {
+    const cleared = resetPatientProfile();
+    setPrivacyNotice(
+      cleared
+        ? "Prescribing patient profile cleared."
+        : "The prescribing patient profile could not be cleared. Please try again.",
+    );
   }
 
   /**
@@ -1360,6 +1385,14 @@ export function SettingsDialog({
                     actionLabel="Clear recent searches"
                     onClick={handleClearRecent}
                     disabled={recentQueryCount === 0}
+                  />
+                  <SettingsActionRow
+                    icon={Trash2}
+                    label="Clear prescribing patient profile"
+                    meta={hasPatientProfile ? "Entered" : "None"}
+                    actionLabel="Clear prescribing patient profile"
+                    onClick={handleClearPatientProfile}
+                    disabled={!hasPatientProfile}
                   />
                   <SettingsActionRow
                     icon={Trash2}
