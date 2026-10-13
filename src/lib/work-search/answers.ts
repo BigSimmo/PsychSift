@@ -11,6 +11,7 @@ import {
   type WorkItem,
   type WorkSearchArea,
 } from "@/lib/work-search/model";
+import { parseMyWorkAssessmentGrammar, type AssessmentGrammarMatch } from "@/lib/search/my-work-grammar";
 
 /**
  * Built-in answers to the common plain questions, worked out in the browser from
@@ -827,7 +828,45 @@ function formatHours(hours: number): string {
 /** Words that mean the question is about something other than shifts, even with "next" or "day" in it. */
 const NOT_ABOUT_SHIFTS = /\b(teaching|session|meeting|form|cpd|cme|talk|presenting|renewal|course|exam|journal)\b/;
 
+function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch): WorkAnswer {
+  const catLabel =
+    match.category === "epa"
+      ? "EPA milestone"
+      : match.category === "wba"
+        ? "Workplace-Based Assessment"
+        : match.category === "term_assessment"
+          ? "term assessment"
+          : match.category === "supervisor_review"
+            ? "supervisor review"
+            : match.category === "alert"
+              ? "assessment alert"
+              : "assessment";
+
+  const targetHref = match.targetArea === "alerts" ? "/teaching/alerts" : "/teaching/assessments";
+  const matchingItems = input.items.filter(
+    (item) =>
+      item.area === "teaching" &&
+      match.matchedTerms.some((term) => item.title.toLowerCase().includes(term.toLowerCase())),
+  );
+
+  return {
+    area: "teaching",
+    icon: "due",
+    label: catLabel,
+    headline: match.understood,
+    sub: match.timeframe ? `Timeframe: ${match.timeframe}` : "Teaching assessments, EPAs and supervisor milestones.",
+    meta: [match.category.toUpperCase().replace(/_/g, " "), match.intent],
+    items: matchingItems,
+    understood: match.understood,
+    source: "From your Teaching and assessment portfolio",
+    action: { label: "Open Teaching", href: targetHref },
+  };
+}
+
 function route(text: string, input: WorkAnswerInput): WorkAnswer | null {
+  const assessment = parseMyWorkAssessmentGrammar(text);
+  if (assessment) return assessmentAnswer(input, assessment);
+
   const asksWhen = /\b(next|when|upcoming)\b/.test(text);
   if (/\b(presenting|my talks?|am i presenting|my presentations?)\b/.test(text)) return presenting(input);
   if (/\b(due|renewals?|renew|expir\w*|overdue)\b/.test(text)) return due(input, text);

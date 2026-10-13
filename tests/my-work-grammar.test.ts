@@ -5,6 +5,7 @@ import {
   isAssessmentQuery,
   parseMyWorkAssessmentGrammar,
 } from "@/lib/search/my-work-grammar";
+import { answerWorkQuestion } from "@/lib/work-search/answers";
 
 describe("Search My Work Assessment Grammar (#PT83FG)", () => {
   describe("isAssessmentQuery", () => {
@@ -55,6 +56,37 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(directMatch).not.toBeNull();
       expect(directMatch?.category).toBe("epa");
       expect(directMatch?.intent).toBe("next");
+    });
+
+    it("parses future timeframe assessment queries as next intent", () => {
+      const weekMatch = parseMyWorkAssessmentGrammar("what assessments are next week");
+      expect(weekMatch).not.toBeNull();
+      expect(weekMatch?.intent).toBe("next");
+      expect(weekMatch?.timeframe).toBe("next week");
+
+      const monthMatch = parseMyWorkAssessmentGrammar("my assessments next month");
+      expect(monthMatch).not.toBeNull();
+      expect(monthMatch?.intent).toBe("next");
+      expect(monthMatch?.timeframe).toBe("next month");
+
+      const termMatch = parseMyWorkAssessmentGrammar("what assessments are next term");
+      expect(termMatch).not.toBeNull();
+      expect(termMatch?.intent).toBe("next");
+      expect(termMatch?.timeframe).toBe("next term");
+    });
+
+    it("routes next EPA query through Search My Work answerWorkQuestion", () => {
+      const answer = answerWorkQuestion("next EPA", {
+        items: [],
+        areas: [],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.area).toBe("teaching");
+      expect(answer?.label).toBe("EPA milestone");
+      expect(answer?.understood).toContain("EPA milestones");
+      expect(answer?.action?.href).toBe("/teaching/assessments");
     });
 
     it("parses assessment due question with timeframe", () => {
