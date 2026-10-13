@@ -3225,10 +3225,8 @@ function ClinicalDashboardContent({
                       // sitting almost on the bottom edge once the dock scroll-hides
                       // and its reserve releases to zero. `pb-10` matches the
                       // `sm:pb-10` every other mode wrapper already uses. sm+/desktop
-                      // keep the original generous padding. Raised to `pb-16` on phones
-                      // (audit D07, 2026-10-13): the last "Also in your library" rows
-                      // still slid under the bottom box; the box itself is unchanged.
-                      "pb-16 sm:pb-36 lg:pb-40"
+                      // keep the original generous padding.
+                      "pb-10 sm:pb-36 lg:pb-40"
                   : hasMobileBottomSearch
                     ? compactMobileModeHome
                       ? "sm:pb-10 lg:pb-12"
