@@ -702,6 +702,72 @@ function payloadStampsColumn(argument, columns) {
 
 /* ---------------------------------------------------------- chain analysis */
 
+function collectComparisonFilters(call, chain) {
+  const [first, second] = call.args;
+  if (!isStringLiteral(first)) return;
+  const column = first.text;
+  if (OWNER_COLUMNS.has(column)) chain.proofs.push(`${call.name}:${column}`);
+  if (USER_COLUMNS.has(column)) chain.proofs.push(`${call.name}:${column}`);
+  if (column === "document_id") chain.documentFilter = { method: call.name, argument: valueExpressionText(second) };
+  if (column === "id") chain.idFilter = { method: call.name, argument: valueExpressionText(second) };
+}
+
+function collectDisjunctionProofs(argument, proofs) {
+  if (!isStringLiteral(argument)) return;
+  if (orFilterConstrainsColumn(argument.text, "owner_id")) proofs.push("or:owner_id");
+  if (orFilterConstrainsColumn(argument.text, "user_id")) proofs.push("or:user_id");
+}
+
+function collectWriteProofs(call, proofs) {
+  const [payload] = call.args;
+  if (payloadStampsColumn(payload, new Set(["owner_id"]))) proofs.push(`${call.name}:owner_id`);
+  if (payloadStampsColumn(payload, new Set(["user_id"]))) proofs.push(`${call.name}:user_id`);
+}
+
+/** Add the evidence from one method without changing the chain's newest-first order. */
+function collectChainMethodFacts(call, chain) {
+  const [first] = call.args;
+  switch (call.name) {
+    case "eq":
+    case "in":
+      collectComparisonFilters(call, chain);
+      break;
+    case "is":
+      if (isStringLiteral(first) && OWNER_COLUMNS.has(first.text)) chain.proofs.push(`is:${first.text}`);
+      break;
+    case "or":
+      collectDisjunctionProofs(first, chain.proofs);
+      break;
+    case "select":
+      if (isStringLiteral(first) && /documents!inner/.test(first.text)) chain.innerJoinsDocuments = true;
+      break;
+    // `insert`/`upsert` create the row already owned, so an `owner_id:` key in the payload
+    // IS the tenancy fact. `update` is deliberately ABSENT: there the key is the value
+    // WRITTEN, and says nothing about which rows are matched —
+    // `.update({ owner_id: user.id, title })` with no filter reassigns every tenant's rows
+    // to the caller, and was reported as ownerScoped before 2026-09-02 (security review
+    // P1-1). An update is scoped by its `.eq(...)` filters or not at all.
+    case "insert":
+    case "upsert":
+      collectWriteProofs(call, chain.proofs);
+      break;
+  }
+}
+
+/** The chain handed straight to withOwnerReadScope(chain, ownerId). */
+function collectWrapperProof(top, context, proofs) {
+  const parent = top.parent;
+  if (
+    parent &&
+    ts.isCallExpression(parent) &&
+    parent.arguments[0] === top &&
+    ts.isIdentifier(parent.expression) &&
+    context.wrappers.has(parent.expression.text)
+  ) {
+    proofs.push(`wrapper:${parent.expression.text}`);
+  }
+}
+
 /**
  * Inspect one `.from("table")` chain and report which tenancy predicates ride on it.
  * Recognised in-chain forms, all of which exist in this codebase:
@@ -713,56 +779,10 @@ function payloadStampsColumn(argument, columns) {
  */
 function analyzeChain(sourceFile, fromCall, context) {
   const top = chainTop(fromCall);
-  const calls = chainMethodCalls(top);
-  const proofs = [];
-  let documentFilter = null;
-  let idFilter = null;
-  let innerJoinsDocuments = false;
-
-  for (const call of calls) {
-    const [first, second] = call.args;
-    if ((call.name === "eq" || call.name === "in") && isStringLiteral(first)) {
-      const column = first.text;
-      if (OWNER_COLUMNS.has(column)) proofs.push(`${call.name}:${column}`);
-      if (USER_COLUMNS.has(column)) proofs.push(`${call.name}:${column}`);
-      if (column === "document_id") documentFilter = { method: call.name, argument: valueExpressionText(second) };
-      if (column === "id") idFilter = { method: call.name, argument: valueExpressionText(second) };
-    }
-    if (call.name === "is" && isStringLiteral(first) && OWNER_COLUMNS.has(first.text)) {
-      proofs.push(`is:${first.text}`);
-    }
-    if (call.name === "or" && isStringLiteral(first)) {
-      if (orFilterConstrainsColumn(first.text, "owner_id")) proofs.push("or:owner_id");
-      if (orFilterConstrainsColumn(first.text, "user_id")) proofs.push("or:user_id");
-    }
-    if (call.name === "select" && isStringLiteral(first) && /documents!inner/.test(first.text)) {
-      innerJoinsDocuments = true;
-    }
-    // `insert`/`upsert` create the row already owned, so an `owner_id:` key in the payload
-    // IS the tenancy fact. `update` is deliberately ABSENT: there the key is the value
-    // WRITTEN, and says nothing about which rows are matched —
-    // `.update({ owner_id: user.id, title })` with no filter reassigns every tenant's rows
-    // to the caller, and was reported as ownerScoped before 2026-09-02 (security review
-    // P1-1). An update is scoped by its `.eq(...)` filters or not at all.
-    if (call.name === "insert" || call.name === "upsert") {
-      if (payloadStampsColumn(first, new Set(["owner_id"]))) proofs.push(`${call.name}:owner_id`);
-      if (payloadStampsColumn(first, new Set(["user_id"]))) proofs.push(`${call.name}:user_id`);
-    }
-  }
-
-  // The chain handed straight to withOwnerReadScope(chain, ownerId).
-  const parent = top.parent;
-  if (
-    parent &&
-    ts.isCallExpression(parent) &&
-    parent.arguments[0] === top &&
-    ts.isIdentifier(parent.expression) &&
-    context.wrappers.has(parent.expression.text)
-  ) {
-    proofs.push(`wrapper:${parent.expression.text}`);
-  }
-
-  return { proofs, documentFilter, idFilter, innerJoinsDocuments };
+  const chain = { proofs: [], documentFilter: null, idFilter: null, innerJoinsDocuments: false };
+  for (const call of chainMethodCalls(top)) collectChainMethodFacts(call, chain);
+  collectWrapperProof(top, context, chain.proofs);
+  return chain;
 }
 
 const OWNER_PROOF = /^(eq|in|is):(owner_id|documents\.owner_id)$|^(insert|upsert):owner_id$|^or:owner_id$|^wrapper:/;
@@ -770,63 +790,76 @@ const USER_PROOF = /^(eq|in):user_id$|^(insert|upsert):user_id$|^or:user_id$/;
 
 /* --------------------------------------------------------- scope-level facts */
 
+function collectOwnerScopedDocumentFacts(sourceFile, node, context, facts) {
+  if (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.name.text === "from" &&
+    node.arguments.length === 1 &&
+    isStringLiteral(node.arguments[0]) &&
+    node.arguments[0].text === "documents"
+  ) {
+    const chain = analyzeChain(sourceFile, node, context);
+    if (!chain.proofs.some((proof) => OWNER_PROOF.test(proof))) return;
+    facts.hasOwnerScopedDocumentsQuery = true;
+    if (chain.idFilter?.argument) facts.ownerScopedDocumentIds.add(chain.idFilter.argument);
+  }
+}
+
+function collectDocumentIdProperties(value, owningHelperArguments) {
+  for (const property of value.properties) {
+    if (ts.isShorthandPropertyAssignment(property) && DOCUMENT_ID_PARAMETER.test(property.name.text)) {
+      owningHelperArguments.add(property.name.text);
+    } else if (
+      ts.isPropertyAssignment(property) &&
+      ts.isIdentifier(property.name) &&
+      DOCUMENT_ID_PARAMETER.test(property.name.text) &&
+      ts.isIdentifier(property.initializer)
+    ) {
+      owningHelperArguments.add(property.initializer.text);
+    }
+  }
+}
+
+function collectOwningHelperArguments(node, context, owningHelperArguments) {
+  if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) return;
+  if (!context.helpers.has(node.expression.text)) return;
+  // Only the DOCUMENT-ID-shaped argument registers. Collecting every identifier and
+  // shorthand argument meant `loadOwnedDocument({ supabase, documentId: id })`
+  // registered `supabase` as an owning-document argument too (security review P2-4).
+  const helper = context.helpers.get(node.expression.text);
+  node.arguments.forEach((argument, index) => {
+    const value = unwrapExpression(argument);
+    if (!value) return;
+    if (ts.isObjectLiteralExpression(value)) {
+      collectDocumentIdProperties(value, owningHelperArguments);
+      return;
+    }
+    // A positional call is resolved against the helper's own parameter names, which is
+    // possible only because the helper resolved to a file-local definition.
+    if (ts.isIdentifier(value) && DOCUMENT_ID_PARAMETER.test(helper.parameters[index] ?? "")) {
+      owningHelperArguments.add(value.text);
+    }
+  });
+}
+
 /**
  * Facts about one enclosing scope that a derived-tier query may lean on for its ownership
  * proof: which identifiers were pinned by an owner-scoped `documents` query, which were
  * handed to an owning-document helper, and which are locally declared.
  */
 function scopeFacts(sourceFile, scopeNode, context, reachableScopes = new Set()) {
-  const ownerScopedDocumentIds = new Set();
-  const owningHelperArguments = new Set();
-  const localDeclarations = new Set();
-  let hasOwnerScopedDocumentsQuery = false;
+  const facts = {
+    ownerScopedDocumentIds: new Set(),
+    owningHelperArguments: new Set(),
+    localDeclarations: new Set(),
+    hasOwnerScopedDocumentsQuery: false,
+  };
 
   const visit = (node) => {
-    if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.text === "from" &&
-      node.arguments.length === 1 &&
-      isStringLiteral(node.arguments[0]) &&
-      node.arguments[0].text === "documents"
-    ) {
-      const chain = analyzeChain(sourceFile, node, context);
-      if (chain.proofs.some((proof) => OWNER_PROOF.test(proof))) {
-        hasOwnerScopedDocumentsQuery = true;
-        if (chain.idFilter?.argument) ownerScopedDocumentIds.add(chain.idFilter.argument);
-      }
-    }
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && context.helpers.has(node.expression.text)) {
-      // Only the DOCUMENT-ID-shaped argument registers. Collecting every identifier and
-      // shorthand argument meant `loadOwnedDocument({ supabase, documentId: id })`
-      // registered `supabase` as an owning-document argument too (security review P2-4).
-      const helper = context.helpers.get(node.expression.text);
-      node.arguments.forEach((argument, index) => {
-        const value = unwrapExpression(argument);
-        if (!value) return;
-        if (ts.isObjectLiteralExpression(value)) {
-          for (const property of value.properties) {
-            if (ts.isShorthandPropertyAssignment(property) && DOCUMENT_ID_PARAMETER.test(property.name.text)) {
-              owningHelperArguments.add(property.name.text);
-            } else if (
-              ts.isPropertyAssignment(property) &&
-              ts.isIdentifier(property.name) &&
-              DOCUMENT_ID_PARAMETER.test(property.name.text) &&
-              ts.isIdentifier(property.initializer)
-            ) {
-              owningHelperArguments.add(property.initializer.text);
-            }
-          }
-          return;
-        }
-        // A positional call is resolved against the helper's own parameter names, which is
-        // possible only because the helper resolved to a file-local definition.
-        if (ts.isIdentifier(value) && DOCUMENT_ID_PARAMETER.test(helper.parameters[index] ?? "")) {
-          owningHelperArguments.add(value.text);
-        }
-      });
-    }
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) localDeclarations.add(node.name.text);
+    collectOwnerScopedDocumentFacts(sourceFile, node, context, facts);
+    collectOwningHelperArguments(node, context, facts.owningHelperArguments);
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name)) facts.localDeclarations.add(node.name.text);
     ts.forEachChild(node, (child) => {
       // A nested function's body is NOT part of this scope's execution unless the query
       // being proved sits inside it. Descending unconditionally let a never-invoked helper
@@ -841,7 +874,7 @@ function scopeFacts(sourceFile, scopeNode, context, reachableScopes = new Set())
   };
   if (scopeNode) visit(scopeNode);
 
-  return { ownerScopedDocumentIds, owningHelperArguments, localDeclarations, hasOwnerScopedDocumentsQuery };
+  return facts;
 }
 
 /* ------------------------------------------------- dynamic table dispatch */
@@ -1701,6 +1734,27 @@ function describe(site) {
   return `${site.file}:${site.line} ${site.table} (${site.tier}, in ${site.scope})`;
 }
 
+/** Consume up to the declared count in site order, leaving every other site unmatched. */
+function matchDeclaredSites(entry, sites) {
+  const matched = [];
+  const unmatched = [];
+  for (const site of sites) {
+    if (matched.length < entry.queries && !proofFailure(entry, site)) matched.push(site);
+    else unmatched.push(site);
+  }
+  return { matched, unmatched };
+}
+
+function declaredCountViolation(entry, sites, matchedCount, label, key) {
+  const why = sites.map((site) => `${describe(site)} — ${proofFailure(entry, site) ?? "already matched"}`);
+  return (
+    `${label} entry ${key} (proof ${entry.proof}) declares ${entry.queries} query(ies) but matched ${matchedCount}.` +
+    (why.length
+      ? `\n      candidates: ${why.join("; ")}`
+      : " No query site matched it at all — remove the stale entry.")
+  );
+}
+
 /**
  * Match declared entries against the sites actually found, and report every mismatch:
  * an undeclared query, a declared entry that matches nothing, a wrong query count, or a
@@ -1730,20 +1784,9 @@ function reconcile(entries, sites, label, remedy = "Scope it on the chain, or ad
     );
     let remaining = grouped.get(key) ?? [];
     for (const entry of ordered) {
-      const matched = [];
-      const unmatched = [];
-      for (const site of remaining) {
-        if (matched.length < entry.queries && !proofFailure(entry, site)) matched.push(site);
-        else unmatched.push(site);
-      }
+      const { matched, unmatched } = matchDeclaredSites(entry, remaining);
       if (matched.length !== entry.queries) {
-        const why = remaining.map((site) => `${describe(site)} — ${proofFailure(entry, site) ?? "already matched"}`);
-        violations.push(
-          `${label} entry ${key} (proof ${entry.proof}) declares ${entry.queries} query(ies) but matched ${matched.length}.` +
-            (why.length
-              ? `\n      candidates: ${why.join("; ")}`
-              : " No query site matched it at all — remove the stale entry."),
-        );
+        violations.push(declaredCountViolation(entry, remaining, matched.length, label, key));
       }
       remaining = unmatched;
     }

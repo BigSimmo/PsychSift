@@ -22,9 +22,15 @@ require_npm_config() {
 
 setup_step="initialization"
 diagnostic_python_bin=""
+policy_only_harness="${CODEX_CLOUD_SETUP_STOP_AFTER_POLICY:-0}"
 diagnose_setup_failure() {
   local status="$?"
   trap - ERR
+  if [[ "$policy_only_harness" = "1" ]]; then
+    printf '[codex-cloud:setup] Setup failed during %s (exit %s; policy-only test harness).\n' "$setup_step" "$status" >&2
+    printf '[codex-cloud:setup] FIX: review the first error above, then retry setup.\n' >&2
+    exit "$status"
+  fi
   printf '[codex-cloud:setup] Setup failed during %s (exit %s). Running local diagnostics.\n' "$setup_step" "$status" >&2
   if command -v node >/dev/null 2>&1 && [[ -f scripts/diagnose-codex-cloud.mjs ]]; then
     diagnostic_args=(--setup-step "$setup_step" --exit-code "$status")
@@ -89,25 +95,29 @@ install_npm_cli() {
 
 setup_step="node-runtime"
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-setup_step="node-runtime"
-actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
-if ! node_version_supported "$actual_node_version"; then
-  [[ -s "$NVM_DIR/nvm.sh" ]] || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}. Select it in the Codex Cloud environment or provide nvm."
-  # shellcheck source=/dev/null
-  source "$NVM_DIR/nvm.sh"
-  log "Installing and selecting Node ${expected_node_major}.x to satisfy ${expected_node_range}."
-  nvm install "$expected_node_major"
-  nvm alias default "$expected_node_major"
-  nvm use "$expected_node_major"
-fi
+# The policy-only harness exercises shell configuration without executing or
+# installing a runtime. Ordinary setup retains the full bootstrap below.
+if [[ "$policy_only_harness" != "1" ]]; then
+  setup_step="node-runtime"
+  actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
+  if ! node_version_supported "$actual_node_version"; then
+    [[ -s "$NVM_DIR/nvm.sh" ]] || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}. Select it in the Codex Cloud environment or provide nvm."
+    # shellcheck source=/dev/null
+    source "$NVM_DIR/nvm.sh"
+    log "Installing and selecting Node ${expected_node_major}.x to satisfy ${expected_node_range}."
+    nvm install "$expected_node_major"
+    nvm alias default "$expected_node_major"
+    nvm use "$expected_node_major"
+  fi
 
-actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
-node_version_supported "$actual_node_version" || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}."
+  actual_node_version="$(node -p 'process.versions.node' 2>/dev/null || true)"
+  node_version_supported "$actual_node_version" || fail "Node ${expected_node_range} is required; detected ${actual_node_version:-unavailable}."
 
-if [[ "$(npm --version)" != "$expected_npm_version" ]]; then
-  log "Installing the repository npm version ${expected_npm_version}."
-  npm install --global "npm@${expected_npm_version}"
-  hash -r
+  if [[ "$(npm --version)" != "$expected_npm_version" ]]; then
+    log "Installing the repository npm version ${expected_npm_version}."
+    npm install --global "npm@${expected_npm_version}"
+    hash -r
+  fi
 fi
 
 setup_step="runtime-profile"
@@ -255,8 +265,8 @@ mv -f "$codex_config_candidate" "$codex_config_file"
 trap - EXIT
 
 # Test harness only: write the runtime profile + shell policy, then stop before
-# toolchain installs so unit tests can exercise config merge without npm/Playwright.
-if [[ "${CODEX_CLOUD_SETUP_STOP_AFTER_POLICY:-0}" = "1" ]]; then
+# toolchain installs so unit tests can exercise config merge without a runtime.
+if [[ "$policy_only_harness" = "1" ]]; then
   log "Stopping after shell-policy write (test harness)."
   exit 0
 fi
