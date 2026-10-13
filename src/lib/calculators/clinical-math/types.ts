@@ -64,7 +64,7 @@ export type LithiumIndication = "maintenance" | "acute_mania";
 
 export type LithiumLevelStatus = "invalid" | "subtherapeutic" | "therapeutic" | "supratherapeutic" | "toxic";
 
-export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe_dialysis_threshold";
+export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe";
 
 export type LithiumLevelInput = {
   serumLevelMmolL: number;

@@ -7,6 +7,7 @@ import {
   evaluateLithiumLevel,
   calculateProportionalLithiumDose,
 } from "@/lib/calculators/clinical-math";
+import { PAEDIATRIC_RENAL_MESSAGE } from "@/lib/calculators/clinical-math/renal";
 
 describe("Clinical Math Calculators (CS-001)", () => {
   describe("Renal Clearance: Cockcroft-Gault", () => {
@@ -242,7 +243,7 @@ describe("Clinical Math Calculators (CS-001)", () => {
         age: 40,
       });
       expect(severeTox.status).toBe("toxic");
-      expect(severeTox.severity).toBe("severe_dialysis_threshold");
+      expect(severeTox.severity).toBe("severe");
     });
 
     it("calculates proportional dose adjustment accurately", () => {
@@ -322,5 +323,60 @@ describe("clinical calculators give no result for missing or NaN inputs", () => 
   it("a negative lithium level is not classified", () => {
     const r = evaluateLithiumLevel({ serumLevelMmolL: -0.4, indication: "maintenance", age: 40 });
     expect(r.status).toBe("invalid");
+  });
+});
+
+// Owner decisions, 13 Oct 2026 10:23 PM AWST.
+describe("lithium dialysis guidance rests on clinical criteria, not the level alone", () => {
+  it.each([2.1, 2.3, 4.5])("a level of %s mmol/L is urgent but not, by itself, a dialysis instruction", (level) => {
+    const r = evaluateLithiumLevel({ serumLevelMmolL: level, indication: "maintenance", age: 40 });
+    expect(r.status).toBe("toxic");
+    expect(r.severity).toBe("severe");
+    const text = r.clinicalGuidance.join(" ");
+    expect(text).toMatch(/clinical criteria, not this level alone/);
+    expect(text).toMatch(/consciousness/);
+    expect(text).toMatch(/seizures/);
+    expect(text).toMatch(/renal function/);
+    expect(text).toMatch(/EXTRIP/);
+    expect(text).not.toMatch(/haemodialysis required|hemodialysis required/i);
+  });
+});
+
+describe("adult renal equations refuse patients under 18", () => {
+  it.each([1, 10, 17, 17.9])("Cockcroft-Gault gives no result at age %s", (age) => {
+    const r = calculateCockcroftGault({
+      age,
+      weightKg: 50,
+      sex: "female",
+      serumCreatinine: 60,
+      creatinineUnit: "umol/L",
+    });
+    expect(r.isValid).toBe(false);
+    expect(r.crClMlMin).toBeNull();
+    expect(r.stage).toBeNull();
+    expect(r.errors).toContain(PAEDIATRIC_RENAL_MESSAGE);
+  });
+
+  it.each([1, 10, 17, 17.9])("CKD-EPI gives no result at age %s", (age) => {
+    const r = calculateCkdEpi2021({ age, sex: "male", serumCreatinine: 60, creatinineUnit: "umol/L" });
+    expect(r.isValid).toBe(false);
+    expect(r.egfr).toBeNull();
+    expect(r.stage).toBeNull();
+    expect(r.errors).toContain(PAEDIATRIC_RENAL_MESSAGE);
+  });
+
+  it("still calculates at 18", () => {
+    expect(calculateCkdEpi2021({ age: 18, sex: "male", serumCreatinine: 80, creatinineUnit: "umol/L" }).isValid).toBe(
+      true,
+    );
+    expect(
+      calculateCockcroftGault({ age: 18, weightKg: 70, sex: "male", serumCreatinine: 80, creatinineUnit: "umol/L" })
+        .isValid,
+    ).toBe(true);
+  });
+
+  it("explains why and what to use instead", () => {
+    expect(PAEDIATRIC_RENAL_MESSAGE).toMatch(/adults \(18 years and over\)/);
+    expect(PAEDIATRIC_RENAL_MESSAGE).toMatch(/Schwartz/);
   });
 });
