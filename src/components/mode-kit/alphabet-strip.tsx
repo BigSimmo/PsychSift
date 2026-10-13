@@ -255,7 +255,10 @@ export function alphabetStripEntries<T>(
   let before: string | undefined;
   for (let index = 0; index < items.length; index += 1) {
     const letter = letters[index]!;
-    const after = letters[index + 1];
+    // Rows below the last kept letter are strays too, so look past them.
+    let next = index + 1;
+    while (before !== undefined && next < letters.length && letters[next]! < before) next += 1;
+    const after = letters[next];
     const inPlace = (before === undefined || before <= letter) && (after === undefined || letter <= after);
     if (!inPlace) {
       outOfPlace += 1;

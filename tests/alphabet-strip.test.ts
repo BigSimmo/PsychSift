@@ -23,6 +23,14 @@ describe("alphabetStripEntries", () => {
     ]);
   });
 
+  it("skips a stray filed too early without losing the letter before it", () => {
+    expect(entries(["Goldfields", "Hedland", "Albany", "Inner City"])).toEqual([
+      "G:Goldfields",
+      "H:Hedland",
+      "I:Inner City",
+    ]);
+  });
+
   it("gives no strip for a ranked list", () => {
     expect(entries(["Zeta", "Alpha", "Mu", "Beta", "Yota", "Chi"])).toEqual([]);
   });
