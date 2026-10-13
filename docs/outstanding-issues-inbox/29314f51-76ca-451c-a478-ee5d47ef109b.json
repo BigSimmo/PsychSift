@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "29314f51-76ca-451c-a478-ee5d47ef109b",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Roster week strip shows only the first shift kind on a day; Teaching next-session ignores all-day entries; WA public holidays end at 2028",
+    "detail": "roster-week-strip.tsx uses kinds[0] so a morning plus night shift looks like a morning alone (de-duplicate kinds and count distinct kinds for any overflow marker, test with two shifts of the same kind). teaching-view-model.ts:138 excludes all-day sessions from nextSession (restore a date guard for all-day entries: today or later). src/lib/on-call/wa-public-holidays.ts has data for 2026-2028 only, including the fairness count call site.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NEHNHR0MM72GY0TM3HN"
+  }
+}
