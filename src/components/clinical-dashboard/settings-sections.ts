@@ -213,6 +213,12 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "delete history erase wipe remove questions",
   },
   {
+    id: "settings-row-clear-prescribing-patient-profile",
+    section: "privacy",
+    label: "Clear prescribing patient profile",
+    keywords: "delete patient details physiology allergies medications age kidney liver erase wipe shared computer",
+  },
+  {
     id: "settings-row-clear-saved-items",
     section: "privacy",
     label: "Clear saved items",

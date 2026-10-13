@@ -195,8 +195,9 @@ export const modeSecondaryNavigationRegistry = {
   // controls doing one job.
   //
   // Today leads because the dashboard is the page the mode is judged by.
-  // Year check, Routines, Calendar, Training and Programme are tabs reached
-  // from their parent pages. Customise and the annual summary stay secondary.
+  // Year check, Routines, Calendar and Training are tabs reached from their
+  // parent pages. Customise and the annual summary stay secondary. Programme is
+  // no longer a page: `/cme/programme` is a bookmark that forwards to Set up.
   cme: [
     // The year overview, named Summary as the work-mode mockup names it.
     { id: "year", label: "Summary", href: "/cme" },
