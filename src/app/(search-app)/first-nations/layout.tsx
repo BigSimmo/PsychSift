@@ -22,9 +22,7 @@ export default function FirstNationsLayout({ children }: { children: ReactNode }
       <ModeBand modeId="first-nations" lead={{ kind: "date" }}>
         <Primer />
         <ReadingTrustSheet />
-        <main className="min-w-0">
-          {children}
-        </main>
+        <main className="min-w-0">{children}</main>
       </ModeBand>
     </div>
   );
