@@ -87,7 +87,7 @@ function waitForDifferentialCatalogQuery(page: Page, query: string) {
 }
 
 async function submitDifferentialSearch(page: Page, query: string) {
-  const input = page.locator('input[placeholder="Ask or search a presentation..."]:visible').first();
+  const input = page.locator('input[placeholder="Search a presentation..."]:visible').first();
   const submit = page.locator('button[aria-label="Search differential presentations"]:visible');
 
   // Own the fill here rather than leaving it to callers. The server-rendered
@@ -938,7 +938,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const heroSearch = sharedHome.getByTestId("global-search-input");
     await expect(visibleGlobalSearchInput(page)).toHaveCount(1);
     await expect(heroSearch).toBeVisible();
-    await expect(heroSearch).toHaveAttribute("placeholder", "Describe the presentation or search a specifier...");
+    await expect(heroSearch).toHaveAttribute("placeholder", "Search specifiers...");
     await expect(page.getByTestId("specifiers-home")).toHaveCount(0);
 
     const expectSoundPhoneGeometry = async () => {
@@ -1027,10 +1027,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       sharedHome.getByText("Review criteria and exclusions before documenting", { exact: true }),
     ).toHaveCount(0);
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-tags\b/);
-    await expect(visibleGlobalSearchInput(page)).toHaveAttribute(
-      "placeholder",
-      "Describe the presentation or search a specifier...",
-    );
+    await expect(visibleGlobalSearchInput(page)).toHaveAttribute("placeholder", "Search specifiers...");
     await expect(page.getByTestId("specifiers-home")).toHaveCount(0);
 
     const specifiersHeadingBox = await sharedHome
@@ -1062,10 +1059,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     ).toBe(true);
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Formulation" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-network\b/);
-    await expect(visibleGlobalSearchInput(page)).toHaveAttribute(
-      "placeholder",
-      "Describe a pattern or clinical clue...",
-    );
+    await expect(visibleGlobalSearchInput(page)).toHaveAttribute("placeholder", "Describe a pattern...");
     await expect(page.getByTestId("formulation-home")).toHaveCount(0);
     await expect(visibleGlobalSearchInput(page)).toHaveCount(1);
     expect(await page.evaluate(() => window.history.length)).toBe(historyLengthBefore);
@@ -2065,7 +2059,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(visibleGlobalSearchInput(page)).toHaveCount(1);
     const heroSearch = sharedHome.getByTestId("global-search-input");
     await expect(heroSearch).toBeVisible();
-    await expect(heroSearch).toHaveAttribute("placeholder", "Ask or search a presentation...");
+    await expect(heroSearch).toHaveAttribute("placeholder", "Search a presentation...");
 
     // The hero heading sits above the composer, and the composer stays in the
     // upper two thirds — the same geometry contract every mode home is held to.
@@ -2513,7 +2507,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoLauncher(page, "/differentials");
 
-    const input = page.locator('input[placeholder="Ask or search a presentation..."]:visible');
+    const input = page.locator('input[placeholder="Search a presentation..."]:visible');
     const submit = page.locator('button[aria-label="Search differential presentations"]:visible');
     await expect(input).toHaveCount(1, { timeout: 15_000 });
     await expect(submit).toHaveCount(1, { timeout: 15_000 });
