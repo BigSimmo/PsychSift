@@ -334,6 +334,34 @@ describe("design-system contract helpers", () => {
     ]);
   });
 
+  it("keeps non-consumer TypeScript empty while still rejecting invalid CSS without --text-soft", () => {
+    expect(
+      findTextSoftConsumersInSource(
+        "src/example.tsx",
+        String.raw`const lookalike = "var(--text\u002dsoft)"; const other = "var(--decoration-soft)";`,
+      ),
+    ).toEqual([]);
+    expect(() => findTextSoftConsumersInSource("src/example.css", ".broken { color: red;")).toThrow(/Unclosed block/);
+  });
+
+  it("keeps CRLF locations inside multiline templates and skips comments and prefix lookalikes", () => {
+    const source = [
+      "// var(--text-soft)",
+      "/* var(--text-soft)",
+      "   var(--text-soft) */",
+      "const value = `prefix",
+      "var(--text-soft)",
+      "var(/* trivia */ --text-soft, red)`;",
+      'const lookalike = "var(--text-softer)";',
+      'const plain = "var(--text-soft)";',
+    ].join("\r\n");
+    expect(findTextSoftConsumersInSource("src/example.tsx", source)).toEqual([
+      "src/example.tsx:5",
+      "src/example.tsx:6",
+      "src/example.tsx:8",
+    ]);
+  });
+
   it("parses CSS declarations while ignoring declarations, comments and quoted content", () => {
     const source = [
       ":root { --text-soft: #8894a6; --decoration-soft: #8894a6; }",
