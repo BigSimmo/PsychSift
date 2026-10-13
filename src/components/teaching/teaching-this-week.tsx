@@ -387,7 +387,19 @@ function ThisWeekBody({
               ? "This week"
               : "That week"
         }
-        right={otherRows.length > 0 ? "Tap plus to add to your week" : undefined}
+        right={
+          live && !offlineAt ? (
+            // Other services replaces the week list, so it carries the calendar action too (review, 13 Oct).
+            <span className="flex items-center gap-2">
+              {otherRows.length > 0 ? <span>Tap plus to add to your week</span> : null}
+              <T5Link onClick={() => setCalendarOpen(true)} testId="teaching-calendar-other">
+                {calendarLabel}
+              </T5Link>
+            </span>
+          ) : otherRows.length > 0 ? (
+            "Tap plus to add to your week"
+          ) : undefined
+        }
         testId="teaching-week-other"
       >
         {whatsOn === null ? (

@@ -2792,8 +2792,8 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
   position: absolute;
   left: 50%;
   top: 50%;
-  width: max(100%, 3rem);
-  height: 3rem;
+  width: max(100%, var(--spacing-tap));
+  height: var(--spacing-tap);
   transform: translate(-50%, -50%);
 }
 

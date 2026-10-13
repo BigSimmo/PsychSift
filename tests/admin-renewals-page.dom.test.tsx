@@ -236,7 +236,7 @@ describe("AdminRenewalsPage — the checklist", () => {
   it("groups a date beyond this year under its month and year, never in a passed or undated group", () => {
     const later = complianceFixture(
       "Code of Conduct",
-      { category: "job", expiresOn: "2027-01-10", requirementId: "code-of-conduct" },
+      { category: "job", expiresOn: "2027-01-10", requirementId: "code-of-conduct", leadTimeDays: 120 },
       { slug: "conduct" },
     );
     storeState.entries = [later, ...ALL];
@@ -248,6 +248,9 @@ describe("AdminRenewalsPage — the checklist", () => {
       .getAllByTestId(/^admin-renewals-checklist-month-\d{4}-\d{2}$/)
       .map((group) => group.dataset.testid);
     expect(months).toEqual([...months].sort());
+    // The cross-year group must actually be present, after this year's months.
+    expect(months).toContain("admin-renewals-checklist-month-2027-01");
+    expect(months.at(-1)).toBe("admin-renewals-checklist-month-2027-01");
   });
 
   it("filters the checklist to one kind", () => {
@@ -699,14 +702,13 @@ describe("AdminRenewalsPage — readable timeline, wrapping chips, short Not rec
   it("names each month group in full, adding the year only outside this year", () => {
     const later = complianceFixture(
       "Code of Conduct",
-      { category: "job", expiresOn: "2027-01-10", requirementId: "code-of-conduct" },
+      { category: "job", expiresOn: "2027-01-10", requirementId: "code-of-conduct", leadTimeDays: 120 },
       { slug: "conduct" },
     );
     storeState.entries = [later, ...ALL];
     renderPage();
     expect(screen.getByTestId("admin-renewals-checklist-month-2026-10")).toHaveTextContent(/^October/);
-    const january = screen.queryByTestId("admin-renewals-checklist-month-2027-01");
-    if (january) expect(january).toHaveTextContent(/^January 2027/);
+    expect(screen.getByTestId("admin-renewals-checklist-month-2027-01")).toHaveTextContent(/^January 2027/);
   });
 
   // Design pass, October 2026: chip rows stay on one line and scroll sideways
