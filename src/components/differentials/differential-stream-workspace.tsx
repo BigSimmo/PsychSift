@@ -110,7 +110,6 @@ const StreamCard = memo(function StreamCard({
   showSelect,
   focusMode,
   outsideFilter = false,
-  isLongList: _isLongList = false,
   onFocus,
   onToggleSelect,
   onShowConnections,
@@ -124,7 +123,6 @@ const StreamCard = memo(function StreamCard({
   selected: boolean;
   showSelect: boolean;
   focusMode: boolean;
-  isLongList?: boolean;
   onFocus: (slug: string) => void;
   onToggleSelect: (slug: string) => void;
   onShowConnections: (slug: string) => void;
@@ -418,11 +416,14 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     replaceResultFilterUrl((params) => writeResultFilterValue(params, "scope", value, defaultScope, scopeValues));
   const setPresentationPriority = (value: PresentationPriority) =>
     replaceResultFilterUrl((params) => writeResultFilterValue(params, "priority", value, "all", priorityValues));
-  const setFamilyMode = (enabled: boolean) =>
-    replaceResultFilterUrl((params) => {
-      if (enabled) params.set("related", "1");
-      else params.delete("related");
-    });
+  const setFamilyMode = useCallback(
+    (enabled: boolean) =>
+      replaceResultFilterUrl((params) => {
+        if (enabled) params.set("related", "1");
+        else params.delete("related");
+      }),
+    [],
+  );
 
   const resultSignature = matchItems.map((item) => item.slug).join("|");
   const [lastResultSignature, setLastResultSignature] = useState("");
@@ -751,7 +752,6 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
   }
 
   function renderCardGrid(items: DifferentialStreamItem[], outsideFilter = false): ReactNode {
-    const isLongList = items.length > 30;
     return (
       // One hairline card per group with divided rows (no cards inside cards).
       // From the two-column width each row draws its own bottom and inner
@@ -769,7 +769,6 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
             showSelect={showSelect}
             focusMode={familyMode && focusedSlug === item.slug}
             outsideFilter={outsideFilter}
-            isLongList={isLongList}
             onFocus={handleFocus}
             onToggleSelect={handleToggleSelect}
             onShowConnections={handleShowConnections}
