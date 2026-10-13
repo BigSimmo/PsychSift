@@ -88,6 +88,7 @@ export function ClinicalNoteEditor({
     restoreSelection();
   }, [currentValue, saveStatus, restoreSelection]);
 
+  const saveSequenceRef = useRef(0);
   const performSave = useCallback(
     async (textToSave: string) => {
       if (readOnly || textToSave === lastSavedValue) return;
@@ -95,14 +96,19 @@ export function ClinicalNoteEditor({
       // Capture caret position before triggering save
       recordSelection();
       setSaveStatus("saving");
+      // Only the newest save may settle the status: an older request finishing late must not mark
+      // stale text as saved.
+      const sequence = ++saveSequenceRef.current;
 
       try {
         if (onSave) {
           await onSave(textToSave);
         }
+        if (sequence !== saveSequenceRef.current) return;
         setLastSavedValue(textToSave);
         setSaveStatus("saved");
       } catch {
+        if (sequence !== saveSequenceRef.current) return;
         setSaveStatus("error");
       }
     },

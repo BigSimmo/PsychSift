@@ -115,8 +115,9 @@ export function checkOptimisticLock(
   const expectedVer = expected.expectedVersion !== undefined ? expected.expectedVersion : expected.version;
   const currentVer = current.version;
 
-  if (expectedVer !== undefined && expectedVer !== null && currentVer !== undefined && currentVer !== null) {
-    if (currentVer !== expectedVer) {
+  if (expectedVer !== undefined && expectedVer !== null) {
+    // An expected token with no current token cannot prove the record is unchanged: fail closed.
+    if (currentVer === undefined || currentVer === null || currentVer !== expectedVer) {
       return {
         ok: false,
         conflict: true,
@@ -135,6 +136,14 @@ export function checkOptimisticLock(
         : expected.updated_at;
   const currentTime = current.updatedAt !== undefined ? current.updatedAt : current.updated_at;
 
+  if (expectedTime !== undefined && expectedTime !== null && (currentTime === undefined || currentTime === null)) {
+    return {
+      ok: false,
+      conflict: true,
+      reason: `Timestamp missing on the current record; expected ${expectedTime}`,
+      expectedUpdatedAt: expectedTime,
+    };
+  }
   if (expectedTime !== undefined && expectedTime !== null && currentTime !== undefined && currentTime !== null) {
     const expMillis = new Date(expectedTime).getTime();
     const currMillis = new Date(currentTime).getTime();

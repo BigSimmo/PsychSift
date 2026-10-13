@@ -236,3 +236,11 @@ describe("SafeNumberEditor component optimistic locking", () => {
     });
   });
 });
+
+describe("checkOptimisticLock fails closed on a missing current token", () => {
+  it("reports a conflict when the expected version or timestamp has no current counterpart", () => {
+    expect(checkOptimisticLock({}, { expectedVersion: 3 }).conflict).toBe(true);
+    expect(checkOptimisticLock({}, { expectedUpdatedAt: "2026-10-13T00:00:00Z" }).conflict).toBe(true);
+    expect(checkOptimisticLock({ version: 3 }, { expectedVersion: 3 }).ok).toBe(true);
+  });
+});

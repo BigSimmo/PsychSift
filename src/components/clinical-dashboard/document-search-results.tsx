@@ -626,6 +626,12 @@ function SearchRecordResults({
   degraded?: boolean;
 }) {
   const [visibleCount, setVisibleCount] = useState(30);
+  // A new search starts collapsed again (adjust state during render, not in an effect).
+  const [seenMatches, setSeenMatches] = useState({ query, matches });
+  if (seenMatches.query !== query || seenMatches.matches !== matches) {
+    setSeenMatches({ query, matches });
+    setVisibleCount(30);
+  }
   if (matches.length === 0) return null;
   const copy = searchRecordConfig[mode];
   const recordRoute = (slug: string) => `${copy.routePrefix}/${slug}`;
