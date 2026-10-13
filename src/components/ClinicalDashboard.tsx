@@ -3437,15 +3437,22 @@ function ClinicalDashboardContent({
                   // mode-specific branch so picking a mode on `/` changes only its
                   // presentation and composer target; mode-owned content stays behind
                   // its own route (/tools, /favourites, /dsm, …).
-                  <SharedHomeEmptyState
-                    modeId={searchMode}
-                    desktopComposerSlotId={desktopHomeComposerSlotId}
-                    recentQueries={recentQueries}
-                    onSelectRecent={(recentQuery) => {
-                      setQuery(recentQuery);
-                      void ask(recentQuery);
-                    }}
-                  />
+                  <>
+                    <SharedHomeEmptyState
+                      modeId={searchMode}
+                      desktopComposerSlotId={desktopHomeComposerSlotId}
+                      recentQueries={recentQueries}
+                      onSelectRecent={(recentQuery) => {
+                        setQuery(recentQuery);
+                        void ask(recentQuery);
+                      }}
+                    />
+                    {/* Before the first question is sent (owner decision, 13 Oct 2026): where an
+                        Answer question goes. Below the home content, so the composer never moves. */}
+                    {searchMode === "answer" && !explicitDemoMode ? (
+                      <AnswerProviderNotice className="mt-2" testId="answer-provider-notice-home" />
+                    ) : null}
+                  </>
                 ) : activeModeResultKind === "differentials" ? (
                   <DifferentialsHome
                     query={query}
