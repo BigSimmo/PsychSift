@@ -75,12 +75,12 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 1. `pg_cron` schedules & retention jobs
 
-- **Procedure:** Re-create scheduled jobs for ingestion workers and telemetry retention (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`).
+- **Procedure:** Re-create the `invoke_indexing_v3_agent` schedule and the telemetry retention jobs (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`). Do **not** re-create `invoke_ingestion_worker`: it was retired by `20260926041000` and the container worker owns ingestion. The step-by-step cron re-creation (copy the definition from the source project, keep it inactive on non-production until the endpoint check passes) is in `docs/disaster-recovery-runbook.md` step 1.
 - **Sanity check:** Verify with a read-only query:
   ```sql
   SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobid;
   ```
-  Confirm all four retention jobs and any active ingestion cron rows report `active = true`.
+  Confirm all four retention jobs report `active = true`, that `invoke_indexing_v3_agent` exists (active on production; inactive on a non-production target until the GUC check below passes), and that no `invoke_ingestion_worker` job exists.
 
 ### 2. Supabase Vault secrets
 
@@ -103,7 +103,7 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 4. Supabase Edge Functions
 
-- **Procedure:** Redeploy required edge functions (`indexing-v3-agent`, ingestion worker) with the Deno v2.x toolchain in an explicitly approved change window:
+- **Procedure:** Redeploy required edge functions (`indexing-v3-agent`; the ingestion-worker function is retired) with the Deno v2.x toolchain in an explicitly approved change window:
   ```bash
   supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
   ```
