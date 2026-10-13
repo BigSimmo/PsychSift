@@ -2316,6 +2316,35 @@ async function answerQuestionWithScopeUncoalesced(
   const useGovernedContextPacking = Boolean(
     args.ragRequestContext?.snapshotCacheKey && governedContextPackingApplies(routeSelection),
   );
+  const governAdmissionDischargeSideEvidence = async (selected: SearchResult[]) => {
+    const augmented = withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected,
+      candidates: eligibleAnswerResults,
+    });
+    if (augmented === selected) return selected;
+    // Re-select and pack the augmented set so supplemental chunks are subject
+    // to the same request-scoped admission, conflict, atomic-evidence, and
+    // budget decisions as the original route.
+    const supplementalSelection = selectModelContextEvidencePair({
+      routeMode: "strong",
+      queryClass,
+      crossDocument: crossDocumentPlan.enabled,
+      results: augmented,
+      queryPlan: requestQueryPlan ?? undefined,
+      siteContentState: args.ragRequestContext?.snapshot.publicSiteContent.state,
+      sourcePolicyConflicts: args.sourcePolicyConflicts,
+      accessScope: contextPackAccessScope,
+      snapshot: args.ragRequestContext?.snapshot,
+    });
+    const packed = await packModelContextEvidence(
+      supplementalSelection.served,
+      packGovernedContext,
+      useGovernedContextPacking,
+    );
+    return packed.results;
+  };
   const packedRouteSelection = useGovernedContextPacking
     ? await packModelContextEvidence(routeSelection, packGovernedContext)
     : routeSelection;
@@ -2343,9 +2372,18 @@ async function answerQuestionWithScopeUncoalesced(
     scoreExplanations: answerScoreExplanations,
   } = buildSelectedEvidenceArtifacts(answerFocusQuery, answerInputResults);
   const emptyPanel = buildSmartPanel(answerFocusQuery, []);
+  // Include comparison side evidence in the related-document lookup as well as
+  // in the cited answer; otherwise a newly selected stage can be cited without
+  // its document metadata being available to retain.
+  const relatedDocumentResults = withAdmissionDischargeSideEvidence({
+    query: args.query,
+    queryClass,
+    selected: answerInputResults,
+    candidates: eligibleAnswerResults,
+  });
   const relatedDocumentsPromise = buildRelatedDocumentsSafe({
     query: answerFocusQuery,
-    results: answerInputResults,
+    results: relatedDocumentResults,
     ownerId: args.ownerId,
   });
   const routingStartedAt = Date.now();
@@ -2376,12 +2414,7 @@ async function answerQuestionWithScopeUncoalesced(
   });
   // Same top-up as the generation fallback below, so the source-bound
   // admission/discharge extractive-first answer can fire before generation.
-  const extractiveFirstInputResults = withAdmissionDischargeSideEvidence({
-    query: args.query,
-    queryClass,
-    selected: answerInputResults,
-    candidates: eligibleAnswerResults,
-  });
+  const extractiveFirstInputResults = await governAdmissionDischargeSideEvidence(answerInputResults);
   const validatedExtractiveShortCircuit = chooseValidatedExtractiveShortCircuit({
     query: args.query,
     queryClass,
@@ -3721,12 +3754,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         throw relatedDocumentsError;
       }
     }
-    generationFallbackResults = withAdmissionDischargeSideEvidence({
-      query: args.query,
-      queryClass,
-      selected: generationFallbackResults,
-      candidates: eligibleAnswerResults,
-    });
+    generationFallbackResults = await governAdmissionDischargeSideEvidence(generationFallbackResults);
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, generationFallbackResults);
     // #231: retain the specific quality-gate verdict alongside the stable degraded reason below.
     const generationQualityFailure = initialGenerationQualityFailure ?? generationQualityFailureDiagnostics(error);
