@@ -124,6 +124,9 @@ function adaptiveFixture(query: string, prefix: "Prior" | "Current"): ClientRagA
       answer: `${prefix} adaptive lead remains complete for review.\n\nSynthetic demo only: this is not clinical guidance.`,
       answerContractVersion: "clinical-rag-answer-v20",
       renderAdaptiveAnswer: true,
+      // The server's client projection always states this flag, and the persisted answer thread
+      // (v3) refuses any turn that does not, so a fixture without it would never survive a reload.
+      strongSupportLabelCapped: false,
       demoMode: true,
       visualEvidence: [],
       quoteCards: [],
