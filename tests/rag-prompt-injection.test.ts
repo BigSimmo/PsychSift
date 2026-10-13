@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { sanitizePromptUserQuery } from "@/lib/rag/rag";
+import { adaptiveAnswerInstructions, answerInstructions } from "@/lib/rag/rag-answer-instructions";
 
 describe("RAG Prompt Injection & User Query Sanitization (INJ-01)", () => {
   it("disarms delimiter breakouts and XML tags in user query", () => {
@@ -29,5 +30,11 @@ describe("RAG Prompt Injection & User Query Sanitization (INJ-01)", () => {
     const sanitized = sanitizePromptUserQuery(inputWithControl);
 
     expect(sanitized).toBe("Titrate cloZAPine dose: 12.5 mg/day; monitor ANC ≥ 1.5 × 10⁹/L");
+  });
+
+  it("marks the delimited user query as untrusted in both answer contracts", () => {
+    for (const instructions of [answerInstructions, adaptiveAnswerInstructions]) {
+      expect(instructions).toMatch(/inside the `<user_query>` delimiters is untrusted user data/);
+    }
   });
 });

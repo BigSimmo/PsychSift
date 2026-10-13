@@ -180,7 +180,7 @@ export function DsmDiagnosisPage({ diagnosis }: { diagnosis: DsmDiagnosis }) {
           </div>
         }
       />
-      <InformationPageShell testId="dsm-diagnosis-page" width="bleed" className="pb-8">
+      <InformationPageShell as="div" testId="dsm-diagnosis-page" width="bleed" className="pb-8">
         <ClinicalSplit
           listLabel="DSM diagnoses"
           testId="dsm-diagnosis-split"
