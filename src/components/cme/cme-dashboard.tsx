@@ -27,7 +27,7 @@ import { CmeFlatList, CmeFlatRow, CmeGroup } from "@/components/cme/cme-flat-lis
 import { hoursByCategory } from "@/components/cme/cme-progress-visuals";
 import { CME_LOG_TRIGGER_ATTRIBUTE, openCmeQuickLog } from "@/components/cme/cme-quick-log";
 import { useCmeTeachingUnloggedCount } from "@/components/cme/cme-teaching-prompt";
-import { CmeBandAction, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
+import { CmePageAction, cmeFreshnessEyebrow } from "@/components/cme/cme-work-kit";
 import { CmeYearInWeeks } from "@/components/cme/cme-year-in-weeks";
 import { WorkColumns } from "@/components/work-frame/work-desktop-layout";
 import { Button } from "@/components/ui/button";
@@ -333,7 +333,7 @@ export function CmeDashboard({
   const status = (
     <>
       {/* The band above the page names the mode and the page; the h1 still names it for screen readers. */}
-      <h1 className="sr-only">Year</h1>
+      <h1 className="sr-only">CPD</h1>
       <ModeBandStatus
         testId="cme-data-freshness"
         value={
@@ -345,7 +345,7 @@ export function CmeDashboard({
         }
       />
       {underBand ? (
-        <CmeBandAction icon={SlidersHorizontal} label="Customise" href="/cme/customise" testId="cme-customise-action" />
+        <CmePageAction icon={SlidersHorizontal} label="Customise" href="/cme/customise" testId="cme-customise-action" />
       ) : (
         <div className="flex justify-end">
           <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>

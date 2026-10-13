@@ -516,14 +516,14 @@ html[data-motion="reduced"] .work-band__mark {
   line-height: var(--work-leading-meta);
   font-variant-numeric: tabular-nums;
   color: var(--work-ink-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* Page state, never cut off (audit D19): a long line wraps. */
+  overflow-wrap: anywhere;
 }
 
 .work-band__title {
   margin: 0;
-  font-size: 1.5625rem;
+  /* Scales with the band only when large text would cut it off (see .mode-band__title). */
+  font-size: min(1.5625rem, 10cqi);
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: var(--work-leading-title);
@@ -538,11 +538,7 @@ html[data-motion="reduced"] .work-band__mark {
   box-sizing: border-box;
 }
 
-.work-band__action-slot {
-  display: contents;
-}
-
-/* A page's own action under the band (My Day's Edit): a glass pill. */
+/* The band's corner action (the page's Favourite heart, audit D18). */
 .work-band .mode-band__customise,
 .work-band__action {
   flex: none;
@@ -623,8 +619,7 @@ html[data-motion="reduced"] .work-band__mark {
   }
 
   /* The page's one glass action steps under the title, so a long title word
-     wraps whole instead of running under it, and the eyebrow wraps rather
-     than cutting off. */
+     wraps whole instead of running under it. */
   .work-band__head {
     flex-wrap: wrap;
   }
@@ -636,10 +631,6 @@ html[data-motion="reduced"] .work-band__mark {
   .work-band .mode-band__customise,
   .work-band__action {
     margin-left: auto;
-  }
-
-  .work-band__eyebrow {
-    white-space: normal;
   }
 }
 

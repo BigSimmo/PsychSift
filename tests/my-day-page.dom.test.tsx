@@ -551,6 +551,21 @@ describe("MyDayPage", () => {
     expect(screen.getAllByText(/Updated just now/)).toHaveLength(1);
   });
 
+  it("restamps the age when a retry answers, even when nothing visible changed", () => {
+    const later = (minutes: number) => new Date(NOW.getTime() + minutes * 60_000);
+    const { rerender } = render(<MyDayPage now={NOW} />);
+    rerender(<MyDayPage now={later(5)} />);
+    expect(screen.getByTestId("my-day-stamp").textContent).toContain("Updated 5 min ago");
+    // While the retry reads again the earlier answer stays on screen, so its age stays too.
+    setState({ refreshing: true });
+    rerender(<MyDayPage now={later(6)} />);
+    expect(screen.getByTestId("my-day-stamp").textContent).toContain("Updated 6 min ago");
+    // The retry answers with the same statuses and item count: the age starts again.
+    setState({ refreshing: false });
+    rerender(<MyDayPage now={later(7)} />);
+    expect(screen.getByTestId("my-day-stamp").textContent).toContain("Updated just now");
+  });
+
   it("names only the modes that were checked, and never says nothing needs you while one failed", () => {
     setState({
       sources: readySources.map((source) =>

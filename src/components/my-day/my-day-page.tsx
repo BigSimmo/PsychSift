@@ -1,6 +1,6 @@
 "use client";
 
-import { History, Plus, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react";
+import { History, Plus, TriangleAlert } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,15 +9,10 @@ import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import {
-  ModeBandAction,
-  PageTitleUnderBand,
-  useModeBandCurrentTab,
-  useModeBandHeading,
-} from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandCurrentTab, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
-import { useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkButton, useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
 import { listNames, myDayModeLabel, myDayUpdatedAgo, useMyDayNow } from "@/components/my-day/my-day-page-parts";
@@ -400,40 +395,6 @@ function longDate(date: string): string {
 
 type MyDaySheet = "customise" | "quick-add" | "remind-me" | "reminders";
 
-/** A round glass button in the band (plus, sliders); a plain round icon button where there is no band. */
-function BandButton({
-  label,
-  icon: Icon,
-  onClick,
-  testId,
-}: {
-  readonly label: string;
-  readonly icon: LucideIcon;
-  readonly onClick: () => void;
-  readonly testId: string;
-}) {
-  return (
-    <ModeBandAction>
-      {(underBand) => (
-        <button
-          type="button"
-          onClick={onClick}
-          aria-label={label}
-          aria-haspopup="dialog"
-          data-testid={testId}
-          className={
-            underBand
-              ? "work-glass-button work-band__action"
-              : cn(focusRing, "grid size-12 place-items-center rounded-full text-[color:var(--mode-identity)]")
-          }
-        >
-          <Icon aria-hidden="true" className="size-5" strokeWidth={2} />
-        </button>
-      )}
-    </ModeBandAction>
-  );
-}
-
 export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
   const { status: authStatus, authEpoch } = useAuthSession();
@@ -446,7 +407,10 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // When the sources last answered, for "Checked … at 14:05" and the offline note. Set when the
   // answer changes, never on the minute tick.
   // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
-  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
+  // A retry that is still reading adds its own mark, so the answer it brings back restamps the time even when
+  // nothing visible changed; until it answers, the earlier time stays.
+  const refreshing = state.refreshing === true;
+  const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}${refreshing ? "|refreshing" : ""}`;
   const [loaded, setLoaded] = useState<{
     readonly key: string;
     readonly at: string | null;
@@ -456,7 +420,9 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
     at: state.status === "ready" ? perthTimeOf(now) : null,
     atMs: state.status === "ready" ? now.getTime() : null,
   }));
-  if (loaded.key !== loadedKey) {
+  if (loaded.key !== loadedKey && refreshing) {
+    setLoaded({ ...loaded, key: loadedKey });
+  } else if (loaded.key !== loadedKey) {
     const ready = state.status === "ready";
     // The minute tick can be up to a minute stale, so record the real moment unless a clock is injected.
     const answered = nowProp ?? new Date();
@@ -580,16 +546,14 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
         <div data-testid="my-day-header" className="contents">
           <PageTitleUnderBand className="sr-only">My Day</PageTitleUnderBand>
         </div>
+        {/* Quick add sits in the page, not the band's corner, which is for Favourite only
+            (audit D18). Customise is in More. */}
         {ready && view === "dashboard" && page === "today" ? (
-          <BandButton label="Quick add" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add" />
-        ) : null}
-        {ready && view === "all" ? (
-          <BandButton
-            label="Customise My Day"
-            icon={SlidersHorizontal}
-            onClick={() => setSheet("customise")}
-            testId="my-day-all-customise"
-          />
+          <div className="flex justify-end">
+            <WorkButton variant="secondary" icon={Plus} onClick={() => setSheet("quick-add")} testId="my-day-quick-add">
+              Quick add
+            </WorkButton>
+          </div>
         ) : null}
 
         {authStatus === "loading" ||
