@@ -31,8 +31,6 @@
  * the false negative. A monitor nobody can test is a monitor nobody can trust.
  */
 
-import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
-
 /**
  * One probe per catalogue-backed domain. The terms are chosen to match many records in the
  * in-bundle catalogue, so a zero count can only mean the search path is broken — never that the
@@ -206,7 +204,7 @@ async function main() {
   process.exitCode = 1;
 }
 
-if (isDirectEntrypoint(import.meta.url)) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     console.log(`::error::Live search results check failed: ${error.message}`);
     process.exitCode = 1;

@@ -44,6 +44,14 @@ const ALLOWED_RAW = new Map<string, string>([
     "Already falls back to an endsWith match on both of its file names, so it still runs on Windows.",
   ],
   [
+    "scripts/check-live-deployment-freshness.mjs",
+    "Runs from a two-file sparse checkout in live-domain-monitor.yml (Linux only), so it cannot import scripts/lib/is-entrypoint.mjs.",
+  ],
+  [
+    "scripts/check-live-search-results.mjs",
+    "Runs from a two-file sparse checkout in live-domain-monitor.yml (Linux only), so it cannot import scripts/lib/is-entrypoint.mjs.",
+  ],
+  [
     "scripts/check-coverage-inventory.mjs",
     "Keeps the file:// comparison but also falls back to an endsWith match on its own file name, so it still runs on Windows.",
   ],
