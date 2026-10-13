@@ -334,6 +334,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/developer-hub/clinical-trust",
+        "file": "src/app/(admin)/admin/developer-hub/clinical-trust/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/cme/summary",
         "file": "src/app/(search-app)/cme/summary/page.tsx",
         "area": "product"
@@ -402,6 +407,11 @@
         "path": "/mockups/document-search/source/evidence",
         "file": "src/app/mockups/document-search/source/evidence/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/developer-hub/clinical-answer-failures",
+        "file": "src/app/(admin)/admin/developer-hub/clinical-answer-failures/page.tsx",
+        "area": "product"
       },
       {
         "path": "/dictionary/compare",
@@ -944,6 +954,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/developer-hub/on-call-freshness",
+        "file": "src/app/(admin)/admin/developer-hub/on-call-freshness/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/admin/leave",
         "file": "src/app/(search-app)/admin/leave/page.tsx",
         "area": "product"
@@ -986,6 +1001,11 @@
       {
         "path": "/teaching/display/[token]",
         "file": "src/app/(display)/teaching/display/[token]/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/developer-hub/ingestion",
+        "file": "src/app/(admin)/admin/developer-hub/ingestion/page.tsx",
         "area": "product"
       },
       {
@@ -1094,6 +1114,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/developer-hub/roster-teams",
+        "file": "src/app/(admin)/admin/developer-hub/roster-teams/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/therapy-navigation-dock",
         "file": "src/app/mockups/therapy-navigation-dock/page.tsx",
         "area": "mockup"
@@ -1134,6 +1159,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/developer-hub/settings",
+        "file": "src/app/(admin)/admin/developer-hub/settings/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/favourites-phone-perfected",
         "file": "src/app/mockups/favourites-phone-perfected/page.tsx",
         "area": "mockup"
@@ -1141,6 +1171,11 @@
       {
         "path": "/services/search",
         "file": "src/app/(search-app)/services/search/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/developer-hub/corpus-health",
+        "file": "src/app/(admin)/admin/developer-hub/corpus-health/page.tsx",
         "area": "product"
       },
       {
@@ -1199,6 +1234,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/developer-hub/ledger",
+        "file": "src/app/(admin)/admin/developer-hub/ledger/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan/patients/[patientId]/patient-plan",
         "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/page.tsx",
         "area": "mockup"
@@ -1212,6 +1252,11 @@
         "path": "/mockups/calculators-directory-grid",
         "file": "src/app/mockups/calculators-directory-grid/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/admin/developer-hub/clinical-sign-off",
+        "file": "src/app/(admin)/admin/developer-hub/clinical-sign-off/page.tsx",
+        "area": "product"
       },
       {
         "path": "/admin/tax",
@@ -1529,6 +1574,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/developer-hub/hazards",
+        "file": "src/app/(admin)/admin/developer-hub/hazards/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/tools-search-mode",
         "file": "src/app/mockups/tools-search-mode/page.tsx",
         "area": "mockup"
@@ -1631,6 +1681,11 @@
       {
         "path": "/sources/method",
         "file": "src/app/(search-app)/sources/method/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/developer-hub",
+        "file": "src/app/(admin)/admin/developer-hub/page.tsx",
         "area": "product"
       },
       {
@@ -2054,6 +2109,10 @@
       {
         "path": "/api/registry/records",
         "file": "src/app/api/registry/records/route.ts"
+      },
+      {
+        "path": "/api/proxy",
+        "file": "src/app/api/proxy/route.ts"
       },
       {
         "path": "/api/roster/workplaces",
@@ -3252,6 +3311,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/superpowers/plans/2026-10-13-phase-2-hardening.md",
+        "section": "superpowers",
+        "catalogued": false
+      },
+      {
         "path": "docs/source-governance-refresh-worklist-2026-07-22.md",
         "section": "root",
         "catalogued": true
@@ -3275,6 +3339,11 @@
         "path": "docs/care-plan/reports/task-6-brief.md",
         "section": "care-plan",
         "catalogued": true
+      },
+      {
+        "path": "docs/superpowers/plans/2026-10-12-phase-1-critical-hotfixes.md",
+        "section": "superpowers",
+        "catalogued": false
       },
       {
         "path": "docs/decisions/2026-08-22-automated-review-coverage.md",
@@ -3987,6 +4056,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/superpowers/plans/2026-10-13-phase-3-refinement.md",
+        "section": "superpowers",
+        "catalogued": false
+      },
+      {
         "path": "docs/prompts/codex-data-database-safety-ultra-review.md",
         "section": "prompts",
         "catalogued": true
@@ -4404,6 +4478,11 @@
       {
         "path": "docs/superpowers/specs/2026-09-26-first-nations-mode-design.md",
         "section": "superpowers",
+        "catalogued": false
+      },
+      {
+        "path": "docs/audit/full-repository-audit-2026-10-11.md",
+        "section": "audit",
         "catalogued": false
       },
       {
@@ -5035,6 +5114,11 @@
         "path": "docs/audit/cloud-connection-acceptance-2026-08-05.md",
         "section": "audit",
         "catalogued": true
+      },
+      {
+        "path": "docs/superpowers/plans/2026-10-11-parallel-repository-audit.md",
+        "section": "superpowers",
+        "catalogued": false
       },
       {
         "path": "docs/archive/design-qa.md",
@@ -17793,6 +17877,14 @@
         "checks": "50 focused tests and 630 offline RAG tests passed; typecheck passed; production readiness blocked by six existing governance approvals"
       },
       {
+        "date": "2026-10-13",
+        "ref": "codex/pr3509-preserved-source-guard-20261013",
+        "head": "919129dccf843ca676e0d79072ad2e395d80c610",
+        "scope": "PR3509 final guard snapshot acceptance",
+        "outcome": "Independent exact-head static acceptance: both strict-mode findings resolved; no remaining concrete guard blocker",
+        "checks": "Complete-scope independent review against 3e359e90953218918373010f4c9f37a8e2fd6723; normal format and typecheck passed; final focused suites 74 passed; subsequent push blocked by unused test binding, fixed in following test-only correction"
+      },
+      {
         "date": "2026-08-07",
         "ref": "cursor/site-testing-speed-08c1",
         "head": "91bac89827ae2f4f0e59aeed7de6344fe8779a95",
@@ -25239,6 +25331,14 @@
         "scope": "Lighthouse testing thorough review",
         "outcome": "P1 fixed locally: stale Chrome 150 baseline, unbounded runner phases, and live input/process limits hardened; advisory policy retained",
         "checks": "offline review; check:ci-scope PASS; test:ci-workflows 13 files 248 passed 11 skipped; check:github-actions PASS; verify:lighthouse dry-run PASS; no provider-backed checks run"
+      },
+      {
+        "date": "2026-10-13",
+        "ref": "codex/pr3509-preserved-source-guard-20261013",
+        "head": "edae591bf41f45643f34f739bfb4e1be2bfd759a",
+        "scope": "PR3509 preserved-source admission guard",
+        "outcome": "Blocked: independent review found missing-object admission and latest-commit masking gaps in strict mode",
+        "checks": "Read-only independent review against 3e359e90953218918373010f4c9f37a8e2fd6723; no reviewer tests or API calls; normal regression verification owned by implementation task"
       },
       {
         "date": "2026-07-22",
