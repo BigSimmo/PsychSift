@@ -73,7 +73,8 @@ async function expectMonth(calendar: Locator, title: string) {
  */
 async function clickUntil(control: Locator, outcome: () => Promise<void>) {
   await expect(async () => {
-    await control.click({ timeout: 5_000 });
+    // Today disappears once October shows, so a click that landed but rendered slowly is not repeated.
+    if (await control.isVisible()) await control.click({ timeout: 5_000 });
     await outcome();
   }).toPass({ timeout: 20_000, intervals: [1_000, 2_000, 4_000] });
 }
