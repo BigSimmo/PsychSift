@@ -932,9 +932,9 @@ function driftGuard(changedFiles) {
 // Guard 5: static gate (lint + source typecheck)
 // ---------------------------------------------------------------------------
 /**
- * Roots that `lint:internal` passes to eslint, plus `eslint-rules/` (custom
- * rules are not in the lint:internal arg list today but changing one still
- * re-decides the verdict for every file that loads them).
+ * Roots that `lint:internal` passes to eslint. `eslint-rules/` is linted itself,
+ * and changing a custom rule also re-decides the verdict for every file that
+ * loads it.
  */
 const LINT_ROOTS = ["src/", "tests/", "scripts/", "worker/", "supabase/", "playwright/", "eslint-rules/"];
 const LINT_ROOT_FILES = new Set([
