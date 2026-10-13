@@ -2374,10 +2374,18 @@ async function answerQuestionWithScopeUncoalesced(
     results: answerInputResults,
     answerMode: routeFromRouting.mode,
   });
+  // Same top-up as the generation fallback below, so the source-bound
+  // admission/discharge extractive-first answer can fire before generation.
+  const extractiveFirstInputResults = withAdmissionDischargeSideEvidence({
+    query: args.query,
+    queryClass,
+    selected: answerInputResults,
+    candidates: eligibleAnswerResults,
+  });
   const validatedExtractiveShortCircuit = chooseValidatedExtractiveShortCircuit({
     query: args.query,
     queryClass,
-    results: answerInputResults,
+    results: extractiveFirstInputResults,
     route: routeFromRouting,
     sourceBacked: relevance.isSourceBacked,
     gateStatus: initialRetrievalDiagnostics.gateStatus,
@@ -2786,8 +2794,8 @@ async function answerQuestionWithScopeUncoalesced(
       total_latency_ms: Date.now() - startedAt,
     };
     const extractiveContextResults = validatedExtractiveShortCircuit?.resultIds?.length
-      ? answerInputResults.filter((result) => validatedExtractiveShortCircuit.resultIds?.includes(result.id))
-      : answerInputResults;
+      ? extractiveFirstInputResults.filter((result) => validatedExtractiveShortCircuit.resultIds?.includes(result.id))
+      : extractiveFirstInputResults;
     const extractiveContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, extractiveContextResults);
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, extractiveContextResults);
     const builtSourceSafeExtractiveAnswer = buildExtractiveAnswer({
