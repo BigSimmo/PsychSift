@@ -188,6 +188,21 @@ describe("Clinical Math Calculators (CS-001)", () => {
   });
 
   describe("Lithium Dosing & Therapeutic Range Helper", () => {
+    it.each([-0.1, -1])("rejects negative serum lithium levels (%s) without titration guidance", (serumLevelMmolL) => {
+      const result = evaluateLithiumLevel({ serumLevelMmolL, indication: "maintenance", age: 35 });
+
+      expect(result.status).toBe("invalid");
+      expect(result.isWithinTarget).toBe(false);
+      expect(result.targetRange).toEqual({ min: 0, max: 0 });
+      expect(result.clinicalGuidance.join(" ")).not.toMatch(/titration/i);
+    });
+
+    it("still classifies zero serum lithium as subtherapeutic", () => {
+      expect(evaluateLithiumLevel({ serumLevelMmolL: 0, indication: "maintenance", age: 35 }).status).toBe(
+        "subtherapeutic",
+      );
+    });
+
     it("evaluates therapeutic maintenance range (0.6 - 0.8 mmol/L)", () => {
       const result = evaluateLithiumLevel({
         serumLevelMmolL: 0.7,
@@ -243,5 +258,69 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(adjustment.suggestedDoseMg).toBe(1200);
       expect(adjustment.note).toContain("Linear kinetics");
     });
+  });
+});
+
+// Owner ruling, 13 Oct 2026: a missing or NaN input shows no result, never a guessed value.
+describe("clinical calculators give no result for missing or NaN inputs", () => {
+  const bad = [Number.NaN, Number.POSITIVE_INFINITY, undefined as unknown as number];
+
+  it.each(bad)("Cockcroft-Gault with age %s", (age) => {
+    const r = calculateCockcroftGault({
+      age,
+      weightKg: 70,
+      sex: "male",
+      serumCreatinine: 80,
+      creatinineUnit: "umol/L",
+    });
+    expect(r.isValid).toBe(false);
+    expect(r.crClMlMin).toBeNull();
+    expect(r.stage).toBeNull();
+  });
+
+  it.each(bad)("CKD-EPI with age %s", (age) => {
+    const r = calculateCkdEpi2021({ age, sex: "female", serumCreatinine: 80, creatinineUnit: "umol/L" });
+    expect(r.isValid).toBe(false);
+    expect(r.egfr).toBeNull();
+    expect(r.stage).toBeNull();
+  });
+
+  it.each(bad)("CKD-EPI with creatinine %s", (serumCreatinine) => {
+    const r = calculateCkdEpi2021({ age: 40, sex: "male", serumCreatinine, creatinineUnit: "umol/L" });
+    expect(r.egfr).toBeNull();
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY])("QTc with RR interval %s and no heart rate", (rrIntervalSeconds) => {
+    const r = calculateQtc({ qtMs: 400, rrIntervalSeconds, sex: "male" });
+    expect(r.isValid).toBe(false);
+    expect(r.bazettMs).toBeNull();
+    expect(r.riskCategory).toBeNull();
+  });
+
+  it.each(bad)("QTc with QT %s", (qtMs) => {
+    const r = calculateQtc({ qtMs, heartRateBpm: 60, sex: "female" });
+    expect(r.isValid).toBe(false);
+    expect(r.bazettMs).toBeNull();
+  });
+
+  it("QTc with no heart rate or RR interval", () => {
+    expect(calculateQtc({ qtMs: 400, sex: "male" }).bazettMs).toBeNull();
+  });
+
+  it.each(bad)("lithium level %s is not classified", (serumLevelMmolL) => {
+    const r = evaluateLithiumLevel({ serumLevelMmolL, indication: "maintenance", age: 40 });
+    expect(r.status).toBe("invalid");
+    expect(r.isWithinTarget).toBe(false);
+  });
+
+  it.each(bad)("lithium dose with current level %s", (currentLevelMmolL) => {
+    const r = calculateProportionalLithiumDose({ currentDoseMg: 900, currentLevelMmolL, targetLevelMmolL: 0.7 });
+    expect(r.isValid).toBe(false);
+    expect(r.suggestedDoseMg).toBeNull();
+  });
+
+  it("a negative lithium level is not classified", () => {
+    const r = evaluateLithiumLevel({ serumLevelMmolL: -0.4, indication: "maintenance", age: 40 });
+    expect(r.status).toBe("invalid");
   });
 });

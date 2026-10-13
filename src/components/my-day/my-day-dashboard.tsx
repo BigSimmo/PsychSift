@@ -179,6 +179,8 @@ export interface MyDayDashboardProps {
   readonly newJob?: NewJobProgress | null;
   /** When the sources last answered, "14:05", for the "Checked … at" line. */
   readonly checkedAt?: string | null;
+  /** How old the data is, "4 min ago", for the Needs you stamp. */
+  readonly updated?: string | null;
   /** A My Day item source failed, so the Needs you count is "at least". */
   readonly incomplete?: boolean;
   /** Which page (tab) to draw. */
@@ -248,6 +250,7 @@ export function MyDayDashboard({
   pendingReminders,
   newJob = null,
   checkedAt = null,
+  updated = null,
   incomplete: itemsIncomplete = false,
   page = "today",
   onShowAll,
@@ -717,6 +720,7 @@ export function MyDayDashboard({
             flagged={flaggedId !== undefined}
             checked={checked}
             checkedAt={checkedAt}
+            updated={updated}
             incomplete={incomplete}
             missing={missing}
             offline={!online}

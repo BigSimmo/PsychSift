@@ -302,7 +302,20 @@ const NO_VISITS: readonly MedicineVisit[] = [];
 /** One calm list: grey icon, the section's name, and its real count on the right. */
 function SectionsGroup({ counts }: { readonly counts: MedicinesSectionCounts }) {
   return (
-    <Group title="Sections" testId="medicines-card-sections">
+    <Group
+      title="Sections"
+      testId="medicines-card-sections"
+      aside={
+        // The one link to the plain list of every tool (Clinical audit, 13 Oct 2026, item 15).
+        <Link
+          href="/tools"
+          data-testid="medicines-all-tools"
+          className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center justify-end rounded-lg px-1 text-sm")}
+        >
+          All tools
+        </Link>
+      }
+    >
       <ul role="list" aria-label="Medicines sections" className={hairlineList}>
         {SECTION_MODE_IDS.map((modeId) => {
           const mode = appModeDefinition(modeId);

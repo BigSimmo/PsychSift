@@ -222,6 +222,8 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
   /** The New job countdown for My records (work-mode redesign, 6 Oct 2026); null without a start date. */
   newJob: NewJobProgress | null;
   retry: () => void;
+  /** True while On Call is reading again, including a retry after a failed read. */
+  refreshing: boolean;
 } {
   // `useOnCallEntries` fetches unconditionally and cannot be disabled; it is
   // still called every render (hooks rules) and ignored while signed out.
@@ -274,5 +276,6 @@ export function useEntriesMyDaySources({ enabled, now }: { enabled: boolean; now
         : null,
     [ready, demoMode, own, entries, now],
   );
-  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, newJob, retry };
+  const refreshing = enabled && state.loading;
+  return { admin, onCall, nextRenewal, renewals, helpItems, adminEntries, newJob, retry, refreshing };
 }

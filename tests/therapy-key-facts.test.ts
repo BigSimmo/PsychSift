@@ -103,7 +103,9 @@ describe("therapyKeyFactCards", () => {
     expect(byId.suits.body).toContain("sleep diaries");
     expect(byId.suits.hasDetail).toBe(true);
 
-    expect(byId.cautions.face.length).toBeLessThanOrEqual(KEY_FACT_GLANCE_MAX_CHARS);
+    // Cautions is a safety cue: the whole first sentence, never cut to the glance budget.
+    expect(byId.cautions.face.endsWith("…")).toBe(false);
+    expect(byId.cautions.body.startsWith(byId.cautions.face.replace(/\.$/, ""))).toBe(true);
     expect(byId.cautions.body.length).toBeGreaterThan(byId.cautions.face.length);
     expect(byId.cautions.hasDetail).toBe(true);
   });
@@ -177,6 +179,12 @@ describe("therapyKeyFactCards", () => {
       expect(cards.map((card) => card.id)).toEqual(["cautions", "format", "setting", "suits"]);
       for (const card of cards) {
         expect(card.label).not.toBe("Evidence");
+        // Cautions is exempt from the glance budget: a safety cue reads as a whole
+        // sentence (it takes the full row on phones) and is never cut with an ellipsis.
+        if (card.id === "cautions") {
+          expect(card.face.endsWith("…")).toBe(false);
+          continue;
+        }
         expect(card.face.length).toBeLessThanOrEqual(KEY_FACT_GLANCE_MAX_CHARS);
         if (card.face.endsWith("…")) {
           expect(card.face.slice(0, -1)).not.toMatch(/\s$/);

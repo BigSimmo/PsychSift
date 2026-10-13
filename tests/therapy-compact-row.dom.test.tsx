@@ -41,6 +41,11 @@ function therapy(overrides: Partial<Therapy> = {}): Therapy {
 }
 
 const bindingsState = vi.hoisted(() => ({ results: [] as Therapy[] }));
+const authState = vi.hoisted(() => ({ siteRole: undefined as string | undefined }));
+
+vi.mock("@/lib/example-data/store", () => ({
+  useAuthIfAvailable: () => ({ session: { user: { app_metadata: { site_role: authState.siteRole } } } }),
+}));
 
 vi.mock("@/components/therapy-compass/bindings", () => ({
   useTcBindings: () => ({
@@ -73,6 +78,7 @@ vi.mock("@/components/clinical-dashboard/universal-search-also-matches", () => (
   UniversalSearchAlsoMatches: () => null,
 }));
 
+import { TherapyKeyFacts } from "@/components/therapy-compass/record/key-facts";
 import { TherapyRecordSections } from "@/components/therapy-compass/record/record-sections";
 import { SearchScreen } from "@/components/therapy-compass/screens/search-screen";
 import { therapyAvoidModifyText } from "@/components/therapy-compass/therapy-card";
@@ -118,8 +124,9 @@ describe("Therapy compact rows", () => {
     }
   });
 
-  it("keeps the Review queue one tap away now that it has left the main tabs", () => {
+  it("keeps the Review queue one tap away for a site administrator", () => {
     bindingsState.results = [therapy()];
+    authState.siteRole = "administrator";
     render(<SearchScreen />);
 
     const link = screen.getByTestId("therapy-review-queue-link");
@@ -128,9 +135,24 @@ describe("Therapy compact rows", () => {
     expect(link).toHaveTextContent("12 to review");
   });
 
+  it("leaves the Review queue link out for anyone who is not a site administrator", () => {
+    bindingsState.results = [therapy()];
+    authState.siteRole = undefined;
+    render(<SearchScreen />);
+
+    expect(screen.queryByTestId("therapy-review-queue-link")).toBeNull();
+  });
+
   it("still shows what the row used for Best used for and Best fit, word for word, in the record", () => {
     const record = therapy();
-    render(<TherapyRecordSections therapy={record} />);
+    // Setting and Suits are shown in full in the At a glance card and are not
+    // printed a second time in the body, so the record is both together.
+    render(
+      <>
+        <TherapyKeyFacts therapy={record} />
+        <TherapyRecordSections therapy={record} />
+      </>,
+    );
 
     for (const text of [record.bestUsedFor, record.targetSymptoms, record.setting, record.patientPopulation]) {
       expect(screen.getByText(text!, { exact: false })).toBeInTheDocument();

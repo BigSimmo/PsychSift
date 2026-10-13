@@ -17,7 +17,8 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (input.age <= 0) {
+  // Missing or NaN inputs give no result, never a guessed value (owner ruling, 13 Oct 2026).
+  if (!Number.isFinite(input.age) || input.age <= 0) {
     errors.push("Age must be greater than zero");
   } else if (input.age < 18) {
     warnings.push(
@@ -86,7 +87,7 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  if (input.age <= 0 || input.age > 120) {
+  if (!Number.isFinite(input.age) || input.age <= 0 || input.age > 120) {
     errors.push("Age must be between 1 and 120 years");
   }
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
@@ -118,6 +119,9 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
 
   const egfr = 142 * minTerm * maxTerm * ageTerm * sexMultiplier;
   const rounded = Math.round(egfr * 10) / 10;
+  if (!Number.isFinite(rounded)) {
+    return { isValid: false, egfr: null, stage: null, errors: ["Calculated eGFR is not finite"], warnings };
+  }
 
   return {
     isValid: true,

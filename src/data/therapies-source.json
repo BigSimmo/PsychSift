@@ -17684,15 +17684,15 @@
     "evidenceLevel": "Source recorded - not appraised",
     "evidenceNotes": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance.",
     "limitations": "Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
-    "references": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance.",
-    "reviewStatus": "reviewed",
+    "references": null,
+    "reviewStatus": "needs_review",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 100,
+    "reviewCompleteness": 0,
     "tags": [
       "Mood",
       "Psychosis",
@@ -17732,17 +17732,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": true,
-      "sourceChecked": true,
-      "evidenceAppraised": true,
-      "safetyCautionsChecked": true,
-      "patientExplanationChecked": true,
-      "proofread": true,
-      "australianEnglishChecked": true
+      "clinicalAccuracyReviewed": false,
+      "sourceChecked": false,
+      "evidenceAppraised": false,
+      "safetyCautionsChecked": false,
+      "patientExplanationChecked": false,
+      "proofread": false,
+      "australianEnglishChecked": false
     },
-    "reviewedBy": "PsychSift",
-    "reviewedAt": "2026-09-26T17:26:59.987Z",
-    "reviewedContentSha256": "d8d6e10889cd136bb2813792766e74ee0030962f057c76fccdd30fd89c0f8e26"
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewedContentSha256": null
   },
   {
     "slug": "workbook-based-therapy",

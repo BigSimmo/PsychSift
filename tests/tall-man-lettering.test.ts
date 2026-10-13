@@ -7,7 +7,7 @@ describe("ISMP Tall Man Lettering for Psychotropic Safety (CS-002)", () => {
     expect(formatTallMan("clozapine")).toBe("cloZAPine");
     expect(formatTallMan("clonidine")).toBe("cloNIDine");
     expect(formatTallMan("clonazepam")).toBe("clonazePAM");
-    expect(formatTallMan("lorazepam")).toBe("lorazePAM");
+    expect(formatTallMan("lorazepam")).toBe("LORazepam");
     expect(formatTallMan("hydroxyzine")).toBe("hydrOXYzine");
     expect(formatTallMan("hydralazine")).toBe("hydrALAZINE");
     expect(formatTallMan("fluoxetine")).toBe("FLUoxetine");

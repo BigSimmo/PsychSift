@@ -34,7 +34,8 @@ function queryHashStorageText(query: string) {
 
 const medicarePattern = /\b[2-6]\d{3}\s?\d{5}\s?\d\b/g;
 const phonePattern = /(?<!\w)(?:\+?61[\s.-]?[2-478]|\(?0[2-478]\)?)(?:[\s.-]?\d){8}\b/g;
-const mrnPattern = /\b(?:MRN|UR|UMRN)[:#\s]*(?=[A-Z0-9-]{6,12}\b)(?=[A-Z0-9-]*\d)[A-Z0-9-]+\b/gi;
+const mrnPattern =
+  /\b(?:MRN|UR|UMRN)[:#\s]*(?:\d+(?:[ \t]+\d+)+\b|(?=[A-Z0-9-]{6,12}\b)(?=[A-Z0-9-]*\d)[A-Z0-9-]+\b)/gi;
 const dobPattern = /\b(?:DOB|D\.O\.B\.|born)[:\s]*(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/gi;
 
 /**

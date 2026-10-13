@@ -17,12 +17,16 @@ describe("Documents and search app landing semantics", () => {
   });
 
   it("owns main landmark in dsm layout (#568M42)", () => {
-    expect(dsmLayout.match(/<main\s+id="main-content"/g)).toHaveLength(1);
+    // The shell already owns #main-content; the landmark must not duplicate that id.
+    expect(dsmLayout.match(/<main[\s>]/g)).toHaveLength(1);
+    expect(dsmLayout).not.toContain('id="main-content"');
     expect(dsmLayout.match(/<\/main>/g)).toHaveLength(1);
   });
 
   it("owns main landmark in first-nations layout (#568M42)", () => {
-    expect(firstNationsLayout.match(/<main\s+id="main-content"/g)).toHaveLength(1);
+    // The shell already owns #main-content; the landmark must not duplicate that id.
+    expect(firstNationsLayout.match(/<main[\s>]/g)).toHaveLength(1);
+    expect(firstNationsLayout).not.toContain('id="main-content"');
     expect(firstNationsLayout.match(/<\/main>/g)).toHaveLength(1);
   });
 });

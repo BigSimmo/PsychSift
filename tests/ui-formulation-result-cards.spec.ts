@@ -33,7 +33,10 @@ test.beforeEach(async ({ page }) => {
   await stubZeroTouchPoints({ page });
 });
 
-test("separates mechanism cards and keeps the primary actions on the card header row", async ({ page }) => {
+test("lists mechanisms as compact rows with small Use and Open actions on each row", async ({ page }) => {
+  // Compact rows (Clinical audit, 13 Oct 2026, item 12): one hairline card with
+  // divided rows, the same row Therapy search uses. Each row keeps both actions
+  // as 48px buttons beside the title, and the whole row opens the mechanism.
   for (const viewport of [
     { width: 320, height: 720 },
     { width: 1440, height: 1000 },
@@ -41,81 +44,71 @@ test("separates mechanism cards and keeps the primary actions on the card header
     await page.setViewportSize(viewport);
     await gotoApp(page, "/formulation?q=What+if+something+goes+wrong&run=1");
 
-    const cards = page.locator("[data-formulation-result-card]");
+    const rows = page.locator("[data-formulation-result-card]");
     // WebKit can stream a hidden duplicate of the page root (#093).
     const topMatch = page.getByTestId("formulation-top-match").filter({ visible: true });
     const actionGroup = topMatch.locator("[data-formulation-card-action]");
     const action = actionGroup.getByRole("link", { name: "Open Worry" });
     const secondaryAction = actionGroup.getByRole("link", { name: "Use Worry in formulation" });
 
-    await expect(cards.first()).toBeVisible();
-    await expect.poll(() => cards.count()).toBeGreaterThan(1);
+    await expect(rows.first()).toBeVisible();
+    await expect.poll(() => rows.count()).toBeGreaterThan(1);
     await expect(action).toBeVisible();
     await expect(secondaryAction).toBeVisible();
+    await expect(topMatch.getByText("Top match", { exact: true })).toBeVisible();
 
-    const geometry = await topMatch.evaluate((card) => {
-      const detailsElement = card.querySelector<HTMLElement>("[data-formulation-card-details]");
-      const headerElement = card.querySelector<HTMLElement>("[data-formulation-card-header]");
-      const actionElement = card.querySelector<HTMLElement>("[data-formulation-card-action]");
+    const geometry = await topMatch.evaluate((row) => {
+      const headerElement = row.querySelector<HTMLElement>("[data-formulation-card-header]");
+      const actionElement = row.querySelector<HTMLElement>("[data-formulation-card-action]");
       const primaryElement = actionElement?.querySelector<HTMLElement>("a:last-of-type");
       const secondaryElement = actionElement?.querySelector<HTMLElement>("a:first-of-type");
-      const accentElement = card.querySelector<HTMLElement>("[data-formulation-card-accent]");
-      const nextCard = card.nextElementSibling as HTMLElement | null;
-      if (
-        !detailsElement ||
-        !headerElement ||
-        !actionElement ||
-        !primaryElement ||
-        !secondaryElement ||
-        !accentElement ||
-        !nextCard
-      ) {
-        throw new Error("Expected complete formulation result-card structure");
+      const list = row.parentElement;
+      const nextRow = row.nextElementSibling as HTMLElement | null;
+      if (!headerElement || !actionElement || !primaryElement || !secondaryElement || !list || !nextRow) {
+        throw new Error("Expected complete formulation result-row structure");
       }
 
-      const cardRect = card.getBoundingClientRect();
-      const detailsRect = detailsElement.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      const headerRect = headerElement.getBoundingClientRect();
       const actionRect = actionElement.getBoundingClientRect();
       const primaryRect = primaryElement.getBoundingClientRect();
       const secondaryRect = secondaryElement.getBoundingClientRect();
-      const nextCardRect = nextCard.getBoundingClientRect();
-      const cardStyle = getComputedStyle(card);
-      const accentStyle = getComputedStyle(accentElement);
+      const nextRowRect = nextRow.getBoundingClientRect();
+      const listStyle = getComputedStyle(list);
 
       return {
-        accentBackground: accentStyle.backgroundColor,
+        actionTop: actionRect.top,
         actionBottom: actionRect.bottom,
+        headerTop: headerRect.top,
+        headerBottom: headerRect.bottom,
         actionGroupWidth: actionRect.width,
-        cardBottom: cardRect.bottom,
-        cardRadius: Number.parseFloat(cardStyle.borderRadius),
-        cardShadow: cardStyle.boxShadow,
-        cardWidth: cardRect.width,
-        detailsBottom: detailsRect.bottom,
-        detailsTop: detailsRect.top,
+        rowHeight: rowRect.height,
+        rowWidth: rowRect.width,
         primaryHeight: primaryRect.height,
+        primaryWidth: primaryRect.width,
         secondaryHeight: secondaryRect.height,
-        nextCardGap: nextCardRect.top - cardRect.bottom,
+        secondaryWidth: secondaryRect.width,
+        nextRowGap: nextRowRect.top - rowRect.bottom,
+        listBorder: Number.parseFloat(listStyle.borderTopWidth),
+        listRadius: Number.parseFloat(listStyle.borderTopLeftRadius),
       };
     });
 
-    // The action row was a footer band of its own, which cost a full card row
-    // per result to hold one control the heading already linked to. It now sits
-    // on the header row, and the details band closes the card.
-    expect(geometry.actionBottom).toBeLessThanOrEqual(geometry.detailsTop + 1);
-    expect(Math.abs(geometry.cardBottom - geometry.detailsBottom)).toBeLessThanOrEqual(1);
-    expect(geometry.primaryHeight).toBeGreaterThanOrEqual(47);
-    expect(geometry.secondaryHeight).toBeGreaterThanOrEqual(47);
-    expect(geometry.cardRadius).toBeGreaterThanOrEqual(12);
-    expect(geometry.cardShadow).not.toBe("none");
-    expect(geometry.accentBackground).not.toBe("rgba(0, 0, 0, 0)");
-    // A subtraction of two client rects, so it carries the subtraction's own
-    // float error: Firefox reported 15.999969482421875 for this 16px gap.
-    expectAtLeastCssPx(geometry.nextCardGap, 16, "formulation card gap");
-    if (viewport.width === 320) {
-      expect(geometry.actionGroupWidth).toBeGreaterThanOrEqual(geometry.cardWidth - 40);
-    } else {
-      expect(geometry.actionGroupWidth).toBeLessThan(geometry.cardWidth / 2);
-    }
+    // The actions sit on the title row, inside the row's header band.
+    expect(geometry.actionTop).toBeGreaterThanOrEqual(geometry.headerTop - 1);
+    expect(geometry.actionBottom).toBeLessThanOrEqual(geometry.headerBottom + 1);
+    // 48px taps for both small actions.
+    expectAtLeastCssPx(geometry.primaryHeight, 47, "formulation Open tap height");
+    expectAtLeastCssPx(geometry.secondaryHeight, 47, "formulation Use tap height");
+    expectAtLeastCssPx(geometry.primaryWidth, 47, "formulation Open tap width");
+    expectAtLeastCssPx(geometry.secondaryWidth, 47, "formulation Use tap width");
+    // Rows are divided inside one hairline card, not separate cards.
+    expect(Math.abs(geometry.nextRowGap)).toBeLessThanOrEqual(1);
+    expect(geometry.listBorder).toBeGreaterThanOrEqual(1);
+    expect(geometry.listRadius).toBeGreaterThanOrEqual(8);
+    // Compact: the old card was about 1,000px tall on a phone.
+    expect(geometry.rowHeight).toBeLessThan(260);
+    expect(geometry.actionGroupWidth).toBeLessThan(geometry.rowWidth / 2);
 
     await action.focus();
     await expect(action).toBeFocused();
@@ -123,7 +116,7 @@ test("separates mechanism cards and keeps the primary actions on the card header
 
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect
-      .poll(() => topMatch.evaluate((card) => Number.parseFloat(getComputedStyle(card).transitionDuration)))
+      .poll(() => topMatch.evaluate((row) => Number.parseFloat(getComputedStyle(row).transitionDuration)))
       .toBeLessThanOrEqual(0.001);
     await page.emulateMedia({ reducedMotion: "no-preference" });
   }

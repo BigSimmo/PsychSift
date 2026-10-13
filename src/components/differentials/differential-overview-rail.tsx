@@ -13,6 +13,7 @@ import {
   differentialGroupScopeNote,
   differentialSourceStatusLabel,
   differentialValidationStatusLabel,
+  doNowHeading,
   doNowStepsAreCurated,
   formatExportedDate,
   resolveDoNowSteps,
@@ -111,7 +112,7 @@ export function DifferentialOverviewRail({
     >
       <div className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--shadow-inset)]">
         {doNow.length > 0 ? (
-          <RailBlock title="Do now" icon={Activity} tone="accent">
+          <RailBlock title={doNowHeading(doNowCurated)} icon={Activity} tone="accent">
             {!doNowCurated ? (
               <p className="mb-2 text-2xs font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
                 {groupScopeNote}

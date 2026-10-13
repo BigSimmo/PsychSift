@@ -13,7 +13,7 @@ import type {
  */
 export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEvaluation {
   const level = input.serumLevelMmolL;
-  if (!Number.isFinite(input.age) || input.age <= 0 || !Number.isFinite(level)) {
+  if (!Number.isFinite(input.age) || input.age <= 0 || !Number.isFinite(level) || level < 0) {
     return {
       status: "invalid",
       isWithinTarget: false,
