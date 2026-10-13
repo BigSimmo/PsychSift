@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "57a836e8-9433-41ba-a984-d4a8a78b9042",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "602eba98-0475-4137-a794-70922d57e5d3",
+    "reason": "PR3509 rebuild: reject closure of #81A3YJ. JavaScript SQL tokenization does not change public.schema_drift_snapshot(); current supabase/schema.sql still strips literal -- and all whitespace with the legacy regex. Keep this issue open until a separately governed database repair and its required proof are complete. Source: https://github.com/BigSimmo/PsychSift/pull/3509 at db2d180360b3d3dc7ef805f6faae227b4e4b0e8b."
+  }
+}
