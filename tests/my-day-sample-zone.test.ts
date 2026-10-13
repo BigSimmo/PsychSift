@@ -26,9 +26,7 @@ describe("buildMyDaySample in a work zone far from Perth", () => {
     const sample = buildMyDaySample(today, NOW, SYDNEY);
     const first = sample.sources.teaching.ahead?.[0];
     expect(first && wall(first.startsAt, SYDNEY)).toBe("2026-10-04 14:00");
-    expect(sample.sources.teaching.sessions.map((session) => session.title)).toEqual([
-      "Registrar teaching: agitation",
-    ]);
+    expect(sample.sources.teaching.sessions.map((session) => session.title)).toEqual(["Registrar teaching: agitation"]);
   });
 
   it("moves the example roster onto the zone's today at the same wall times", () => {
