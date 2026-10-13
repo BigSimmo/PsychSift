@@ -90,6 +90,8 @@ export function DifferentialComparePickerControl({
         title="Choose diagnoses to compare"
         description="Add or replace diagnoses in this comparison queue."
         phone={picker.phone}
+        onDone={picker.close}
+        onReset={() => commit([])}
         id="differential-compare-picker"
         testId="differential-compare-picker"
       >
@@ -104,6 +106,7 @@ export function DifferentialComparePickerControl({
           onChoose={choose}
           onDone={picker.close}
           onReset={() => commit([])}
+          hideActions={picker.phone}
           searchPlaceholder="Search diagnosis"
           emptyHint="No matching diagnoses."
           filterLocally

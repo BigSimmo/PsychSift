@@ -33,7 +33,8 @@ import {
   resultFilterFacetGroup,
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
-import { Chip as DesignChip, type ChipStatusTone } from "@/components/ui/chip";
+import { AlphabetStrip, alphabetStripEntries, alphabetStripTargetClass } from "@/components/mode-kit/alphabet-strip";
+import { StatusTag, type StatusTagShape } from "@/components/mode-kit/status-tag";
 import { cn } from "@/components/ui-primitives";
 import { useResultSort } from "@/components/use-result-sort";
 import { compactBestUseTitle } from "@/lib/compact-best-use-title";
@@ -79,9 +80,24 @@ function compactText(value: string | null | undefined, maxLength: number, fallba
   return trimmed ? compactBestUseTitle(trimmed, maxLength) : fallback;
 }
 
-function chipTone(tone: ServiceStatusChip["tone"] | undefined | null): ChipStatusTone {
-  if (tone === "danger" || tone === "info" || tone === "warning" || tone === "success") return tone;
-  return "neutral";
+/**
+ * One status shape per chip, only where a shape means something (Clinical audit,
+ * 13 Oct 2026, item 8): crisis or urgent is a red triangle, an unverified
+ * availability is a dashed ring, an active service is a tick, and a closed,
+ * paused, planned or low-confidence service is an amber dot. Every other chip
+ * (acuity, setting, region) is a plain grey word. The chip words themselves are
+ * unchanged.
+ */
+function serviceChipShape(chip: ServiceStatusChip): StatusTagShape {
+  const label = chip.label?.toLowerCase() ?? "";
+  if (/\b(crisis|urgent|emergency)\b/.test(label)) return "urgent";
+  if (/unverified|not verified|unconfirmed/.test(label)) return "unrecorded";
+  if (/^active$/.test(label.trim())) return "done";
+  // A closed, paused, not-yet-open or low-confidence service gets the amber caution dot,
+  // matched by its own label: acuity and confidence tones share colours, so tone alone
+  // would give "High acuity" the crisis triangle.
+  if (/^(closed|superseded|temporarily unavailable|planned\b.*|low confidence)$/.test(label.trim())) return "soon";
+  return "none";
 }
 
 function serviceChipLabel(chip: ServiceStatusChip) {
@@ -89,6 +105,10 @@ function serviceChipLabel(chip: ServiceStatusChip) {
   return label.toLowerCase().includes("aboriginal and torres strait islander")
     ? "Aboriginal and Torres Strait Islander-specific"
     : label;
+}
+
+function serviceRowId(slug: string) {
+  return `service-row-${slug}`;
 }
 
 function ServiceCard({
@@ -133,10 +153,12 @@ function ServiceCard({
 
   return (
     <article
+      id={serviceRowId(service.slug)}
       data-testid={`service-search-result-${service.slug}`}
       className={cn(
         cardSurface,
         "relative p-3 sm:p-4",
+        alphabetStripTargetClass,
         // One selected encoding, shared with every other card. The old
         // `ring-1 …/35` was a fourth way of saying "this one" and put an alpha
         // on a token colour, so what it actually contrasted against depended on
@@ -147,7 +169,9 @@ function ServiceCard({
         // it doubles as the shortlist checkmark. Services also has no single
         // category axis — records carry facets — so there is nothing honest to
         // put there instead.
-        (selected || showBestFit) && cardSelected,
+        // Only the shortlist tints a card. "Best fit" is a grey word beside the
+        // title, so colour keeps meaning "you picked this" (item 8).
+        selected && cardSelected,
       )}
     >
       <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto]">
@@ -156,7 +180,7 @@ function ServiceCard({
             "grid h-9 w-9 place-items-center rounded-lg border text-sm font-extrabold",
             selected
               ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)]"
-              : "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+              : "border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-heading)]",
           )}
           aria-label={`Result ${index + 1}${selected ? ", shortlisted" : ""}`}
         >
@@ -177,11 +201,7 @@ function ServiceCard({
                 {service.title}
               </Link>
             </h2>
-            {showBestFit ? (
-              <span className="rounded-full bg-[color:var(--clinical-accent)] px-2 py-0.5 text-2xs font-bold text-[color:var(--clinical-accent-contrast)]">
-                Best fit
-              </span>
-            ) : null}
+            {showBestFit ? <StatusTag>Best fit</StatusTag> : null}
           </div>
           {/* A fixed 150-character cut clipped short records mid-word at every
               width ("Immedia…" on 13YARN, ledger #8RWKA0). Clamp by lines on a
@@ -193,18 +213,6 @@ function ServiceCard({
               "Open the record to review service fit and referral details.",
             )}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {(service.statusChips ?? []).slice(0, 3).map((chip) => (
-              <DesignChip
-                key={`${service.slug}-${chip.label}`}
-                size="compact"
-                appearance={{ kind: "status", tone: chipTone(chip.tone) }}
-                dot
-              >
-                {serviceChipLabel(chip)}
-              </DesignChip>
-            ))}
-          </div>
         </div>
         {/* Favourite, not shortlist: the bookmark persists to the account
             across sessions, while the shortlist below is this search's
@@ -260,16 +268,26 @@ function ServiceCard({
           no number anywhere. The card now leads with the phone number and a
           call button; "Review referral" and "Add to shortlist" sit behind
           "More" (the whole card still opens the record). */}
-      <div className="mt-3 flex items-stretch gap-2">
+      {/* Tags, then the call and "More" on the same row (item 8): the call is
+          a compact 48px phone button rather than a full-width blue bar, so
+          252 cards no longer read as a wall of colour. Same tel: action. */}
+      <div className="mt-2 flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5 pl-12 sm:pl-13">
+          {(service.statusChips ?? []).slice(0, 3).map((chip) => (
+            <StatusTag key={`${service.slug}-${chip.label}`} shape={serviceChipShape(chip)}>
+              {serviceChipLabel(chip)}
+            </StatusTag>
+          ))}
+        </div>
         {call ? (
           <a
             href={call.href}
             aria-label={`Call ${call.display}, ${service.title}`}
             data-testid={`service-call-${service.slug}`}
-            className="relative z-10 inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] px-3 text-sm font-bold text-[color:var(--clinical-accent-contrast)] hover:bg-[color:var(--clinical-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:flex-none"
+            className="relative z-10 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-2 rounded-lg px-3 text-sm font-bold border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--clinical-accent)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
             <Phone className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate tabular-nums">Call {call.display}</span>
+            <span className="tabular-nums">{call.display}</span>
           </a>
         ) : null}
         <button
@@ -278,7 +296,7 @@ function ServiceCard({
           aria-expanded={moreOpen}
           aria-controls={morePanelId}
           aria-label={`More actions for ${service.title}`}
-          className="relative z-10 ml-auto inline-flex min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          className="relative z-10 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           <span className="hidden sm:inline">More</span>
           <ChevronDown className={cn("h-4 w-4 transition-transform", moreOpen && "rotate-180")} aria-hidden />
@@ -521,6 +539,18 @@ export function ServicesNavigatorPage() {
   const displayedMatches = useMemo(
     () => sortResultItems(facetedMatches, sortValue, (service) => service.title),
     [facetedMatches, sortValue],
+  );
+  const alphabetEntries = useMemo(
+    () =>
+      // Only an A to Z sort gets letter jumps: a ranked list that happens to look alphabetical would mislead.
+      sortValue === "alpha"
+        ? alphabetStripEntries(
+            displayedMatches,
+            (service) => service.title,
+            (service) => serviceRowId(service.slug),
+          )
+        : [],
+    [displayedMatches, sortValue],
   );
   // Both scope segments show the current facet selection applied — "counts
   // on both" — differing only in whether the query/group scoping applies.
@@ -1082,7 +1112,7 @@ export function ServicesNavigatorPage() {
           {showComparison && selected.length >= 2 ? (
             <ComparisonPanel services={selected} onRemove={toggleSelected} onClose={() => setShowComparison(false)} />
           ) : null}
-          <div data-testid="service-search-results" className="grid gap-3">
+          <div id="service-search-results" data-testid="service-search-results" className="grid gap-3">
             {displayedMatches.map((service, index) => (
               <ServiceCard
                 key={service.slug}
@@ -1100,6 +1130,9 @@ export function ServicesNavigatorPage() {
               />
             ))}
           </div>
+          {/* Phone A to Z strip (audit item 13): drawn only when the list is
+              in A to Z order, never over a ranked list. */}
+          <AlphabetStrip listId="service-search-results" testId="services-alphabet-strip" entries={alphabetEntries} />
           {query ? <UniversalSearchAlsoMatches modeId="services" query={query} /> : null}
         </>
       )}
