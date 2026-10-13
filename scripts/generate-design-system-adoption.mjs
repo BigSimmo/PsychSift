@@ -15,9 +15,6 @@ const MANIFEST_PATH = "docs/design-system/adoption-manifest.json";
 const CONFIG_PATH = ".design-sync/config.json";
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx"]);
 const TEXT_CACHE = new Map();
-const SOURCE_FILE_CACHE = new Map();
-const IMPORT_FACT_CACHE = new Map();
-const SOURCE_IMPORT_CACHE = new Map();
 const TRACKED_FILE_CACHE = new Map();
 const CANONICAL_GLOBAL_SHELL_ROOT = Object.freeze({ file: "src/app/layout.tsx", element: "html" });
 const PROOF_APPLICABILITY = new Set(["required", "not-applicable"]);
@@ -83,6 +80,20 @@ const CANONICAL_NON_VISUAL_ROUTES = Object.freeze({
     kind: "next-redirect-only",
   },
 });
+const PNG_ALLOWED_BIT_DEPTHS = new Map([
+  [0, new Set([1, 2, 4, 8, 16])],
+  [2, new Set([8, 16])],
+  [3, new Set([1, 2, 4, 8])],
+  [4, new Set([8, 16])],
+  [6, new Set([8, 16])],
+]);
+const PNG_CHANNELS_BY_COLOUR_TYPE = new Map([
+  [0, 1],
+  [2, 3],
+  [3, 1],
+  [4, 2],
+  [6, 4],
+]);
 
 const toPosix = (value) => value.split(path.sep).join("/");
 const read = (relativePath, root = ROOT) => {
@@ -112,34 +123,30 @@ function crc32(buffer) {
   return (value ^ 0xffffffff) >>> 0;
 }
 
-export function inspectPng(buffer) {
-  const failures = [];
-  if (!Buffer.isBuffer(buffer) || buffer.length < PNG_SIGNATURE.length || !buffer.subarray(0, 8).equals(PNG_SIGNATURE))
-    return { valid: false, width: 0, height: 0, failures: ["must contain a PNG file signature"] };
+function inspectPngHeader(data, failures) {
+  const width = data.readUInt32BE(0);
+  const height = data.readUInt32BE(4);
+  const bitDepth = data[8];
+  const colourType = data[9];
+  const interlace = data[12];
+  if (width < 16 || height < 16 || width > 20_000 || height > 20_000 || width * height > 100_000_000)
+    failures.push("PNG dimensions must be between 16 and 20000 pixels with a sane total area");
+  if (!PNG_ALLOWED_BIT_DEPTHS.get(colourType)?.has(bitDepth))
+    failures.push("PNG colour type and bit depth are invalid");
+  if (data[10] !== 0 || data[11] !== 0) failures.push("PNG compression and filter methods must be standard");
+  if (interlace !== 0) failures.push("PNG visual baselines must be non-interlaced");
+  return { width, height, bitDepth, colourType };
+}
 
+function inspectPngStructure(buffer, failures) {
   let offset = PNG_SIGNATURE.length;
   let width = 0;
   let height = 0;
   let bitDepth = 0;
   let colourType = -1;
-  let interlace = -1;
   let sawIhdr = false;
   let sawIend = false;
   const idatChunks = [];
-  const allowedBitDepths = new Map([
-    [0, new Set([1, 2, 4, 8, 16])],
-    [2, new Set([8, 16])],
-    [3, new Set([1, 2, 4, 8])],
-    [4, new Set([8, 16])],
-    [6, new Set([8, 16])],
-  ]);
-  const channelsByColourType = new Map([
-    [0, 1],
-    [2, 3],
-    [3, 1],
-    [4, 2],
-    [6, 4],
-  ]);
 
   while (offset < buffer.length) {
     if (offset + 12 > buffer.length) {
@@ -165,17 +172,7 @@ export function inspectPng(buffer) {
       if (type !== "IHDR" || length !== 13) failures.push("PNG must begin with a 13-byte IHDR chunk");
       else {
         sawIhdr = true;
-        width = data.readUInt32BE(0);
-        height = data.readUInt32BE(4);
-        bitDepth = data[8];
-        colourType = data[9];
-        interlace = data[12];
-        if (width < 16 || height < 16 || width > 20_000 || height > 20_000 || width * height > 100_000_000)
-          failures.push("PNG dimensions must be between 16 and 20000 pixels with a sane total area");
-        if (!allowedBitDepths.get(colourType)?.has(bitDepth))
-          failures.push("PNG colour type and bit depth are invalid");
-        if (data[10] !== 0 || data[11] !== 0) failures.push("PNG compression and filter methods must be standard");
-        if (interlace !== 0) failures.push("PNG visual baselines must be non-interlaced");
+        ({ width, height, bitDepth, colourType } = inspectPngHeader(data, failures));
       }
     } else if (type === "IHDR") {
       failures.push("PNG contains more than one IHDR chunk");
@@ -191,32 +188,43 @@ export function inspectPng(buffer) {
     offset = chunkEnd;
   }
 
-  if (!sawIhdr) failures.push("PNG is missing IHDR");
-  if (idatChunks.length === 0) failures.push("PNG is missing image data");
-  if (!sawIend) failures.push("PNG is missing IEND");
-  if (sawIend && offset !== buffer.length) failures.push("PNG contains trailing bytes after IEND");
+  return { offset, width, height, bitDepth, colourType, sawIhdr, sawIend, idatChunks };
+}
 
-  if (failures.length === 0) {
-    try {
-      const channels = channelsByColourType.get(colourType);
-      const rowBytes = Math.ceil((width * channels * bitDepth) / 8);
-      const expectedBytes = (rowBytes + 1) * height;
-      const decoded = inflateSync(Buffer.concat(idatChunks), { maxOutputLength: expectedBytes + 1 });
-      if (decoded.length !== expectedBytes) failures.push("PNG decoded byte length does not match its dimensions");
-      else {
-        for (let row = 0; row < height; row += 1) {
-          if (decoded[row * (rowBytes + 1)] > 4) {
-            failures.push("PNG contains an invalid row filter");
-            break;
-          }
+function validateDecodedPng({ width, height, bitDepth, colourType, idatChunks }, failures) {
+  try {
+    const channels = PNG_CHANNELS_BY_COLOUR_TYPE.get(colourType);
+    const rowBytes = Math.ceil((width * channels * bitDepth) / 8);
+    const expectedBytes = (rowBytes + 1) * height;
+    const decoded = inflateSync(Buffer.concat(idatChunks), { maxOutputLength: expectedBytes + 1 });
+    if (decoded.length !== expectedBytes) failures.push("PNG decoded byte length does not match its dimensions");
+    else {
+      for (let row = 0; row < height; row += 1) {
+        if (decoded[row * (rowBytes + 1)] > 4) {
+          failures.push("PNG contains an invalid row filter");
+          break;
         }
       }
-    } catch {
-      failures.push("PNG image data cannot be decoded");
     }
+  } catch {
+    failures.push("PNG image data cannot be decoded");
   }
+}
 
-  return { valid: failures.length === 0, width, height, failures };
+export function inspectPng(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < PNG_SIGNATURE.length || !buffer.subarray(0, 8).equals(PNG_SIGNATURE))
+    return { valid: false, width: 0, height: 0, failures: ["must contain a PNG file signature"] };
+
+  const failures = [];
+  const inspection = inspectPngStructure(buffer, failures);
+  if (!inspection.sawIhdr) failures.push("PNG is missing IHDR");
+  if (inspection.idatChunks.length === 0) failures.push("PNG is missing image data");
+  if (!inspection.sawIend) failures.push("PNG is missing IEND");
+  if (inspection.sawIend && inspection.offset !== buffer.length)
+    failures.push("PNG contains trailing bytes after IEND");
+  if (failures.length === 0) validateDecodedPng(inspection, failures);
+
+  return { valid: failures.length === 0, width: inspection.width, height: inspection.height, failures };
 }
 
 export function validateAdoptionArtifactPath(
@@ -392,47 +400,8 @@ function gitSucceeds(root, args) {
   }
 }
 
-function validateCandidateSourceBinding(candidateSourceHead, { root, policy }) {
+function validateAwaitingBaselineBinding(candidateAwaiting, currentAwaiting, canonicalIds) {
   const failures = [];
-  if (!/^[0-9a-f]{40}$/.test(candidateSourceHead ?? "")) {
-    return ["visual baseline provenance candidateSourceHead must be a full Git SHA"];
-  }
-  const currentHead = gitOutput(root, ["rev-parse", "--verify", "HEAD^{commit}"])?.trim();
-  if (!currentHead) return ["visual baseline source binding requires a Git repository with a current HEAD"];
-  if (!gitSucceeds(root, ["cat-file", "-e", `${candidateSourceHead}^{commit}`])) {
-    return ["visual baseline provenance candidateSourceHead must identify an existing commit"];
-  }
-  if (!gitSucceeds(root, ["merge-base", "--is-ancestor", candidateSourceHead, currentHead])) {
-    failures.push("visual baseline provenance candidateSourceHead must be an ancestor of current HEAD");
-  }
-
-  const visualSuiteFile = policy.sourceBinding.visualSuiteFile;
-  const candidateSuite = gitOutput(root, ["show", `${candidateSourceHead}:${visualSuiteFile}`]);
-  const currentSuite = exists(visualSuiteFile, root) ? fs.readFileSync(path.join(root, visualSuiteFile), "utf8") : null;
-  const canonicalIds = policy.canonicalCandidates.map((candidate) => candidate.id).sort();
-  const candidateIds = candidateSuite === null ? null : visualBaselineTargetIds(candidateSuite, visualSuiteFile);
-  const currentIds = currentSuite === null ? null : visualBaselineTargetIds(currentSuite, visualSuiteFile);
-  if (JSON.stringify(candidateIds) !== JSON.stringify(canonicalIds))
-    failures.push("candidateSourceHead visual suite targets must exactly match the canonical six ids");
-  if (JSON.stringify(currentIds) !== JSON.stringify(canonicalIds))
-    failures.push("current visual suite targets must exactly match the canonical six ids");
-
-  const candidateAwaiting = candidateSuite === null ? null : visualBaselineAwaitingIds(candidateSuite, visualSuiteFile);
-  const currentAwaiting = currentSuite === null ? null : visualBaselineAwaitingIds(currentSuite, visualSuiteFile);
-  // Two legitimate shapes, and the second is what makes updating the design possible.
-  //
-  //   FIRST ADOPTION — the capture head still declares the canonical six as awaiting,
-  //   and the adopting commit empties that list.
-  //   REFRESH — the list is already empty at both ends. Deliberately re-shooting a
-  //   surface produces exactly this, and it is the ORDINARY case once baselines
-  //   exist: the pixels move, the goldens are replaced, and the suite itself does
-  //   not change at all.
-  //
-  // Requiring the six-to-empty transition alone made this binding satisfiable
-  // exactly once. After the first adoption no commit declares the six again, so no
-  // capture head could ever qualify and every later refresh was unprovable — the
-  // goldens would go red on the first intentional design change with no supported
-  // way to re-adopt them.
   const candidateAwaitingCanonical =
     candidateAwaiting?.valid && JSON.stringify(candidateAwaiting.ids) === JSON.stringify(canonicalIds);
   const candidateAwaitingEmpty = candidateAwaiting?.valid && candidateAwaiting.ids.length === 0;
@@ -454,7 +423,26 @@ function validateCandidateSourceBinding(candidateSourceHead, { root, policy }) {
   } else if (!currentAwaitingEmpty) {
     failures.push("current AWAITING_BASELINE must be empty after committing all six baselines");
   }
+  return { failures, candidateAwaitingAdoptable, currentAwaitingEmpty };
+}
 
+function inspectVisualSuiteSourceBinding(candidateSourceHead, { root, policy }) {
+  const failures = [];
+  const visualSuiteFile = policy.sourceBinding.visualSuiteFile;
+  const candidateSuite = gitOutput(root, ["show", `${candidateSourceHead}:${visualSuiteFile}`]);
+  const currentSuite = exists(visualSuiteFile, root) ? fs.readFileSync(path.join(root, visualSuiteFile), "utf8") : null;
+  const canonicalIds = policy.canonicalCandidates.map((candidate) => candidate.id).sort();
+  const candidateIds = candidateSuite === null ? null : visualBaselineTargetIds(candidateSuite, visualSuiteFile);
+  const currentIds = currentSuite === null ? null : visualBaselineTargetIds(currentSuite, visualSuiteFile);
+  if (JSON.stringify(candidateIds) !== JSON.stringify(canonicalIds))
+    failures.push("candidateSourceHead visual suite targets must exactly match the canonical six ids");
+  if (JSON.stringify(currentIds) !== JSON.stringify(canonicalIds))
+    failures.push("current visual suite targets must exactly match the canonical six ids");
+
+  const candidateAwaiting = candidateSuite === null ? null : visualBaselineAwaitingIds(candidateSuite, visualSuiteFile);
+  const currentAwaiting = currentSuite === null ? null : visualBaselineAwaitingIds(currentSuite, visualSuiteFile);
+  const awaitingBinding = validateAwaitingBaselineBinding(candidateAwaiting, currentAwaiting, canonicalIds);
+  failures.push(...awaitingBinding.failures);
   const normalizedCandidateSuite =
     candidateSuite === null || candidateAwaiting === null
       ? null
@@ -467,13 +455,20 @@ function validateCandidateSourceBinding(candidateSourceHead, { root, policy }) {
   // exact for a refresh (where the suite is byte-identical) as well as for the
   // first adoption (where only those values moved).
   const visualSuiteOnlyChangedAwaiting =
-    candidateAwaitingAdoptable &&
-    currentAwaitingEmpty &&
+    awaitingBinding.candidateAwaitingAdoptable &&
+    awaitingBinding.currentAwaitingEmpty &&
     normalizedCandidateSuite !== null &&
     normalizedCandidateSuite === normalizedCurrentSuite;
   if (!visualSuiteOnlyChangedAwaiting)
     failures.push("visual suite changed after candidate capture beyond the AWAITING_BASELINE declaration");
+  return { failures, visualSuiteFile, visualSuiteOnlyChangedAwaiting };
+}
 
+function validatePostCandidateRepositoryChanges(
+  candidateSourceHead,
+  { root, policy, visualSuiteFile, visualSuiteOnlyChangedAwaiting },
+) {
+  const failures = [];
   const changedOutput = gitOutput(root, [
     "diff",
     "--no-ext-diff",
@@ -500,6 +495,47 @@ function validateCandidateSourceBinding(candidateSourceHead, { root, policy }) {
     if (!allowedPaths.has(changedPath))
       failures.push(`post-candidate repository change is not baseline-only: ${changedPath}`);
   }
+  return failures;
+}
+
+function validateCandidateSourceBinding(candidateSourceHead, { root, policy }) {
+  const failures = [];
+  if (!/^[0-9a-f]{40}$/.test(candidateSourceHead ?? "")) {
+    return ["visual baseline provenance candidateSourceHead must be a full Git SHA"];
+  }
+  const currentHead = gitOutput(root, ["rev-parse", "--verify", "HEAD^{commit}"])?.trim();
+  if (!currentHead) return ["visual baseline source binding requires a Git repository with a current HEAD"];
+  if (!gitSucceeds(root, ["cat-file", "-e", `${candidateSourceHead}^{commit}`])) {
+    return ["visual baseline provenance candidateSourceHead must identify an existing commit"];
+  }
+  if (!gitSucceeds(root, ["merge-base", "--is-ancestor", candidateSourceHead, currentHead])) {
+    failures.push("visual baseline provenance candidateSourceHead must be an ancestor of current HEAD");
+  }
+
+  // Two legitimate shapes, and the second is what makes updating the design possible.
+  //
+  //   FIRST ADOPTION — the capture head still declares the canonical six as awaiting,
+  //   and the adopting commit empties that list.
+  //   REFRESH — the list is already empty at both ends. Deliberately re-shooting a
+  //   surface produces exactly this, and it is the ORDINARY case once baselines
+  //   exist: the pixels move, the goldens are replaced, and the suite itself does
+  //   not change at all.
+  //
+  // Requiring the six-to-empty transition alone made this binding satisfiable
+  // exactly once. After the first adoption no commit declares the six again, so no
+  // capture head could ever qualify and every later refresh was unprovable — the
+  // goldens would go red on the first intentional design change with no supported
+  // way to re-adopt them.
+  const visualSuiteBinding = inspectVisualSuiteSourceBinding(candidateSourceHead, { root, policy });
+  failures.push(...visualSuiteBinding.failures);
+  failures.push(
+    ...validatePostCandidateRepositoryChanges(candidateSourceHead, {
+      root,
+      policy,
+      visualSuiteFile: visualSuiteBinding.visualSuiteFile,
+      visualSuiteOnlyChangedAwaiting: visualSuiteBinding.visualSuiteOnlyChangedAwaiting,
+    }),
+  );
   return failures;
 }
 
@@ -603,41 +639,8 @@ export function humanReviewerAttributionFailure(reviewedBy) {
   return displayNameFailure(value);
 }
 
-export function validateLinuxVisualBaselineSet(
-  baselinePaths,
-  { root = ROOT, trackedFiles = trackedFilesForRoot(root) } = {},
-) {
-  const declaredPaths = [...new Set(baselinePaths)].sort();
-  if (declaredPaths.length === 0) return [];
+function validateVisualBaselineReview(provenance) {
   const failures = [];
-  const provenancePath = CANONICAL_VISUAL_BASELINE_POLICY.provenanceFile;
-  for (const reason of validateAdoptionArtifactPath(provenancePath, {
-    root,
-    trackedFiles,
-    kind: "baseline-provenance",
-  }))
-    failures.push(`visual baseline provenance ${provenancePath}: ${reason}`);
-  if (!exists(provenancePath, root) || !fs.statSync(path.join(root, provenancePath)).isFile()) return failures;
-
-  let provenance;
-  try {
-    provenance = JSON.parse(read(provenancePath, root));
-  } catch {
-    failures.push("visual baseline provenance must contain valid JSON");
-    return failures;
-  }
-  if (provenance.schemaVersion !== CANONICAL_VISUAL_BASELINE_POLICY.provenanceSchemaVersion)
-    failures.push("visual baseline provenance has an unsupported schema version");
-  if (provenance.platform !== CANONICAL_VISUAL_BASELINE_POLICY.requiredPlatform)
-    failures.push("visual baseline provenance platform must be linux");
-  if (provenance.runnerImage !== CANONICAL_VISUAL_BASELINE_POLICY.requiredRunnerImage)
-    failures.push("visual baseline provenance runnerImage must be ubuntu-24.04");
-  failures.push(
-    ...validateCandidateSourceBinding(provenance.candidateSourceHead, {
-      root,
-      policy: CANONICAL_VISUAL_BASELINE_POLICY,
-    }),
-  );
   if (
     provenance.review?.status !== CANONICAL_VISUAL_BASELINE_POLICY.requiredReviewStatus ||
     provenance.review?.reviewerType !== "human" ||
@@ -660,6 +663,11 @@ export function validateLinuxVisualBaselineSet(
       : humanReviewerAttributionFailure(provenance.review?.reviewedBy);
     if (attributionFailure) failures.push(attributionFailure);
   }
+  return failures;
+}
+
+function validateVisualBaselineSource(provenance) {
+  const failures = [];
   const runId = provenance.source?.runId;
   if (
     provenance.source?.kind !== "hosted-ci-artifact" ||
@@ -670,7 +678,30 @@ export function validateLinuxVisualBaselineSet(
   ) {
     failures.push("visual baseline provenance requires a matching hosted-CI artifact source");
   }
+  return failures;
+}
 
+function validateVisualBaselineMetadata(provenance, { root }) {
+  const failures = [];
+  if (provenance.schemaVersion !== CANONICAL_VISUAL_BASELINE_POLICY.provenanceSchemaVersion)
+    failures.push("visual baseline provenance has an unsupported schema version");
+  if (provenance.platform !== CANONICAL_VISUAL_BASELINE_POLICY.requiredPlatform)
+    failures.push("visual baseline provenance platform must be linux");
+  if (provenance.runnerImage !== CANONICAL_VISUAL_BASELINE_POLICY.requiredRunnerImage)
+    failures.push("visual baseline provenance runnerImage must be ubuntu-24.04");
+  failures.push(
+    ...validateCandidateSourceBinding(provenance.candidateSourceHead, {
+      root,
+      policy: CANONICAL_VISUAL_BASELINE_POLICY,
+    }),
+  );
+  failures.push(...validateVisualBaselineReview(provenance));
+  failures.push(...validateVisualBaselineSource(provenance));
+  return failures;
+}
+
+function validateVisualBaselineCandidates(provenance, { root, trackedFiles }) {
+  const failures = [];
   const candidates = Array.isArray(provenance.candidates) ? provenance.candidates : [];
   if (candidates.length !== CANONICAL_VISUAL_BASELINE_POLICY.requiredCandidateCount)
     failures.push(
@@ -713,13 +744,47 @@ export function validateLinuxVisualBaselineSet(
     if (candidate.width !== inspected.width || candidate.height !== inspected.height)
       failures.push(`visual baseline provenance candidate ${candidate.path} dimensions do not match the PNG`);
   }
+  return { failures, candidatePaths };
+}
 
+function validateVisualBaselinePathSets(declaredPaths, candidatePaths) {
+  const failures = [];
   const sortedCandidatePaths = [...candidatePaths].sort();
   const canonicalPaths = CANONICAL_VISUAL_BASELINE_POLICY.canonicalCandidates.map((candidate) => candidate.path).sort();
   if (JSON.stringify(declaredPaths) !== JSON.stringify(canonicalPaths))
     failures.push("committed surface baselines must exactly match the canonical six Linux targets");
   if (JSON.stringify(sortedCandidatePaths) !== JSON.stringify(declaredPaths))
     failures.push("committed surface baselines must exactly match the six reviewed Linux provenance candidates");
+  return failures;
+}
+
+export function validateLinuxVisualBaselineSet(
+  baselinePaths,
+  { root = ROOT, trackedFiles = trackedFilesForRoot(root) } = {},
+) {
+  const declaredPaths = [...new Set(baselinePaths)].sort();
+  if (declaredPaths.length === 0) return [];
+  const failures = [];
+  const provenancePath = CANONICAL_VISUAL_BASELINE_POLICY.provenanceFile;
+  for (const reason of validateAdoptionArtifactPath(provenancePath, {
+    root,
+    trackedFiles,
+    kind: "baseline-provenance",
+  }))
+    failures.push(`visual baseline provenance ${provenancePath}: ${reason}`);
+  if (!exists(provenancePath, root) || !fs.statSync(path.join(root, provenancePath)).isFile()) return failures;
+
+  let provenance;
+  try {
+    provenance = JSON.parse(read(provenancePath, root));
+  } catch {
+    failures.push("visual baseline provenance must contain valid JSON");
+    return failures;
+  }
+  failures.push(...validateVisualBaselineMetadata(provenance, { root }));
+  const candidateValidation = validateVisualBaselineCandidates(provenance, { root, trackedFiles });
+  failures.push(...candidateValidation.failures);
+  failures.push(...validateVisualBaselinePathSets(declaredPaths, candidateValidation.candidatePaths));
   return failures;
 }
 
@@ -735,7 +800,11 @@ function walk(directory, root = ROOT) {
 }
 
 export function productionPageRoutes(root = ROOT) {
-  return walk(path.join(root, "src", "app"), root)
+  return pageRoutesFromFiles(walk(path.join(root, "src", "app"), root));
+}
+
+function pageRoutesFromFiles(files) {
+  return files
     .filter(
       (relativePath) =>
         /\/page\.(?:ts|tsx)$/.test(relativePath) &&
@@ -746,7 +815,11 @@ export function productionPageRoutes(root = ROOT) {
 }
 
 export function productionNextUiEntries(root = ROOT) {
-  return walk(path.join(root, "src", "app"), root)
+  return nextUiEntriesFromFiles(walk(path.join(root, "src", "app"), root));
+}
+
+function nextUiEntriesFromFiles(files) {
+  return files
     .filter(
       (relativePath) =>
         !relativePath.includes("/api/") &&
@@ -854,20 +927,43 @@ export function analyzeNextRedirectOnlyRoute(relativePath, sourceText) {
   };
 }
 
-function sourceFile(relativePath, root = ROOT) {
-  const key = `${root}:${relativePath}`;
-  if (!SOURCE_FILE_CACHE.has(key))
-    SOURCE_FILE_CACHE.set(
-      key,
-      ts.createSourceFile(relativePath, read(relativePath, root), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
-    );
-  return SOURCE_FILE_CACHE.get(key);
+function createSourceScan(root, sourceMap = {}) {
+  const texts = new Map();
+  const componentsBySource = new Map();
+  for (const [component, componentSource] of Object.entries(sourceMap)) {
+    for (const source of new Set([componentSource, componentSource.replace(/\.tsx$/, ".ts")])) {
+      const components = componentsBySource.get(source) ?? [];
+      components.push(component);
+      componentsBySource.set(source, components);
+    }
+  }
+  return {
+    root,
+    componentsBySource,
+    sourceFiles: new Map(),
+    importFacts: new Map(),
+    sourceImports: new Map(),
+    importResolutions: new Map(),
+    read(relativePath) {
+      if (!texts.has(relativePath)) texts.set(relativePath, fs.readFileSync(path.join(root, relativePath), "utf8"));
+      return texts.get(relativePath);
+    },
+  };
 }
 
-function exportedNames(relativePath, root = ROOT, seen = new Set()) {
-  if (!exists(relativePath, root) || seen.has(relativePath)) return [];
+function sourceFile(relativePath, scan) {
+  if (!scan.sourceFiles.has(relativePath))
+    scan.sourceFiles.set(
+      relativePath,
+      ts.createSourceFile(relativePath, scan.read(relativePath), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),
+    );
+  return scan.sourceFiles.get(relativePath);
+}
+
+function exportedNames(relativePath, scan, seen = new Set()) {
+  if (!exists(relativePath, scan.root) || seen.has(relativePath)) return [];
   seen.add(relativePath);
-  const source = sourceFile(relativePath, root);
+  const source = sourceFile(relativePath, scan);
   const names = new Set();
   for (const statement of source.statements) {
     const modifiers = ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined;
@@ -882,14 +978,16 @@ function exportedNames(relativePath, root = ROOT, seen = new Set()) {
     // Barrel `export * from "./module"` (DS-P2-21). Follow one hop so
     // componentSrcMap can keep pointing at `ui-primitives.tsx`.
     if (!statement.exportClause && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier)) {
-      const resolved = resolveImport(relativePath, statement.moduleSpecifier.text, root);
-      if (resolved) for (const name of exportedNames(resolved, root, seen)) names.add(name);
+      const resolved = resolveImport(relativePath, statement.moduleSpecifier.text, scan);
+      if (resolved) for (const name of exportedNames(resolved, scan, seen)) names.add(name);
     }
   }
   return [...names].sort();
 }
 
-function resolveImport(importer, specifier, root = ROOT) {
+function resolveImport(importer, specifier, scan) {
+  const key = `${importer}:${specifier}`;
+  if (scan.importResolutions.has(key)) return scan.importResolutions.get(key);
   let candidate;
   if (specifier.startsWith("@/")) candidate = `src/${specifier.slice(2)}`;
   else if (specifier.startsWith(".")) candidate = toPosix(path.normalize(path.join(path.dirname(importer), specifier)));
@@ -897,37 +995,36 @@ function resolveImport(importer, specifier, root = ROOT) {
   const candidates = path.extname(candidate)
     ? [candidate]
     : [`${candidate}.ts`, `${candidate}.tsx`, `${candidate}/index.ts`, `${candidate}/index.tsx`];
-  return candidates.find((entry) => exists(entry, root)) ?? (path.extname(candidate) ? candidate : `${candidate}.tsx`);
+  const resolved =
+    candidates.find((entry) => exists(entry, scan.root)) ?? (path.extname(candidate) ? candidate : `${candidate}.tsx`);
+  scan.importResolutions.set(key, resolved);
+  return resolved;
 }
 
-function importFacts(relativePath, sourceMap, root = ROOT) {
-  if (!exists(relativePath, root)) return [];
-  const cacheKey = `${root}:${relativePath}`;
-  if (IMPORT_FACT_CACHE.has(cacheKey)) return IMPORT_FACT_CACHE.get(cacheKey);
-  const source = sourceFile(relativePath, root);
+function importFacts(relativePath, scan) {
+  if (!exists(relativePath, scan.root)) return [];
+  if (scan.importFacts.has(relativePath)) return scan.importFacts.get(relativePath);
+  const source = sourceFile(relativePath, scan);
   const facts = [];
   for (const statement of source.statements) {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue;
-    const resolved = resolveImport(relativePath, statement.moduleSpecifier.text, root);
+    const resolved = resolveImport(relativePath, statement.moduleSpecifier.text, scan);
     const imported =
       statement.importClause?.namedBindings && ts.isNamedImports(statement.importClause.namedBindings)
         ? statement.importClause.namedBindings.elements.map((element) => element.name.text).sort()
         : [];
-    for (const [component, componentSource] of Object.entries(sourceMap)) {
-      const matchesSource = resolved === componentSource || resolved === componentSource.replace(/\.tsx$/, ".ts");
-      if (matchesSource && (imported.length === 0 || imported.includes(component))) facts.push(component);
-    }
+    for (const component of scan.componentsBySource.get(resolved) ?? [])
+      if (imported.length === 0 || imported.includes(component)) facts.push(component);
   }
   const result = [...new Set(facts)].sort();
-  IMPORT_FACT_CACHE.set(cacheKey, result);
+  scan.importFacts.set(relativePath, result);
   return result;
 }
 
-function sourceImports(relativePath, root = ROOT) {
-  if (!exists(relativePath, root)) return [];
-  const cacheKey = `${root}:${relativePath}`;
-  if (SOURCE_IMPORT_CACHE.has(cacheKey)) return SOURCE_IMPORT_CACHE.get(cacheKey);
-  const source = sourceFile(relativePath, root);
+function sourceImports(relativePath, scan) {
+  if (!exists(relativePath, scan.root)) return [];
+  if (scan.sourceImports.has(relativePath)) return scan.sourceImports.get(relativePath);
+  const source = sourceFile(relativePath, scan);
   const specifiers = [];
   function collect(node) {
     if (
@@ -951,22 +1048,26 @@ function sourceImports(relativePath, root = ROOT) {
   const result = [
     ...new Set(
       specifiers
-        .map((specifier) => resolveImport(relativePath, specifier, root))
-        .filter((resolved) => resolved && exists(resolved, root)),
+        .map((specifier) => resolveImport(relativePath, specifier, scan))
+        .filter((resolved) => resolved && exists(resolved, scan.root)),
     ),
   ].sort();
-  SOURCE_IMPORT_CACHE.set(cacheKey, result);
+  scan.sourceImports.set(relativePath, result);
   return result;
 }
 
 export function reachableSourceFiles(entryFiles, { root = ROOT } = {}) {
+  return reachableFilesForScan(entryFiles, createSourceScan(root));
+}
+
+function reachableFilesForScan(entryFiles, scan) {
   const reachable = new Set();
-  const pending = [...new Set(entryFiles)].filter((file) => exists(file, root));
+  const pending = [...new Set(entryFiles)].filter((file) => exists(file, scan.root));
   while (pending.length) {
     const file = pending.pop();
     if (reachable.has(file)) continue;
     reachable.add(file);
-    for (const dependency of sourceImports(file, root)) if (!reachable.has(dependency)) pending.push(dependency);
+    for (const dependency of sourceImports(file, scan)) if (!reachable.has(dependency)) pending.push(dependency);
   }
   return reachable;
 }
@@ -1051,6 +1152,10 @@ function combineClassPatterns(groups, separator, constructed = false) {
  */
 export function analyzeCkbV2ClassUsage(relativePath, sourceText, { elementName = null } = {}) {
   const source = ts.createSourceFile(relativePath, sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  return analyzeCkbV2Source(source, elementName);
+}
+
+function analyzeCkbV2Source(source, elementName = null) {
   const bindings = [];
   const classExpressions = [];
   const classSpreadExpressions = [];
@@ -1199,18 +1304,7 @@ export function analyzeCkbV2ClassUsage(relativePath, sourceText, { elementName =
     return staticText.includes("ckb") && staticText.includes("v2");
   }
 
-  function patternsFor(expression, seen = new Set()) {
-    const current = unwrapExpression(expression);
-    if (ts.isStringLiteralLike(current)) return [{ value: current.text, constructed: false }];
-    if (ts.isNumericLiteral(current)) return [{ value: current.text, constructed: false }];
-    if (current.kind === ts.SyntaxKind.TrueKeyword || current.kind === ts.SyntaxKind.FalseKeyword)
-      return [{ value: "", constructed: false }];
-    if (ts.isIdentifier(current)) {
-      const binding = resolveBinding(current);
-      if (!binding?.declaration.initializer || seen.has(binding.declaration))
-        return [{ value: UNKNOWN_CLASS_FRAGMENT, constructed: false }];
-      return patternsFor(binding.declaration.initializer, new Set(seen).add(binding.declaration));
-    }
+  function compositeClassPatterns(current, seen) {
     if (ts.isTemplateExpression(current)) {
       let combined = [{ value: current.head.text, constructed: true }];
       for (const span of current.templateSpans) {
@@ -1242,74 +1336,6 @@ export function analyzeCkbV2ClassUsage(relativePath, sourceText, { elementName =
         ].slice(0, MAX_CLASS_PATTERNS);
       }
     }
-    if (ts.isCallExpression(current)) {
-      if (ts.isPropertyAccessExpression(current.expression) && current.expression.name.text === "replace") {
-        const receivers = patternsFor(current.expression.expression, seen);
-        const searches = current.arguments[0]
-          ? patternsFor(current.arguments[0], seen)
-          : [{ value: UNKNOWN_CLASS_FRAGMENT, constructed: false }];
-        const replacements = current.arguments[1]
-          ? patternsFor(current.arguments[1], seen)
-          : [{ value: "undefined", constructed: false }];
-        const results = [];
-        for (const receiver of receivers) {
-          for (const search of searches) {
-            for (const replacement of replacements) {
-              const resolvable = ![receiver.value, search.value, replacement.value].some((value) =>
-                value.includes(UNKNOWN_CLASS_FRAGMENT),
-              );
-              results.push({
-                value: resolvable
-                  ? receiver.value.replace(search.value, replacement.value)
-                  : unresolvedCallHasCkbV2Evidence(current)
-                    ? "ckb-v2"
-                    : UNKNOWN_CLASS_FRAGMENT,
-                constructed: true,
-              });
-              if (results.length >= MAX_CLASS_PATTERNS) return results;
-            }
-          }
-        }
-        return results;
-      }
-      if (ts.isPropertyAccessExpression(current.expression) && current.expression.name.text === "join") {
-        const elements = arrayElements(current.expression.expression, seen);
-        if (elements) {
-          const separators = current.arguments[0]
-            ? patternsFor(current.arguments[0], seen)
-            : [{ value: ",", constructed: false }];
-          const results = [];
-          for (const separator of separators) {
-            results.push(
-              ...combineClassPatterns(
-                elements.map((element) => patternsFor(element, seen)),
-                separator.value,
-                true,
-              ),
-            );
-            if (results.length >= MAX_CLASS_PATTERNS) break;
-          }
-          return results.slice(0, MAX_CLASS_PATTERNS);
-        }
-      }
-      const helperName = ts.isIdentifier(current.expression)
-        ? current.expression.text
-        : ts.isPropertyAccessExpression(current.expression)
-          ? current.expression.name.text
-          : "";
-      if (CLASS_NAME_HELPERS.has(helperName)) {
-        return combineClassPatterns(
-          current.arguments.map((argument) => patternsFor(argument, seen)),
-          " ",
-        );
-      }
-      return [
-        {
-          value: unresolvedCallHasCkbV2Evidence(current) ? "ckb-v2" : UNKNOWN_CLASS_FRAGMENT,
-          constructed: unresolvedCallHasCkbV2Evidence(current),
-        },
-      ];
-    }
     if (ts.isArrayLiteralExpression(current)) {
       return combineClassPatterns(
         current.elements.map((element) => patternsFor(element, seen)),
@@ -1328,6 +1354,97 @@ export function analyzeCkbV2ClassUsage(relativePath, sourceText, { elementName =
       });
       return combineClassPatterns(classKeys, " ");
     }
+    return null;
+  }
+
+  function replacementCallPatterns(call, seen) {
+    const receivers = patternsFor(call.expression.expression, seen);
+    const searches = call.arguments[0]
+      ? patternsFor(call.arguments[0], seen)
+      : [{ value: UNKNOWN_CLASS_FRAGMENT, constructed: false }];
+    const replacements = call.arguments[1]
+      ? patternsFor(call.arguments[1], seen)
+      : [{ value: "undefined", constructed: false }];
+    const results = [];
+    for (const receiver of receivers) {
+      for (const search of searches) {
+        for (const replacement of replacements) {
+          const resolvable = ![receiver.value, search.value, replacement.value].some((value) =>
+            value.includes(UNKNOWN_CLASS_FRAGMENT),
+          );
+          results.push({
+            value: resolvable
+              ? receiver.value.replace(search.value, replacement.value)
+              : unresolvedCallHasCkbV2Evidence(call)
+                ? "ckb-v2"
+                : UNKNOWN_CLASS_FRAGMENT,
+            constructed: true,
+          });
+          if (results.length >= MAX_CLASS_PATTERNS) return results;
+        }
+      }
+    }
+    return results;
+  }
+
+  function callClassPatterns(call, seen) {
+    if (ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "replace")
+      return replacementCallPatterns(call, seen);
+    if (ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "join") {
+      const elements = arrayElements(call.expression.expression, seen);
+      if (elements) {
+        const separators = call.arguments[0]
+          ? patternsFor(call.arguments[0], seen)
+          : [{ value: ",", constructed: false }];
+        const results = [];
+        for (const separator of separators) {
+          results.push(
+            ...combineClassPatterns(
+              elements.map((element) => patternsFor(element, seen)),
+              separator.value,
+              true,
+            ),
+          );
+          if (results.length >= MAX_CLASS_PATTERNS) break;
+        }
+        return results.slice(0, MAX_CLASS_PATTERNS);
+      }
+    }
+    const helperName = ts.isIdentifier(call.expression)
+      ? call.expression.text
+      : ts.isPropertyAccessExpression(call.expression)
+        ? call.expression.name.text
+        : "";
+    if (CLASS_NAME_HELPERS.has(helperName)) {
+      return combineClassPatterns(
+        call.arguments.map((argument) => patternsFor(argument, seen)),
+        " ",
+      );
+    }
+    const hasCkbV2Evidence = unresolvedCallHasCkbV2Evidence(call);
+    return [
+      {
+        value: hasCkbV2Evidence ? "ckb-v2" : UNKNOWN_CLASS_FRAGMENT,
+        constructed: hasCkbV2Evidence,
+      },
+    ];
+  }
+
+  function patternsFor(expression, seen = new Set()) {
+    const current = unwrapExpression(expression);
+    if (ts.isStringLiteralLike(current)) return [{ value: current.text, constructed: false }];
+    if (ts.isNumericLiteral(current)) return [{ value: current.text, constructed: false }];
+    if (current.kind === ts.SyntaxKind.TrueKeyword || current.kind === ts.SyntaxKind.FalseKeyword)
+      return [{ value: "", constructed: false }];
+    if (ts.isIdentifier(current)) {
+      const binding = resolveBinding(current);
+      if (!binding?.declaration.initializer || seen.has(binding.declaration))
+        return [{ value: UNKNOWN_CLASS_FRAGMENT, constructed: false }];
+      return patternsFor(binding.declaration.initializer, new Set(seen).add(binding.declaration));
+    }
+    const compositePatterns = compositeClassPatterns(current, seen);
+    if (compositePatterns) return compositePatterns;
+    if (ts.isCallExpression(current)) return callClassPatterns(current, seen);
     return [{ value: UNKNOWN_CLASS_FRAGMENT, constructed: false }];
   }
 
@@ -1523,24 +1640,48 @@ function surfaceRootFiles(surface) {
     .sort();
 }
 
+function componentEvidenceIndexes(componentNames, sourceFiles, testFiles, scan) {
+  const directImports = new Map(componentNames.map((name) => [name, []]));
+  const tests = new Map(componentNames.map((name) => [name, []]));
+  for (const file of sourceFiles) {
+    for (const name of importFacts(file, scan)) directImports.get(name)?.push(file);
+  }
+  const testMatchers = componentNames.map((name) => [name, new RegExp(`\\b${name}\\b`)]);
+  for (const file of testFiles) {
+    const text = scan.read(file);
+    for (const [name, matcher] of testMatchers) if (matcher.test(text)) tests.get(name).push(file);
+  }
+  return { directImports, tests };
+}
+
 export function buildAdoptionManifest({ root = ROOT } = {}) {
-  const contract = JSON.parse(read(CONTRACT_PATH, root));
-  const config = JSON.parse(read(CONFIG_PATH, root));
+  const config = JSON.parse(fs.readFileSync(path.join(root, CONFIG_PATH), "utf8"));
   const sourceMap = config.componentSrcMap ?? {};
+  // Keep text, AST and derived facts within this operation. A later build must
+  // observe source/config edits, and one config must never reuse another's imports.
+  const scan = createSourceScan(root, sourceMap);
+  const contract = JSON.parse(scan.read(CONTRACT_PATH));
   // Directory enumeration order differs between Windows and Linux. Sort the
   // scanner inputs before filtering so generated import/test evidence is
   // byte-identical on developer machines and hosted CI.
   const sourceFiles = walk(path.join(root, "src"), root).sort();
   const testFiles = walk(path.join(root, "tests"), root).sort();
-  const entry = read(".design-sync/entry.tsx", root);
+  const appFiles = sourceFiles.filter((file) => file.startsWith("src/app/"));
+  const nextUiEntries = nextUiEntriesFromFiles(appFiles);
+  const componentNames = Object.keys(contract.componentFamilies).sort();
+  const evidence = componentEvidenceIndexes(componentNames, sourceFiles, testFiles, scan);
+  const exportsBySource = new Map();
+  const entry = scan.read(".design-sync/entry.tsx");
   const globalShellDeclaration = contract.globalShellRoot ?? {
     file: "src/app/layout.tsx",
     element: "html",
   };
-  const globalShellSource = exists(globalShellDeclaration.file, root) ? read(globalShellDeclaration.file, root) : "";
-  const globalShellUsage = analyzeCkbV2ClassUsage(globalShellDeclaration.file, globalShellSource, {
-    elementName: globalShellDeclaration.element,
-  });
+  const globalShellSource = exists(globalShellDeclaration.file, root) ? scan.read(globalShellDeclaration.file) : "";
+  const globalShellUsage = globalShellSource
+    ? analyzeCkbV2Source(sourceFile(globalShellDeclaration.file, scan), globalShellDeclaration.element)
+    : analyzeCkbV2ClassUsage(globalShellDeclaration.file, globalShellSource, {
+        elementName: globalShellDeclaration.element,
+      });
   const globalShell = {
     file: globalShellDeclaration.file,
     element: globalShellDeclaration.element,
@@ -1548,53 +1689,50 @@ export function buildAdoptionManifest({ root = ROOT } = {}) {
     ...globalShellUsage,
     observedShellState: globalShellUsage.literalCkbV2 ? "v2" : "compatibility",
   };
-  const productionReachableFiles = reachableSourceFiles(
-    [globalShell.file, ...productionNextUiEntries(root), ...contract.productionSurfaces.flatMap(surfaceRootFiles)],
-    { root },
+  const productionReachableFiles = reachableFilesForScan(
+    [globalShell.file, ...nextUiEntries, ...contract.productionSurfaces.flatMap(surfaceRootFiles)],
+    scan,
   );
-  const componentInventory = Object.keys(contract.componentFamilies)
-    .sort()
-    .map((name) => {
-      const source = sourceMap[name] ?? null;
-      const sourceExports = source ? exportedNames(source, root) : [];
-      const directImportFiles = sourceFiles.filter((file) => importFacts(file, sourceMap, root).includes(name));
-      const productImportFiles = directImportFiles.filter((file) => productionReachableFiles.has(file));
-      const preview = `.design-sync/previews/${name}.tsx`;
-      const previewValid =
-        exists(preview, root) &&
-        new RegExp(`import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*["']${config.pkg}["']`).test(
-          read(preview, root),
-        );
-      const testMatches = testFiles.filter((file) => new RegExp(`\\b${name}\\b`).test(read(file, root)));
-      const entryExported = source
-        ? (source === "src/components/ui-primitives.tsx" &&
-            /export \* from ["']@\/components\/ui-primitives["']/.test(entry)) ||
-          new RegExp(`export\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`).test(entry)
-        : false;
-      return {
-        name,
-        family: contract.componentFamilies[name],
-        source,
-        sourceExported: sourceExports.includes(name),
-        entryExported,
-        directImportFiles,
-        productImportFiles,
-        designSync: {
-          listedInSourceMap: Boolean(source),
-          listedInDtsProps: Object.hasOwn(config.dtsPropsFor ?? {}, name),
-          preview,
-          previewValid,
-        },
-        testFiles: testMatches,
-        baseline: contract.baseline,
-      };
-    });
+  const componentInventory = componentNames.map((name) => {
+    const source = sourceMap[name] ?? null;
+    // Cache only complete top-level traversals: memoizing a nested traversal
+    // could retain a partial export set when barrels contain cycles.
+    if (source && !exportsBySource.has(source)) exportsBySource.set(source, new Set(exportedNames(source, scan)));
+    const directImportFiles = evidence.directImports.get(name);
+    const productImportFiles = directImportFiles.filter((file) => productionReachableFiles.has(file));
+    const preview = `.design-sync/previews/${name}.tsx`;
+    const previewValid =
+      exists(preview, root) &&
+      new RegExp(`import\\s*\\{[^}]*\\b${name}\\b[^}]*\\}\\s*from\\s*["']${config.pkg}["']`).test(scan.read(preview));
+    const entryExported = source
+      ? (source === "src/components/ui-primitives.tsx" &&
+          /export \* from ["']@\/components\/ui-primitives["']/.test(entry)) ||
+        new RegExp(`export\\s*\\{[^}]*\\b${name}\\b[^}]*\\}`).test(entry)
+      : false;
+    return {
+      name,
+      family: contract.componentFamilies[name],
+      source,
+      sourceExported: Boolean(source && exportsBySource.get(source).has(name)),
+      entryExported,
+      directImportFiles,
+      productImportFiles,
+      designSync: {
+        listedInSourceMap: Boolean(source),
+        listedInDtsProps: Object.hasOwn(config.dtsPropsFor ?? {}, name),
+        preview,
+        previewValid,
+      },
+      testFiles: evidence.tests.get(name),
+      baseline: contract.baseline,
+    };
+  });
   const surfaces = contract.productionSurfaces.map((surface) => {
     const rootFiles = surfaceRootFiles(surface);
     const nonVisualContract = contract.nonVisualRouteContracts?.[surface.id] ?? null;
     const nonVisualSource =
       nonVisualContract?.route && exists(nonVisualContract.route, root)
-        ? analyzeNextRedirectOnlyRoute(nonVisualContract.route, read(nonVisualContract.route, root))
+        ? analyzeNextRedirectOnlyRoute(nonVisualContract.route, scan.read(nonVisualContract.route))
         : null;
     const nonVisualTopologyMatches = Boolean(
       nonVisualContract &&
@@ -1606,10 +1744,12 @@ export function buildAdoptionManifest({ root = ROOT } = {}) {
       nonVisualSource?.redirectOnly,
     );
     const roots = rootFiles.map((rootFile) => {
-      const sourceText = exists(rootFile, root) ? read(rootFile, root) : "";
-      const imports = importFacts(rootFile, sourceMap, root);
+      const sourceText = exists(rootFile, root) ? scan.read(rootFile) : "";
+      const imports = importFacts(rootFile, scan);
       const importedFamilies = [...new Set(imports.map((name) => contract.componentFamilies[name]))].sort();
-      const { literalCkbV2, dynamicCkbV2 } = analyzeCkbV2ClassUsage(rootFile, sourceText);
+      const { literalCkbV2, dynamicCkbV2 } = sourceText
+        ? analyzeCkbV2Source(sourceFile(rootFile, scan))
+        : analyzeCkbV2ClassUsage(rootFile, sourceText);
       return {
         file: rootFile,
         exists: Boolean(sourceText),
@@ -1683,7 +1823,7 @@ export function buildAdoptionManifest({ root = ROOT } = {}) {
   const inheritedCkbV2RootCount = surfaces
     .flatMap((surface) => surface.roots)
     .filter((rootFact) => rootFact.v2MountMode === "inherited-global-root").length;
-  const discoveredRoutes = productionPageRoutes(root);
+  const discoveredRoutes = pageRoutesFromFiles(appFiles);
   const routeOwners = new Map();
   for (const surface of contract.productionSurfaces) {
     for (const route of surface.routes) {
@@ -1732,13 +1872,12 @@ export function buildAdoptionManifest({ root = ROOT } = {}) {
       productImportedComponentCount: components.filter((component) => component.productImportFiles.length > 0).length,
       rootCount: surfaces.flatMap((surface) => surface.roots).length,
       productionRouteCount: discoveredRoutes.length,
-      nextUiEntryCount: productionNextUiEntries(root).length,
+      nextUiEntryCount: nextUiEntries.length,
     },
   };
 }
 
-export function checkAdoptionManifest(manifest, { root = ROOT, trackedFiles = trackedFilesForRoot(root) } = {}) {
-  const contract = JSON.parse(read(CONTRACT_PATH, root));
+function validateAdoptionContractBindings(manifest, contract, { root }) {
   const failures = [];
   const globalShellDeclaration = contract.globalShellRoot ?? {};
   if (JSON.stringify(globalShellDeclaration) !== JSON.stringify(CANONICAL_GLOBAL_SHELL_ROOT))
@@ -1768,18 +1907,27 @@ export function checkAdoptionManifest(manifest, { root = ROOT, trackedFiles = tr
   };
   if (JSON.stringify(manifest.proofPolicy) !== JSON.stringify(expectedProofPolicy))
     failures.push("generated proof policy drifted from the adoption contract");
-  if (!manifest.globalShell || typeof manifest.globalShell !== "object") {
+  return failures;
+}
+
+function validateGlobalShellObservation(globalShell, globalShellDeclaration) {
+  const failures = [];
+  if (!globalShell || typeof globalShell !== "object") {
     failures.push("global shell observation is missing");
-  } else {
-    if (!manifest.globalShell.exists) failures.push(`global shell root is missing: ${globalShellDeclaration.file}`);
-    if (manifest.globalShell.file !== globalShellDeclaration.file)
-      failures.push("global shell root drifted from adoption contract");
-    if (manifest.globalShell.element !== globalShellDeclaration.element)
-      failures.push("global shell element drifted from adoption contract");
-    if (manifest.globalShell.dynamicCkbV2)
-      failures.push(`global shell dynamically constructs ckb-v2: ${manifest.globalShell.file}`);
+    return failures;
   }
-  for (const component of manifest.components) {
+  if (!globalShell.exists) failures.push(`global shell root is missing: ${globalShellDeclaration.file}`);
+  if (globalShell.file !== globalShellDeclaration.file)
+    failures.push("global shell root drifted from adoption contract");
+  if (globalShell.element !== globalShellDeclaration.element)
+    failures.push("global shell element drifted from adoption contract");
+  if (globalShell.dynamicCkbV2) failures.push(`global shell dynamically constructs ckb-v2: ${globalShell.file}`);
+  return failures;
+}
+
+function validateComponentAdoptionFacts(components) {
+  const failures = [];
+  for (const component of components) {
     for (const fact of ["built", "locallyRegistered", "v2ShellMounted", "proofDeclared", "baselineCommitted"])
       if (typeof component[fact] !== "boolean") failures.push(`${component.name} is missing boolean ${fact} fact`);
     if (!new Set(["none", "inherited-global-root", "direct-surface"]).has(component.v2MountMode))
@@ -1793,6 +1941,203 @@ export function checkAdoptionManifest(manifest, { root = ROOT, trackedFiles = tr
     if (!component.designSync.previewValid) failures.push(`${component.name} is missing a valid design-sync preview`);
     if (component.testFiles.length === 0) failures.push(`${component.name} has no direct test proof`);
   }
+  return failures;
+}
+
+function validateSurfaceContractAndShell(surface, contractSurface) {
+  const failures = [];
+  if (!contractSurface) {
+    failures.push(`generated adoption surface is undeclared: ${surface.id}`);
+  } else {
+    if (surface.disposition !== contractSurface.disposition)
+      failures.push(`${surface.id} disposition drifted from the adoption contract`);
+    if (JSON.stringify(surface.routes) !== JSON.stringify([...contractSurface.routes].sort()))
+      failures.push(`${surface.id} routes drifted from the adoption contract`);
+    if (surface.routeRoots !== Boolean(contractSurface.routeRoots))
+      failures.push(`${surface.id} route-root ownership drifted from the adoption contract`);
+    const expectedRootFiles = surfaceRootFiles(contractSurface);
+    const observedRootFiles = surface.roots.map((rootFact) => rootFact.file).sort();
+    if (JSON.stringify(observedRootFiles) !== JSON.stringify(expectedRootFiles))
+      failures.push(`${surface.id} roots drifted from the adoption contract`);
+    if (surface.documentedDisposition !== (contractSurface.documentedDisposition ?? null))
+      failures.push(`${surface.id} documented disposition drifted from the adoption contract`);
+  }
+  if (!new Set(["compatibility", "v2"]).has(surface.declaredShellState))
+    failures.push(`${surface.id} has invalid declared shell state: ${String(surface.declaredShellState)}`);
+  if (!new Set(["compatibility", "v2"]).has(surface.observedShellState))
+    failures.push(`${surface.id} has invalid observed shell state: ${String(surface.observedShellState)}`);
+  if (!V2_MOUNT_MODES.has(surface.v2MountMode))
+    failures.push(`${surface.id} has invalid v2 mount mode: ${String(surface.v2MountMode)}`);
+  if (surface.v2ShellMounted !== (surface.observedShellState === "v2"))
+    failures.push(`${surface.id} observed shell state and mount boolean disagree`);
+  if (surface.declaredShellState === "compatibility" && surface.v2ShellMounted) {
+    const source =
+      surface.v2MountMode === "inherited-global-root"
+        ? `global root ${surface.inheritedFrom}`
+        : `direct root ${surface.directV2MountFiles.join(", ")}`;
+    failures.push(`${surface.id} declares compatibility but observes v2 through ${source}`);
+  }
+  if (surface.declaredShellState === "v2" && !surface.v2ShellMounted)
+    failures.push(`${surface.id} declares v2 but no literal source mount was observed`);
+  return failures;
+}
+
+function validateSurfaceProofTopology(surface, contractSurface, contract, { root }) {
+  const failures = [];
+  const nonVisualContract = contract.nonVisualRouteContracts?.[surface.id] ?? null;
+  const nonVisualSource =
+    nonVisualContract?.route && exists(nonVisualContract.route, root)
+      ? analyzeNextRedirectOnlyRoute(nonVisualContract.route, read(nonVisualContract.route, root))
+      : null;
+  const nonVisualTopologyMatches = Boolean(
+    contractSurface &&
+    nonVisualContract &&
+    nonVisualContract.kind === "next-redirect-only" &&
+    contractSurface.routes.length === 1 &&
+    contractSurface.routes[0] === nonVisualContract.route &&
+    !contractSurface.routeRoots &&
+    (contractSurface.roots ?? []).length === 0 &&
+    nonVisualSource?.redirectOnly,
+  );
+  const expectedProofApplicability = nonVisualTopologyMatches
+    ? "not-applicable"
+    : CANONICAL_DEFAULT_PROOF_APPLICABILITY;
+  if (!PROOF_APPLICABILITY.has(surface.proofApplicability))
+    failures.push(`${surface.id} has invalid proof applicability: ${String(surface.proofApplicability)}`);
+  if (surface.proofApplicability !== expectedProofApplicability)
+    failures.push(`${surface.id} proof applicability disagrees with its source-derived route topology`);
+  const proofNotApplicable = nonVisualTopologyMatches && surface.proofApplicability === "not-applicable";
+  if (surface.proofApplicability === "not-applicable" && !nonVisualTopologyMatches)
+    failures.push(`${surface.id} may omit visual proof only when the pinned route is statically redirect-only`);
+  if (nonVisualContract && !nonVisualSource?.redirectOnly)
+    failures.push(`${surface.id} non-visual route source is not statically redirect-only`);
+  return { failures, proofNotApplicable };
+}
+
+function validateSurfaceProofDeclarations(surface, contract, proofNotApplicable, { root, trackedFiles }) {
+  const failures = [];
+  const proof = surface.proof && typeof surface.proof === "object" ? surface.proof : {};
+  const requiredProofCategories = Array.isArray(contract.requiredProofCategories)
+    ? contract.requiredProofCategories
+    : [];
+  for (const category of requiredProofCategories) {
+    const declaration = proof[category];
+    if (!declaration || typeof declaration !== "object") {
+      failures.push(`${surface.id} surface proof is missing ${category}`);
+      continue;
+    }
+    if (!SURFACE_PROOF_STATUSES.has(declaration.status))
+      failures.push(`${surface.id} ${category} proof has invalid status: ${String(declaration.status)}`);
+    const validEvidence =
+      Array.isArray(declaration.evidence) && declaration.evidence.every((entry) => typeof entry === "string");
+    if (!validEvidence) failures.push(`${surface.id} ${category} proof evidence must be a string array`);
+    if (declaration.status === "passed" && (!validEvidence || declaration.evidence.length === 0))
+      failures.push(`${surface.id} ${category} proof is passed without evidence`);
+    if (declaration.status === "passed" && validEvidence) {
+      for (const evidencePath of declaration.evidence) {
+        for (const reason of validateAdoptionArtifactPath(evidencePath, { root, trackedFiles, kind: "proof" }))
+          failures.push(`${surface.id} ${category} proof evidence ${evidencePath}: ${reason}`);
+      }
+    }
+    if (
+      proofNotApplicable &&
+      (declaration.status !== "not-applicable" || !validEvidence || declaration.evidence.length !== 0)
+    )
+      failures.push(`${surface.id} ${category} proof must remain not-applicable without evidence`);
+    if (!proofNotApplicable && declaration.status === "not-applicable")
+      failures.push(`${surface.id} ${category} proof is required for its visual disposition`);
+    if (surface.declaredShellState === "v2" && !proofNotApplicable && declaration.status !== "passed")
+      failures.push(`${surface.id} v2 adoption requires passed ${category} proof`);
+  }
+  for (const category of Object.keys(proof)) {
+    if (!requiredProofCategories.includes(category))
+      failures.push(`${surface.id} declares unknown surface proof category: ${category}`);
+  }
+  return failures;
+}
+
+function validateSurfaceBaseline(surface, proofNotApplicable, { root, trackedFiles }) {
+  const failures = [];
+  const committedBaselinePaths = [];
+  if (!surface.baseline || typeof surface.baseline !== "object") {
+    failures.push(`${surface.id} surface baseline declaration is missing`);
+    return { failures, committedBaselinePaths };
+  }
+  if (!BASELINE_STATUSES.has(surface.baseline.status))
+    failures.push(`${surface.id} surface baseline has invalid status: ${String(surface.baseline.status)}`);
+  const validBaselineFiles =
+    Array.isArray(surface.baseline.files) && surface.baseline.files.every((entry) => typeof entry === "string");
+  if (!validBaselineFiles) failures.push(`${surface.id} surface baseline files must be a string array`);
+  if (surface.baseline.status === "committed" && (!validBaselineFiles || surface.baseline.files.length === 0))
+    failures.push(`${surface.id} surface baseline is committed without files`);
+  if (surface.baseline.status === "not-committed" && validBaselineFiles && surface.baseline.files.length !== 0)
+    failures.push(
+      `${surface.id} surface baseline is not-committed but lists files; keep files empty until screenshots are committed`,
+    );
+  if (surface.baseline.status === "committed" && validBaselineFiles) {
+    committedBaselinePaths.push(...surface.baseline.files);
+    for (const baselinePath of surface.baseline.files) {
+      for (const reason of validateAdoptionArtifactPath(baselinePath, {
+        root,
+        trackedFiles,
+        kind: "visual-baseline",
+      }))
+        failures.push(`${surface.id} surface baseline ${baselinePath}: ${reason}`);
+    }
+  }
+  if (
+    proofNotApplicable &&
+    (surface.baseline.status !== "not-applicable" || !validBaselineFiles || surface.baseline.files.length !== 0)
+  )
+    failures.push(`${surface.id} surface baseline must remain not-applicable without files`);
+  if (!proofNotApplicable && surface.baseline.status === "not-applicable")
+    failures.push(`${surface.id} visual disposition requires a surface baseline`);
+  // Draft/CI path: declared v2 may remain not-committed with empty files until
+  // human-approved Linux screenshots + provenance are committed. Only
+  // not-applicable is forbidden for visual v2 surfaces.
+  if (surface.declaredShellState === "v2" && !proofNotApplicable && surface.baseline.status === "not-applicable")
+    failures.push(`${surface.id} v2 adoption requires a visual baseline (committed or not-committed)`);
+  return { failures, committedBaselinePaths };
+}
+
+function validateSurfaceRootsAndDisposition(surface) {
+  const failures = [];
+  for (const rootFact of surface.roots) {
+    if (!rootFact.exists) failures.push(`${surface.id} root is missing: ${rootFact.file}`);
+    if (rootFact.dynamicCkbV2) failures.push(`${surface.id} root dynamically constructs ckb-v2: ${rootFact.file}`);
+    for (const family of rootFact.importedFamilies) {
+      if (!surface.permittedComponentFamilies.includes(family))
+        failures.push(`${surface.id} imports an unpermitted ${family} component`);
+    }
+  }
+  if (surface.disposition !== "owned" && !surface.documentedDisposition)
+    failures.push(`${surface.id} ${surface.disposition} disposition is undocumented`);
+  return failures;
+}
+
+function validateAdoptionSurface(surface, contractSurface, contract, { root, trackedFiles }) {
+  const failures = validateSurfaceContractAndShell(surface, contractSurface);
+  const proofTopology = validateSurfaceProofTopology(surface, contractSurface, contract, { root });
+  failures.push(...proofTopology.failures);
+  failures.push(
+    ...validateSurfaceProofDeclarations(surface, contract, proofTopology.proofNotApplicable, { root, trackedFiles }),
+  );
+  const baselineValidation = validateSurfaceBaseline(surface, proofTopology.proofNotApplicable, {
+    root,
+    trackedFiles,
+  });
+  failures.push(...baselineValidation.failures);
+  failures.push(...validateSurfaceRootsAndDisposition(surface));
+  return { failures, committedBaselinePaths: baselineValidation.committedBaselinePaths };
+}
+
+export function checkAdoptionManifest(manifest, { root = ROOT, trackedFiles = trackedFilesForRoot(root) } = {}) {
+  const contract = JSON.parse(read(CONTRACT_PATH, root));
+  const failures = [];
+  const globalShellDeclaration = contract.globalShellRoot ?? {};
+  failures.push(...validateAdoptionContractBindings(manifest, contract, { root }));
+  failures.push(...validateGlobalShellObservation(manifest.globalShell, globalShellDeclaration));
+  failures.push(...validateComponentAdoptionFacts(manifest.components));
   const contractSurfacesById = new Map(contract.productionSurfaces.map((surface) => [surface.id, surface]));
   const manifestSurfaceIds = manifest.surfaces.map((surface) => surface.id);
   if (new Set(manifestSurfaceIds).size !== manifestSurfaceIds.length)
@@ -1803,151 +2148,9 @@ export function checkAdoptionManifest(manifest, { root = ROOT, trackedFiles = tr
   const committedBaselinePaths = [];
   for (const surface of manifest.surfaces) {
     const contractSurface = contractSurfacesById.get(surface.id);
-    if (!contractSurface) {
-      failures.push(`generated adoption surface is undeclared: ${surface.id}`);
-    } else {
-      if (surface.disposition !== contractSurface.disposition)
-        failures.push(`${surface.id} disposition drifted from the adoption contract`);
-      if (JSON.stringify(surface.routes) !== JSON.stringify([...contractSurface.routes].sort()))
-        failures.push(`${surface.id} routes drifted from the adoption contract`);
-      if (surface.routeRoots !== Boolean(contractSurface.routeRoots))
-        failures.push(`${surface.id} route-root ownership drifted from the adoption contract`);
-      const expectedRootFiles = surfaceRootFiles(contractSurface);
-      const observedRootFiles = surface.roots.map((rootFact) => rootFact.file).sort();
-      if (JSON.stringify(observedRootFiles) !== JSON.stringify(expectedRootFiles))
-        failures.push(`${surface.id} roots drifted from the adoption contract`);
-      if (surface.documentedDisposition !== (contractSurface.documentedDisposition ?? null))
-        failures.push(`${surface.id} documented disposition drifted from the adoption contract`);
-    }
-    if (!new Set(["compatibility", "v2"]).has(surface.declaredShellState))
-      failures.push(`${surface.id} has invalid declared shell state: ${String(surface.declaredShellState)}`);
-    if (!new Set(["compatibility", "v2"]).has(surface.observedShellState))
-      failures.push(`${surface.id} has invalid observed shell state: ${String(surface.observedShellState)}`);
-    if (!V2_MOUNT_MODES.has(surface.v2MountMode))
-      failures.push(`${surface.id} has invalid v2 mount mode: ${String(surface.v2MountMode)}`);
-    if (surface.v2ShellMounted !== (surface.observedShellState === "v2"))
-      failures.push(`${surface.id} observed shell state and mount boolean disagree`);
-    if (surface.declaredShellState === "compatibility" && surface.v2ShellMounted) {
-      const source =
-        surface.v2MountMode === "inherited-global-root"
-          ? `global root ${surface.inheritedFrom}`
-          : `direct root ${surface.directV2MountFiles.join(", ")}`;
-      failures.push(`${surface.id} declares compatibility but observes v2 through ${source}`);
-    }
-    if (surface.declaredShellState === "v2" && !surface.v2ShellMounted)
-      failures.push(`${surface.id} declares v2 but no literal source mount was observed`);
-    const nonVisualContract = contract.nonVisualRouteContracts?.[surface.id] ?? null;
-    const nonVisualSource =
-      nonVisualContract?.route && exists(nonVisualContract.route, root)
-        ? analyzeNextRedirectOnlyRoute(nonVisualContract.route, read(nonVisualContract.route, root))
-        : null;
-    const nonVisualTopologyMatches = Boolean(
-      contractSurface &&
-      nonVisualContract &&
-      nonVisualContract.kind === "next-redirect-only" &&
-      contractSurface.routes.length === 1 &&
-      contractSurface.routes[0] === nonVisualContract.route &&
-      !contractSurface.routeRoots &&
-      (contractSurface.roots ?? []).length === 0 &&
-      nonVisualSource?.redirectOnly,
-    );
-    const expectedProofApplicability = nonVisualTopologyMatches
-      ? "not-applicable"
-      : CANONICAL_DEFAULT_PROOF_APPLICABILITY;
-    if (!PROOF_APPLICABILITY.has(surface.proofApplicability))
-      failures.push(`${surface.id} has invalid proof applicability: ${String(surface.proofApplicability)}`);
-    if (surface.proofApplicability !== expectedProofApplicability)
-      failures.push(`${surface.id} proof applicability disagrees with its source-derived route topology`);
-    const proofNotApplicable = nonVisualTopologyMatches && surface.proofApplicability === "not-applicable";
-    if (surface.proofApplicability === "not-applicable" && !nonVisualTopologyMatches)
-      failures.push(`${surface.id} may omit visual proof only when the pinned route is statically redirect-only`);
-    if (nonVisualContract && !nonVisualSource?.redirectOnly)
-      failures.push(`${surface.id} non-visual route source is not statically redirect-only`);
-    const proof = surface.proof && typeof surface.proof === "object" ? surface.proof : {};
-    const requiredProofCategories = Array.isArray(contract.requiredProofCategories)
-      ? contract.requiredProofCategories
-      : [];
-    for (const category of requiredProofCategories) {
-      const declaration = proof[category];
-      if (!declaration || typeof declaration !== "object") {
-        failures.push(`${surface.id} surface proof is missing ${category}`);
-        continue;
-      }
-      if (!SURFACE_PROOF_STATUSES.has(declaration.status))
-        failures.push(`${surface.id} ${category} proof has invalid status: ${String(declaration.status)}`);
-      const validEvidence =
-        Array.isArray(declaration.evidence) && declaration.evidence.every((entry) => typeof entry === "string");
-      if (!validEvidence) failures.push(`${surface.id} ${category} proof evidence must be a string array`);
-      if (declaration.status === "passed" && (!validEvidence || declaration.evidence.length === 0))
-        failures.push(`${surface.id} ${category} proof is passed without evidence`);
-      if (declaration.status === "passed" && validEvidence) {
-        for (const evidencePath of declaration.evidence) {
-          for (const reason of validateAdoptionArtifactPath(evidencePath, { root, trackedFiles, kind: "proof" }))
-            failures.push(`${surface.id} ${category} proof evidence ${evidencePath}: ${reason}`);
-        }
-      }
-      if (
-        proofNotApplicable &&
-        (declaration.status !== "not-applicable" || !validEvidence || declaration.evidence.length !== 0)
-      )
-        failures.push(`${surface.id} ${category} proof must remain not-applicable without evidence`);
-      if (!proofNotApplicable && declaration.status === "not-applicable")
-        failures.push(`${surface.id} ${category} proof is required for its visual disposition`);
-      if (surface.declaredShellState === "v2" && !proofNotApplicable && declaration.status !== "passed")
-        failures.push(`${surface.id} v2 adoption requires passed ${category} proof`);
-    }
-    for (const category of Object.keys(proof)) {
-      if (!requiredProofCategories.includes(category))
-        failures.push(`${surface.id} declares unknown surface proof category: ${category}`);
-    }
-    if (!surface.baseline || typeof surface.baseline !== "object") {
-      failures.push(`${surface.id} surface baseline declaration is missing`);
-    } else {
-      if (!BASELINE_STATUSES.has(surface.baseline.status))
-        failures.push(`${surface.id} surface baseline has invalid status: ${String(surface.baseline.status)}`);
-      const validBaselineFiles =
-        Array.isArray(surface.baseline.files) && surface.baseline.files.every((entry) => typeof entry === "string");
-      if (!validBaselineFiles) failures.push(`${surface.id} surface baseline files must be a string array`);
-      if (surface.baseline.status === "committed" && (!validBaselineFiles || surface.baseline.files.length === 0))
-        failures.push(`${surface.id} surface baseline is committed without files`);
-      if (surface.baseline.status === "not-committed" && validBaselineFiles && surface.baseline.files.length !== 0)
-        failures.push(
-          `${surface.id} surface baseline is not-committed but lists files; keep files empty until screenshots are committed`,
-        );
-      if (surface.baseline.status === "committed" && validBaselineFiles) {
-        committedBaselinePaths.push(...surface.baseline.files);
-        for (const baselinePath of surface.baseline.files) {
-          for (const reason of validateAdoptionArtifactPath(baselinePath, {
-            root,
-            trackedFiles,
-            kind: "visual-baseline",
-          }))
-            failures.push(`${surface.id} surface baseline ${baselinePath}: ${reason}`);
-        }
-      }
-      if (
-        proofNotApplicable &&
-        (surface.baseline.status !== "not-applicable" || !validBaselineFiles || surface.baseline.files.length !== 0)
-      )
-        failures.push(`${surface.id} surface baseline must remain not-applicable without files`);
-      if (!proofNotApplicable && surface.baseline.status === "not-applicable")
-        failures.push(`${surface.id} visual disposition requires a surface baseline`);
-      // Draft/CI path: declared v2 may remain not-committed with empty files until
-      // human-approved Linux screenshots + provenance are committed. Only
-      // not-applicable is forbidden for visual v2 surfaces.
-      if (surface.declaredShellState === "v2" && !proofNotApplicable && surface.baseline.status === "not-applicable")
-        failures.push(`${surface.id} v2 adoption requires a visual baseline (committed or not-committed)`);
-    }
-    for (const rootFact of surface.roots) {
-      if (!rootFact.exists) failures.push(`${surface.id} root is missing: ${rootFact.file}`);
-      if (rootFact.dynamicCkbV2) failures.push(`${surface.id} root dynamically constructs ckb-v2: ${rootFact.file}`);
-      for (const family of rootFact.importedFamilies) {
-        if (!surface.permittedComponentFamilies.includes(family))
-          failures.push(`${surface.id} imports an unpermitted ${family} component`);
-      }
-    }
-    if (surface.disposition !== "owned" && !surface.documentedDisposition)
-      failures.push(`${surface.id} ${surface.disposition} disposition is undocumented`);
+    const surfaceValidation = validateAdoptionSurface(surface, contractSurface, contract, { root, trackedFiles });
+    failures.push(...surfaceValidation.failures);
+    committedBaselinePaths.push(...surfaceValidation.committedBaselinePaths);
   }
   failures.push(...validateLinuxVisualBaselineSet(committedBaselinePaths, { root, trackedFiles }));
   for (const route of manifest.routeCoverage.undeclared) failures.push(`production page route is undeclared: ${route}`);

@@ -2417,6 +2417,11 @@
         "catalogued": false
       },
       {
+        "path": "docs/audit/codescene-non-rag-remediation-2026-10-09.md",
+        "section": "audit",
+        "catalogued": false
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/local/specs/2026-08-21-trusted-admin-document-ingestion-design.md",
         "section": "superpowers",
         "catalogued": true
@@ -19586,6 +19591,14 @@
         "scope": "Protected-main release-readiness review of the shared phone viewport shell",
         "outcome": "APPROVE. The remaining bottom band clipped live result content above the hidden dock because both phone application owners used viewport-sized fixed roots, a physical-iOS paint path that can disagree with correct DOM geometry. Both owners now share a bounded in-flow dynamic-viewport shell; hidden reserve remains zero, the last viewport pixel remains content-owned, and viewport resize preserves the reading offset. No P0-P3 finding remains. Highest residual risk is physical-device iOS compositing beyond desktop WebKit emulation.",
         "checks": "`verify:cheap` PASS (393 files; 3519 passed / 2 skipped); focused Therapy and dashboard production WebKit PASS; `verify:ui` PASS (314/314); `verify:pr-local` PASS including production build/client-secret scan and 36-case offline RAG fixtures; no live provider-backed checks."
+      },
+      {
+        "date": "2026-10-10",
+        "ref": "codescene-non-rag-current-20261010",
+        "head": "a9189921bcc182950e04ee41cb8ceca42f2adb2a",
+        "scope": "codescene-non-rag-current-20261010 independent governance integration dirty diff",
+        "outcome": "No governance blocker found; independent source-only dirty-diff review; current staffing declaration preserved",
+        "checks": "Input identities and limitations: external integration-20261010/independent-governance-review.md under psychsift-codescene-remediation-20261009; twelve reviewed source hashes in report; no provider checks or behavioral-equivalence claim"
       },
       {
         "date": "2026-07-30",
