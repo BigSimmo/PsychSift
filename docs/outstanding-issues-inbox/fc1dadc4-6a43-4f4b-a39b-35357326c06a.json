@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "fc1dadc4-6a43-4f4b-a39b-35357326c06a",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Shift-swap approval checks the team rules only in the browser, not on the server (audit L4E-F2)",
+    "detail": "Needs a database migration and an owner decision between blocking the swap and asking the manager to acknowledge. A migration merged to main reaches the live database within seconds, so schedule the merge inside an approved window.",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65YT654XJ7DBRK88PK6Q2"
+  }
+}
