@@ -155,10 +155,13 @@ export function AlphabetStrip({
     event.currentTarget.releasePointerCapture?.(event.pointerId);
   };
 
+  // Filtering can shrink the strip under a later letter; keep one tab stop.
+  const activeIndex = Math.min(focusIndex, Math.max(0, entries.length - 1));
+
   const onKeyDown = (event: KeyboardEvent<HTMLOListElement>) => {
     let next: number | null = null;
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(entries.length - 1, focusIndex + 1);
-    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = Math.max(0, focusIndex - 1);
+    if (event.key === "ArrowDown" || event.key === "ArrowRight") next = Math.min(entries.length - 1, activeIndex + 1);
+    else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = Math.max(0, activeIndex - 1);
     else if (event.key === "Home") next = 0;
     else if (event.key === "End") next = entries.length - 1;
     if (next === null) return;
@@ -196,7 +199,7 @@ export function AlphabetStrip({
                   buttonRefs.current[index] = node;
                 }}
                 type="button"
-                tabIndex={index === focusIndex ? 0 : -1}
+                tabIndex={index === activeIndex ? 0 : -1}
                 aria-label={`Jump to ${entry.letter}`}
                 onClick={() => {
                   setFocusIndex(index);

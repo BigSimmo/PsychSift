@@ -17,7 +17,20 @@ import { therapyKeyFactCards } from "./key-fact-cards";
 export function TherapyKeyFacts({ therapy }: { therapy: Therapy }) {
   const facts: RecordGlanceFact[] = therapyKeyFactCards(therapy)
     .filter((card) => card.id !== "cautions")
-    .map((card) => ({ key: card.id, label: card.label, value: card.body }));
+    .map((card) => ({
+      key: card.id,
+      label: card.label,
+      value: card.id === "format" ? formatValue(therapy, card.body) : card.body,
+    }));
 
   return <RecordGlance facts={facts} testId="therapy-key-facts" />;
+}
+
+/** Format keeps the session length beside the time required, so neither is lost. */
+function formatValue(therapy: Therapy, body: string): string {
+  const sessionLength = therapy.sessionLength?.trim();
+  const timeRequired = therapy.timeRequired?.trim();
+  if (!sessionLength || !timeRequired) return body;
+  if (timeRequired.toLowerCase().includes(sessionLength.toLowerCase())) return timeRequired;
+  return `${sessionLength}, ${timeRequired}`;
 }
