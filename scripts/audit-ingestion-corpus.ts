@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, open, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { australianSourceCatalogue } from "@/lib/australian-source-catalogue";
 import {
@@ -15,6 +14,7 @@ import {
 import { ragProgrammeFixture } from "@/lib/rag/rag-programme-eval";
 import { auditExpectedSourceCoverage, parseExpectedSourceCoverageRegistry } from "@/lib/source-coverage-registry";
 import { isRegistryProjectionDocument } from "./lib/indexing-health-document";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 type Inventory = {
   schemaVersion: 1;
@@ -405,7 +405,7 @@ export async function runOfflineIngestionAudit(argv: string[]) {
   return report;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   runOfflineIngestionAudit(process.argv.slice(2))
     .then((report) => {
       console.log(

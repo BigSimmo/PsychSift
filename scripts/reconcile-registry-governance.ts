@@ -1,4 +1,3 @@
-import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 
 import type { DifferentialRecordRow } from "@/lib/differential-records";
@@ -7,6 +6,7 @@ import type { RegistryRecordRow } from "@/lib/registry-records";
 import { mergeRegistryGeneratedLabelMetadata } from "@/lib/registry-corpus";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import type { RegistryCorpusKind, RegistryGovernanceProjection } from "@/lib/registry-corpus";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -499,7 +499,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(`[registry:reconcile-governance] ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;

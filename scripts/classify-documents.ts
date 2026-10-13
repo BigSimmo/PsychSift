@@ -1,7 +1,7 @@
 import * as nextEnv from "@next/env";
-import { pathToFileURL } from "node:url";
 import { documentLabelTier, normalizeDocumentLabelForStorage } from "@/lib/document-tags";
 import { isRegistryProjectionDocument } from "./lib/registry-projection-document";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export { isRegistryProjectionDocument } from "./lib/registry-projection-document";
 
@@ -561,7 +561,7 @@ async function main() {
   console.log(`\nUpdated ${plans.length} document organization profile(s).`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;
