@@ -136,7 +136,7 @@ function materialAmbiguity(query: string, analysis: ClinicalQueryAnalysis): Clin
 // A care-pathway stage ("admission", "community discharge") is a retrievable side: without its
 // own lane, one stage's documents can crowd the other out of a stage-vs-stage comparison.
 function isCarePathwayStage(side: string) {
-  return /^(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)$/i.test(
+  return /^(?:the\s+)?(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)$/i.test(
     side.trim(),
   );
 }
