@@ -123,7 +123,11 @@ export function CmeFlatList({
   );
 }
 
-/** The leading mark on a row: a flat circle (still to do), a ticked one (done), or nothing. */
+/**
+ * The leading mark on a row: a grey open circle (still to do), a ticked one (done), or nothing.
+ * Both are grey: colour is kept for passed and due-soon dates (status shapes, 12 Oct 2026), so an
+ * open target no longer reads as a coloured "not recorded" ring.
+ */
 export function CmeRowMark({ state }: { readonly state: "open" | "done" | "none" }) {
   if (state === "none") return <span aria-hidden="true" className="size-7.5 shrink-0" />;
   if (state === "done") {
@@ -140,7 +144,7 @@ export function CmeRowMark({ state }: { readonly state: "open" | "done" | "none"
     );
   }
   return (
-    <span aria-hidden="true" className="work-ic">
+    <span aria-hidden="true" className="work-ic" data-tone="neutral">
       <span className="size-3 rounded-full border-2 border-current forced-colors:border-[CanvasText]" />
     </span>
   );
