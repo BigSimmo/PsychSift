@@ -412,12 +412,13 @@ export function NotificationCentreBody({ feed, active, onNavigate, surface = "sh
               body={<span data-testid="needs-you-empty-partial">The areas that loaded have nothing for you.</span>}
             />
           ) : summary.count === 0 ? (
+            // No body line: the title line above already says "Nothing needs you right now" (design audit D24).
             <WorkStateNotice
               kind="empty"
               bare={bareState}
               icon={CheckCheck}
               title="You're all caught up"
-              body={<span data-testid="needs-you-empty">Nothing needs you right now.</span>}
+              testId="needs-you-empty"
             />
           ) : shown.length === 0 ? (
             <WorkStateNotice

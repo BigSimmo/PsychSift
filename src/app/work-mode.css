@@ -1814,16 +1814,17 @@ a.work-hero:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Tags: small caps status words. Flat tints. */
+/* Tags: status words in sentence case (design audit D20, 13 Oct 2026: no
+   capitals, "Not started" rather than "NOT STARTED"). Flat tints. */
 .work-tag {
   display: inline-block;
   padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2);
   border-radius: var(--radius-pill);
   font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0;
   line-height: var(--work-leading-tag);
-  text-transform: uppercase;
+  text-transform: none;
   white-space: nowrap;
   background: var(--mode-identity-soft);
   color: var(--mode-identity);
@@ -2067,6 +2068,18 @@ a.work-hero:focus-visible {
 
 .work-button[data-variant="quiet"] {
   color: var(--work-ink);
+}
+
+/* A row action on a list with many rows (Log, Tag one, Attach): a grey pill, so
+   the screen's one coloured button stays the next step (design audit D08,
+   13 Oct 2026; Teaching Today's row actions are the model). */
+.work-button[data-variant="grey"] {
+  color: var(--work-ink);
+}
+
+.work-button[data-variant="grey"]::before {
+  background: var(--work-wash);
+  box-shadow: var(--work-edge-inset) var(--work-line);
 }
 
 .work-button[data-size="wide"] {
@@ -3047,6 +3060,33 @@ html[data-large-text]
   -webkit-line-clamp: none;
   line-clamp: none;
   overflow: visible;
+}
+
+/* A chip row that normally scrolls sideways (CPD Log's filters, AI Search's
+   area chips) wraps onto more lines instead, so no chip sits past the right
+   edge at 320px (design audit D17, 13 Oct 2026). Each chip keeps its label on
+   one line. */
+html[data-large-text] [data-large-text-wrap] {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: 0;
+  mask-image: none;
+  animation: none;
+}
+
+/* An equal-width segmented control (Renewals' Soonest, By group, Personal)
+   lets a segment that no longer fits move to a second row rather than squeeze
+   its word past the edge (design audit D17). */
+html[data-large-text] main [role="radiogroup"][data-layout="equal"] {
+  flex-wrap: wrap;
+}
+
+html[data-large-text] main [role="radiogroup"][data-layout="equal"] > [role="radio"] {
+  flex: 1 1 auto;
+}
+
+html[data-large-text] main [role="radiogroup"][data-layout="equal"] > [role="radio"] .truncate {
+  white-space: nowrap;
 }
 
 /* A fixed-height chip grows with its wrapped label. */

@@ -484,7 +484,7 @@ export function CmeDashboard({
                   <button
                     type="button"
                     className="work-button min-h-tap"
-                    data-variant="tinted"
+                    data-variant="grey"
                     disabled={loggingDue}
                     aria-busy={loggingDue || undefined}
                     onClick={() => handleLogRoutine(routine)}

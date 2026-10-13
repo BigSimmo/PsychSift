@@ -606,7 +606,7 @@ describe("Team calendar", () => {
       await screen.findByRole("grid");
       const cell = cellFor(container, "2026-10-15");
       const letters = [...cell.querySelectorAll("[data-shift-letter]")].map((node) => node.textContent);
-      expect(letters).toEqual(["D", "E", "E"]);
+      expect(letters).toEqual(["D", "L", "L"]);
       expect(within(cell).getByText("+1")).toBeTruthy();
     });
 
@@ -625,7 +625,7 @@ describe("Team calendar", () => {
       expect(full.className).toMatch(/lg:grid/);
       expect(full.className).toMatch(/print:grid/);
       const groups = [...full.querySelectorAll<HTMLElement>("[data-kind-group]")].map((group) => group.textContent);
-      expect(groups).toEqual(["DYou", "EDr Sam Example, Dr Pat Example", "NDr Sam Example"]);
+      expect(groups).toEqual(["DYou", "LDr Sam Example, Dr Pat Example", "NDr Sam Example"]);
     });
 
     it("prints the team name, the Perth date it was printed and a shift-letter legend", async () => {
@@ -638,7 +638,9 @@ describe("Team calendar", () => {
       expect(header.className).toMatch(/print:grid/);
       expect(within(header).getByText("Example team")).toBeTruthy();
       expect(within(header).getByText("Printed Thu 15 Oct 2026")).toBeTruthy();
-      expect(within(header).getByText("D Day · E Evening · N Night · C On call · L Leave · W Other work")).toBeTruthy();
+      expect(
+        within(header).getByText("D Day · L Evening · N Night · OC On call · AL Leave · W Other work"),
+      ).toBeTruthy();
     });
 
     it("prints no header on the Week view, which has no Print button", async () => {

@@ -51,8 +51,8 @@ const percent = (offset: number) => `${((offset / 12) * 100).toFixed(2)}%`;
 /**
  * "Next 12 months" (Josh's locked mockup, work-mode redesign 6 Oct 2026): one
  * row per item due for action, its name and date at the left and a track at
- * the right with a mark at its date (a triangle once passed, a dot while
- * still ahead) in its status colour, a line at today in the mode colour, and
+ * the right with a mark at its date (a red triangle once passed, an amber dot
+ * once it is time to start renewing, a grey dot further ahead), a line at today in the mode colour, and
  * month initials under the tracks.
  *
  * The drawing is decorative to assistive technology: a plain list beside it
@@ -96,6 +96,13 @@ function ChecklistTimeline({
           {items.map((row) => {
             const passed = row.expiresOn < today;
             const Mark = passed ? Triangle : Circle;
+            // Amber only once it is time to start renewing; a date further ahead is a grey dot,
+            // so the red triangle stands apart from the rest (status shapes, 12 Oct 2026).
+            const status = passed
+              ? "date-passed"
+              : requirementRowUrgency(row, now).word === "Start renewing"
+                ? "start-renewing"
+                : "plain";
             return (
               <div key={row.item.id} className={adminStyles.tlRow}>
                 <span className={adminStyles.tlName}>
@@ -123,7 +130,7 @@ function ChecklistTimeline({
                       aria-hidden="true"
                       data-mark={passed ? "triangle" : "dot"}
                       strokeWidth={2}
-                      {...adminStatusColour(passed ? "date-passed" : "start-renewing")}
+                      {...adminStatusColour(status)}
                       fill="currentColor"
                     />
                   </svg>
@@ -149,7 +156,13 @@ function ChecklistTimeline({
           </span>
           <span>
             <AdminStatusShape status="start-renewing" />
-            Renew by date ahead
+            Start renewing
+          </span>
+          <span>
+            <svg viewBox="0 0 10 10" aria-hidden="true" width="10" height="10" {...adminStatusColour("plain")}>
+              <circle cx="5" cy="5" r="4" fill="currentColor" />
+            </svg>
+            Date ahead
           </span>
           <span>
             <AdminStatusShape status="date-passed" />
