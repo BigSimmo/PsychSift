@@ -2964,6 +2964,11 @@ function buildFactSynthesizedAnswer(args: {
     if (sourceFacts.length) {
       facts = sourceFacts;
       recoveredSourceProse = true;
+    } else {
+      // No complete source prose either: lead with the next fact that is not itself a wrapper
+      // rather than keep a lead the final gate is certain to reject (canary 38383361787, where a
+      // PDF heading trail led the discharge-documentation fallback and the reader got a stub).
+      facts = facts.filter((fact) => !isLaunderedGuidanceWrapperAnswer(sentenceFromFact(fact, args.query)));
     }
   }
   if (!facts.length) {
