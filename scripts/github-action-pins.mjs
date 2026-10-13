@@ -12,6 +12,9 @@ const reviewedActionPins = new Map([
     new Map([
       ["a0853c24544627f65ddf259abe73b1d18a591444", "v5.0.0"],
       ["820762786026740c76f36085b0efc47a31fe5020", "v7.0.0"],
+      // Reviewed 2026-10-13 for PR #3472: v7.1.0 adds mise.toml/absolute
+      // version-file support, manifest retries and internal dependency updates.
+      ["949feb2413d6458794dcd2491c4babbbce0c15c1", "v7.1.0"],
     ]),
   ],
   ["actions/github-script", new Map([["3a2844b7e9c422d3c10d287c895573f7108da1b3", "v9.0.0"]])],
@@ -84,13 +87,30 @@ const reviewedActionPins = new Map([
       // hardening (.github/**, CLAUDE.md) — no change to permissions, secrets
       // handling, or the action's trust boundary.
       ["ed670b4cf9de2a5a570d130d2f6197b9e543cd64", "v1.0.240"],
+      // Reviewed 2026-10-13 for PR #3472: v1.0.240...v1.0.248 changes only
+      // Claude Code 2.1.288 -> 2.1.296 and Agent SDK 0.3.288 -> 0.3.296.
+      ["1d6de8cb0c237e7c15e9e1bdf973826ebae490cc", "v1.0.248"],
     ]),
   ],
   ["actions/cache", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
   ["actions/cache/restore", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
   ["actions/cache/save", new Map([["55cc8345863c7cc4c66a329aec7e433d2d1c52a9", "v6"]])],
-  ["actions/upload-artifact", new Map([["043fb46d1a93c77aae656e7c1c64a875d1fc6a0a", "v7"]])],
-  ["actions/download-artifact", new Map([["3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c", "v8.0.1"]])],
+  [
+    "actions/upload-artifact",
+    new Map([
+      ["043fb46d1a93c77aae656e7c1c64a875d1fc6a0a", "v7"],
+      // Reviewed 2026-10-13 for PR #3472: artifact 6.3.1/HTTP 429 retries.
+      ["cf430e030ddbb5b0abf93d22962f4752f3646cd9", "v7.0.2"],
+    ]),
+  ],
+  [
+    "actions/download-artifact",
+    new Map([
+      ["3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c", "v8.0.1"],
+      // Reviewed 2026-10-13 for PR #3472: artifact 6.3.1/HTTP 429 retries.
+      ["9000827ccba6bdab643e8b6fd33ac0654aef8333", "v8.0.2"],
+    ]),
+  ],
   ["denoland/setup-deno", new Map([["22d081ff2d3a40755e97629de92e3bcbfa7cf2ed", "v2.0.5"]])],
   [
     "supabase/setup-cli",
