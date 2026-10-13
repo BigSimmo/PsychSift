@@ -252,8 +252,70 @@ describe("ServiceDetailPage content cleanup", () => {
   });
 
   it("keeps the referral facts a well-formed description list (#Q80S8B)", () => {
-    const { container } = render(<ServiceDetailPage service={baseService()} />);
+    // The base fixture's two rows repeat the referral band (and are dropped), so add a
+    // distinct row to keep a list on the page for the shape check.
+    const { container } = render(
+      <ServiceDetailPage
+        service={baseService({
+          referralInfo: [
+            { label: "Primary route", value: "Self phone referral" },
+            { label: "Phone", value: "13 92 76" },
+            { label: "Hours", value: "24/7" },
+          ],
+        })}
+      />,
+    );
     expectWellFormedDefinitionLists(container);
+  });
+
+  it("shows the band's phone number once, with its Call button, and drops exact repeats", () => {
+    render(
+      <ServiceDetailPage
+        service={baseService({
+          referral: "13 92 76",
+          route: "13 92 76",
+          summaryCards: [
+            { id: "route", label: "Route", title: "13 92 76" },
+            { id: "cost", label: "Cost", title: "Free" },
+          ],
+          referralInfo: [
+            { label: "Primary route", value: "13 92 76" },
+            { label: "Phone", value: "139276" },
+            { label: "Triage phone", value: "08 9224 8888" },
+            { label: "Hours", value: "24/7" },
+          ],
+        })}
+      />,
+    );
+
+    const band = within(screen.getByLabelText("Referral readiness"));
+    expect(band.getByRole("link", { name: "Call 13 92 76" })).toHaveAttribute("href", "tel:139276");
+    expect(band.queryByText("Phone: 13 92 76")).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText("Priority facts")).queryByText("Route")).not.toBeInTheDocument();
+    const referral = screen.getByRole("heading", { name: "Referral information" }).closest("section")!;
+    expect(within(referral).queryByText("Primary route")).not.toBeInTheDocument();
+    expect(within(referral).queryByText("Phone")).not.toBeInTheDocument();
+    // Distinct values stay, and the next row does not inherit the primary-route label.
+    expect(within(referral).getByText("08 9224 8888")).toBeInTheDocument();
+    expect(within(referral).getByText("24/7")).toBeInTheDocument();
+    expect(within(referral).queryByText(", primary access route")).not.toBeInTheDocument();
+  });
+
+  it("shows catalogue tags in plain words where a label exists and hides other machine tokens", () => {
+    render(
+      <ServiceDetailPage
+        service={baseService({
+          tags: ["digital_phone", "crisis_high", "aboriginal_torres_strait_islander", "general", "13YARN"],
+        })}
+      />,
+    );
+
+    const tags = screen.getByRole("heading", { name: "Tags & catchments" }).closest("section")!;
+    expect(within(tags).getByText("Digital / phone")).toBeInTheDocument();
+    expect(within(tags).getByText("Crisis / urgent")).toBeInTheDocument();
+    expect(within(tags).getByText("13YARN")).toBeInTheDocument();
+    expect(within(tags).queryByText(/_/)).not.toBeInTheDocument();
+    expect(within(tags).queryByText("general")).not.toBeInTheDocument();
   });
 
   it("extracts the first valid dialable phone URI from composite strings without concatenating digits", () => {

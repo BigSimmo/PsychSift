@@ -46,6 +46,7 @@ import { ServiceReferralFlow } from "@/components/services/service-referral-flow
 import { appModeHomeHref } from "@/lib/app-modes";
 import { compactCatalogField } from "@/lib/compact-best-use-title";
 import { extractFirstDialablePhone } from "@/lib/service-call";
+import { serviceTagDisplayLabel } from "@/lib/service-facets";
 import { serviceCoreGroupIds, serviceCoreGroups } from "@/lib/service-core-groups";
 import {
   serviceNavigatorQuery,
@@ -276,6 +277,19 @@ function normalizeTagForList(tag: string) {
   return tag.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+/**
+ * Identity for "is this the same value shown again". A phone number compares by its
+ * digits so "13 92 76" and "139276" count as one; anything else compares as trimmed,
+ * case-folded text. Only exact repeats match: a row holding two numbers, or a number
+ * plus words, stays distinct.
+ */
+function repeatedValueKey(value: string | null | undefined) {
+  const text = value?.trim();
+  if (!text) return undefined;
+  if (/^[\d\s()+\-.]+$/.test(text) && /\d/.test(text)) return `tel:${text.replace(/\D/g, "")}`;
+  return `text:${normalizeTagForList(text)}`;
+}
+
 function dedupeTagItems(items: string[]) {
   const seen = new Set<string>();
   return items
@@ -409,7 +423,7 @@ function renderPhoneLines(value: string) {
 }
 
 /** Compact scan-first referral facts. Direct actions live in the referral band above. */
-function ReferralTable({ rows }: { rows: ServiceInfoRow[] }) {
+function ReferralTable({ rows, firstIsPrimary = true }: { rows: ServiceInfoRow[]; firstIsPrimary?: boolean }) {
   if (!rows.length) {
     return (
       <div className="rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] p-4 text-sm">
@@ -422,7 +436,7 @@ function ReferralTable({ rows }: { rows: ServiceInfoRow[] }) {
   return (
     <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
       {rows.map((row, index) => {
-        const isPrimary = index === 0;
+        const isPrimary = firstIsPrimary && index === 0;
         const isCost = row.label.toLowerCase().includes("cost");
 
         return (
@@ -553,9 +567,31 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const primaryContact = hasText(service.primaryContact?.value)
     ? service.primaryContact
     : (service.contacts?.find((contact) => hasText(contact.value)) ?? null);
-  const summaryCards = summaryCardsFor(service);
-  const referralRows = referralRowsFor(service, primaryContact);
   const callHref = contactHref(primaryContact);
+  const bandRouteValue = hasText(service.referral) ? service.referral : hasText(service.route) ? service.route : "";
+  const contactLabel = contactDisplayValue(primaryContact);
+  // The referral band shows the route and, for a phone contact, the number on its Call
+  // button. The same number then reappeared as the "Contact" line, the Route fact card and
+  // the Primary route and Phone rows. Exact repeats of a value the band already shows are
+  // dropped below; every distinct value stays.
+  const bandValueKeys = new Set(
+    [
+      repeatedValueKey(bandRouteValue),
+      callHref && primaryContact?.kind === "phone" ? repeatedValueKey(contactLabel) : undefined,
+    ].filter((key): key is string => Boolean(key)),
+  );
+  const repeatsBand = (value: string | null | undefined) => {
+    const key = repeatedValueKey(value);
+    return Boolean(key && bandValueKeys.has(key));
+  };
+  const summaryCards = summaryCardsFor(service);
+  const allReferralRows = referralRowsFor(service, primaryContact);
+  const referralRows = allReferralRows.filter(
+    (row) => !(/route|phone|contact/i.test(row.label) && repeatsBand(row.value)),
+  );
+  // The first row is styled and announced as the primary access route; once that row is
+  // dropped as a repeat of the band above, the next row is not a route and must not inherit it.
+  const firstReferralRowIsPrimary = referralRows.length > 0 && referralRows[0] === allReferralRows[0];
   const actionableContact = Boolean(
     primaryContact && ["phone", "email", "web"].includes(primaryContact.kind) && callHref,
   );
@@ -564,7 +600,6 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const ContactActionIcon = primaryContact?.kind === "email" ? Mail : primaryContact?.kind === "web" ? Globe2 : Phone;
   const contactActionLabel =
     primaryContact?.kind === "email" ? "Email" : primaryContact?.kind === "web" ? "Open website" : "Call";
-  const contactLabel = contactDisplayValue(primaryContact);
   const verified = service.verification?.locallyVerified === true;
   const readinessActionHref = callHref ?? sourceHref;
   const readinessActionLabel = callHref
@@ -573,6 +608,12 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
       : contactActionLabel
     : "Confirm at source";
   const ReadinessActionIcon = callHref ? ContactActionIcon : Globe2;
+  // "Contact: 13 92 76" under a "13 92 76" heading, above a "Call 13 92 76" button.
+  const contactLineRepeats = Boolean(
+    actionableContact &&
+    contactLabel &&
+    (repeatsBand(contactLabel) || (primaryContact?.kind === "phone" && readinessActionLabel.includes(contactLabel))),
+  );
   const ReadinessStatusIcon = verified ? BadgeCheck : TriangleAlert;
   const showSourceAction = Boolean(
     sourceHref && actionDestinationIdentity(sourceHref) !== actionDestinationIdentity(callHref),
@@ -588,9 +629,16 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const visibleSummaryCards = dedupeSummaryCardDetails([
     ...compactSummaryCards,
     ...leftoverCards.filter(summaryCardIsRenderable),
-  ]);
+  ]).filter(
+    (card) => !(card.id === "route" && repeatsBand(card.title) && (!hasText(card.detail) || repeatsBand(card.detail))),
+  );
   const compactedSubtitle = hasText(service.subtitle) ? compactCatalogField(service.subtitle, 160) : "";
-  const tagItems = dedupeTagItems([...(service.catchments ?? []), ...(service.tags ?? [])]);
+  // Raw catalogue tokens ("digital_phone", "crisis_high") are shown in plain words only where
+  // the existing facet label map already names them; any other machine token is hidden.
+  const tagItems = dedupeTagItems([
+    ...(service.catchments ?? []),
+    ...(service.tags ?? []).map(serviceTagDisplayLabel).filter((tag): tag is string => Boolean(tag)),
+  ]);
   const criteria = service.criteria ?? [];
   const showReferralSection = referralRows.length > 0;
   const showCriteriaSection = criteria.length > 0;
@@ -791,13 +839,15 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
                         ? compactCatalogField(hasText(service.referral) ? service.referral : (service.route ?? ""), 150)
                         : "Confirm referral route"}
                     </h2>
-                    <p className={cn("mt-1 text-xs leading-5", textMuted)}>
-                      {actionableContact && contactLabel
-                        ? `${primaryContact?.label ?? "Contact"}: ${contactLabel}`
-                        : sourceHref
-                          ? "Confirm the current contact at the source."
-                          : "Service-specific contact details require local confirmation."}
-                    </p>
+                    {contactLineRepeats ? null : (
+                      <p className={cn("mt-1 text-xs leading-5", textMuted)}>
+                        {actionableContact && contactLabel
+                          ? `${primaryContact?.label ?? "Contact"}: ${contactLabel}`
+                          : sourceHref
+                            ? "Confirm the current contact at the source."
+                            : "Service-specific contact details require local confirmation."}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {readinessActionHref ? (
@@ -875,7 +925,7 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
             >
               {showReferralSection ? (
                 <Section id="service-referral" icon={Clipboard} title="Referral information">
-                  <ReferralTable rows={referralRows} />
+                  <ReferralTable rows={referralRows} firstIsPrimary={firstReferralRowIsPrimary} />
                 </Section>
               ) : null}
 
