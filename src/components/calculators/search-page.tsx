@@ -273,6 +273,16 @@ function ContinuePanel({
   );
 }
 
+const countWords = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+
+/** "Three more calculators are waiting for …" — plain words for the calculators still in review. */
+function pendingCalculatorsNotice(count: number) {
+  const amount = countWords[count] ?? String(count);
+  return count === 1
+    ? `${amount} more calculator is waiting for version, rights and workflow checks before it appears.`
+    : `${amount} more calculators are waiting for version, rights and workflow checks before they appear.`;
+}
+
 function AboutPanel() {
   return (
     <section className="grid gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-4">
@@ -282,12 +292,11 @@ function AboutPanel() {
       </h2>
       <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
         Scores support clinical judgement — they never replace a full assessment. Calculator answers remain in this
-        browser session and are not intentionally submitted by this calculator interface. Application telemetry and
-        clinical-record documentation are governed separately.
+        browser session and are not intentionally submitted by this calculator interface. The app’s usage logs, and
+        anything you document in the clinical record, are covered separately.
       </p>
       <p className="text-2xs font-semibold leading-4 text-[color:var(--text-muted)]">
-        {plannedCalculators.length} candidate calculators remain governance-gated pending version, rights and workflow
-        review.
+        {pendingCalculatorsNotice(plannedCalculators.length)}
       </p>
     </section>
   );
