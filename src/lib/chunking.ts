@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.1.1-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.1.1-document";
+export const CHUNKER_VERSION = "1.2.0-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.2.0-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const paragraphBoundary = /\n{2,}/;
@@ -380,7 +380,7 @@ function chunkTableBlock(block: string, chunkSize: number) {
 }
 
 const clinicalProhibitionPattern =
-  /\b(?:contraindicat(?:e|ed|ion|ions)|do not|must not|should not|never|avoid|withhold|cease|black box warning)\b/i;
+  /\b(?:contraindicat(?:e|ed|ion|ions)|do not|does not|must not|should not|shall not|cannot|can't|never|avoid|withhold|cease|black box warning)\b/i;
 const sentenceEndPattern = /(?<=[.!?])(?:\s+|$)/;
 
 function readableOverlapStart(clean: string, end: number, overlap: number) {

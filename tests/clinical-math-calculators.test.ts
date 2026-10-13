@@ -318,4 +318,9 @@ describe("clinical calculators give no result for missing or NaN inputs", () => 
     expect(r.isValid).toBe(false);
     expect(r.suggestedDoseMg).toBeNull();
   });
+
+  it("a negative lithium level is not classified", () => {
+    const r = evaluateLithiumLevel({ serumLevelMmolL: -0.4, indication: "maintenance", age: 40 });
+    expect(r.status).toBe("invalid");
+  });
 });

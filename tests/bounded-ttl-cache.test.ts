@@ -91,4 +91,12 @@ describe("bounded TTL cache", () => {
     writeBoundedLruEntry(lru, "new", 2, 1);
     expect([...lru.keys()]).toEqual(["new"]);
   });
+
+  it("evicts an undefined key like any other oldest entry", () => {
+    const cache = new Map<string | undefined, number>([[undefined, 0]]);
+    writeBoundedLruEntry(cache, "a", 1, 1);
+    writeBoundedLruEntry(cache, "b", 2, 1);
+    expect(cache.size).toBe(1);
+    expect([...cache.keys()]).toEqual(["b"]);
+  });
 });

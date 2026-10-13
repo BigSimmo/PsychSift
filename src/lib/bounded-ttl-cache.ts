@@ -29,6 +29,7 @@ export function writeBoundedExpiringCacheEntry<K, V extends ExpiringCacheEntry>(
   cache.set(key, value);
 
   while (cache.size > maxEntries) {
+    // Check completion, not the key: `undefined` is a valid Map key.
     const oldest = cache.keys().next();
     if (oldest.done) break;
     cache.delete(oldest.value);
@@ -50,6 +51,7 @@ export function writeBoundedLruEntry<K, V>(cache: Map<K, V>, key: K, value: V, m
   cache.set(key, value);
 
   while (cache.size > maxEntries) {
+    // Check completion, not the key: `undefined` is a valid Map key.
     const oldest = cache.keys().next();
     if (oldest.done) break;
     cache.delete(oldest.value);

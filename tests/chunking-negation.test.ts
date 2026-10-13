@@ -25,6 +25,25 @@ describe("Semantic Chunking Negation Boundary Preservation (CHK-01)", () => {
     }
   });
 
+  it.each(["should not", "does not", "shall not", "cannot"])('keeps "%s" with the action it governs', (negation) => {
+    const text = [
+      "Clinical guideline for rapid tranquilisation in psychiatric emergencies.",
+      "Ensure continuous monitoring of pulse oximetry, respiratory rate, and blood pressure following administration.",
+      `Patients ${negation} administer intramuscular olanzapine concomitantly with intravenous benzodiazepines due to fatal cardiorespiratory risk.`,
+      "Appropriate resuscitation equipment and flumazenil must be readily accessible in the clinical environment.",
+    ].join(" ");
+    // Sweep sizes and overlaps: no successor chunk may start at the action without its negation.
+    for (let size = 120; size <= 400; size += 20) {
+      for (let overlap = 20; overlap <= 120; overlap += 20) {
+        for (const chunk of chunkTextWithOverlap(text, size, overlap)) {
+          if (chunk.includes("intramuscular olanzapine concomitantly")) {
+            expect(chunk).toContain(`${negation} administer`);
+          }
+        }
+      }
+    }
+  });
+
   it("completes sentences within modest elongation budget rather than cutting mid-sentence", () => {
     const s1 = "This is the initial guideline context that provides standard guidance.";
     const s2 = "CONTRAINDICATED in patients with known hypersensitivity or history of neuroleptic malignant syndrome.";

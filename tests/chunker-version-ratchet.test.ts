@@ -16,7 +16,7 @@ const corpus = [
   Array.from(
     { length: 60 },
     (_, i) =>
-      `Sentence ${i} describes lithium monitoring${i % 7 === 0 ? "; do not restart the usual dose after a missed 48 hours" : ""}.`,
+      `Sentence ${i} describes lithium monitoring${i % 7 === 0 ? "; patients should not restart the usual dose after a missed 48 hours" : ""}.`,
   ).join(" "),
   // Many paragraphs (paragraph path, successor overlap ceiling).
   Array.from(
@@ -30,6 +30,7 @@ const corpus = [
 const recorded: Record<string, string> = {
   "1.1.0-page|1.1.0-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
   "1.1.1-page|1.1.1-document": "4af6b997fc7ead3f8678b027a396b8ee3352bec8d155a4cbc7e751da5a6f43d5",
+  "1.2.0-page|1.2.0-document": "e0eb0b337d010f3c4f078ef2df970b3b91d0d420dd2916b0f0f98a83600957e8",
 };
 
 function fingerprint() {

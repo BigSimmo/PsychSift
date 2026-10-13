@@ -53,6 +53,18 @@ describe("privacy-safe logging helpers", () => {
     }
   });
 
+  it("redacts grouped MRNs before storing query text, keeping the text after them", async () => {
+    vi.doMock("@/lib/env", () => ({ env: { RAG_PERSIST_RAW_QUERY_TEXT: true } }));
+    const { queryTextForStorage, normalizedQueryTextForStorage } = await import("../src/lib/query-privacy");
+    for (const query of ["MRN 12 3456 lithium level", "UR: 123 456 789 lithium level"]) {
+      for (const stored of [queryTextForStorage(query), normalizedQueryTextForStorage(query)]) {
+        expect(stored).not.toMatch(/\d{2,}/);
+        expect(stored).toMatch(/\[REDACTED_MRN\]/i);
+        expect(stored).toMatch(/lithium level/i);
+      }
+    }
+  });
+
   it("does not classify ordinary words after an MRN label as an identifier", async () => {
     vi.doMock("@/lib/env", () => ({ env: { RAG_PERSIST_RAW_QUERY_TEXT: true } }));
     const { queryTextForStorage } = await import("../src/lib/query-privacy");
