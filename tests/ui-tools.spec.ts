@@ -480,7 +480,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       await gotoLauncher(page, "/tools");
 
       await expect(visibleByTestId(page, "tools-search-results-page")).toBeVisible();
-      await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
       await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
       await expect(page.locator("form.answer-footer-search-dock")).toHaveCount(0);
       await expectNoPageHorizontalOverflow(page);
@@ -503,7 +503,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       await gotoLauncher(page, "/tools");
 
       const results = visibleByTestId(page, "tools-search-results-page");
-      await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+      await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
       await expect(results.getByRole("region", { name: "Pinned", exact: true })).toBeVisible();
       // Safety has its own band ahead of the task groups, so nothing can filter it away.
       const safety = results.getByRole("region", { name: "Safety", exact: true });
@@ -540,7 +540,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const results = visibleByTestId(page, "tools-search-results-page");
     await expect(results).toBeVisible();
-    await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(results.getByRole("heading", { level: 3, name: "PsychSift Search" })).toBeVisible();
     await expect(results.getByRole("heading", { level: 3, name: "Medication Prescribing" })).toBeVisible();
     await expect(toolRowLink(results, "clinical-kb-search")).toHaveAttribute("href", "/?mode=answer");
@@ -597,7 +597,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     const showAll = results.getByRole("link", { name: "Show all tools" });
     await expect(showAll).toHaveAttribute("href", "/tools");
     await Promise.all([page.waitForURL(/\/tools$/), showAll.click()]);
-    await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
   });
@@ -655,7 +655,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     for (const width of [320, 390, 639, 768, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
-      await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
       await expect(page.getByRole("region", { name: "Safety", exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { level: 3, name: "PsychSift Search" })).toBeVisible();
       await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
@@ -664,7 +664,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     }
 
     await page.emulateMedia({ reducedMotion: "reduce", forcedColors: "active" });
-    await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
     await expectNoPageHorizontalOverflow(page);
   });
@@ -1328,7 +1328,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await gotoLauncher(page, "/?mode=tools");
 
     await page.waitForURL(/\/tools$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
     await expect(visibleGlobalSearchInput(page)).toHaveCount(0);
     await expect(page.locator("form.answer-footer-search-dock")).toHaveCount(0);
     await expect(page.getByTestId("tools-search-results-page").getByTestId("tools-local-search-input")).toBeVisible();

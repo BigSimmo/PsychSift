@@ -12,7 +12,7 @@ import { useTcBindings } from "../bindings";
 import { RECOMMEND_CONSTRAINTS } from "../data/select";
 import { RecommendScenarioControl } from "../recommend-scenario-control";
 import { RecommendScenarioFields } from "../recommend-scenario-fields";
-import { ResultCard } from "../therapy-card";
+import { CompactResultRow } from "../therapy-card";
 import { EmptyState, LoadingState } from "../ui";
 import { useClipboard } from "../use-clipboard";
 
@@ -21,7 +21,6 @@ export function RecommendScreen() {
   const { copied, copy } = useClipboard();
   const ranked = b.recommendations;
   const top = ranked[0];
-  const rest = ranked.slice(1);
   const desktopIdPrefix = useId();
 
   const copyShortlist = () =>
@@ -110,24 +109,25 @@ export function RecommendScreen() {
               </Button>
             </div>
           </div>
-          <div className="flex flex-col gap-3">
-            <ResultCard
-              therapy={top.therapy}
-              rank={1}
-              featured
-              query={b.recQuery}
-              whyMatched={top.reasons.join(" · ") || undefined}
-            />
-            {rest.map(({ therapy, reasons }, index) => (
-              <ResultCard
+          {/* Compact ranked rows (Clinical audit, 13 Oct 2026, item 12), the
+              same row Therapy search uses: one hairline card, the whole row
+              opens the record, and Favourite, Compare and Sheet stay as small
+              buttons. The Avoid / modify warning shows in full, never cut. */}
+          <ol
+            data-testid="therapy-recommend-list"
+            className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
+          >
+            {ranked.map(({ therapy, reasons }, index) => (
+              <CompactResultRow
                 key={therapy.slug}
                 therapy={therapy}
-                rank={index + 2}
+                rank={index + 1}
+                featured={index === 0}
                 query={b.recQuery}
                 whyMatched={reasons.join(" · ") || undefined}
               />
             ))}
-          </div>
+          </ol>
 
           <div className="mt-5 flex items-center gap-2 text-xs text-[color:var(--text-muted)]">
             <Shield aria-hidden="true" className="size-icon-sm text-[color:var(--decoration-soft)]" />

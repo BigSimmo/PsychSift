@@ -318,12 +318,22 @@ export function CompactResultRow({
   featured = false,
   query,
   outsideFilter = false,
+  rank,
+  whyMatched,
 }: {
   therapy: Therapy;
   featured?: boolean;
   query?: string;
   /** Outside the active filters: still listed and tappable, title muted by token. */
   outsideFilter?: boolean;
+  /**
+   * Recommend's ranked list (Clinical audit, 13 Oct 2026, item 12): the rank
+   * number leads the title and the review status shows under it, as on the
+   * large card it replaces.
+   */
+  rank?: number;
+  /** Recommend's ranking reasons, shown as one quiet line under the summary. */
+  whyMatched?: string;
 }) {
   const b = useTcBindings();
   const baseId = useId();
@@ -373,9 +383,19 @@ export function CompactResultRow({
           <h3
             className={cn(
               "m-0 text-base font-semibold leading-snug tracking-display",
+              rank != null && "flex items-start gap-2",
               outsideFilter ? filterOutsideTitleClass : "text-[color:var(--text-heading)]",
             )}
           >
+            {rank != null ? (
+              <span
+                data-therapy-result-rank
+                className="mt-px inline-flex h-6 min-w-6 flex-none items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-xs font-extrabold nums text-[color:var(--text-heading)]"
+              >
+                <span className="sr-only">Rank </span>
+                {rank}
+              </span>
+            ) : null}
             <Link
               href={b.workspaceHref(therapyRecordHref(therapy.slug))}
               data-therapy-result-open
@@ -387,9 +407,23 @@ export function CompactResultRow({
               {therapy.name}
             </Link>
           </h3>
+          {rank != null ? (
+            <div className="mt-1">
+              <StatusBadge status={therapy.reviewStatus} />
+            </div>
+          ) : null}
           {subtitle ? (
             <p className="m-0 mt-0.5 line-clamp-1 text-sm-minus leading-snug text-[color:var(--text-muted)]">
               {subtitle}
+            </p>
+          ) : null}
+          {whyMatched ? (
+            <p
+              data-therapy-result-why
+              className="m-0 mt-1 line-clamp-2 text-xs leading-snug text-[color:var(--text-muted)]"
+            >
+              <span className="font-bold text-[color:var(--text)]">Why matched: </span>
+              {whyMatched}
             </p>
           ) : null}
         </div>

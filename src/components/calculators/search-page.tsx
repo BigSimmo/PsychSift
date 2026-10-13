@@ -139,18 +139,20 @@ function CalculatorTile({
       // finds the tile again by calculator id rather than holding a node ref.
       data-calculator-open={calc.id}
       aria-label={`Open ${calc.abbrev} — ${calc.name}`}
+      // A compact row of the list's one hairline card (Clinical audit, 13 Oct
+      // 2026, item 12), the same row Therapy search uses: name, one line,
+      // tags, and the whole row opens the calculator.
       className={cn(
-        "group grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-left shadow-[var(--e2)] transition hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-raised)] hover:shadow-[var(--shadow-hover)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        "group grid min-h-tap w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none sm:px-5",
         focusRing,
       )}
     >
       <span
         className={cn(
-          "grid shrink-0 place-items-center rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]",
-          compact ? "size-10" : "size-tap",
+          "mt-0.5 grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
         )}
       >
-        <Icon className={compact ? "size-icon-lg" : "size-icon-xl"} aria-hidden="true" />
+        <Icon className="size-icon-md" aria-hidden="true" />
       </span>
 
       <span className="min-w-0">
@@ -167,11 +169,11 @@ function CalculatorTile({
           {calc.name}
         </span>
         {compact ? null : (
-          <span className="mt-2 line-clamp-2 block text-sm-minus font-medium leading-5 text-[color:var(--text-muted)]">
+          <span className="mt-0.5 line-clamp-1 block text-sm-minus font-medium leading-5 text-[color:var(--text-muted)]">
             {calc.indication}
           </span>
         )}
-        <span className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <MetaPill icon={ListChecks} label={`${calc.items.length} items`} />
           <MetaPill icon={Clock3} label={calc.timeEstimate} />
           {compact ? null : <MetaPill icon={Sigma} label={`${calc.minScore}–${calc.maxScore}`} />}
@@ -596,18 +598,22 @@ export function CalculatorsSearchPage({
         }
       >
         {results.length ? (
-          <div className={cn("grid gap-3", density === "compact" ? "sm:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2")}>
+          <ul
+            data-testid="calculator-result-list"
+            className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
+          >
             {results.map(({ calc, derived, context }) => (
-              <CalculatorTile
-                key={calc.id}
-                calc={calc}
-                derived={derived}
-                context={context}
-                compact={density === "compact"}
-                onOpen={() => openCalculator(calc.id)}
-              />
+              <li key={calc.id}>
+                <CalculatorTile
+                  calc={calc}
+                  derived={derived}
+                  context={context}
+                  compact={density === "compact"}
+                  onOpen={() => openCalculator(calc.id)}
+                />
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
           <SearchResultsEmptyState
             modeId="calculators"
