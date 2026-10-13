@@ -153,6 +153,7 @@ A schema restore is not operationally complete until all five environment-owned 
    - Redeploy required functions (`indexing-v3-agent`, `site-content-sync`) with the Deno v2.x toolchain in an approved change window:
      ```bash
      supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
+     supabase functions deploy site-content-sync --project-ref <PROJECT_REF>
      ```
    - Sanity check: Verify function list via `supabase functions list` and run non-mutating health probes.
 5. **Dashboard-owned configuration:**

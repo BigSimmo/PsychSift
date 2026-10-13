@@ -103,11 +103,12 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 4. Supabase Edge Functions
 
-- **Procedure:** Redeploy required edge functions (`indexing-v3-agent`; the ingestion-worker function is retired) with the Deno v2.x toolchain in an explicitly approved change window:
+- **Procedure:** Redeploy both required edge functions (`indexing-v3-agent` and `site-content-sync`, which consumes the `site_content_sync_events` outbox; the ingestion-worker function is retired and must not be redeployed) with the Deno v2.x toolchain in an explicitly approved change window:
   ```bash
   supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
+  supabase functions deploy site-content-sync --project-ref <PROJECT_REF>
   ```
-- **Sanity check:** Verify function presence and status via `supabase functions list` and run health probes without mutating data.
+- **Sanity check:** Verify both `indexing-v3-agent` and `site-content-sync` are present and active via `supabase functions list` and run health probes without mutating data.
 
 ### 5. Dashboard-owned configuration
 
