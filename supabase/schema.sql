@@ -12814,6 +12814,9 @@ create trigger site_content_release_records_immutable
 before update or delete on public.site_content_release_records
 for each row execute function public.guard_site_content_immutable_row();
 
+alter table public.site_content_release_records
+  enable always trigger site_content_release_records_immutable;
+
 create trigger site_content_release_receipts_append_only
 before update or delete on public.site_content_release_receipts
 for each row execute function public.guard_site_content_immutable_row();

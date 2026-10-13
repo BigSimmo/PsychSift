@@ -34,6 +34,8 @@ import {
   type MissingArtifactPlan,
 } from "./behavior.ts";
 
+import { authorizeIndexingAgentRequest, timingSafeSecretEqual, decodeJwtPayload, isValidJwt } from "./auth.ts";
+
 type ClaimedJob = {
   id: string;
   document_id: string;
@@ -197,40 +199,9 @@ const TYPE_BUDGET: Record<string, number> = {
   unclear: 4,
 };
 
-// Audit L20: constant-time secret comparison. The platform gateway checks the
-// login token (verify_jwt=true) and this shared secret is the second gate; a plain !==
-// short-circuits on the first mismatching character and leaks match length
-// via response timing. Hashing both sides to fixed-length digests and
-// XOR-comparing removes the content-dependent timing signal.
-async function timingSafeSecretEqual(candidate: string, expected: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const [candidateDigest, expectedDigest] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(candidate)),
-    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
-  ]);
-  const candidateBytes = new Uint8Array(candidateDigest);
-  const expectedBytes = new Uint8Array(expectedDigest);
-  let difference = 0;
-  for (let index = 0; index < candidateBytes.length; index += 1) {
-    difference |= candidateBytes[index] ^ expectedBytes[index];
-  }
-  return difference === 0;
-}
-
+// Dual-gated authentication: requires BOTH a valid JWT and the internal service secret (Task #P6BSQ3).
 async function authorizeRequest(req: Request): Promise<Response | null> {
-  if (!AGENT_SECRET) {
-    return Response.json({ ok: false, error: "INDEXING_V3_AGENT_SECRET is required" }, { status: 500 });
-  }
-
-  const authorization = req.headers.get("authorization") ?? "";
-  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  const headerSecret = req.headers.get("x-indexing-agent-secret") ?? req.headers.get("x-cron-secret") ?? bearer ?? "";
-
-  if (!(await timingSafeSecretEqual(headerSecret, AGENT_SECRET))) {
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null;
+  return authorizeIndexingAgentRequest(req, AGENT_SECRET);
 }
 
 function assertEmbeddingDim(vec: unknown, context: string): asserts vec is number[] {
