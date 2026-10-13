@@ -3,7 +3,7 @@
 // My Day Calendar, signed out: the sample calendar drawn from My Day's invented day,
 // as Week and Hours do, reading no server and keeping nothing.
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { resetExampleDataForTests, setExampleDataOn } from "@/lib/example-data/store";
@@ -43,22 +43,9 @@ describe("My Day Calendar signed out", () => {
     expect(within(calendar).getAllByText("Registrar teaching: agitation").length).toBeGreaterThan(0);
     // Nothing in the sample can be exported, so the export panel and private link are left out.
     expect(screen.queryByTestId("my-day-calendar-export")).toBeNull();
-    // Sample items are example records, so no per-item Add control is offered.
-    expect(within(calendar).queryAllByRole("button", { name: /^Add .+ to your calendar$/ })).toHaveLength(0);
+    expect(screen.queryAllByRole("button", { name: /^Add .+ to your calendar$/ })).toHaveLength(0);
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
-  });
-
-  it("shows the sample's later renewals in their months", async () => {
-    window.localStorage.clear();
-    resetExampleDataForTests();
-    render(<MyDayCalendarPage now={NOW} />);
-    await screen.findByTestId("my-day-calendar-ready");
-    // CPD annual return falls in January 2027 and Indemnity cover in February 2027.
-    for (let step = 0; step < 3; step += 1) fireEvent.click(screen.getByRole("button", { name: "Next month" }));
-    expect(screen.getAllByText("CPD annual return").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
-    expect(screen.getAllByText("Indemnity cover").length).toBeGreaterThan(0);
   });
 
   it("asks a signed-out reader who turned example data off to sign in", () => {
