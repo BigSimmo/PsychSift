@@ -62,7 +62,7 @@ export type QtcResult = {
 
 export type LithiumIndication = "maintenance" | "acute_mania";
 
-export type LithiumLevelStatus = "subtherapeutic" | "therapeutic" | "supratherapeutic" | "toxic";
+export type LithiumLevelStatus = "invalid" | "subtherapeutic" | "therapeutic" | "supratherapeutic" | "toxic";
 
 export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe_dialysis_threshold";
 

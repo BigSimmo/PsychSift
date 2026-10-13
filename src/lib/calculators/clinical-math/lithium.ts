@@ -12,6 +12,16 @@ import type {
  * Australian Therapeutic Guidelines (eTG) and RANZCP clinical monitoring standards.
  */
 export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEvaluation {
+  const level = input.serumLevelMmolL;
+  if (!Number.isFinite(input.age) || input.age <= 0 || !Number.isFinite(level)) {
+    return {
+      status: "invalid",
+      isWithinTarget: false,
+      severity: "none",
+      targetRange: { min: 0, max: 0 },
+      clinicalGuidance: ["Invalid lithium age or serum concentration; do not use this result for clinical decisions."],
+    };
+  }
   const isElderly = input.age >= 65;
 
   let minTarget: number;
@@ -26,7 +36,6 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
     maxTarget = isElderly ? 0.6 : 0.8;
   }
 
-  const level = input.serumLevelMmolL;
   const isWithinTarget = level >= minTarget && level <= maxTarget;
 
   let status: LithiumLevelStatus;
@@ -79,14 +88,16 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
 export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInput): LithiumDoseAdjustmentResult {
   const errors: string[] = [];
 
-  if (input.currentDoseMg <= 0) {
+  if (!Number.isFinite(input.currentDoseMg) || input.currentDoseMg <= 0) {
     errors.push("Current dose must be greater than zero mg");
   }
-  if (input.currentLevelMmolL <= 0) {
+  if (!Number.isFinite(input.currentLevelMmolL) || input.currentLevelMmolL <= 0) {
     errors.push("Current lithium level must be greater than zero mmol/L");
   }
-  if (input.targetLevelMmolL <= 0) {
+  if (!Number.isFinite(input.targetLevelMmolL) || input.targetLevelMmolL <= 0) {
     errors.push("Target lithium level must be greater than zero mmol/L");
+  } else if (input.targetLevelMmolL > 1.2) {
+    errors.push("Target lithium level must not exceed 1.2 mmol/L");
   }
 
   if (errors.length > 0) {
@@ -98,8 +109,17 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
     };
   }
 
-  const rawDose = input.currentDoseMg * (input.targetLevelMmolL / input.currentLevelMmolL);
-  // Round to nearest practical dosage increment (standard 250mg or 450mg increments, rounded to nearest 50mg)
+  const ratio = input.targetLevelMmolL / input.currentLevelMmolL;
+  const rawDose = input.currentDoseMg * ratio;
+  // Fail closed on adjustments beyond a two-fold change or an unsafe absolute dose.
+  if (!Number.isFinite(ratio) || ratio < 0.5 || ratio > 2 || rawDose > 2000) {
+    return {
+      isValid: false,
+      suggestedDoseMg: null,
+      errors: ["Calculated dose adjustment is outside safe limits and requires clinical review"],
+      note: "Do not use an extreme proportional adjustment without specialist review.",
+    };
+  }
   const suggestedDoseMg = Math.round(rawDose / 50) * 50;
 
   return {

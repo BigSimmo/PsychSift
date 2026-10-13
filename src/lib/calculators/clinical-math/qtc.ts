@@ -9,7 +9,7 @@ export function calculateQtc(input: QtcInput): QtcResult {
   const errors: string[] = [];
   const alerts: string[] = [];
 
-  if (input.qtMs <= 0 || input.qtMs > 1000) {
+  if (!Number.isFinite(input.qtMs) || input.qtMs <= 0 || input.qtMs > 1000) {
     errors.push("QT interval must be greater than zero and within physiological range (<=1000 ms)");
   }
 
@@ -19,7 +19,7 @@ export function calculateQtc(input: QtcInput): QtcResult {
   if (input.rrIntervalSeconds !== undefined && input.rrIntervalSeconds > 0) {
     rrSeconds = input.rrIntervalSeconds;
     hr = 60 / rrSeconds;
-  } else if (input.heartRateBpm !== undefined && input.heartRateBpm > 0) {
+  } else if (input.heartRateBpm !== undefined && Number.isFinite(input.heartRateBpm) && input.heartRateBpm > 0) {
     hr = input.heartRateBpm;
     rrSeconds = 60 / hr;
   } else {
@@ -97,4 +97,6 @@ export function calculateQtc(input: QtcInput): QtcResult {
     alerts,
     errors: [],
   };
+}
+};
 }
