@@ -75,7 +75,13 @@ export function useStickyChromeMetrics({
       // universal bar is visible; only when that bar hides must the page-owned
       // sticky header be added so jumps do not land underneath it.
       const stickyHeaderHeight = isPhone() ? 0 : measureStickyHeader();
-      const anchorClearance = collapseHeight + (collapseHidden ? stickyHeaderHeight : 0);
+      // While any tab row is pinned (`data-pinned`, set by `useStickyWorkTabs`),
+      // the page's scroll padding (mode-band.css) already clears the bar and
+      // that row. Browsers add it to this margin, so counting the chrome here
+      // too would land a jump one bar low; only the breathing room is left.
+      const pinnedRowOnPage =
+        window.document.querySelector(":is(.mode-band, .inpage-nav-header)[data-pinned]") !== null;
+      const anchorClearance = pinnedRowOnPage ? 0 : collapseHeight + (collapseHidden ? stickyHeaderHeight : 0);
       root.style.setProperty(anchorOffsetProperty, `${Math.round(anchorClearance) + 16}px`);
       root.style.setProperty(stickyHeaderHeightProperty, `${Math.round(stickyHeaderHeight)}px`);
       // The live height of the universal collapse row, so page-owned sticky
@@ -112,6 +118,11 @@ export function useStickyChromeMetrics({
       const headerResize = new ResizeObserver(() => window.requestAnimationFrame(syncOffset));
       headerResize.observe(headerEl);
       cleanup.push(() => headerResize.disconnect());
+    }
+    if (headerEl) {
+      const pinned = new MutationObserver(syncOffset);
+      pinned.observe(headerEl, { attributes: true, attributeFilter: ["data-pinned"] });
+      cleanup.push(() => pinned.disconnect());
     }
 
     const phoneMedia = window.matchMedia(phoneMediaQuery);

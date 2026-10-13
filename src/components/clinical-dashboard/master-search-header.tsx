@@ -51,6 +51,7 @@ import {
   type TextScopeFilterKey,
 } from "@/components/clinical-dashboard/master-search-scope-helpers";
 import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-dismissable-layer";
+import { usePortalSlotFocus } from "@/components/clinical-dashboard/use-portal-slot-focus";
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
@@ -557,6 +558,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       queueMicrotask(clearHeaderFocus);
     };
   }, [headerCollapseOwnsPhoneAddonFocus, hideOnScrollEnabled, phoneHeaderCollapseAddonHost]);
+
+  const leadingSlotRef = useRef<HTMLDivElement>(null);
+  usePortalSlotFocus(leadingSlotRef, Boolean(hideOnScroll), setHeaderChromeFocused);
 
   useEffect(() => {
     onBottomComposerHiddenChange?.(bottomComposerHidden);
@@ -2607,7 +2611,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               button here (`WorkFrameBack`); CSS then stands the menu button
               down, so the round left control is one or the other. With the
               two-pane side menu both show, the menu first. */}
-          <div id="universal-header-leading" className="contents" />
+          <div ref={leadingSlotRef} id="universal-header-leading" className="contents" />
           <button
             type="button"
             onClick={onOpenMobileSidebar}
