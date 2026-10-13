@@ -137,7 +137,7 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
       // recent-searches chip icon (--spacing-icon-xs) went with the chips, since recent
       // questions are now a list, so this pins the composer glyphs that remain.
       expect(globalsCss).toMatch(
-        /\.chat-composer-icon-button svg,\s*\.chat-send-button svg \{\s*height: var\(--spacing-icon-lg\);\s*width: var\(--spacing-icon-lg\);/,
+        /\.chat-composer-icon-button svg,\s*\.chat-send-button svg \{\s*height: min\(var\(--spacing-icon-lg\), 24px\);\s*width: min\(var\(--spacing-icon-lg\), 24px\);/,
       );
       expect(globalsCss).not.toContain(".home-recent-searches .answer-suggestion-chip-icon");
       expect(globalsCss).not.toContain("width: var(--text-2xs);");

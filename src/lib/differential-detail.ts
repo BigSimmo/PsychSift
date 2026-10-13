@@ -194,17 +194,6 @@ export function resolveSafetyFacts(
   return facts.slice(0, 4);
 }
 
-/** Compact phone labels for the Safety Snapshot metric strip. Longer labels
- *  wrap awkwardly in equal 3-column cells; the full label remains the
- *  accessible name via the fact's `label` field. */
-export const safetyFactCompactLabel: Partial<Record<DifferentialSafetyFact["id"], string>> = {
-  causes: "High-risk",
-  tests: "Core tests",
-  actions: "Actions",
-  related: "Related",
-  "high-risk": "High risk",
-};
-
 function normalizeSafetyToken(value: string): string {
   return value
     .replace(/\s+/g, " ")

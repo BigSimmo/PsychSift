@@ -28,7 +28,7 @@ test("the legacy tools alias lands on the single tools directory", async ({ page
   // "lands on the single tools directory", so this asserts it rather than working around it.
   await expect(results).toHaveCount(1);
   await expect(results).toBeVisible();
-  await expect(results.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+  await expect(results.getByRole("heading", { level: 1, name: "All tools", exact: true })).toBeVisible();
   await expect(page.getByTestId("tools-pinned")).toBeVisible();
   await expect(results.getByTestId("tool-row-clinical-kb-search").getByRole("link")).toHaveAttribute(
     "href",

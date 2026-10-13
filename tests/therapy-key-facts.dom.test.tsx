@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { THERAPY_CATALOGUE_ASSETS } from "@/components/therapy-compass/data/generated-assets";
@@ -31,53 +30,35 @@ function renderFacts(therapy: Therapy) {
 }
 
 describe("TherapyKeyFacts", () => {
-  it("renders four tappable glance cards and opens the full Suits and Format fields", async () => {
-    const user = userEvent.setup();
+  it("renders one At a glance card with Format, Setting and Suits in full", () => {
     const therapy = bySlug("cognitive-behavioural-therapy-for-insomnia");
     renderFacts(therapy);
 
-    const facts = screen.getByLabelText("Key facts");
+    const facts = screen.getByRole("region", { name: "At a glance" });
     expect(within(facts).queryByText("Evidence")).not.toBeInTheDocument();
-    expect(within(facts).getByText("Cautions")).toBeInTheDocument();
+    // Cautions is the full block directly after this card, not a tile in it.
+    expect(within(facts).queryByText("Cautions")).not.toBeInTheDocument();
     expect(within(facts).getByText("Format")).toBeInTheDocument();
     expect(within(facts).getByText("Setting")).toBeInTheDocument();
     expect(within(facts).getByText("Suits")).toBeInTheDocument();
-    expect(within(facts).getByText("Emergency/acute +2")).toBeInTheDocument();
-    expect(within(facts).getByText("Group programme")).toBeInTheDocument();
-    expect(within(facts).getAllByText("Tap for detail")).toHaveLength(4);
-    expect(within(facts).queryByText(therapy.patientPopulation!)).not.toBeInTheDocument();
-
-    await user.click(within(facts).getByRole("button", { name: /Suits:.*Open detail/i }));
-    const suitsSheet = await screen.findByTestId("therapy-key-fact-sheet");
-    expect(suitsSheet).toHaveTextContent(/sleep diaries/i);
-    expect(suitsSheet).toHaveTextContent(/sleep restriction or stimulus control/i);
-
-    await user.click(within(suitsSheet).getByRole("button", { name: /close/i }));
-    expect(screen.queryByTestId("therapy-key-fact-sheet")).not.toBeInTheDocument();
-
-    await user.click(within(facts).getByRole("button", { name: /Format:.*Open detail/i }));
-    const formatSheet = await screen.findByTestId("therapy-key-fact-sheet");
-    expect(formatSheet).toHaveTextContent(/4–8 sessions/);
-    expect(formatSheet).toHaveTextContent(/between-session behavioural practice/);
+    expect(within(facts).queryByText("Tap for detail")).not.toBeInTheDocument();
+    expect(within(facts).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(facts).getByText(therapy.patientPopulation!.trim())).toBeInTheDocument();
+    expect(facts).toHaveTextContent(/sleep diaries/i);
+    expect(facts).toHaveTextContent(/4–8 sessions/);
+    expect(facts).toHaveTextContent(/between-session behavioural practice/);
   });
 
-  it("shows the full Cautions field immediately in its detail sheet", async () => {
-    const user = userEvent.setup();
-    const caution = "Use a coordinated safety plan and review alternatives before proceeding.";
-    renderFacts({
-      ...bySlug("cognitive-behavioural-therapy-for-insomnia"),
-      contraindicationsOrCautions: Array.from({ length: 8 }, () => caution).join(" "),
-      limitations: null,
-    });
+  it("shows the whole Setting list rather than a first-item-plus-count glance", () => {
+    const therapy = bySlug("cognitive-behavioural-therapy-for-insomnia");
+    renderFacts(therapy);
 
-    const facts = screen.getByLabelText("Key facts");
-    await user.click(within(facts).getByRole("button", { name: /Cautions:.*Open detail/i }));
-    const cautionsSheet = await screen.findByTestId("therapy-key-fact-sheet");
-    expect(cautionsSheet).toHaveTextContent(caution);
-    expect(within(cautionsSheet).queryByRole("button", { name: /Show more of Cautions/i })).not.toBeInTheDocument();
+    const facts = screen.getByRole("region", { name: "At a glance" });
+    expect(within(facts).queryByText("Emergency/acute +2")).not.toBeInTheDocument();
+    expect(within(facts).getByText(therapy.setting!.trim())).toBeInTheDocument();
   });
 
-  it("leaves a card inert when the face is the whole field", () => {
+  it("shows short fields as they are, with nothing to open", () => {
     renderFacts({
       ...bySlug("cognitive-behavioural-therapy-for-insomnia"),
       contraindicationsOrCautions: "Avoid in acute mania.",
@@ -88,10 +69,11 @@ describe("TherapyKeyFacts", () => {
       patientPopulation: "Adults.",
     });
 
-    const facts = screen.getByLabelText("Key facts");
-    expect(within(facts).queryByRole("button", { name: /Open detail/i })).not.toBeInTheDocument();
-    expect(within(facts).queryByText("Tap for detail")).not.toBeInTheDocument();
-    expect(within(facts).getByText("Avoid in acute mania.")).toBeInTheDocument();
+    const facts = screen.getByRole("region", { name: "At a glance" });
+    expect(within(facts).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(facts).queryByText("Avoid in acute mania.")).not.toBeInTheDocument();
+    expect(within(facts).getByText("Single session")).toBeInTheDocument();
     expect(within(facts).getByText("Outpatient")).toBeInTheDocument();
+    expect(within(facts).getByText("Adults.")).toBeInTheDocument();
   });
 });
