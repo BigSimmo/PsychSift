@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "aaf60e66-905d-43fa-bc98-2f93b43b86d9",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "693e8f34-1b14-4e61-a87c-430fff130dad",
+    "reason": "PR3509 rebuild: keep Safari browser failure history on the existing open issue #9Z197J and its landed update request 8d36f1f7-498f-4965-a5dd-f2e18ecd0c6e. Cancel this duplicate addition, retain its original 26-failure evidence in the immutable applied audit after future reconciliation, and do not claim the outstanding confirmation run is complete. Source: https://github.com/BigSimmo/PsychSift/pull/3509 at db2d180360b3d3dc7ef805f6faae227b4e4b0e8b."
+  }
+}
