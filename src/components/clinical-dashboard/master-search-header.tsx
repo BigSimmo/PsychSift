@@ -42,7 +42,6 @@ import {
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
-import { clinicalQuestionPatientDetail, composerPatientDetailWarning } from "@/lib/clinical-question-patient-check";
 import {
   splitFilterText,
   filterText,
@@ -177,6 +176,8 @@ const scopeSheetMediaQuery = "(max-width: 1023px)";
 const desktopPageComposerMediaQuery = "(min-width: 640px)";
 const modeHomeComposerMediaQuery = "(min-width: 0px)";
 const modeHomeComposerSmUpMediaQuery = "(min-width: 640px)";
+
+type PatientCheckModule = typeof import("@/lib/clinical-question-patient-check");
 
 export type MasterSearchHeaderScrollConfig = {
   strategy: "overlay" | "collapse";
@@ -400,9 +401,23 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   });
   const trimmedQuery = query.trim();
   // Answer mode holds back a question that looks like it holds a patient detail (audit S2, 2026-10-13).
+  // The check loads once the box has text, so pages that never type a question don't download it
+  // (bundle budget). Until it arrives the server check still refuses the question.
+  const [patientCheck, setPatientCheck] = useState<PatientCheckModule | null>(null);
+  const needsPatientCheck = Boolean(query) && !patientCheck;
+  useEffect(() => {
+    if (!needsPatientCheck) return;
+    let live = true;
+    void import("@/lib/clinical-question-patient-check").then((mod) => {
+      if (live) setPatientCheck(mod);
+    });
+    return () => {
+      live = false;
+    };
+  }, [needsPatientCheck]);
   const clinicalPatientDetail = useMemo(
-    () => (searchMode === "answer" && query ? clinicalQuestionPatientDetail(query) : null),
-    [query, searchMode],
+    () => (searchMode === "answer" && query && patientCheck ? patientCheck.clinicalQuestionPatientDetail(query) : null),
+    [patientCheck, query, searchMode],
   );
   const hasPhiWarning = Boolean(clinicalPatientDetail || (query && identifierShapeWarning(query)));
   const composerPhiWarningId = "composer-phi-warning";
@@ -2463,7 +2478,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             data-testid={composerPhiWarningId}
             className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
           >
-            {composerPatientDetailWarning(clinicalPatientDetail)}
+            {patientCheck
+              ? patientCheck.composerPatientDetailWarning(clinicalPatientDetail)
+              : "Remove identifiable patient details before searching."}
           </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can

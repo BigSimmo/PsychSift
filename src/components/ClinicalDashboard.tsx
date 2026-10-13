@@ -193,10 +193,6 @@ import {
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
 import { hasCrisisWording, hasOverdoseWording } from "@/lib/crisis-wording";
-import {
-  clinicalQuestionPatientDetail,
-  clinicalQuestionPatientDetailMessage,
-} from "@/lib/clinical-question-patient-check";
 import { useDeferredRegistrySearch } from "@/components/clinical-dashboard/use-deferred-registry-search";
 import { buildAnswerFollowUpQuery, buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
 import {
@@ -243,6 +239,11 @@ import {
   PriorAnswerTurnSurface,
 } from "@/components/clinical-dashboard/answer-thread-turn";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
+// Loaded on the first Answer question rather than with the page (bundle budget, 2026-10-13).
+function loadClinicalQuestionPatientCheck() {
+  return import("@/lib/clinical-question-patient-check");
+}
+
 export type { AnswerFeedbackType } from "@/lib/answer-feedback";
 export function ClinicalDashboard(props: ClinicalDashboardProps = {}) {
   return (
@@ -1666,9 +1667,10 @@ function ClinicalDashboardContent({
     const isDifferentialsMode = modeSearch.resultKind === "differentials";
     const isAnswerRequest = modeSearch.resultKind === "answer";
     if (isAnswerRequest) {
-      const patientDetail = clinicalQuestionPatientDetail(trimmedQuery);
+      const patientCheck = await loadClinicalQuestionPatientCheck();
+      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
-        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
+        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
         return;
       }
     }
@@ -2024,9 +2026,10 @@ function ClinicalDashboardContent({
     // 2026-10-13). The composer already disables Ask for it; this covers every other way in
     // (a link with ?run=1, a recent question). The answer API refuses it again.
     if (searchMode === "answer" && trimmedQuery) {
-      const patientDetail = clinicalQuestionPatientDetail(trimmedQuery);
+      const patientCheck = await loadClinicalQuestionPatientCheck();
+      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
-        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
+        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
         return;
       }
     }
@@ -2174,13 +2177,7 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
-    if (mode === "answer") {
-      const patientDetail = clinicalQuestionPatientDetail(crossQuery.trim());
-      if (patientDetail) {
-        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
-        return;
-      }
-    }
+    // An Answer cross-search reaches executeSearch, which holds back patient details.
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
