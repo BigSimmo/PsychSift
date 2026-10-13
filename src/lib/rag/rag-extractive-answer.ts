@@ -2232,9 +2232,9 @@ export function isAdmissionDischargeRequirementsComparisonQuery(query: string, q
  * Give the admission/discharge fallback builder both sides to work from. Answer-evidence selection
  * can fill every slot with one stage's documents (live canary 38363682098: the admission guideline
  * ranked in search but never reached the builder), so the builder failed closed. When the selected
- * evidence has no exclusively-labelled source for a side, append up to three of that side's chunks
- * from the governed eligible set. Every claim still passes the builder's requirement binding and the
- * claim-support gate, so a missing side still fails closed.
+ * evidence yields no source-bound requirement fact for a side, append up to three governed eligible
+ * chunks that do, using the builder's own fact extraction. Every claim still passes the claim-support
+ * gate, so a side with no bound requirement still fails closed.
  */
 export function withAdmissionDischargeSideEvidence(args: {
   query: string;
@@ -2243,20 +2243,26 @@ export function withAdmissionDischargeSideEvidence(args: {
   candidates: readonly SearchResult[];
 }) {
   if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.selected;
-  const exclusiveTo = (result: SearchResult, side: RegExp, other: RegExp) => {
-    const label = comparisonSourceLabel(result);
-    return side.test(label) && !other.test(label);
-  };
   const selectedIds = new Set(args.selected.map((result) => result.id));
+  const unselected = args.candidates.filter((result) => !selectedIds.has(result.id));
   const additions: SearchResult[] = [];
-  for (const [side, other] of [
-    [admissionComparisonTermPattern, dischargeComparisonTermPattern],
-    [dischargeComparisonTermPattern, admissionComparisonTermPattern],
-  ] as const) {
-    if (args.selected.some((result) => exclusiveTo(result, side, other))) continue;
+  for (const side of [
+    {
+      subjectPattern: admissionComparisonTermPattern,
+      otherSubjectPattern: dischargeComparisonTermPattern,
+      requirementBindingPatterns: admissionRequirementBindingPatterns,
+    },
+    {
+      subjectPattern: dischargeComparisonTermPattern,
+      otherSubjectPattern: admissionComparisonTermPattern,
+      requirementBindingPatterns: dischargeRequirementBindingPatterns,
+    },
+  ]) {
+    if (sourceBoundComparisonFacts({ ...side, results: args.selected }).length) continue;
     additions.push(
-      ...args.candidates
-        .filter((result) => !selectedIds.has(result.id) && exclusiveTo(result, side, other))
+      ...sourceBoundComparisonFacts({ ...side, results: unselected })
+        .map((fact) => fact.result)
+        .filter((result) => !additions.includes(result))
         .slice(0, 3),
     );
   }

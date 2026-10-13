@@ -151,6 +151,24 @@ describe("admission/discharge fallback keeps both sides in its evidence", () => 
     ).toBe(dischargeOnly);
   });
 
+  it("does not count an admission source without a bound requirement as the admission side", () => {
+    const admissionUnbound = result({
+      id: "admission-unbound",
+      document_id: "admission-unbound-doc",
+      title: "Admission of Community Patients",
+      file_name: ADMISSION_FILE,
+      content: ADMISSION_UNBOUND,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [admissionUnbound, dischargeBound],
+      candidates: [admissionUnbound, dischargeBound, admissionBound],
+    });
+    expect(selected.map((item) => item.id)).toEqual(["admission-unbound", "discharge-chunk", "admission-chunk"]);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
+  });
+
   it("does not count a dual-title policy as the admission side", () => {
     const dual = result({
       id: "dual-chunk",
