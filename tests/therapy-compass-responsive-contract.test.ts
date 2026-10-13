@@ -19,6 +19,7 @@ const informationPageShellSource = read("src/components/information-page-shell.t
 const printOutputSource = read("src/components/ui/print-output.tsx");
 const detailSource = read(`${therapyPath}/screens/detail-screen.tsx`);
 const keyFactsSource = read(`${therapyPath}/record/key-facts.tsx`);
+const recordPanelsSource = read("src/components/clinical-record-panels.tsx");
 const compareSource = read(`${therapyPath}/screens/compare-screen.tsx`);
 const recommendSource = read(`${therapyPath}/screens/recommend-screen.tsx`);
 const recommendFieldsSource = read(`${therapyPath}/recommend-scenario-fields.tsx`);
@@ -164,12 +165,12 @@ describe("Therapy Compass responsive contract", () => {
     // tests/mode-home-no-caveat-footer.test.ts rather than by name here.
     // The record page is a single reading column at every width now, so it has
     // no multi-column grid of its own to reflow and no sticky rail to un-stick.
-    // What replaced them is the key-facts strip, which is phone-first in the
-    // medication `DetailTile` shape: two up on a phone, four across from `sm`.
-    // Four short tiles at one-per-row would push the record body a full screen
-    // down, which is the fold problem this page was rebuilt to fix.
-    expect(keyFactsSource).toContain("grid-cols-2");
-    expect(keyFactsSource).toContain("sm:grid-cols-4");
+    // What replaced them is the shared record layout's "At a glance" card
+    // (clinical-record-panels): label/value pairs in full, two up from 22rem and
+    // one column below it, so the large-text setting on a 320px phone reflows
+    // to a single column instead of squeezing two.
+    expect(keyFactsSource).toContain("RecordGlance");
+    expect(recordPanelsSource).toContain("min-[22rem]:grid-cols-2");
     expect(detailSource).not.toContain("sticky");
     expect(responsiveStackCount(compareSource)).toBeGreaterThanOrEqual(1);
     expect(compareSource).toContain("<Tabs");
