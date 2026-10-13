@@ -425,21 +425,29 @@ test.describe("pages that fit the window have no scroll range", () => {
       () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
     );
 
-    const geometry = await page.evaluate(() => {
-      const home = document.querySelector<HTMLElement>('[data-testid="shared-home-empty-state"]');
-      const canvas = document.querySelector<HTMLElement>("[data-mode-home-canvas]");
-      const main = document.getElementById("main-content");
-      if (!home || !canvas || !main) return null;
+    // WebKit (the tablet project) can paint the home card a frame or two before
+    // the centring canvas is marked, so wait for all three nodes instead of
+    // reading once and failing on a transient null.
+    const readGeometry = () =>
+      page.evaluate(() => {
+        const home = document.querySelector<HTMLElement>('[data-testid="shared-home-empty-state"]');
+        const canvas = document.querySelector<HTMLElement>("[data-mode-home-canvas]");
+        const main = document.getElementById("main-content");
+        if (!home || !canvas || !main) return null;
 
-      const homeRect = home.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      return {
-        homeMidY: homeRect.top + homeRect.height / 2,
-        canvasMidY: canvasRect.top + canvasRect.height / 2,
-        maxScrollTop: Math.max(0, main.scrollHeight - main.clientHeight),
-      };
-    });
+        const homeRect = home.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        return {
+          homeMidY: homeRect.top + homeRect.height / 2,
+          canvasMidY: canvasRect.top + canvasRect.height / 2,
+          maxScrollTop: Math.max(0, main.scrollHeight - main.clientHeight),
+        };
+      });
 
+    await expect
+      .poll(readGeometry, { message: "home card, centring canvas and main scroller all mount" })
+      .not.toBeNull();
+    const geometry = await readGeometry();
     expect(geometry).not.toBeNull();
     expect(Math.abs(geometry!.homeMidY - geometry!.canvasMidY)).toBeLessThanOrEqual(1);
     expect(geometry!.maxScrollTop).toBe(0);
