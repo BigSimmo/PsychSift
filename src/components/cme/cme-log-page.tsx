@@ -481,7 +481,7 @@ export function CmeLogPage({
               onClick={openCopySheet}
               data-testid="cme-log-copy-next"
               className="work-button min-h-tap shrink-0"
-              data-variant="tinted"
+              data-variant="grey"
             >
               Copy next
             </button>
@@ -593,7 +593,7 @@ export function CmeLogPage({
                       type="button"
                       onClick={openCopySheet}
                       className="work-button min-h-tap shrink-0"
-                      data-variant="tinted"
+                      data-variant="grey"
                     >
                       Copy next
                     </button>

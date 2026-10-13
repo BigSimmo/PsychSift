@@ -2069,6 +2069,18 @@ a.work-hero:focus-visible {
   color: var(--work-ink);
 }
 
+/* A row action on a list with many rows (Log, Tag one, Attach): a grey pill, so
+   the screen's one coloured button stays the next step (design audit D08,
+   13 Oct 2026; Teaching Today's row actions are the model). */
+.work-button[data-variant="grey"] {
+  color: var(--work-ink);
+}
+
+.work-button[data-variant="grey"]::before {
+  background: var(--work-wash);
+  box-shadow: var(--work-edge-inset) var(--work-line);
+}
+
 .work-button[data-size="wide"] {
   width: 100%;
   min-height: 3rem;
