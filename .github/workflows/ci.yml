@@ -1903,7 +1903,7 @@ jobs:
           if [ "$TREE_PROVEN_COVERAGE" = "true" ]; then proven+=("coverage"); fi
           if [ "$TREE_PROVEN_UI" = "true" ]; then proven+=("production-ui"); fi
           if [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then proven+=("lighthouse-budget"); fi
-          if [ "$TREE_PROVEN_MATRIX" = "true" ]; then proven+=("release-browser-matrix"); fi
+          if [ "$TREE_PROVEN_MATRIX" = "true" ]; then proven+=("Firefox/WebKit release matrix"); fi
           if [ ${#proven[@]} -gt 0 ]; then
             echo "::notice title=Proven on the identical tree::Not re-run because an earlier green run" \
               "already passed them on the tree it recorded testing, and nothing they read has changed" \
