@@ -2232,9 +2232,9 @@ export function isAdmissionDischargeRequirementsComparisonQuery(query: string, q
  * Give the admission/discharge fallback builder both sides to work from. Answer-evidence selection
  * can fill every slot with one stage's documents (live canary 38363682098: the admission guideline
  * ranked in search but never reached the builder), so the builder failed closed. When the selected
- * evidence yields no source-bound requirement fact for a side, append up to three governed eligible
- * chunks that do, using the builder's own fact extraction. Every claim still passes the claim-support
- * gate, so a side with no bound requirement still fails closed.
+ * evidence has no exclusively-labelled source for a side, append up to three of that side's chunks
+ * from the governed eligible set. Every claim still passes the builder's requirement binding and the
+ * claim-support gate, so a missing side still fails closed.
  */
 export function withAdmissionDischargeSideEvidence(args: {
   query: string;
@@ -2243,29 +2243,57 @@ export function withAdmissionDischargeSideEvidence(args: {
   candidates: readonly SearchResult[];
 }) {
   if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.selected;
+  const exclusiveTo = (result: SearchResult, side: RegExp, other: RegExp) => {
+    const label = comparisonSourceLabel(result);
+    return side.test(label) && !other.test(label);
+  };
   const selectedIds = new Set(args.selected.map((result) => result.id));
-  const unselected = args.candidates.filter((result) => !selectedIds.has(result.id));
   const additions: SearchResult[] = [];
-  for (const side of [
-    {
-      subjectPattern: admissionComparisonTermPattern,
-      otherSubjectPattern: dischargeComparisonTermPattern,
-      requirementBindingPatterns: admissionRequirementBindingPatterns,
-    },
-    {
-      subjectPattern: dischargeComparisonTermPattern,
-      otherSubjectPattern: admissionComparisonTermPattern,
-      requirementBindingPatterns: dischargeRequirementBindingPatterns,
-    },
-  ]) {
-    if (sourceBoundComparisonFacts({ ...side, results: args.selected }).length) continue;
+  for (const [side, other, bindingPatterns] of [
+    [admissionComparisonTermPattern, dischargeComparisonTermPattern, admissionRequirementBindingPatterns],
+    [dischargeComparisonTermPattern, admissionComparisonTermPattern, dischargeRequirementBindingPatterns],
+  ] as const) {
+    // A labelled chunk is not evidence until the comparison builder can bind a
+    // requirement sentence from it. Keep looking when selection retained only
+    // background prose, and apply the same bounded quota to usable candidates.
+    const selectedHasUsableEvidence = sourceBoundComparisonFacts({
+      results: args.selected,
+      subjectPattern: side,
+      otherSubjectPattern: other,
+      requirementBindingPatterns: bindingPatterns,
+    }).some(({ result }) => exclusiveTo(result, side, other));
+    if (selectedHasUsableEvidence) continue;
+    const oppositeDocumentIds = new Set(
+      sourceBoundComparisonFacts({
+        results: args.selected,
+        subjectPattern: other,
+        otherSubjectPattern: side,
+        requirementBindingPatterns: bindingPatterns === admissionRequirementBindingPatterns
+          ? dischargeRequirementBindingPatterns
+          : admissionRequirementBindingPatterns,
+      }).map(({ result }) => result.document_id),
+    );
     additions.push(
-      ...sourceBoundComparisonFacts({ ...side, results: unselected })
-        .map((fact) => fact.result)
-        .filter((result) => !additions.includes(result))
+      ...args.candidates
+        .filter(
+          (result) =>
+            !selectedIds.has(result.id) &&
+            exclusiveTo(result, side, other) &&
+            !oppositeDocumentIds.has(result.document_id),
+        )
+        .filter((result) =>
+          sourceBoundComparisonFacts({
+            results: [result],
+            subjectPattern: side,
+            otherSubjectPattern: other,
+            requirementBindingPatterns: bindingPatterns,
+          }).some(({ result: factResult }) => factResult.id === result.id),
+        )
         .slice(0, 3),
     );
   }
+  // Do not duplicate a candidate selected for the other side.
+  for (const result of additions) selectedIds.add(result.id);
   return additions.length ? [...args.selected, ...additions] : args.selected;
 }
 
