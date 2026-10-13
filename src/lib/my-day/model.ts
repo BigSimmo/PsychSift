@@ -84,6 +84,8 @@ export interface MyDayState {
   /** Merged and sorted with `mergeMyDayItems`. */
   readonly items: readonly MyDayItem[];
   readonly sources: readonly MyDaySourceResult[];
+  /** True while a source is reading again over the answer it still shows (a retry in flight). */
+  readonly refreshing?: boolean;
   /** True when any source is showing demo/sample data. */
   readonly demoMode: boolean;
   readonly retry: () => void;
