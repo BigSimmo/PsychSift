@@ -18,6 +18,7 @@ import { queryClassForClinicalMode, queryForClinicalMode } from "@/lib/clinical-
 import { resolveSearchScope } from "@/lib/search-scope";
 import { resolveRetrievalAccessScope } from "@/lib/owner-scope";
 import { parseJsonBody } from "@/lib/validation/body";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 import {
   buildGovernedAnswerClientResponse,
   buildGovernedDemoAnswerClientResponse,
@@ -69,6 +70,9 @@ export async function POST(request: Request) {
   let body: AnswerRequestBody | null = null;
   try {
     const answerBody = await parseJsonBody(request, answerRequestSchema, "Invalid answer request.");
+    // Refuse a question that looks like it holds a patient detail before it reaches the
+    // AI service (audit S2, 2026-10-13). The page checks first; this is the backstop.
+    rejectPatientDetailQuestion(answerBody);
     if (answerBody.summaryMode) {
       return jsonError(
         new PublicApiError("Document summaries require the streaming answer endpoint.", 400, {

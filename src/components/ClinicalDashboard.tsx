@@ -192,6 +192,10 @@ import {
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
 import { hasCrisisWording } from "@/lib/crisis-wording";
+import {
+  clinicalQuestionPatientDetail,
+  clinicalQuestionPatientDetailMessage,
+} from "@/lib/clinical-question-patient-check";
 import { useDeferredRegistrySearch } from "@/components/clinical-dashboard/use-deferred-registry-search";
 import { buildAnswerFollowUpQuery, buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
 import {
@@ -2007,6 +2011,17 @@ function ClinicalDashboardContent({
 
   async function ask(searchText = query, contextOverride?: SearchNavigationContext, replaceExistingAnswer = false) {
     const trimmedQuery = searchText.trim();
+    // A Clinical question goes to an overseas AI service. One that looks like it holds a patient
+    // detail is not sent, saved as a recent question or written into the address bar (audit S2,
+    // 2026-10-13). The composer already disables Ask for it; this covers every other way in
+    // (a link with ?run=1, a recent question). The answer API refuses it again.
+    if (searchMode === "answer" && trimmedQuery) {
+      const patientDetail = clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const effectiveQueryMode = contextOverride?.queryMode ?? queryMode;
     const effectiveScopeFilters = contextOverride?.scopeFilters ?? scopeFilters;
     const privateScopeRef =
