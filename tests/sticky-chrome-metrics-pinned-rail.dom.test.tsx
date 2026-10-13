@@ -25,6 +25,7 @@ function mountChrome({ pinned }: { pinned: boolean }) {
   setHeight(collapse, 56);
   const header = document.createElement("div");
   header.setAttribute("data-sticky", "");
+  header.className = "inpage-nav-header";
   header.style.setProperty("--work-band-tabs-top", "40px");
   if (pinned) header.setAttribute("data-pinned", "");
   setHeight(header, 88);
@@ -41,7 +42,7 @@ afterEach(() => {
 });
 
 describe("phone anchor offset with a pinned tab rail", () => {
-  it("clears the bar and the pinned rail while the bar shows", () => {
+  it("leaves the bar and the pinned rail to the page's scroll padding", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: true,
       media: query,
@@ -50,8 +51,9 @@ describe("phone anchor offset with a pinned tab rail", () => {
     }));
     mountChrome({ pinned: true });
     render(<Probe />);
-    // 56 bar + (88 header - 40 above the rail) + 16 breathing room.
-    expect(anchor()).toBe("120px");
+    // mode-band.css pads the page by the bar and the pinned row, and browsers
+    // add that padding to this margin, so only the breathing room remains.
+    expect(anchor()).toBe("16px");
   });
 
   it("clears only the bar when the header is not pinned", () => {
@@ -66,7 +68,7 @@ describe("phone anchor offset with a pinned tab rail", () => {
     expect(anchor()).toBe("72px");
   });
 
-  it("drops the rail when the bar hides, because the rail hides with it", () => {
+  it("keeps only the breathing room when the bar hides with a pinned rail", () => {
     vi.stubGlobal("matchMedia", (query: string) => ({
       matches: true,
       media: query,

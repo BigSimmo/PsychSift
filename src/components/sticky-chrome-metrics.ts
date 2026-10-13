@@ -65,13 +65,6 @@ export function useStickyChromeMetrics({
 
     const measureStickyHeader = () => stickyHeader()?.offsetHeight ?? 0;
 
-    const measurePinnedRail = () => {
-      const header = stickyHeader();
-      if (!header?.hasAttribute("data-pinned")) return 0;
-      const railTop = Number.parseFloat(header.style.getPropertyValue("--work-band-tabs-top")) || 0;
-      return Math.max(0, header.offsetHeight - railTop);
-    };
-
     const syncOffset = () => {
       if (!root) return;
       const collapseHidden = collapse?.getAttribute("data-scroll-hidden") === "true";
@@ -82,14 +75,13 @@ export function useStickyChromeMetrics({
       // universal bar is visible; only when that bar hides must the page-owned
       // sticky header be added so jumps do not land underneath it.
       const stickyHeaderHeight = isPhone() ? 0 : measureStickyHeader();
-      // A header that pins its own tab rail (`data-pinned`, set by
-      // `useStickyWorkTabs`) stays in the page at every width, and its rail
-      // rides under the bar. Jumps must clear that rail while the bar is
-      // showing; when the bar hides, the rail hides with it.
-      const pinned = stickyHeader()?.hasAttribute("data-pinned") ?? false;
-      const anchorClearance = pinned
-        ? collapseHeight + (collapseHidden ? 0 : measurePinnedRail())
-        : collapseHeight + (collapseHidden ? stickyHeaderHeight : 0);
+      // While any tab row is pinned (`data-pinned`, set by `useStickyWorkTabs`),
+      // the page's scroll padding (mode-band.css) already clears the bar and
+      // that row. Browsers add it to this margin, so counting the chrome here
+      // too would land a jump one bar low; only the breathing room is left.
+      const pinnedRowOnPage =
+        window.document.querySelector(":is(.mode-band, .inpage-nav-header)[data-pinned]") !== null;
+      const anchorClearance = pinnedRowOnPage ? 0 : collapseHeight + (collapseHidden ? stickyHeaderHeight : 0);
       root.style.setProperty(anchorOffsetProperty, `${Math.round(anchorClearance) + 16}px`);
       root.style.setProperty(stickyHeaderHeightProperty, `${Math.round(stickyHeaderHeight)}px`);
       // The live height of the universal collapse row, so page-owned sticky
