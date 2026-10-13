@@ -20,7 +20,10 @@ import "@/components/pwa-offline-line.css";
 import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
-import { savedLine } from "@/lib/offline-line";
+import type { savedLine as SavedLine } from "@/lib/offline-line";
+
+/** savedLine's own wording when the save time is unknown. */
+const OFFLINE_LINE_FALLBACK = "Offline, showing what was saved earlier";
 
 const INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-install-dismissed-at";
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
@@ -347,6 +350,22 @@ export function PwaLifecycle() {
   // path, so there a matching path proves nothing and the line says "saved earlier".
   const offlineSavedAt =
     offlineSaved && page !== null && pathname !== "/" && offlineSaved.page === page ? offlineSaved.at : null;
+  // The offline line's wording helper pulls in the work clock and account
+  // preferences, which every page would otherwise download up front for a
+  // notice most visits never show. It loads just after mount, while online, so
+  // it is ready before the signal drops; until then the line says "saved earlier".
+  const [savedLineFn, setSavedLineFn] = useState<typeof SavedLine | null>(null);
+  useEffect(() => {
+    let live = true;
+    import("@/lib/offline-line")
+      .then((module) => {
+        if (live) setSavedLineFn(() => module.savedLine);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
   const [showIosHint, setShowIosHint] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
@@ -614,7 +633,7 @@ export function PwaLifecycle() {
             <NoticeIcon icon={WifiOff} tone="warning" />
             <div className="pwa-notice-body min-w-0">
               <p id="pwa-offline-title" className="text-sm font-bold text-[color:var(--text-heading)]">
-                {savedLine({ reason: "offline", savedAt: offlineSavedAt })}
+                {savedLineFn ? savedLineFn({ reason: "offline", savedAt: offlineSavedAt }) : OFFLINE_LINE_FALLBACK}
               </p>
               <p className="pwa-notice-copy mt-1 text-sm leading-6 text-[color:var(--text-muted)]">
                 Clinical search and private features need a connection.
