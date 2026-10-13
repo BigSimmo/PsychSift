@@ -203,9 +203,35 @@ describe("MHA clock store", () => {
 describe("MhaClockPage", () => {
   it("starts with an empty state and the owner-approved reference line", () => {
     render(<MhaClockPage forms={forms} now={now} />);
-    expect(screen.getByRole("heading", { level: 1, name: "MHA clock" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "MHA time limits" })).toBeTruthy();
     expect(screen.getByTestId("mha-clock-empty")).toBeTruthy();
     expect(screen.getByTestId("mha-clock-reference")).toHaveTextContent(MHA_TIMELINE_REFERENCE_NOTE);
+  });
+
+  it("picks the form and time a form record's Start clock link carries, and has no decorative bars", () => {
+    window.history.replaceState(null, "", "/forms/clock?form=3A&made=2026-10-05T17%3A15");
+    try {
+      render(<MhaClockPage forms={forms} now={now} />);
+      expect((screen.getByTestId("mha-clock-form") as HTMLSelectElement).value).toBe("3A");
+      expect((screen.getByTestId("mha-clock-time") as HTMLInputElement).value).toBe("2026-10-05T17:15");
+      act(() => {
+        fireEvent.click(screen.getByTestId("mha-clock-start"));
+      });
+      expect(screen.getByTestId("mha-clock-card")).toHaveTextContent("Made Mon 17:15");
+      expect(screen.queryByTestId("mha-clock-band")).toBeNull();
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
+  });
+
+  it("ignores a form the clock does not offer", () => {
+    window.history.replaceState(null, "", "/forms/clock?form=ZZ");
+    try {
+      render(<MhaClockPage forms={forms} now={now} />);
+      expect((screen.getByTestId("mha-clock-form") as HTMLSelectElement).value).toBe("");
+    } finally {
+      window.history.replaceState(null, "", "/");
+    }
   });
 
   it("starts a clock from the form and time entered, and removes it", () => {

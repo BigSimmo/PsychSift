@@ -407,7 +407,7 @@ function ShiftToolsList({ clockLine }: { readonly clockLine: (clocks: readonly M
           </Link>
         )}
         icon={Timer}
-        title="MHA clock"
+        title="MHA time limits"
         subtitle={
           <span data-testid="psychiatry-shift-mha-summary">
             {unreadable ? MHA_CLOCK_UNREADABLE : clockLine(clocks)}
