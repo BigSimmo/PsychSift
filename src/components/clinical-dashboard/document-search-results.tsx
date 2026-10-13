@@ -120,8 +120,8 @@ type DocumentFilterDraft = {
 };
 
 /** Initial DOM budget for document result cards; further rows reveal on demand. */
-const DOCUMENT_RESULTS_INITIAL_WINDOW = 25;
-const DOCUMENT_RESULTS_PAGE_SIZE = 25;
+const DOCUMENT_RESULTS_INITIAL_WINDOW = 30;
+const DOCUMENT_RESULTS_PAGE_SIZE = 30;
 export type SearchFacets = {
   status?: SearchFacet[];
   validation?: SearchFacet[];
@@ -628,6 +628,8 @@ function SearchRecordResults({
   if (matches.length === 0) return null;
   const copy = searchRecordConfig[mode];
   const recordRoute = (slug: string) => `${copy.routePrefix}/${slug}`;
+  const [visibleCount, setVisibleCount] = useState(30);
+  const renderedMatches = matches.length > 30 ? matches.slice(0, visibleCount) : matches;
   return (
     <section
       data-testid={`${copy.testIdPrefix}-results`}
@@ -654,7 +656,7 @@ function SearchRecordResults({
       </div>
 
       <div className="grid gap-3">
-        {matches.map(({ service, reasons }, index) => {
+        {renderedMatches.map(({ service, reasons }, index) => {
           const summaryCards = service.summaryCards?.slice(0, 3) ?? [];
           const chips = [
             ...(service.statusChips ?? []).map((chip) => chip.label).filter(Boolean),
@@ -748,6 +750,16 @@ function SearchRecordResults({
           );
         })}
       </div>
+      {matches.length > visibleCount ? (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((prev) => prev + 30)}
+          className={cn(floatingControl, "min-h-tap w-full justify-center rounded-xl px-4 text-sm font-semibold")}
+          data-testid={`${copy.testIdPrefix}-show-more`}
+        >
+          Show more ({matches.length - visibleCount} remaining)
+        </button>
+      ) : null}
     </section>
   );
 }

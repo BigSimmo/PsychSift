@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Network, ShieldAlert } from "lucide-react";
 
 import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
@@ -101,7 +101,7 @@ function likelihoodTone(likelihood: DifferentialLikelihood) {
   return "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)]";
 }
 
-function StreamCard({
+const StreamCard = memo(function StreamCard({
   item,
   stream,
   query,
@@ -110,6 +110,7 @@ function StreamCard({
   showSelect,
   focusMode,
   outsideFilter = false,
+  isLongList = false,
   onFocus,
   onToggleSelect,
   onShowConnections,
@@ -123,9 +124,10 @@ function StreamCard({
   selected: boolean;
   showSelect: boolean;
   focusMode: boolean;
-  onFocus: () => void;
-  onToggleSelect: () => void;
-  onShowConnections: () => void;
+  isLongList?: boolean;
+  onFocus: (slug: string) => void;
+  onToggleSelect: (slug: string) => void;
+  onShowConnections: (slug: string) => void;
 }) {
   const isPresentation = stream === "presentations";
   const href = isPresentation ? differentialRouteWithQuery(item.href, query) : item.href;
@@ -155,8 +157,11 @@ function StreamCard({
       data-match={item.isMatch ? "true" : "false"}
       data-status={item.status}
       data-outside-filter={outsideFilter ? "true" : undefined}
-      className={`relative p-4 transition ${outsideFilter ? "" : cardTone}`}
-      onFocus={onFocus}
+      className={cn(
+        "relative p-4 transition content-auto [contain-intrinsic-size:auto_140px]",
+        outsideFilter ? "" : cardTone,
+      )}
+      onFocus={() => onFocus(item.slug)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 grid gap-1">
@@ -171,7 +176,7 @@ function StreamCard({
             >
               <Link
                 href={href}
-                onClick={onFocus}
+                onClick={() => onFocus(item.slug)}
                 data-testid={`differential-stream-open-${item.slug}`}
                 className={cn(
                   "inline-flex items-center gap-1 rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
@@ -197,7 +202,7 @@ function StreamCard({
             <span className="sr-only">
               {selected ? `Remove ${item.title} from comparison` : `Add ${item.title} to comparison`}
             </span>
-            <input type="checkbox" checked={selected} onChange={onToggleSelect} className="peer sr-only" />
+            <input type="checkbox" checked={selected} onChange={() => onToggleSelect(item.slug)} className="peer sr-only" />
             <span
               data-testid="differential-selection-box"
               className={cn(
@@ -275,8 +280,8 @@ function StreamCard({
           <button
             type="button"
             onClick={() => {
-              onFocus();
-              onShowConnections();
+              onFocus(item.slug);
+              onShowConnections(item.slug);
             }}
             className="relative z-10 -mr-2 -mb-2 inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
           >
@@ -298,7 +303,7 @@ function StreamCard({
       </div>
     </article>
   );
-}
+});
 
 function relatedDiagnosisChips(item: DifferentialStreamItem) {
   const linked = item.related.slice(0, 4);
@@ -523,14 +528,23 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     return "neutral";
   }
 
-  function toggleSelected(slug: string) {
+  const handleFocus = useCallback((slug: string) => {
+    setFocusedSlug(slug);
+  }, []);
+
+  const handleToggleSelect = useCallback((slug: string) => {
     setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       return next;
     });
-  }
+  }, []);
+
+  const handleShowConnections = useCallback((slug: string) => {
+    setFocusedSlug(slug);
+    setFamilyMode(true);
+  }, []);
 
   function applyPreset(presetQuery: string) {
     router.push(differentialRouteWithQuery("/differentials/diagnoses", presetQuery));
@@ -723,6 +737,7 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
   }
 
   function renderCardGrid(items: DifferentialStreamItem[], outsideFilter = false): ReactNode {
+    const isLongList = items.length > 30;
     return (
       // One hairline card per group with divided rows (no cards inside cards).
       // From the two-column width each row draws its own bottom and inner
@@ -740,12 +755,10 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
             showSelect={showSelect}
             focusMode={familyMode && focusedSlug === item.slug}
             outsideFilter={outsideFilter}
-            onFocus={() => setFocusedSlug(item.slug)}
-            onToggleSelect={() => toggleSelected(item.slug)}
-            onShowConnections={() => {
-              setFocusedSlug(item.slug);
-              setFamilyMode(true);
-            }}
+            isLongList={isLongList}
+            onFocus={handleFocus}
+            onToggleSelect={handleToggleSelect}
+            onShowConnections={handleShowConnections}
           />
         ))}
       </div>
