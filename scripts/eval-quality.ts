@@ -31,6 +31,13 @@ import type { AnswerRouteMode } from "@/lib/rag/rag-routing";
 import type { RagAnswer } from "@/lib/types";
 import { buildRagDiagnosticDumpRecord, resolveLocalDiagnosticOutputPath } from "./eval-answer-quality";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+import {
+  blockingGateRetryCaseIds,
+  mergeRetriedRagResults,
+  renderGateRetryMarkdown,
+  summarizeGateRetry,
+  type GateRetrySummary,
+} from "./lib/eval-quality-retry";
 
 loadEnvConfig(process.cwd());
 
@@ -49,6 +56,8 @@ type EvalQualityArgs = {
   sourceMetadataDebt?: string;
   json: boolean;
   failOnThreshold: boolean;
+  /** Re-run cases implicated in a blocking RAG gate once before blocking (default on). */
+  gateRetry: boolean;
   retrievalOnly: boolean;
   ragOnly: boolean;
   skipPreflight: boolean;
@@ -320,6 +329,7 @@ export function parseEvalQualityArgs(argv: string[]): EvalQualityArgs {
     outputDir: join(process.cwd(), "output", "evals"),
     json: false,
     failOnThreshold: false,
+    gateRetry: true,
     retrievalOnly: false,
     ragOnly: false,
     skipPreflight: false,
@@ -337,6 +347,10 @@ export function parseEvalQualityArgs(argv: string[]): EvalQualityArgs {
     }
     if (token === "--fail-on-threshold") {
       args.failOnThreshold = true;
+      continue;
+    }
+    if (token === "--no-gate-retry") {
+      args.gateRetry = false;
       continue;
     }
     if (token === "--retrieval-only") {
@@ -760,6 +774,8 @@ export function buildEvalQualityReport(args: {
     question_filter: string | null;
     ranking_config_overridden: boolean;
   };
+  /** Blocking-gate retry receipt (scripts/lib/eval-quality-retry.ts); null when no retry ran. */
+  gateRetry?: GateRetrySummary | null;
 }) {
   const providerMode = args.providerMode ?? "openai";
   const retrievalSummary = summarizeGoldenRetrievalResults(args.retrievalResults);
@@ -922,6 +938,7 @@ export function buildEvalQualityReport(args: {
     accepted_threshold_failures: sourceMetadataDebtAcceptance.accepted_failures,
     blocking_threshold_failures: blockingThresholdFailures,
     source_metadata_debt_acceptance: sourceMetadataDebtAcceptance,
+    gate_retry: args.gateRetry ?? null,
   };
 }
 
@@ -1108,7 +1125,7 @@ ${acceptedFailures}
 All threshold failures:
 
 ${failures}
-
+${renderGateRetryMarkdown(report.gate_retry)}
 ## Source Metadata Debt Acceptance
 
 ${debtAcceptanceRows}
@@ -1270,6 +1287,8 @@ async function runRagQualityCases(args: {
   limit?: number;
   question?: string;
   captureDiagnostics?: boolean;
+  /** Run exactly these case ids (blocking-gate retry); ignores `limit`. */
+  caseIds?: readonly string[];
   providerMode: EvalQualityProviderMode;
   supabase: Awaited<ReturnType<typeof loadAdminClient>>;
 }) {
@@ -1287,8 +1306,10 @@ async function runRagQualityCases(args: {
   // cases in rag-eval-cases.ts, so a limited run can push registry cases off the
   // end entirely. `case_count` alone cannot distinguish that from a full run: it
   // reads 44 either way. Record which IDs ran and whether anything was dropped.
-  const cases = allCases.slice(0, args.limit ?? allCases.length);
-  const droppedCaseIds = allCases.slice(cases.length).map((testCase) => testCase.id);
+  const cases = args.caseIds
+    ? allCases.filter((testCase) => args.caseIds!.includes(testCase.id))
+    : allCases.slice(0, args.limit ?? allCases.length);
+  const droppedCaseIds = args.caseIds ? [] : allCases.slice(cases.length).map((testCase) => testCase.id);
   const results: RagQualityResult[] = [];
   const diagnosticCases: Array<ReturnType<typeof buildRagDiagnosticDumpRecord>> = [];
 
@@ -1540,18 +1561,39 @@ async function main() {
         captureDiagnostics: Boolean(args.dumpRagCases),
       });
   const ragResults = ragRun.results;
-  const report = buildEvalQualityReport({
-    retrievalResults,
-    sourceGovernanceResults,
-    ragResults,
-    sourceMetadataDebtAcceptance,
-    providerMode: args.providerMode,
-    // A gate that did not run is not a gate that passed. `--rag-only` and
-    // `--retrieval-only` leave the other half's results empty, and an empty
-    // section renders identically to a passing one, so name what was skipped.
-    skippedComponents: [...(args.ragOnly ? ["retrieval"] : []), ...(args.retrievalOnly ? ["rag-answer-quality"] : [])],
-    scope: "scope" in ragRun ? ragRun.scope : undefined,
-  });
+  const reportFor = (results: RagQualityResult[], gateRetry?: GateRetrySummary | null) =>
+    buildEvalQualityReport({
+      retrievalResults,
+      sourceGovernanceResults,
+      ragResults: results,
+      sourceMetadataDebtAcceptance,
+      providerMode: args.providerMode,
+      // A gate that did not run is not a gate that passed. `--rag-only` and
+      // `--retrieval-only` leave the other half's results empty, and an empty
+      // section renders identically to a passing one, so name what was skipped.
+      skippedComponents: [
+        ...(args.ragOnly ? ["retrieval"] : []),
+        ...(args.retrievalOnly ? ["rag-answer-quality"] : []),
+      ],
+      scope: "scope" in ragRun ? ragRun.scope : undefined,
+      gateRetry,
+    });
+  let report = reportFor(ragResults);
+  if (args.failOnThreshold && args.gateRetry && report.blocking_threshold_failures.length > 0) {
+    const { caseIds, nonRetryable } = blockingGateRetryCaseIds(report, qualityFailureCategory);
+    const retried = caseIds.length
+      ? (await runRagQualityCases({ ...args, ownerId, supabase, caseIds, captureDiagnostics: false })).results
+      : [];
+    const initial = report;
+    const merged = reportFor(mergeRetriedRagResults(ragResults, retried));
+    report = reportFor(
+      mergeRetriedRagResults(ragResults, retried),
+      summarizeGateRetry({ initial, final: merged, retried, nonRetryable }),
+    );
+    console.error(
+      `[eval:quality] blocking-gate retry: re-ran ${retried.length} case(s) [${caseIds.join(", ")}]; blocking before=${initial.blocking_threshold_failures.length} after=${report.blocking_threshold_failures.length}`,
+    );
+  }
   const paths = await writeReports(report, args.outputDir);
   if (args.dumpRagCases) {
     const dumpPath = resolveLocalDiagnosticOutputPath(args.dumpRagCases);
