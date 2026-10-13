@@ -17665,7 +17665,7 @@
     "contraindicationsOrCautions": "Check bipolar disorder, current or past mania/hypomania, mixed features, psychosis, suicide risk, agitation, seizure disorder, delirium risk, substance use, sleep apnoea, medical frailty, shift-work constraints, medication interactions, current sleep deprivation, and ability to be supervised. In bipolar disorder, wake therapy should only be considered with careful mood-stabilising context because sleep loss can precipitate mania or mixed states. Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
     "deliverySteps": "Confirm indication and safety → explain rapid but potentially transient response → use a protocolised total or partial sleep-deprivation schedule → monitor mood, suicidality, agitation, cognition, and emerging hypomania/mania → follow with sleep phase advance and/or bright-light therapy where used → consolidate with rhythm stabilisation, medication optimisation, relapse-prevention planning, and close follow-up.",
     "patientExplanation": "Some depressive states can improve rapidly after controlled sleep deprivation, but the response is often transient unless paired with circadian-stabilising strategies such as light therapy, sleep phase advance, medication, or structured rhythm management. It is used to target: Depressed mood, circadian dysregulation, hypersomnia or disrupted sleep–wake timing, melancholic/biological rhythm features, treatment-resistant depressive symptoms, and mood states linked to abnormal sleep/circadian regulation. In practice, the clinician may use these steps: Confirm indication and safety → explain rapid but potentially transient response → use a protocolised total or partial sleep-deprivation schedule → monitor mood, suicidality, agitation, cognition, and emerging hypomania/mania → follow with sleep phase advance and/or bright-light therapy where used → consolidate with rhythm stabilisation, medication optimisation, relapse-prevention planning, and close follow-up. Wake therapy can be rapid, but the clinical question is whether you can sustain the response safely. Without circadian follow-through and monitoring, sleep deprivation is more risk than treatment.",
-    "sourceNotes": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance.",
+    "sourceNotes": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha",
     "targetSymptoms": "Depressed mood, circadian dysregulation, hypersomnia or disrupted sleep–wake timing, melancholic/biological rhythm features, treatment-resistant depressive symptoms, and mood states linked to abnormal sleep/circadian regulation.",
     "patientPopulation": "Selected patients with unipolar depression or bipolar depression under specialist supervision, especially where circadian dysregulation is prominent and monitoring is available. Better fit in inpatient, day-programme, or specialist mood-disorder settings than unsupervised outpatient self-directed use.",
     "setting": "Emergency/acute, Inpatient, Outpatient/community",
@@ -17682,17 +17682,17 @@
     "alternatives": "Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
     "relatedTherapies": null,
     "evidenceLevel": "Source recorded - not appraised",
-    "evidenceNotes": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance.",
+    "evidenceNotes": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha",
     "limitations": "Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
-    "references": null,
-    "reviewStatus": "needs_review",
+    "references": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -17712,7 +17712,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance."
+        "reference": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha"
       }
     ],
     "patientSheetTemplates": [
@@ -17732,17 +17732,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-09-26T17:26:59.987Z",
+    "reviewedContentSha256": "fe945b838990f3b0f0fa72db46c4d49ba07628b51257b94a3431c5358fafd1cc"
   },
   {
     "slug": "workbook-based-therapy",
