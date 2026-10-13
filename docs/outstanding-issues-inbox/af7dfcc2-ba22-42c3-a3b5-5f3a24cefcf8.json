@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "af7dfcc2-ba22-42c3-a3b5-5f3a24cefcf8",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Services directory shows clinical-owner sign-off as pending while junior doctors use it for catchments and urgent contacts (audit L4B-H1)",
+    "detail": "Owner decision: sign the Services directory off, or hide it until signed. No code change until then.",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65YF9A33Z1XARA118NXGW"
+  }
+}
