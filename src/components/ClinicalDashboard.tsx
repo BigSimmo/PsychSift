@@ -1666,17 +1666,13 @@ function ClinicalDashboardContent({
     const modeSearch = appModeSearchConfig(targetMode);
     const isDifferentialsMode = modeSearch.resultKind === "differentials";
     const isAnswerRequest = modeSearch.resultKind === "answer";
-    // Claim the submission before the patient check can yield, so a mode
-    // change, Stop, or newer submission invalidates this work immediately.
-    const requestId = ++searchRequestSeqRef.current;
-    searchAbortRef.current?.abort();
-    searchAbortRef.current = null;
     if (isAnswerRequest) {
+      // A mode switch, Stop or newer search while the check loads makes this submission stale.
+      const submittedSeq = searchRequestSeqRef.current;
       const patientCheck = await loadClinicalQuestionPatientCheck();
-      if (requestId !== searchRequestSeqRef.current) return;
+      if (submittedSeq !== searchRequestSeqRef.current) return;
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
-        setLoading(false);
         setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
         return;
       }
@@ -1692,6 +1688,8 @@ function ClinicalDashboardContent({
     // library, whose single `document_labels.in(<all ids>)` request produces an
     // over-long PostgREST URL that fails on large corpora. Corpus search runs
     // unscoped (like Documents); users opt into label filters explicitly.
+    const requestId = ++searchRequestSeqRef.current;
+
     setSearchMode(targetMode);
     // Answer mode keeps the composer as the draft source until a successful
     // response clears it. Syncing query here on follow-ups used to fire the
@@ -2026,22 +2024,16 @@ function ClinicalDashboardContent({
 
   async function ask(searchText = query, contextOverride?: SearchNavigationContext, replaceExistingAnswer = false) {
     const trimmedQuery = searchText.trim();
-    if (!trimmedQuery) return;
-    // Claim the submission before the patient check can yield, so a mode
-    // change, Stop, or newer submission invalidates this work immediately.
-    const submissionId = ++searchRequestSeqRef.current;
-    searchAbortRef.current?.abort();
-    searchAbortRef.current = null;
     // A Clinical question goes to an overseas AI service. One that looks like it holds a patient
     // detail is not sent, saved as a recent question or written into the address bar (audit S2,
     // 2026-10-13). The composer already disables Ask for it; this covers every other way in
     // (a link with ?run=1, a recent question). The answer API refuses it again.
     if (searchMode === "answer" && trimmedQuery) {
+      const submittedSeq = searchRequestSeqRef.current;
       const patientCheck = await loadClinicalQuestionPatientCheck();
-      if (submissionId !== searchRequestSeqRef.current) return;
+      if (submittedSeq !== searchRequestSeqRef.current) return;
       const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
       if (patientDetail) {
-        setLoading(false);
         setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
         return;
       }
