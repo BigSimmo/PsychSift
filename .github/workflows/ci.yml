@@ -2320,6 +2320,25 @@ jobs:
               }
             }
 
+            // Only the run for main's CURRENT tip may speak for main. Runs finish out of order: on
+            // 2026-10-13 the tip's green run closed the issue at 17:27Z and an older commit's run,
+            // finishing at 17:33Z, reopened it for a failure main no longer had. A superseded run is
+            // still visible in its own checks; it just must not reopen or close the pinned issue.
+            // Fails open: if the tip cannot be read, route as before rather than lose an alert.
+            try {
+              const { data: branch } = await github.rest.repos.getBranch({ owner, repo, branch: "main" });
+              const tipSha = branch?.commit?.sha ?? "";
+              if (headSha && tipSha && tipSha !== headSha) {
+                core.info(
+                  `Run is for ${headSha.slice(0, 12)} but main is now at ${tipSha.slice(0, 12)}; ` +
+                    `leaving the pinned issue to the tip's run (this run was ${red ? "red" : "green"}).`,
+                );
+                return;
+              }
+            } catch (error) {
+              core.warning(`Could not read main's tip, routing this run anyway: ${error.message}`);
+            }
+
             const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
             const owned = (issue) => String(issue.body ?? "").includes(MARKER) || issue.title === title;
             const existing = open.find(owned) ?? null;

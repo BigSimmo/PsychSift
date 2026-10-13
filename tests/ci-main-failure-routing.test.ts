@@ -309,3 +309,27 @@ describe("main CI failure routing, executed", () => {
     expect(created).toHaveLength(1);
   });
 });
+
+/**
+ * Runs on main finish out of order (2026-10-13: the tip's green run closed #3099, then an older
+ * commit's red run reopened it). Only the run for main's current tip may open, update or close the
+ * pinned issue, and the check must come before any issue is touched, and must fail open.
+ */
+describe("main CI failure routing ignores superseded runs", () => {
+  const routing = workflow.slice(workflow.indexOf("  main-failure-routing:"));
+  const tipCheck = routing.indexOf('github.rest.repos.getBranch({ owner, repo, branch: "main" })');
+
+  it("compares the run's commit with main's current tip and stops when they differ", () => {
+    expect(tipCheck).toBeGreaterThan(-1);
+    expect(routing).toMatch(/if \(headSha && tipSha && tipSha !== headSha\) \{[\s\S]*?return;/);
+  });
+
+  it("checks the tip before it reads, closes or reopens any issue", () => {
+    expect(tipCheck).toBeLessThan(routing.indexOf("issues.listForRepo("));
+    expect(tipCheck).toBeLessThan(routing.indexOf("if (!red)"));
+  });
+
+  it("fails open so an unreadable tip never swallows an alert", () => {
+    expect(routing).toContain("Could not read main's tip, routing this run anyway");
+  });
+});
