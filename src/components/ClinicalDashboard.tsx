@@ -3327,7 +3327,7 @@ function ClinicalDashboardContent({
                 {activeModeResultKind === "answer" &&
                 (loading || answer) &&
                 hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ? (
-                  <AnswerCrisisBanner />
+                  <AnswerCrisisBanner query={answerLifecycle.query ?? latestAnswerQuery} />
                 ) : null}
 
                 {matchedEmergencyProtocols.map((protocol) => (

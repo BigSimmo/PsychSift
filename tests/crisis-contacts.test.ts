@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
 import { publicCrisisContacts } from "@/components/care-plan/mockups/fixtures";
 
 describe("crisis-contacts", () => {
@@ -73,5 +73,14 @@ describe("crisis-contacts", () => {
     const numbers = WA_CRISIS_CONTACTS.map((contact) => contact.telephoneDisplay);
     expect(new Set(ids).size).toBe(ids.length);
     expect(new Set(numbers).size).toBe(numbers.length);
+  });
+
+  it("keeps the Poisons Information Centre separate from the safety-plan list, with its source and check date", () => {
+    expect(WA_CRISIS_CONTACTS.some((contact) => contact.telephoneDisplay === "13 11 26")).toBe(false);
+    expect(POISONS_INFORMATION_CONTACT.telephoneDisplay).toBe("13 11 26");
+    expect(POISONS_INFORMATION_CONTACT.telephoneUri).toBe("131126");
+    expect(POISONS_INFORMATION_CONTACT.sourceUrl).toMatch(/^https:\/\/scgh\.health\.wa\.gov\.au\//);
+    expect(POISONS_INFORMATION_CONTACT.verifiedOn).toBe("2026-10-13");
+    expect(POISONS_INFORMATION_CONTACT.isEmergencyService).toBe(false);
   });
 });
