@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "144345ea-d294-494d-a768-5b911c028306",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Wrong file:line anchors in clinical safety documents (hazard analysis, RAG injection threat model)",
+    "detail": "docs/clinical-hazard-analysis.md has ~13 stale control anchors (e.g. answer-verification.ts:402 and :497 are really ~:1375 and ~:1512, off by up to 1,015 lines; sourceGovernanceRefusalAnswer moved files) and docs/rag-injection-threat-model.md :15/:135/:137 point at wrong lines (rag-source-block.ts:126 is :228; rag.ts:4753 is past a 4,139-line file). Both attribute evaluateEvidenceCoverageGate to rag.ts:3683/:5892 but it is defined in rag-coverage-gate.ts. docs:check-links cannot see this (paths resolve). Next action: re-point to current lines or symbol-anchored links; a ~40-line sweep asserting each symbol-plus-file:line pair resolves would catch the whole class.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NJR5PNWGR1W5MV46FWW"
+  }
+}

@@ -302,8 +302,9 @@ production Chromium gate, the repo-owned Supabase `db-reset-verify` migration
 replay, and both Docker image builds run only when their file scopes apply; a
 failed applicable container build therefore fails `pr-required`. UI PRs also
 get one non-blocking advisory Chromium invocation. The full Playwright browser matrix
-(`release-browser-matrix`) runs on `main`, `release/*`, manual dispatch, and a
-weekly schedule. Live drift and live eval canary checks remain provider-gated;
+(`release-browser-matrix`) runs on `release/*`, manual dispatch, and a weekly
+schedule, and on `main` when the diff is in UI, performance or lockfile scope. It is
+not part of `pr-required`, so it is a post-merge signal rather than a merge gate. Live drift and live eval canary checks remain provider-gated;
 Docker image builds also run independently on main/release pushes, schedule,
 and manual dispatch. They are not required for source-only PRs outside the
 container scope.
@@ -321,7 +322,7 @@ npm run samples:check
 npm run lint
 npm run typecheck
 npm run test
-npm run test:focused -- --files src/lib/example.ts
+npm run test:focused -- --files <paths>
 npm run test:live # requires ALLOW_PROVIDER_TESTS=true
 npm run test:coverage
 npm run test:e2e

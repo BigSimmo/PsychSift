@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6f0eb676-57af-4a30-9338-3f4f0f6dfbfc",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "InboxRecord is an unchecked JSON.parse cast, so one malformed inbox file silently empties the whole ledger inbox",
+    "detail": "src/lib/developer-area/ledger-snapshot.ts:115 does JSON.parse(raw) as InboxRecord inside one try/catch that returns [] for the whole directory; no schema exists. Next action: add an inboxRecordSchema and safeParse per file so one bad record is skipped (and logged) rather than emptying the queue.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67N2F3156217SG5N7Z6B7"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "bd1a2627-a534-4714-bdf9-f79c44c9f535",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "On Call identifier guard covers only logistics and contacts, and it is not established whether it blocks or only warns",
+    "detail": "src/lib/on-call/free-text-guard.ts adminFreeTextProblem returns null for every section except logistics and contacts, and wraps identifierShapeWarning. Whether the other four sections have another validator, and whether a warning prevents persistence or transmission, is unestablished. Next action: one parameterised test with unique PII canaries in each of the six sections asserting rejected/redacted/persisted/logged/transmitted.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NAMHEWR5X5PBZN9RSHZ"
+  }
+}

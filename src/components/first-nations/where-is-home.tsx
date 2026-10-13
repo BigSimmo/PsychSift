@@ -158,6 +158,9 @@ export function WhereIsHomePanel({ regions, map, interpreter, mapSource = null }
               onClick={() => {
                 setRegionId(r.id);
                 setNote(null);
+                // The letter lists one region's numbers; keeping it after a switch would let Copy
+                // paste region A's services while region B is on screen.
+                setLetter([]);
               }}
               className={cn(
                 "relative h-9 rounded-lg border px-3 text-sm-minus after:absolute after:inset-x-0 after:-inset-y-1.5",

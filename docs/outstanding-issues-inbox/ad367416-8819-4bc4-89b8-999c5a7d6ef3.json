@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ad367416-8819-4bc4-89b8-999c5a7d6ef3",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Roster has no double-booking check on a doctor's own shifts at import or manual add",
+    "detail": "src/lib/roster/shifts (diffRoster reconciles by sourceUid then perthDate|title and never checks that two kept rows overlap; addManualShifts inserts without a check). Team-side eligibility already detects clashes (team/eligibility.ts). Next action: detectOwnConflicts(shifts) as a non-blocking warning at import review and server-side, strict interval overlap not adjacency.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67NCKMS6VXW9VZAYRPFGT"
+  }
+}

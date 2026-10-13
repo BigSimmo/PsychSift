@@ -64,7 +64,7 @@ and the ten locally authored differential records still carry no clinician sign-
 
 Use the `.github/pull_request_template.md` clinical governance section for any change that touches ingestion, answer generation, search/ranking, source rendering, document access, privacy, production environment behavior, or clinical output.
 
-- Confirm the Supabase target remains `Clinical KB Database` (`sjrfecxgysukkwxsowpy`).
+- Confirm the Supabase target remains `PsychSift Production` (`sjrfecxgysukkwxsowpy`).
 - Confirm service-role credentials and private document access remain server-only.
 - Confirm unknown or outdated source metadata is treated conservatively.
 - Confirm demo/synthetic content remains separated from real clinical sources.
