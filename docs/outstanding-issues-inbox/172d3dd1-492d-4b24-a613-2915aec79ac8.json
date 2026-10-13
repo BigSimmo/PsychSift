@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "172d3dd1-492d-4b24-a613-2915aec79ac8",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Org map files the favourites-shelf DOM test under Data platform instead of App experience",
+    "detail": "Move tests/work-page-favourite-visibility.dom.test.tsx from docs/organisation/systems/data-platform.json to the App experience system map and run npm run check:organisation. Why: it tests client-side favourites and work-mode UI, so changes to it are reported as Data platform work (CodeAnt nit, pre-existing placement). Context: raised on PR 3507; not caused by it. Owner: assistant. Confidence: medium.",
+    "source": "session 2026-10-13 /ledger sweep; docs/organisation/systems/data-platform.json:198",
+    "issueUlid": "01M4TNNW5TWBQ6MCX5A9M81PKX"
+  }
+}

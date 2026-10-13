@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "cc1ad03a-5f1e-47aa-93d3-1e70d752fa6f",
+  "createdOn": "2026-10-13",
+  "action": "update",
+  "payload": {
+    "id": "#K06J63",
+    "detail": "NEW INFORMATION 2026-10-13: on PR 3507 the PR required check reported failure on three commits whose CI runs were cancelled by a newer push (or a merge of main) while still running, with every real job passing or cancelled and none failed. A cancelled run is therefore shown as a red PR required, which can look like the unexplained failures this row tracks. Next: when it recurs, check whether the run was cancelled by a newer head SHA before treating it as a real failure; consider making PR required report cancelled instead of failure.",
+    "source": "session 2026-10-13 /ledger sweep; PR BigSimmo/PsychSift#3507 CI runs 38343540811, 38344060457, 38344283594",
+    "baseRowFingerprint": "6552ccc3a00f6110440357852c4f08ba92d3d3b12ff23bc9310e695456ab739b"
+  }
+}
