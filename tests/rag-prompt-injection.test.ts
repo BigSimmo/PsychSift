@@ -17,6 +17,19 @@ describe("RAG Prompt Injection & User Query Sanitization (INJ-01)", () => {
     expect(sanitizePromptUserQuery("a < / USER_QUERY > b <user_query>")).toBe("a b");
   });
 
+  it("removes delimiters that only form once a nested one is stripped", () => {
+    for (const nested of [
+      "a <user_<user_query>query> b",
+      "a </user_</user_query>query> b",
+      "a <<<user_query>< b",
+      "a >><user_query>> b",
+    ]) {
+      const sanitized = sanitizePromptUserQuery(nested);
+      expect(sanitized, nested).not.toMatch(/<\s*\/?\s*user_query\s*>/i);
+      expect(sanitized, nested).not.toMatch(/<{3,}|>{3,}/);
+    }
+  });
+
   it("keeps a raw < and > in clinical queries (owner ruling, 13 Oct 2026)", () => {
     expect(sanitizePromptUserQuery("eGFR <30 and dose <5 mg")).toBe("eGFR <30 and dose <5 mg");
     expect(sanitizePromptUserQuery("QTc >500 ms & K+ < 3.5")).toBe("QTc >500 ms & K+ < 3.5");

@@ -4176,10 +4176,12 @@ export function sanitizePromptUserQuery(query: string): string {
   // written. Only the prompt's own delimiters are removed: the source fence
   // markers (`<<<` / `>>>`) and the `<user_query>` tags the query sits inside.
   // Control characters go too (newline, tab and other unicode stay).
-  return query
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
-    .replace(/<{3,}|>{3,}/g, "")
-    .replace(/<\s*\/?\s*user_query\s*>/gi, "")
-    .replace(/[ \t]{2,}/g, " ")
-    .trim();
+  let text = query.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
+  // Repeat until stable: removing one delimiter must not join its neighbours into a
+  // new one ("<user_<user_query>query>" or "<<<<<<" split by a tag).
+  for (let previous = ""; previous !== text;) {
+    previous = text;
+    text = text.replace(/<{3,}|>{3,}/g, "").replace(/<\s*\/?\s*user_query\s*>/gi, "");
+  }
+  return text.replace(/[ \t]{2,}/g, " ").trim();
 }
