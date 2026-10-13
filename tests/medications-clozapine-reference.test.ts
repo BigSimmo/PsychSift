@@ -296,3 +296,17 @@ describe("clozapine 'wa' quoted reference block (task 6b)", () => {
     );
   });
 });
+
+describe("clozapine missed-dose rule", () => {
+  it("shows the same missed-dose wording in the dosing section and the quick reference", () => {
+    const record = getMedicationRecord("clozapine");
+    expect(record).toBeTruthy();
+    const row = record!.sections
+      .flatMap((section) => section.rows ?? [])
+      .find((candidate) => candidate.key === "Missed Dose Rule");
+    expect(row?.val).toMatch(/^If more than 48 hours since the last dose/);
+    const quick = record!.quick?.find((item) => item.label === "Key Indication Doses");
+    expect(quick?.value).toContain(`Missed Dose Rule: ${row!.val}`);
+    expect(quick?.value).not.toMatch(/CANNOT restart|exactly 48/i);
+  });
+});
