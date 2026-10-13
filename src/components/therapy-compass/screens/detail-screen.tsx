@@ -16,7 +16,7 @@ import { TherapyKeyFacts } from "../record/key-facts";
 import { RelatedTherapies } from "../record/related-therapies";
 import { TherapyCompareAction } from "../record/compare-action";
 import { TherapySaveNotice } from "../record/save-notice";
-import { TherapyRecordSections } from "../record/record-sections";
+import { TherapyRecordSections, TherapySafetySection } from "../record/record-sections";
 import { TherapySourceProvenance } from "../record/source-provenance";
 import { TherapyRecordNavHeader } from "../therapy-record-nav-header";
 import { LoadingState, StatusBadge, TagRow } from "../ui";
@@ -124,6 +124,7 @@ export function DetailScreen() {
 
                 <TherapyCompareAction therapy={t} />
                 <TherapyKeyFacts therapy={t} />
+                <TherapySafetySection therapy={t} />
                 <TherapyRecordSections therapy={t} />
                 <RelatedTherapies related={b.relatedForSelected} onOpen={(slug) => b.open(slug)} />
                 <TherapySourceProvenance therapy={t} />
