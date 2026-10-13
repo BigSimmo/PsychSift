@@ -118,6 +118,7 @@ describe("ledger inbox pre-flight remote reconciliation check", () => {
 
 const sourceSha = "1".repeat(40);
 const sourceBranch = "claude/issues-reconcile-preserved";
+const fetchedMainSha = "a".repeat(40);
 const sourceArgs = ["--preserved-source-pr", "3509", "--preserved-source-sha", sourceSha];
 const closedSource = () => ({
   number: 3509,
@@ -141,16 +142,24 @@ function sourceEvidence(
     unavailableShas?: string[];
     batchOutput?: string;
     unreadableTree?: string;
+    remoteMain?: string | null;
+    origin?: string;
   } = {},
 ) {
   const pr = overrides.pr ?? closedSource();
   let prReads = 0;
   const calls: string[][] = [];
   return {
-    lsRemoteOutput: overrides.allHeads ?? `${sourceSha}\trefs/heads/${sourceBranch}`,
+    lsRemoteOutput: [
+      overrides.remoteMain === null ? undefined : `${overrides.remoteMain ?? fetchedMainSha}\trefs/heads/main`,
+      overrides.allHeads ?? `${sourceSha}\trefs/heads/${sourceBranch}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
     currentBranch: overrides.currentBranch ?? "codex/reconciliation-replacement",
     runner: (args: string[], executionOptions: { input?: string } = {}) => {
-      if (args[0] === "remote") return "https://github.com/BigSimmo/PsychSift.git";
+      if (args[0] === "remote") return overrides.origin ?? "https://github.com/BigSimmo/PsychSift.git";
+      if (args[0] === "rev-parse") return fetchedMainSha;
       if (args[0] === "cat-file") {
         if (args[1] === "-t") return overrides.sourceType ?? "commit";
         return (
@@ -192,6 +201,29 @@ describe("pinned preserved-source admission", () => {
     vi.stubEnv("SKIP_REMOTE_CHECK", "");
   });
   afterEach(() => vi.unstubAllEnvs());
+
+  it("rejects a remote main that moved since the last fetch, or is missing", () => {
+    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ remoteMain: "b".repeat(40) }))).toThrow(
+      /remote main has moved/,
+    );
+    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ remoteMain: null }))).toThrow(
+      /remote main has moved/,
+    );
+  });
+
+  it.each([
+    "ssh://git@github.com/BigSimmo/PsychSift.git",
+    "https://x-access-token:abc@github.com/BigSimmo/PsychSift.git",
+    "git@github.com:BigSimmo/PsychSift.git",
+  ])("accepts the supported origin form %s", (origin) => {
+    expect(assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ origin }))).toMatchObject({ number: 3509 });
+  });
+
+  it("rejects a non-github origin", () => {
+    expect(() =>
+      assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ origin: "https://github.com.evil.example/a/b.git" })),
+    ).toThrow(/unambiguous github.com origin/);
+  });
 
   it("admits only the explicitly pinned closed/unmerged source and rechecks its status", () => {
     const evidence = sourceEvidence();
@@ -359,7 +391,7 @@ describe("pinned preserved-source admission", () => {
   });
 
   it.each(["", "malformed ref listing"])("fails closed on empty or malformed complete remote heads", (allHeads) => {
-    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads }))).toThrow(
+    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads, remoteMain: null }))).toThrow(
       /remote branch status/,
     );
   });
@@ -369,9 +401,12 @@ describe("pinned preserved-source admission", () => {
     `${"2".repeat(40)}\trefs/heads/${sourceBranch}`,
     `${sourceSha}\trefs/heads/${sourceBranch}\n${sourceSha}\trefs/heads/${sourceBranch}`,
   ])("rejects disappearance, movement or ambiguity between remote source snapshots", (allHeads) => {
-    expect(() => assertSafeRemoteReconciliation(sourceArgs, sourceEvidence({ allHeads }))).toThrow(
-      /complete remote-head snapshot/,
-    );
+    expect(() =>
+      assertSafeRemoteReconciliation(
+        sourceArgs,
+        sourceEvidence({ allHeads, remoteMain: allHeads.includes("refs/heads/main") ? null : undefined }),
+      ),
+    ).toThrow(/complete remote-head snapshot/);
   });
 
   it("fails closed if the complete remote-head lookup fails after source verification", () => {
@@ -416,7 +451,7 @@ describe("strict candidate history regression", () => {
       const tip = runGit(["rev-parse", "HEAD"]);
 
       const detected = findUnmergedRemoteReconciliations({
-        lsRemoteOutput: `${tip}\trefs/heads/chore/batch-20261013`,
+        lsRemoteOutput: `${mainSha}\trefs/heads/main\n${tip}\trefs/heads/chore/batch-20261013`,
         currentBranch: "codex/reconciliation-writer",
         originRef: mainSha,
         strictRemote: true,
@@ -431,7 +466,7 @@ describe("strict candidate history regression", () => {
         },
       ]);
     } finally {
-      rmSync(fixture, { recursive: true, force: true });
+      rmSync(fixture, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
     }
   });
 });

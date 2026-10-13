@@ -604,6 +604,24 @@ export function findUnmergedRemoteReconciliations(options = {}) {
   ) {
     throw new Error("remote branch status is malformed; preserved-source admission is blocked");
   }
+  const originMainRef = options.originRef ?? "refs/remotes/origin/main";
+  if (options.strictRemote) {
+    const mainRows = lsRemoteText
+      .split(/\r?\n/)
+      .map((line) => line.trim().split(/\s+/))
+      .filter((row) => row[1] === "refs/heads/main");
+    let fetchedMain;
+    try {
+      fetchedMain = runner(["rev-parse", "--verify", `${originMainRef}^{commit}`]).trim();
+    } catch {
+      throw new Error("cannot resolve the fetched origin/main; preserved-source admission is blocked");
+    }
+    if (mainRows.length !== 1 || mainRows[0][0].toLowerCase() !== fetchedMain.toLowerCase()) {
+      throw new Error(
+        "remote main has moved since the last fetch (or is missing); fetch, merge origin/main and recheck; preserved-source admission is blocked",
+      );
+    }
+  }
   if (options.expectedSource) {
     const ref = `refs/heads/${options.expectedSource.branch}`;
     const sourceRows = lsRemoteText
@@ -617,7 +635,6 @@ export function findUnmergedRemoteReconciliations(options = {}) {
     }
   }
 
-  const originMainRef = options.originRef ?? "refs/remotes/origin/main";
   let currentBranch = options.currentBranch;
   if (currentBranch === undefined) {
     try {
@@ -887,9 +904,10 @@ function verifyPreservedSource(pin, options) {
         maxBuffer: 2 * 1024 * 1024,
       }).trim());
   const origin = gitRunner(["remote", "get-url", "origin"]);
-  const match = /^(?:https:\/\/github\.com\/|git@github\.com:)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(
-    origin,
-  );
+  const match =
+    /^(?:https:\/\/(?:[^@/\s]+@)?github\.com\/|ssh:\/\/git@github\.com(?::22)?\/|git@github\.com:)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(
+      origin,
+    );
   if (!match) throw new Error("preserved-source admission requires an unambiguous github.com origin");
   const repository = match[1];
   const read = (args) => {
@@ -1170,8 +1188,9 @@ function reconcile(argv) {
     return;
   }
   assertFreshReconciliationBase();
+  let preservedSource;
   try {
-    const preservedSource = assertSafeRemoteReconciliation(argv);
+    preservedSource = assertSafeRemoteReconciliation(argv);
     if (preservedSource)
       console.log(
         `Verified closed/unmerged preserved source PR #${preservedSource.number}: ${preservedSource.branch} at ${preservedSource.sha}. Branch retained; other reconciliation protections remain active.`,
@@ -1216,6 +1235,9 @@ function reconcile(argv) {
       throw new Error(`${ISSUES_PATH} changed while reconciliation was waiting for its lock`);
     pendingRequestsAreTrackedAndClean(pending);
     assertFreshReconciliationBase();
+    // The preserved source was admitted before the lock; re-verify it (GitHub state, pinned SHA,
+    // remote heads and remote main) now that we hold the lock, so a moved source cannot pass.
+    if (preservedSource) assertSafeRemoteReconciliation(argv);
     result = apply();
 
     const current = readFileSync(path.join(ROOT, ISSUES_PATH), "utf8");
