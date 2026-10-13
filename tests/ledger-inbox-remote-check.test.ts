@@ -376,7 +376,7 @@ describe("pinned preserved-source admission", () => {
 
   it("fails closed if the complete remote-head lookup fails after source verification", () => {
     const evidence = sourceEvidence();
-    const { lsRemoteOutput: _listing, ...options } = evidence;
+    const options = { ...evidence, lsRemoteOutput: undefined };
     const runner = options.runner;
     options.runner = (args, executionOptions) => {
       if (args[0] === "ls-remote" && args.length === 3) throw new Error("offline");
