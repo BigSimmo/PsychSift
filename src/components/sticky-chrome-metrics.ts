@@ -65,6 +65,13 @@ export function useStickyChromeMetrics({
 
     const measureStickyHeader = () => stickyHeader()?.offsetHeight ?? 0;
 
+    const measurePinnedRail = () => {
+      const header = stickyHeader();
+      if (!header?.hasAttribute("data-pinned")) return 0;
+      const railTop = Number.parseFloat(header.style.getPropertyValue("--work-band-tabs-top")) || 0;
+      return Math.max(0, header.offsetHeight - railTop);
+    };
+
     const syncOffset = () => {
       if (!root) return;
       const collapseHidden = collapse?.getAttribute("data-scroll-hidden") === "true";
@@ -75,7 +82,12 @@ export function useStickyChromeMetrics({
       // universal bar is visible; only when that bar hides must the page-owned
       // sticky header be added so jumps do not land underneath it.
       const stickyHeaderHeight = isPhone() ? 0 : measureStickyHeader();
-      const anchorClearance = collapseHeight + (collapseHidden ? stickyHeaderHeight : 0);
+      // A header that pins its own tab rail (`data-pinned`, set by
+      // `useStickyWorkTabs`) stays in the page on phones instead of being
+      // portaled, and its rail rides under the bar. Jumps must clear that rail
+      // while the bar is showing; when the bar hides, the rail hides with it.
+      const anchorClearance =
+        collapseHeight + (collapseHidden ? stickyHeaderHeight : isPhone() ? measurePinnedRail() : 0);
       root.style.setProperty(anchorOffsetProperty, `${Math.round(anchorClearance) + 16}px`);
       root.style.setProperty(stickyHeaderHeightProperty, `${Math.round(stickyHeaderHeight)}px`);
       // The live height of the universal collapse row, so page-owned sticky
@@ -112,6 +124,11 @@ export function useStickyChromeMetrics({
       const headerResize = new ResizeObserver(() => window.requestAnimationFrame(syncOffset));
       headerResize.observe(headerEl);
       cleanup.push(() => headerResize.disconnect());
+    }
+    if (headerEl) {
+      const pinned = new MutationObserver(syncOffset);
+      pinned.observe(headerEl, { attributes: true, attributeFilter: ["data-pinned"] });
+      cleanup.push(() => pinned.disconnect());
     }
 
     const phoneMedia = window.matchMedia(phoneMediaQuery);
