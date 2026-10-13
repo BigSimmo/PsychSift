@@ -10,7 +10,10 @@ a separate owner-reviewed run recorded in a copy of the Gate B decision record
 
 ## Hard boundaries (HANDOVER S6)
 
-- Nothing here modifies `worker/**`, `worker/python/requirements*`,
+- The dependency lock is also copied into `Dockerfile.worker` for isolated shadow
+  extraction. Changes to the lock, model manifest or verifier therefore select
+  the existing required container CI job; the benchmark remains manual-only.
+- The lab harness does not modify `worker/**`, `worker/python/requirements*`,
   `Dockerfile.worker`, `src/lib/extractors/document.ts`, or the database. The
   legacy extractor and the worker's hashed lock are **read-only comparators**.
 - Benchmark runs are manual-only, via `eval/docling/run-lab.sh` on an operator's own
