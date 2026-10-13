@@ -112,6 +112,7 @@ import {
   sourceBackedGenerationTimeoutAnswer,
   strongReasoningEffortForQueryClass,
 } from "@/lib/rag/rag-extractive-answer";
+import { contextPackAdmissionMatches } from "./rag-context-admission";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
 export {
@@ -2320,6 +2321,12 @@ async function answerQuestionWithScopeUncoalesced(
     ? await packModelContextEvidence(routeSelection, packGovernedContext)
     : routeSelection;
   const answerInputResults = packedRouteSelection.results;
+  // Side-evidence top-up candidates must pass the same admission receipt the governed packer requires.
+  const sideEvidenceCandidates = useGovernedContextPacking
+    ? eligibleAnswerResults.filter((result) =>
+        contextPackAdmissionMatches(result, contextPackAccessScope, args.ragRequestContext!.snapshot),
+      )
+    : eligibleAnswerResults;
   let coverageSelections: CoverageEvidenceSelection[] = packedRouteSelection.coverageSelections;
   // A rollout choice does not grant missing source-role or corpus authority.
   // Legacy admitted evidence keeps its established verified answer contract;
@@ -2380,7 +2387,7 @@ async function answerQuestionWithScopeUncoalesced(
     query: args.query,
     queryClass,
     selected: answerInputResults,
-    candidates: eligibleAnswerResults,
+    candidates: sideEvidenceCandidates,
   });
   const validatedExtractiveShortCircuit = chooseValidatedExtractiveShortCircuit({
     query: args.query,
@@ -3725,7 +3732,7 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
       query: args.query,
       queryClass,
       selected: generationFallbackResults,
-      candidates: eligibleAnswerResults,
+      candidates: sideEvidenceCandidates,
     });
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, generationFallbackResults);
     // #231: retain the specific quality-gate verdict alongside the stable degraded reason below.
