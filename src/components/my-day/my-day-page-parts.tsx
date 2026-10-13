@@ -29,6 +29,19 @@ export function useMyDayNow(nowProp?: Date): Date {
   return nowProp ?? tick;
 }
 
+/**
+ * How old My Day's data is, for the "Updated … · On Call, Roster" line (Ward Flow review item 5,
+ * owner approved 12 Oct 2026): "just now", then "4 min ago", then the clock time once it is an
+ * hour old. `at` is when the sources last answered; `clock` is that moment as "14:05".
+ */
+export function myDayUpdatedAgo(now: Date, at: number | null, clock: string | null): string {
+  if (at === null) return clock ? `at ${clock}` : "just now";
+  const minutes = Math.floor((now.getTime() - at) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  return clock ? `at ${clock}` : "over an hour ago";
+}
+
 export function myDayModeLabel(mode: MyDaySourceMode): string {
   return appModeDefinition(mode).label;
 }

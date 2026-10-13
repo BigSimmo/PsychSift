@@ -20,7 +20,7 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
-import { listNames, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
+import { listNames, myDayModeLabel, myDayUpdatedAgo, useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import {
   QuietFoot,
   QuietLabel,
@@ -169,6 +169,7 @@ function MyDayFullList({
   now,
   checked,
   checkedAt,
+  updated = null,
   missing,
   onBack,
   onRetry,
@@ -179,6 +180,8 @@ function MyDayFullList({
   readonly now: Date;
   readonly checked: readonly string[];
   readonly checkedAt: string | null;
+  /** How old the data is, "4 min ago", for the stamp. */
+  readonly updated?: string | null;
   /** Areas that did not load, for the stamp. */
   readonly missing: readonly string[];
   readonly onBack: () => void;
@@ -318,7 +321,7 @@ function MyDayFullList({
       <QuietStamp tone={checked.length === 0 ? "off" : missing.length > 0 ? "warn" : "ok"} testId="my-day-all-stamp">
         {checked.length === 0
           ? "Nothing checked yet"
-          : `Checked ${checkedAt ?? "just now"} · ${
+          : `Updated ${updated ?? (checkedAt ? `at ${checkedAt}` : "just now")} · ${
               missing.length > 0
                 ? `${listNames(missing)} not loaded`
                 : `all ${checked.length} ${checked.length === 1 ? "area" : "areas"} loaded`
@@ -411,11 +414,21 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // answer changes, never on the minute tick.
   // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
   const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
-  const [loaded, setLoaded] = useState<{ readonly key: string; readonly at: string | null }>(() => ({
+  const [loaded, setLoaded] = useState<{
+    readonly key: string;
+    readonly at: string | null;
+    readonly atMs: number | null;
+  }>(() => ({
     key: loadedKey,
     at: state.status === "ready" ? perthTimeOf(now) : null,
+    atMs: state.status === "ready" ? now.getTime() : null,
   }));
-  if (loaded.key !== loadedKey) setLoaded({ key: loadedKey, at: state.status === "ready" ? perthTimeOf(now) : null });
+  if (loaded.key !== loadedKey) {
+    const ready = state.status === "ready";
+    setLoaded({ key: loadedKey, at: ready ? perthTimeOf(now) : null, atMs: ready ? now.getTime() : null });
+  }
+  // "Updated 4 min ago": re-read on the minute tick, so the age keeps moving while the time stays.
+  const updated = loaded.at ? myDayUpdatedAgo(now, loaded.atMs, loaded.at) : null;
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
@@ -651,6 +664,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 now={now}
                 checked={checked}
                 checkedAt={loaded.at}
+                updated={updated}
                 missing={failed}
                 onBack={closeFullList}
                 onRetry={state.retry}
@@ -667,6 +681,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 helpItems={helpItems}
                 checked={checked}
                 checkedAt={loaded.at}
+                updated={updated}
                 incomplete={failed.length > 0}
                 page={page}
                 onShowAll={showAll}
