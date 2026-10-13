@@ -62,9 +62,10 @@ async function checkPythonVenvAvailability(): Promise<{ status: "ok" | "error"; 
     });
     cachedPythonStatus = { status: "ok" };
   } catch (error) {
+    const details = safeErrorLogDetails(error);
     cachedPythonStatus = {
       status: "error",
-      message: `Python unavailable: ${safeErrorLogDetails(error)}`,
+      message: `Python unavailable: ${String(details.message ?? details.name)}`,
     };
   }
   lastPythonCheckAt = now;

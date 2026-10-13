@@ -149,5 +149,6 @@ describe("worker health HTTP status mapping", () => {
     const { code, body } = await requestHealth();
     expect(code).toBe(503);
     expect(body.checks.python_venv.status).toBe("error");
+    expect(body.checks.python_venv.message).toBe("Python unavailable: ENOENT");
   });
 });
