@@ -6,8 +6,8 @@
   "payload": {
     "pri": "P2",
     "type": "task",
-    "summary": "Ranking-snapshot date gate will fail again around 3 Nov 2026 unless the snapshot is refreshed (audit H5-1)",
-    "detail": "The snapshot was refreshed to 4 Oct, so the automatic checks pass today. Refreshing it needs a paid live eval run, which always needs the owner's explicit approval. Ask for that approval before the end of October; this touches a RAG ranking surface, so follow docs/rag-behaviour/ and the canary rules.",
+    "summary": "Ranking-snapshot date gate will fail around 3 Nov 2026 if the automated snapshot-refresh PR is not merged (audit H5-1)",
+    "detail": "The snapshot was refreshed to 4 Oct, so the automatic checks pass today. .github/workflows/ranking-snapshot-refresh.yml runs after each weekly Eval Canary on main and opens a refresh PR once the snapshot is 14 days old, reusing the canary artifact with no provider calls. Next: watch for that PR (expected from about 18 Oct) and get it reviewed and merged before the 30-day expiry; it touches a RAG ranking fixture, so follow docs/rag-behaviour/ and the canary rules. Only if no refresh PR appears (canary failing or not running) does a new paid eval, with the owner's explicit approval, become necessary.",
     "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
     "issueUlid": "01M4TNMPACSAKCD95HA1PXS0T8"
   }
