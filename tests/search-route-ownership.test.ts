@@ -438,7 +438,7 @@ describe("shared-search route ownership", () => {
     const tabletBand = globalsSource.slice(tabletBandStart, tabletBandEnd);
 
     expect(tabletBand).toContain("@media (min-width: 640px) and (max-width: 1279.98px)");
-    expect(tabletBand).toContain("--spacing-mode-home-composer-wide: 10rem");
+    expect(tabletBand).toContain("--spacing-mode-home-composer-wide: 8rem");
 
     // The one-line rail is NOT part of the bounded band. It was, until
     // 2026-09-06, which left the rail free to wrap above 1280px — Specifiers was

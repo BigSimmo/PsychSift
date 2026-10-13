@@ -2,7 +2,7 @@
 
 import { Copy, Plus } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import {
@@ -33,7 +33,7 @@ function countLine(count: number | null, one: string, many: (n: number) => strin
  * counts are tonight's calls and the patients drafted, both read from this
  * phone only, and both left out until the phone has been read.
  */
-export function NowShiftShortcuts() {
+export function NowShiftShortcuts({ children }: { readonly children?: ReactNode } = {}) {
   const [open, setOpen] = useState(false);
   // Opened from #log-a-call there is no opener in focus, so closing returns to the button.
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -65,43 +65,49 @@ export function NowShiftShortcuts() {
 
   return (
     // One flat card split in two (work-mode redesign, owner request 6 Oct 2026).
-    <div
-      className="work-card grid grid-cols-2 divide-x divide-[color:var(--border)]"
-      data-testid="on-call-now-shortcuts"
-    >
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-        data-testid="on-call-now-log-a-call"
-        className={pairCell}
-      >
-        <Plus aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-        <span className="grid min-w-0">
-          <span className={cn(modeNameText, "break-words text-sm text-[color:var(--text-heading)]")}>Log a call</span>
-          {callsLine ? <span className={cn(modeSecondaryText, "text-xs")}>{callsLine}</span> : null}
-        </span>
-      </button>
-      {/* A literal href: the route-reachability guard reads literal hrefs only. */}
-      <Link href="/on-call/handover" data-testid="on-call-home-handover" className={pairCell}>
-        <Copy aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-        <span className="grid min-w-0">
-          <span className={cn(modeNameText, "break-words text-sm text-[color:var(--text-heading)]")}>Handover</span>
-          {draftedLine ? <span className={cn(modeSecondaryText, "text-xs")}>{draftedLine}</span> : null}
-        </span>
-      </Link>
-      <Sheet
-        open={open}
-        onClose={close}
-        returnFocusRef={buttonRef}
-        title="Log a call"
-        testId="on-call-now-log-a-call-sheet"
-      >
-        <div data-mode-identity="on-call">
-          <OnCallCallLogCard />
-        </div>
-      </Sheet>
+    // The shift's tools in one card (Work mode simplify plan, 12 Oct 2026): the pair on top, then any
+    // rows the page adds (the shift lists) under a hairline.
+    <div className="work-card grid min-w-0" data-testid="on-call-now-shift-tools">
+      <div className="grid grid-cols-2 divide-x divide-[color:var(--border)]" data-testid="on-call-now-shortcuts">
+        <button
+          ref={buttonRef}
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+          data-testid="on-call-now-log-a-call"
+          className={pairCell}
+        >
+          <Plus aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+          <span className="grid min-w-0">
+            <span className={cn(modeNameText, "break-words text-sm text-[color:var(--text-heading)]")}>Log a call</span>
+            {callsLine ? <span className={cn(modeSecondaryText, "text-xs")}>{callsLine}</span> : null}
+          </span>
+        </button>
+        {/* A literal href: the route-reachability guard reads literal hrefs only. */}
+        <Link href="/on-call/handover" data-testid="on-call-home-handover" className={pairCell}>
+          <Copy aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+          <span className="grid min-w-0">
+            <span className={cn(modeNameText, "break-words text-sm text-[color:var(--text-heading)]")}>Handover</span>
+            {draftedLine ? <span className={cn(modeSecondaryText, "text-xs")}>{draftedLine}</span> : null}
+          </span>
+        </Link>
+        <Sheet
+          open={open}
+          onClose={close}
+          returnFocusRef={buttonRef}
+          title="Log a call"
+          testId="on-call-now-log-a-call-sheet"
+        >
+          <div data-mode-identity="on-call">
+            <OnCallCallLogCard />
+          </div>
+        </Sheet>
+      </div>
+      {children ? (
+        <ul role="list" className="min-w-0 border-t border-[color:var(--border)]">
+          {children}
+        </ul>
+      ) : null}
     </div>
   );
 }

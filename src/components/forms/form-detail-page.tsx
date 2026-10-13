@@ -45,7 +45,9 @@ import { inPageActionRowClass, inPageAnchor } from "@/components/in-page-nav/in-
 import type { PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-section-nav";
 import { FormCodeBadge, splitFormCode } from "@/components/forms/form-code-badge";
-import { PriorityFactsSection } from "@/components/forms/form-priority-facts-section";
+import { CulturalNotesSection, PriorityFactsSection } from "@/components/forms/form-priority-facts-section";
+import { RecordCautions, RecordIntro } from "@/components/clinical-record-panels";
+import { buttonFaceClass } from "@/components/ui/button-face";
 import { MhaTimelinePanel } from "@/components/forms/mha-timeline-panel";
 import { DisclosureGroup, disclosureBodyText } from "@/components/ui/disclosure";
 import { appModeHomeHref } from "@/lib/app-modes";
@@ -792,43 +794,84 @@ export function FormDetailPage({ form }: { form: FormRecord }) {
           </div>
         ) : null}
 
-        <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="min-w-0 space-y-4">
-            <section
-              id="form-overview"
-              className={cn(
-                inPageAnchor,
-                "rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--shadow-inset)] sm:p-5",
-              )}
-            >
-              <div className="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 sm:grid-cols-[6rem_minmax(0,1fr)] sm:gap-x-4 sm:gap-y-3 xl:grid-cols-[auto_minmax(0,1fr)] xl:items-start">
-                <FormCodeBadge code={code} variant="hero" />
-                <div className="min-w-0">
-                  <h1 className="max-w-4xl text-2xl font-extrabold leading-display text-[color:var(--text-heading)] sm:text-4xl">
-                    {form.title}
-                  </h1>
-                  <p className="mt-1.5 max-w-4xl text-xs font-medium leading-4 text-[color:var(--text-muted)] sm:mt-3 sm:text-base sm:leading-6">
-                    {displayText(form.subtitle, "Psychiatry form and workflow details.")}
-                  </p>
-                  {form.statusChips?.length ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-3">
-                      {form.statusChips.map((chip, index) => (
+        <div className="mt-3 grid gap-7 lg:grid-cols-[minmax(0,1fr)_22rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+          <div className="flex min-w-0 flex-col gap-7">
+            <section id="form-overview" className={inPageAnchor}>
+              <RecordIntro
+                eyebrow={`Form ${code}`}
+                title={form.title}
+                line={displayText(form.subtitle, "Psychiatry form and workflow details.")}
+                tags={
+                  form.statusChips?.length
+                    ? form.statusChips.map((chip, index) => (
                         <span
                           key={chip.label ?? `form-chip-${index}`}
                           className={cn(
-                            "inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2 text-2xs font-bold uppercase leading-none sm:min-h-7 sm:px-2.5 sm:text-xs",
+                            "inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-bold uppercase leading-none",
                             chipToneClass(chip.tone),
                           )}
                         >
-                          <span className="hidden h-2 w-2 rounded-full bg-current sm:inline-block" aria-hidden />
                           {displayText(chip.label, "Status")}
                         </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+                      ))
+                    : undefined
+                }
+                actions={
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void toggleSaved()}
+                      aria-pressed={saved}
+                      className={cn(
+                        buttonFaceClass({ variant: "secondary" }),
+                        saved &&
+                          "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
+                      )}
+                    >
+                      {saved ? (
+                        <BookmarkCheck className="h-4 w-4 shrink-0" aria-hidden />
+                      ) : (
+                        <Bookmark className="h-4 w-4 shrink-0" aria-hidden />
+                      )}
+                      {saved ? "Saved" : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyValue(formDetailsClipboardText(form), "Form details copied")}
+                      className={buttonFaceClass({ variant: "secondary" })}
+                    >
+                      <Download className="h-4 w-4 shrink-0" aria-hidden />
+                      Copy details
+                    </button>
+                  </>
+                }
+              />
             </section>
+
+            <PriorityFactsSection form={form} cards={summaryCards} />
+
+            <RecordCautions
+              id="form-legal-boundary"
+              title={
+                <>
+                  Legal boundary
+                  <span className={cn(metadataPillDensity.dense, "ml-auto rounded-full uppercase", toneWarning)}>
+                    Governance
+                  </span>
+                </>
+              }
+            >
+              <p className="m-0">
+                {displayText(
+                  form.bestUse,
+                  "Use the current approved form, confirm authority, and document the least restrictive safe option before signing.",
+                )}
+              </p>
+              <p data-testid="form-product-boundary" className="m-0 mt-2">
+                PsychSift is a reference only. It does not fill in, sign or submit this form for you: complete and lodge
+                it on the official form through your service&apos;s usual process.
+              </p>
+            </RecordCautions>
 
             {/* On a phone the attachment row stacks: the status badges take their own
                 line under the title instead of squeezing the title column down to a
@@ -836,7 +879,7 @@ export function FormDetailPage({ form }: { form: FormRecord }) {
                 form can be filled now or must be printed, so neither may truncate. */}
             <section
               data-testid="form-attachment-row"
-              className="grid grid-cols-1 items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] p-2.5 shadow-[var(--shadow-inset)] sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:gap-3 sm:p-3"
+              className="grid grid-cols-1 items-center gap-2 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:gap-3"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[color:var(--danger-soft)] text-[color:var(--danger)] sm:h-10 sm:w-10">
@@ -944,37 +987,9 @@ export function FormDetailPage({ form }: { form: FormRecord }) {
               )}
             </section>
 
-            <PriorityFactsSection form={form} cards={summaryCards} />
+            <CulturalNotesSection formCode={details?.form} />
 
             {details?.form && hasMhaTimeline(details.form) ? <MhaTimelinePanel formCode={details.form} /> : null}
-
-            <section
-              id="form-legal-boundary"
-              className={cn(
-                inPageAnchor,
-                "rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)]/30 p-4 shadow-[var(--shadow-inset)]",
-              )}
-            >
-              <div className="grid gap-3 sm:grid-cols-[2.5rem_minmax(0,1fr)]">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-[color:var(--warning-soft)] text-[color:var(--warning)] shadow-[var(--shadow-inset)]">
-                  <ShieldCheck className="h-5 w-5" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-base font-semibold text-[color:var(--text-heading)]">Legal boundary</h2>
-                    <span className={cn(metadataPillDensity.dense, "rounded-full uppercase", toneWarning)}>
-                      Governance
-                    </span>
-                  </div>
-                  <p className="mt-2 max-w-5xl text-sm font-medium leading-6 text-[color:var(--text-muted)]">
-                    {displayText(
-                      form.bestUse,
-                      "Use the current approved form, confirm authority, and document the least restrictive safe option before signing.",
-                    )}
-                  </p>
-                </div>
-              </div>
-            </section>
 
             <section id="form-information" aria-label="Form information" className={inPageAnchor}>
               {/* One bordered container with divided rows, not thirteen separate

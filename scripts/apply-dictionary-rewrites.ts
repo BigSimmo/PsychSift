@@ -27,7 +27,7 @@
  */
 import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 import ts from "typescript";
 
@@ -41,6 +41,7 @@ import {
 } from "@/lib/dictionary-editorial/definition-reviews";
 
 import { collectionOf, recordPinState } from "./lib/clinical-record-review-contract.mjs";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const DICTIONARY_DATA_PATH = "src/lib/dictionary-data.ts";
 export const DEFINITION_REVIEWS_PATH = "src/data/dictionary-definition-reviews.json";
@@ -411,7 +412,7 @@ async function main() {
   process.exit(exitCode);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

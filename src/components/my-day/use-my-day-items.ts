@@ -71,12 +71,16 @@ export function useMyDayItems({ enabled, now }: { readonly enabled: boolean; rea
     retryTeaching();
   }, [retryEntries, retryRoster, retryCme, retryTeaching]);
 
+  // A retry reads again over the answer still shown, so the page waits for it before restamping the time.
+  const refreshing = enabled && (entries.refreshing || roster.refreshing || cme.refreshing || teaching.refreshing);
+
   const signedOut = !enabled || sessionLapsed;
   const loading = sources.some((source) => source.status === "loading");
   return {
     status: signedOut ? "signed-out" : loading ? "loading" : "ready",
     items: signedOut ? [] : items,
     sources,
+    refreshing: signedOut ? false : refreshing,
     // Only a source that actually loaded sample data makes the view "demo".
     demoMode: sources.some((source) => source.status === "ready" && source.sample === true),
     retry,

@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonFaceClass } from "@/components/ui/button-face";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Search } from "lucide-react";
@@ -27,11 +28,7 @@ export function CompareEmptyState({
       <EmptyIcon className="size-icon-xl text-[color:var(--decoration-soft)]" aria-hidden="true" />
       <h2 className="mt-3 text-lg font-extrabold text-[color:var(--text-heading)]">{title}</h2>
       <p className="mt-1 max-w-lg text-sm text-[color:var(--text-muted)]">{description}</p>
-      <button
-        type="button"
-        onClick={onAction}
-        className="mt-4 inline-flex min-h-tap items-center gap-2 rounded-lg bg-[color:var(--command)] px-4 text-sm font-extrabold text-[color:var(--command-contrast)]"
-      >
+      <button type="button" onClick={onAction} className={`mt-4 ${buttonFaceClass({ variant: "primary" })}`}>
         <Search className="size-icon-sm" aria-hidden="true" />
         {actionLabel}
       </button>

@@ -8,6 +8,7 @@ import {
 } from "@/lib/document-detail";
 import type { DocumentDetailPayload } from "@/lib/document-detail-contract";
 import { PublicApiError } from "@/lib/http";
+import { RecentPageTitle } from "@/components/recent-pages/recent-page-title";
 
 export default async function DocumentPage({
   params,
@@ -41,15 +42,20 @@ export default async function DocumentPage({
   }
 
   return (
-    <DocumentViewer
-      // Key on document identity only — page/chunk updates are handled inside
-      // DocumentViewer via URL sync. Remounting on every page flip reloaded the PDF.
-      key={id}
-      documentId={id}
-      initialPage={initialPage}
-      chunkId={query.chunk}
-      initialDetail={initialDetail}
-      initialError={initialError}
-    />
+    <>
+      {/* The viewer's tab title does not name the document, so Recent pages is
+          handed the title already loaded for the viewer (no extra read). */}
+      <RecentPageTitle path={`/documents/${id}`} title={initialDetail?.document.title} />
+      <DocumentViewer
+        // Key on document identity only — page/chunk updates are handled inside
+        // DocumentViewer via URL sync. Remounting on every page flip reloaded the PDF.
+        key={id}
+        documentId={id}
+        initialPage={initialPage}
+        chunkId={query.chunk}
+        initialDetail={initialDetail}
+        initialError={initialError}
+      />
+    </>
   );
 }

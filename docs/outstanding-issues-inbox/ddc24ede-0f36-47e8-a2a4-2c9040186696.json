@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "ddc24ede-0f36-47e8-a2a4-2c9040186696",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "7ab066fc-de17-488e-aa74-6b4820410f9e",
+    "reason": "PR3509 rebuild: reject full closure of #E6142T. Its existing detail records the PWA part as closed by the owner while the services-search disposition remains open/parked. Retain that split status on the existing issue instead of creating an unaudited replacement #Q7M4SZ row. Source: https://github.com/BigSimmo/PsychSift/pull/3509 at db2d180360b3d3dc7ef805f6faae227b4e4b0e8b."
+  }
+}

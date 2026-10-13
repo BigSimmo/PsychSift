@@ -38,6 +38,13 @@ export type AppPreferences = {
   showProtocolsOnHome: boolean;
   compactCitations: boolean;
   /**
+   * Bright light: solid surfaces, darker lines and heavier text for glare on a
+   * ward or in sun (owner decision 12 Oct 2026, from the Ward Flow review).
+   * Reflected onto <html> as `data-bright`; turning it on also pins the light
+   * theme, because the look is designed for light only.
+   */
+  brightLight: boolean;
+  /**
    * Off means the app stops writing recent questions to session storage at all,
    * rather than writing them and offering a clear button. Consumed by
    * `rememberRecentQuery` in ClinicalDashboard, so it is a real privacy control
@@ -139,6 +146,7 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
   showRecentOnHome: true,
   showProtocolsOnHome: true,
   compactCitations: false,
+  brightLight: false,
   saveRecentSearches: true,
   notifyGuidelineUpdates: true,
   notifyProductNews: false,
@@ -171,6 +179,7 @@ export const PREFERENCE_FIELD_KEYS = [
   "showRecentOnHome",
   "showProtocolsOnHome",
   "compactCitations",
+  "brightLight",
   "saveRecentSearches",
   "notifyGuidelineUpdates",
   "notifyProductNews",
@@ -220,6 +229,7 @@ export function normalizePreferences(input: unknown): AppPreferences {
     showRecentOnHome: coerceBoolean(input.showRecentOnHome, DEFAULT_PREFERENCES.showRecentOnHome),
     showProtocolsOnHome: coerceBoolean(input.showProtocolsOnHome, DEFAULT_PREFERENCES.showProtocolsOnHome),
     compactCitations: coerceBoolean(input.compactCitations, DEFAULT_PREFERENCES.compactCitations),
+    brightLight: coerceBoolean(input.brightLight, DEFAULT_PREFERENCES.brightLight),
     saveRecentSearches: coerceBoolean(input.saveRecentSearches, DEFAULT_PREFERENCES.saveRecentSearches),
     notifyGuidelineUpdates: coerceBoolean(input.notifyGuidelineUpdates, DEFAULT_PREFERENCES.notifyGuidelineUpdates),
     notifyProductNews: coerceBoolean(input.notifyProductNews, DEFAULT_PREFERENCES.notifyProductNews),

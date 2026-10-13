@@ -52,7 +52,8 @@ describe("DifferentialStreamPage", () => {
     const firstCard = differentialPresentationsCards[0];
     expect(firstCard).toBeTruthy();
     expect(screen.getByRole("button", { name: firstCard!.title })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Open pathway/ }).length).toBeGreaterThan(0);
+    // The title is the row's open link now; its name ends ", open pathway".
+    expect(screen.getAllByRole("link", { name: /open pathway$/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/differential candidates?/).length).toBeGreaterThan(0);
   });
 
@@ -65,13 +66,13 @@ describe("DifferentialStreamPage", () => {
     const slug = firstCard!.href.split("/").at(-1) ?? "";
     expect(slug).toBeTruthy();
     const card = screen.getByTestId(`differential-stream-card-${slug}`);
-    expect(within(card).getByRole("link", { name: "Open pathway" })).toHaveAttribute(
+    expect(within(card).getByRole("link", { name: /open pathway$/ })).toHaveAttribute(
       "href",
       `${firstCard!.href}?q=acute+confusion`,
     );
   });
 
-  it("reveals a filtered safety-shelf target before scrolling to it", async () => {
+  it("clears the urgency highlight when a safety-shelf target sits outside it", async () => {
     const user = userEvent.setup();
     const scrollIntoView = vi.mocked(Element.prototype.scrollIntoView);
     const model = buildDifferentialStreamModel("presentations", "");
@@ -87,7 +88,11 @@ describe("DifferentialStreamPage", () => {
     await user.click(within(priorityGroup).getByRole("radio", { name: /^Urgent/ }));
     expect(new URL(window.location.href).searchParams.get("priority")).toBe("urgent");
     view.rerender(<DifferentialStreamPage stream="presentations" />);
-    expect(screen.queryByTestId(`differential-stream-card-${safetyItem!.slug}`)).not.toBeInTheDocument();
+    // Filters highlight, never hide: the emergent target stays listed, under "Not urgent".
+    expect(screen.getByTestId(`differential-stream-card-${safetyItem!.slug}`)).toHaveAttribute(
+      "data-outside-filter",
+      "true",
+    );
 
     scrollIntoView.mockClear();
     await user.click(
@@ -98,7 +103,11 @@ describe("DifferentialStreamPage", () => {
 
     expect(new URL(window.location.href).searchParams.has("priority")).toBe(false);
     view.rerender(<DifferentialStreamPage stream="presentations" />);
-    await waitFor(() => expect(screen.getByTestId(`differential-stream-card-${safetyItem!.slug}`)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByTestId(`differential-stream-card-${safetyItem!.slug}`)).not.toHaveAttribute(
+        "data-outside-filter",
+      ),
+    );
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: "center" }));
   });
 
@@ -112,9 +121,15 @@ describe("DifferentialStreamPage", () => {
     await user.click(within(priorityGroup).getByRole("radio", { name: /^Emergent/ }));
     expect(new URL(window.location.href).searchParams.get("priority")).toBe("emergent");
     view.rerender(<DifferentialStreamPage stream="presentations" query="agitation" />);
-    const emergentCards = screen.getAllByTestId(/^differential-stream-card-/);
+    // Every row stays; the emergent ones come first and the rest sit under "Not emergent".
+    const allCards = screen.getAllByTestId(/^differential-stream-card-/);
+    expect(allCards).toHaveLength(initialCards);
+    const emergentCards = allCards.filter((card) => card.dataset.outsideFilter !== "true");
     expect(emergentCards.length).toBeLessThan(initialCards);
     expect(emergentCards.every((card) => card.dataset.status === "emergent")).toBe(true);
+    const outsideCards = allCards.filter((card) => card.dataset.outsideFilter === "true");
+    expect(outsideCards.every((card) => card.dataset.status !== "emergent")).toBe(true);
+    expect(allCards.indexOf(outsideCards[0]!)).toBeGreaterThan(allCards.indexOf(emergentCards.at(-1)!));
     expect(screen.getByRole("button", { name: "Remove Priority: Emergent filter" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Remove Priority: Emergent filter" }));
@@ -126,6 +141,42 @@ describe("DifferentialStreamPage", () => {
     view.rerender(<DifferentialStreamPage stream="presentations" query="agitation" />);
     expect(screen.getAllByTestId(/^differential-stream-card-/).length).toBeLessThan(initialCards);
     expect(screen.getByRole("button", { name: /Remove Related pathways: .+ filter/ })).toBeInTheDocument();
+  });
+
+  it("keeps non-matching diagnoses present under Not emergent with a spoken note", () => {
+    window.history.replaceState(null, "", "/differentials/diagnoses?priority=emergent");
+    const model = buildDifferentialStreamModel("diagnoses", "");
+    const total = model.items.length;
+    const emergent = model.items.filter((item) => item.status === "emergent").length;
+    expect(emergent).toBeGreaterThan(0);
+    expect(emergent).toBeLessThan(total);
+
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    // Nothing is hidden: every diagnosis is still a row, and each still opens.
+    const cards = screen.getAllByTestId(/^differential-stream-card-/);
+    expect(cards).toHaveLength(total);
+    const outside = cards.filter((card) => card.dataset.outsideFilter === "true");
+    expect(outside).toHaveLength(total - emergent);
+    for (const card of outside.slice(0, 5)) {
+      expect(within(card).getByRole("link", { name: /, open$/ })).toBeInTheDocument();
+    }
+
+    const note = screen.getByTestId("differentials-stream-highlight-note");
+    expect(note).toHaveTextContent(`${emergent} of ${total} highlighted, all rows stay`);
+    // Spoken through the shared announcer, so the note holds no live region of its own.
+    expect(within(note).queryByRole("status")).toBeNull();
+    expect(within(note).getByRole("button", { name: "Clear" })).toBeInTheDocument();
+    expect(screen.getByTestId("differentials-stream-outside-heading")).toHaveTextContent(
+      `Not emergent · ${total - emergent}`,
+    );
+    // Matching rows first, then the rest: no emergent row below the heading.
+    expect(cards.indexOf(outside[0]!)).toBe(emergent);
+    // Faded by colour token, never by opacity.
+    for (const card of outside.slice(0, 5)) {
+      expect(card.className).not.toMatch(/opacity/);
+      expect(within(card).getByRole("heading", { level: 3 }).className).toContain("text-[color:var(--text-muted)]");
+    }
   });
 
   it("replaces match navigation with a removable focused-family filter", async () => {
@@ -170,6 +221,76 @@ describe("DifferentialStreamPage", () => {
     expect(byUrgency).toHaveAttribute("aria-pressed", "false");
     expect(byPresentation).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("differentials-stream-filter-trigger")).toHaveAccessibleName(/No filters active/);
+  });
+
+  it("lists each diagnosis's related diagnoses once, as chips, keeping every label", () => {
+    const model = buildDifferentialStreamModel("diagnoses", "");
+    const item = model.items.find((candidate) => candidate.examples.length > 0 && candidate.related.length > 0);
+    expect(item).toBeTruthy();
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    const card = screen.getByTestId(`differential-stream-card-${item!.slug}`);
+    const chips = within(within(card).getByTestId("differential-stream-related"))
+      .getAllByRole("listitem")
+      .map((chip) => chip.textContent);
+    // No label is printed twice on the card…
+    expect(new Set(chips).size).toBe(chips.length);
+    // …and nothing the old document-icon list showed is lost.
+    for (const label of [...item!.examples, ...item!.related.slice(0, 4).map((node) => node.label)]) {
+      expect(chips).toContain(label);
+      expect(within(card).getAllByText(label)).toHaveLength(1);
+    }
+    // The title opens the record; the separate Open button is gone.
+    expect(within(card).getByRole("link", { name: `${item!.title}, open` })).toHaveAttribute("href", item!.href);
+  });
+
+  it("drops the Must-check shelf from Diagnoses while Emergent stays the first group", () => {
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    expect(screen.queryByTestId("differentials-stream-safety-shelf")).not.toBeInTheDocument();
+    expect(screen.queryByText("Must-check / emergent shelf")).not.toBeInTheDocument();
+    const groups = screen.getAllByTestId(/^differential-stream-chapter-/);
+    const first = groups[0]!;
+    const firstCards = within(first).getAllByTestId(/^differential-stream-card-/);
+    expect(firstCards.length).toBeGreaterThan(0);
+    expect(firstCards.every((card) => card.dataset.status === "emergent")).toBe(true);
+  });
+
+  it("puts scenario chips in one sideways-scrolling row of focusable buttons", async () => {
+    const user = userEvent.setup();
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    const row = screen.getByTestId("differentials-stream-presets");
+    expect(row.className).toContain("overflow-x-auto");
+    expect(row.className).not.toMatch(/(^|\s)flex-wrap(\s|$)/);
+    const chips = within(row).getAllByRole("button");
+    expect(chips.length).toBeGreaterThan(1);
+    for (const chip of chips) {
+      expect(chip.className).toContain("whitespace-nowrap");
+      expect(chip.className).toContain("focus-visible:outline");
+    }
+    chips[0]!.focus();
+    await user.tab();
+    expect(chips[1]).toHaveFocus();
+  });
+
+  it("shows the Compare tray only once a diagnosis is ticked", async () => {
+    const user = userEvent.setup();
+    render(<DifferentialStreamPage stream="diagnoses" />);
+
+    expect(screen.queryByTestId("differentials-compare-tray")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tick diagnoses to compare")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tick two or more diagnoses/)).not.toBeInTheDocument();
+
+    const boxes = screen.getAllByRole("checkbox");
+    await user.click(boxes[0]!);
+    expect(await screen.findByTestId("differentials-compare-tray")).toHaveTextContent("1 selected");
+    await user.click(boxes[1]!);
+    const compare = screen.getByTestId("differentials-compare-tray-compare");
+    expect(compare.getAttribute("href")).toMatch(/^\/differentials\/compare\?ids=/);
+
+    await user.click(screen.getByTestId("differentials-compare-tray-clear"));
+    expect(screen.queryByTestId("differentials-compare-tray")).not.toBeInTheDocument();
   });
 
   it("scrolls only for an explicit focus parameter", async () => {

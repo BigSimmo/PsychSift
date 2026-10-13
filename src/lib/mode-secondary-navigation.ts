@@ -93,9 +93,13 @@ export const modeSecondaryNavigationRegistry = {
     { id: "recommend", label: "Recommend", href: "/therapy-compass/recommend" },
     { id: "compare", label: "Compare", href: "/therapy-compass/compare" },
     { id: "pathways", label: "Pathways", href: "/therapy-compass/pathways" },
-    // The qualified-clinician sign-off queue. It becomes `audience: "administrators"` once the owner's
-    // account carries the site administrator role; until then hiding it would hide it from the owner too.
-    { id: "review", label: "Review", href: "/therapy-compass/review" },
+    // The qualified-clinician sign-off queue, listed for site administrators only (owner decision,
+    // 13 Oct 2026, once the owner's account carried the role). The route still opens for anyone and
+    // the server still refuses a sign-off from anyone else.
+    // `group: "more"` keeps it registered (the route, the pill name, `activeId`) but off the main
+    // tabs, which list only ungrouped entries (owner decision, October 2026). The Therapy search
+    // page links to it, so it stays one tap away.
+    { id: "review", label: "Review", href: "/therapy-compass/review", group: "more", audience: "administrators" },
   ],
   // Two genuinely distinct surfaces: `/factsheets/search` (query + filters +
   // result rows) and `/factsheets/topics` (category browse). Search leads, the
@@ -192,8 +196,9 @@ export const modeSecondaryNavigationRegistry = {
   // controls doing one job.
   //
   // Today leads because the dashboard is the page the mode is judged by.
-  // Year check, Routines, Calendar, Training and Programme are tabs reached
-  // from their parent pages. Customise and the annual summary stay secondary.
+  // Year check, Routines, Calendar and Training are tabs reached from their
+  // parent pages. Customise and the annual summary stay secondary. Programme is
+  // no longer a page: `/cme/programme` is a bookmark that forwards to Set up.
   cme: [
     // The year overview, named Summary as the work-mode mockup names it.
     { id: "year", label: "Summary", href: "/cme" },
@@ -218,12 +223,14 @@ export const modeSecondaryNavigationRegistry = {
     { id: "week", label: "Week", href: "/teaching/week" },
     { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
   ],
-  // Psychiatry's hub has three pages, switched with ?page= (like My Day). The
+  // Psychiatry's hub has two pages, switched with ?page= (like My Day): one
+  // Home page and Saved (owner design review, 12 Oct 2026, which folded the old
+  // Tools page into Home; `/psychiatry?page=tools` still lands on Home). The
   // band draws them as its underline tabs; each section the hub gathers keeps
-  // its own navigation.
+  // its own navigation. The Home id stays `psychiatry-ask` so saved layouts and
+  // the band's current-tab key keep working.
   psychiatry: [
-    { id: "psychiatry-ask", label: "Ask", href: "/psychiatry" },
-    { id: "psychiatry-tools", label: "Tools", href: "/psychiatry?page=tools" },
+    { id: "psychiatry-ask", label: "Home", href: "/psychiatry" },
     { id: "psychiatry-saved", label: "Saved", href: "/psychiatry?page=saved" },
   ],
   medicines: [],
@@ -522,8 +529,8 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     return null;
   }
   if (modeId === "psychiatry") {
-    // The address carries no ?page= here, so the page itself names Tools or
-    // Saved through useModeBandCurrentTab.
+    // The address carries no ?page= here, so the page itself names Saved
+    // through useModeBandCurrentTab.
     if (pathname === "/psychiatry") return "psychiatry-ask";
     return null;
   }
@@ -672,11 +679,20 @@ export function modeSecondaryNavigationHref(params: {
   }
 
   if (modeId === "differentials") {
+    // A carried query goes straight to the results route. Linking the shared
+    // home (`/?mode=differentials&q=…&run=1`) only bounced there through a
+    // server redirect, which Safari on a phone could leave unfinished.
+    if (itemId === "search" && query) {
+      const ids = currentSearchParams.get("ids");
+      return navigationHrefWithParams(
+        appModeHomeHref("differentials", { query, focus: true, run: true }),
+        ids ? [["ids", ids]] : [],
+      );
+    }
     const entries: Array<readonly [string, string]> = query ? [["q", query]] : [];
     // Returning to Search with a carried query must reopen the results view
     // (`run=1`), not the empty mode home — even when the previous tab lacked run.
-    if (itemId === "search" && query) entries.push(["run", "1"]);
-    else if (itemId === "search" && currentSearchParams.get("run") === "1") entries.push(["run", "1"]);
+    if (itemId === "search" && currentSearchParams.get("run") === "1") entries.push(["run", "1"]);
     // Compare (and other in-mode tabs) reuse URL-backed selection so ticks on
     // search survive ModeNav handoff without a second client store.
     if (currentSearchParams.get("ids")) {

@@ -33,7 +33,7 @@ describe("First Nations reading-trust sheet", () => {
     expect(dialog.textContent).toMatch(/Statewide tips/);
     expect(dialog.textContent).toMatch(/PsychSift templates/);
     expect(dialog.textContent).toMatch(/EMHS off/);
-    expect(dialog.textContent).not.toMatch(/Reviewed by|signed off|Not yet reviewed/i);
+    expect(dialog.textContent).not.toMatch(/Reviewed by|signed off|Not yet reviewed|No cultural review recorded yet/i);
     window.localStorage.removeItem("first-nations-primer-dismissed");
   });
 

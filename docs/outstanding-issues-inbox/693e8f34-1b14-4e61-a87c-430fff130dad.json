@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "693e8f34-1b14-4e61-a87c-430fff130dad",
+  "createdOn": "2026-10-12",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Safari (WebKit) browser tests: 26 genuine failures now visible after the launch fix in PR #3487",
+    "detail": "Before PR #3487 every WebKit leg of the release browser matrix died at browser launch (missing libevent), hiding real results. Dispatch run 38236585559 (head 7e2d712) launched every leg; these tests then failed. tablet 2/4 (16): ui-accessibility 176/377/597, ui-overlap 239/437/549, ui-teaching 83, ui-tools 587/672/1084/2183/2295/2490/2674/2946, ui-universal-search 360. tablet 4/4 (4): ui-my-day-calendar 116, ui-roster-team 100/174, ui-stress 346. tablet 3/4: ui-cme-phone 351. mobile-webkit 2/5: ui-accessibility 295. mobile-webkit 5/5 and mobile-pwa-standalone 4/5: ui-on-call-boards 558 (declares no anchor the page does not render). mobile-pwa-standalone 5/5: ui-phone-scroll-assessments 19, ui-phone-scroll-page-owned 454. tablet 1/4 was still running at triage. Many tablet failures are 1.0m timeouts, so some may share one cause (tablet viewport or WebKit timing). Next action: rerun the matrix on main after #3487 merges, group failures by cause, fix app or test per group. Never skip or quarantine a test to get green.",
+    "source": "PR #3487 browser-matrix dispatch 2026-10-12",
+    "issueUlid": "01M4QX1X5FCJENZWYHCG1971RC"
+  }
+}

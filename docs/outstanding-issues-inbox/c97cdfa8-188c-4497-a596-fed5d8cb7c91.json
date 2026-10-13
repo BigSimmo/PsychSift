@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "c97cdfa8-188c-4497-a596-fed5d8cb7c91",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "Medication interaction lexicon: the 28 Sept sign-off is out of date because the drug groupings changed since; alerts still fire on an unapproved version (audit L4C-H1)",
+    "detail": "Owner action: re-approve the current lexicon through the review sheet. The check only warns, so nothing blocks the stale version meanwhile.",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65YMSNBJQD8DBMDCNM2SF"
+  }
+}

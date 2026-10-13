@@ -25,6 +25,7 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -525,6 +526,7 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 
 export function OnCallHandoverPage() {
   const view = useOnCallHandover();
+  const underBand = useModeBandShown();
   const patients = useMemo(() => view?.patients ?? [], [view]);
   const night = useNightShift();
   const [mode, setMode] = useState<"form" | "table">("form");
@@ -721,7 +723,10 @@ export function OnCallHandoverPage() {
           ) : (
             <div className="grid min-w-0 gap-2 print:hidden">
               <div className="flex min-w-0 items-center justify-between gap-3">
-                <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Handover</h1>
+                {/* Under the work band its title already says Handover, so the heading stays for screen readers only. */}
+                <h1 className={underBand ? "sr-only" : "text-2xl font-semibold text-[color:var(--text-heading)]"}>
+                  Handover
+                </h1>
                 {patients.length > 0 && !confirmClear ? (
                   <button
                     type="button"

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "09e67603-7e47-418c-a95d-3752fb36b528",
+  "createdOn": "2026-10-12",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Two protected retrieval scripts still use the Windows-fragile entrypoint check; convert them with owner approval",
+    "detail": "scripts/eval-retrieval.ts and scripts/build-ranking-snapshot.ts still decide they are the entrypoint with import.meta.url === pathToFileURL(process.argv[1]).href, which can exit 0 having done nothing on Windows. Both are RAG-ranking protected surfaces (pr-policy ragRankingPatterns), so the change was left out of the entrypoint-guard PR. They are the only two entries in ALLOWED_RAW in tests/script-entrypoint-guard.test.ts (plus sync-open-pr-branches.mjs, which has a file-name fallback). Next action: with owner approval, switch both to isDirectEntrypoint from scripts/lib/is-entrypoint.mjs, write a RAG impact line (no retrieval behaviour change), and remove them from ALLOWED_RAW.",
+    "source": "Review of five Antigravity reports against main, 2026-10-12",
+    "issueUlid": "01M4R2MABMYETFBJA8FR1XWCHQ"
+  }
+}
