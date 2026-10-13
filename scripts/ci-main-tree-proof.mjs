@@ -43,7 +43,8 @@
  * the newest successful dispatch run of THIS workflow for the same head H, under the same checks
  * 4-8 above: same repository, within MAX_PROOF_AGE_HOURS, its Change scope recorded
  * `event=workflow_dispatch` with a tree equal to tree(HEAD), and every matrix leg concluded
- * success. Absent such a run, main runs the matrix exactly as before.
+ * success. That value is no longer an output: ci.yml always runs the matrix on main, so the
+ * proof is informational only and never reported as a skip.
  *
  * Outputs (GITHUB_OUTPUT): coverage, ui, lighthouse ("true"/"false"), proof_run_url, reason.
  * Uses only the job's GITHUB_TOKEN (actions: read, pull-requests: read) — about four REST
@@ -465,16 +466,14 @@ function writeOutputs({ proof, reason, runUrl = "" }) {
     `coverage=${proof.coverage === true}`,
     `ui=${proof.ui === true}`,
     `lighthouse=${proof.lighthouse === true}`,
-    `matrix=${proof.matrix === true}`,
     `proof_run_url=${runUrl}`,
     `reason=${String(reason).replace(/[\r\n]+/g, " ")}`,
   ];
   console.log(lines.join("\n"));
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${lines.join("\n")}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) {
-    const skipped = Object.entries(proof)
-      .filter(([, value]) => value === true)
-      .map(([group]) => group);
+    // Only these groups gate a job; `matrix` is still computed but main always runs the release matrix.
+    const skipped = ["coverage", "ui", "lighthouse"].filter((group) => proof[group] === true);
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
       [

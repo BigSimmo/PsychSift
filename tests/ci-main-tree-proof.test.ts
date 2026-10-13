@@ -204,7 +204,7 @@ describe("main tree proof script", () => {
     expect(result.stdout).toContain("coverage=false");
     expect(result.stdout).toContain("ui=false");
     expect(result.stdout).toContain("lighthouse=false");
-    expect(result.stdout).toContain("matrix=false");
+    expect(result.stdout).not.toContain("matrix=");
   });
 });
 
