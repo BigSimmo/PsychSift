@@ -33,7 +33,7 @@ export function AgreementIconCircle({
       aria-hidden="true"
       className={cn(
         "grid shrink-0 place-items-center rounded-full",
-        size === "lg" ? "size-11" : "size-8",
+        size === "lg" ? "size-12" : "size-8",
         tone === "accent" && "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
         tone === "neutral" && "bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
         tone === "warning" && "bg-[color:var(--warning-soft)] text-[color:var(--warning-text)]",

@@ -26,38 +26,38 @@ than CI, two of them by the second reader; review does not scale past two carefu
 <!-- Generated from scripts/design-system-contract-baseline.json. Do not edit by hand:
      run `npm run design-system:gates-figures:update`. -->
 
-| Metric                            | Current pin        | Files pinned |
-| --------------------------------- | ------------------ | ------------ |
-| `arbitraryTracking`               | **0** (hard floor) | 0            |
-| `colourOnlyStatusIndicators`      | **0** (hard floor) | 0            |
-| `darkColorOverrides`              | **0** (hard floor) | 0            |
-| `disabledOpacityUses`             | 31                 | 21           |
-| `edgeOwnershipConflicts`          | 5                  | 2            |
-| `elevationInversions`             | 5                  | 4            |
-| `errorStateCountProps`            | **0** (hard floor) | 0            |
-| `failedStateResultCounts`         | **0** (hard floor) | 0            |
-| `handRolledCommandButtons`        | 8                  | 7            |
-| `hardcodedCssMotionDurations`     | 25                 | 1            |
-| `interactiveTapFloorDeclarations` | 4                  | 3            |
-| `layoutTransitionExceptions`      | 10                 | 4            |
-| `legacyPaletteUtilities`          | **0** (hard floor) | 0            |
-| `legacyShadowAliases`             | 32                 | 26           |
-| `legacyTapClasses`                | 3                  | 3            |
-| `literalShadowClasses`            | **0** (hard floor) | 0            |
-| `onePixelShadowSpreads`           | **0** (hard floor) | 0            |
-| `rawColorLiterals`                | **0** (hard floor) | 0            |
-| `rawCssZIndices`                  | 4                  | 1            |
-| `rawGapLiterals`                  | 11                 | 1            |
-| `rawLineHeightLiterals`           | **0** (hard floor) | 0            |
-| `rawMarginLiterals`               | 8                  | 2            |
-| `rawPaddingLiterals`              | 22                 | 4            |
-| `rawRadiusLiterals`               | 15                 | 3            |
-| `sameFileTextSmMinusMix`          | 32                 | 32           |
-| `statusColouredNumerals`          | **0** (hard floor) | 0            |
-| `textSoftConsumers`               | **0** (hard floor) | 0            |
-| `visibleLiveRegions`              | 20                 | 19           |
+| Metric | Current pin | Files pinned |
+| ------ | ----------- | ------------ |
+| `arbitraryTracking` | **0** (hard floor) | 0 |
+| `colourOnlyStatusIndicators` | **0** (hard floor) | 0 |
+| `darkColorOverrides` | **0** (hard floor) | 0 |
+| `disabledOpacityUses` | 30 | 21 |
+| `edgeOwnershipConflicts` | 5 | 2 |
+| `elevationInversions` | 5 | 4 |
+| `errorStateCountProps` | **0** (hard floor) | 0 |
+| `failedStateResultCounts` | **0** (hard floor) | 0 |
+| `handRolledCommandButtons` | 8 | 7 |
+| `hardcodedCssMotionDurations` | 21 | 1 |
+| `interactiveTapFloorDeclarations` | 4 | 3 |
+| `layoutTransitionExceptions` | 10 | 4 |
+| `legacyPaletteUtilities` | **0** (hard floor) | 0 |
+| `legacyShadowAliases` | 30 | 24 |
+| `legacyTapClasses` | **0** (hard floor) | 0 |
+| `literalShadowClasses` | **0** (hard floor) | 0 |
+| `onePixelShadowSpreads` | **0** (hard floor) | 0 |
+| `rawColorLiterals` | **0** (hard floor) | 0 |
+| `rawCssZIndices` | 4 | 1 |
+| `rawGapLiterals` | 10 | 1 |
+| `rawLineHeightLiterals` | **0** (hard floor) | 0 |
+| `rawMarginLiterals` | 6 | 2 |
+| `rawPaddingLiterals` | 21 | 4 |
+| `rawRadiusLiterals` | 14 | 3 |
+| `sameFileTextSmMinusMix` | 32 | 32 |
+| `statusColouredNumerals` | **0** (hard floor) | 0 |
+| `textSoftConsumers` | **0** (hard floor) | 0 |
+| `visibleLiveRegions` | 17 | 17 |
 
-28 metrics, 12 of them pinned at zero. A metric at zero is a hard floor:
+28 metrics, 13 of them pinned at zero. A metric at zero is a hard floor:
 the check asserts `value <= baseline`, so any reintroduction fails. A non-zero pin is
 recorded debt with per-path pins, so a new occurrence fails even while the total stands.
 
