@@ -31,7 +31,7 @@ describe("AnswerProviderNotice", () => {
     expect(source.match(/<AnswerProviderNotice\b/g)).toHaveLength(2);
     // Before the first question: on the shared home, only in Answer mode, never in demo mode.
     expect(source).toMatch(
-      /<SharedHomeEmptyState[\s\S]{0,800}searchMode === "answer" && !explicitDemoMode \? \(\s*<AnswerProviderNotice[^>]*answer-provider-notice-home/,
+      /<SharedHomeEmptyState[\s\S]{0,800}searchMode === "answer" && !clientDemoMode \? \(\s*<AnswerProviderNotice[^>]*answer-provider-notice-home/,
     );
     expect(source).toMatch(
       /explicitDemoMode \|\|\s*answer\.demoMode === true[^?]*\? null : \(\s*<AnswerProviderNotice/,

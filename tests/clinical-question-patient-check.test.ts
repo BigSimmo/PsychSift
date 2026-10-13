@@ -115,6 +115,13 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
     expect(clinicalQuestionPatientDetail("John Smith on clozapine")).toBeNull();
   });
 
+  it("keeps a place number that looks like a millisecond reading (bed 4 ms smith)", () => {
+    for (const question of ["bed 4 ms smith clozapine", "ward 4 ms jones lithium", "Bed: 12 ms Smith"]) {
+      expect(clinicalQuestionPatientDetail(question), question).not.toBeNull();
+    }
+    expect(clinicalQuestionPatientDetail("QTc 480 ms ECG monitoring")).toBeNull();
+  });
+
   it("never flags empty text", () => {
     expect(clinicalQuestionPatientDetail("   ")).toBeNull();
   });
