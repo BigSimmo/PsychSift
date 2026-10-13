@@ -223,6 +223,31 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(answer?.date).toBe("2026-10-18");
     });
 
+    it("matches assessment terms strictly on word boundaries without loose substring false positives", () => {
+      const hospitalSession = [
+        {
+          id: "t:session:5",
+          area: "teaching" as const,
+          kind: "session" as const,
+          title: "Hospital Rehabilitation Overview",
+          detail: "General orientation",
+          date: "2026-10-18",
+          href: "/teaching/sessions/5",
+          tags: [],
+          text: [],
+        },
+      ];
+      const answer = answerWorkQuestion("next ITA", {
+        items: hospitalSession,
+        areas: [{ area: "teaching", status: "ready", sample: false }],
+        today: "2026-10-14",
+        cpd: null,
+      });
+      expect(answer).not.toBeNull();
+      expect(answer?.items).toHaveLength(0);
+      expect(answer?.headline).toBe("No upcoming term assessments scheduled");
+    });
+
     it("parses assessment due question with timeframe", () => {
       const match = parseMyWorkAssessmentGrammar("what assessments are due this month");
       expect(match).not.toBeNull();

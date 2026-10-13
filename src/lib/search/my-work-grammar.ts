@@ -94,10 +94,10 @@ export function parseMyWorkAssessmentGrammar(query: string): AssessmentGrammarMa
     matchedTerms.push("epa", "entrustable");
   } else if (WBA_PATTERN.test(text)) {
     category = "wba";
-    matchedTerms.push("wba", "mini-cex", "cbd", "dops", "assessment");
+    matchedTerms.push("wba", "mini-cex", "cbd", "dops");
   } else if (TERM_ASSESSMENT_PATTERN.test(text)) {
     category = "term_assessment";
-    matchedTerms.push("term", "ita", "assessment");
+    matchedTerms.push("term assessment", "term review", "term evaluation", "ita", "mid-term", "end-of-term");
   } else if (SUPERVISOR_PATTERN.test(text) || SUPERVISOR_QUERY_PATTERN.test(text)) {
     category = "supervisor_review";
     matchedTerms.push("supervisor");

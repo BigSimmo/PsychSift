@@ -852,12 +852,10 @@ function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch)
   const wantsAhead = match.intent === "next" || match.intent === "due";
   const isOverdue = match.timeframe === "overdue";
 
+  const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const termPatterns = match.matchedTerms.map((t) => new RegExp(`\\b${escapeRegex(t)}s?\\b`, "i"));
   const matchingItems = input.items
-    .filter(
-      (item) =>
-        item.area === "teaching" &&
-        match.matchedTerms.some((term) => item.title.toLowerCase().includes(term.toLowerCase())),
-    )
+    .filter((item) => item.area === "teaching" && termPatterns.some((pattern) => pattern.test(item.title)))
     .filter((item) => {
       if (isOverdue) return item.date !== null && item.date < input.today;
       if (range) return item.date !== null && item.date >= range.from && item.date <= range.to;
