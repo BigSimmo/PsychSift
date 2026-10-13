@@ -355,15 +355,30 @@ export function PwaLifecycle() {
   // notice most visits never show. It loads just after mount, while online, so
   // it is ready before the signal drops; until then the line says "saved earlier".
   const [savedLineFn, setSavedLineFn] = useState<typeof SavedLine | null>(null);
+  // A load that fails (opened offline, flaky signal) is tried again when the
+  // signal returns, so a later offline notice can still name its time.
   useEffect(() => {
     let live = true;
-    import("@/lib/offline-line")
-      .then((module) => {
-        if (live) setSavedLineFn(() => module.savedLine);
-      })
-      .catch(() => {});
+    let loading = false;
+    let loaded = false;
+    const load = () => {
+      if (loading || loaded) return;
+      loading = true;
+      import("@/lib/offline-line")
+        .then((module) => {
+          loaded = true;
+          if (live) setSavedLineFn(() => module.savedLine);
+        })
+        .catch(() => {})
+        .finally(() => {
+          loading = false;
+        });
+    };
+    load();
+    window.addEventListener("online", load);
     return () => {
       live = false;
+      window.removeEventListener("online", load);
     };
   }, []);
   const [showIosHint, setShowIosHint] = useState(false);

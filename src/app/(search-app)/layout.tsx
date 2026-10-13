@@ -1,5 +1,3 @@
-import "@/app/motion.css";
-
 import type { ReactNode } from "react";
 
 import { SharedSearchAppShell } from "@/components/clinical-dashboard/shared-search-app-shell";
