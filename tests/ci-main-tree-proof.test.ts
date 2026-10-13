@@ -15,6 +15,7 @@ import {
   PROOF_GROUPS,
   reconstructTestedTree,
   selectPullRequestCandidates,
+  skippedGroups,
   UNRELATED_INPUT_RULES,
 } from "../scripts/ci-main-tree-proof.mjs";
 
@@ -46,6 +47,15 @@ describe("main tree proof script", () => {
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("ci-main-tree-proof self-test passed.");
+  });
+
+  it("never lists the release matrix as skipped in the step summary", () => {
+    expect(skippedGroups({ coverage: true, ui: true, lighthouse: true, matrix: true })).toEqual([
+      "coverage",
+      "ui",
+      "lighthouse",
+    ]);
+    expect(skippedGroups({ coverage: false, ui: false, lighthouse: false, matrix: true })).toEqual([]);
   });
 
   it("names exactly the PR-run jobs each group skips, matching ci.yml job names", () => {
@@ -225,7 +235,7 @@ describe("main tree proof workflow wiring", () => {
     expect(jobs.changes.outputs.tree_proven_coverage).toBe("${{ steps.tree-proof.outputs.coverage }}");
     expect(jobs.changes.outputs.tree_proven_ui).toBe("${{ steps.tree-proof.outputs.ui }}");
     expect(jobs.changes.outputs.tree_proven_lighthouse).toBe("${{ steps.tree-proof.outputs.lighthouse }}");
-    // The release matrix has no tree proof: main always runs it when UI, perf or the lockfile changed.
+    // The release matrix has no tree proof: every main push that changes UI, perf inputs or the lockfile runs it.
     expect(jobs.changes.outputs.tree_proven_matrix).toBeUndefined();
     // The changes job checks out full history, which HEAD^1 and the ancestry check rely on.
     const checkout = steps.find((step) => String(step.uses ?? "").startsWith("actions/checkout@"));

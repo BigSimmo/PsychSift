@@ -37,14 +37,9 @@
  * production secrets and runs only on main), the Playwright build, visual baselines and
  * main-failure routing. The weekly scheduled run and every dispatch never take this path.
  *
- * The Firefox/WebKit release-browser-matrix never runs on a pull_request event, so a PR run
- * cannot prove it. A full-suite `workflow_dispatch` run on the PR head can (the draft "hold"
- * rule runs one before a PR is marked ready). The `matrix` group therefore takes its proof from
- * the newest successful dispatch run of THIS workflow for the same head H, under the same checks
- * 4-8 above: same repository, within MAX_PROOF_AGE_HOURS, its Change scope recorded
- * `event=workflow_dispatch` with a tree equal to tree(HEAD), and every matrix leg concluded
- * success. That value is no longer an output: ci.yml always runs the matrix on main, so the
- * proof is informational only and never reported as a skip.
+ * The Firefox/WebKit release-browser-matrix never runs on a pull_request event, so nothing can
+ * prove it: every main push that changes UI, perf inputs or the lockfile runs it, whatever this
+ * script finds, and no dispatch-run lookup is made for it.
  *
  * Outputs (GITHUB_OUTPUT): coverage, ui, lighthouse ("true"/"false"), proof_run_url, reason.
  * Uses only the job's GITHUB_TOKEN (actions: read, pull-requests: read) — about four REST
@@ -259,23 +254,15 @@ export async function evaluate({
   const maxAgeHours = Number(env.MAX_PROOF_AGE_HOURS || DEFAULT_MAX_PROOF_AGE_HOURS);
   if (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0) return { proof: NONE, reason: "invalid MAX_PROOF_AGE_HOURS" };
   const prOutcome = await provenRun({ request, repo, head, mainTree, now, maxAgeHours, event: "pull_request" });
-  const matrixOutcome = await provenRun({
-    request,
-    repo,
-    head,
-    mainTree,
-    now,
-    maxAgeHours,
-    event: "workflow_dispatch",
-  });
   const proof = {
     ...(prOutcome.jobs ? classifyProof(prOutcome.jobs) : { coverage: false, ui: false, lighthouse: false }),
-    matrix: matrixOutcome.jobs ? classifyMatrixProof(matrixOutcome.jobs) : false,
+    // ci.yml always runs the release matrix on qualifying main pushes, so it is never looked up or proved.
+    matrix: false,
   };
   return {
     proof,
-    reason: `PR #${pull.number}: ${prOutcome.reason}; release matrix: ${matrixOutcome.reason}`,
-    runUrl: prOutcome.runUrl || matrixOutcome.runUrl || "",
+    reason: `PR #${pull.number}: ${prOutcome.reason}`,
+    runUrl: prOutcome.runUrl || "",
   };
 }
 
@@ -461,6 +448,11 @@ export async function evaluatePullRequestUpdate({
   };
 }
 
+/** Groups this push actually skips. The release matrix is never one: ci.yml has no gate for it. Pure. */
+export function skippedGroups(proof) {
+  return ["coverage", "ui", "lighthouse"].filter((group) => proof?.[group] === true);
+}
+
 function writeOutputs({ proof, reason, runUrl = "" }) {
   const lines = [
     `coverage=${proof.coverage === true}`,
@@ -472,8 +464,7 @@ function writeOutputs({ proof, reason, runUrl = "" }) {
   console.log(lines.join("\n"));
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${lines.join("\n")}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) {
-    // Only these groups gate a job; `matrix` is still computed but main always runs the release matrix.
-    const skipped = ["coverage", "ui", "lighthouse"].filter((group) => proof[group] === true);
+    const skipped = skippedGroups(proof);
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
       [
@@ -679,67 +670,24 @@ async function selfTest() {
   assert(parseTestedTree(testedRecord)?.tree === tree, "a well-formed record parses");
   assert(result.proof.matrix === false, "a pull_request run never proves the release matrix");
 
-  // The release matrix: proved only by a green full-suite dispatch run on the same head and tree.
-  const matrixLegs = [
-    { ...ok("Change scope"), id: 601 },
-    ok("release-browser-matrix (chromium, chromium-mockups, 1, 1)"),
-    ok("release-browser-matrix (webkit, mobile-webkit, 1, 5)"),
-  ];
-  const dispatchRun = { ...run, id: 6, event: "workflow_dispatch" };
-  const dispatchRecord = record(`event=workflow_dispatch sha=${pr.head.sha} tree=${tree}`);
-  const matrixRequest =
-    ({ legs = matrixLegs, annotations = dispatchRecord, dispatchRuns = [dispatchRun] } = {}) =>
-    async (path) => {
-      if (path.includes("/workflows/") && path.includes("event=workflow_dispatch"))
-        return { workflow_runs: dispatchRuns };
-      if (path.includes("/runs/6/jobs")) return { total_count: legs.length, jobs: legs };
-      if (path.includes("/check-runs/601/annotations")) return annotations;
+  // The release matrix is never proved or reported as skipped.
+  assert(classifyMatrixProof([ok("release-browser-matrix (webkit, webkit, 1, 4)")]), "legs still classify");
+  assert(
+    skippedGroups({ coverage: true, ui: false, lighthouse: true, matrix: true }).join(",") === "coverage,lighthouse",
+    "the summary never lists the release matrix as skipped",
+  );
+  const paths = [];
+  result = await evaluate({
+    ...base,
+    request: async (path) => {
+      paths.push(path);
       return request()(path);
-    };
-  result = await evaluate({ ...base, request: matrixRequest() });
-  assert(result.proof.matrix && result.proof.ui, `a green dispatch run proves the matrix (${result.reason})`);
-  assert(classifyMatrixProof(matrixLegs), "all-green legs prove the matrix");
-  assert(!classifyMatrixProof([ok("release-browser-matrix")]), "a skipped (unexpanded) matrix proves nothing");
-  result = await evaluate({
-    ...base,
-    request: matrixRequest({
-      legs: matrixLegs.map((job, index) => (index === 2 ? { ...job, conclusion: "failure" } : job)),
-    }),
+    },
   });
-  assert(!result.proof.matrix, "one red leg un-proves the matrix");
-  result = await evaluate({ ...base, request: matrixRequest({ legs: matrixLegs.slice(0, 1) }) });
-  assert(!result.proof.matrix, "a dispatch run without matrix legs proves nothing");
-  result = await evaluate({
-    ...base,
-    request: matrixRequest({
-      annotations: record(`event=workflow_dispatch sha=${pr.head.sha} tree=${"3".repeat(40)}`),
-    }),
-  });
-  assert(!result.proof.matrix, "a dispatch run that tested another tree proves nothing");
-  result = await evaluate({ ...base, request: matrixRequest({ annotations: testedRecord }) });
-  assert(!result.proof.matrix, "a dispatch run must record a dispatch event");
-  result = await evaluate({
-    ...base,
-    request: matrixRequest({ dispatchRuns: [{ ...dispatchRun, conclusion: "failure" }] }),
-  });
-  assert(!result.proof.matrix, "a red dispatch run proves nothing");
-  result = await evaluate({
-    ...base,
-    request: matrixRequest({ dispatchRuns: [{ ...dispatchRun, updated_at: "2026-10-05T10:00:00Z" }] }),
-  });
-  assert(!result.proof.matrix, "a dispatch run older than 24h is stale");
-  result = await evaluate({
-    ...base,
-    runGit: gitMap({ "rev-parse HEAD^{tree}": "2".repeat(40) }),
-    request: matrixRequest(),
-  });
-  assert(!result.proof.matrix, "a tree mismatch never proves the matrix");
-  result = await evaluate({
-    ...base,
-    env: { ...env, GITHUB_EVENT_NAME: "workflow_dispatch" },
-    request: matrixRequest(),
-  });
-  assert(!result.proof.matrix, "a dispatch run never skips its own matrix");
+  assert(
+    result.proof.ui && !paths.some((path) => path.includes("event=workflow_dispatch")),
+    "no dispatch-run lookup is made, so a failing one cannot clear the PR proof",
+  );
   const recorded = [];
   const originalLog = console.log;
   console.log = (line) => recorded.push(line);
