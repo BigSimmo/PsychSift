@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { WhereIsHomePanel } from "@/components/first-nations/where-is-home";
 import { bedsideFixture, resetAfterEach } from "./fixtures/first-nations-models";
@@ -35,5 +35,19 @@ describe("WhereIsHomePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Goldfields" }));
     fireEvent.click(screen.getByRole("button", { name: "Copy all" }));
     expect(await screen.findByText("Copying isn't available on this phone")).toBeTruthy();
+  });
+  it("keeps the letter on reselecting the same region and clears it on a switch", () => {
+    const pilbara = { ...model.regions[0], id: "pilbara", label: "Pilbara" };
+    render(<WhereIsHomePanel regions={[...model.regions, pilbara]} map={model.map} interpreter={model.interpreter} />);
+    fireEvent.click(screen.getByRole("button", { name: "Goldfields" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to letter" }));
+    const line = "Aboriginal Interpreting WA · 1800 000 012";
+    expect(screen.getByText(line)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Goldfields" }));
+    expect(screen.getByText(line)).toBeTruthy();
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Home region" })).getByRole("button", { name: "Pilbara" }),
+    );
+    expect(screen.queryByText(line)).toBeNull();
   });
 });

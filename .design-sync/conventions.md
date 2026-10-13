@@ -38,8 +38,9 @@ arbitrary-value form — never hardcoded colours:
   Outline only — never add a companion `focus:ring-*` / `box-shadow`. The shared base rule is one
   focus owner by design; a second ring both stacks a halo and wipes the control's resting elevation.
 
-Radius rules: `rounded-md` chips/pills, `rounded-lg` controls/cards/panels,
-`rounded-xl` sheets/dialogs. Tap targets: `min-h-tap` / `h-tap w-tap` (44px) —
+Radius rules: `rounded-sm` chips/pills, `rounded-md` controls/inputs/buttons,
+`rounded-lg` cards/table cards/popovers, `rounded-xl` panels/answer card, `rounded-2xl`
+sheets/dialogs. Tap targets: `min-h-tap` / `h-tap w-tap` (48px) —
 interactive controls only. A static chip is 28px text, not a touch target;
 putting `min-h-tap` on one is why dense tables scrolled so much.
 Dark mode is automatic via the `.dark` class — the variables flip; never write
@@ -65,8 +66,8 @@ glyphs). Label and caption **text** uses `--text-muted`.
 
 ## Opt-in v2 token layer
 
-`.ckb-v2` is an opt-in class that swaps in the v2 shell: white surfaces, a blue
-`--command`, a crisper `--e1`…`--e4` ladder, a 7-step type scale (size steps with
+`.ckb-v2` is an opt-in class that swaps in the v2 shell: white surfaces, a dark slate
+`--command` (`#111827`), a crisper `--e1`…`--e4` ladder, a 7-step type scale (size steps with
 shared `--leading-prose`; hero companions `--text-hero--line-height` /
 `--text-hero-tr` only — no per-step leading or tracking), semantic spacing
 (`--gap-*`, `--pad-*`), density (`--tap-min`, `--chip-height`, `--row-*`), icon
