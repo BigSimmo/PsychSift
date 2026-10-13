@@ -745,7 +745,7 @@ jobs:
           --outputFile.blob=.vitest-ci/coverage-${{ matrix.shard }}.json
 
       - name: Preserve test and coverage results
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: unit-coverage-${{ github.run_id }}-${{ matrix.shard }}
           overwrite: true
@@ -972,7 +972,7 @@ jobs:
         run: node scripts/run-playwright.mjs --project=chromium
 
       - name: Upload Playwright Next build
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-next-build-${{ github.run_id }}
           overwrite: true
@@ -1030,7 +1030,7 @@ jobs:
 
       - name: Upload critical UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-ui-critical-diagnostics-${{ github.run_id }}-attempt${{ github.run_attempt }}
           path: |
@@ -1121,7 +1121,7 @@ jobs:
 
       - name: Upload UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Shard-scoped: upload-artifact v7 runs with `overwrite: false`, so a
           # shared name would make the second failing shard fail on upload.
@@ -1133,7 +1133,7 @@ jobs:
 
       - name: Preserve production shard timings
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-ui-timings-${{ github.run_id }}-${{ matrix.shard }}-attempt${{ github.run_attempt }}
           path: test-results/playwright-results.json
@@ -1177,7 +1177,7 @@ jobs:
 
       - name: Upload advisory UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: advisory-ui-diagnostics-${{ github.run_id }}-attempt${{ github.run_attempt }}
           path: |
@@ -1262,7 +1262,7 @@ jobs:
       # to commit as the baseline; on a later run they are the evidence of what moved.
       - name: Upload visual diffs
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: visual-baseline-${{ github.run_id }}
           overwrite: true
@@ -1374,7 +1374,7 @@ jobs:
 
       - name: Upload Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-budget-${{ github.run_id }}
           overwrite: true
@@ -1435,7 +1435,7 @@ jobs:
 
       - name: Upload the refreshed baseline
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-baseline-refresh-${{ github.run_id }}
           overwrite: true
@@ -1578,7 +1578,7 @@ jobs:
 
       - name: Upload regenerated drift manifest
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: drift-manifest-${{ github.run_id }}
           overwrite: true
@@ -2147,7 +2147,7 @@ jobs:
 
       - name: Upload UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Per project/partition: a shared name makes another failing job fail on
           # upload, the same trap already documented on the Production UI shards.
@@ -2159,7 +2159,7 @@ jobs:
 
       - name: Preserve browser partition timings
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-ui-timings-${{ github.run_id }}-${{ matrix.project }}-${{ matrix.shard }}-attempt${{ github.run_attempt }}
           path: test-results/playwright-results.json

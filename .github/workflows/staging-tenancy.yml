@@ -82,7 +82,7 @@ jobs:
       # Dispatched runs stay strict — a deliberate proof must leave evidence.
       - name: Upload tenancy evidence
         if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: staging-tenancy-evidence-${{ github.run_id }}
           path: artifacts/staging-tenancy-evidence.json
