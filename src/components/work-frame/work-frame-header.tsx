@@ -46,9 +46,9 @@ import {
   type WorkArea,
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
+import { universalHeaderLeadingSlotId } from "@/components/work-frame/universal-header-slot";
 
-/** Where the top bar draws a page's back button in place of the menu button. */
-export const universalHeaderLeadingSlotId = "universal-header-leading";
+export { universalHeaderLeadingSlotId };
 
 export type WorkFrameHeaderProps = {
   readonly area: WorkArea;
