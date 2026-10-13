@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import {
   answerGenerationFingerprint,
   buildAnswerGenerationFingerprint,
@@ -42,6 +43,7 @@ describe("RAG answer generation fingerprints", () => {
     ["maximum output tokens", { maxOutputTokens: 6000 }],
     ["provider mode", { providerMode: "offline" }],
     ["prompt version", { promptVersion: "clinical-rag-answer-v19" }],
+    ["query input version", { answerInputVersion: "clinical-rag-answer-input-v1" }],
     ["context pack version", { contextPackVersion: "rag-context-pack-v2" }],
     ["schema version", { schemaVersion: "clinical-rag-answer-schema-v4" }],
     ["classifier prompt version", { classifierPromptVersion: "clinical-rag-query-classifier-v2" }],
@@ -57,6 +59,11 @@ describe("RAG answer generation fingerprints", () => {
 
   it("is stable for the same generation configuration", () => {
     expect(buildAnswerGenerationFingerprint({ ...baseline })).toBe(buildAnswerGenerationFingerprint(baseline));
+  });
+
+  it("does not reuse fingerprints made before query input versioning", () => {
+    const oldFingerprint = createHash("sha256").update(JSON.stringify(baseline)).digest("hex").slice(0, 20);
+    expect(buildAnswerGenerationFingerprint(baseline)).not.toBe(oldFingerprint);
   });
 
   it("is included in the scoped answer cache key", () => {

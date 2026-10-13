@@ -377,6 +377,10 @@ function chunkTableBlock(block: string, chunkSize: number) {
   return chunks.length > 0 ? chunks : [block.trim()];
 }
 
+const clinicalProhibitionPattern =
+  /\b(?:contraindicat(?:e|ed|ion|ions)|do not|must not|never|avoid|withhold|cease|black box warning)\b/i;
+const sentenceEndPattern = /(?<=[.!?])(?:\s+|$)/;
+
 function readableOverlapStart(clean: string, end: number, overlap: number) {
   if (overlap <= 0) return end;
   let start = Math.max(0, end - overlap);
@@ -386,6 +390,25 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
   }
   while (start < end && /\s/.test(clean[start] ?? "")) {
     start += 1;
+  }
+
+  // CHK-01: Check if the preceding text within the sentence contains a critical clinical prohibition
+  // (e.g. "DO NOT", "CONTRAINDICATED"). If so, extend overlap back to the prohibition so the successor
+  // chunk carries the governing prohibition rather than severing it into an unintended positive recommendation.
+  const lookbackLimit = Math.max(overlap * 3, 160);
+  const lookbackStart = Math.max(0, end - lookbackLimit);
+  const lookbackWindow = clean.slice(lookbackStart, end);
+  const lastBoundaryMatch = lookbackWindow.match(/(?:(?<=[.!?])\s+|^)(.*?)$/);
+  const sentenceFragment = lastBoundaryMatch ? lastBoundaryMatch[1] : lookbackWindow;
+  if (clinicalProhibitionPattern.test(sentenceFragment)) {
+    const prohibitionMatch = clinicalProhibitionPattern.exec(sentenceFragment);
+    if (prohibitionMatch) {
+      const sentenceFragOffset = lookbackWindow.length - sentenceFragment.length;
+      const candidateStart = lookbackStart + sentenceFragOffset + prohibitionMatch.index;
+      if (candidateStart < start && candidateStart < end) {
+        start = candidateStart;
+      }
+    }
   }
 
   return start < end ? start : Math.max(0, end - overlap);
@@ -400,10 +423,17 @@ function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) 
     const window = clean.slice(start, end);
     const sentences = window.split(sentenceBoundary);
 
-    if (end < clean.length && sentences.length > 1) {
-      const rebuilt = sentences.slice(0, -1).join(" ");
-      if (rebuilt.length > chunkSize * 0.55) {
-        end = start + rebuilt.length;
+    if (end < clean.length) {
+      // Look ahead to check if the trailing sentence completes within a modest elongation budget (up to 35% over chunkSize)
+      const lookahead = clean.slice(end);
+      const match = sentenceEndPattern.exec(lookahead);
+      if (match && end + match.index <= start + chunkSize * 1.35) {
+        end = end + match.index;
+      } else if (sentences.length > 1) {
+        const rebuilt = sentences.slice(0, -1).join(" ");
+        if (rebuilt.length > chunkSize * 0.55) {
+          end = start + rebuilt.length;
+        }
       }
     }
 

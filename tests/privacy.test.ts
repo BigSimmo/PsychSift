@@ -23,6 +23,42 @@ describe("privacy-safe logging helpers", () => {
     expect(queryTextForStorage("ordinary authorized query")).toBe("ordinary authorized query");
   });
 
+  it("scrubs incidental Australian Medicare numbers, phone numbers, and MRNs from stored queries", async () => {
+    vi.doMock("@/lib/env", () => ({ env: { RAG_PERSIST_RAW_QUERY_TEXT: true } }));
+    const { queryTextForStorage, scrubPotentialPhi } = await import("../src/lib/query-privacy");
+
+    const queryWithPhi = "Patient Medicare 2123 45678 1 mobile 0412 345 678 MRN: 1234567 lithium level";
+    const scrubbed = queryTextForStorage(queryWithPhi);
+
+    expect(scrubPotentialPhi(queryWithPhi)).toBe(scrubbed);
+    expect(scrubbed).not.toContain("2123 45678 1");
+    expect(scrubbed).not.toContain("0412 345 678");
+    expect(scrubbed).not.toContain("1234567");
+    expect(scrubbed).toContain("[REDACTED_MEDICARE]");
+    expect(scrubbed).toContain("[REDACTED_PHONE]");
+    expect(scrubbed).toContain("[REDACTED_MRN]");
+    expect(scrubbed).toContain("lithium level");
+  });
+
+  it("scrubs labelled ISO birth dates, alphanumeric MRNs and parenthesized Australian phone numbers", async () => {
+    vi.doMock("@/lib/env", () => ({ env: { RAG_PERSIST_RAW_QUERY_TEXT: true } }));
+    const { queryTextForStorage, normalizedQueryTextForStorage } = await import("../src/lib/query-privacy");
+    const query = "DOB: 1980-01-02 MRN: AB123456 phone (08) 1234 5678 review dose";
+    for (const stored of [queryTextForStorage(query), normalizedQueryTextForStorage(query)]) {
+      expect(stored).not.toMatch(/1980-01-02|AB123456|\(08\) 1234 5678/i);
+      expect(stored).toMatch(/\[REDACTED_DOB\]/i);
+      expect(stored).toMatch(/\[REDACTED_MRN\]/i);
+      expect(stored).toMatch(/\[REDACTED_PHONE\]/i);
+      expect(stored).toContain("review dose");
+    }
+  });
+
+  it("does not classify ordinary words after an MRN label as an identifier", async () => {
+    vi.doMock("@/lib/env", () => ({ env: { RAG_PERSIST_RAW_QUERY_TEXT: true } }));
+    const { queryTextForStorage } = await import("../src/lib/query-privacy");
+    expect(queryTextForStorage("MRN pending; monitor lithium")).toBe("MRN pending; monitor lithium");
+  });
+
   it("logs ingestion jobs by job id without document filenames", () => {
     const message = safeIngestionJobLog("job-123");
 

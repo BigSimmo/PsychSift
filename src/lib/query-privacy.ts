@@ -32,17 +32,39 @@ function queryHashStorageText(query: string) {
   return `redacted-query:${hashQueryText(query)}`;
 }
 
+const medicarePattern = /\b[2-6]\d{3}\s?\d{5}\s?\d\b/g;
+const phonePattern = /(?<!\w)(?:\+?61[\s.-]?[2-478]|\(?0[2-478]\)?)(?:[\s.-]?\d){8}\b/g;
+const mrnPattern = /\b(?:MRN|UR|UMRN)[:#\s]*(?=[A-Z0-9-]{6,12}\b)(?=[A-Z0-9-]*\d)[A-Z0-9-]+\b/gi;
+const dobPattern = /\b(?:DOB|D\.O\.B\.|born)[:\s]*(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/gi;
+
+/**
+ * Best-effort scrubbing of supported identifier formats in query-text columns.
+ * This does not guarantee complete de-identification.
+ */
+export function scrubPotentialPhi(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(medicarePattern, "[REDACTED_MEDICARE]")
+    .replace(phonePattern, "[REDACTED_PHONE]")
+    .replace(mrnPattern, "[REDACTED_MRN]")
+    .replace(dobPattern, "[REDACTED_DOB]");
+}
+
 // Raw clinical search queries are potential PHI. Unless raw retention is
 // explicitly enabled, persist only a deterministic hash placeholder (RET-H4).
+// When raw retention is enabled, supported formats are scrubbed in these two text columns.
+// Other raw-retention paths remain separately controlled; this is not a complete PHI filter.
 // The `query`/`normalized_query` columns are NOT NULL, so the placeholder keeps
 // joins/dedup possible without storing patient-identifying text.
 export function queryTextForStorage(query: string): string {
-  return env.RAG_PERSIST_RAW_QUERY_TEXT && !isAnswerRequestContextQuery(query) ? query : queryHashStorageText(query);
+  return env.RAG_PERSIST_RAW_QUERY_TEXT && !isAnswerRequestContextQuery(query)
+    ? scrubPotentialPhi(query)
+    : queryHashStorageText(query);
 }
 
 export function normalizedQueryTextForStorage(query: string): string {
   return env.RAG_PERSIST_RAW_QUERY_TEXT && !isAnswerRequestContextQuery(query)
-    ? normalizeQueryText(query)
+    ? normalizeQueryText(scrubPotentialPhi(query))
     : queryHashStorageText(query);
 }
 

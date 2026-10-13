@@ -44,15 +44,22 @@ export function getCachedSignedUrl(endpoint: string) {
 }
 
 export function setCachedSignedUrl(endpoint: string, payload: SignedUrlPayload) {
+  const now = Date.now();
+  for (const [key, entry] of signedUrlCache) {
+    if (entry.expiresAtMs - now <= SIGNED_URL_EXPIRY_SKEW_MS) {
+      signedUrlCache.delete(key);
+    }
+  }
+
   const parsedExpiry = payload.expiresAt ? Date.parse(payload.expiresAt) : NaN;
-  const expiresAtMs = Number.isFinite(parsedExpiry) ? parsedExpiry : Date.now() + SIGNED_URL_DEFAULT_TTL_MS;
+  const expiresAtMs = Number.isFinite(parsedExpiry) ? parsedExpiry : now + SIGNED_URL_DEFAULT_TTL_MS;
 
   if (signedUrlCache.has(endpoint)) signedUrlCache.delete(endpoint);
   signedUrlCache.set(endpoint, { payload, expiresAtMs });
 
   while (signedUrlCache.size > SIGNED_URL_CACHE_MAX_SIZE) {
     const oldestKey = signedUrlCache.keys().next().value;
-    if (!oldestKey) break;
+    if (oldestKey === undefined) break;
     signedUrlCache.delete(oldestKey);
   }
   return payload;

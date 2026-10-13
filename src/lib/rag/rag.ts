@@ -3018,8 +3018,11 @@ async function answerQuestionWithScopeUncoalesced(
       `source_count: ${contextResults.length}`,
       `source_relevance: ${contextArtifacts.relevance.label}`,
     ].join("\n");
+    const sanitizedQuery = sanitizePromptUserQuery(args.query);
     return `Question:
-${args.query}
+<user_query>
+${sanitizedQuery}
+</user_query>
 ${clinicalModePrompt(args.queryMode ?? "auto") ? `\nSelected clinical query mode:\n${clinicalModePrompt(args.queryMode ?? "auto")}\n` : ""}
 
 Interpreted clinical task:
@@ -4136,4 +4139,14 @@ ${buildRagSourceBlock(results)}`;
     total_latency_ms: generated.latencyMs,
   };
   return observeRagAnswer(assessAndEnforceClaimSupport(answer), options?.observationContext);
+}
+
+export function sanitizePromptUserQuery(query: string): string {
+  if (!query) return "";
+  // Strip control characters (preserving newline, tab, standard unicode) and disarm delimiter tags or prompt fences
+  return query
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    .replace(/<\/?(?:user_query|system|assistant|instruction|source)>/gi, "")
+    .replace(/<<<|>>>/g, "")
+    .trim();
 }

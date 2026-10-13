@@ -223,7 +223,15 @@ test.describe("tablet and desktop scroll chrome", () => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
         await expect(page.locator("header#search").first()).toBeVisible({ timeout: 15_000 });
         await waitForRunway(page, minimumRunway);
-        await page.waitForTimeout(400);
+        await expect
+          .poll(
+            async () => {
+              const state = await readChromeState(page);
+              return !state.hidden && state.headerTop <= 8 && state.searchVisible;
+            },
+            { message: "top bar and search should settle at the top", timeout: 5_000 },
+          )
+          .toBe(true);
 
         const atTop = await readChromeState(page);
         expect(atTop.hidden, "top bar visible at the top").toBe(false);
@@ -274,7 +282,15 @@ test.describe("tablet and desktop scroll chrome", () => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
         await expect(page.locator("header#search").first()).toBeVisible({ timeout: 15_000 });
         await waitForRunway(page, minimumRunway);
-        await page.waitForTimeout(400);
+        await expect
+          .poll(
+            async () => {
+              const state = await readChromeState(page);
+              return !state.hidden && state.searchVisible;
+            },
+            { message: "search composer should be visible at the top", timeout: 5_000 },
+          )
+          .toBe(true);
 
         const atTop = await readChromeState(page);
         expect(atTop.searchVisible).toBe(true);
@@ -315,7 +331,15 @@ test.describe("tablet and desktop scroll chrome", () => {
       });
       await expect(page.locator("header#search").first()).toBeVisible({ timeout: 15_000 });
       await waitForRunway(page, requiredRunway);
-      await page.waitForTimeout(400);
+      await expect
+        .poll(
+          async () => {
+            const state = await readChromeState(page);
+            return !state.hidden && state.headerTop <= 8;
+          },
+          { message: "top bar should settle at viewport top", timeout: 5_000 },
+        )
+        .toBe(true);
 
       await expect(page.getByTestId("global-search-input")).toHaveCount(0);
       await expect(page.getByTestId("desktop-page-search-composer-slot")).toHaveCount(0);

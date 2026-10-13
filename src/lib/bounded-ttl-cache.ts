@@ -34,3 +34,24 @@ export function writeBoundedExpiringCacheEntry<K, V extends ExpiringCacheEntry>(
     cache.delete(oldestKey);
   }
 }
+
+export function readBoundedLruEntry<K, V>(cache: Map<K, V>, key: K): V | null {
+  const cached = cache.get(key);
+  if (cached === undefined) return null;
+  // True LRU: re-insert key to refresh its position to most-recently used.
+  cache.delete(key);
+  cache.set(key, cached);
+  return cached;
+}
+
+export function writeBoundedLruEntry<K, V>(cache: Map<K, V>, key: K, value: V, maxEntries: number): void {
+  if (maxEntries <= 0) return;
+  if (cache.has(key)) cache.delete(key);
+  cache.set(key, value);
+
+  while (cache.size > maxEntries) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) break;
+    cache.delete(oldestKey);
+  }
+}
