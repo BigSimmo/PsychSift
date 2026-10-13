@@ -21,6 +21,17 @@ describe("WhereIsHomePanel", () => {
     expect(screen.getByText("Aboriginal Interpreting WA · 1800 000 012")).toBeTruthy();
     expect(screen.getByText("Interpreter: Wangkatha")).toBeTruthy();
   });
+  it("clears the letter when a different home region is chosen", () => {
+    const goldfields = model.regions.find((r) => r.label === "Goldfields")!;
+    const other = { ...goldfields, id: "test-other-region", label: "Other region", services: [], languages: [] };
+    render(<WhereIsHomePanel regions={[goldfields, other]} map={model.map} interpreter={model.interpreter} />);
+    fireEvent.click(screen.getByRole("button", { name: "Goldfields" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add to letter" }));
+    expect(screen.getByText("Interpreter: Wangkatha")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Other region" }));
+    expect(screen.queryByText("For the letter")).toBeNull();
+    expect(screen.queryByText("Interpreter: Wangkatha")).toBeNull();
+  });
   it("has one filled button: Add to letter", () => {
     renderPanel();
     fireEvent.click(screen.getByRole("button", { name: "Goldfields" }));
