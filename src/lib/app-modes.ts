@@ -140,7 +140,7 @@ export const appModeDefinitions = [
     href: "/documents",
     search: {
       kind: "documents",
-      placeholder: "Search source documents...",
+      placeholder: "Search documents...",
       inputAriaLabel: "Search indexed source documents",
       submitIdleLabel: "Docs",
       submitBusyLabel: "Docs",
@@ -234,7 +234,7 @@ export const appModeDefinitions = [
     href: "/differentials",
     search: {
       kind: "differentials",
-      placeholder: "Ask or search a presentation...",
+      placeholder: "Search a presentation...",
       inputAriaLabel: "Search differential presentations, symptoms, and scenarios",
       submitIdleLabel: "Diffs",
       submitBusyLabel: "Diffs",
@@ -281,7 +281,7 @@ export const appModeDefinitions = [
     href: "/specifiers",
     search: {
       kind: "specifiers",
-      placeholder: "Describe the presentation or search a specifier...",
+      placeholder: "Search specifiers...",
       inputAriaLabel: "Search psychiatric specifiers by presentation or diagnosis",
       submitIdleLabel: "Find",
       submitBusyLabel: "Find",
@@ -304,7 +304,7 @@ export const appModeDefinitions = [
     href: "/formulation",
     search: {
       kind: "formulation",
-      placeholder: "Describe a pattern or clinical clue...",
+      placeholder: "Describe a pattern...",
       inputAriaLabel: "Search formulation mechanisms by pattern or patient language",
       submitIdleLabel: "Find",
       submitBusyLabel: "Find",
@@ -385,7 +385,7 @@ export const appModeDefinitions = [
     href: "/calculators",
     search: {
       kind: "calculators",
-      placeholder: "Search calculators by scale, symptom, or indication...",
+      placeholder: "Search calculators...",
       inputAriaLabel: "Search clinical calculators by scale, symptom, or indication",
       submitIdleLabel: "Calculate",
       submitBusyLabel: "Calculate",
@@ -444,7 +444,7 @@ export const appModeDefinitions = [
       // library (not the document corpus), so it borrows the benign "tools" search
       // kind — like Therapy Compass — while keeping the shared composer visible.
       kind: "tools",
-      placeholder: "Search a medicine, condition, therapy or test...",
+      placeholder: "Search factsheets...",
       inputAriaLabel: "Search patient information factsheets",
       submitIdleLabel: "Sheets",
       submitBusyLabel: "Sheets",
@@ -469,7 +469,7 @@ export const appModeDefinitions = [
       // Dictionary owns a local static catalogue. The shared composer uses the
       // benign tools command kind, then appModeHomeHref routes into its results.
       kind: "tools",
-      placeholder: "Search a term or abbreviation...",
+      placeholder: "Term or abbreviation...",
       inputAriaLabel: "Search clinical terms, abbreviations, and topics",
       submitIdleLabel: "Terms",
       submitBusyLabel: "Terms",
@@ -492,7 +492,7 @@ export const appModeDefinitions = [
     href: "/sources",
     search: {
       kind: "tools",
-      placeholder: "Search sources, publishers, or topics...",
+      placeholder: "Search sources...",
       inputAriaLabel: "Search sources, publishers, or topics",
       submitIdleLabel: "Sources",
       submitBusyLabel: "Sources",
@@ -637,7 +637,7 @@ export const appModeDefinitions = [
       // Like Psychiatry, a landing page that gathers existing modes, each of
       // which keeps its own search; it borrows the benign "tools" kind.
       kind: "tools",
-      placeholder: "Open a medicines or tools section...",
+      placeholder: "Open a section...",
       inputAriaLabel: "Open a medicines or tools section",
       submitIdleLabel: "Medicines",
       submitBusyLabel: "Medicines",

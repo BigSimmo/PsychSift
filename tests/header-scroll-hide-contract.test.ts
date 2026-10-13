@@ -387,10 +387,10 @@ describe("shared header hide/reveal wiring", () => {
     expect(differentialDetailSource).toContain('testIdPrefix="differential"');
     // Header standard (13 Oct 2026): section navigation without a rail still
     // rides the collapse row; a rail pins in the page under the bar (the Work
-    // band mechanism), and a row with no section navigation scrolls away.
-    expect(inPageNavHeaderSource).toContain(
-      "const HeaderHost = pinRail || scrollsAway ? InFlowHeader : PhoneHeaderCollapsePortal;",
-    );
+    // band mechanism), a row with no section navigation scrolls away, and under
+    // a mode band the band's tabs are the pinned row, so the header stays put.
+    expect(inPageNavHeaderSource).toContain("const inFlow = pinRail || scrollsAway || underBand;");
+    expect(inPageNavHeaderSource).toContain("const HeaderHost = inFlow ? InFlowHeader : PhoneHeaderCollapsePortal;");
     expect(inPageNavHeaderSource).toContain("useStickyWorkTabs(pinRail ? pinnedHeader : null, railRef);");
     expect(inPageNavHeaderSource).toContain("<HeaderHost>");
     expect(inPageNavHeaderSource).toContain("`${testIdPrefix}-detail-header`");

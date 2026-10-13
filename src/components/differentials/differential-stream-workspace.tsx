@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Network, ShieldAl
 
 import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
 import { cn } from "@/components/ui-primitives";
+import { StatusTag, type StatusTagShape } from "@/components/mode-kit/status-tag";
 
 import {
   ResultFilterSheet,
@@ -77,17 +78,14 @@ function statusLabel(status: DifferentialStreamItem["status"]) {
   return "Routine";
 }
 
-function statusTone(status: DifferentialStreamItem["status"]) {
-  // Emergent stays red because it is a genuine urgency, but as a tag rather
-  // than a solid red block: most pathways carry it, and a wall of solid red
-  // stops reading as a warning (design pass, October 2026).
-  if (status === "emergent") {
-    return "border-[color:var(--danger-border)] bg-[color:var(--danger-soft)] text-[color:var(--danger)]";
-  }
-  if (status === "urgent") {
-    return "border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning)]";
-  }
-  return "border-[color:var(--info-border)] bg-[color:var(--info-soft)] text-[color:var(--info)]";
+function statusShape(status: DifferentialStreamItem["status"]): StatusTagShape {
+  // Urgency is a small status shape beside a grey word (Clinical audit, 13 Oct
+  // 2026, item 8): most pathways are Emergent, and a wall of red pills stopped
+  // reading as a warning. Red triangle = emergent, amber dot = urgent, routine
+  // is a plain grey word. The grouping and the words are unchanged.
+  if (status === "emergent") return "urgent";
+  if (status === "urgent") return "soon";
+  return "none";
 }
 
 function likelihoodTone(likelihood: DifferentialLikelihood) {
@@ -188,9 +186,7 @@ function StreamCard({
                 <span className="sr-only">{isPresentation ? ", open pathway" : ", open"}</span>
               </Link>
             </h3>
-            <span className={`inline-flex rounded-md border px-2 py-0.5 text-xs font-bold ${statusTone(item.status)}`}>
-              {statusLabel(item.status)}
-            </span>
+            <StatusTag shape={statusShape(item.status)}>{statusLabel(item.status)}</StatusTag>
           </div>
           <p className="text-sm text-[color:var(--text-muted)]">{item.description}</p>
           {isPresentation && item.candidateCount !== null ? (

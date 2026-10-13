@@ -136,12 +136,8 @@ const BUILDERS: readonly DashQuickAction[] = [
   },
   { label: "Mechanism map", href: "/formulation/map", icon: MapIcon, testId: "psychiatry-qa-mechanism-map" },
   { label: "Problem pathways", href: "/therapy-compass/pathways", icon: Workflow, testId: "psychiatry-qa-pathways" },
-  {
-    label: "First Nations",
-    href: appModeHomeHref("first-nations"),
-    icon: appModeIcons["first-nations"],
-    testId: "psychiatry-qa-first-nations",
-  },
+  // First Nations is not repeated here: it is one of the Sections above
+  // (Clinical audit, 13 Oct 2026, item 15), so the page lists it once.
 ];
 
 const PsychiatrySavedCard = dynamic(
@@ -487,6 +483,9 @@ function AskPage({
       <div className="grid min-w-0 gap-5">
         {offline ? <OfflineNote /> : null}
         {latest ? <ResumeRow latest={latest} now={now} /> : null}
+        {/* Continue leads the content once it holds something (Clinical audit,
+            13 Oct 2026, item 15); empty, it keeps its quiet place at the end. */}
+        {latest ? <ContinueSection visits={visits} now={now} /> : null}
         <section aria-labelledby="psychiatry-shift-title" className="grid gap-2">
           <FlatLabel id="psychiatry-shift-title" title="For a shift" />
           <ShiftToolsList clockLine={clockSummary} />
@@ -500,10 +499,19 @@ function AskPage({
           className="grid gap-2"
           data-testid="psychiatry-card-quick-actions"
         >
-          <FlatLabel id="psychiatry-qa-title" title="Builders" />
+          <FlatLabel
+            id="psychiatry-qa-title"
+            title="Builders"
+            aside={
+              // The one link to the plain list of every tool (item 15).
+              <Link href="/tools" className={flatLink} data-testid="psychiatry-all-tools">
+                All tools
+              </Link>
+            }
+          />
           <QuickActionGrid actions={BUILDERS} />
         </section>
-        <ContinueSection visits={visits} now={now} />
+        {latest ? null : <ContinueSection visits={visits} now={now} />}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonFaceClass } from "@/components/ui/button-face";
 import Link from "next/link";
 import { ArrowRightLeft, Plus, Search, X } from "lucide-react";
 
@@ -194,7 +195,7 @@ export function CompareSlotStrip({
             <button
               type="button"
               onClick={primaryAction}
-              className="inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--command)] px-4 text-sm font-extrabold text-[color:var(--command-contrast)]"
+              className={buttonFaceClass({ variant: "primary", block: true })}
             >
               <Search className="size-icon-sm" aria-hidden="true" />
               {actionLabel}
