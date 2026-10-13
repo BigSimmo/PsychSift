@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f1f3115b-db82-4186-9adc-b0d46235e0fe",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#T983N9",
+    "outcome": "Resolved: Added database tables and RLS policies for registrar training milestones (EPAs, WBAs, term assessments).",
+    "baseRowFingerprint": "de88a5e8acb78828e2ef2565c161c146723b92948b0239667fdfd40c1b90a94a"
+  }
+}
