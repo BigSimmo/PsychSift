@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { SharedSearchAppShell } from "@/components/clinical-dashboard/shared-search-app-shell";
 import { AppHelpersDeferred } from "@/components/app-helpers-deferred";
 import { PsychiatryVisitRecorder } from "@/components/psychiatry/psychiatry-visit-recorder";
+import { RecentPagesRecorderDeferred } from "@/components/recent-pages/recent-pages-recorder-deferred";
 import { WorkModeLaunchProvider } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { clinicalAskModeEnabled } from "@/lib/clinical-ask/authority-registry";
 import { projectClinicalAskAvailableModeIds } from "@/lib/clinical-ask/capabilities";
@@ -30,6 +31,7 @@ export default async function SearchAppLayout({ children }: { children: ReactNod
       <SharedSearchAppShell clinicalAskAvailableModeIds={clinicalAskAvailableModeIds}>
         {children}
         <PsychiatryVisitRecorder />
+        <RecentPagesRecorderDeferred />
       </SharedSearchAppShell>
       {/* Outside the shell: on `/` the shell draws the dashboard in place of its children. */}
       <AppHelpersDeferred />
