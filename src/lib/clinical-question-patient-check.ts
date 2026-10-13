@@ -16,6 +16,11 @@ import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/p
  *   old" asks about older adults. The age phrase is set aside and the rest of the question is
  *   checked again, so an age beside a name, a record number or a bed is still refused.
  *
+ * - **Clinical shorthand is not a title or a patient marker.** A millisecond reading ("QTc 480 ms")
+ *   is not the title Ms, "MS on interferon" is multiple sclerosis, and "pt with renal impairment"
+ *   is "patient with". These are rewritten before the second reading, like ages; "Ms Jones" and
+ *   "pt John" are untouched and still refused.
+ *
  * On top of that it keeps the narrower shapes the composer already warned about (email,
  * Medicare-shaped and labelled record numbers, a labelled date of birth, a phone number).
  *
@@ -31,8 +36,19 @@ const AGE_PHRASES: readonly RegExp[] = [
   /\b\d{1,3}\s?(?:years?|yrs?)?\s?(?:male|female|man|woman|boy|girl)\b/gi,
 ];
 
-function withoutAges(text: string): string {
-  return AGE_PHRASES.reduce((current, pattern) => current.replace(pattern, " "), text);
+/** Millisecond readings ("QTc 480 ms", "QRS over 100 msec"), set aside like ages. */
+const UNIT_PHRASES: readonly RegExp[] = [/\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b/gi];
+
+/** Words that follow "pt" or the diagnosis "MS" in a question, and never start a name. */
+const FUNCTION_WORD = "(?:with|on|in|who|taking|having|has|had|and|or|of|for|after|receiving|presenting|is|was)";
+const PT_BEFORE_FUNCTION_WORD = new RegExp(`\\b[Pp]t\\.?(?=\\s+${FUNCTION_WORD}\\b)`, "g");
+const MS_DIAGNOSIS = new RegExp(`\\bMS\\b(?=\\s+${FUNCTION_WORD}\\b)`, "g");
+
+function withoutClinicalShorthand(text: string): string {
+  return [...AGE_PHRASES, ...UNIT_PHRASES]
+    .reduce((current, pattern) => current.replace(pattern, " "), text)
+    .replace(PT_BEFORE_FUNCTION_WORD, "patient")
+    .replace(MS_DIAGNOSIS, "multiple sclerosis");
 }
 
 const OPTIONS = { allowCapitals: true } as const;
@@ -48,7 +64,7 @@ export function clinicalQuestionPatientDetail(text: string): PatientDetailProble
     };
   }
   if (!checkPatientDetail(text, OPTIONS)) return null;
-  return checkPatientDetail(withoutAges(text), OPTIONS);
+  return checkPatientDetail(withoutClinicalShorthand(text), OPTIONS);
 }
 
 /**

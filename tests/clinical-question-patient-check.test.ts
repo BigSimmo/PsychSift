@@ -39,6 +39,14 @@ const EVERYDAY_QUESTIONS = [
   "olanzapine IM max dose in 24 hours",
   "Form 1A criteria",
   "ADHD in adults stimulant dose",
+  "QTc 480 ms on citalopram",
+  "QTc over 500 ms with haloperidol",
+  "is a QTc of 470 ms safe",
+  "QRS widening over 100 ms in TCA overdose",
+  "QTc 480msec on escitalopram",
+  "patient with MS on interferon depression",
+  "lithium in pt with renal impairment",
+  "Pt on clozapine with fever",
 ];
 
 describe("clinicalQuestionPatientDetail: ordinary clinical questions pass", () => {
@@ -71,6 +79,10 @@ describe("clinicalQuestionPatientDetail: patient details are held back", () => {
     ["bed 12 agitation options", ""],
     ["DOB: 01/02/1960 lithium dose", ""],
     ["call 0412 345 678 about clozapine", ""],
+    ["Ms Jones on clozapine", "a name"],
+    ["Ms Jones QTc 480 ms on citalopram", "a name"],
+    ["pt John Smith lithium", "a name"],
+    ["pt js with renal impairment", ""],
   ])("refuses %s", (question, finding) => {
     const problem = clinicalQuestionPatientDetail(question);
     expect(problem).not.toBeNull();
