@@ -202,14 +202,32 @@ describe("proxy auth claims forwarding & anti-spoofing", () => {
     expect(verifyProxyAuthHeader(`${payload}.${publicSignature}`)).toBeNull();
   });
 
-  it("uses dedicated PROXY_AUTH secret for signing and verifying proxy claims (#789SD7)", async () => {
-    process.env.PROXY_AUTH = "dedicated-proxy-auth-secret-value";
-    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const { signProxyAuthPayload, verifyProxyAuthHeader } = await import("../src/lib/supabase/proxy-auth-crypto");
-    const payload = Buffer.from(JSON.stringify({ id: "user-456", appMetadata: {} })).toString("base64");
-    const signed = signProxyAuthPayload(payload);
-    expect(signed).toBeTruthy();
-    expect(verifyProxyAuthHeader(signed!)).toBe(payload);
+  it("signs proxy claims with the dedicated PROXY_AUTH_SIGNING_KEY, never with the PROXY_AUTH bearer (#789SD7)", async () => {
+    const previousSigningKey = process.env.PROXY_AUTH_SIGNING_KEY;
+    try {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      process.env.PROXY_AUTH = "dedicated-proxy-auth-secret-value";
+      delete process.env.PROXY_AUTH_SIGNING_KEY;
+      const { signProxyAuthPayload, verifyProxyAuthHeader } = await import("../src/lib/supabase/proxy-auth-crypto");
+      const payload = Buffer.from(JSON.stringify({ id: "user-456", appMetadata: {} })).toString("base64");
+      // Holding only the inbound bearer gives no signing key: fail closed.
+      expect(signProxyAuthPayload(payload)).toBeNull();
+
+      process.env.PROXY_AUTH_SIGNING_KEY = "dedicated-signing-key-value";
+      const signed = signProxyAuthPayload(payload);
+      expect(signed).toBeTruthy();
+      expect(verifyProxyAuthHeader(signed!)).toBe(payload);
+
+      // Rotating the bearer must not change (or break) the signature.
+      process.env.PROXY_AUTH = "rotated-proxy-bearer";
+      expect(verifyProxyAuthHeader(signed!)).toBe(payload);
+      // A signature made with a key derived from the bearer is rejected.
+      process.env.PROXY_AUTH_SIGNING_KEY = "dedicated-proxy-auth-secret-value";
+      expect(verifyProxyAuthHeader(signed!)).toBeNull();
+    } finally {
+      if (previousSigningKey === undefined) delete process.env.PROXY_AUTH_SIGNING_KEY;
+      else process.env.PROXY_AUTH_SIGNING_KEY = previousSigningKey;
+    }
   });
 
   it("timingSafeSecretEqual performs constant-time comparison", async () => {

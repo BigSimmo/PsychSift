@@ -144,8 +144,30 @@ function normalizeCollapsedTurnIds(value: unknown, priorTurns: StoredAnswerTurn[
   return Array.from(new Set(value.filter((id): id is string => typeof id === "string" && availableIds.has(id))));
 }
 
-export function normalizePersistedAnswerThread(value: Record<string, unknown>): PersistedAnswerThread | null {
-  if (value.version !== 3) return null;
+/**
+ * A version 2 turn predates `strongSupportLabelCapped`. It is kept, never deleted, with the flag
+ * set to true: the conservative reading, so a restored "high" support label can only show as
+ * "medium" (answer-render-policy) and an old snapshot never gains a stronger label than it had.
+ */
+function upgradeV2Turn(value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+  const turn = value as Record<string, unknown>;
+  const answer = turn.answer;
+  if (!answer || typeof answer !== "object") return value;
+  if (typeof (answer as Record<string, unknown>).strongSupportLabelCapped === "boolean") return value;
+  return { ...turn, answer: { ...(answer as Record<string, unknown>), strongSupportLabelCapped: true } };
+}
+
+export function normalizePersistedAnswerThread(input: Record<string, unknown>): PersistedAnswerThread | null {
+  if (input.version !== 3 && input.version !== 2) return null;
+  const value =
+    input.version === 2
+      ? {
+          ...input,
+          priorTurns: Array.isArray(input.priorTurns) ? input.priorTurns.map(upgradeV2Turn) : input.priorTurns,
+          latestTurn: upgradeV2Turn(input.latestTurn),
+        }
+      : input;
   const now = Date.now();
   const priorTurns = normalizeTurns(value.priorTurns);
   const latestTurn = normalizeLatestTurn(value.latestTurn);

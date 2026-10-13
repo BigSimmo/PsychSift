@@ -59,6 +59,8 @@ const envSchema = z
     SUPABASE_STAGING_PROJECT_NAME: z.string().optional(),
     SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
     PROXY_AUTH: z.preprocess(coerceBlankEnv, z.string().optional()),
+    // Signs x-proxy-auth-user identity claims. Must differ from PROXY_AUTH (the inbound bearer).
+    PROXY_AUTH_SIGNING_KEY: z.preprocess(coerceBlankEnv, z.string().optional()),
     // Web Push is optional, but a partial VAPID configuration must never send.
     WEB_PUSH_PUBLIC_KEY: z.preprocess(coerceBlankEnv, z.string().optional()),
     WEB_PUSH_PRIVATE_KEY: z.preprocess(coerceBlankEnv, z.string().optional()),

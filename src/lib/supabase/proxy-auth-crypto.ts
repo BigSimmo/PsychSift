@@ -30,7 +30,10 @@ const PROXY_AUTH_HKDF_INFO = "psychsift:proxy-auth-claims:v1";
  * env-parity check can vouch for.
  */
 function getProxyAuthSigningKey(): Buffer | null {
-  const secret = process.env.PROXY_AUTH?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  // Never PROXY_AUTH: that value is the bearer outside callers present to /api/proxy, so deriving the
+  // signing key from it would let any proxy caller mint identity claims. The dedicated
+  // PROXY_AUTH_SIGNING_KEY wins; otherwise the server-only service-role key (one-way HKDF above).
+  const secret = process.env.PROXY_AUTH_SIGNING_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!secret) return null;
   return Buffer.from(hkdfSync("sha256", Buffer.from(secret, "utf8"), Buffer.alloc(0), PROXY_AUTH_HKDF_INFO, 32));
 }

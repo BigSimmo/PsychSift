@@ -65,13 +65,19 @@ export function SafeNumberEditor({
   const isDirty = !sameSafeNumbers(currentGrid, confirmed);
 
   const handleStepperChange = useCallback(
-    (kind: SafeNumberKind, weekday: number, delta: number) => {
+    // Each row is the whole week (Monday to Sunday): the step applies to every weekday, so a
+    // row never reads as "all days" while only Monday changes. Days that differ keep their
+    // difference and each is clamped on its own.
+    (kind: SafeNumberKind, delta: number) => {
       setSuccessMessage(null);
       setErrorMessage(null);
       setConflict(null);
-      const currentValue = currentGrid[kind][weekday - 1] ?? 0;
-      const nextValue = Math.max(0, Math.min(SAFE_NUMBER_MAX, currentValue + delta));
-      setDraft(setSafeNumber(currentGrid, kind, [weekday], nextValue));
+      let next = currentGrid;
+      currentGrid[kind].forEach((currentValue, index) => {
+        const nextValue = Math.max(0, Math.min(SAFE_NUMBER_MAX, (currentValue ?? 0) + delta));
+        next = setSafeNumber(next, kind, [index + 1], nextValue);
+      });
+      setDraft(next);
     },
     [currentGrid],
   );
@@ -202,7 +208,10 @@ export function SafeNumberEditor({
         {SAFE_NUMBER_KINDS.map((kind) => {
           const meta = KIND_METADATA[kind];
           const Icon = meta.icon;
-          const weekdayVal = currentGrid[kind][0] ?? 0;
+          const week = currentGrid[kind].map((value) => value ?? 0);
+          const lowest = Math.min(...week);
+          const highest = Math.max(...week);
+          const weekLabel = lowest === highest ? String(lowest) : `${lowest}–${highest}`;
 
           return (
             <div
@@ -213,13 +222,14 @@ export function SafeNumberEditor({
               <div className="flex items-center gap-3">
                 <Icon className="size-5 text-gray-500" aria-hidden="true" />
                 <span className="font-medium text-gray-800">{meta.label}</span>
+                <span className="text-xs text-gray-500">Mon–Sun</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  aria-label={`Decrease ${meta.label}`}
-                  disabled={disabled || saving || weekdayVal <= 0}
-                  onClick={() => handleStepperChange(kind, 1, -1)}
+                  aria-label={`Decrease ${meta.label} on every day`}
+                  disabled={disabled || saving || highest <= 0}
+                  onClick={() => handleStepperChange(kind, -1)}
                   className="rounded-full border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                   data-testid={`stepper-minus-${kind}`}
                 >
@@ -229,13 +239,13 @@ export function SafeNumberEditor({
                   className="min-w-8 text-center text-sm font-semibold tabular-nums"
                   data-testid={`safe-number-value-${kind}`}
                 >
-                  {weekdayVal}
+                  {weekLabel}
                 </span>
                 <button
                   type="button"
-                  aria-label={`Increase ${meta.label}`}
-                  disabled={disabled || saving || weekdayVal >= SAFE_NUMBER_MAX}
-                  onClick={() => handleStepperChange(kind, 1, 1)}
+                  aria-label={`Increase ${meta.label} on every day`}
+                  disabled={disabled || saving || lowest >= SAFE_NUMBER_MAX}
+                  onClick={() => handleStepperChange(kind, 1)}
                   className="rounded-full border border-gray-300 p-1.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                   data-testid={`stepper-plus-${kind}`}
                 >

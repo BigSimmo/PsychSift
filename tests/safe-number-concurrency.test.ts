@@ -165,6 +165,22 @@ describe("SafeNumberEditor component optimistic locking", () => {
     expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
+  it("steps every weekday, not just Monday, and shows a mixed week as a range", async () => {
+    const onSave = vi.fn(async () => ({ ok: true, version: 2 }));
+    const mixed = setSafeNumber(initialRecord.grid, "night", [6, 7], 4);
+    render(React.createElement(SafeNumberEditor, { initialRecord: { ...initialRecord, grid: mixed }, onSave }));
+
+    const before = mixed.night;
+    expect(screen.getByTestId("safe-number-value-night").textContent).toBe(
+      `${Math.min(...before)}–${Math.max(...before)}`,
+    );
+    fireEvent.click(screen.getByTestId("stepper-plus-night"));
+    fireEvent.click(screen.getByTestId("safe-number-save-button"));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const saved = (onSave.mock.calls[0] as unknown as [{ night: number[] }])[0];
+    expect(saved.night).toEqual(before.map((value) => value + 1));
+  });
+
   it("blocks save and shows alert when another clinician modified the record", async () => {
     // onFetchLatest returns version 2 (while editor was opened at version 1)
     const onFetchLatest = vi.fn(async () => ({
@@ -197,7 +213,7 @@ describe("SafeNumberEditor component optimistic locking", () => {
   });
 
   it("allows clinician to refresh latest numbers upon concurrency conflict", async () => {
-    const latestGrid = setSafeNumber(emptySafeNumberGrid(), "day", [1], 5);
+    const latestGrid = setSafeNumber(emptySafeNumberGrid(), "day", [1, 2, 3, 4, 5, 6, 7], 5);
     const onFetchLatest = vi
       .fn()
       .mockResolvedValueOnce({

@@ -780,7 +780,7 @@ describe("answer thread storage", () => {
     expect(storage.has(`${answerThreadStorageKey}:user-a`)).toBe(false);
   });
 
-  it("cleanly drops legacy version 1 and version 2 threads from sessionStorage", () => {
+  it("drops legacy version 1 threads but keeps version 2 threads, capping their support label", () => {
     const key = `${answerThreadStorageKey}:user-a`;
     const v1Thread = {
       version: 1,
@@ -802,15 +802,28 @@ describe("answer thread storage", () => {
       version: 2,
     };
     storage.set(key, JSON.stringify(v2Thread));
-    expect(
-      loadPersistedAnswerThread("user-a", {
-        expectedSubmissionSignature: "answer:what about renal impairment?:",
-      }),
-    ).toBeNull();
-    expect(storage.has(key)).toBe(false);
+    const restoredV2 = loadPersistedAnswerThread("user-a", {
+      expectedSubmissionSignature: "answer:what about renal impairment?:",
+    });
+    expect(restoredV2?.version).toBe(3);
+    expect(restoredV2?.priorTurns).toHaveLength(v2Thread.priorTurns.length);
+    expect(storage.has(key)).toBe(true);
+
+    // A v2 answer written before the flag existed is kept with the conservative cap.
+    const latest = createSampleThread().latestTurn!;
+    const { strongSupportLabelCapped: _dropped, ...answerWithoutFlag } = latest.answer as unknown as Record<
+      string,
+      unknown
+    >;
+    void _dropped;
+    storage.set(key, JSON.stringify({ ...v2Thread, latestTurn: { ...latest, answer: answerWithoutFlag } }));
+    const restoredUncapped = loadPersistedAnswerThread("user-a", {
+      expectedSubmissionSignature: "answer:what about renal impairment?:",
+    });
+    expect(restoredUncapped?.latestTurn?.answer.strongSupportLabelCapped).toBe(true);
   });
 
-  it("discards legacy cached turns lacking strongSupportLabelCapped or with version < 3", () => {
+  it("discards version 3 turns lacking strongSupportLabelCapped and version 1 threads", () => {
     const key = `${answerThreadStorageKey}:user-a`;
     const uncappedAnswer = {
       answer: "Legacy cached answer text.",
@@ -849,17 +862,10 @@ describe("answer thread storage", () => {
       }),
     ).toBeNull();
 
-    // normalizePersistedAnswerThread rejects version < 3
+    // normalizePersistedAnswerThread rejects version 1 (version 2 is upgraded, see above)
     expect(
       normalizePersistedAnswerThread({
         version: 1,
-        priorTurns: [],
-        latestTurn: createSampleThread().latestTurn,
-      }),
-    ).toBeNull();
-    expect(
-      normalizePersistedAnswerThread({
-        version: 2,
         priorTurns: [],
         latestTurn: createSampleThread().latestTurn,
       }),
