@@ -44,6 +44,9 @@ const EVERYDAY_QUESTIONS = [
   "is a QTc of 470 ms safe",
   "QRS widening over 100 ms in TCA overdose",
   "QTc 480msec on escitalopram",
+  // Owner decision 13 Oct 2026: lowercase ms before a capitalised term is a reading, not a title.
+  "QTc 480 ms ECG monitoring",
+  "QRS 120 ms TCA overdose",
   "patient with MS on interferon depression",
   "lithium in pt with renal impairment",
   "Pt on clozapine with fever",

@@ -101,7 +101,7 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
         </span>
       ) : null}
       {/* Two signposted actions rather than one magnifying glass that had to
-          stand for both (from sm up; a phone shows the open arrow alone). The glass alone did not say whether it searched or
+          stand for both (a phone keeps both, raised above the row's stretched link). The glass alone did not say whether it searched or
           opened, and the only route to the record itself was the title text. */}
       <span className="ml-auto flex shrink-0 items-center gap-1.5">
         <button
@@ -115,9 +115,10 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
           }}
           aria-label={`Search ${link.title} in ${link.modeLabel}`}
           title={`Search in ${link.modeLabel}`}
-          // Phone shows one icon only, the open arrow (audit D07, 2026-10-13): two
-          // unlabelled squares read as the same thing at that size. From sm up both stay.
-          className={cn(cardActionControl, "max-sm:hidden")}
+          // Phone keeps a compact Search control (owner decision 13 Oct 2026 on audit D07): the
+          // row opens the record, so this is the only way to re-run the query in the target mode.
+          // Raised above the stretched title link so a tap on it searches instead of opening.
+          className={cn(cardActionControl, "relative z-10")}
         >
           <Search className="h-4 w-4 shrink-0" aria-hidden />
         </button>

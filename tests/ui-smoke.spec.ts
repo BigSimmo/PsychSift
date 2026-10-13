@@ -3436,12 +3436,19 @@ test.describe("PsychSift UI smoke coverage", () => {
     const compactCrossModeLinks = compactCrossModeRail.getByRole("link");
     const compactCrossModeActions = compactCrossModeRail.getByRole("button");
     await expect.poll(() => compactCrossModeLinks.count()).toBeGreaterThan(0);
-    // A phone row shows the open arrow alone (audit D07): the search-in-mode button is
-    // hidden below sm, so no button remains to size here; the links are swept above.
-    await expect(compactCrossModeActions).toHaveCount(0);
+    // A phone row keeps a compact Search control (owner decision 13 Oct 2026, audit D07),
+    // sized to the 48px target below and visible beside the open arrow.
+    await expect.poll(() => compactCrossModeActions.count()).toBeGreaterThan(0);
+    await expect(compactCrossModeActions.first()).toBeVisible();
     for (const control of await compactCrossModeLinks.all()) {
       await expectMinTouchTarget(control, 48);
     }
+    for (const control of await compactCrossModeActions.all()) {
+      await expectMinTouchTarget(control, 48);
+    }
+    // Same at 390px, the common phone width the owner asked to be checked.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expectNoPageHorizontalOverflow(page);
     for (const control of await compactCrossModeActions.all()) {
       await expectMinTouchTarget(control, 48);
     }

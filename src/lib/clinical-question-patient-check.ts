@@ -40,9 +40,10 @@ const AGE_PHRASES: readonly RegExp[] = [
 
 /**
  * Millisecond readings ("QTc 480 ms", "QRS over 100 msec"), set aside like ages. Lowercase only,
- * and never before a capitalised word, so "Ward 4 Ms Smith" keeps its title and is still refused.
+ * whatever follows (owner decision 13 Oct 2026: "QTc 480 ms ECG monitoring" is a clinical question),
+ * so the capitalised title in "Ward 4 Ms Smith" is never matched and is still refused.
  */
-const UNIT_PHRASES: readonly RegExp[] = [/\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b(?!\.?\s*\p{Lu})/gu];
+const UNIT_PHRASES: readonly RegExp[] = [/\b\d+(?:\.\d+)?\s*(?:ms|msec|milliseconds?)\b/gu];
 
 /** Words that follow "pt" or the diagnosis "MS" in a question, and never start a name. */
 const FUNCTION_WORD = "(?:with|on|in|who|taking|having|has|had|and|or|of|for|after|receiving|presenting|is|was)";
