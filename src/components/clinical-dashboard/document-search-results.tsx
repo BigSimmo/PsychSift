@@ -818,6 +818,8 @@ function DocumentSearchResultsPanelImpl({
   showHome = false,
   desktopComposerSlotId,
   searchFailed = false,
+  searchFailureReason = null,
+  onRetrySearch,
 }: {
   matches: ClientDocumentMatch[];
   recordMatches?: SearchRecordMatch[];
@@ -837,6 +839,10 @@ function DocumentSearchResultsPanelImpl({
   setupWarning: string | null;
   /** The last documents search request failed, so an empty list is not a real "no matches". */
   searchFailed?: boolean;
+  /** The failure message for that request, kept as the reason line in the one degraded message. */
+  searchFailureReason?: string | null;
+  /** Re-runs the failed documents search (the dashboard's own search runner). */
+  onRetrySearch?: () => void | Promise<void>;
   facets?: SearchFacets | null;
   searchScope?: SearchScopeSummary | null;
   onScopeDocument: (documentId: string) => void;
@@ -1571,6 +1577,8 @@ function DocumentSearchResultsPanelImpl({
             onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
             // A retrieval layer errored, so this zero is not evidence of absence.
             degraded={retrievalDegraded}
+            degradedReason={searchFailed ? searchFailureReason : null}
+            onRetry={retrievalDegraded ? onRetrySearch : undefined}
             onBrowseAll={onOpenLibrary}
             browseAllLabel={
               documentCount > 0 ? `Browse all ${documentCount.toLocaleString()} sources` : "Browse all sources"
