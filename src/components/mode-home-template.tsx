@@ -42,6 +42,12 @@ type ModeHomeTemplateProps = {
   stabilizePhoneCopy?: boolean;
   /** Optional control between the hero copy and the composer (e.g. Show all). */
   heroAction?: ReactNode;
+  /**
+   * Optional start list under everything else (Continue, Favourites, Browse).
+   * It hangs below the home rather than joining its flow, so the centred hero
+   * and composer keep exactly the place they have without it.
+   */
+  startList?: ReactNode;
 };
 
 const pillToneClass: Record<NonNullable<ModeHomePill["tone"]>, string> = {
@@ -295,12 +301,13 @@ export function ModeHomeTemplate({
   headingLevel = 1,
   stabilizePhoneCopy = false,
   heroAction,
+  startList,
 }: ModeHomeTemplateProps) {
   return (
     <div
       data-testid={testId}
       className={cn(
-        "mode-home-template mx-auto box-border flex w-full max-w-none flex-col items-center justify-center gap-4 px-0 text-center sm:max-w-[60rem] sm:gap-5 lg:gap-6",
+        "mode-home-template relative mx-auto box-border flex w-full max-w-none flex-col items-center justify-center gap-4 px-0 text-center sm:max-w-[60rem] sm:gap-5 lg:gap-6",
         className,
       )}
     >
@@ -435,6 +442,15 @@ export function ModeHomeTemplate({
       ) : null}
 
       {footer ? <div className="w-full px-4 sm:px-0">{footer}</div> : null}
+
+      {/* Out of flow on purpose: the home is centred in its canvas, so a list
+          in the flow would lift the composer by half its height. Hanging from
+          the home's bottom edge, it extends the page's scroll instead. */}
+      {startList ? (
+        <div className="mode-home-start absolute inset-x-0 top-full px-4 pt-6 pb-8 sm:px-0 sm:pt-8 [&:not(:has(a))]:hidden">
+          {startList}
+        </div>
+      ) : null}
     </div>
   );
 }

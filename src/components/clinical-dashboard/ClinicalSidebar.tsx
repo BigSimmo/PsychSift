@@ -56,6 +56,7 @@ import type { ThemePreference } from "@/lib/theme";
 import {
   CLINICAL_MENU_PANEL_ID,
   ClinicalMenuBell,
+  ClinicalMenuRecentPages,
   ClinicalMenuTabs,
   ClinicalMenuWorkAreas,
   clinicalMenuTabId,
@@ -986,6 +987,8 @@ export function ClinicalSidebarContent({
                 ) : null}
               </div>
             </section>
+
+            {drawer ? <ClinicalMenuRecentPages variant="clinical" onNavigate={() => onNavigate?.()} /> : null}
 
             <section className="min-w-0 shrink-0">
               <div className={sectionHeading}>
