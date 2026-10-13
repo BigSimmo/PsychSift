@@ -118,6 +118,7 @@ export function useAnswerThreadBootstrap({
     activeAnswerThreadOwnerIdRef,
     answerThreadBootstrappedRef,
     answerThreadOwnerId,
+    expectedSubmissionSignature,
     latestAnswerSnapshotMetadataRef,
     latestAnswerTurnRef,
     setAnswer,
