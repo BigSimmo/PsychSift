@@ -133,6 +133,14 @@ export function WhereIsHomePanel({ regions, map, interpreter, mapSource = null }
       () => setNote("Copying isn't available on this phone"),
     );
   const regionLabels = useMemo(() => Object.fromEntries(regions.map((r) => [r.id, r.label])), [regions]);
+  const selectRegion = (id: string) => {
+    setNote(null);
+    if (id === regionId) return;
+    setRegionId(id);
+    // The letter lists one region's numbers; keeping it after a switch would let Copy
+    // paste region A's services while region B is on screen.
+    setLetter([]);
+  };
   return (
     <div className="grid gap-3">
       <section
@@ -148,17 +156,14 @@ export function WhereIsHomePanel({ regions, map, interpreter, mapSource = null }
             Never saved or sent
           </p>
         </div>
-        <WaLineMap map={map} selectedId={regionId} onSelect={setRegionId} regionLabels={regionLabels} />
+        <WaLineMap map={map} selectedId={regionId} onSelect={selectRegion} regionLabels={regionLabels} />
         <div role="group" aria-label="Home region" className="grid grid-cols-2 gap-x-2 gap-y-3">
           {regions.map((r) => (
             <button
               key={r.id}
               type="button"
               aria-pressed={r.id === regionId}
-              onClick={() => {
-                setRegionId(r.id);
-                setNote(null);
-              }}
+              onClick={() => selectRegion(r.id)}
               className={cn(
                 "relative h-9 rounded-lg border px-3 text-sm-minus after:absolute after:inset-x-0 after:-inset-y-1.5",
                 r.id === regionId

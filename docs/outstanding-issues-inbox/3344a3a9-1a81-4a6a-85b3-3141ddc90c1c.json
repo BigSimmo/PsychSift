@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "3344a3a9-1a81-4a6a-85b3-3141ddc90c1c",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "PDF extractor can turn prose beneath a table into a table row and rebuild the table markdown from it",
+    "detail": "worker/python/extract_pdf_assets.py recover_table_rows_from_edge_strip (~:557, caller ~:1367-1390) admits blocks by position alone (four bbox tests) and treats each line as a cell, then rebuilds the whole accessible table markdown, which reaches the vision model, document_table_facts (threshold_value/action) and page.text/search. Also appends recovered rows unsorted, drops single-baseline rows silently, has no test, and worker/python/** is outside the coverage inventory. Next action: accept a recovered block only when its line x-positions align with table.rows cell bboxes, sort by y0, drop the row on alignment failure, cover the markdown rebuild path too, and add a synthetic test (3-column table followed by a 3-line paragraph asserting no new row and unchanged accessible_table_markdown).",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67MV6ZWJCK4234NWY7VKF"
+  }
+}

@@ -226,7 +226,7 @@ Firefox and WebKit.
 The reason is runtime against the evidence in this repository. Each of these projects replays the
 **entire** production journey suite on an emulated iPhone 14, the same shape as the Firefox and
 WebKit suites. The last recorded complete matrix (run 4012) took **38 minutes** for three such
-suites, the job carries a **70-minute** timeout, and a ~70-minute matrix run holding
+suites, the job then carried a **70-minute** timeout (it has since been split into per-engine legs capped at 45 minutes; see `.github/workflows/ci.yml`), and a ~70-minute matrix run holding
 `CI-refs/heads/main` is the incident recorded in [ci-operations.md](ci-operations.md). Two more
 full suites is roughly another 25 minutes on a job already sized to its ceiling — and on the
 blocking PR gate, which today runs sharded Chromium only, it would be the difference between a

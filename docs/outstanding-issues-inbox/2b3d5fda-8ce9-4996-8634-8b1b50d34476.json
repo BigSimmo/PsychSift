@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "2b3d5fda-8ce9-4996-8634-8b1b50d34476",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "listOwnerTeams issues up to 401 queries on one request (two count queries per service across up to 200 services)",
+    "detail": "src/lib/roster/owner/teams.ts listOwnerTeams (~:105-138), reached by GET /api/roster/owner/teams. Next action: replace the per-service Promise.all count pairs with one joined or grouped query, or a batched RPC; measure on staging only, never production.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67N097JJWKH6MRG27CDV3"
+  }
+}

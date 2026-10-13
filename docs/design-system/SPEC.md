@@ -263,8 +263,9 @@ Shadow-only ladder `--e0…--e4`; `--ring-hairline` for borderless floating surf
 > A card inside a panel never carries a heavier `--eN` than its parent.
 
 The ladder itself is gated against baked-in hairlines (**[verified:** contract test
-`:171-179`**]**); the per-surface co-occurrence rule and the spread-term check are **planned**
-(GATES §8).
+`:171-179`**]**); the per-surface co-occurrence rule and the spread-term check both ship, ratcheted in
+`check:design-system-contract` as `edgeOwnershipConflicts` and `onePixelShadowSpreads` (GATES §8,
+row 8).
 
 `--shadow-inset` **stays the DS bevel**; `--shadow-well` is the recessed-well role. The
 former v2 `--shadow-inset` overrides became `--shadow-well` in `59e4c3dfc`, with the
