@@ -1662,6 +1662,7 @@ jobs:
           TREE_PROVEN_COVERAGE: ${{ needs.changes.outputs.tree_proven_coverage }}
           TREE_PROVEN_UI: ${{ needs.changes.outputs.tree_proven_ui }}
           TREE_PROVEN_LIGHTHOUSE: ${{ needs.changes.outputs.tree_proven_lighthouse }}
+          TREE_PROVEN_MATRIX: ${{ needs.changes.outputs.tree_proven_matrix }}
         run: |
           set -euo pipefail
 
@@ -1902,6 +1903,7 @@ jobs:
           if [ "$TREE_PROVEN_COVERAGE" = "true" ]; then proven+=("coverage"); fi
           if [ "$TREE_PROVEN_UI" = "true" ]; then proven+=("production-ui"); fi
           if [ "$TREE_PROVEN_LIGHTHOUSE" = "true" ]; then proven+=("lighthouse-budget"); fi
+          if [ "$TREE_PROVEN_MATRIX" = "true" ]; then proven+=("release-browser-matrix"); fi
           if [ ${#proven[@]} -gt 0 ]; then
             echo "::notice title=Proven on the identical tree::Not re-run because an earlier green run" \
               "already passed them on the tree it recorded testing, and nothing they read has changed" \
