@@ -13,10 +13,17 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import "@/components/pwa-offline-line.css";
+
 import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { BRAND_INSTALL_TAGLINE, BRAND_NAME } from "@/lib/brand";
 import { createBrowserStore } from "@/lib/client-store-factory";
+import type { savedLine as SavedLine } from "@/lib/offline-line";
+
+/** savedLine's own wording when the save time is unknown. */
+const OFFLINE_LINE_FALLBACK = "Offline, showing what was saved earlier";
 
 const INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-install-dismissed-at";
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
@@ -311,11 +318,69 @@ function useSettledNoticeSignature(signature: string | null): string | null {
  * `?pwa-dev=0` (local hosts only) unregisters that worker and deletes the
  * owned caches again.
  */
+/**
+ * Reports the query string, so a page whose views switch by query alone
+ * (Roster's ?view=hours) counts as a different page for the offline time. Its
+ * own Suspense boundary keeps the query read from making the app tree client-only.
+ */
+function QueryWatcher({ onQuery }: { readonly onQuery: (query: string) => void }) {
+  const query = useSearchParams().toString();
+  useEffect(() => onQuery(query), [query, onQuery]);
+  return null;
+}
+
 export function PwaLifecycle() {
   const isOnline = useConnectivityStore();
   const [connectionRestored, setConnectionRestored] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [offlineNoticeDismissed, setOfflineNoticeDismissed] = useState(false);
+  // When the page on screen was last opened while online. What an offline page
+  // still shows was loaded then or later, so naming this time can understate how
+  // fresh it is but never overstate it.
+  const pathname = usePathname();
+  // Null until the query has been read, which never matches a saved page.
+  const [query, setQuery] = useState<string | null>(null);
+  const page = query === null ? null : query ? `${pathname}?${query}` : pathname;
+  const shownOnlineRef = useRef<{ at: number; page: string | null } | null>(null);
+  const [offlineSaved, setOfflineSaved] = useState<{ at: number; page: string | null } | null>(null);
+  // A page reached after the signal dropped came from a saved copy of unknown
+  // age, so the time only holds for the page (path and query) that was on screen
+  // when it dropped.
+  // The Clinical home "/" switches what it shows by query (?mode=…) without a new
+  // path, so there a matching path proves nothing and the line says "saved earlier".
+  const offlineSavedAt =
+    offlineSaved && page !== null && pathname !== "/" && offlineSaved.page === page ? offlineSaved.at : null;
+  // The offline line's wording helper pulls in the work clock and account
+  // preferences, which every page would otherwise download up front for a
+  // notice most visits never show. It loads just after mount, while online, so
+  // it is ready before the signal drops; until then the line says "saved earlier".
+  const [savedLineFn, setSavedLineFn] = useState<typeof SavedLine | null>(null);
+  // A load that fails (opened offline, flaky signal) is tried again when the
+  // signal returns, so a later offline notice can still name its time.
+  useEffect(() => {
+    let live = true;
+    let loading = false;
+    let loaded = false;
+    const load = () => {
+      if (loading || loaded) return;
+      loading = true;
+      import("@/lib/offline-line")
+        .then((module) => {
+          loaded = true;
+          if (live) setSavedLineFn(() => module.savedLine);
+        })
+        .catch(() => {})
+        .finally(() => {
+          loading = false;
+        });
+    };
+    load();
+    window.addEventListener("online", load);
+    return () => {
+      live = false;
+      window.removeEventListener("online", load);
+    };
+  }, []);
   const [showIosHint, setShowIosHint] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [activatedUpdateReady, setActivatedUpdateReady] = useState(false);
@@ -335,6 +400,7 @@ export function PwaLifecycle() {
     const handleOffline = () => {
       if (restoredTimer) window.clearTimeout(restoredTimer);
       setConnectionRestored(false);
+      setOfflineSaved(shownOnlineRef.current);
     };
     const handleOnline = () => {
       if (restoredTimer) window.clearTimeout(restoredTimer);
@@ -353,6 +419,10 @@ export function PwaLifecycle() {
       window.removeEventListener("online", handleOnline);
     };
   }, []);
+
+  useEffect(() => {
+    shownOnlineRef.current = navigator.onLine && page !== null ? { at: Date.now(), page } : null;
+  }, [page]);
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");
@@ -544,8 +614,14 @@ export function PwaLifecycle() {
   // while that element is absent — including the hydration gap where it briefly
   // stops existing — means being restyled a moment later. See useAppShellReady.
   const appShellReady = useAppShellReady();
-  if (!appShellReady) return null;
-  if (settledSignature === null || settledSignature !== desiredSignature) return null;
+  // Always mounted, notices or not, so the page is known before the signal drops.
+  const queryWatcher = (
+    <Suspense fallback={null}>
+      <QueryWatcher onQuery={setQuery} />
+    </Suspense>
+  );
+  if (!appShellReady) return queryWatcher;
+  if (settledSignature === null || settledSignature !== desiredSignature) return queryWatcher;
   const showOffline = wantsOffline;
   const showUpdate = wantsUpdate;
   const showInstall = wantsInstall;
@@ -553,6 +629,7 @@ export function PwaLifecycle() {
 
   return (
     <div className="pwa-notice-stack">
+      {queryWatcher}
       {showOffline ? (
         <section
           className={`${cardClassName} pwa-lifecycle-card pwa-offline-card`}
@@ -571,7 +648,7 @@ export function PwaLifecycle() {
             <NoticeIcon icon={WifiOff} tone="warning" />
             <div className="pwa-notice-body min-w-0">
               <p id="pwa-offline-title" className="text-sm font-bold text-[color:var(--text-heading)]">
-                You’re offline
+                {savedLineFn ? savedLineFn({ reason: "offline", savedAt: offlineSavedAt }) : OFFLINE_LINE_FALLBACK}
               </p>
               <p className="pwa-notice-copy mt-1 text-sm leading-6 text-[color:var(--text-muted)]">
                 Clinical search and private features need a connection.

@@ -39,6 +39,7 @@ import {
   subscribeAppPreferences,
 } from "@/components/clinical-dashboard/use-app-preferences";
 import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
+import { useRecentPages } from "@/components/recent-pages/use-recent-pages";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
 import { AnswerCard } from "@/components/work-search/work-search-answer-card";
@@ -57,9 +58,11 @@ import { WorkSearchGlyph } from "@/components/work-search/work-search-glyph";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
+import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/perth-time";
+import { RECENT_PAGE_SECTION_LABEL, RECENT_PAGES_SHOWN } from "@/lib/recent-pages";
 import { AGREEMENT_PAGE_HREF } from "@/lib/work-profile/agreement-answers";
 import { answerWorkQuestion, type WorkAnswer } from "@/lib/work-search/answers";
 import { workSearchAreaLabels, workSearchAreas, type WorkAreaRead, type WorkSearchArea } from "@/lib/work-search/model";
@@ -425,6 +428,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const keepRecents = useSyncExternalStore(subscribeAppPreferences, readSaveRecentSearches, () => false);
   const [storedRecents, setRecents] = useState(() => (keepRecents ? recentsFor(epoch) : []));
   const recents = keepRecents ? storedRecents : [];
+  // Pages opened lately, across Work and Clinical: paths and page titles only, never anything typed.
+  const recentPages = useRecentPages({ limit: RECENT_PAGES_SHOWN });
   const [scrolled, setScrolled] = useState(false);
   const [chipsMore, setChipsMore] = useState(false);
   /** The query "Search for … exactly" was tapped for: one-letter-out matching is off until it changes. */
@@ -1195,6 +1200,31 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   ) : (
                     <SkeletonRows count={3} />
                   )}
+                </section>
+              ) : null}
+              {recentPages.length > 0 ? (
+                <section className="grid gap-2" data-testid="work-search-recent-pages">
+                  <SectionLabel id="work-search-recent-pages">Recent pages</SectionLabel>
+                  <ul aria-labelledby="work-search-recent-pages" className="work-card work-rows">
+                    {recentPages.map((page) => {
+                      const Icon = appModeIcons[page.section];
+                      const sectionLabel = RECENT_PAGE_SECTION_LABEL[page.section];
+                      return (
+                        <ActionRow
+                          key={page.path}
+                          icon={<Icon aria-hidden="true" strokeWidth={2} />}
+                          area={page.mode === "work" ? page.section : undefined}
+                          tone={page.mode === "work" ? undefined : "neutral"}
+                          href={page.path}
+                          onNavigate={() => close(true)}
+                          sub={sectionLabel !== page.title ? sectionLabel : undefined}
+                          weight="semibold"
+                        >
+                          {page.title}
+                        </ActionRow>
+                      );
+                    })}
+                  </ul>
                 </section>
               ) : null}
               <section className="grid gap-2">

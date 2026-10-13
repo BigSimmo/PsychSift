@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  Brain,
-  ChevronRight,
-  CloudOff,
-  ExternalLink,
-  FileText,
-  Pill,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, ChevronRight, CloudOff, ExternalLink, FileText, Pill, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
@@ -312,7 +302,20 @@ const NO_VISITS: readonly MedicineVisit[] = [];
 /** One calm list: grey icon, the section's name, and its real count on the right. */
 function SectionsGroup({ counts }: { readonly counts: MedicinesSectionCounts }) {
   return (
-    <Group title="Sections" testId="medicines-card-sections">
+    <Group
+      title="Sections"
+      testId="medicines-card-sections"
+      aside={
+        // The one link to the plain list of every tool (Clinical audit, 13 Oct 2026, item 15).
+        <Link
+          href="/tools"
+          data-testid="medicines-all-tools"
+          className={cn(focusRing, dashLink, "inline-flex min-h-12 items-center justify-end rounded-lg px-1 text-sm")}
+        >
+          All tools
+        </Link>
+      }
+    >
       <ul role="list" aria-label="Medicines sections" className={hairlineList}>
         {SECTION_MODE_IDS.map((modeId) => {
           const mode = appModeDefinition(modeId);
@@ -461,54 +464,6 @@ function ReferencesGroup({ online }: { readonly online: boolean }) {
   );
 }
 
-// Calculators and the Dictionary moved to Psychiatry (usefulness and layout
-// audit, 11 Oct 2026, item 8), so they are signposted here for anyone who
-// still looks for them beside the medicines.
-const SIGNPOSTS = [
-  { label: "Safety plan", href: "/safety-plan", icon: ShieldCheck, testId: "medicines-signpost-safety-plan" },
-  {
-    label: "Calculators",
-    href: appModeHomeHref("calculators"),
-    icon: appModeIcons.calculators,
-    testId: "medicines-signpost-calculators",
-  },
-  {
-    label: "Dictionary",
-    href: appModeHomeHref("dictionary"),
-    icon: appModeIcons.dictionary,
-    testId: "medicines-signpost-dictionary",
-  },
-  {
-    label: "Psychiatry",
-    href: appModeHomeHref("psychiatry"),
-    icon: Brain,
-    testId: "medicines-signpost-psychiatry",
-  },
-] as const;
-
-/** Quiet routes to what lives in Psychiatry rather than here. */
-function SignpostsGroup() {
-  return (
-    <Group title="Lives in Psychiatry" testId="medicines-card-signposts">
-      <ul role="list" className={hairlineList}>
-        {SIGNPOSTS.map(({ label, href, icon: SignIcon, testId }) => (
-          <li key={label} className={hairlineItem}>
-            <Link
-              href={href}
-              data-testid={testId}
-              className={cn(focusRing, rowLink, "grid-cols-[auto_minmax(0,1fr)_auto] rounded-lg")}
-            >
-              <SignIcon aria-hidden="true" className={rowIcon} />
-              <span className={rowTitle}>{label}</span>
-              <ChevronRight aria-hidden="true" className={rowEnd} />
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </Group>
-  );
-}
-
 export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSectionCounts; readonly now?: Date }) {
   const today = useToday(now);
   const online = useOnlineStatus();
@@ -534,7 +489,6 @@ export function MedicinesHome({ counts, now }: { readonly counts: MedicinesSecti
             <PbsMonthGroup today={today} online={online} />
             <StatewideChartsGroup online={online} />
             <ReferencesGroup online={online} />
-            <SignpostsGroup />
           </div>
         </div>
       </div>

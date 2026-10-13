@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { australianSourceByKey } from "@/lib/australian-source-catalogue";
 import {
@@ -11,6 +10,7 @@ import {
   type PublicSourceAcquisitionPlan,
 } from "@/lib/public-source-acquisition";
 import type { Json } from "@/lib/supabase/database.types";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export function parseAcquisitionBatch(raw: string) {
   const input: unknown = JSON.parse(raw);
@@ -805,7 +805,7 @@ async function main() {
   );
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : "Public source fetch failed.");
     process.exit(1);

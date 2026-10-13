@@ -46,7 +46,7 @@ export const dayTopic: WorkHelpTopic = {
     {
       id: "hide-cards",
       q: "How do I hide cards I don't use?",
-      a: "Tap Customise My Day at the bottom of the page, then the cross on any card. Hidden cards wait there so you can bring them back. The choice stays on this device.",
+      a: "Open More beside the tabs, choose Customise, then switch off any card. Hidden cards wait there so you can bring them back. The choice stays on this device.",
     },
   ],
   setUp: [

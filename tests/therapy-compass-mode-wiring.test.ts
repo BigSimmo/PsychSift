@@ -264,8 +264,11 @@ describe("Therapy Compass production-mode wiring", () => {
     );
     // The bare path no longer renders a home: it forwards to the shared lightweight
     // one, which resolves a submitted query onward to the dedicated search route.
-    // The query survives that hop because the proxy carries it (consolidatedModeHomeTarget).
-    expect(routeSrc).toMatch(/redirect\(appModeSelectionHref\("therapy-compass"\)\)/);
+    // The query survives that hop because the proxy carries it (consolidatedModeHomeTarget) and, for a request
+    // that skips the proxy, the page's own backstop resolves the same helper.
+    expect(routeSrc).toMatch(
+      /redirect\(\s*consolidatedModeHomeTargetForSearchParams\("\/therapy-compass", params\) \?\? appModeSelectionHref\("therapy-compass"\),?\s*\)/,
+    );
     expect(appModeHomeHref("therapy-compass", { query: "CBT", run: true })).toBe("/therapy-compass/search?q=CBT&run=1");
     // ...and the provider derives the active screen from the pathname and seeds the query from ?q.
     expect(bindingsSrc).toMatch(/resolveTherapyRoute\(pathname\)/);

@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonFaceClass } from "@/components/ui/button-face";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -326,10 +327,7 @@ export function DsmDifferentialConsiderationsPage({
                         <ArrowRight className="h-4 w-4" aria-hidden />
                       </Link>
                     ) : null}
-                    <Link
-                      href={comparisonHref}
-                      className="inline-flex min-h-tap flex-1 items-center justify-center gap-2 rounded-lg bg-[color:var(--command)] px-3 text-sm font-extrabold text-[color:var(--command-contrast)] shadow-[var(--e1)] transition hover:bg-[color:var(--command-hover)]"
-                    >
+                    <Link href={comparisonHref} className={cn(buttonFaceClass({ variant: "primary" }), "flex-1")}>
                       <GitCompareArrows className="h-4 w-4" aria-hidden />
                       Add to comparison
                     </Link>

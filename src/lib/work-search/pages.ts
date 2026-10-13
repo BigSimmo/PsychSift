@@ -46,7 +46,7 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "rost:shifts": ["shifts", "my roster"],
   "rost:requests": ["leave", "annual leave", "al", "holiday", "request", "book leave", "pdl", "study leave"],
   "rost:hours": ["overtime", "rest", "fatigue", "safe hours"],
-  "open:open-shifts-browse": ["extra shifts", "locum", "open shifts", "available shifts"],
+  "rost:open-shifts": ["extra shifts", "locum", "open shifts", "available shifts"],
   "open:open-shifts-mine": ["booked", "asked"],
   "open:open-shifts-alerts": ["notify", "shift alerts"],
   "manage:manage-inbox": ["approve", "approvals", "manager", "manage roster"],
@@ -112,11 +112,11 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "admin:admin-hospital": ["hospital", "sick calls", "medical workforce", "dct", "safe number"],
   "admin:admin-people": ["roles", "give a role", "supervisors", "people"],
   "call:now": ["on call", "tonight", "shift", "breaks", "shift pulse", "workload"],
+  // Who's who and the Pocket card folded into the Handbook (12 Oct 2026), so their words did too.
   "call:call": ["phone", "numbers", "switchboard", "pager", "contacts", "ring"],
   "call:refer": ["referral", "referrals", "refer"],
-  "call:find": ["handbook", "wards", "equipment", "systems down"],
+  "call:find": ["handbook", "wards", "equipment", "systems down", "roles", "teams", "print", "pocket card"],
   "call:playbook": ["what to do", "emergency", "codes", "who to call", "escalate"],
-  "call:whoswho": ["roles", "teams"],
   "call:starting-here": [
     "checklist",
     "induction",
@@ -126,7 +126,6 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
     "first shift",
     "new job",
   ],
-  "call:card": ["print", "pocket card"],
   "call:whoson": ["tonight's team", "who's on"],
   "call:check": ["before you leave", "checklist"],
   "call:handover": ["handover"],
@@ -177,6 +176,21 @@ export function workSearchPages(): readonly WorkSearchPage[] {
       };
     }
   }
+  // Refer is a tab inside Contacts now (12 Oct 2026), so it has no frame entry of its own; its old address
+  // opens that tab in either work mode, so a search for "referral" lands on the routes, not on Hospital.
+  const contacts = WORK_AREAS.call.tabs.find((item) => item.id === "call");
+  if (contacts)
+    pages.push({
+      id: "call:refer",
+      label: "Refer",
+      area: WORK_AREAS.call.name,
+      identity: WORK_AREAS.call.identity,
+      sub: "Referral routes",
+      href: "/on-call/refer",
+      icon: contacts.icon,
+      keywords: KEYWORDS["call:refer"] ?? [],
+      gates: [],
+    });
   pagesMemory = pages;
   return pages;
 }

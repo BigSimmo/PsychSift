@@ -33,6 +33,9 @@ export function TodayRequirementsModule({ summary }: { summary: RequirementsSumm
  * Overtime (idea assigned to Admin, work-mode redesign, owner request 6 Oct
  * 2026): a plain row into Roster's extra time view. Admin holds no hours of
  * its own, so this is navigation only.
+ *
+ * Not rendered since 12 Oct 2026 (Work mode simplify plan: Today is about dates; the same links live in
+ * Admin's More). Kept under the 30 day rule; delete from 11 Nov 2026 if nothing has brought it back.
  */
 export function TodayOvertimeRow() {
   return (

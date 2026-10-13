@@ -5,8 +5,9 @@ import { formatDayMonthYear } from "@/lib/first-nations/contact-format";
 /**
  * The review facts a card can show, read from the content files only: the source's
  * title, and the approval record (body, role, date) when one matches the card's
- * current content. Nothing here is ever written by hand; a missing record is
- * shown as "Not yet reviewed".
+ * current content. Nothing here is ever written by hand; a missing matching
+ * record is shown as "No current cultural review recorded" so an older review is
+ * not mistaken for a review of the current content.
  */
 export type ReviewStamp = { source: string; reviewer: string | null; reviewedOn: string | null };
 
@@ -14,6 +15,6 @@ export function reviewStampText(stamp: ReviewStamp): string {
   const reviewed =
     stamp.reviewer && stamp.reviewedOn
       ? `Reviewed by ${stamp.reviewer} · ${formatDayMonthYear(stamp.reviewedOn)}`
-      : "Not yet reviewed";
+      : "No current cultural review recorded";
   return `Source: ${stamp.source} · ${reviewed}`;
 }

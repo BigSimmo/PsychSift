@@ -1,21 +1,22 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
+import { UrgentDot } from "./urgent-dot";
 import { cn } from "@/components/ui-primitives";
 import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
 
 /**
  * The month on Browse. Each date in the 14-day window carries the number of
  * shifts that match the filters (the same rows as the list below it); a date
- * with an urgent one carries a small warning mark, and a ring on the date
+ * with an urgent one carries a small amber dot, and a ring on the date
  * means the reader is rostered that day. Past dates and dates outside the
  * window carry no number.
  *
  * Drawn like the Roster month (mockup `.rost-mc rost-oc`, work-mode redesign
- * 6 Oct 2026): a filled tile for the chosen day, a count pill per day (amber,
- * with the warning mark, when it includes an urgent shift) and a ring on the
+ * 6 Oct 2026): a filled tile for the chosen day, a count pill per day (with an
+ * amber dot, the shared "needs attention" shape, when it includes an urgent shift) and a ring on the
  * date when you're rostered. The meanings never rest on colour alone: the
  * mark, the number and each day's spoken label carry them too.
  */
@@ -173,14 +174,10 @@ export function OpenShiftsCalendar({
                       <span
                         aria-hidden="true"
                         className={cn(
-                          "nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center gap-0.5 rounded-full px-1 text-3xs font-extrabold leading-none",
-                          urgent
-                            ? "border border-[color:var(--warning-border)] text-[color:var(--warning-text)]"
-                            : "bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
+                          "nums inline-flex h-[0.9375rem] min-w-[1.375rem] items-center justify-center gap-0.5 rounded-full bg-[color:var(--mode-identity-soft)] px-1 text-3xs font-extrabold leading-none text-[color:var(--mode-identity)]",
                         )}
                       >
-                        {urgent ? <TriangleAlert aria-hidden="true" strokeWidth={2.2} className="size-2.5" /> : null}
-                        {count ? count : null}
+                        {urgent ? <UrgentDot>{count || null}</UrgentDot> : count || null}
                       </span>
                     ) : (
                       <i aria-hidden="true" className="block h-[0.9375rem]" />

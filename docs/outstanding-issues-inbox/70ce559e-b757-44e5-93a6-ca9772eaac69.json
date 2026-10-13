@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "70ce559e-b757-44e5-93a6-ca9772eaac69",
+  "createdOn": "2026-10-12",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "rec",
+    "summary": "Plan moving the developer-gated Developer Hub and Care Plan tools out of the mockups folder",
+    "detail": "src/app/mockups/development (11 pages) and src/app/mockups/care-plan (21 pages) are live behind DeveloperAreaGate but sit under a folder named mockups, which invites deletion by clean-up. check:mockups already refuses deletions there without an owner decision recorded in mockups/README.md. Next action: in a later architecture phase, move them to /admin/developer-hub and /admin/care-plan with redirects, keeping DEVELOPER_GATED_PATH_PREFIXES and the retirement gate in step.",
+    "source": "Review of five Antigravity reports against main, 2026-10-12",
+    "issueUlid": "01M4R2MAS10QXGANK8EBMARFTX"
+  }
+}

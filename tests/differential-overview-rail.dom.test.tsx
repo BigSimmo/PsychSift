@@ -48,7 +48,7 @@ describe("DifferentialOverviewRail", () => {
     render(<DifferentialOverviewRail record={makeRecord()} detailContext={detailContext} onOpenSource={() => {}} />);
 
     const rail = screen.getByTestId("differential-overview-rail");
-    expect(within(rail).getByText("Do now")).toBeInTheDocument();
+    expect(within(rail).getByText("Points for this presentation")).toBeInTheDocument();
     expect(within(rail).getByText("Stop the offending agent")).toBeInTheDocument();
     expect(within(rail).getByText("Serum electrolytes")).toBeInTheDocument();
     expect(within(rail).getByText("Focus risk")).toBeInTheDocument();

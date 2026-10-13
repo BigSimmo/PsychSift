@@ -259,7 +259,7 @@ function TeachPage({ demoMode }: { demoMode: boolean }) {
   const now = useTeachingNow();
   const resource = useTeachingResource<TeachRead>(demoMode ? null : "/api/teaching/depth?view=teach");
   const data = useMemo(
-    () => (demoMode && now ? demoTeach(perthDateKey(now)) : resource.data),
+    () => (demoMode && now ? demoTeach(perthDateKey(now), now) : resource.data),
     [demoMode, now, resource.data],
   );
   return (

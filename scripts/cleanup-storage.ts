@@ -1,7 +1,7 @@
 import { loadEnvConfig } from "@next/env";
-import { pathToFileURL } from "node:url";
 import { nonNullDocumentIds, partitionStorageCleanupJobs } from "@/lib/storage-cleanup-safety";
 import { loadAdminClient } from "./eval-utils";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 type CleanupArgs = {
   limit: number;
@@ -301,7 +301,7 @@ async function main() {
   console.log(`Storage cleanup complete: ${completed} completed, ${failed} failed.`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exit(1);

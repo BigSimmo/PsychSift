@@ -155,12 +155,14 @@ const noRoutines: readonly CmeRoutine[] = [];
 export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Date }): {
   result: MyDaySourceResult;
   retry: () => void;
+  /** True while a retry is reading again over the answer still shown. */
+  refreshing: boolean;
   /** The reader's routines once loaded (for the Week page); empty until then. */
   routines: readonly CmeRoutine[];
 } {
   const reminders = useAppPreferences().preferences.reminders;
   const { authEpoch } = useAuthSession();
-  const [stored, setStored] = useState<{ epoch: number; loaded: Loaded } | null>(null);
+  const [stored, setStored] = useState<{ epoch: number; generation: number; loaded: Loaded } | null>(null);
   const [generation, setGeneration] = useState(0);
   const retry = useCallback(() => setGeneration((value) => value + 1), []);
 
@@ -168,17 +170,18 @@ export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Dat
     if (!enabled) return;
     const controller = new AbortController();
     void loadCme(controller.signal, ruleEnginesOn(new Date()).cpd).then((next) => {
-      if (next && !controller.signal.aborted) setStored({ epoch: authEpoch, loaded: next });
+      if (next && !controller.signal.aborted) setStored({ epoch: authEpoch, generation, loaded: next });
     });
     return () => controller.abort();
   }, [enabled, generation, authEpoch]);
 
-  if (!enabled) return { result: signedOut, retry, routines: noRoutines };
+  if (!enabled) return { result: signedOut, retry, refreshing: false, routines: noRoutines };
   // Data from another account (a different auth epoch) is never shown.
-  if (!stored || stored.epoch !== authEpoch) return { result: loading, retry, routines: noRoutines };
+  if (!stored || stored.epoch !== authEpoch) return { result: loading, retry, refreshing: false, routines: noRoutines };
   const loaded = stored.loaded;
+  const refreshing = stored.generation !== generation;
   if (loaded.status !== "ready")
-    return { result: { mode: "cme", status: loaded.status, items: [] }, retry, routines: noRoutines };
+    return { result: { mode: "cme", status: loaded.status, items: [] }, retry, refreshing, routines: noRoutines };
   return {
     result: {
       mode: "cme",
@@ -192,6 +195,7 @@ export function useCmeMyDaySource({ enabled, now }: { enabled: boolean; now: Dat
       ...(loaded.sample ? { sample: true } : {}),
     },
     retry,
+    refreshing,
     routines: loaded.routines,
   };
 }

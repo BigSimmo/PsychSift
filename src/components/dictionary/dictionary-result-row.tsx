@@ -28,6 +28,9 @@ const rowIcon =
 
 type TitleTag = "h2" | "h3";
 
+/** The reason `src/lib/dictionary.ts` gives every row when nothing is typed. */
+const BROWSE_REASON = "Browse result";
+
 export function DictionaryResultRow({
   hit,
   compareWith,
@@ -191,14 +194,25 @@ export function DictionaryResultRow({
   );
 }
 
+/**
+ * A small source tick, then the match reason only when a search produced one
+ * (Clinical audit, 13 Oct 2026, item 14). While browsing every row said
+ * "Source linked · Browse result", which was unclear and the same on all 96
+ * rows; the tick keeps the "Source linked" meaning as its accessible name.
+ */
 function SourceLine({ label }: { label: string }) {
+  const reason = label === BROWSE_REASON ? null : label;
   return (
     <span className="inline-flex items-center gap-1.5 text-2xs font-semibold text-[color:var(--text-muted)]">
-      <span className="grid h-4 w-4 place-items-center rounded-full border border-[color:var(--success)] text-[color:var(--success)]">
+      <span
+        role="img"
+        aria-label="Source linked"
+        title="Source linked"
+        className="grid h-4 w-4 place-items-center rounded-full border border-[color:var(--success)] text-[color:var(--success)]"
+      >
         <Check className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden="true" />
       </span>
-      Source linked<span aria-hidden="true">·</span>
-      {label}
+      {reason}
     </span>
   );
 }

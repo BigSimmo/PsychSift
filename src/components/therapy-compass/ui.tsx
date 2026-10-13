@@ -21,7 +21,7 @@ const TONE_TEXT: Record<Tone, string> = {
   accent: "text-[color:var(--clinical-accent-hover)]",
 };
 
-function tagTone(tag: string): Tone {
+export function tagTone(tag: string): Tone {
   const t = tag.toLowerCase();
   if (/(cbt|act|dbt|behavioural)/.test(t)) return "purple";
   if (/(crisis|risk|trauma|psychosis)/.test(t)) return "info";

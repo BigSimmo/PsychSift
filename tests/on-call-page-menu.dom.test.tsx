@@ -17,10 +17,11 @@ afterEach(() => {
 });
 
 describe("On Call in-page More", () => {
-  it("is a labelled More control, not a header round button", () => {
+  it("is a labelled Options control, not a header round button", () => {
     render(<OnCallPageMenu view="contacts" entryCount={3} />);
     const trigger = screen.getByTestId("on-call-page-menu-trigger");
-    expect(trigger.textContent).toContain("More");
+    // "Options", so it never reads as a second copy of the band's More tab (12 Oct 2026).
+    expect(trigger.textContent).toContain("Options");
     expect(trigger.className).toMatch(/min-h-12/);
     expect(trigger.getAttribute("aria-label")).toBe("Open Contacts actions");
   });

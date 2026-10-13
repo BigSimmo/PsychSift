@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "d93212ab-f5cb-4cf3-807f-046d06f8fd39",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Medicines reference list is live but its code comment still says it awaits the owner's check, and Medication Prescribing and Risk and Safety still show 'review due' (audit L4C-M1, L4C-M2)",
+    "detail": "Owner check of src/lib/medicines-references.ts wording and the two tools, then update the comment and the review-due chips. The comment states a governance fact, so it is not edited without that check.",
+    "source": "Audit 2026-10-08, rechecked against main 2026-10-13",
+    "issueUlid": "01M4T65YZPHMBEQKVRY2JG8E5V"
+  }
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -13,8 +14,9 @@ import {
   TriangleAlert,
 } from "lucide-react";
 
-import { Sheet } from "@/components/ui/sheet";
+import { Sheet, type SheetProps } from "@/components/ui/sheet";
 import { cn, glassOverlaySurface, subtleStatusPill, textMuted } from "@/components/ui-primitives";
+import { useDesktopSourceDock } from "@/components/clinical-dashboard/use-desktop-source-dock";
 import { logSourceOpen } from "@/components/clinical-dashboard/source-actions";
 import { cleanDisplayTitle, sourceQuoteDisplayText } from "@/components/clinical-dashboard/display-text";
 import { SignedImage } from "@/components/clinical-dashboard/signed-image";
@@ -41,6 +43,44 @@ import type { ClientQuoteCard as QuoteCard } from "@/lib/answer-client-payload";
  */
 const NUMBERED_PAGER_LIMIT = 4;
 
+/** The desktop docked panel is optional weight, so it loads the first time a source opens docked. */
+const LazyDockedPanel = dynamic(
+  () =>
+    import("@/components/clinical-dashboard/answer-source-docked-panel").then(
+      (module) => module.AnswerSourceDockedPanel,
+    ),
+  { ssr: false },
+);
+
+/**
+ * The drawer's container: the shared `Sheet` below 1024px (unchanged), the
+ * docked panel beside the answer from 1024px. Both get the same title, header
+ * actions, passage body and pager, so only the frame differs. The docked panel
+ * stays mounted once it has opened, so its close can hand focus back.
+ */
+function SourceDrawerFrame({ docked, ...sheetProps }: SheetProps & { docked: boolean }) {
+  const [dockedOnce, setDockedOnce] = useState(false);
+  if (docked && sheetProps.open && !dockedOnce) setDockedOnce(true);
+  if (!docked) return <Sheet {...sheetProps} />;
+  if (!dockedOnce) return null;
+  return (
+    <LazyDockedPanel
+      open={sheetProps.open}
+      onClose={sheetProps.onClose}
+      title={sheetProps.title ?? "Source"}
+      description={sheetProps.description ?? ""}
+      closeLabel={sheetProps.closeLabel ?? "Close"}
+      titleAccessory={sheetProps.titleAccessory}
+      headerActions={sheetProps.headerActions}
+      footer={sheetProps.footer}
+      testId={sheetProps.testId}
+      resolveReturnFocusTarget={sheetProps.resolveReturnFocusTarget}
+    >
+      {sheetProps.children}
+    </LazyDockedPanel>
+  );
+}
+
 /*
  * `tablesForSource` and `imagesForSource` moved to `answer-source-rows` so the
  * rail card's attachment marker and the drawer's contents are one rule, not two.
@@ -62,7 +102,10 @@ function passageForSource(quoteCard: QuoteCard | null, source: AnswerSourceRow |
  *
  * Built on the shared `Sheet` so the portal, focus trap, late focus return,
  * Escape/backdrop dismissal, and the bottom-sheet-on-phone / centred-from-`sm:`
- * split are the same ones every other product overlay uses.
+ * split are the same ones every other product overlay uses. From 1024px the
+ * same content opens in a panel docked beside the answer instead
+ * (`SourceDrawerFrame`, answer-source-docked-panel.tsx), so a desktop reader
+ * can check the passage without the answer being covered.
  *
  * `openIndex` is the row the drawer is showing; `activeSupportIndex` is the row
  * a *claim* pointed at. They differ when the drawer was opened from the source
@@ -143,9 +186,12 @@ export function AnswerSourceDrawer({
   // Null unless a claim opened the drawer; see `sourceSupportSentence`.
   const supportSentence = sourceSupportSentence(source, activeSupportIndex, activeClaimSupport);
   const numbered = sources.length <= NUMBERED_PAGER_LIMIT;
+  // From 1024px the source docks beside the answer; phones and upright tablets keep the Sheet.
+  const docked = useDesktopSourceDock();
 
   return (
-    <Sheet
+    <SourceDrawerFrame
+      docked={docked}
       open={open}
       onClose={onClose}
       dismissOnBack
@@ -359,7 +405,7 @@ export function AnswerSourceDrawer({
           </Link>
         </div>
       ) : null}
-    </Sheet>
+    </SourceDrawerFrame>
   );
 }
 

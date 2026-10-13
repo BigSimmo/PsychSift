@@ -193,7 +193,7 @@ describe("audit navigation and auth regressions", () => {
     const focusLeaveContract = sourceSegment(
       masterSearchHeaderSource,
       "ref={modeMenuRef}",
-      'className="relative z-[60]',
+      'className="universal-header-mode relative z-[60]',
       { label: "master mode-menu focus boundary" },
     );
 
@@ -302,21 +302,34 @@ describe("audit navigation and auth regressions", () => {
     expect(universalAlsoMatchesSource).toContain("const searchActive = submissionActive;");
     expect(universalAlsoMatchesSource).not.toContain('modeId !== "prescribing"');
     expect(universalAlsoMatchesSource).not.toContain('(isWide || modeId === "answer" || expanded)');
-    // The header now says pending / a count / nothing found. The "Tap to open"
-    // arm it replaced survives only in the comment above the searchActive gate,
-    // which is why this pins the expression rather than searching for the string.
-    expect(universalAlsoMatchesSource).toContain(
-      'const headerMeta = searchPending ? "Searching…" : matchCount > 0 ? matchCountLabel(matchCount) : "No other matches";',
+    // The header says a count or nothing found. The "Tap to open" arm it replaced
+    // survives only in the comment above the searchActive gate, which is why this
+    // pins the expression rather than searching for the string. The pending arm
+    // ("Searching…") went on 2026-10-12: the strip is no longer drawn until this
+    // query's matches are in. The count arm is JSX so "related" can drop below 360px.
+    expect(universalAlsoMatchesSource).toMatch(
+      /const headerMeta =\s*matchCount > 0 \? \([\s\S]*?\) : \(\s*"No other matches"\s*\);/,
     );
+    expect(universalAlsoMatchesSource).not.toContain('searchPending ? "Searching…"');
     expect(universalAlsoMatchesSource).toContain("enabled: trimmedQuery.length >= 2 && searchActive");
-    expect(universalAlsoMatchesSource).toContain('if (modeId === "answer" && currentGroups.length === 0) return null;');
-    expect(universalAlsoMatchesSource).toContain("if (!searchPending && currentGroups.length === 0) return null;");
+    // Answer mode needs no gate of its own now: with no groups the strip is simply not drawn.
+    expect(universalAlsoMatchesSource).not.toContain(
+      'if (modeId === "answer" && currentGroups.length === 0) return null;',
+    );
+    // Not drawn while pending, and not drawn when nothing matched: one gate for both.
+    expect(universalAlsoMatchesSource).toMatch(
+      /const stripShown =\s*submissionActive && viewportReady && trimmedQuery\.length >= 2 && currentGroups\.length > 0 && !searchPending;/,
+    );
+    // The live region is mounted empty through the lookup and filled once, so the count is
+    // announced as a change rather than lost as a region's starting text.
+    expect(universalAlsoMatchesSource).toContain('{stripShown ? panelStatus : ""}');
+    expect(universalAlsoMatchesSource).not.toContain("if (!searchPending && currentGroups.length === 0) return null;");
     expect(universalAlsoMatchesSource).toContain("const [viewportReady, setViewportReady] = useState(false);");
     expect(universalAlsoMatchesSource).toContain("setViewportReady(true);");
-    // The panel status is a three-way now — pending / a count / nothing found —
-    // because one fixed string announced "No additional matches" over a grid of
-    // populated mode cards. The pending arm is the one this contract is about.
-    expect(universalAlsoMatchesSource).toMatch(/const panelStatus = searchPending\s*\n?\s*\? "Searching other modes"/);
+    // The panel status is a count or nothing found, because one fixed string announced
+    // "No additional matches" over a grid of populated mode cards. Its pending arm went
+    // on 2026-10-12: the region stays empty while the lookup runs.
+    expect(universalAlsoMatchesSource).not.toContain('"Searching other modes"');
     // Since #3PW9TY the empty message has two arms, and the contract is about which one
     // speaks. "No additional matches" is a claim about the catalogue's contents; a catalogue
     // that could not be read has no contents to report, and saying there are none is the

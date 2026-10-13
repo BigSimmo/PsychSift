@@ -23,7 +23,7 @@ design, the audit behind it and the owner's decisions are recorded in the PR tha
 
 Each area's file in `systems/` lists its canonical docs and its path rules.
 
-**Loose around pages and modes (owner decision, 2026-09-26).** Areas describe the job code does, never a page or a mode; any mode named above is only an example of today's layout. Every page sits in App experience whatever mode it serves, so adding, moving, renaming or retiring a page or a mode needs no map edit.
+**Loose around pages and modes (owner decision, 2026-09-26).** Areas describe the job code does, never a page or a mode; any mode named above is only an example of today's layout. Every page sits in App experience whatever mode it serves, so adding, moving, renaming or retiring a page or a mode needs no map edit. One recorded exception: `personal-practice.json` names the Roster and Open shifts page folders (`src/app/(search-app)/roster/**`, `open-shifts/**`) because their longer path wins over the shared `(search-app)/**` rule, so those pages belong to Personal practice.
 
 ## Placing new work
 

@@ -271,6 +271,11 @@ describe("the dashboard", () => {
     );
     const summary = screen.getByTestId("cme-year-summary");
     expect(within(summary).getByTestId("cme-total-hours")).toHaveTextContent("32.5 hlogged");
+    // The relocated year dates (12 Oct 2026) stay in this variant too.
+    expect(within(summary).getByTestId("cme-year-label")).toHaveTextContent("2026 · about 15 weeks left");
+    // Today's hours sit beside the label, so the label stays exact.
+    expect(within(summary).getByTestId("cme-year-label")).toHaveTextContent(/^2026 · about 15 weeks left$/);
+    expect(within(summary).getByTestId("cme-audited-today")).toHaveTextContent(/^· [\d.]+ h today$/);
     expect(summary).toHaveTextContent("You have not confirmed a yearly target, so nothing is measured against one.");
     expect(within(summary).getByRole("link", { name: "Set up your year" })).toHaveAttribute(
       "href",
