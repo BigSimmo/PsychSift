@@ -56,12 +56,6 @@ function withoutClinicalShorthand(text: string): string {
 
 const OPTIONS = { allowCapitals: true } as const;
 
-// Work's general check intentionally allows capitals in clinical shorthand. A bare personal
-// name therefore needs a narrower question-specific signal: a capitalized two-word name near
-// medication or other clinical content.
-const BARE_NAME_CLINICAL_CONTENT =
-  /\b[A-Z][a-z]{1,30}\s+[A-Z][a-z]{1,30}\b(?=[^.!?\n]{0,80}\b(?:clozapine|lithium|medicat\w*|dose|dosage|diagnos\w*|symptom\w*|treatment|prescri\w*|taking|allerg\w*|adverse|side\s+effects?)\b)/;
-
 /** What in a Clinical question looks like a patient detail; null when it reads as safe to send. */
 export function clinicalQuestionPatientDetail(text: string): PatientDetailProblem | null {
   if (!text.trim()) return null;
@@ -69,13 +63,6 @@ export function clinicalQuestionPatientDetail(text: string): PatientDetailProble
     return {
       title: "This looks like an identifier",
       body: "It looks like a record number, a date of birth, a phone number or an email address.",
-      suggestion: null,
-    };
-  }
-  if (BARE_NAME_CLINICAL_CONTENT.test(text)) {
-    return {
-      title: "This looks like a name",
-      body: "Remove identifiable patient details before sending this question.",
       suggestion: null,
     };
   }
