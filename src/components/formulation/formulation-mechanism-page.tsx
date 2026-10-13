@@ -1,49 +1,40 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  BookOpenCheck,
-  Check,
-  ChevronDown,
-  CircleHelp,
-  GitCompareArrows,
-  ListChecks,
-  MessageSquareQuote,
-  Network,
-  Route,
-  ShieldAlert,
-  Sparkles,
-  Target,
-  Waypoints,
-} from "lucide-react";
+import { ArrowRight, Check, ChevronDown, GitCompareArrows, ListChecks } from "lucide-react";
 
 import {
   EvidenceList,
   FormulationPageShell,
   FormulationSafetyNote,
   MechanismBadge,
-  MechanismCaveats,
   MechanismDomainChips,
   RecordReviewBadge,
   RecordReviewNote,
   SectionHeading,
-  formulationCard,
 } from "@/components/formulation/formulation-ui";
-import { compareRecordsHref, GuidanceSection, RecordFact } from "@/components/clinical-record-panels";
+import {
+  compareRecordsHref,
+  RecordBody,
+  RecordBulletList,
+  RecordCautions,
+  RecordGlance,
+  RecordIntro,
+  RecordSection,
+} from "@/components/clinical-record-panels";
 import { FormulationNavHeader } from "@/components/formulation/formulation-nav-header";
 import { inPageActionRowClass, inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { InformationPageHeader } from "@/components/information-page-shell";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { buttonFaceClass } from "@/components/ui/button-face";
+import { cn } from "@/components/ui-primitives";
 import { formulationSourceLibrary, relatedFormulationMechanisms, type FormulationMechanism } from "@/lib/formulation";
 import { mechanismReviewState } from "@/lib/formulation-review-status";
 
 function FactorColumn({ title, items }: { title: string; items: string[] }) {
   return (
-    <div className="p-4 sm:p-5">
-      <h3 className="text-sm font-extrabold text-[color:var(--text-heading)]">{title}</h3>
-      <ul className="mt-3 grid gap-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
+    <div className="min-w-0">
+      <h3 className="m-0 text-base font-bold text-[color:var(--text-heading)]">{title}</h3>
+      <ul className="m-0 mt-2 grid list-none gap-2 p-0 text-sm font-medium leading-6 text-[color:var(--text-muted)]">
         {items.map((item) => (
           <li key={item} className="flex gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--clinical-accent)]" aria-hidden />
+            <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--clinical-accent)]" aria-hidden />
             {item}
           </li>
         ))}
@@ -81,239 +72,187 @@ export function FormulationMechanismPage({ mechanism }: { mechanism: Formulation
         }
       />
       <FormulationPageShell>
-        <section
-          id="formulation-overview"
-          className={cn(inPageAnchor, "grid gap-5 border-b border-[color:var(--border)] pb-5")}
-        >
-          <InformationPageHeader
-            eyebrow="Formulation mechanism"
-            title={mechanism.name}
-            subtitle={mechanism.definition}
-            icon={Network}
-            badges={
-              <>
-                <MechanismBadge />
-                <RecordReviewBadge state={reviewState} />
-                <MechanismDomainChips values={mechanism.domains} />
-              </>
-            }
+        <RecordBody>
+          <section id="formulation-overview" className={inPageAnchor}>
+            <RecordIntro
+              eyebrow="Formulation mechanism"
+              title={mechanism.name}
+              line={mechanism.definition}
+              tags={
+                <>
+                  <MechanismBadge />
+                  <RecordReviewBadge state={reviewState} />
+                  <MechanismDomainChips values={mechanism.domains} />
+                </>
+              }
+              actions={
+                <Link
+                  href={compareRecordsHref("/formulation/compare", mechanism.id, primaryRelated?.id)}
+                  className={buttonFaceClass({ variant: "secondary" })}
+                >
+                  <GitCompareArrows className="h-4 w-4 shrink-0" aria-hidden />
+                  Compare
+                </Link>
+              }
+            />
+          </section>
+
+          <RecordGlance
+            id="formulation-what-matters-now"
+            titleId="formulation-what-matters-now-label"
+            facts={[
+              { label: "Core process", value: mechanism.coreProcess, wide: true },
+              { label: "Maintaining cycle", value: mechanism.maintainingCycles[0], wide: true },
+              { label: "Patient language", value: `“${mechanism.patientPhrases[0]}”`, wide: true },
+              { label: "Treatment leverage", value: mechanism.treatmentLeverage, wide: true },
+            ]}
           />
-        </section>
 
-        <section
-          id="formulation-what-matters-now"
-          aria-labelledby="formulation-what-matters-now-label"
-          className={cn(formulationCard, inPageAnchor, "overflow-hidden")}
-        >
-          <div className="border-b border-[color:var(--border)] px-4 py-2.5 sm:px-5">
-            <p id="formulation-what-matters-now-label" className={eyebrowText}>
-              What matters now
-            </p>
-          </div>
-          <div className="grid divide-y divide-[color:var(--border)] sm:grid-cols-2 sm:divide-x sm:divide-y-0 xl:grid-cols-4">
-            <RecordFact icon={Network} label="Core process" body={mechanism.coreProcess} />
-            <RecordFact icon={Waypoints} label="Maintaining cycle" body={mechanism.maintainingCycles[0]} />
-            <RecordFact icon={MessageSquareQuote} label="Patient language" body={`“${mechanism.patientPhrases[0]}”`} />
-            <RecordFact icon={Target} label="Treatment leverage" body={mechanism.treatmentLeverage} />
-          </div>
-        </section>
+          {/* The record's own caveats, directly after At a glance and in full:
+              the limits that belong to this mechanism, not a generic note. */}
+          {mechanism.caveats.length ? (
+            <RecordCautions title={<span id="formulation-caveats-label">Caveats for this record</span>}>
+              <RecordBulletList items={mechanism.caveats} tone="warning" />
+            </RecordCautions>
+          ) : null}
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_21rem]">
-          <div className="grid min-w-0 gap-5">
+          <section id="formulation-fit" className={cn(inPageAnchor, "flex min-w-0 flex-col gap-7")}>
             <SectionHeading
               eyebrow="Fit, function, and alternatives"
               title="Test the mechanism against the case"
               body="Use sequence, function, patient language, and disconfirming evidence to decide whether this hypothesis adds explanatory value."
             />
+            <RecordSection title="When this fits" headingLevel="h3">
+              <RecordBulletList items={mechanism.fitIndicators} />
+            </RecordSection>
+            <RecordSection title="When this may not fit" headingLevel="h3">
+              <RecordBulletList items={mechanism.poorFitIndicators} />
+            </RecordSection>
+            <RecordSection title="Clinical clues" headingLevel="h3">
+              <RecordBulletList items={mechanism.clinicalClues} />
+            </RecordSection>
+            <RecordSection title="Patient language" headingLevel="h3">
+              <RecordBulletList items={mechanism.patientPhrases.map((item) => `“${item}”`)} />
+            </RecordSection>
+          </section>
 
-            <section id="formulation-fit" className={cn(formulationCard, inPageAnchor, "overflow-hidden")}>
-              <GuidanceSection
-                icon={Check}
-                title="When this fits"
-                items={mechanism.fitIndicators}
-                tone="success"
-                open
-              />
-              <GuidanceSection
-                icon={ShieldAlert}
-                title="When this may not fit"
-                items={mechanism.poorFitIndicators}
-                tone="warning"
-              />
-              <GuidanceSection icon={CircleHelp} title="Clinical clues" items={mechanism.clinicalClues} />
-              <GuidanceSection
-                icon={MessageSquareQuote}
-                title="Patient language"
-                items={mechanism.patientPhrases.map((item) => `“${item}”`)}
-              />
-            </section>
+          <RecordSection id="formulation-five-ps" title="Predisposing, precipitating, and perpetuating factors">
+            <div className="grid gap-5 md:grid-cols-3">
+              <FactorColumn title="Predisposing" items={mechanism.predisposing} />
+              <FactorColumn title="Precipitating" items={mechanism.precipitating} />
+              <FactorColumn title="Perpetuating" items={mechanism.perpetuating} />
+            </div>
+          </RecordSection>
 
-            <section id="formulation-five-ps" className={cn(formulationCard, inPageAnchor, "overflow-hidden")}>
-              <div className="border-b border-[color:var(--border)] px-4 py-3 sm:px-5">
-                <p className={eyebrowText}>Across the formulation</p>
-                <h2 className="mt-1 text-lg font-extrabold text-[color:var(--text-heading)]">
-                  Predisposing, precipitating, and perpetuating factors
-                </h2>
-              </div>
-              <div className="grid divide-y divide-[color:var(--border)] md:grid-cols-3 md:divide-x md:divide-y-0">
-                <FactorColumn title="Predisposing" items={mechanism.predisposing} />
-                <FactorColumn title="Precipitating" items={mechanism.precipitating} />
-                <FactorColumn title="Perpetuating" items={mechanism.perpetuating} />
-              </div>
-            </section>
+          <RecordSection title="Short case example">
+            <p className="m-0 text-sm font-medium leading-6 text-[color:var(--text-muted)]">{mechanism.caseExample}</p>
+          </RecordSection>
 
-            <section className="grid gap-4 md:grid-cols-2">
-              <article className={cn(formulationCard, "grid content-start gap-3 p-4 sm:p-5")}>
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  <Sparkles className="h-5 w-5" aria-hidden />
-                </span>
-                <div>
-                  <p className={eyebrowText}>Short case example</p>
-                  <p className="mt-2 text-sm font-medium leading-6 text-[color:var(--text-muted)]">
-                    {mechanism.caseExample}
-                  </p>
+          <RecordSection title="Formulation language">
+            <p className="m-0 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
+              {mechanism.exampleSentence}
+            </p>
+          </RecordSection>
+
+          <RecordSection id="formulation-treatment" title="Translate the hypothesis into a testable target">
+            <ul className="m-0 grid list-none gap-2 p-0 text-sm font-medium leading-6 text-[color:var(--text-muted)] sm:grid-cols-2">
+              {mechanism.treatmentImplications.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <Check className="mt-1 h-4 w-4 shrink-0 text-[color:var(--success)]" aria-hidden />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="m-0 mt-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
+              {mechanism.treatmentTargetExample}
+            </p>
+          </RecordSection>
+
+          {/* Whether anyone has checked what the mechanism does. */}
+          <RecordReviewNote state={reviewState} />
+
+          <RecordSection title="Quick reference">
+            <dl className="m-0 divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
+              {[
+                ["Common symptoms", mechanism.symptoms.slice(0, 4).join(" · ")],
+                ["Clinical contexts", mechanism.diagnosticContexts.slice(0, 3).join(" · ")],
+                ["Development", mechanism.development],
+                ["Formulation use", mechanism.formulationUse],
+              ].map(([label, body]) => (
+                <div key={label} className="py-3">
+                  <dt className="text-sm font-bold text-[color:var(--text-heading)]">{label}</dt>
+                  <dd className="m-0 mt-1 text-sm font-medium leading-6 text-[color:var(--text-muted)]">{body}</dd>
                 </div>
-              </article>
-              <article className={cn(formulationCard, "grid content-start gap-3 p-4 sm:p-5")}>
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  <Route className="h-5 w-5" aria-hidden />
-                </span>
-                <div>
-                  <p className={eyebrowText}>Formulation language</p>
-                  <p className="mt-2 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
-                    {mechanism.exampleSentence}
-                  </p>
-                </div>
-              </article>
-            </section>
+              ))}
+            </dl>
+          </RecordSection>
 
-            <section id="formulation-treatment" className={cn(formulationCard, inPageAnchor, "grid gap-4 p-4 sm:p-5")}>
-              <div className="flex items-start gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  <Target className="h-5 w-5" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className={eyebrowText}>Treatment implications</p>
-                  <h2 className="mt-1 text-lg font-extrabold text-[color:var(--text-heading)]">
-                    Translate the hypothesis into a testable target
-                  </h2>
-                </div>
-              </div>
-              <ul className="grid gap-2 text-sm font-medium leading-6 text-[color:var(--text-muted)] sm:grid-cols-2">
-                {mechanism.treatmentImplications.map((item) => (
-                  <li key={item} className="flex gap-2">
-                    <Check className="mt-1 h-4 w-4 shrink-0 text-[color:var(--success)]" aria-hidden />
-                    {item}
-                  </li>
+          <RecordSection title="Add to a draft">
+            <p className="m-0 text-base font-bold leading-7 text-[color:var(--text-heading)]">
+              {mechanism.exampleSentence}
+            </p>
+            <Link
+              href={`/formulation/builder?mechanism=${mechanism.id}`}
+              className={cn(buttonFaceClass({ variant: "primary", block: true }), "mt-3")}
+            >
+              Use in formulation
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </RecordSection>
+
+          {related.length ? (
+            <RecordSection title="Compare next">
+              <div className="divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
+                {related.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={compareRecordsHref("/formulation/compare", mechanism.id, item.id)}
+                    className="flex min-h-14 items-center justify-between gap-3 py-2.5 text-sm font-semibold text-[color:var(--text-heading)] hover:text-[color:var(--clinical-accent)]"
+                  >
+                    {item.name}
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
                 ))}
-              </ul>
-              <p className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-sm font-semibold leading-6 text-[color:var(--text-heading)]">
-                {mechanism.treatmentTargetExample}
-              </p>
-            </section>
-
-            {/* The record's own caveats were held in the data and rendered
-                nowhere: every mechanism showed the same generic footer note
-                instead of the limits that belong to it. The record's review
-                state was held and dropped the same way — the caveats say what
-                the mechanism cannot tell you, this says whether anyone has
-                checked what it does. */}
-            <MechanismCaveats items={mechanism.caveats} />
-            <RecordReviewNote state={reviewState} />
-          </div>
-
-          <aside className="grid content-start gap-4 xl:sticky xl:top-20">
-            <section className={cn(formulationCard, "overflow-hidden")}>
-              <div className="border-b border-[color:var(--border)] px-4 py-3">
-                <p className={eyebrowText}>Quick reference</p>
               </div>
-              <dl className="divide-y divide-[color:var(--border)]">
-                {[
-                  ["Common symptoms", mechanism.symptoms.slice(0, 4).join(" · ")],
-                  ["Clinical contexts", mechanism.diagnosticContexts.slice(0, 3).join(" · ")],
-                  ["Development", mechanism.development],
-                  ["Formulation use", mechanism.formulationUse],
-                ].map(([label, body]) => (
-                  <div key={label} className="px-4 py-3">
-                    <dt className="text-xs font-extrabold text-[color:var(--text-heading)]">{label}</dt>
-                    <dd className="mt-1 text-xs font-medium leading-5 text-[color:var(--text-muted)]">{body}</dd>
-                  </div>
+            </RecordSection>
+          ) : null}
+
+          {sources.length ? (
+            <details className="group border-y border-[color:var(--border)]">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 py-3 [&::-webkit-details-marker]:hidden">
+                <span className="flex-1 text-lg font-bold tracking-tight text-[color:var(--text-heading)]">
+                  Evidence notes
+                </span>
+                <ChevronDown
+                  className="h-4 w-4 text-[color:var(--decoration-soft)] transition group-open:rotate-180"
+                  aria-hidden
+                />
+              </summary>
+              <div className="grid gap-2 pb-4">
+                {sources.map((source) => (
+                  <a
+                    key={source.id}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-semibold leading-6 text-[color:var(--clinical-accent)] hover:underline"
+                  >
+                    {source.title}
+                  </a>
                 ))}
-              </dl>
-            </section>
+                {/* The citations the 2026-09-16 patch set attached to this
+                    record's definition and candidate process, rendered where
+                    the claim is rather than as Markdown inside a text field. */}
+                <EvidenceList evidence={mechanism.evidence} label="Teaching" reviewed={reviewState.reviewed} />
+                <p className="mt-1 text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+                  Teaching references only. Check current local guidance and clinical applicability.
+                </p>
+              </div>
+            </details>
+          ) : null}
 
-            <section className={cn(formulationCard, "p-4")}>
-              <p className={eyebrowText}>Add to a draft</p>
-              <p className="mt-2 text-sm font-bold leading-6 text-[color:var(--text-heading)]">
-                {mechanism.exampleSentence}
-              </p>
-              <Link
-                href={`/formulation/builder?mechanism=${mechanism.id}`}
-                className="mt-3 inline-flex min-h-tap w-full items-center justify-center gap-2 rounded-lg bg-[color:var(--command)] px-3 text-sm font-semibold text-[color:var(--command-contrast)]"
-              >
-                Use in formulation
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </section>
-
-            {related.length ? (
-              <section className={cn(formulationCard, "overflow-hidden")}>
-                <div className="border-b border-[color:var(--border)] px-4 py-3">
-                  <p className={eyebrowText}>Compare next</p>
-                </div>
-                <div className="divide-y divide-[color:var(--border)]">
-                  {related.map((item) => (
-                    <Link
-                      key={item.id}
-                      href={compareRecordsHref("/formulation/compare", mechanism.id, item.id)}
-                      className="flex min-h-14 items-center justify-between gap-3 px-4 py-2.5 text-sm font-bold text-[color:var(--text-heading)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--clinical-accent)]"
-                    >
-                      {item.name}
-                      <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {sources.length ? (
-              <details className={cn(formulationCard, "group overflow-hidden")}>
-                <summary className="flex min-h-14 cursor-pointer list-none items-center gap-2 px-4 py-3 [&::-webkit-details-marker]:hidden">
-                  <BookOpenCheck className="h-4 w-4 text-[color:var(--clinical-accent)]" aria-hidden />
-                  <span className="flex-1 text-xs font-extrabold uppercase tracking-wide text-[color:var(--text-muted)]">
-                    Evidence notes
-                  </span>
-                  <ChevronDown
-                    className="h-4 w-4 text-[color:var(--decoration-soft)] transition group-open:rotate-180"
-                    aria-hidden
-                  />
-                </summary>
-                <div className="grid gap-2 border-t border-[color:var(--border)] p-4">
-                  {sources.map((source) => (
-                    <a
-                      key={source.id}
-                      href={source.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-semibold leading-5 text-[color:var(--clinical-accent)] hover:underline"
-                    >
-                      {source.title}
-                    </a>
-                  ))}
-                  {/* The citations the 2026-09-16 patch set attached to this
-                      record's definition and candidate process, rendered where
-                      the claim is rather than as Markdown inside a text field. */}
-                  <EvidenceList evidence={mechanism.evidence} label="Teaching" reviewed={reviewState.reviewed} />
-                  <p className="mt-1 text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
-                    Teaching references only. Check current local guidance and clinical applicability.
-                  </p>
-                </div>
-              </details>
-            ) : null}
-          </aside>
-        </div>
-
-        <FormulationSafetyNote id="formulation-evidence" className={inPageAnchor} />
+          <FormulationSafetyNote id="formulation-evidence" className={inPageAnchor} />
+        </RecordBody>
       </FormulationPageShell>
     </>
   );

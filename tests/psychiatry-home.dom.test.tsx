@@ -121,6 +121,11 @@ describe("PsychiatryHome", () => {
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Form 1A")).toBeTruthy();
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Opened once on this phone")).toBeTruthy();
 
+    // With something in it, Continue sits at the top of the content, before "For a shift".
+    const continueCard = screen.getByTestId("psychiatry-card-continue");
+    const shiftCard = screen.getByTestId("psychiatry-card-shift");
+    expect(continueCard.compareDocumentPosition(shiftCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
     fireEvent.click(screen.getByTestId("psychiatry-continue-clear"));
     expect(screen.queryByTestId("psychiatry-resume")).toBeNull();
   });
@@ -139,10 +144,19 @@ describe("PsychiatryHome", () => {
       "/therapy-compass/recommend",
       "/differentials/presentations",
       "/dsm/compare",
-      appModeHomeHref("first-nations"),
     ]) {
       expect(hrefs).toContain(href);
     }
+    // First Nations is listed once, in Sections, not again in Builders.
+    expect(hrefs).not.toContain(appModeHomeHref("first-nations"));
+    expect(
+      within(screen.getByRole("list", { name: "Psychiatry sections" }))
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href") === appModeHomeHref("first-nations")),
+    ).toHaveLength(1);
+    // One link to the plain list of every tool.
+    expect(screen.getAllByRole("link", { name: "All tools" })).toHaveLength(1);
+    expect(screen.getByTestId("psychiatry-all-tools")).toHaveAttribute("href", "/tools");
     // The Act, the MHA clock and Safety plan each sit once, in their own sections.
     expect(screen.getByTestId("psychiatry-mha-act")).toHaveAttribute("href", "/forms/act");
     expect(screen.getByTestId("psychiatry-shift-mha-clock")).toHaveAttribute("href", "/psychiatry/mha-clock");
