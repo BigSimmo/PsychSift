@@ -111,6 +111,8 @@ import {
   sourceBackedGenerationTimeoutAnswer,
   strongReasoningEffortForQueryClass,
 } from "@/lib/rag/rag-extractive-answer";
+import { contextPackAdmissionMatches } from "./rag-context-admission";
+import { withAdmissionDischargeSideEvidence } from "./rag-admission-discharge-side-evidence";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
 export {
@@ -2284,6 +2286,7 @@ async function answerQuestionWithScopeUncoalesced(
   const results = annotateSearchResults(answerFocusQuery, answerRanking.rankedResults);
   const {
     crossDocumentPlan,
+    eligibleResults: eligibleAnswerResults,
     rawResults: rawAnswerInputResults,
     routeSelection,
   } = selectAnswerRouteEvidence({
@@ -2318,6 +2321,12 @@ async function answerQuestionWithScopeUncoalesced(
     ? await packModelContextEvidence(routeSelection, packGovernedContext)
     : routeSelection;
   const answerInputResults = packedRouteSelection.results;
+  // Side-evidence top-up candidates must pass the same admission receipt the governed packer requires.
+  const sideEvidenceCandidates = useGovernedContextPacking
+    ? eligibleAnswerResults.filter((result) =>
+        contextPackAdmissionMatches(result, contextPackAccessScope, args.ragRequestContext!.snapshot),
+      )
+    : eligibleAnswerResults;
   let coverageSelections: CoverageEvidenceSelection[] = packedRouteSelection.coverageSelections;
   // A rollout choice does not grant missing source-role or corpus authority.
   // Legacy admitted evidence keeps its established verified answer contract;
@@ -2343,7 +2352,13 @@ async function answerQuestionWithScopeUncoalesced(
   const emptyPanel = buildSmartPanel(answerFocusQuery, []);
   const relatedDocumentsPromise = buildRelatedDocumentsSafe({
     query: answerFocusQuery,
-    results: answerInputResults,
+    // Include any side-evidence top-up so a cited stage keeps its related-document entry.
+    results: withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected: answerInputResults,
+      candidates: sideEvidenceCandidates,
+    }),
     ownerId: args.ownerId,
   });
   const routingStartedAt = Date.now();
@@ -2372,10 +2387,18 @@ async function answerQuestionWithScopeUncoalesced(
     results: answerInputResults,
     answerMode: routeFromRouting.mode,
   });
+  // Same top-up as the generation fallback below, so the source-bound
+  // admission/discharge extractive-first answer can fire before generation.
+  const extractiveFirstInputResults = withAdmissionDischargeSideEvidence({
+    query: args.query,
+    queryClass,
+    selected: answerInputResults,
+    candidates: sideEvidenceCandidates,
+  });
   const validatedExtractiveShortCircuit = chooseValidatedExtractiveShortCircuit({
     query: args.query,
     queryClass,
-    results: answerInputResults,
+    results: extractiveFirstInputResults,
     route: routeFromRouting,
     sourceBacked: relevance.isSourceBacked,
     gateStatus: initialRetrievalDiagnostics.gateStatus,
@@ -2784,8 +2807,8 @@ async function answerQuestionWithScopeUncoalesced(
       total_latency_ms: Date.now() - startedAt,
     };
     const extractiveContextResults = validatedExtractiveShortCircuit?.resultIds?.length
-      ? answerInputResults.filter((result) => validatedExtractiveShortCircuit.resultIds?.includes(result.id))
-      : answerInputResults;
+      ? extractiveFirstInputResults.filter((result) => validatedExtractiveShortCircuit.resultIds?.includes(result.id))
+      : extractiveFirstInputResults;
     const extractiveContextArtifacts = buildSelectedEvidenceArtifacts(answerFocusQuery, extractiveContextResults);
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, extractiveContextResults);
     const builtSourceSafeExtractiveAnswer = buildExtractiveAnswer({
@@ -3714,6 +3737,12 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         throw relatedDocumentsError;
       }
     }
+    generationFallbackResults = withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected: generationFallbackResults,
+      candidates: sideEvidenceCandidates,
+    });
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, generationFallbackResults);
     // #231: retain the specific quality-gate verdict alongside the stable degraded reason below.
     const generationQualityFailure = initialGenerationQualityFailure ?? generationQualityFailureDiagnostics(error);
