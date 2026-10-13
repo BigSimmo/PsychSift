@@ -27,15 +27,7 @@ export type SafeNumberRecord = {
   readonly updatedAt?: string;
   readonly updated_at?: string;
   readonly grid?: SafeNumberGrid;
-  readonly needs?: readonly {
-    readonly id: string;
-    readonly weekday: number | null;
-    readonly date: string | null;
-    readonly kind: string;
-    readonly grade: string | null;
-    readonly siteId: string | null;
-    readonly needed: number;
-  }[];
+  readonly needs?: Parameters<typeof safeNumberGrid>[0];
 };
 
 export type SafeNumberEditorProps = {
