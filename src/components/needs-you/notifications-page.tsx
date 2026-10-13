@@ -37,7 +37,8 @@ export function NotificationsPage() {
           <PageTitleUnderBand className="text-2xl font-bold tracking-tight text-[color:var(--work-ink)]">
             Notifications
           </PageTitleUnderBand>
-          <p className="text-sm text-[color:var(--text-muted)]">{description}</p>
+          {/* With the band on screen its line above the title already says this (design audit D24). */}
+          {bandShown ? null : <p className="text-sm text-[color:var(--text-muted)]">{description}</p>}
         </header>
         <NotificationCentreBody feed={feed} active onNavigate={stay} />
       </div>

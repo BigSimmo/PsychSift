@@ -24,6 +24,7 @@ import {
   type OnCallLinkedDocument,
   onCallEntryIsEditable,
 } from "@/lib/on-call/entry-model";
+import { ON_CALL_DEMO_PLAYBOOK_TRIGGER } from "@/lib/on-call/demo-playbook";
 import { playbookFormReferences } from "@/lib/on-call/playbook-forms";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { formatClinicalDate } from "@/lib/source-metadata";
@@ -248,7 +249,9 @@ function PlaybookCard({
       >
         <div className="min-w-0">
           <h3 className="break-words text-sm font-semibold text-[color:var(--text)]">{entry.title}</h3>
-          {details?.trigger ? <span className={cn("mt-0.5 block text-xs", textMuted)}>{details.trigger}</span> : null}
+          {details?.trigger && details.trigger !== ON_CALL_DEMO_PLAYBOOK_TRIGGER ? (
+            <span className={cn("mt-0.5 block text-xs", textMuted)}>{details.trigger}</span>
+          ) : null}
         </div>
         <span className="flex shrink-0 items-center gap-1.5">
           <OnCallStaleFlag freshness={freshness} />
@@ -394,8 +397,18 @@ export function OnCallPlaybookSection({
     />
   );
 
+  // The demo's cards share one trigger line: said once here, not on every card (design audit D24).
+  const demoTrigger = sorted.some(
+    (entry) => parsePlaybookDetails(entry.details)?.trigger === ON_CALL_DEMO_PLAYBOOK_TRIGGER,
+  );
+
   return (
     <div data-testid={testId} className="grid gap-5">
+      {demoTrigger ? (
+        <p className={cn("m-0 text-xs", textMuted)} data-testid="on-call-playbook-demo-note">
+          {ON_CALL_DEMO_PLAYBOOK_TRIGGER}
+        </p>
+      ) : null}
       {/* Two groups or one flat list, and the headings only exist in the first
           case. A single heading over the whole page is furniture — the same
           rule `onCallEntryGroups` applies everywhere else in this mode, and the
