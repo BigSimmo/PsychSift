@@ -77,23 +77,20 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("AdminTodayPage", () => {
-  it("says when the dates on screen are the example corpus", () => {
+  it("draws no example notice over the example corpus (owner decision 10 Oct 2026)", () => {
     state.demoMode = true;
     render(<AdminTodayPage now={NOW} />);
-    expect(screen.getByTestId("admin-today-demo-notice")).toHaveTextContent(
-      "Example records. These dates are made up, and nothing here is your own.",
-    );
+    expect(screen.queryByTestId("admin-today-demo-notice")).toBeNull();
+    expect(screen.queryByText(/made up/)).toBeNull();
   });
 
-  it("leads to Contract end, the Leave wallet and the starter pack from a Work and leave group", () => {
+  // Simplify plan, 12 Oct 2026: Today is about dates, so Work and leave and Pay and hours left it. Contract
+  // end, the Leave wallet, the starter pack and Overtime all stay one tap away in the band's More.
+  it("keeps Work and leave and the Overtime row off Today", () => {
+    state.entries = [registration];
     render(<AdminTodayPage now={NOW} />);
-    const group = screen.getByTestId("admin-work-and-leave");
-    expect(within(group).getByRole("heading", { name: "Work and leave" })).toBeInTheDocument();
-    expect(
-      within(group)
-        .getAllByRole("link")
-        .map((link) => link.getAttribute("href")),
-    ).toEqual(["/admin/contract", "/admin/leave", "/admin/new-job/starter"]);
+    expect(screen.queryByTestId("admin-work-and-leave")).toBeNull();
+    expect(screen.queryByTestId("admin-today-overtime")).toBeNull();
   });
 
   it("does not call the reader's own dates an example", () => {
@@ -187,9 +184,10 @@ describe("AdminTodayPage", () => {
     state.entries = [registration, wwc];
     render(<AdminTodayPage now={NOW} />);
     const card = screen.getByTestId("admin-today-renew-next");
-    expect(within(card).getByText("Medical registration")).toBeTruthy();
-    // Amended for the work-mode redesign, owner request 6 Oct 2026: the hero says "Renew by" with the weekday.
-    expect(within(card).getByText("Renew by Thu 15 Oct · in 2 weeks")).toBeTruthy();
+    // Amended for the Ward Flow review, owner approved 12 Oct 2026: the title answers the page with the
+    // same count words as Coming up, and the item moves to the line under it, still saying "Renew by".
+    expect(within(card).getByText(/\bdue in 90 days$/)).toBeTruthy();
+    expect(within(card).getByText("Next: Medical registration · Renew by Thu 15 Oct · in 2 weeks")).toBeTruthy();
     expect(screen.getByTestId("admin-today-renew-next-window")).toBeTruthy();
     const renewed = within(card).getByTestId("admin-today-renew-next-renewed");
     expect(renewed.getAttribute("href")).toBe(`/admin/renewals#on-call-entry-${registration.id}`);
@@ -414,13 +412,12 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     render(<AdminTodayPage now={NOW} />);
     const empty = screen.getByTestId("admin-today-coming-up-empty");
     expect(empty.textContent).toContain("No recorded dates in the next 12 months");
-    expect(within(empty).getByRole("link").getAttribute("href")).toBe("/admin/renewals");
+    expect(within(empty).getByRole("link", { name: "Open Renewals" }).getAttribute("href")).toBe("/admin/renewals");
   });
 
-  // Amended for the work-mode redesign, owner request 6 Oct 2026: Josh's locked
-  // mockup puts the three counts straight after Needs you, then Coming up, New
-  // job, Pinned and Requirements.
-  it("orders the page Renew next, Needs you, At a glance, Coming up, New job, Requirements", () => {
+  // Amended for the work-mode redesign, owner request 6 Oct 2026, then the simplify plan of 12 Oct 2026:
+  // the three counts became the top strip of Coming up, so they follow its heading.
+  it("orders the page Renew next, Needs you, Coming up with its counts, New job, Requirements", () => {
     const step = onCallEntryFixture({
       section: "logistics",
       title: "Sign and return your contract",
@@ -444,28 +441,28 @@ describe("AdminTodayPage redesign (Admin proposal)", () => {
     expect(order).toEqual([
       "admin-today-renew-next",
       "admin-today-needs-you",
-      "admin-today-at-a-glance",
       "admin-today-coming-up",
+      "admin-today-at-a-glance",
       "admin-today-new-job",
       "admin-today-requirements",
     ]);
-    // Two columns from lg: act-on (Renew next, Needs you, the counts) on the left, what is ahead on the right.
+    // Two columns from lg: act-on (Renew next, Needs you) on the left, what is ahead (the dates and their counts) on the right.
     const act = ready.querySelector('[data-today-column="act"]') as HTMLElement;
     const ahead = ready.querySelector('[data-today-column="ahead"]') as HTMLElement;
     expect(act.parentElement?.className).toContain("lg:grid-cols-2");
     expect(within(act).getByTestId("admin-today-needs-you")).toBeTruthy();
-    expect(within(act).getByTestId("admin-today-at-a-glance")).toBeTruthy();
+    expect(within(act).queryByTestId("admin-today-at-a-glance")).toBeNull();
     expect(within(ahead).getByTestId("admin-today-coming-up")).toBeTruthy();
-    expect(within(ahead).queryByTestId("admin-today-at-a-glance")).toBeNull();
+    expect(within(screen.getByTestId("admin-today-coming-up")).getByTestId("admin-today-at-a-glance")).toBeTruthy();
     // The greeting stays the page's only h1.
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
   });
 
-  it("shapes the loading skeleton like the page: the renew card, the count row, and two modules", () => {
+  it("shapes the loading skeleton like the page: the renew card, then Needs you, then Coming up with its counts", () => {
     state.loading = true;
     render(<AdminTodayPage now={NOW} />);
     expect(screen.getByTestId("admin-today-loading-renew-next")).toBeTruthy();
-    expect(screen.getByTestId("admin-today-loading-at-a-glance").children).toHaveLength(3);
+    expect(screen.queryByTestId("admin-today-loading-at-a-glance")).toBeNull();
     expect(screen.getByTestId("admin-today-loading-needs-you")).toBeTruthy();
     expect(screen.getByTestId("admin-today-loading-coming-up")).toBeTruthy();
   });
@@ -498,13 +495,6 @@ describe("AdminTodayPage work-mode additions", () => {
     } finally {
       window.localStorage.removeItem(adminPinsStorageKey);
     }
-  });
-
-  it("links the Overtime row to Roster's extra time view", () => {
-    state.entries = [registration];
-    render(<AdminTodayPage now={NOW} />);
-    const link = screen.getByTestId("admin-today-overtime-link");
-    expect(link.getAttribute("href")).toBe("/roster?view=hours");
   });
 
   it("offers Add a renewal in the dock only when the reader can write", () => {

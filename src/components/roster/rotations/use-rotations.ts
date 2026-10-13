@@ -39,7 +39,8 @@ export type RotationActionResult = { readonly ok: true } | { readonly ok: false;
 export type RotationActions = {
   savePreference(roundId: string, ranking: readonly string[], submit: boolean): Promise<RotationActionResult>;
   withdrawPreference(roundId: string): Promise<RotationActionResult>;
-  createRound(setup: RoundSetup): Promise<RotationActionResult & { readonly roundId?: string }>;
+  /** `serviceId` picks the team when the reader runs more than one; left out, the first team. */
+  createRound(setup: RoundSetup, serviceId?: string): Promise<RotationActionResult & { readonly roundId?: string }>;
   editRound(roundId: string, setup: RoundSetup): Promise<RotationActionResult>;
   openRound(roundId: string): Promise<RotationActionResult>;
   closeRound(roundId: string): Promise<RotationActionResult>;
@@ -67,7 +68,9 @@ export type RotationsRead = {
   /** Rounds the reader runs, newest first. Empty unless they can manage. */
   readonly managed: readonly ManagedRound[];
   readonly canManage: boolean;
-  /** For the new-round form: the team the reader manages. */
+  /** For the new-round form: every team the reader runs rounds for, first one first. */
+  readonly teams: readonly RotationTeam[];
+  /** The first of `teams`. */
   readonly team: RotationTeam | null;
   readonly actions: RotationActions;
   readonly retry: () => void;
@@ -161,6 +164,7 @@ type LivePayload = {
   readonly mine: MyRound[];
   readonly managed: ManagedRound[];
   readonly canManage: boolean;
+  readonly teams?: RotationTeam[];
   readonly team: RotationTeam | null;
 };
 
@@ -313,8 +317,12 @@ export function useRotations({ enabled = true }: { readonly enabled?: boolean } 
     return {
       savePreference: (roundId, ranking, submit) => act(roundId, { action: "save-preference", ranking, submit }),
       withdrawPreference: (roundId) => act(roundId, { action: "withdraw-preference" }),
-      async createRound(setup) {
-        const result = await postLive("/api/roster/rotations", { action: "create", setup });
+      async createRound(setup, serviceId) {
+        const result = await postLive("/api/roster/rotations", {
+          action: "create",
+          setup,
+          ...(serviceId ? { serviceId } : {}),
+        });
         if (result.ok) retry();
         return result;
       },
@@ -347,6 +355,7 @@ export function useRotations({ enabled = true }: { readonly enabled?: boolean } 
     if (!stored) return { ...EMPTY, status: "loading", source: "example", actions: exampleActions, retry };
     const rounds = [...stored.rounds].sort(byNewest);
     const first = rounds[0]?.round;
+    const team = first ? { serviceId: first.serviceId, name: first.teamName, people: first.people } : null;
     return {
       status: "ready",
       source: "example",
@@ -355,7 +364,8 @@ export function useRotations({ enabled = true }: { readonly enabled?: boolean } 
         .map((round) => myRoundView(round, stored.selfId)),
       managed: rounds,
       canManage: true,
-      team: first ? { serviceId: first.serviceId, name: first.teamName, people: first.people } : null,
+      teams: team ? [team] : [],
+      team,
       actions: exampleActions,
       retry,
     };
@@ -368,10 +378,11 @@ export function useRotations({ enabled = true }: { readonly enabled?: boolean } 
     mine: live.data.mine,
     managed: [...live.data.managed].sort(byNewest),
     canManage: live.data.canManage,
+    teams: live.data.teams ?? (live.data.team ? [live.data.team] : []),
     team: live.data.team,
     actions: liveActions,
     retry,
   };
 }
 
-const EMPTY = { mine: [], managed: [], canManage: false, team: null } as const;
+const EMPTY = { mine: [], managed: [], canManage: false, teams: [], team: null } as const;

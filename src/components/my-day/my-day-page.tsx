@@ -20,7 +20,7 @@ import { ModeNotice } from "@/components/mode-kit/notice";
 import { useWorkUndoToast } from "@/components/mode-kit/work";
 import { MyDayDashboard, type MyDayDashboardProps } from "@/components/my-day/my-day-dashboard";
 import { useMyDayDeviceState } from "@/components/my-day/my-day-device-state";
-import { listNames, myDayModeLabel, useMyDayNow } from "@/components/my-day/my-day-page-parts";
+import { listNames, myDayModeLabel, myDayUpdatedAgo, useMyDayNow } from "@/components/my-day/my-day-page-parts";
 import {
   QuietFoot,
   QuietLabel,
@@ -169,6 +169,7 @@ function MyDayFullList({
   now,
   checked,
   checkedAt,
+  updated = null,
   missing,
   onBack,
   onRetry,
@@ -179,6 +180,8 @@ function MyDayFullList({
   readonly now: Date;
   readonly checked: readonly string[];
   readonly checkedAt: string | null;
+  /** How old the data is, "4 min ago", for the stamp. */
+  readonly updated?: string | null;
   /** Areas that did not load, for the stamp. */
   readonly missing: readonly string[];
   readonly onBack: () => void;
@@ -318,7 +321,7 @@ function MyDayFullList({
       <QuietStamp tone={checked.length === 0 ? "off" : missing.length > 0 ? "warn" : "ok"} testId="my-day-all-stamp">
         {checked.length === 0
           ? "Nothing checked yet"
-          : `Checked ${checkedAt ?? "just now"} · ${
+          : `Updated ${updated ?? (checkedAt ? `at ${checkedAt}` : "just now")} · ${
               missing.length > 0
                 ? `${listNames(missing)} not loaded`
                 : `all ${checked.length} ${checked.length === 1 ? "area" : "areas"} loaded`
@@ -411,11 +414,23 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   // answer changes, never on the minute tick.
   // A plain-text summary of what answered, so a re-read that changes nothing keeps the time.
   const loadedKey = `${state.status}|${state.sources.map((source) => source.status).join(",")}|${state.items.length}`;
-  const [loaded, setLoaded] = useState<{ readonly key: string; readonly at: string | null }>(() => ({
+  const [loaded, setLoaded] = useState<{
+    readonly key: string;
+    readonly at: string | null;
+    readonly atMs: number | null;
+  }>(() => ({
     key: loadedKey,
     at: state.status === "ready" ? perthTimeOf(now) : null,
+    atMs: state.status === "ready" ? now.getTime() : null,
   }));
-  if (loaded.key !== loadedKey) setLoaded({ key: loadedKey, at: state.status === "ready" ? perthTimeOf(now) : null });
+  if (loaded.key !== loadedKey) {
+    const ready = state.status === "ready";
+    // The minute tick can be up to a minute stale, so record the real moment unless a clock is injected.
+    const answered = nowProp ?? new Date();
+    setLoaded({ key: loadedKey, at: ready ? perthTimeOf(answered) : null, atMs: ready ? answered.getTime() : null });
+  }
+  // "Updated 4 min ago": re-read on the minute tick, so the age keeps moving while the time stays.
+  const updated = loaded.at ? myDayUpdatedAgo(now, loaded.atMs, loaded.at) : null;
   // The full list has its own address, so the phone's Back returns to the dashboard.
   const searchParams = useSearchParams();
   const view: "dashboard" | "all" = searchParams?.get("view") === "all" ? "all" : "dashboard";
@@ -443,8 +458,11 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
     .filter((mode) => state.sources.some((source) => source.mode === mode && source.status === "ready"))
     .map(myDayModeLabel);
   const myWorkSample = state.sources.some((source) => source.mode === "my-work" && source.sample === true);
-  // Admin's dates and numbers: dropped whole for a signed-in reader if they are invented examples.
-  const adminReal = allowSample || !myWorkSample;
+  // Admin's dates and numbers: dropped whole if they are invented examples. Needs you leaves invented
+  // items out (as the bell does), so a Renewals card of examples beside it would show a passed date while
+  // Needs you said nothing needs you (usefulness audit, 11 Oct 2026). The example day, when switched on,
+  // brings its own renewals and its own matching Needs you rows.
+  const adminReal = !myWorkSample;
   const renewals = adminReal ? (state.renewals ?? NO_RENEWALS) : NO_RENEWALS;
   const helpItems = adminReal ? (state.helpItems ?? NO_HELP) : NO_HELP;
   const demoNote = allowSample && state.demoMode;
@@ -524,7 +542,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <InformationPageShell testId="my-day-main" width="bleed" className="bg-[color:var(--work-wash)]">
       <LazyMyDayNeedsYouReader clock={now} read={feedRead} onChange={setNeedsYou} />
-      <div className={PAGE_BODY} data-testid="my-day-body">
+      <div className={PAGE_BODY} data-testid="my-day-body" data-page-width="wide" data-page-padded="">
         {/* The band names the page; this title is for screen readers and the document outline. */}
         <div data-testid="my-day-header" className="contents">
           <PageTitleUnderBand className="sr-only">My Day</PageTitleUnderBand>
@@ -648,6 +666,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 now={now}
                 checked={checked}
                 checkedAt={loaded.at}
+                updated={updated}
                 missing={failed}
                 onBack={closeFullList}
                 onRetry={state.retry}
@@ -664,11 +683,11 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
                 helpItems={helpItems}
                 checked={checked}
                 checkedAt={loaded.at}
+                updated={updated}
                 incomplete={failed.length > 0}
                 page={page}
                 onShowAll={showAll}
                 onRetry={state.retry}
-                onCustomise={page === "today" ? () => setSheet("customise") : undefined}
                 onRemindMe={openRemindMe}
                 onOpenReminders={() => setSheet("reminders")}
                 pendingReminders={pendingReminders}
@@ -682,18 +701,14 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             ) : null}
 
             {/* One notice at the top at most; the quieter context is one line of small print here. */}
-            {demoNote || notYet.length > 0 ? (
+            {notYet.length > 0 ? (
               <p
                 className="m-0 max-w-reading px-1 text-xs text-[color:var(--text-muted)]"
                 data-testid="my-day-small-print"
               >
-                {demoNote ? <span data-testid="my-day-demo-notice">Example data: made up to look around.</span> : null}
-                {demoNote && notYet.length > 0 ? " " : null}
-                {notYet.length > 0 ? (
-                  <span data-testid="my-day-unavailable-notice">
-                    {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
-                  </span>
-                ) : null}
+                <span data-testid="my-day-unavailable-notice">
+                  {`${listNames(notYet)} ${notYet.length > 1 || rosterUnavailable ? "aren't" : "isn't"} available yet.`}
+                </span>
               </p>
             ) : null}
           </div>

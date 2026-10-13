@@ -341,16 +341,19 @@ async function expectIdlePhoneHomeCentered(page: Page, homeTestId: string) {
         mainOverflowY: main.scrollHeight - main.clientHeight,
       };
     }, homeTestId);
-  await expect.poll(readGeometry, { message: "the idle home, canvas and main must all render" }).not.toBeNull();
-  const geometry = await readGeometry();
-
-  expect(geometry).not.toBeNull();
-  expect(geometry!.docOverflowY).toBeLessThanOrEqual(2);
-  expect(geometry!.mainOverflowY).toBeLessThanOrEqual(2);
-  expect(Math.abs(geometry!.homeMidY - geometry!.canvasMidY)).toBeLessThanOrEqual(
-    Math.max(24, geometry!.canvasHeight * 0.12),
-  );
-  expect(Math.abs(geometry!.homeMidX - geometry!.canvasMidX)).toBeLessThanOrEqual(24);
+  // Retry the whole check on one fresh sample at a time: a read can land mid-swap and see
+  // null, and only a sample that meets every constraint counts, so a server-rendered tree
+  // replaced at hydration cannot pass on stale coordinates.
+  await expect(async () => {
+    const geometry = await readGeometry();
+    expect(geometry, "the idle home, canvas and main must all render").not.toBeNull();
+    expect(geometry!.docOverflowY).toBeLessThanOrEqual(2);
+    expect(geometry!.mainOverflowY).toBeLessThanOrEqual(2);
+    expect(Math.abs(geometry!.homeMidY - geometry!.canvasMidY)).toBeLessThanOrEqual(
+      Math.max(24, geometry!.canvasHeight * 0.12),
+    );
+    expect(Math.abs(geometry!.homeMidX - geometry!.canvasMidX)).toBeLessThanOrEqual(24);
+  }).toPass({ timeout: 15_000 });
   await expectNoPageHorizontalOverflow(page);
 }
 
@@ -461,15 +464,20 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     { name: "phone", width: 390, height: 844 },
     { name: "desktop", width: 1280, height: 900 },
   ] as const) {
-    test(`universal mode picker opens the all tools directory at ${viewport.name} width`, async ({ page }) => {
+    test(`universal mode picker no longer lists Tools, and /tools still opens, at ${viewport.name} width`, async ({
+      page,
+    }) => {
+      // Tools left the mode menu (usefulness and layout audit, 11 Oct 2026, item 8):
+      // its calculators and dictionary sit under Psychiatry. The directory keeps
+      // its address for old links and bookmarks.
       await mockAnswerDashboardApi(page);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await gotoLauncher(page, "/?mode=answer");
 
       const menu = await openAppModeMenu(page, "Answer");
-      const toolsOption = menu.getByRole("menuitemradio", { name: /^Tools\b/ });
-      await toolsOption.scrollIntoViewIfNeeded();
-      await Promise.all([page.waitForURL(/\/tools$/), toolsOption.click()]);
+      await expect(menu.getByRole("menuitemradio", { name: /^Psychiatry\b/ })).toBeAttached();
+      await expect(menu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
+      await gotoLauncher(page, "/tools");
 
       await expect(visibleByTestId(page, "tools-search-results-page")).toBeVisible();
       await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
@@ -734,10 +742,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
     const sharedHome = visibleByTestId(page, "shared-home-empty-state");
     const searchInput = visibleGlobalSearchInput(page);
-    const sharedHomeBrand = page.getByTestId("shared-home-brand");
-    await expect(sharedHomeBrand).toBeVisible();
-    await expect(sharedHomeBrand).toContainText("PsychSift");
-    await expect(sharedHomeBrand).toContainText("From question to source");
+    // The rail carries the PsychSift mark, so the header does not repeat it
+    // (owner design review, 12 Oct 2026).
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Answers" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-sparkles\b/);
     await searchInput.fill("lithium draft");
@@ -757,7 +764,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(sharedHome).toBeVisible();
     await expect(sharedHome.getByRole("heading", { level: 2, name: "Clinical Services" })).toBeVisible();
     await expect(sharedHome.locator(".mode-home-icon svg")).toHaveClass(/\blucide-route\b/);
-    await expect(sharedHomeBrand).toContainText("PsychSift");
+    await expect(page.getByTestId("shared-home-brand")).toHaveCount(0);
     await expect(page.getByText("Services Navigator", { exact: true })).toHaveCount(0);
     await expect(page.getByTestId("services-home")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Expand sidebar" })).toBeVisible();
@@ -777,7 +784,8 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeVisible();
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Differentials\b/ })).toBeVisible();
     await expect(servicesMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeVisible();
-    await expect(servicesMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeVisible();
+    // Tools left the mode menu (usefulness and layout audit, 11 Oct 2026).
+    await expect(servicesMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     const formsMode = servicesMenu.getByRole("menuitemradio", { name: /^Forms\b/ });
     await waitForReactEventHandler(formsMode);
     await formsMode.click();
@@ -1232,8 +1240,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
 
       const icon = homeRegion.locator(".mode-home-icon").first();
       await expect(icon).toBeVisible();
-      const iconBox = await icon.boundingBox();
-      expect(iconBox, `${home.path} hero icon`).not.toBeNull();
+      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
+      // (48px since PR 5b), not a standalone pixel choice. The home can swap its subtree between the
+      // visibility check and a box read, so each sample is a fresh read of the settled icon.
+      await expect
+        .poll(
+          async () => {
+            const box = await icon.boundingBox();
+            return box && { width: Math.round(box.width), height: Math.round(box.height) };
+          },
+          { message: `${home.path} hero icon size` },
+        )
+        .toEqual({ width: 48, height: 48 });
 
       // ModeHomeHero gives its heading the deterministic id `<heroTestId>-title`
       // (role/name lookups can collide with sr-only section headings).
@@ -1262,16 +1280,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
         };
       });
 
-      const metrics = {
-        iconWidth: Math.round(iconBox?.width ?? 0),
-        iconHeight: Math.round(iconBox?.height ?? 0),
-        headingFontSize,
-      };
-      // The hero tile is `h-tap w-tap` on phones, so it tracks `--spacing-tap`
-      // (48px since PR 5b), not a standalone pixel choice.
-      expect(metrics.iconWidth).toBe(48);
-      expect(metrics.iconHeight).toBe(48);
-      expect(metrics.headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
+      expect(headingFontSize).toBeCloseTo(expectedTypeSizes.hero, 1);
       expect(subtitleFontSize).toBeCloseTo(expectedTypeSizes.subtitle, 1);
 
       await expectNoPageHorizontalOverflow(page);
@@ -1601,10 +1610,9 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await expect(page.getByTestId("service-search-result-13yarn")).toBeVisible();
     await filterPanel.getByRole("button", { name: "Close", exact: true }).click();
 
-    await page
-      .getByTestId("service-search-result-13yarn")
-      .getByRole("link", { name: "Review referral for 13YARN" })
-      .click();
+    const yarnResult = page.getByTestId("service-search-result-13yarn");
+    await yarnResult.getByRole("button", { name: "More actions for 13YARN" }).click();
+    await yarnResult.getByRole("link", { name: "Review referral for 13YARN" }).click();
     await expect(page).toHaveURL(/\/services\/13yarn$/);
     await expect(page.getByText("Best use").first()).toBeVisible();
     await expect(page.getByText(/crisis support/i).first()).toBeVisible();
@@ -2519,15 +2527,18 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     await submit.click();
     await searchResponse;
 
-    const compareAction = page.getByTestId("differentials-compare-selected-mobile");
+    const compareAction = page.getByTestId("differentials-compare-tray-compare");
     const dock = page.locator("form.answer-footer-search-dock");
     const scrollport = visibleByTestId(page, "differentials-search-results");
     const mainContent = page.locator("#main-content");
     await expect(scrollport).toBeVisible();
     await expect(scrollport.getByRole("region", { name: "Source status" })).toContainText("No indexed source matches");
     await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
+    // A submitted search pre-ticks its top two diagnoses, so the shared
+    // Compare tray is already showing with Compare ready.
+    await expect(page.getByTestId("differentials-compare-tray-count")).toHaveText("2 selected");
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
 
     // Begin with the visible composer reserve. Document scrolling deliberately
@@ -2537,7 +2548,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     // settled range instead of polling a stale scrollTop.
     await input.focus();
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     // The visible dock/reserve can finish its layout commit after the first
     // endpoint scroll, increasing document height. Treat scrolling to the live
     // endpoint and measuring it as one retriable action; a persistent clearance
@@ -2549,7 +2560,7 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       expect(geometry.maxScrollTop - geometry.scrollTop).toBeLessThanOrEqual(1);
     }).toPass({ timeout: 15_000 });
     await expect(dock).not.toHaveAttribute("data-scroll-hidden", "true");
-    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThan(180);
+    await expect.poll(async () => readMobileComposerReservePx(mainContent)).toBeGreaterThanOrEqual(144); // one-row tray clearance, 9rem
     const clearance = await page.evaluate(() => {
       const main = document.getElementById("main-content");
       const last = document.querySelector('[data-testid="differential-mobile-result-card"]:last-of-type');
@@ -2658,12 +2669,11 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
       .toBe(true);
     await expectNoPageHorizontalOverflow(page);
 
-    // The result cards and compare bar remain in their non-desktop layout up
-    // to 1023px, so the composer must keep providing the portal host on tablet.
+    // From 640px the shared tray floats above the content instead of riding
+    // in the phone dock; it stays visible and tappable.
     await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(page.locator("#differentials-mobile-compare-addon-slot")).toHaveCount(1);
     await expect(compareAction).toBeVisible();
-    await expect(compareAction).toContainText("Compare selected");
+    await expect(compareAction).toHaveText("Compare");
   });
 
   test("diagnosis detail actions stay tappable and tabs stay single-line", async ({ page }) => {
@@ -3397,7 +3407,25 @@ test.describe("Responsive layout guards", () => {
   test("safety-plan working content stays local until an explicit export", async ({ page }) => {
     const appRequests: string[] = [];
     page.on("request", (request) => {
-      if (request.resourceType() === "fetch" || request.resourceType() === "xhr") appRequests.push(request.url());
+      if (request.resourceType() !== "fetch" && request.resourceType() !== "xhr") return;
+      // The shell header's links prefetch their routes (GET ?_rsc=…). Those carry no
+      // plan content, so they are not a leak; anything else, or anything holding the
+      // typed text, is.
+      const url = new URL(request.url());
+      const routePrefetch = request.method() === "GET" && url.searchParams.has("_rsc");
+      const normalizeRequestPart = (content: string) => {
+        const formDecodedContent = content.replace(/\+/g, " ");
+        try {
+          return decodeURIComponent(formDecodedContent);
+        } catch {
+          // Keep the raw content if a request contains an incomplete escape sequence.
+          return formDecodedContent;
+        }
+      };
+      const normalizedRequestContent = [request.url(), request.postData() ?? ""].map(normalizeRequestPart).join("");
+      if (!routePrefetch || normalizedRequestContent.includes("Not sleeping")) {
+        appRequests.push(request.url());
+      }
     });
 
     await page.goto("/safety-plan");

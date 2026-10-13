@@ -9,8 +9,10 @@ vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
 vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({ AccountSetupDialog: () => null }));
 vi.mock("@/components/teaching/teaching-nav-header", () => ({ TeachingNavHeader: () => null }));
 
+import { TeachingTerm } from "@/components/teaching/teaching-term";
 import { TermFolderEntryLink } from "@/components/teaching/term-folder/term-folder-entry-link";
 import { TermFolderPage } from "@/components/teaching/term-folder/term-folder-page";
+import { WorkModeLaunchProvider } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { FolderMeter } from "@/components/teaching/term-folder/term-folder-parts";
 import { ToastProvider } from "@/components/ui/toast";
 import { TEACHING_TERM_TRACKER_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
@@ -18,6 +20,14 @@ import { sampleTermTracker } from "@/lib/teaching/term-tracker";
 
 import { authState } from "./helpers/teaching-auth";
 import { NOW, json, serveFetch, useTeachingTestClock } from "./helpers/teaching-fixtures";
+
+// The page draws its Back in the top bar's left slot (one way back), so the test provides that slot.
+function addHeaderBackSlot() {
+  const slot = document.createElement("div");
+  slot.id = "universal-header-leading";
+  document.body.appendChild(slot);
+  return () => slot.remove();
+}
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 useTeachingTestClock(NOW);
@@ -35,13 +45,23 @@ function keepTermOnPhone() {
   window.localStorage.setItem(TEACHING_TERM_TRACKER_STORAGE_KEY, JSON.stringify(sampleTermTracker("2026-09-30")));
 }
 
-describe("term evidence folder page", () => {
+/** The Term page, which since 11 Oct 2026 is also the evidence folder (owner-approved mock-up). */
+function renderTerm(demoMode = true) {
+  return render(<TeachingTerm demoMode={demoMode} />);
+}
+
+/** True when `a` comes before `b` in the page. */
+function before(a: HTMLElement, b: HTMLElement): boolean {
+  return Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
+describe("term evidence folder on the Term page", () => {
   it("fills the made-up demo from the shipped records, with a meter read in words", async () => {
-    render(<TermFolderPage demoMode termId={null} />);
+    renderTerm();
     const card = await screen.findByTestId("term-folder-card");
     const meter = within(card).getByRole("img");
     expect(meter.getAttribute("aria-label")).toMatch(/^7\sparts: /);
-    expect(screen.getByText(/Example data\. Nothing here is your own/)).toBeInTheDocument();
+    expect(screen.queryByText(/Example data\. Nothing here is your own/)).toBeNull();
     expect(screen.getByTestId("term-folder-not-kept")).toHaveTextContent("Assessment forms");
     expect(screen.getAllByText(/Status and counts only|No assessment content/).length).toBeGreaterThan(0);
     // Work-mode redesign, owner request 6 Oct 2026: Export opens a sheet (choose parts, names off, gaps first).
@@ -54,35 +74,34 @@ describe("term evidence folder page", () => {
   it("prints and says so", async () => {
     const print = vi.fn();
     vi.stubGlobal("print", print);
-    render(<TermFolderPage demoMode termId={null} />);
+    renderTerm();
     fireEvent.click(await screen.findByRole("button", { name: /Print/ }));
     expect(print).toHaveBeenCalled();
     expect(announcer.announce).toHaveBeenCalledWith("Opening print");
     vi.unstubAllGlobals();
   });
 
-  it("asks a signed-in doctor with no term to set one up first", async () => {
-    serveFetch((url) => (url.startsWith("/api/teaching") ? json(200, { attendance: [], pairings: [] }) : null));
-    render(<TermFolderPage demoMode={false} termId={null} />);
-    const empty = await screen.findByTestId("term-folder-no-term");
-    expect(within(empty).getByRole("link", { name: "Set up your term" })).toHaveAttribute("href", "/teaching/term");
-  });
-
   it("falls back to the made-up demo when signed out", async () => {
     authState.status = "signed_out";
-    render(<TermFolderPage demoMode={false} termId={null} />);
+    renderTerm(false);
     expect(await screen.findByTestId("term-folder-card")).toBeInTheDocument();
     // The shared example banner says it under the band, so the page does not say it a second time.
     expect(screen.queryByText(/Example data\. Nothing here/)).toBeNull();
   });
 
-  it("is linked from the Term page", () => {
+  it("is the Term page itself: no separate folder link and no exam prep row at the bottom", async () => {
+    renderTerm();
+    await screen.findByTestId("term-folder-card");
+    expect(screen.queryByTestId("term-folder-entry")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Evidence folder/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /My exam prep/ })).toBeNull();
+    // The old entry row still points at the folder's address, which now forwards to Term.
     render(<TermFolderEntryLink />);
     expect(screen.getByRole("link", { name: /Evidence folder/ })).toHaveAttribute("href", "/teaching/term/folder");
   });
 
   it("exports from a sheet with names off by default, then says when it was exported", async () => {
-    render(<TermFolderPage demoMode termId={null} />);
+    renderTerm();
     fireEvent.click(await screen.findByTestId("term-folder-export-open"));
     const sheet = await screen.findByTestId("term-folder-export");
     const names = within(sheet).getByRole("switch", { name: /Include names/ });
@@ -108,7 +127,7 @@ describe("term evidence folder page", () => {
   it("never says updated when both reads failed", async () => {
     keepTermOnPhone();
     serveFetch((url) => (url === LOGBOOK || url === SUPERVISION ? json(500, { error: "Down" }) : null));
-    render(<TermFolderPage demoMode={false} termId={null} />);
+    renderTerm(false);
     expect(await screen.findByTestId("term-folder-failed")).toHaveTextContent(
       "Check-ins and supervision logs did not load",
     );
@@ -129,7 +148,7 @@ describe("term evidence folder page", () => {
       if (url === SUPERVISION) return fail ? json(500, { error: "Down" }) : json(200, { pairings: [] });
       return null;
     });
-    render(<TermFolderPage demoMode={false} termId={null} />);
+    renderTerm(false);
     await waitFor(() => expect(screen.getByTestId("term-folder-footer")).toHaveTextContent(/updated \d\d:\d\d/));
     expect(screen.queryByTestId("term-folder-failed")).toBeNull();
     fail = true;
@@ -144,7 +163,7 @@ describe("term evidence folder page", () => {
   it("holds Export and Copy summary, with the reason, while the folder is still loading", async () => {
     keepTermOnPhone();
     serveFetch((url) => (url === LOGBOOK || url === SUPERVISION ? new Promise<Response>(() => {}) : null));
-    render(<TermFolderPage demoMode={false} termId={null} />);
+    renderTerm(false);
     const exportButton = await screen.findByTestId("term-folder-export-open");
     const copy = screen.getByTestId("term-folder-copy");
     const reason = "Still filling from your records. Export, copy or print once every part has loaded.";
@@ -171,7 +190,7 @@ describe("term evidence folder page", () => {
     serveFetch((url) =>
       url === LOGBOOK ? json(500, { error: "Down" }) : url === SUPERVISION ? json(200, { pairings: [] }) : null,
     );
-    render(<TermFolderPage demoMode={false} termId={null} />);
+    renderTerm(false);
     expect(await screen.findByTestId("term-folder-failed")).toHaveTextContent("so that part shows as not updating");
     await waitFor(() =>
       expect(screen.getByTestId("term-folder-footer")).toHaveTextContent(
@@ -180,23 +199,25 @@ describe("term evidence folder page", () => {
     );
   });
 
-  it("has a visible way back to Term", async () => {
+  it("has one way back to Term, in the top bar", async () => {
+    const removeSlot = addHeaderBackSlot();
     render(<TermFolderPage demoMode termId={null} />);
     expect(await screen.findByTestId("term-folder-back")).toHaveAttribute("href", "/teaching/term");
-    expect(screen.getByRole("link", { name: "Term" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to Term" })).toBeVisible();
+    removeSlot();
   });
 
   it("says in the copied demo summary that it is made up", async () => {
     const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    render(<TermFolderPage demoMode termId={null} />);
+    renderTerm();
     fireEvent.click(await screen.findByTestId("term-folder-copy"));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     expect((writeText.mock.calls[0] as unknown as [string])[0].split("\n")[0]).toBe("Example data, not your records.");
   });
 
   it("says inside the demo CSV that it is made up", async () => {
-    render(<TermFolderPage demoMode termId={null} />);
+    renderTerm();
     fireEvent.click(await screen.findByTestId("term-folder-export-open"));
     const href = decodeURIComponent((await screen.findByTestId("term-folder-csv")).getAttribute("href")!);
     expect(href).toMatch(
@@ -204,17 +225,10 @@ describe("term evidence folder page", () => {
     );
   });
 
-  it("says a link to a term no longer on this phone shows another term", async () => {
-    render(<TermFolderPage demoMode termId="deleted-term" />);
-    expect(await screen.findByTestId("term-folder-missing-term")).toHaveTextContent(
-      "That term is no longer on this phone. Showing Term 4 · Psychiatry.",
-    );
-  });
-
   it("copies a summary with no supervisor's name, the export's names-off default", async () => {
     const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    render(<TermFolderPage demoMode termId={null} />);
+    renderTerm();
     fireEvent.click(await screen.findByTestId("term-folder-copy"));
     await waitFor(() => expect(writeText).toHaveBeenCalled());
     const text = (writeText.mock.calls[0] as unknown as [string])[0];
@@ -226,7 +240,7 @@ describe("term evidence folder page", () => {
   it("starts the download before closing the sheet, and says it was exported once", async () => {
     render(
       <ToastProvider>
-        <TermFolderPage demoMode termId={null} />
+        <TeachingTerm demoMode />
       </ToastProvider>,
     );
     fireEvent.click(await screen.findByTestId("term-folder-export-open"));
@@ -239,6 +253,138 @@ describe("term evidence folder page", () => {
     // The toast speaks: the page announcer does not say it a second time.
     expect(await screen.findByText("Term 4 · Psychiatry folder exported")).toBeInTheDocument();
     expect(announcer.announce).not.toHaveBeenCalledWith(expect.stringContaining("exported"));
+  });
+});
+
+describe("merged Term page layout", () => {
+  it("heads the page with the folder card in place of the term summary, then the term's own sections in order", async () => {
+    renderTerm();
+    const card = await screen.findByTestId("term-folder-card");
+    expect(screen.queryByTestId("teaching-term-summary")).toBeNull();
+    expect(within(card).getByRole("heading", { level: 2, name: "Term 4 · Psychiatry" })).toBeInTheDocument();
+    expect(within(card).getByText(/week \d+ of \d+/)).toBeInTheDocument();
+    expect(within(card).getByText(/^\d+\sof\s7 complete$/)).toBeInTheDocument();
+    for (const id of ["term-folder-export-open", "term-folder-print", "term-folder-copy", "term-folder-footer"])
+      expect(within(card).getByTestId(id)).toBeInTheDocument();
+    const order = [
+      "term-folder-card",
+      "teaching-term-assessments",
+      "teaching-term-epas",
+      "teaching-term-supervision",
+      "teaching-term-meeting",
+      "term-folder-not-kept",
+      "term-folder-privacy",
+    ].map((id) => screen.getByTestId(id));
+    for (let index = 1; index < order.length; index += 1) expect(before(order[index - 1]!, order[index]!)).toBe(true);
+    expect(screen.getByTestId("term-folder-privacy")).toHaveTextContent(/^Status and counts only\./);
+    expect(screen.getByTestId("term-folder-not-kept")).toHaveTextContent("Assessment forms");
+    // The folder's own part list, coming-up list and back link belong to the old standalone page only.
+    for (const id of ["term-folder-to_fix", "term-folder-on_track", "term-folder-coming", "term-folder-back"])
+      expect(screen.queryByTestId(id)).toBeNull();
+  });
+
+  it("keeps Edit for the term details on the folder card", async () => {
+    renderTerm();
+    const card = await screen.findByTestId("term-folder-card");
+    fireEvent.click(within(card).getByRole("button", { name: "Edit this term" }));
+    expect(await screen.findByTestId("teaching-term-edit")).toBeInTheDocument();
+    expect(screen.queryByTestId("term-folder-card")).toBeNull();
+  });
+
+  it("shows attendance and supervision with their status tags, linked where the folder links them", async () => {
+    renderTerm();
+    const section = await screen.findByTestId("teaching-term-supervision");
+    expect(within(section).getByRole("heading", { level: 2, name: "Supervision and attendance" })).toBeInTheDocument();
+    const rows = within(section).getAllByRole("link");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Teaching attendance");
+    expect(rows[0]!.getAttribute("href")).toMatch(/^\/teaching\/(logbook|week)$/);
+    expect(rows[1]).toHaveTextContent("Supervision");
+    expect(rows[1]).toHaveAttribute("href", "/teaching/supervision");
+    for (const row of rows)
+      expect(row.closest("li")).toHaveTextContent(/(Complete|On track|To fix|Not updating|Not yet)$/);
+  });
+
+  it("moves the meter when a term assessment is marked done on the same page", async () => {
+    renderTerm();
+    const card = await screen.findByTestId("term-folder-card");
+    const headline = within(card).getByText(/^\d+\sof\s7 complete$/);
+    const done = Number(headline.textContent!.split(/\s/)[0]);
+    const assessments = screen.getByTestId("teaching-term-assessments");
+    fireEvent.click(within(assessments).getAllByRole("button", { name: /^Mark done: / })[0]!);
+    await waitFor(() => expect(within(card).getByText(/^\d+\sof\s7 complete$/)).toHaveTextContent(`${done + 1}`));
+  });
+
+  it("puts Saved on this phone only directly above the goals, not above the page", async () => {
+    keepTermOnPhone();
+    serveFetch((url) =>
+      url === LOGBOOK ? json(200, { attendance: [] }) : url === SUPERVISION ? json(200, { pairings: [] }) : null,
+    );
+    renderTerm(false);
+    const notice = await screen.findByTestId("teaching-device-only-notice");
+    const meeting = screen.getByTestId("teaching-term-meeting");
+    expect(meeting).toContainElement(notice);
+    expect(notice).toHaveTextContent("Saved on this phone only");
+    expect(within(notice).getByRole("button", { name: "Download a copy" })).toBeInTheDocument();
+    const goals = within(meeting).getByText("Goals from the start of term");
+    expect(before(notice, goals)).toBe(true);
+    expect(before(screen.getByTestId("term-folder-card"), notice)).toBe(true);
+    // Personal notes stay out of a printout of the term.
+    expect(meeting.closest("[data-print-hide]")).not.toBeNull();
+  });
+
+  it("lists earlier terms, each opening its own folder so a finished term can still be exported", async () => {
+    const state = sampleTermTracker("2026-09-30");
+    const current = state.terms[0]!;
+    const earlier = { ...current, id: "earlier-term", number: 3, startsOn: "2026-05-04", endsOn: "2026-07-10" };
+    window.localStorage.setItem(
+      TEACHING_TERM_TRACKER_STORAGE_KEY,
+      JSON.stringify({ ...state, terms: [earlier, current] }),
+    );
+    serveFetch((url) => (url.startsWith("/api/teaching") ? json(200, { attendance: [], pairings: [] }) : null));
+    renderTerm(false);
+    const others = await screen.findByTestId("term-folder-earlier");
+    expect(within(others).getByRole("link")).toHaveAttribute("href", "/teaching/term/folder?term=earlier-term");
+  });
+
+  it("keeps the term summary and no folder for a reader on the classic work mode", async () => {
+    render(
+      <WorkModeLaunchProvider
+        launch={{ newWorkMode: false, previewAudience: false, classicPreferred: true, choiceAvailable: true }}
+      >
+        <TeachingTerm demoMode />
+      </WorkModeLaunchProvider>,
+    );
+    expect(await screen.findByTestId("teaching-term-summary")).toBeInTheDocument();
+    expect(screen.queryByTestId("term-folder-card")).toBeNull();
+    expect(screen.queryByTestId("teaching-term-supervision")).toBeNull();
+    expect(screen.getByTestId("teaching-term-meeting")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /My exam prep/ })).toBeNull();
+  });
+});
+
+describe("former standalone folder page (kept until its code can be removed)", () => {
+  it("asks a signed-in doctor with no term to set one up first", async () => {
+    serveFetch((url) => (url.startsWith("/api/teaching") ? json(200, { attendance: [], pairings: [] }) : null));
+    render(<TermFolderPage demoMode={false} termId={null} />);
+    const empty = await screen.findByTestId("term-folder-no-term");
+    expect(within(empty).getByRole("link", { name: "Set up your term" })).toHaveAttribute("href", "/teaching/term");
+  });
+
+  it("draws its way back to Term only in the top bar, never a second link in the page", async () => {
+    const removeSlot = addHeaderBackSlot();
+    render(<TermFolderPage demoMode termId={null} />);
+    const back = await screen.findByTestId("term-folder-back");
+    expect(back.closest("#universal-header-leading")).not.toBeNull();
+    expect(screen.getAllByRole("link", { name: /Term$/ })).toEqual([back]);
+    removeSlot();
+  });
+
+  it("says a link to a term no longer on this phone shows another term", async () => {
+    render(<TermFolderPage demoMode termId="deleted-term" />);
+    expect(await screen.findByTestId("term-folder-missing-term")).toHaveTextContent(
+      "That term is no longer on this phone. Showing Term 4 · Psychiatry.",
+    );
   });
 
   it("lists the dates still to come this term", async () => {

@@ -105,90 +105,92 @@ export function CatalogueToolbar({
 
   return (
     <div data-testid={testId} className={cn("flex flex-col gap-3", className)}>
-      {/* Primary Toolbar Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0">
-          {/* Search control */}
-          {search ? (
-            <div className="min-w-[200px] flex-1 max-w-md">
-              {isSearchProps(search) ? (
-                <TextField
-                  label={search.label ?? `Search ${pluralNoun}`}
-                  hideLabel={search.hideLabel ?? true}
-                  icon={Search}
-                  value={search.query}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => search.onQueryChange(e.target.value)}
-                  placeholder={search.placeholder ?? `Search ${pluralNoun}…`}
-                  disabled={search.disabled}
-                  className={cn("font-semibold", search.className)}
-                />
-              ) : (
-                search
-              )}
-            </div>
-          ) : null}
+      {/* Primary Toolbar Row. One flat wrapping row: on a phone the search
+          takes the whole first line, and the sort, filter and count share the
+          line under it, count pushed to the right edge. The nested left group
+          this replaced squeezed the search beside the count, so its
+          placeholder truncated and the count floated between two lines. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search control */}
+        {search ? (
+          <div className="w-full min-w-0 sm:w-auto sm:min-w-[200px] sm:max-w-md sm:flex-1">
+            {isSearchProps(search) ? (
+              <TextField
+                label={search.label ?? `Search ${pluralNoun}`}
+                hideLabel={search.hideLabel ?? true}
+                icon={Search}
+                value={search.query}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => search.onQueryChange(e.target.value)}
+                placeholder={search.placeholder ?? `Search ${pluralNoun}…`}
+                disabled={search.disabled}
+                className={cn("font-semibold", search.className)}
+              />
+            ) : (
+              search
+            )}
+          </div>
+        ) : null}
 
-          {/* Sort control */}
-          {sort ? (
-            <div className="min-w-[140px] shrink-0">
-              {isSortProps(sort) ? (
-                <Select
-                  label={sort.label ?? `Sort ${pluralNoun}`}
-                  hideLabel={sort.hideLabel ?? true}
-                  value={sort.value}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => sort.onChange(e.target.value)}
-                  options={[...sort.options]}
-                  disabled={sort.disabled}
-                  className={cn("font-semibold", sort.className)}
-                />
-              ) : (
-                sort
-              )}
-            </div>
-          ) : null}
+        {/* Sort control */}
+        {sort ? (
+          <div className="min-w-[140px] shrink-0">
+            {isSortProps(sort) ? (
+              <Select
+                label={sort.label ?? `Sort ${pluralNoun}`}
+                hideLabel={sort.hideLabel ?? true}
+                value={sort.value}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => sort.onChange(e.target.value)}
+                options={[...sort.options]}
+                disabled={sort.disabled}
+                className={cn("font-semibold", sort.className)}
+              />
+            ) : (
+              sort
+            )}
+          </div>
+        ) : null}
 
-          {/* Filter trigger button */}
-          {filterTrigger ? (
-            <div className="shrink-0">
-              {isFilterTriggerProps(filterTrigger) ? (
-                <button
-                  type="button"
-                  data-testid={filterTrigger.testId ?? "catalogue-filter-trigger"}
-                  aria-expanded={filterTrigger.open}
-                  aria-controls={filterTrigger.panelId}
-                  disabled={filterTrigger.disabled}
-                  onClick={filterTrigger.onToggle}
-                  className={cn(
-                    "inline-flex min-h-tap items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition",
-                    filterTrigger.open || (filterTrigger.activeCount ?? 0) > 0
-                      ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-                      : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-heading)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)]",
-                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-                  )}
-                >
-                  <Filter className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  <span>{filterTrigger.label ?? "Filter"}</span>
-                  {(filterTrigger.activeCount ?? 0) > 0 ? (
-                    <span
-                      data-testid="catalogue-filter-badge"
-                      className="grid h-5 min-w-5 place-items-center rounded-full bg-[color:var(--clinical-accent)] px-1 text-3xs font-black text-[color:var(--clinical-accent-contrast)]"
-                    >
-                      {filterTrigger.activeCount}
-                    </span>
-                  ) : null}
-                </button>
-              ) : (
-                filterTrigger
-              )}
-            </div>
-          ) : null}
+        {/* Filter trigger button */}
+        {filterTrigger ? (
+          <div className="shrink-0">
+            {isFilterTriggerProps(filterTrigger) ? (
+              <button
+                type="button"
+                data-testid={filterTrigger.testId ?? "catalogue-filter-trigger"}
+                aria-expanded={filterTrigger.open}
+                aria-controls={filterTrigger.panelId}
+                disabled={filterTrigger.disabled}
+                onClick={filterTrigger.onToggle}
+                className={cn(
+                  "inline-flex min-h-tap items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition",
+                  filterTrigger.open || (filterTrigger.activeCount ?? 0) > 0
+                    ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
+                    : "border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-heading)] hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)]",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                )}
+              >
+                <Filter className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>{filterTrigger.label ?? "Filter"}</span>
+                {(filterTrigger.activeCount ?? 0) > 0 ? (
+                  <span
+                    data-testid="catalogue-filter-badge"
+                    className="grid h-5 min-w-5 place-items-center rounded-full bg-[color:var(--clinical-accent)] px-1 text-3xs font-black text-[color:var(--clinical-accent-contrast)]"
+                  >
+                    {filterTrigger.activeCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : (
+              filterTrigger
+            )}
+          </div>
+        ) : null}
 
-          {/* Optional inline custom children */}
-          {children}
-        </div>
+        {/* Optional inline custom children */}
+        {children}
 
         {/* Right side: Count readout & Actions */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
           {countLabel ? (
             <span
               data-testid="catalogue-match-count"

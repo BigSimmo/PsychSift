@@ -29,6 +29,7 @@ import {
 import {
   clickWhenHydrated,
   clickWhenSettled,
+  expectHydrated,
   expectSingleSettledOwner,
   visibleByTestId,
 } from "./playwright-settlement";
@@ -806,18 +807,6 @@ async function openMobileTableFullscreen(page: Page, clinicalTable: Locator) {
   return tableDialog;
 }
 
-/**
- * Pins the page to Everyone's version of the live version switch. The offline
- * build shows the newest work by default, and the phone menu below is the one
- * everyone who is not a tester still gets; the two-pane menu that replaces it
- * for testers is covered by tests/two-pane-side-menu.dom.test.tsx.
- */
-async function useEveryonesVersion(page: Page, baseURL: string | undefined) {
-  await page
-    .context()
-    .addCookies([{ name: "psychsift-live-version", value: "everyone", url: new URL("/", baseURL).toString() }]);
-}
-
 async function openMobileClinicalGuideMenu(page: Page) {
   const trigger = page.getByRole("button", { name: "Open PsychSift menu" });
   await expect(trigger).toBeVisible();
@@ -856,11 +845,20 @@ async function openMobileClinicalGuideMenu(page: Page) {
     // Documents/Services above (ClinicalSidebar.tsx).
     { name: "Documents", href: "/?mode=documents" },
     { name: "Services", href: "/?mode=services" },
+    { name: "Psychiatry", href: "/psychiatry" },
     { name: "Medication", href: "/?mode=prescribing" },
     { name: "Factsheets", href: "/?mode=factsheets" },
-    { name: "Tools", href: "/tools" },
   ]);
-  await expect(navigation.getByRole("button", { name: "More modes" })).toBeVisible();
+  // The phone menu (owner pick "variant C", 11 Oct 2026): Clinical | Work tabs in
+  // the brand band, an alerts bell beside the close cross, and every clinical page
+  // listed under its group in place of the More modes sheet.
+  await expect(menu.getByRole("tab", { name: "Clinical" })).toHaveAttribute("aria-selected", "true");
+  await expect(menu.getByRole("tab", { name: /^Work/ })).toHaveAttribute("aria-selected", "false");
+  await expect(menu.getByTestId("clinical-menu-bell")).toHaveAttribute("href", "/my-day/notifications");
+  await expect(navigation.getByRole("button", { name: "More modes" })).toHaveCount(0);
+  for (const group of ["Search", "Psychiatry", "Medicines", "Library"]) {
+    await expect(menu.getByRole("navigation", { name: group, exact: true })).toBeAttached();
+  }
   await expect(menu.getByRole("button", { name: "Guide & help", exact: true })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /^(Switch to )?(dark|light) mode$/i })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /Appearance Auto/ })).toBeVisible();
@@ -1238,18 +1236,19 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.locator('[data-testid="global-search-input"]:visible').first()).toBeEnabled();
   });
 
-  test("Medication shortcut opens the shared Medication home", async ({ page, baseURL }) => {
+  test("Medication shortcut opens the shared Medication home", async ({ page }) => {
     // Medication was reversed out of its standalone `/medications` home (see
     // src/app/(search-app)/medications/page.tsx) so its idle view is now the shared
     // home, matching the other consolidated modes and Documents.
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
 
     const menu = await openMobileClinicalGuideMenu(page);
-    await menu.getByRole("link", { name: "Medication" }).click();
+    // The menu lists Medication twice by design: once as a pinned shortcut and once
+    // under its group. The shortcut is the one this test is about.
+    await menu.getByRole("navigation", { name: "Pinned shortcuts" }).getByRole("link", { name: "Medication" }).click();
 
     await expect.poll(() => new URL(page.url()).pathname, { timeout: 30_000 }).toBe("/");
     await expect.poll(() => new URL(page.url()).searchParams.get("mode"), { timeout: 30_000 }).toBe("prescribing");
@@ -1257,9 +1256,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByRole("button", { name: "Mode Medication" })).toBeVisible();
   });
 
-  test("mobile search focus is singular, visible, and contained at clipped edges", async ({ page, baseURL }) => {
+  test("mobile search focus is singular, visible, and contained at clipped edges", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/?mode=answer");
     await waitForDemoDashboardReady(page);
@@ -1319,6 +1317,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     const newChat = menu.getByRole("button", { name: "New chat" });
     const restingButtonShadow = await newChat.evaluate((element) => getComputedStyle(element).boxShadow);
     await closeMenu.focus();
+    // The Clinical | Work tabs sit between Close and the menu body: one tab stop.
+    await page.keyboard.press("Tab");
+    await expect(menu.getByRole("tab", { name: "Clinical" })).toBeFocused();
     await page.keyboard.press("Tab");
     // Firefox includes scrollable containers in the tab order; the sheet body
     // (overflow-y-auto) sits between Close and "New chat" in DOM order and
@@ -1409,7 +1410,12 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expandSidebar.click();
     await expect(sidebar).toBeVisible();
     await expect(sidebar.getByRole("link", { name: "View tools" })).toHaveCount(0);
-    await expect(sidebar.getByRole("link", { name: "Tools", exact: true })).toHaveAttribute("href", "/tools");
+    // The Tools page is retired from the menu (audit item 8); Psychiatry takes its pin.
+    await expect(sidebar.getByRole("link", { name: "Tools", exact: true })).toHaveCount(0);
+    await expect(sidebar.getByRole("link", { name: "Psychiatry", exact: true }).first()).toHaveAttribute(
+      "href",
+      "/psychiatry",
+    );
     await expect(sidebar.getByTestId("sidebar-account-settings")).toHaveAccessibleName(
       /G Guest Not signed in\. Set up workspace/,
     );
@@ -1500,10 +1506,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("plain-answer-response")).toHaveCount(0);
   });
 
-  test("tablet shows icon rail without drawer trigger or expand control @critical", async ({ page, baseURL }) => {
+  test("tablet shows icon rail without drawer trigger or expand control @critical", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    // The classic icon rail is what everyone who is not a tester gets on a tablet.
-    await useEveryonesVersion(page, baseURL);
+    // The classic icon rail is what every reader gets on a tablet.
     await mockDemoApi(page);
     // Seed expanded preference so #clinical-tools-sidebar mounts. Without this
     // seed the panel is absent (count 0) and toBeHidden() would pass vacuously;
@@ -1537,9 +1542,9 @@ test.describe("PsychSift UI smoke coverage", () => {
       { name: "Answer", href: "/?mode=answer" },
       { name: "Documents", href: "/?mode=documents" },
       { name: "Services", href: "/?mode=services" },
+      { name: "Psychiatry", href: "/psychiatry" },
       { name: "Medication", href: "/?mode=prescribing" },
       { name: "Factsheets", href: "/?mode=factsheets" },
-      { name: "Tools", href: "/tools" },
     ]);
     expect(
       await library
@@ -1566,43 +1571,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await moreModesSheet.getByRole("button", { name: "Close more modes" }).click();
     expect(
       await navigation.getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("aria-label"))),
-    ).toEqual(["My Day", "Answer", "Documents", "Services", "Medication", "Factsheets", "Forms", "Tools"]);
+    ).toEqual(["My Day", "Answer", "Documents", "Services", "Psychiatry", "Medication", "Forms", "Factsheets"]);
     await expect(rail.getByTestId("sidebar-more-modes")).toBeVisible();
     await expect(rail.getByTestId("sidebar-more-modes")).toBeFocused();
 
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("tablet two-pane rail opens the menu on the side it names", async ({ page }) => {
-    // Newest is the offline build's default, so this is the tester's tablet.
+  test("tablet rail highlights the active tool for key routes", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await mockDemoApi(page);
-    await gotoApp(page, "/?mode=answer");
-    await waitForDemoDashboardReady(page);
-
-    const rail = page.getByTestId("two-pane-rail");
-    await expect(rail).toBeVisible();
-    await expect(page.getByLabel("PsychSift collapsed sidebar")).toBeHidden();
-    await expect(page.getByRole("button", { name: "Open PsychSift menu" })).toBeHidden();
-    await expect(rail.getByTestId("two-pane-rail-clinical")).toHaveAttribute("data-current", "true");
-    expect((await rail.boundingBox())?.width).toBe(84);
-
-    await rail.getByTestId("two-pane-rail-clinical").click();
-    const menu = page.getByTestId("two-pane-side-menu");
-    await expect(menu).toBeVisible();
-    await expect(menu.getByRole("heading", { level: 2, name: "Clinical" })).toBeVisible();
-    await menu.getByRole("button", { name: "Close menu" }).click();
-    await expect(menu).toBeHidden();
-    await expect(rail.getByTestId("two-pane-rail-clinical")).toBeFocused();
-
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await expect(rail).toBeHidden();
-  });
-
-  test("tablet rail highlights the active tool for key routes", async ({ page, baseURL }) => {
-    await page.setViewportSize({ width: 768, height: 1024 });
-    // Covers the classic icon rail, which the newest live version replaces on tablets.
-    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
 
     for (const route of [
@@ -1610,14 +1587,18 @@ test.describe("PsychSift UI smoke coverage", () => {
       { path: "/documents", label: "Documents" },
       { path: "/favourites", label: "Favourites" },
       { path: "/medications", label: "Medication" },
-      { path: "/tools", label: "Tools" },
+      // Tools left the menu (usefulness and layout audit, 11 Oct 2026); Psychiatry,
+      // which now holds Calculators and Dictionary, is pinned in its place.
+      { path: "/psychiatry", label: "Psychiatry" },
     ] as const) {
       await gotoApp(page, route.path);
       if (route.path.includes("mode=answer")) {
         await waitForDemoDashboardReady(page);
       }
 
-      const activeLink = page.getByRole("link", { name: route.label, exact: true });
+      const activeLink = page
+        .getByLabel("PsychSift collapsed sidebar")
+        .getByRole("link", { name: route.label, exact: true });
       await expect(activeLink).toBeVisible();
       await expect(activeLink).toHaveAttribute("aria-current", "page");
     }
@@ -1787,10 +1768,8 @@ test.describe("PsychSift UI smoke coverage", () => {
 
   test("account settings stays readable at narrow phone widths and closes from its single control or Escape", async ({
     page,
-    baseURL,
   }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
@@ -2077,10 +2056,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     expect(modeCount).toBeGreaterThanOrEqual(10);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "On Call" })).toHaveCount(0);
     await expect(appModeMenu.getByRole("heading", { name: "My Day" })).toHaveCount(0);
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toBeAttached();
+    // Tools left the menu (audit item 8, 11 Oct 2026); `/tools` still opens for old links.
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ })).toHaveCount(0);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeAttached();
     // Sources reached the desktop menu (built from `appModeDefinitions`) but not
     // this one, which renders `phoneModeGroups` and drops any mode no group names.
@@ -2140,31 +2120,29 @@ test.describe("PsychSift UI smoke coverage", () => {
     await sideToggle.getByRole("button", { name: "Clinical", exact: true }).click();
     await expect(modeOptions).toHaveCount(modeCount);
 
-    // A lower group remains reachable through the sheet's own scroll owner.
-    // Tools is browse-first, so selecting it opens the canonical directory.
-    const toolsMode = appModeMenu.getByRole("menuitemradio", { name: /^Tools\b/ });
-    await toolsMode.scrollIntoViewIfNeeded();
-    await expect(toolsMode).toBeVisible();
-    await toolsMode.click();
+    // The lowest group remains reachable through the sheet's own scroll owner.
+    // Sources sits at the foot of the Clinical list (audit item 8, 11 Oct 2026).
+    const sourcesMode = appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ });
+    await sourcesMode.scrollIntoViewIfNeeded();
+    await expect(sourcesMode).toBeVisible();
+    await sourcesMode.click();
 
     await expect(modeSheet).toHaveCount(0);
     await expect(appModeMenu).toHaveCount(0);
-    await expect(page).toHaveURL(/\/tools$/);
-    const toolsTrigger = page.getByRole("button", { name: "Mode Tools" });
-    await expect(toolsTrigger).toBeVisible();
-    await expect(page.getByTestId("tools-search-results-page")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: "Tools", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(/[?&]mode=sources\b/);
+    const sourcesTrigger = page.getByRole("button", { name: "Mode Sources" });
+    await expect(sourcesTrigger).toBeVisible();
     await expectNoPageHorizontalOverflow(page);
 
     // Reopening on a mode in a lower group must position that selected row in
     // the sheet's own scrollport, without requiring a hunt from the top.
-    await toolsTrigger.click();
-    const reopenedToolsMode = page.getByRole("menu", { name: "Choose app mode" }).getByRole("menuitemradio", {
-      name: /^Tools\b/,
+    await sourcesTrigger.click();
+    const reopenedSourcesMode = page.getByRole("menu", { name: "Choose app mode" }).getByRole("menuitemradio", {
+      name: /^Sources\b/,
     });
-    await expect(reopenedToolsMode).toHaveAttribute("aria-checked", "true");
-    await expect(reopenedToolsMode).toBeInViewport();
-    await expect(page.getByText("Currently Tools", { exact: true })).toBeVisible();
+    await expect(reopenedSourcesMode).toHaveAttribute("aria-checked", "true");
+    await expect(reopenedSourcesMode).toBeInViewport();
+    await expect(page.getByText("Currently Sources", { exact: true })).toBeVisible();
   });
 
   test("phone mode menu dismisses via backdrop and restores focus to the Mode button", async ({ page }) => {
@@ -2614,6 +2592,139 @@ test.describe("PsychSift UI smoke coverage", () => {
       await expect(page.getByRole("button", { name: "Open answer options" })).toBeFocused();
     }).toPass({ timeout: 5_000 });
     await expectNoPageHorizontalOverflow(page);
+  });
+
+  test("desktop docks a cited source beside the answer instead of over it", async ({ page }) => {
+    // From 1024px the source drawer is a panel docked beside the answer
+    // (answer-source-docked-panel.tsx). It is not a dialog, so this pins what
+    // replaces the dialog's guarantees: a named landmark that takes focus, a
+    // visible close button and Escape, focus back on the citation, and an answer
+    // column that the panel never covers. The phone drawer is the test above.
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await mockDemoApi(page);
+    await gotoApp(page, "/");
+    await waitForDemoDashboardReady(page);
+
+    const questionInput = await fillVisibleQuestionInput(
+      page,
+      "What clozapine monitoring items are shown in the table image?",
+    );
+    await expect(questionInput).toBeVisible();
+    await visibleAnswerSubmitButton(page).click();
+    const plainAnswer = page.getByTestId("plain-answer-response");
+    await expect(plainAnswer).toBeVisible();
+    const marks = plainAnswer.getByTestId("answer-source-mark");
+    await expect(marks.first()).toBeVisible();
+
+    await marks.first().click();
+    const panel = page.getByTestId("answer-source-drawer");
+    await expect(panel).toBeVisible();
+    await expect(panel).toHaveAttribute("data-source-dock-panel", "");
+    await expect(page.getByRole("complementary", { name: await panel.locator("h2").innerText() })).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(panel).toBeFocused();
+    await expect(panel.getByTestId("answer-source-drawer-passage")).toBeVisible();
+
+    // Beside the answer, never over it: the prose ends before the panel starts.
+    const proseBox = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
+    const panelBox = await panel.boundingBox();
+    expect(proseBox && panelBox).toBeTruthy();
+    // The message records what the answer column was given, so a browser that
+    // lays it out differently says why rather than only by how much.
+    const reserveState = await page.evaluate(() => ({
+      docked: document.body.dataset.sourceDocked ?? null,
+      reserve: document.body.style.getPropertyValue("--source-dock-reserve"),
+      mainPaddingRight: getComputedStyle(document.getElementById("main-content")!).paddingRight,
+      mainWidth: document.getElementById("main-content")!.getBoundingClientRect().width,
+    }));
+    // Polled: a browser may lay the answer out again a frame after the panel lands.
+    await expect
+      .poll(
+        async () => {
+          const box = await plainAnswer.getByTestId("plain-answer-prose").boundingBox();
+          return box ? box.x + box.width : Number.POSITIVE_INFINITY;
+        },
+        { message: JSON.stringify(reserveState), timeout: 5_000 },
+      )
+      .toBeLessThanOrEqual(panelBox!.x);
+    await expectNoPageHorizontalOverflow(page);
+
+    // Escape closes it and focus goes back to the citation that opened it.
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+    await expect(marks.first()).toBeFocused();
+
+    // The visible close button does the same from a source card.
+    const firstRailRow = page.getByTestId("answer-source-rail").getByTestId("answer-source-rail-row").first();
+    await firstRailRow.click();
+    await expect(panel).toBeVisible();
+    await expect(panel).toBeFocused();
+    await panel.getByRole("button", { name: "Close source detail" }).click();
+    await expect(panel).toHaveCount(0);
+    await expect(firstRailRow).toBeFocused();
+  });
+
+  test("clinical records open with their list beside them from 1024px only", async ({ page }) => {
+    // ClinicalSplit (work-desktop-layout.tsx): from 1024px a DSM diagnosis, a
+    // therapy record and the Act have a list in a column on the left; below that
+    // width the list is not drawn at all and the record is the phone column.
+    const pages = [
+      {
+        route: "/dsm/diagnoses/major-depressive-disorder",
+        list: "DSM diagnoses",
+        current: "Major depressive disorder",
+        currentState: "page",
+        beside: { level: 1, name: "Major depressive disorder" },
+      },
+      {
+        route: "/therapy-compass/cognitive-behavioural-therapy-cbt",
+        list: "Therapies",
+        current: "Cognitive Behavioural Therapy (CBT)",
+        currentState: "page",
+        beside: { level: 1, name: "Cognitive Behavioural Therapy (CBT)" },
+      },
+      {
+        route: "/forms/act",
+        list: "Act and Standards topics",
+        current: "Criteria for an involuntary treatment order",
+        currentState: "location",
+        beside: { level: 2, name: "Mental Health Act 2014 (WA)" },
+      },
+    ] as const;
+
+    for (const width of [1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const entry of pages) {
+        await gotoApp(page, entry.route);
+        const list = page.getByRole("navigation", { name: entry.list });
+        await expect(list).toBeVisible({ timeout: 30_000 });
+        const current = list.locator(`[aria-current="${entry.currentState}"]`);
+        await expect(current).toHaveCount(1);
+        await expect(current).toContainText(entry.current);
+        // Every row is a full 48px target, the current one included.
+        for (const row of await list.getByRole("link").all()) {
+          if (!(await row.isVisible())) continue;
+          const box = await row.boundingBox();
+          expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+        }
+        // Beside the record, not above it.
+        const listBox = await list.boundingBox();
+        const headingBox = await page
+          .getByRole("heading", { level: entry.beside.level, name: entry.beside.name, exact: true })
+          .boundingBox();
+        expect(listBox!.x + listBox!.width).toBeLessThanOrEqual(headingBox!.x);
+        await expectNoPageHorizontalOverflow(page);
+      }
+    }
+
+    for (const width of [390, 768]) {
+      await page.setViewportSize({ width, height: 844 });
+      for (const entry of pages) {
+        await gotoApp(page, entry.route);
+        await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole("navigation", { name: entry.list })).toHaveCount(0);
+      }
+    }
   });
 
   for (const viewport of [
@@ -3343,12 +3454,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     await gotoApp(page, "/");
     await waitForDemoDashboardReady(page);
 
-    const recentChips = page.getByTestId("shared-home-recent-queries");
-    await expect(recentChips).toBeVisible();
-    await expect(recentChips).toContainText("Recent searches");
-    const chip = recentChips.getByRole("button", { name: recent });
-    await expect(chip).toBeVisible();
-    await chip.click();
+    // One grouped list since 12 Oct 2026: a "Recent" eyebrow over 48px rows.
+    const recentList = page.getByRole("region", { name: "Recent searches" });
+    await expect(recentList).toBeVisible();
+    await expect(recentList).toHaveAttribute("data-testid", "shared-home-recent-queries");
+    await expect(recentList).toContainText("Recent");
+    const row = recentList.getByRole("button", { name: recent });
+    await expect(row).toBeVisible();
+    await expectMinTouchTarget(row, 48);
+    await row.click();
 
     await expect(page.getByTestId("plain-answer-response")).toBeVisible();
     expect(answerRequests).toContain(recent);
@@ -3363,12 +3477,15 @@ test.describe("PsychSift UI smoke coverage", () => {
     const homeRecentSearches = page.getByTestId("shared-home-recent-queries");
     await homeRecentSearches.scrollIntoViewIfNeeded();
     await expect(homeRecentSearches).toBeVisible();
-    const homeRecentDirection = await homeRecentSearches.evaluate((node) => getComputedStyle(node).flexDirection);
-    expect(homeRecentDirection, "home recent-searches should stack on phone width").toBe("column");
-
-    const chipsGroup = homeRecentSearches.locator(".answer-suggestion-chips");
-    const mobileJustify = await chipsGroup.evaluate((node) => getComputedStyle(node).justifyContent);
-    expect(mobileJustify, "phone home recent-search chips should align to flex-start").toBe("flex-start");
+    // On a phone each question keeps a full-width row of its own.
+    const phoneRow = homeRecentSearches.getByRole("button", { name: recent });
+    await expectMinTouchTarget(phoneRow, 48);
+    const [rowWidth, listWidth] = await Promise.all([
+      phoneRow.evaluate((node) => node.getBoundingClientRect().width),
+      homeRecentSearches.getByRole("list").evaluate((node) => node.getBoundingClientRect().width),
+    ]);
+    expect(Math.abs(rowWidth - listWidth), "phone recent rows span the list").toBeLessThanOrEqual(2);
+    await expectNoPageHorizontalOverflow(page);
   });
 
   test("legacy unscoped recent-query storage is purged and never displayed @critical", async ({ page }) => {
@@ -4267,6 +4384,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     // The panel below deliberately stays page-scoped: `ResultFilterSheet`
     // renders through `OverlayPortal`, so it lives outside this subtree.
     const trigger = dsmPage.getByTestId("dsm-category-filter-desktop");
+    // A keypress before React attaches the trigger's handler is lost on slower engines (WebKit).
+    await expectHydrated(trigger);
     await trigger.focus();
     await page.keyboard.press("Enter");
     const panel = page.getByTestId("dsm-category-filter-panel");
@@ -4718,11 +4837,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu).toBeVisible();
     await expect(modeDialog.getByRole("textbox", { name: "Find a mode" })).toHaveCount(0);
     await expect(modeDialog.getByRole("radio", { name: "Clinical" })).toBeChecked();
-    await expect(modeDialog.getByRole("status")).toHaveText("19 in Clinical");
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
+    await expect(modeDialog.getByRole("status")).toHaveText("18 in Clinical");
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
     await expect(appModeMenu.getByRole("heading", { name: "Search" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading", { name: "Psychiatry" })).toBeAttached();
-    await expect(appModeMenu.getByRole("heading", { name: "Medicines & tools" })).toBeAttached();
+    await expect(appModeMenu.getByRole("heading", { name: "Medicines" })).toBeAttached();
     await expect(appModeMenu.getByRole("heading")).toHaveCount(3);
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^CPD\b/ })).toHaveCount(0);
@@ -4735,22 +4854,18 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^My Day\b/ })).toBeAttached();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toHaveCount(0);
     await modeDialog.getByRole("radio", { name: "Clinical" }).click();
-    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(19);
+    await expect(appModeMenu.getByRole("menuitemradio")).toHaveCount(18);
 
     const answerMode = appModeMenu.getByRole("menuitemradio", { name: /^Answer\b/ });
     await answerMode.focus();
     await expect(answerMode).toBeFocused();
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Evidence\b/ })).toHaveCount(0);
     // Arrow Down follows the drawn order, group by group: the end of Search
-    // steps into Psychiatry, and the end of Psychiatry steps into Medicines & tools.
+    // steps into Psychiatry, and the end of Psychiatry steps into Medicines.
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Documents\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Services\b/ })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Sources\b/ })).toBeFocused();
-    await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Favourites\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Psychiatry\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
@@ -4765,11 +4880,16 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Therapy\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Forms\b/ })).toBeFocused();
+    // Calculators and the Dictionary moved here from Medicines (audit item 8).
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Calculators\b/ })).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Dictionary\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^First Nations\b/ })).toBeFocused();
-    // Medicines & tools is led by its hub, as Psychiatry is.
+    // Medicines is led by its hub, as Psychiatry is.
     await page.keyboard.press("ArrowDown");
-    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines & tools\b/ })).toBeFocused();
+    await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medicines\b/ })).toBeFocused();
     await page.keyboard.press("ArrowDown");
     await expect(appModeMenu.getByRole("menuitemradio", { name: /^Medication\b/ })).toBeFocused();
     await page.keyboard.press("Escape");
@@ -4807,7 +4927,7 @@ test.describe("PsychSift UI smoke coverage", () => {
 
     const globalSearchInput = page.locator('[data-testid="global-search-input"]:visible').first();
     await expect(page.getByRole("button", { name: "Mode Medication" })).toBeVisible({ timeout: 30_000 });
-    await expect(globalSearchInput).toHaveAttribute("placeholder", "Search medication dosing or safety...");
+    await expect(globalSearchInput).toHaveAttribute("placeholder", "Search medications...");
     await expect(globalSearchInput).toHaveValue("acamprosate renal dose");
 
     const acamprosateResult = page.getByTestId("medication-result-acamprosate-desktop");
@@ -4930,10 +5050,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(page.getByTestId("medication-result-acamprosate-phone")).toBeVisible();
   });
 
-  test("tablet document chrome keeps one new-chat action and readable Sources rows", async ({ page, baseURL }) => {
+  test("tablet document chrome keeps one new-chat action and readable Sources rows", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 900 });
-    // Covers the classic icon rail, which the newest live version replaces on tablets.
-    await useEveryonesVersion(page, baseURL);
     await mockDemoApi(page);
     // Documents' idle browse tiles (including the old "Browse library" button)
     // are retired — `/documents` now redirects to the shared home instead of
@@ -5456,6 +5574,11 @@ test.describe("PsychSift UI smoke coverage", () => {
     const currentStage = progress.locator('[aria-current="step"]');
     await expect(currentStage).toHaveText("Search");
 
+    // Shortlisting sits behind each card's "More" toggle; the card's visible
+    // action is the call button.
+    const moreToggles = navigator.getByRole("button", { name: /^More actions for / });
+    await moreToggles.nth(0).click();
+    await moreToggles.nth(1).click();
     const addButtons = navigator.getByRole("button", { name: /Add .* to shortlist/ });
     await addButtons.nth(0).click();
     const shortlist = navigator.getByTestId("services-shortlist-bar");
@@ -5463,7 +5586,9 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expect(shortlist.getByRole("button", { name: "Compare" })).toBeDisabled();
     await expect(currentStage).toHaveText("Shortlist");
 
-    await addButtons.nth(1).click();
+    // The first card's button now reads "Remove … from shortlist", so the second
+    // open card's button is the only "Add" match left.
+    await addButtons.first().click();
     await expect(shortlist).toContainText("2 shortlisted");
     await shortlist.getByRole("button", { name: "Compare" }).click();
     await expect(navigator.getByTestId("services-comparison")).toBeVisible();
@@ -6611,9 +6736,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     { name: "tablet", width: 768, height: 1024 },
     { name: "desktop", width: 1280, height: 900 },
   ]) {
-    test(`guide opens and dismisses at ${viewport.name}`, async ({ page, baseURL }) => {
+    test(`guide opens and dismisses at ${viewport.name}`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      if (viewport.width < 1024) await useEveryonesVersion(page, baseURL);
       await mockPrivateUnauthenticatedApi(page);
       await gotoApp(page, "/");
 
@@ -6640,9 +6764,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     });
   }
 
-  test("guide centre topic navigation and tour progress remain accessible", async ({ page, baseURL }) => {
+  test("guide centre topic navigation and tour progress remain accessible", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
@@ -6744,9 +6867,8 @@ test.describe("PsychSift UI smoke coverage", () => {
     await expectNoPageHorizontalOverflow(page);
   });
 
-  test("guide centre phone dock paints through the bottom safe area", async ({ page, baseURL }) => {
+  test("guide centre phone dock paints through the bottom safe area", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 820 });
-    await useEveryonesVersion(page, baseURL);
     await mockPrivateUnauthenticatedApi(page);
     await gotoApp(page, "/");
 

@@ -125,129 +125,147 @@ export default function OnCallNowSignedOutExample() {
         </p>
       </div>
 
-      <div className={cn(modeModuleSurface, "grid min-w-0 gap-2 p-3")} data-testid="on-call-now-example-emergency">
-        <p className="flex min-w-0 items-center gap-2">
-          <Shield aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-          <span className={cn(modeNameText, "text-base-minus font-semibold text-[color:var(--text-heading)]")}>
-            {example.emergency.title}
-          </span>
-        </p>
-        <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
-          <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-          <ExampleNumber value={example.emergency.mobile} />
-          <span className={modeSecondaryText}>from your mobile</span>
-        </p>
-        <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
-          <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
-          <span className={cn(modeNumberText, "text-[color:var(--text-heading)]")}>
-            {`Dial ${example.emergency.wardCode}`}
-          </span>
-          <span className={modeSecondaryText}>from a ward phone</span>
-        </p>
-      </div>
+      {/* Numbers on the left, escalation and shift tools on the right from 1024px; one column, numbers first, below it. */}
+      <div className="grid min-w-0 gap-5 lg:grid-cols-2 lg:items-start">
+        <div className="grid min-w-0 content-start gap-5">
+          <div className={cn(modeModuleSurface, "grid min-w-0 gap-2 p-3")} data-testid="on-call-now-example-emergency">
+            <p className="flex min-w-0 items-center gap-2">
+              <Shield aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+              <span className={cn(modeNameText, "text-base-minus font-semibold text-[color:var(--text-heading)]")}>
+                {example.emergency.title}
+              </span>
+            </p>
+            <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
+              <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+              {/* The crisis lines' number size, so the two blocks share one type scale. */}
+              <span className="text-sm">
+                <ExampleNumber value={example.emergency.mobile} />
+              </span>
+              <span className={modeSecondaryText}>from your mobile</span>
+            </p>
+            <p className="flex min-h-12 min-w-0 flex-wrap items-center gap-x-2">
+              <Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />
+              <span className={cn(modeNumberText, "text-sm text-[color:var(--text-heading)]")}>
+                {`Dial ${example.emergency.wardCode}`}
+              </span>
+              <span className={modeSecondaryText}>from a ward phone</span>
+            </p>
+          </div>
 
-      <section aria-labelledby="on-call-now-example-right-now" className="grid min-w-0 gap-2 px-3">
-        <h2 id="on-call-now-example-right-now" className={eyebrowText}>
-          Right now · after hours
-        </h2>
-        <div className="grid gap-0.5">
-          <p className="text-xl font-semibold text-[color:var(--text-heading)]">{example.rightNow.role}</p>
-          <p className={cn(modeSecondaryText, "flex items-center gap-1.5")}>
-            <Clock aria-hidden="true" strokeWidth={1.5} className="size-icon-xs shrink-0" />
-            {`${example.rightNow.name} · ${example.rightNow.until}`}
-          </p>
-        </div>
-        <p className="grid min-h-12 content-center gap-0.5">
-          <ExampleNumber value={example.rightNow.number} />
-          <span className={modeSecondaryText}>{example.rightNow.numberLabel}</span>
-        </p>
-        <div className="grid gap-1" aria-hidden="true">
-          <span className={onCallTrack}>
-            {/* 21:40 is about 31% of the way through a 17:00 to 08:00 shift. */}
-            <span className={cn(onCallTrackFill, "w-[31%]")} />
-          </span>
-          <span
-            className={cn(modeNumberText, "flex justify-between text-2xs font-semibold text-[color:var(--text-muted)]")}
-          >
-            <span>{example.rightNow.start}</span>
-            <span>{example.rightNow.nowLabel}</span>
-            <span>{example.rightNow.end}</span>
-          </span>
-        </div>
-      </section>
-
-      <div className={cn(modeModuleSurface, "grid min-w-0 gap-2 p-3")} data-testid="on-call-now-example-escalating">
-        <span className={eyebrowText}>{example.escalating.started}</span>
-        <p className="text-base-minus font-semibold text-[color:var(--text-heading)]">{example.escalating.title}</p>
-        <p className={modeSecondaryText}>{example.escalating.next}</p>
-        <span className="flex gap-1" aria-hidden="true">
-          {Array.from({ length: example.escalating.steps }, (_, index) => (
-            <span
-              key={index}
-              className={cn(
-                "h-1 flex-1 rounded-full",
-                index < example.escalating.stepsDone ? "bg-[color:var(--mode-identity)]" : "bg-[color:var(--border)]",
-              )}
-            />
-          ))}
-        </span>
-      </div>
-
-      <div className="grid min-w-0 gap-2 px-3" data-testid="on-call-now-example-pulse">
-        <span className={eyebrowText}>Shift pulse</span>
-        <p className="text-base-minus font-semibold text-[color:var(--text-heading)]">{example.pulse.title}</p>
-        <p className={modeSecondaryText}>{example.pulse.body}</p>
-        <span className="grid gap-1" aria-hidden="true">
-          <span className="flex h-8 items-end gap-0.5">
-            {PULSE_BARS.map((bar, index) => (
-              <span
-                key={index}
-                className={cn(
-                  "min-h-1 flex-1 rounded-t-sm",
-                  bar.height,
-                  bar.peak ? "bg-[color:var(--mode-identity)]" : "bg-[color:var(--border-strong)]",
-                )}
+          <OnCallGroupedList eyebrow="Your usual" testId="on-call-now-example-usual">
+            {example.usual.map((label) => (
+              <OnCallRow
+                key={label}
+                title={label}
+                leading={<Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
               />
             ))}
-          </span>
-          <span
-            className={cn(modeNumberText, "flex justify-between text-2xs font-semibold text-[color:var(--text-muted)]")}
-          >
-            <span>17:00</span>
-            <span>Last 4 nights · counts only</span>
-            <span>08:00</span>
-          </span>
-        </span>
+          </OnCallGroupedList>
+
+          <section aria-labelledby="on-call-now-example-right-now" className="grid min-w-0 gap-2 px-3">
+            <h2 id="on-call-now-example-right-now" className={eyebrowText}>
+              Right now · after hours
+            </h2>
+            <div className="grid gap-0.5">
+              {/* The same size as every other heading on Now, so the role reads as one of them, not a banner. */}
+              <p className="text-base-minus font-semibold text-[color:var(--text-heading)]">{example.rightNow.role}</p>
+              <p className={cn(modeSecondaryText, "flex items-center gap-1.5")}>
+                <Clock aria-hidden="true" strokeWidth={1.5} className="size-icon-xs shrink-0" />
+                {`${example.rightNow.name} · ${example.rightNow.until}`}
+              </p>
+            </div>
+            <p className="grid min-h-12 content-center gap-0.5">
+              <ExampleNumber value={example.rightNow.number} />
+              <span className={modeSecondaryText}>{example.rightNow.numberLabel}</span>
+            </p>
+            <div className="grid gap-1" aria-hidden="true">
+              <span className={onCallTrack}>
+                {/* 21:40 is about 31% of the way through a 17:00 to 08:00 shift. */}
+                <span className={cn(onCallTrackFill, "w-[31%]")} />
+              </span>
+              <span
+                className={cn(
+                  modeNumberText,
+                  "flex justify-between text-2xs font-semibold text-[color:var(--text-muted)]",
+                )}
+              >
+                <span>{example.rightNow.start}</span>
+                <span>{example.rightNow.nowLabel}</span>
+                <span>{example.rightNow.end}</span>
+              </span>
+            </div>
+          </section>
+
+          <OnCallGroupedList eyebrow="Also on tonight" testId="on-call-now-example-also-on">
+            {example.alsoOn.map((row) => (
+              <OnCallRow
+                key={row.role}
+                title={row.name ? `${row.role} · ${row.name}` : row.role}
+                subtitle={row.detail}
+                leading={<span className={onCallBadge}>{row.badge}</span>}
+                trailing={<ExampleNumber value={row.number} />}
+                className="pr-3"
+              />
+            ))}
+          </OnCallGroupedList>
+        </div>
+        <div className="grid min-w-0 content-start gap-5">
+          <div className={cn(modeModuleSurface, "grid min-w-0 gap-2 p-3")} data-testid="on-call-now-example-escalating">
+            <span className={eyebrowText}>{example.escalating.started}</span>
+            <p className="text-base-minus font-semibold text-[color:var(--text-heading)]">{example.escalating.title}</p>
+            <p className={modeSecondaryText}>{example.escalating.next}</p>
+            <span className="flex gap-1" aria-hidden="true">
+              {Array.from({ length: example.escalating.steps }, (_, index) => (
+                <span
+                  key={index}
+                  className={cn(
+                    "h-1 flex-1 rounded-full",
+                    index < example.escalating.stepsDone
+                      ? "bg-[color:var(--mode-identity)]"
+                      : "bg-[color:var(--border)]",
+                  )}
+                />
+              ))}
+            </span>
+          </div>
+
+          <div className="grid min-w-0 gap-2 px-3" data-testid="on-call-now-example-pulse">
+            <span className={eyebrowText}>Shift pulse</span>
+            <p className="text-base-minus font-semibold text-[color:var(--text-heading)]">{example.pulse.title}</p>
+            <p className={modeSecondaryText}>{example.pulse.body}</p>
+            <span className="grid gap-1" aria-hidden="true">
+              <span className="flex h-8 items-end gap-0.5">
+                {PULSE_BARS.map((bar, index) => (
+                  <span
+                    key={index}
+                    className={cn(
+                      "min-h-1 flex-1 rounded-t-sm",
+                      bar.height,
+                      bar.peak ? "bg-[color:var(--mode-identity)]" : "bg-[color:var(--border-strong)]",
+                    )}
+                  />
+                ))}
+              </span>
+              <span
+                className={cn(
+                  modeNumberText,
+                  "flex justify-between text-2xs font-semibold text-[color:var(--text-muted)]",
+                )}
+              >
+                <span>17:00</span>
+                <span>Last 4 nights · counts only</span>
+                <span>08:00</span>
+              </span>
+            </span>
+          </div>
+
+          <OnCallGroupedList eyebrow="Who do I call now?" testId="on-call-now-example-situations">
+            {example.situations.map((situation) => (
+              <OnCallRow key={situation} title={situation} />
+            ))}
+          </OnCallGroupedList>
+        </div>
       </div>
-
-      <OnCallGroupedList eyebrow="Your usual" testId="on-call-now-example-usual">
-        {example.usual.map((label) => (
-          <OnCallRow
-            key={label}
-            title={label}
-            leading={<Phone aria-hidden="true" strokeWidth={2} className={onCallLeadingIcon} />}
-          />
-        ))}
-      </OnCallGroupedList>
-
-      <OnCallGroupedList eyebrow="Also on tonight" testId="on-call-now-example-also-on">
-        {example.alsoOn.map((row) => (
-          <OnCallRow
-            key={row.role}
-            title={row.name ? `${row.role} · ${row.name}` : row.role}
-            subtitle={row.detail}
-            leading={<span className={onCallBadge}>{row.badge}</span>}
-            trailing={<ExampleNumber value={row.number} />}
-            className="pr-3"
-          />
-        ))}
-      </OnCallGroupedList>
-
-      <OnCallGroupedList eyebrow="Who do I call now?" testId="on-call-now-example-situations">
-        {example.situations.map((situation) => (
-          <OnCallRow key={situation} title={situation} />
-        ))}
-      </OnCallGroupedList>
     </section>
   );
 }

@@ -115,6 +115,12 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     keywords: "theme dark mode light mode night colour color system contrast",
   },
   {
+    id: "settings-row-bright-light",
+    section: "app-preferences",
+    label: "Bright light",
+    keywords: "glare sunlight sun outdoors high contrast bold darker lines readability ward",
+  },
+  {
     id: "settings-row-interface-density",
     section: "app-preferences",
     label: "Interface density",
@@ -144,12 +150,6 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     section: "app-preferences",
     label: "Example data",
     keywords: "sample demo made up fake test data look around explore tour work mode",
-  },
-  {
-    id: "settings-row-live-version",
-    section: "app-preferences",
-    label: "Live version",
-    keywords: "newest everyone preview test tester beta new features early access release version",
   },
   {
     id: "settings-row-hide-new-work-screens",
@@ -211,6 +211,12 @@ export const SETTINGS_SEARCH_ENTRIES: ReadonlyArray<SettingsSearchEntry> = [
     section: "privacy",
     label: "Clear recent searches",
     keywords: "delete history erase wipe remove questions",
+  },
+  {
+    id: "settings-row-clear-prescribing-patient-profile",
+    section: "privacy",
+    label: "Clear prescribing patient profile",
+    keywords: "delete patient details physiology allergies medications age kidney liver erase wipe shared computer",
   },
   {
     id: "settings-row-clear-saved-items",

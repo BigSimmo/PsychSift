@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
+import { memo, type ComponentProps } from "react";
 
 const loadNeedsYouModule = () => import("@/components/needs-you/needs-you-sheet");
 
@@ -15,7 +15,15 @@ export function prefetchNeedsYouSheet() {
  * The bell's Notification centre, as a lazy chunk: the header carries only the
  * bell. Once mounted it reads the feed (for the badge) and draws the sheet
  * when `open`, so the badge and the sheet share one read.
+ *
+ * Memoised because the header re-renders several times each time it slides
+ * away or back on a scroll, and the feed read under it (every source, the
+ * device time zone) is the heaviest part of that render. Its props are stable
+ * (`open`, a callback, a ref and a state setter), so it re-renders only when
+ * the bell itself changes.
  */
-export function LazyNotificationCentre(props: ComponentProps<typeof NeedsYouCentre>) {
+export const LazyNotificationCentre = memo(function LazyNotificationCentre(
+  props: ComponentProps<typeof NeedsYouCentre>,
+) {
   return <NeedsYouCentre {...props} />;
-}
+});

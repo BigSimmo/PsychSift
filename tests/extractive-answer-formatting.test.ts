@@ -8,6 +8,7 @@ import {
 import {
   buildExtractiveAnswer,
   classifyAnswerIntent,
+  toxicityListSentences,
   documentSupportListIntent,
   finalizeRagAnswerQuality,
   generatedAnswerQualityFailureReason,
@@ -3171,5 +3172,143 @@ describe("monitoring evidence gate parity (run-#60 miss class)", () => {
       expect(documentSupportListIntent(docQuery, docQueryClass)).toBe(true);
       expect(generatedAnswerQualityFailureReason(candidate, docQuery, docQueryClass)).toBeNull();
     });
+  });
+});
+
+describe("two-medicine interaction intent (#ZZ4RAP)", () => {
+  it("routes a co-prescribing question to contraindication", () => {
+    expect(classifyAnswerIntent("Can I prescribe ibuprofen for someone on lithium?", "medication_dose_risk")).toBe(
+      "contraindication",
+    );
+  });
+
+  it("routes a passive co-administration question to contraindication", () => {
+    expect(classifyAnswerIntent("Can ibuprofen be administered with lithium?", "medication_dose_risk")).toBe(
+      "contraindication",
+    );
+  });
+
+  it("routes two-medicine dosing, switching and mechanism questions to interaction guidance", () => {
+    for (const query of [
+      "What dose of ibuprofen is safe with lithium?",
+      "How do I switch from sertraline to clozapine?",
+      "What is the mechanism of the ibuprofen and lithium effect?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).toBe("contraindication");
+    }
+  });
+
+  it("keeps monitoring and side-effect questions about two medicines on their own routes", () => {
+    for (const query of [
+      "What baseline monitoring is needed when switching from olanzapine to clozapine?",
+      "What are the side effects of olanzapine compared with clozapine?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).not.toBe("contraindication");
+    }
+  });
+
+  it("keeps an effects-of question an interaction question even when it mentions monitoring", () => {
+    expect(
+      classifyAnswerIntent(
+        "What are the effects of ibuprofen on lithium levels during monitoring?",
+        "medication_dose_risk",
+      ),
+    ).toBe("contraindication");
+  });
+
+  it("keeps a two-medicine adverse-effects question off the interaction route", () => {
+    for (const query of [
+      "What are the adverse effects of clozapine and olanzapine?",
+      "What are the unwanted effects of clozapine and olanzapine?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).not.toBe("contraindication");
+    }
+  });
+
+  it("routes an effect on a named medicine to interaction guidance, but not effects on an outcome or comparisons", () => {
+    expect(classifyAnswerIntent("What effect does ibuprofen have on lithium levels?", "medication_dose_risk")).toBe(
+      "contraindication",
+    );
+    for (const query of [
+      "Compare the effects of clozapine and olanzapine on weight",
+      "What are the effects of clozapine versus olanzapine on QTc?",
+      "What are the effects of clozapine and olanzapine on sleep?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).not.toBe("contraindication");
+    }
+  });
+
+  it("finds a medicine target after level or clearance wording, but not in patient context", () => {
+    for (const query of [
+      "How does ibuprofen affect the clearance of lithium?",
+      "What effect does ibuprofen have on the plasma levels of lithium?",
+      "How does ibuprofen affect the level of lithium?",
+      "What effect does ibuprofen have on sodium valproate levels?",
+    ]) {
+      expect(classifyAnswerIntent(query, "medication_dose_risk")).toBe("contraindication");
+    }
+    expect(classifyAnswerIntent("How does valproate affect vitamin D levels?", "medication_dose_risk")).not.toBe(
+      "contraindication",
+    );
+    expect(
+      classifyAnswerIntent("How does lithium affect patients receiving quetiapine?", "medication_dose_risk"),
+    ).not.toBe("contraindication");
+  });
+
+  it("does not treat 'with' + a condition as an interaction", () => {
+    expect(
+      classifyAnswerIntent(
+        "Can I use lithium after stopping ibuprofen in someone with bipolar disorder?",
+        "medication_dose_risk",
+      ),
+    ).not.toBe("contraindication");
+  });
+});
+
+describe("toxicity heading carry-over (owner decision, #ZZ4RAP)", () => {
+  const query = "What are the signs of lithium toxicity?";
+
+  it("ends a bullet list at the next heading even when bullets have no closing punctuation", () => {
+    const content = ["• Signs of mild toxicity:", "o Nausea", "• Signs of severe toxicity:", "o Seizures"].join("\n");
+    expect(toxicityListSentences("Signs of mild toxicity:", content, query)).toEqual([
+      "Signs of mild toxicity include nausea.",
+    ]);
+    expect(toxicityListSentences("Signs of severe toxicity:", content, query)).toEqual([
+      "Signs of severe toxicity include seizures.",
+    ]);
+    expect(
+      toxicityListSentences("Signs of mild toxicity:", content, "What are the signs of severe toxicity?"),
+    ).toBeNull();
+  });
+
+  it("reads a heading followed by a blank line and direct bullets, dropping the list verb", () => {
+    const content = [
+      "The most significant contributors to lithium toxicity are4:",
+      "",
+      "• reduced fluid or salt intake",
+      "",
+      "• fluid loss from vomiting, diarrhoea or excessive sweating.",
+      "",
+      "Toxicity may also be caused by overdose.",
+    ].join("\n");
+    expect(
+      toxicityListSentences("The most significant contributors to lithium toxicity are4:", content, query),
+    ).toEqual([
+      "The most significant contributors to lithium toxicity include reduced fluid or salt intake.",
+      "The most significant contributors to lithium toxicity include fluid loss from vomiting, diarrhoea or excessive sweating.",
+    ]);
+    expect(
+      toxicityListSentences("Features of toxicity include:", "Features of toxicity include:\n• Tremor", query),
+    ).toEqual(["Features of toxicity include tremor."]);
+  });
+
+  it("never carries an action heading over to its steps", () => {
+    expect(
+      toxicityListSentences(
+        "If lithium toxicity is suspected:",
+        "If lithium toxicity is suspected:\n• Withhold lithium",
+        query,
+      ),
+    ).toBeNull();
   });
 });

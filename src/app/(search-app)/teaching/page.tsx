@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 /*
- * Today (work-mode redesign, owner request 6 Oct 2026): the hero by phase, Next for you, Needs you,
+ * Today (work-mode redesign, owner request 6 Oct 2026): the hero by phase (with what comes next), Needs you,
  * the rest of the week and attendance. The week itself is the Week tab (/teaching/week). Like My
  * Work and CPD it declares no search surface, so it renders its own body. Demo mode is read on the
  * server.

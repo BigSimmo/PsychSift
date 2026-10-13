@@ -38,8 +38,8 @@ export const cmeDashboardModuleLabels: Record<CmeDashboardModuleId, string> = {
 export const cmeDashboardModuleSubtitles: Record<CmeDashboardModuleId, string> = {
   requirements: "Targets still open, next step first",
   "routines-due": "Routines due today",
-  "audited-today": "What you logged today",
-  "year-dates": "The year's dates and days left",
+  "audited-today": "Today's hours, in the summary",
+  "year-dates": "Weeks left, in the summary",
   provenance: "Where your targets came from",
   "also-for-you": "Teaching, learning, dates",
 };

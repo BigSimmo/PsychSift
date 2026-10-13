@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-09"
+    "committed_at": "2026-10-13"
   },
   "routes": {
     "modes": [
@@ -79,7 +79,7 @@
       },
       {
         "id": "medicines",
-        "label": "Medicines & tools",
+        "label": "Medicines",
         "home": "/medicines",
         "dev_only": false
       },
@@ -224,6 +224,11 @@
         "area": "product"
       },
       {
+        "path": "/forms/clock",
+        "file": "src/app/(search-app)/forms/clock/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/documents/[id]",
         "file": "src/app/(search-app)/documents/[id]/page.tsx",
         "area": "product"
@@ -256,11 +261,6 @@
       {
         "path": "/roster/team",
         "file": "src/app/(search-app)/roster/team/page.tsx",
-        "area": "product"
-      },
-      {
-        "path": "/teaching/whats-on",
-        "file": "src/app/(search-app)/teaching/whats-on/page.tsx",
         "area": "product"
       },
       {
@@ -439,6 +439,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/hospital/starters",
+        "file": "src/app/(search-app)/admin/hospital/starters/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/care-plan",
         "file": "src/app/mockups/care-plan/page.tsx",
         "area": "mockup"
@@ -504,6 +509,11 @@
         "area": "mockup"
       },
       {
+        "path": "/admin/applications",
+        "file": "src/app/(search-app)/admin/applications/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/therapy-recommend-popup-dossier",
         "file": "src/app/mockups/therapy-recommend-popup-dossier/page.tsx",
         "area": "mockup"
@@ -551,6 +561,11 @@
       {
         "path": "/roster/settings",
         "file": "src/app/(search-app)/roster/settings/page.tsx",
+        "area": "product"
+      },
+      {
+        "path": "/admin/applications/cv",
+        "file": "src/app/(search-app)/admin/applications/cv/page.tsx",
         "area": "product"
       },
       {
@@ -739,6 +754,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/hospital/short-staffed",
+        "file": "src/app/(search-app)/admin/hospital/short-staffed/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/mockups/therapy-scenario-popup-guided",
         "file": "src/app/mockups/therapy-scenario-popup-guided/page.tsx",
         "area": "mockup"
@@ -765,7 +785,7 @@
       },
       {
         "path": "/safety-plan",
-        "file": "src/app/safety-plan/page.tsx",
+        "file": "src/app/(search-app)/safety-plan/page.tsx",
         "area": "product"
       },
       {
@@ -911,11 +931,6 @@
       {
         "path": "/admin/bookings",
         "file": "src/app/(search-app)/admin/bookings/page.tsx",
-        "area": "product"
-      },
-      {
-        "path": "/roster/today",
-        "file": "src/app/(search-app)/roster/today/page.tsx",
         "area": "product"
       },
       {
@@ -1109,11 +1124,6 @@
         "area": "product"
       },
       {
-        "path": "/cme/applications",
-        "file": "src/app/(search-app)/cme/applications/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/mockups/development/corpus-health",
         "file": "src/app/mockups/development/corpus-health/page.tsx",
         "area": "mockup"
@@ -1169,11 +1179,6 @@
         "area": "product"
       },
       {
-        "path": "/cme/applications/cv",
-        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
-        "area": "product"
-      },
-      {
         "path": "/differentials/search",
         "file": "src/app/(search-app)/differentials/search/page.tsx",
         "area": "product"
@@ -1197,6 +1202,11 @@
         "path": "/mockups/care-plan/patients/[patientId]/patient-plan",
         "file": "src/app/mockups/care-plan/patients/[patientId]/patient-plan/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/my-day/calendar",
+        "file": "src/app/(search-app)/my-day/calendar/page.tsx",
+        "area": "product"
       },
       {
         "path": "/mockups/calculators-directory-grid",
@@ -1382,11 +1392,6 @@
         "path": "/mockups/search-band-directions",
         "file": "src/app/mockups/search-band-directions/page.tsx",
         "area": "mockup"
-      },
-      {
-        "path": "/on-call/refer",
-        "file": "src/app/(search-app)/on-call/refer/page.tsx",
-        "area": "product"
       },
       {
         "path": "/psychiatry",
@@ -1726,6 +1731,11 @@
         "target": "/?mode=factsheets"
       },
       {
+        "path": "/teaching/whats-on",
+        "file": "src/app/(search-app)/teaching/whats-on/page.tsx",
+        "target": "/teaching/week?view=other"
+      },
+      {
         "path": "/mockups/medication-prescribing",
         "file": "src/app/mockups/medication-prescribing/page.tsx",
         "target": "/medications/acamprosate"
@@ -1776,9 +1786,24 @@
         "target": "/teaching/week"
       },
       {
+        "path": "/roster/today",
+        "file": "src/app/(search-app)/roster/today/page.tsx",
+        "target": "/roster"
+      },
+      {
         "path": "/applications",
         "file": "src/app/applications/route.ts",
         "target": "/tools"
+      },
+      {
+        "path": "/cme/applications",
+        "file": "src/app/(search-app)/cme/applications/page.tsx",
+        "target": "/admin/applications"
+      },
+      {
+        "path": "/cme/applications/cv",
+        "file": "src/app/(search-app)/cme/applications/cv/page.tsx",
+        "target": "/admin/applications/cv"
       },
       {
         "path": "/dictionary/browse",
@@ -1794,6 +1819,11 @@
         "path": "/dsm",
         "file": "src/app/(search-app)/dsm/page.tsx",
         "target": "/?mode=dsm"
+      },
+      {
+        "path": "/on-call/refer",
+        "file": "src/app/(search-app)/on-call/refer/page.tsx",
+        "target": "/on-call/call?show=refer"
       },
       {
         "path": "/specifiers",
@@ -1926,6 +1956,10 @@
         "file": "src/app/api/documents/[id]/route.ts"
       },
       {
+        "path": "/api/work/starters/sharing",
+        "file": "src/app/api/work/starters/sharing/route.ts"
+      },
+      {
         "path": "/api/search/interaction",
         "file": "src/app/api/search/interaction/route.ts"
       },
@@ -1968,6 +2002,10 @@
       {
         "path": "/api/upload",
         "file": "src/app/api/upload/route.ts"
+      },
+      {
+        "path": "/api/work/hospital/short-staffed",
+        "file": "src/app/api/work/hospital/short-staffed/route.ts"
       },
       {
         "path": "/api/teaching/resources/services/[serviceId]",
@@ -2284,6 +2322,10 @@
       {
         "path": "/api/on-call/services",
         "file": "src/app/api/on-call/services/route.ts"
+      },
+      {
+        "path": "/api/work/hospital/starters",
+        "file": "src/app/api/work/hospital/starters/route.ts"
       },
       {
         "path": "/api/roster/shifts/manual",
@@ -2800,6 +2842,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-10-new-job-progress-shared-only-by-opt-in.md",
+        "section": "decisions",
+        "catalogued": false
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/START-HERE.md",
         "section": "superpowers",
         "catalogued": true
@@ -2883,6 +2930,11 @@
         "path": "docs/design-system/sweep-2026-08-29-structure.md",
         "section": "design-system",
         "catalogued": true
+      },
+      {
+        "path": "docs/agents/shared-context-and-memory.md",
+        "section": "agents",
+        "catalogued": false
       },
       {
         "path": "docs/superpowers/rag-upgrade/local/plans/2026-08-20-rag-australian-source-governance.md",
@@ -4305,6 +4357,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/investigations/firefox-click-state-failures.md",
+        "section": "investigations",
+        "catalogued": false
+      },
+      {
         "path": "docs/archive/rag-scalability-wip-remediation-2026-07-17.md",
         "section": "archive",
         "catalogued": true
@@ -4392,11 +4449,6 @@
       {
         "path": "docs/care-plan/verification-log-2026-08-21.md",
         "section": "care-plan",
-        "catalogued": true
-      },
-      {
-        "path": "docs/live-version-switch.md",
-        "section": "root",
         "catalogued": true
       },
       {
@@ -5231,6 +5283,9 @@
       },
       {
         "name": "governance"
+      },
+      {
+        "name": "investigations"
       },
       {
         "name": "on-call"
@@ -11829,6 +11884,14 @@
         "checks": "docs links passed; Prettier passed; documentation-only diff reviewed"
       },
       {
+        "date": "2026-10-11",
+        "ref": "codex/fix-on-call-navigation-and-page-hydration",
+        "head": "4f7ef99a95650f5eef0386aaeb49dc0eb59f76fc",
+        "scope": "local all-page navigation and shared update fix review",
+        "outcome": "Fixed release recovery, On Call fallback clarity, release-specific worker notices, prior-cache ordering and shared composer hydration; all 221 production route patterns covered and 138 eligible link/history journeys passed. Safe-state dynamic coverage does not prove authenticated private workflows.",
+        "checks": "132 focused unit/DOM tests; 137 phone contract tests; 12 phone browser cases; 52 corrected owning browser tests; source typecheck and scoped lint/format passed. Broad Chromium run stopped at user request after 514 passes; four additional test-readiness fixes are being narrowly verified and remaining matrix is delegated to GitHub. Record identifies local product checkpoint before the final browser-harness-only changes."
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/sync-ci-anti-churn",
         "head": "4f99c6d6dbcd4d2c16d5ec58183003c64d989ac8",
@@ -14627,6 +14690,14 @@
         "scope": "Run PR sweep: diagnosis only, no sync",
         "outcome": "SKIPPED sync/merge - main already carries commit 14421fba 'docs(issues): reconcile 28 inbox requests into the outstanding-issues ledger (#2045)', which appears to be the same 28-request reconciliation this PR is attempting, and the inbox on main is now empty. This PR's own body explicitly says not to use Update branch and to close+re-run a fresh reconcile if main gains new inbox requests before merge - main didn't gain new pending requests, it received a duplicate full reconcile via a different PR (#2045). CI (PR required) is green and there are no review threads, but merging this now risks double-applying or conflicting with the already-landed ledger transaction. Flagged for human decision: close as superseded by #2045, or verify no unique content remains.",
         "checks": "no local checks run; diagnosis via git log or docs/outstanding-issues-inbox tree on origin/main"
+      },
+      {
+        "date": "2026-10-09",
+        "ref": "feat/adversarial-audit-hardening",
+        "head": "6f56559444b6e0c26abbf68f74d3d265c13bd74e",
+        "scope": "Run PR sweep",
+        "outcome": "Codacy void-expression braces; prior conflict/SEO/Gitar disposition still holds; GG dashboard FP residual",
+        "checks": "MERGEABLE; Codacy threads fixed locally; CI re-running after push"
       },
       {
         "date": "2026-07-30",

@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { AdminSharingPage } from "@/components/work-screens/admin/sharing-page";
+import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 
-export const metadata: Metadata = {
-  title: "Sharing | Admin | PsychSift",
-  description:
-    "What you would share with Medical Workforce and Staff Health, and the pack you send yourself. Sharing from PsychSift is not live yet.",
-};
-
+/** Sharing is Requests' "Send a pack" view since 11 Oct 2026 (audit), so an old link opens it there. */
 export default function AdminSharingRoute() {
-  return <AdminSharingPage />;
+  redirect(ADMIN_WORK_SCREEN_HREFS.sharing);
 }

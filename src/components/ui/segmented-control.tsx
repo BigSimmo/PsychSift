@@ -179,10 +179,10 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "relative isolate flex min-h-tap min-w-0 items-center justify-center whitespace-nowrap rounded-lg font-semibold leading-none transition focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)] disabled:cursor-not-allowed disabled:text-[color:var(--disabled)]",
               layout === "equal"
-                ? "flex-1 gap-1 px-0 text-3xs tracking-tight min-[360px]:px-1 min-[360px]:text-xs sm:gap-1.5 sm:px-3 sm:tracking-normal"
+                ? "flex-1 gap-1 px-0 text-3xs tracking-tighter min-[360px]:px-1 min-[360px]:text-xs min-[360px]:tracking-tight sm:gap-1.5 sm:px-3 sm:tracking-normal"
                 : "flex-none gap-1.5 px-3 text-xs",
               checked
-                ? "text-[color:var(--clinical-accent)]"
+                ? "text-[color:var(--text-heading)]"
                 : deadEnd
                   ? // Not `opacity`: it multiplies against an already-muted
                     // foreground and does not survive forced-colors, where
@@ -196,7 +196,7 @@ export function SegmentedControl<T extends string>({
             {checked ? (
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-1 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] shadow-[var(--shadow-inset)] forced-colors:outline forced-colors:outline-2 forced-colors:[outline-color:Highlight]"
+                className="pointer-events-none absolute inset-1 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-lux)] shadow-[var(--e1)] forced-colors:outline forced-colors:outline-2 forced-colors:[outline-color:Highlight]"
               />
             ) : null}
             {Icon ? <Icon aria-hidden="true" className="relative size-icon-sm shrink-0" /> : null}

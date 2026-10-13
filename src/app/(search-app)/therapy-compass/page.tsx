@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { appModeSelectionHref } from "@/lib/app-modes";
+import { consolidatedModeHomeTargetForSearchParams } from "@/lib/consolidated-mode-home-redirect";
 
 /**
  * `Therapy` has no home page of its own any more.
@@ -20,6 +21,17 @@ import { appModeSelectionHref } from "@/lib/app-modes";
  * mode Answer. PR #2150 shipped Therapy in production with its review state
  * disclosed, which lifted that gate.
  */
-export default function TherapyCompassHomeRoute() {
-  redirect(appModeSelectionHref("therapy-compass"));
+type TherapyCompassHomeRouteProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function TherapyCompassHomeRoute({ searchParams }: TherapyCompassHomeRouteProps) {
+  // Resolved through the same helper the proxy uses (as Forms does), so a request
+  // that reaches this backstop lands where the proxy would have sent it — a
+  // submitted `?q=…&run=1` goes on to /therapy-compass/search instead of arriving
+  // at the home with its query dropped.
+  const params = searchParams ? await searchParams : {};
+  redirect(
+    consolidatedModeHomeTargetForSearchParams("/therapy-compass", params) ?? appModeSelectionHref("therapy-compass"),
+  );
 }

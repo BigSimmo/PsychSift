@@ -340,12 +340,13 @@ describe("ContractEndPage", () => {
     expect(screen.queryByTestId("admin-contract-question-mark")).toBeNull();
   });
 
-  it("goes back to Admin Today, and offers sign-in when example records are shown to nobody signed in", () => {
+  it("leaves the way back to the band's Today tab, and offers sign-in when example records are shown to nobody signed in", () => {
     Object.assign(entryState, { demoMode: true, entries: [] });
     account.isAuthenticated = false;
     try {
       render(<ContractEndPage now={NOW} />);
-      expect(screen.getByTestId("admin-contract-back").getAttribute("href")).toBe("/admin");
+      // One way back: the band's Today tab is Admin Today, so the page adds no second link to it.
+      expect(screen.queryByTestId("admin-contract-back")).toBeNull();
       expect(screen.getByTestId("admin-contract-read-only").textContent).toContain("Sign in to track");
       expect(screen.queryByTestId("account-setup-dialog")).toBeNull();
       fireEvent.click(screen.getByTestId("admin-contract-sign-in"));

@@ -118,12 +118,13 @@ export function staffingWindow(today: string, leave: StaffingWindow | null): Sta
 export function staffingDays(
   assignments: readonly RosterAssignment[],
   window: StaffingWindow,
-  options: { readonly actorId: string | null; readonly knownThrough: string | null },
+  options: { readonly actorId: string | null; readonly knownThrough: string | null; readonly zone?: string },
 ): StaffingDay[] {
   const days: StaffingDay[] = [];
   const byDay = new Map<string, RosterAssignment[]>();
   for (const row of assignments) {
-    const day = perthDateOf(row.startsAt);
+    // Group by the caller's work zone when given, so a shift lands on the same day as the window.
+    const day = perthDateOf(row.startsAt, options.zone);
     const list = byDay.get(day);
     if (list) list.push(row);
     else byDay.set(day, [row]);

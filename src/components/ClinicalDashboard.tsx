@@ -34,7 +34,7 @@ import {
   resolveDashboardModeSurface,
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
 import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
@@ -228,6 +228,7 @@ import type {
 } from "@/lib/types";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import { DashboardDesktopResultComposerSlot } from "@/components/clinical-dashboard/dashboard-desktop-result-composer-slot";
+import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId, patientDetailsAddonSlotId } from "@/lib/mode-home-composer";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
 import { createQuoteFollowUp, type AnswerViewMode, shouldPollForUpdates } from "@/lib/ward-output";
@@ -640,8 +641,8 @@ function ClinicalDashboardContent({
     localNoAuthMode,
   });
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
-  // The two-pane side menu (owner pick 8 Oct 2026) replaces the phone menu behind the Live version switch.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  // The two-pane side menu (owner pick 8 Oct 2026) is off again; the classic phone menu shows (10 Oct 2026).
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const newWorkMode = useNewWorkMode();
   // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
   // keeps the full sidebar). A rail button opens the menu on its own pane.
@@ -2745,6 +2746,7 @@ function ClinicalDashboardContent({
     ],
   );
   const answerProgressCompleted = answerProgressEvents.at(-1)?.stage === "complete";
+  const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
   const {
     showAuthPanel,
     showDegradedNotice,
@@ -2770,6 +2772,7 @@ function ClinicalDashboardContent({
     activeModeResultKind,
     answer,
     answerFollowUpSuggestionCount: answerFollowUpSuggestions.length,
+    differentialsCompareHasSelection,
     answerLifecycleStatus: answerLifecycle.status,
     answerProgressCompleted,
     answerProgressEventCount: answerProgressEvents.length,

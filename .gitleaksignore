@@ -160,3 +160,8 @@ b8d37288487663197c2197de3ec46f1783849f51:supabase/applied-migration-hashes.json:
 # generic API key. It is a document id, not a credential (GitGuardian passes).
 # The tip rewords the line; the original commit stays pinned here.
 410380db998fb4f52b02e8c5c1a2ba3e47cedb2c:scripts/figma-sync/README.md:generic-api-key:19
+
+# False positive: the migration seal entry for 20261010011100 was first committed under a
+# filename containing "access", so generic-api-key read its SHA-256 as a key. The file was
+# renamed in the next commit; this pin covers only the original commit. No credential (PR #3427).
+a958fdce92f53571c02fa3ea2a03c61300122763:supabase/applied-migration-hashes.json:generic-api-key:303

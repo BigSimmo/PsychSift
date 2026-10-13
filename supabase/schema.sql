@@ -17454,11 +17454,8 @@ as $$
             h.current_publication_id is distinct from rr.target_publication_id
             or h.retired is distinct from rr.tombstone))))
       as population_complete,
-      s.valid and coalesce(r.release_digest = public.site_content_release_digest(r.id)
-        and s.active_release_digest = r.release_digest
-        and public.site_content_provider_free_checks_pass(r.id), false) release_digest_valid,
-      s.valid and coalesce(r.dynamic_state_digest = public.site_content_dynamic_state_digest(r.id), false)
-        dynamic_digest_valid,
+      s.valid and r.id is not null and coalesce((b.payload->>'releaseDigestValid')::boolean, false) release_digest_valid,
+      s.valid and r.id is not null and coalesce((b.payload->>'dynamicDigestValid')::boolean, false) dynamic_digest_valid,
       s.valid and not exists (
         select 1 from active_records rr
         left join public.site_content_publications p on p.id = rr.target_publication_id
@@ -17481,7 +17478,7 @@ as $$
           or rr.record->>'validationStatus' is null
           or rr.record->>'validationStatus' not in ('locally_reviewed','approved')))
         governance_valid
-    from transition s left join active_release r on true
+    from transition s left join active_release r on true cross join base b
   ), projected as (
     select b.payload || jsonb_build_object(
       'activePublicSiteRelease', case when not s.valid or r.id is null then null else jsonb_build_object(
@@ -27122,3 +27119,203 @@ revoke all on function public.roster_rotation_save_round(uuid, timestamptz, json
   from public, anon, authenticated;
 grant execute on function public.roster_rotation_save_round(uuid, timestamptz, jsonb, text, jsonb, jsonb, jsonb, text, integer, timestamptz, timestamptz, jsonb)
   to service_role;
+
+-- Courses use the shared role rule (20261009112500_work_bookings_shared_roles.sql): posting and
+-- running a team's courses is work_can(actor, 'courses.manage', team), so Medical Workforce and the
+-- DCT of the team's hospital join the administrator and the roster manager.
+-- May this actor post or change a course for this team (null = open to everyone)?
+create or replace function public.work_bookings_can_post(p_actor_id uuid, p_service_id uuid)
+returns boolean
+language sql stable security invoker set search_path = '' as $$
+  select p_actor_id is not null and (
+    public.work_bookings_is_site_admin(p_actor_id)
+    or (
+      p_service_id is not null
+      and exists (
+        select 1 from public.on_call_services s
+        where s.id = p_service_id and (s.verified_at is not null or s.is_demo)
+      )
+      and public.work_can(p_actor_id, 'courses.manage', p_service_id)
+    )
+  )
+$$;
+
+-- Everything the Bookings and Courses pages show for this actor, in the shape of BookingsState
+-- (bookings.ts) plus which courses the actor manages and where they may post.
+create or replace function public.work_bookings_read(p_actor_id uuid)
+returns jsonb
+language plpgsql stable security invoker set search_path = '' as $$
+declare
+  v_admin boolean;
+  v_courses jsonb;
+  v_bookings jsonb;
+  v_teams jsonb;
+begin
+  if p_actor_id is null then raise exception 'work_bookings_auth_required'; end if;
+  v_admin := public.work_bookings_is_site_admin(p_actor_id);
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', c.id, 'kind', c.kind, 'title', c.title, 'about', c.about,
+    'date', c.course_date, 'startTime', pg_catalog.to_char(c.start_time, 'HH24:MI'),
+    'endTime', pg_catalog.to_char(c.end_time, 'HH24:MI'), 'location', c.location,
+    'capacity', c.capacity, 'closesOn', c.closes_on, 'organiser', c.organiser_label,
+    'renewal', c.renewal, 'waitlist', c.waitlist, 'status', c.status, 'updatedAt', c.updated_at,
+    'change', case when c.change_summary is null then null
+                   else jsonb_build_object('summary', c.change_summary, 'at', c.changed_at) end,
+    'serviceId', c.service_id, 'manage', v.manage
+  ) order by c.course_date, c.start_time, c.id), '[]') into v_courses
+  from public.work_booking_courses c join public.work_bookings_visible(p_actor_id) v on v.id = c.id;
+
+  -- Managed courses: every row with names. Others: the actor's own rows, plus everyone else's
+  -- live places with no name and no real id, so places left and waitlist position are exact.
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', case when v.manage or b.owner_id = p_actor_id then b.id::text else 'other-' || md5(b.id::text) end,
+    'courseId', b.course_id,
+    'person', case when v.manage or b.owner_id = p_actor_id then b.display_name else null end,
+    'self', b.owner_id = p_actor_id,
+    'status', b.status, 'at', b.created_at
+  ) order by b.course_id, b.created_at, b.id), '[]') into v_bookings
+  from public.work_course_bookings b join public.work_bookings_visible(p_actor_id) v on v.id = b.course_id
+  where v.manage or b.owner_id = p_actor_id or b.status in ('booked', 'waitlisted', 'attended');
+
+  -- Teams this actor may post for: their own teams, plus the teams linked to a hospital where they
+  -- hold Medical Workforce or the DCT. A site administrator may post anywhere but is offered only
+  -- the teams they belong to; open-to-everyone posting is the 'administrator' flag.
+  select coalesce(jsonb_agg(jsonb_build_object('serviceId', s.id, 'name', s.name) order by s.name, s.id), '[]')
+    into v_teams
+    from public.on_call_services s
+   where (
+       public.service_member_active(s.id, p_actor_id)
+       or exists (
+         select 1 from public.work_hospital_teams t
+         join public.work_role_grants g on g.hospital_id = t.hospital_id
+         join public.work_hospitals h on h.id = g.hospital_id and h.archived_at is null
+         where t.service_id = s.id and g.user_id = p_actor_id and g.revoked_at is null
+           and g.role in ('workforce', 'dct')
+       )
+     )
+     and public.work_bookings_can_post(p_actor_id, s.id);
+
+  return jsonb_build_object(
+    'courses', v_courses,
+    'bookings', v_bookings,
+    'organiser', jsonb_build_object('administrator', v_admin, 'teams', v_teams)
+  );
+end $$;
+
+-- Course bookings keep 12 months (20261009225900_work_bookings_retention.sql): a course and its
+-- bookings are deleted once the course day is more than 365 days before today in Perth.
+create function public.work_bookings_retention_purge()
+returns jsonb
+language plpgsql security invoker set search_path = '' as $$
+declare
+  v_bookings integer;
+  v_courses integer;
+begin
+  select count(*) into v_bookings
+    from public.work_course_bookings b
+    join public.work_booking_courses c on c.id = b.course_id
+   where c.course_date < public.work_bookings_today() - 365;
+  delete from public.work_booking_courses where course_date < public.work_bookings_today() - 365;
+  get diagnostics v_courses = row_count;
+  return jsonb_build_object('courses', v_courses, 'bookings', v_bookings);
+end $$;
+
+revoke all on function public.work_bookings_retention_purge() from public, anon, authenticated;
+grant execute on function public.work_bookings_retention_purge() to service_role;
+
+-- Nightly, ten minutes after the Roster purge.
+do $work_bookings_retention$
+declare job record;
+begin
+  if to_regprocedure('public.work_bookings_retention_purge()') is null then
+    raise exception 'Missing public.work_bookings_retention_purge()';
+  end if;
+  for job in select jobid from cron.job where jobname = 'work-bookings-retention-purge' loop
+    perform cron.unschedule(job.jobid);
+  end loop;
+  perform cron.schedule(
+    'work-bookings-retention-purge', '30 3 * * *', $job$select public.work_bookings_retention_purge();$job$
+  );
+end
+$work_bookings_retention$;
+
+-- Organiser access ends with the Courses role (20261010011100_work_bookings_organiser_role.sql):
+-- only the site administrator and a current Courses manager of the team manage a course.
+create or replace function public.work_bookings_visible(p_actor_id uuid)
+returns table (id uuid, manage boolean)
+language sql stable security invoker set search_path = '' as $$
+  with me as (select public.work_bookings_is_site_admin(p_actor_id) as admin, public.work_bookings_today() as today)
+  select c.id, (me.admin or (c.service_id is not null and public.work_bookings_can_post(p_actor_id, c.service_id)))
+    from public.work_booking_courses c cross join me
+   where p_actor_id is not null
+     and c.course_date >= me.today - 365
+     and (
+       me.admin
+       -- Any current manager of the team runs its courses, drafts included.
+       or (c.service_id is not null and public.work_bookings_can_post(p_actor_id, c.service_id))
+       or (c.status in ('posted', 'cancelled')
+           and (c.service_id is null or public.service_member_active(c.service_id, p_actor_id)))
+       or (c.status <> 'draft' and exists (
+             select 1 from public.work_course_bookings b where b.course_id = c.id and b.owner_id = p_actor_id))
+     )
+$$;
+
+-- A safe number save goes ahead only while the team still holds the needs the editor read
+-- (20261010081500_roster_needs_stale_check.sql). roster_command still does the write.
+create function public.roster_needs_replace(p_actor_id uuid, p_service_id uuid, p_expected_ids jsonb, p_needs jsonb)
+returns jsonb language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+begin
+  -- The same lock order as every team write: the service row FOR SHARE, then the per-service
+  -- advisory lock, then the manager check. roster_command takes both again below, which the
+  -- transaction already holds.
+  perform public.roster_lock_manager(p_actor_id, p_service_id);
+  if jsonb_typeof(p_expected_ids) is distinct from 'array' or jsonb_typeof(p_needs) is distinct from 'array' then
+    raise exception 'roster_invalid_request';
+  end if;
+  if jsonb_array_length(p_expected_ids) > 2000 then raise exception 'roster_limit'; end if;
+  if (select coalesce(array_agg(n.id order by n.id), '{}') from public.roster_staffing_needs n where n.service_id = p_service_id)
+     is distinct from
+     (select coalesce(array_agg(x::uuid order by x::uuid), '{}') from jsonb_array_elements_text(p_expected_ids) x) then
+    raise exception 'roster_conflict';
+  end if;
+  return public.roster_command(p_actor_id, p_service_id, 'needs.set', jsonb_build_object('needs', p_needs));
+end $$;
+
+revoke all on function public.roster_needs_replace(uuid, uuid, jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.roster_needs_replace(uuid, uuid, jsonb, jsonb) to service_role;
+
+-- A doctor takes back their own open-shift request while it still waits for approval
+-- (20261012090000_roster_open_withdraw.sql). roster_command is unchanged.
+create function public.roster_open_withdraw(p_actor_id uuid, p_service_id uuid, p_open_shift_id uuid)
+returns jsonb language plpgsql security invoker set search_path = public, pg_catalog, pg_temp as $$
+declare
+  v_service public.on_call_services;
+  v_open public.roster_open_shifts;
+begin
+  if p_actor_id is null then raise exception 'roster_auth_required'; end if;
+  if p_service_id is null or p_open_shift_id is null then raise exception 'roster_invalid_request'; end if;
+  -- The same lock order as every team write: the service row FOR SHARE, then the per-service
+  -- advisory lock, then the row itself.
+  select * into v_service from public.on_call_services where id = p_service_id for share;
+  if not found or not public.service_member_active(p_service_id, p_actor_id) then
+    raise exception 'roster_access_denied';
+  end if;
+  if v_service.verified_at is null and not v_service.is_demo then raise exception 'roster_team_not_verified'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_service_id::text, 74817));
+
+  select * into v_open from public.roster_open_shifts
+   where id = p_open_shift_id and service_id = p_service_id for update;
+  -- Someone else's request reads as missing, so nobody learns who asked for what.
+  if not found or v_open.claimed_by is distinct from p_actor_id then raise exception 'roster_not_found'; end if;
+  -- Approved, cancelled or expired since the doctor last looked, or the shift has already
+  -- started (a started shift can no longer be claimed, so reopening it would strand it): nothing
+  -- is changed. The clock is read after the locks, so a call that waited on them can't slip past the start.
+  if v_open.status <> 'claimed' or v_open.starts_at <= clock_timestamp() then raise exception 'roster_conflict'; end if;
+
+  update public.roster_open_shifts set status = 'open', claimed_by = null, claimed_at = null where id = v_open.id;
+  return jsonb_build_object('openShiftId', v_open.id, 'status', 'open');
+end $$;
+
+revoke all on function public.roster_open_withdraw(uuid, uuid, uuid) from public, anon, authenticated;
+grant execute on function public.roster_open_withdraw(uuid, uuid, uuid) to service_role;

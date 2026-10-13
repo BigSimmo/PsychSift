@@ -6,9 +6,10 @@ import { sourceSegment } from "./helpers/source-contract";
 
 /**
  * Lighthouse Label-in-Name (WCAG 2.5.3) on the phone "Try this" ticker:
- * visible text includes "Try this", the suggestion, and "Tap to search".
- * An aria-label that omits any of those fails the audit even when the
- * suggestion itself is present.
+ * visible text is "Try this" and the suggestion (the trailing "Tap to search"
+ * left the visible line on 12 Oct 2026 so the suggestion fits a phone). The
+ * name must start with that visible text; it still ends "Tap to search" so it
+ * says what a tap does.
  */
 const SOURCE = readFileSync(
   resolve(process.cwd(), "src/components/clinical-dashboard/universal-search-command-surface.tsx"),
@@ -22,8 +23,8 @@ describe("phone ticker Label-in-Name", () => {
     });
 
     expect(ticker).toContain("aria-label={`Try this ${resolvedTickerExample}. Tap to search`}");
-    expect(ticker).toContain("Try this");
-    expect(ticker).toContain("Tap to search");
+    expect(ticker).toContain('<span className="smart-search-phone-ticker-kicker">Try this</span>');
+    expect(ticker).not.toContain("smart-search-phone-ticker-action");
     expect(ticker).not.toContain("Try suggested search:");
   });
 });

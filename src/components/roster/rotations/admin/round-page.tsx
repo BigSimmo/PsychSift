@@ -1053,7 +1053,11 @@ function AdjustSheet({
                     </span>
                     <span className="work-row__sub">{where ? `Placed in ${where}` : "Not placed"}</span>
                   </span>
-                  {where === term.label ? <WorkTag tone="green">This term</WorkTag> : null}
+                  {where === term.label ? (
+                    <WorkTag tone="green" plain>
+                      This term
+                    </WorkTag>
+                  ) : null}
                 </li>
               );
             })}

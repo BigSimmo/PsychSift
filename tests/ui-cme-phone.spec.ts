@@ -1,6 +1,6 @@
 import { expect, test } from "playwright/test";
 
-import { expectSingleSettledOwner } from "./playwright-settlement";
+import { expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
 
 /**
  * 19 September 2026, 10:00 Perth. Every figure the CME screens derive from
@@ -107,7 +107,8 @@ test.describe("CME on a phone", () => {
 
   test("the customise screen's reorder controls are real buttons a keyboard can reach and use", async ({ page }) => {
     await page.goto("/cme/customise");
-    const list = page.getByTestId("cme-module-order");
+    await expect(page.locator("#main-content")).toBeVisible();
+    const list = visibleByTestId(page, "cme-module-order");
     await expect(list).toBeVisible();
 
     // Moves stay within a Today section, so reorder a module that has a same-section neighbour below it.
@@ -118,8 +119,9 @@ test.describe("CME on a phone", () => {
     await expect(moveDown).toBeFocused();
     await page.keyboard.press("Enter");
 
-    const labelsAfter = (await list.getByRole("listitem").allTextContents()).map((text) => text.trim());
-    expect(labelsAfter).not.toEqual(labelsBefore);
+    await expect
+      .poll(async () => (await list.getByRole("listitem").allTextContents()).map((text) => text.trim()))
+      .not.toEqual(labelsBefore);
   });
 });
 

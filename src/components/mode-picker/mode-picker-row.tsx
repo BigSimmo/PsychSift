@@ -167,7 +167,7 @@ export const modePickerCardRowClass =
 
 /**
  * The phone sheet's header band, drawn behind the title in the current mode's
- * colour: the work band's pale fill, its dot texture and a faint line drawing of
+ * colour: the work band's pale fill and a faint line drawing of
  * the mode's icon. The caller makes the header `relative isolate`, so this sits
  * under the title and close button. It reaches up over the sheet's drag grip
  * (which still takes the drag, because the band ignores the pointer) and draws
@@ -181,7 +181,6 @@ export function ModePickerSheetBand({ modeId, icon: Icon }: { modeId: string; ic
       data-testid="app-mode-sheet-band"
       className="pointer-events-none absolute inset-x-0 -top-4 bottom-0 [z-index:var(--work-z-under)] overflow-hidden border-b border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-band)] sm:top-0"
     >
-      <span className="absolute inset-0 bg-[radial-gradient(var(--mode-identity-border)_0.7px,transparent_0.8px)] bg-[length:12px_12px] opacity-55" />
       <Icon
         aria-hidden="true"
         className="absolute -bottom-11 -right-5 h-40 w-40 text-[color:var(--mode-identity)] opacity-[0.12]"
@@ -193,8 +192,8 @@ export function ModePickerSheetBand({ modeId, icon: Icon }: { modeId: string; ic
 }
 
 /**
- * "Currently <mode>" under the sheet title, with a small badge in the mode's
- * colour: its two-stop gradient, which is flat for a mode with no work palette.
+ * "Currently <mode>" under the sheet title, with a small badge filled flat in
+ * the mode's colour (the flat rule: no gradient badges).
  */
 export function ModePickerCurrentMode({
   modeId,
@@ -209,7 +208,7 @@ export function ModePickerCurrentMode({
     <span className="inline-flex min-w-0 max-w-full items-center gap-2 text-sm leading-5 text-[color:var(--text-muted)]">
       <span
         data-mode-identity={modeId}
-        className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[linear-gradient(160deg,var(--mode-identity-2),var(--mode-identity)_70%)] text-[color:var(--mode-identity-contrast)] forced-colors:border"
+        className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[color:var(--mode-identity)] text-[color:var(--mode-identity-contrast)] forced-colors:border"
       >
         <Icon aria-hidden="true" className="size-icon-xs" strokeWidth={2} />
       </span>

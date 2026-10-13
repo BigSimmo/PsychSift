@@ -4,7 +4,6 @@ import { ArrowLeftRight, Briefcase, CalendarClock, Check, RotateCcw, Search, Sen
 import { type ReactNode, useMemo, useState } from "react";
 
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
-import { ExampleTag } from "@/components/example-data/example-tag";
 import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import {
@@ -78,7 +77,7 @@ export function AdminWorkforcePage() {
         <p className="text-sm font-semibold text-[color:var(--text-heading)]">This is the health service&apos;s side</p>
         <p className="mt-1 text-sm">
           It is for Medical Workforce staff, to see the starters, contract ends, requests and readiness doctors share
-          with them. It is not live. PsychSift has no workforce accounts yet, so you are seeing it as a doctor.
+          with them. It is not live. Live workforce records aren&apos;t built yet, so this is a sample.
         </p>
         <div className="mt-3 grid grid-cols-1">
           <WorkButton variant="secondary" href={ADMIN_PAGE_HREFS.today} testId="admin-workforce-back">
@@ -182,9 +181,6 @@ function WorkforceExampleView({ data }: { readonly data: ExampleWorkforce }) {
   return (
     <>
       <div role="note" className="work-card work-card--pad grid gap-1" data-testid="admin-workforce-sample-label">
-        <p>
-          <ExampleTag />
-        </p>
         <p className="text-sm font-semibold text-[color:var(--text-heading)]">{WORKFORCE_SAMPLE_LABEL}</p>
         <p className="text-sm">
           Every name and date below is invented. Going live needs Josh&apos;s approval for workforce accounts, a

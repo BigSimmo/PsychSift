@@ -77,12 +77,12 @@ the declared form factors; prototype/mockup screenshots must not be advertised a
 
 The worker caches a request only when its class and every listed condition match.
 
-| Request class                                                   | Conditions                                                                                                             | Strategy                                                | Cache                       |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------- |
-| `/offline.html`                                                 | Fetched during worker installation                                                                                     | Precached; used only after a navigation network failure | Shell, maximum 16 entries   |
-| `/icon.svg` and `/manifest.webmanifest`                         | Best-effort during installation                                                                                        | Precached; a failure does not block installation        | Shell                       |
-| `/_next/static/*`                                               | Same-origin `GET`; no query string, `Authorization`, or `Range`; destination is `font`, `script`, `style`, or `worker` | Cache first, then network and store                     | Static, maximum 128 entries |
-| `/manifest.webmanifest`, `/icon.svg`, `/apple-icon`, `/icons/*` | Same-origin `GET`; no query string, `Authorization`, or `Range`                                                        | Stale while revalidate                                  | Shell, maximum 16 entries   |
+| Request class                                                   | Conditions                                                                                                                                                                   | Strategy                                                | Cache                       |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------- |
+| `/offline.html`                                                 | Fetched during worker installation                                                                                                                                           | Precached; used only after a navigation network failure | Shell, maximum 16 entries   |
+| `/icon.svg` and `/manifest.webmanifest`                         | Best-effort during installation                                                                                                                                              | Precached; a failure does not block installation        | Shell                       |
+| `/_next/static/*`                                               | Same-origin `GET`; no query string except a single `dpl` with a full public commit SHA; no `Authorization` or `Range`; destination is `font`, `script`, `style`, or `worker` | Cache first, then network and store                     | Static, maximum 128 entries |
+| `/manifest.webmanifest`, `/icon.svg`, `/apple-icon`, `/icons/*` | Same-origin `GET`; no query string, `Authorization`, or `Range`                                                                                                              | Stale while revalidate                                  | Shell, maximum 16 entries   |
 
 `/apple-icon` is allowlisted but is, in practice, network-only: Next's metadata-image loader emits the generated
 Apple icon as `<link rel="apple-touch-icon" href="/apple-icon?<contenthash>">`, and the query string fails the
@@ -204,13 +204,29 @@ clinical actions remain network-dependent.
 
 - An already-waiting worker, or an installing worker that reaches `installed` while a controller exists, shows
   **Update available**.
-- When the page becomes visible or connectivity returns, the registration may check for an update. App-triggered
-  checks are throttled to at most once per hour; there is no background polling timer.
+- While visible, the app checks for a newer worker every ten minutes, and on focus,
+  visibility, connectivity or back-forward restoration. These triggers share the same
+  ten-minute throttle; hidden or offline pages do not check.
 - **Reload** sends `SKIP_WAITING`. The page reloads once after `controllerchange`, so it cannot loop.
-- **Later** hides the update for the current lifecycle instance. A later page load can surface the waiting update
-  again.
+- **Later** hides that release for six hours, including after a page load. The app asks
+  the waiting or activated worker for its actual cache version through a message port:
+  the `/sw.js` URL is the same in every deployment. A newer release remains eligible
+  immediately, including when it arrives in the same open tab. If a worker cannot
+  identify its version within one second, dismissal applies only to that worker in
+  the open page. Unknown versions are never persisted under the shared `/sw.js` URL;
+  another worker or a new page load remains eligible.
 - If another tab activates the update, an already-controlled tab receives `controllerchange` and offers its own
   refresh. A first-ever worker claim is not misreported as an update.
+- Next.js navigation uses the deployment commit SHA as its `deploymentId` (an explicit
+  `NEXT_DEPLOYMENT_ID` takes precedence). When an older open app receives a navigation response
+  from another release, Next reloads the requested destination instead of mixing route trees
+  across releases. The service-worker update notice alone does not provide this protection.
+- The shared On Call loading screen explicitly says **Loading this On Call page…** above the
+  public crisis lines, so opening Refer, People or Handbook cannot mistake that fallback for
+  a finished Now page. The lines remain available while the destination loads.
+- Next's static-asset URLs with a single `?dpl=<full-commit-SHA>` retain static caching,
+  keyed by the complete URL so releases cannot share an entry. Other query strings,
+  including custom non-SHA deployment IDs, remain network-only.
 
 Because clients may remain on the prior worker until they accept an update or close their tabs, deployments must keep
 server routes compatible with the immediately previous client during rollout.
@@ -235,15 +251,18 @@ Operational rules:
 3. Activation deletes only owned obsolete caches. It retains the two newest prior static caches and the new worker
    consults them after a current-cache miss, protecting older open tabs that request a lazy chunk after another tab
    accepts an update. It does not disturb caches owned by unrelated applications on the origin.
-4. Hashed `/_next/static/` assets can safely use cache-first. New builds request new hashes; each static-cache version
+4. Previous static caches are retained in CacheStorage creation order, rather than sorted
+   by release names: commit hashes do not sort by deployment time. This keeps the two
+   most recently cached releases available to open pages that still need their lazy chunks.
+5. Hashed `/_next/static/` assets can safely use cache-first. New builds request new hashes; each static-cache version
    has a 128-entry bound. Deployments must still preserve server compatibility with the immediately previous client.
-5. Do not reuse an old cache version after a rollback. A rollback may encounter clients and caches from the newer
+6. Do not reuse an old cache version after a rollback. A rollback may encounter clients and caches from the newer
    release; publish another unique version if cache semantics need to move backward.
-6. Do not remove `/sw.js` as a way to retire the PWA. Installed workers can outlive that response. A future retirement
+7. Do not remove `/sw.js` as a way to retire the PWA. Installed workers can outlive that response. A future retirement
    must ship an explicit worker that deletes the owned cache prefix and unregisters itself. The committed retirement
    worker at `public/sw-kill-switch.js` implements exactly this: deploy its content as `/sw.js` in a single release
    (never delete the route). Its behavior is locked by `tests/pwa-kill-switch.test.ts`.
-7. CacheStorage is evictable and installation can fail under storage pressure. The application must remain a fully
+8. CacheStorage is evictable and installation can fail under storage pressure. The application must remain a fully
    usable online website when that happens; it does not request persistent storage for these replaceable public assets.
 
 ## Headers, CSP, and proxy handling
@@ -368,13 +387,33 @@ explicitly authorized.
 - [ ] Review cache contents and storage bounds in the deployed origin before release sign-off.
 - [ ] Record any provider-backed release check separately and obtain explicit authorization before running it.
 
+## Roster push notifications (shipped)
+
+Push notifications are built and in use for Roster and My Day. An earlier version of this document listed them under
+deferred capabilities; that was out of date and has been corrected. They are not a generic PWA enhancement: they exist
+because staff asked to hear about roster changes, shift offers and swaps, a morning brief and due reminders.
+
+| Part                  | How it works                                                                                                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Opt in                | The user turns phone alerts on at `/my-day/alerts` (`src/components/alerts/use-phone-alerts.ts`). The browser asks for permission; nothing is subscribed before that.                                                                                                    |
+| Subscription          | The browser's push address and keys are saved against the signed-in user (`web_push_subscriptions`, via `POST /api/roster/alerts`). No shift content is stored. `DELETE /api/roster/alerts` removes it.                                                                  |
+| Revocation            | A push service answering 404 or 410 means the subscription is gone; the sender deletes that row (`src/lib/roster/alerts/send.ts`).                                                                                                                                       |
+| Server configuration  | `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` must be set together (validated in `src/lib/env.ts`). Without them the sender is off (`webPushConfigured()`).                                                                                       |
+| What the server sends | One word only: a type code such as `{"t":"changed"}`. Server-sent text, names and links are never shown.                                                                                                                                                                 |
+| What the phone shows  | The service worker (`ROSTER_PUSH` in `public/sw.js`) owns every word and every click destination. Codes: `changed`, `request`, `offer`, `manage`, `test`, `brief`, `reminder`, `due`. Each is generic, for example "Your roster changed. Open Roster to see what moved." |
+| Cache                 | Push does not touch CacheStorage, so the cache and privacy contract above is unaffected.                                                                                                                                                                                 |
+
+The lock-screen guarantee is the central rule: a server response can never put a patient name, clinical detail or
+arbitrary link on a clinician's lock screen, because the payload has no field that could carry one. Keep it that way; do
+not add a free-text field to the payload. The privacy reasoning is recorded in the privacy impact assessment under "Web
+push notification privacy", including the residual action to clear subscriptions on shared-device logout.
+
 ## Intentionally deferred capabilities
 
 These omissions are deliberate and must not be added as generic PWA enhancements:
 
 | Capability                                 | Status and reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Push notifications                         | Deferred. It requires a permission and subscription UX, backend key/subscription lifecycle, revocation, and a clinical privacy policy for lock-screen content. No safe notification payload or product need is currently defined.                                                                                                                                                                                                                                                                                                                     |
 | Background Sync / Periodic Background Sync | Deferred. Queuing or replaying clinical queries, uploads, answers, or mutations risks sensitive local persistence, duplicate writes, stale auth, and actions occurring after the user's context changed. Browser support is also not a correctness guarantee.                                                                                                                                                                                                                                                                                         |
 | Web Share Target / inbound sharing         | Deferred. Accepting text, URLs, or documents from another app needs an explicit consent, validation, auth, provenance, malware/file-safety, and retention flow. The manifest intentionally has no `share_target`.                                                                                                                                                                                                                                                                                                                                     |
 | File handlers                              | Deferred. Associating PsychSift with clinical document types could import sensitive files without the existing upload review and validation context. The manifest intentionally has no `file_handlers`.                                                                                                                                                                                                                                                                                                                                               |

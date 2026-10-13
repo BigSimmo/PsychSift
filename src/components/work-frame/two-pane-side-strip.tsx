@@ -30,10 +30,10 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import type { ThemePreference } from "@/lib/theme";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 
 /**
- * The strip shared by the two-pane side menu and its tablet rail (Live version
- * switch). On a phone the strip lives inside the menu. From 768 px the same
+ * The strip shared by the two-pane side menu and its tablet rail. On a phone the strip lives inside the menu. From 768 px the same
  * strip stays on screen down the left edge, and Clinical, Work or the
  * reader's initials open the menu on that pane, its own strip landing exactly
  * over this one so only the pane appears to slide in.
@@ -62,11 +62,17 @@ export function useThemeCycle() {
 }
 
 /** Opens Reminders. Only a page that offers it can open it; anywhere else goes to My Day first. */
-export function useOpenReminders(): () => void {
+export function useOpenReminders(): () => boolean {
   const router = useRouter();
   return () => {
-    if (!workFrameActionHandler("my-day-reminders")) router.push("/my-day");
+    const handled = workFrameActionHandler("my-day-reminders");
+    if (!handled) {
+      // An unsaved page (the safety plan) may keep the reader where they are.
+      if (!confirmShellNavigation()) return false;
+      router.push("/my-day");
+    }
     requestWorkFrameAction("my-day-reminders");
+    return true;
   };
 }
 

@@ -1,5 +1,5 @@
 import type { AppModeId } from "@/lib/app-modes";
-import { WORK_AREAS, type WorkAreaId, type WorkFrameIconName } from "@/lib/work-frame/areas";
+import { WORK_AREAS, type WorkAreaId, type WorkFrameGate, type WorkFrameIconName } from "@/lib/work-frame/areas";
 import { alternativeMatches, workSearchTerms } from "@/lib/work-search/terms";
 
 /**
@@ -7,9 +7,10 @@ import { alternativeMatches, workSearchTerms } from "@/lib/work-search/terms";
  * page itself, so the 40-odd pages behind the More sheets are one search away.
  *
  * Built from the work frame's own navigation table (`WORK_AREAS`), so a page is
- * offered only when the frame lists it: never an action, never a page gated to
- * organisers, posters or editors (the reader may not be one), and each route
- * once, under the area that owns it. Page names only, never records.
+ * offered only when the frame lists it: never an action, and each route once,
+ * under the area that owns it. A page the frame gates (organisers, posters,
+ * roster managers, hospital roles) carries its gates, and the search offers it
+ * only to readers the frame would show it to. Page names only, never records.
  */
 
 export interface WorkSearchPage {
@@ -25,6 +26,8 @@ export interface WorkSearchPage {
   readonly icon: WorkFrameIconName;
   /** Other words people use for the page. Matched with the label's weight. */
   readonly keywords: readonly string[];
+  /** Frame gates that must all be open for this reader (the page's own, and its inner area's way in). */
+  readonly gates?: readonly WorkFrameGate[];
 }
 
 /** Short synonym lists, keyed `<area id>:<item id>`. Plain words a reader might type for the page. */
@@ -33,32 +36,37 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "day:my-day-week": ["this week", "week ahead"],
   "day:my-day-hours": ["worked", "rostered hours"],
   "day:my-day-all": ["to do", "tasks"],
-  "day:my-day-profile": ["stage", "workplace", "profile"],
+  "day:my-day-profile": ["stage", "workplace", "profile", "data", "privacy"],
   "day:my-day-alerts": ["notifications", "quiet hours", "brief"],
-  "day:my-day-privacy": ["data", "privacy"],
-  "rost:month": ["calendar", "roster"],
+  "rost:month": ["calendar", "roster", "today's shift", "today"],
   "rost:team": ["who is on", "colleagues"],
   "rost:swaps": ["swap", "trade", "cover"],
-  "rost:today": ["today's shift"],
+  "rost:sick": ["sick", "unwell", "call in sick", "sick leave", "can't come in"],
+  "rost:log-shift": ["log shift", "extra shift worked"],
   "rost:shifts": ["shifts", "my roster"],
   "rost:requests": ["leave", "annual leave", "al", "holiday", "request", "book leave", "pdl", "study leave"],
   "rost:hours": ["overtime", "rest", "fatigue", "safe hours"],
-  "open:open-shifts-browse": ["extra shifts", "locum", "open shifts", "available shifts"],
+  "rost:open-shifts": ["extra shifts", "locum", "open shifts", "available shifts"],
   "open:open-shifts-mine": ["booked", "asked"],
-  "open:open-shifts-log": ["log shift", "extra shift worked"],
   "open:open-shifts-alerts": ["notify", "shift alerts"],
   "manage:manage-inbox": ["approve", "approvals", "manager", "manage roster"],
   "manage:manage-cover": ["gaps", "unfilled", "sick cover"],
   "manage:manage-team": ["publish", "team settings", "people"],
-  "rost:calendar": ["sync", "ical", "ics", "phone calendar", "google calendar", "outlook"],
-  "rost:join": ["invite", "code", "join"],
   "rost:settings": ["preferences"],
   "teach:today": ["teaching"],
-  "teach:week": ["sessions", "timetable", "this week"],
+  "teach:week": ["sessions", "timetable", "this week", "what's on", "grand rounds", "other services"],
   "teach:logbook": ["attendance", "record", "log"],
   "teach:teach": ["presenting", "my talk", "talks", "presentation"],
-  "teach:whats-on": ["grand rounds", "other services"],
-  "teach:term": ["term dates", "goals"],
+  "teach:term": [
+    "term dates",
+    "goals",
+    "evidence folder",
+    "term folder",
+    "export",
+    "print",
+    "supervision and attendance",
+  ],
+  "teach:calendar": ["sync", "ical", "ics", "phone calendar", "google calendar", "outlook", "expiries", "expiry"],
   "teach:resources": ["slides", "papers", "reading"],
   "teach:feedback": ["rate", "survey"],
   "teach:review": ["log to cpd", "weekly review"],
@@ -79,25 +87,47 @@ const KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   "cpd:finish": ["drafts", "unfinished"],
   "cpd:routines": ["regular", "routine"],
   "admin:admin-today": ["admin", "to do"],
-  "admin:renewals": ["renew", "expiry", "expiring", "registration", "ahpra", "bls", "certificates"],
+  // Compliance and its Export are Renewals' By group view since 11 Oct 2026, so their words land here.
+  "admin:renewals": [
+    "renew",
+    "expiry",
+    "expiring",
+    "registration",
+    "ahpra",
+    "bls",
+    "certificates",
+    "mandatory",
+    "training",
+    "fit test",
+    "mask fit",
+    "compliance",
+    "spreadsheet",
+    "csv",
+    "export",
+  ],
   "admin:new-job": ["onboarding", "credentials", "wallet", "starting", "new job"],
-  "admin:admin-compliance": ["mandatory", "training", "fit test", "mask fit", "compliance"],
-  "admin:admin-export": ["spreadsheet", "csv", "download", "export"],
+  "admin:admin-requests": ["sharing", "share", "send a pack", "ask for more time"],
   "admin:help": ["crisis", "support", "eap", "wellbeing", "help"],
   "admin:admin-overtime": ["overtime", "claims", "extra hours"],
-  "call:now": ["on call", "tonight", "shift"],
+  "admin:admin-hospital": ["hospital", "sick calls", "medical workforce", "dct", "safe number"],
+  "admin:admin-people": ["roles", "give a role", "supervisors", "people"],
+  "call:now": ["on call", "tonight", "shift", "breaks", "shift pulse", "workload"],
+  // Who's who and the Pocket card folded into the Handbook (12 Oct 2026), so their words did too.
   "call:call": ["phone", "numbers", "switchboard", "pager", "contacts", "ring"],
   "call:refer": ["referral", "referrals", "refer"],
-  "call:find": ["handbook", "wards", "equipment", "systems down"],
-  "call:playbook": ["what to do", "emergency", "codes"],
-  "call:whoswho": ["roles", "teams"],
-  "call:orientation": ["checklist", "induction", "orientation"],
-  "call:card": ["print", "pocket card"],
-  "call:call-now": ["who to call", "escalate"],
+  "call:find": ["handbook", "wards", "equipment", "systems down", "roles", "teams", "print", "pocket card"],
+  "call:playbook": ["what to do", "emergency", "codes", "who to call", "escalate"],
+  "call:starting-here": [
+    "checklist",
+    "induction",
+    "orientation",
+    "first week",
+    "first night",
+    "first shift",
+    "new job",
+  ],
   "call:whoson": ["tonight's team", "who's on"],
-  "call:pulse": ["how is it going", "workload"],
   "call:check": ["before you leave", "checklist"],
-  "call:first-night": ["new", "first shift"],
   "call:handover": ["handover"],
 };
 
@@ -109,28 +139,29 @@ const LAUNCH_GATES: ReadonlySet<string> = new Set(["new-work-mode", "classic-wor
 export function workSearchPages(): readonly WorkSearchPage[] {
   if (pagesMemory) return pagesMemory;
   const pages: WorkSearchPage[] = [];
-  const seen = new Set<string>();
+  const seen = new Map<string, number>();
   const areas = Object.entries(WORK_AREAS) as [WorkAreaId, (typeof WORK_AREAS)[WorkAreaId]][];
   // An inner area whose way in is gated (Manage team, for roster managers) is gated as a whole.
-  const gatedAreas = new Set(
-    areas
-      .flatMap(([, area]) => area.groups.flatMap((group) => group.items))
-      .filter((item) => item.opens && item.gate)
-      .map((item) => item.opens),
-  );
+  const areaGates = new Map<string, WorkFrameGate>();
+  for (const [, area] of areas)
+    for (const item of area.groups.flatMap((group) => group.items))
+      if (item.opens && item.gate) areaGates.set(item.opens, item.gate);
   for (const [areaId, area] of areas) {
-    if (gatedAreas.has(areaId)) continue;
+    const areaGate = areaGates.get(areaId);
     const items = [...area.tabs, ...area.groups.flatMap((group) => group.items)];
     for (const item of items) {
-      // Actions run on a page, and gated pages may not be the reader's: neither is offered.
-      // The two launch gates only pick which copy of a page the frame lists; the search
-      // hides new-only routes per reader, so classic readers keep Needs you and Alerts.
-      if (!item.href || (item.gate && !LAUNCH_GATES.has(item.gate))) continue;
+      // Actions run on a page, so they are never offered.
+      if (!item.href) continue;
       // A link into another area (`paths: []` or `leadsTo`) is listed under its own area.
       if (item.leadsTo || (item.paths && item.paths.length === 0)) continue;
-      if (seen.has(item.href)) continue;
-      seen.add(item.href);
-      pages.push({
+      const gates = [areaGate, item.gate].filter(
+        (gate): gate is WorkFrameGate => gate !== undefined && !LAUNCH_GATES.has(gate),
+      );
+      const earlier = seen.get(item.href);
+      // A route listed twice keeps its open copy, so a gated listing never hides an open one.
+      if (earlier !== undefined && (gates.length > 0 || !pages[earlier]!.gates?.length)) continue;
+      if (earlier === undefined) seen.set(item.href, pages.length);
+      pages[earlier ?? pages.length] = {
         id: `${areaId}:${item.id}`,
         label: item.label,
         area: area.name,
@@ -139,9 +170,27 @@ export function workSearchPages(): readonly WorkSearchPage[] {
         href: item.href,
         icon: item.icon,
         keywords: KEYWORDS[`${areaId}:${item.id}`] ?? [],
-      });
+        // The two launch gates only pick which copy of a page the frame lists; the search
+        // hides new-only routes per reader, so classic readers keep Needs you and Alerts.
+        gates,
+      };
     }
   }
+  // Refer is a tab inside Contacts now (12 Oct 2026), so it has no frame entry of its own; its old address
+  // opens that tab in either work mode, so a search for "referral" lands on the routes, not on Hospital.
+  const contacts = WORK_AREAS.call.tabs.find((item) => item.id === "call");
+  if (contacts)
+    pages.push({
+      id: "call:refer",
+      label: "Refer",
+      area: WORK_AREAS.call.name,
+      identity: WORK_AREAS.call.identity,
+      sub: "Referral routes",
+      href: "/on-call/refer",
+      icon: contacts.icon,
+      keywords: KEYWORDS["call:refer"] ?? [],
+      gates: [],
+    });
   pagesMemory = pages;
   return pages;
 }

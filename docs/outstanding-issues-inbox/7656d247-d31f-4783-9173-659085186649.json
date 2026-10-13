@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7656d247-d31f-4783-9173-659085186649",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#CYYRA7",
+    "outcome": "Elevated unauthorized clinical hazard-control content digest drift from a console warning to an explicit failure in scripts/check-clinical-hazard-controls.mjs",
+    "baseRowFingerprint": "6fd88b9642d70ee3963f0c1dc7d312755f0d6955a322236155293351a454de49"
+  }
+}

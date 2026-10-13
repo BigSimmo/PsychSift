@@ -202,26 +202,26 @@ describe("AdminRenewalsPage — the checklist", () => {
   });
 
   // Amended for the work-mode redesign, owner request 6 Oct 2026: red (date
-  // passed) and amber (start renewing) are allowed, but only through the one
+  // passed, triangle) and amber (start renewing, dot) are allowed, but only through the one
   // shared status mark, which always carries its shape and word too.
   it("draws urgency as shapes and words, colouring only through the shared status mark", () => {
     renderPage();
     expect(screen.getAllByText("Date passed").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Start renewing").length).toBeGreaterThan(0);
     expect(document.body.innerHTML).not.toMatch(/--danger|--warning/);
-    expect(document.querySelector('[data-admin-status="date-passed"] [data-mark="diamond"]')).not.toBeNull();
-    expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="triangle"]')).not.toBeNull();
+    expect(document.querySelector('[data-admin-status="date-passed"] [data-mark="triangle"]')).not.toBeNull();
+    expect(document.querySelector('[data-admin-status="start-renewing"] [data-mark="dot"]')).not.toBeNull();
   });
 
-  it("marks the timeline by shape, not shade: a diamond for a passed date, a triangle otherwise (M8)", () => {
+  it("marks the timeline by shape, not shade: a triangle for a passed date, a dot otherwise (M8)", () => {
     renderPage();
     const timeline = screen.getByTestId("admin-renewals-summary-timeline");
     const marks = Array.from(timeline.querySelectorAll("[data-mark]")).map((mark) => mark.getAttribute("data-mark"));
     // WWC's date passed on 3 Sep; the others are still ahead.
-    expect(marks).toContain("diamond");
     expect(marks).toContain("triangle");
-    expect(timeline.querySelector("svg.lucide-diamond")).not.toBeNull();
+    expect(marks).toContain("dot");
     expect(timeline.querySelector("svg.lucide-triangle")).not.toBeNull();
+    expect(timeline.querySelector("svg.lucide-circle")).not.toBeNull();
   });
 
   it("charts the soonest dates within twelve months, never pinning a later date to the edge", () => {
@@ -711,11 +711,14 @@ describe("AdminRenewalsPage — readable timeline, wrapping chips, short Not rec
     expect(list.textContent).toMatch(/Working with Children Check: 3 Sep 2026.*Date passed/);
   });
 
-  it("wraps the kind chips instead of scrolling them sideways", () => {
+  // Design pass, October 2026: chip rows stay on one line and scroll sideways
+  // with an edge fade (the shared `.work-chips` row), instead of wrapping and
+  // leaving one chip alone on a second line.
+  it("keeps the kind chips on one shared sideways-scrolling row", () => {
     renderPage();
     const chips = screen.getByTestId("admin-renewals-kind");
-    expect(chips.className).toContain("flex-wrap");
-    expect(chips.className).not.toContain("overflow-x-auto");
+    expect(chips.className).toContain("work-chips");
+    expect(chips.className).not.toContain("flex-wrap");
   });
 
   it("marks unconfirmed rules with Rule to confirm in the list", () => {
@@ -872,6 +875,15 @@ describe("AdminRenewalsPage — the URL contract", () => {
     const sheet = within(screen.getByTestId("admin-renewals-record-sheet"));
     expect(sheet.getByTestId("admin-renewals-record-sheet-save")).toBeInTheDocument();
     expect(sheet.queryByText("Sign in to record dates.")).toBeNull();
+  });
+
+  it("?view=group opens By group, and the plain Renewals address afterwards opens Soonest again", () => {
+    navigation.query = "view=group";
+    const view = render(<AdminRenewalsPage now={NOW} />);
+    expect(screen.getByRole("radio", { name: "By group" })).toBeChecked();
+    navigation.query = "";
+    view.rerender(<AdminRenewalsPage now={NOW} />);
+    expect(screen.getByRole("radio", { name: "Soonest" })).toBeChecked();
   });
 
   it("?show=not-recorded offers no Record dates when only a personal renewal is undated", () => {

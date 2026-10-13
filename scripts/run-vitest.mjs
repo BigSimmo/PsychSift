@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -100,6 +101,73 @@ export function validateReporters(argumentList) {
   return { valid: true, invalidReporters: [], error: null };
 }
 
+export const EXPLICIT_TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?[jt]sx?$/i;
+export const GLOB_WILDCARD_PATTERN = /[*?[{]/;
+
+const OPTIONS_WITH_VALUE = new Set([
+  "-c",
+  "--config",
+  "-r",
+  "--reporter",
+  "-t",
+  "--testNamePattern",
+  "-o",
+  "--outputFile",
+  "--project",
+  "--dir",
+  "--shard",
+]);
+
+export function isExplicitTestFile(arg) {
+  if (typeof arg !== "string") return false;
+  if (arg.startsWith("-")) return false;
+  if (GLOB_WILDCARD_PATTERN.test(arg)) return false;
+  if (!path.isAbsolute(arg) && !arg.includes(path.sep) && !arg.includes("/")) return false;
+  return EXPLICIT_TEST_FILE_PATTERN.test(arg);
+}
+
+export function extractExplicitTestFiles(argumentList) {
+  const files = [];
+  for (let i = 0; i < argumentList.length; i++) {
+    const arg = argumentList[i];
+    if (OPTIONS_WITH_VALUE.has(arg)) {
+      i++;
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      continue;
+    }
+    if (isExplicitTestFile(arg)) {
+      files.push(arg);
+    }
+  }
+  return files;
+}
+
+export function validateTestFiles(argumentList, rootDir = projectRoot) {
+  const explicitFiles = extractExplicitTestFiles(argumentList);
+  const missingFiles = [];
+
+  for (const file of explicitFiles) {
+    const resolvedPath = path.isAbsolute(file) ? file : path.resolve(rootDir, file);
+    if (!existsSync(resolvedPath)) {
+      if (path.isAbsolute(file) || !existsSync(path.resolve(process.cwd(), file))) {
+        missingFiles.push(file);
+      }
+    }
+  }
+
+  if (missingFiles.length > 0) {
+    return {
+      valid: false,
+      missingFiles,
+      error: `Requested test file does not exist: ${missingFiles.join(", ")}`,
+    };
+  }
+
+  return { valid: true, missingFiles: [], error: null };
+}
+
 // Only plain result-producing runs are memoisable. A coverage run's artefact IS
 // part of its output, watch mode has no terminal result to record, and snapshot
 // updates mutate the tree they were keyed on.
@@ -119,6 +187,12 @@ export async function main() {
   const reporterValidation = validateReporters(args);
   if (!reporterValidation.valid) {
     console.error(`[run-vitest] ERROR: ${reporterValidation.error}`);
+    process.exit(1);
+  }
+
+  const testFileValidation = validateTestFiles(args);
+  if (!testFileValidation.valid) {
+    console.error(`[run-vitest] ERROR: ${testFileValidation.error}`);
     process.exit(1);
   }
 

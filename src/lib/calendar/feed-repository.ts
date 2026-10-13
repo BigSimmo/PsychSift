@@ -10,6 +10,9 @@ import { fetchVisibleOnCallEntries } from "@/lib/on-call/repository";
 import { teachingCalendarEvents } from "@/lib/teaching/calendar-events";
 import { fetchTeachingFeedSessions } from "@/lib/teaching/feed-repository";
 import { fetchRotationFeedEvents } from "@/lib/calendar/rotation-feed-source";
+import { bookingCalendarEvents } from "@/lib/work-screens/admin/bookings-calendar";
+import { readSavedBookings } from "@/lib/work-screens/admin/bookings-repository";
+import { ADMIN_WORK_SCREEN_HREFS } from "@/lib/work-screens/admin/hrefs";
 import { logger } from "@/lib/logger";
 import {
   applyReminderAlarms,
@@ -37,6 +40,11 @@ type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminC
  * join link, a presenter or anyone's attendance. A cancelled Teaching session
  * stays in the feed marked cancelled, with "Cancelled:" in its title and never
  * an alarm, so subscribed calendars update it instead of keeping it.
+ *
+ * Courses the owner booked (Admin, Bookings) are on it too, with the title,
+ * time and place only: never the organiser's name or anyone else's booking.
+ * A course cancelled, or a place the owner gave up, stays marked cancelled,
+ * the same as a Teaching session.
  *
  * Never logged CME activities (the owner's own learning, and already in the
  * past), never personal On Call entries, never compliance expiry dates (not
@@ -149,9 +157,34 @@ function rosterShiftEvents(shifts: readonly OnCallShift[]): CalendarEvent[] {
   }));
 }
 
+/** How far back booked courses stay on the feed: long enough for a calendar to see a late cancellation. */
+const BOOKING_FEED_PAST_DAYS = 30;
+
+/**
+ * The owner's booked courses for the feed. A failed or not-yet-set-up read
+ * serves the feed without them rather than failing it, like the settings reads
+ * above. Notes are dropped: they name the organiser, and anyone holding the
+ * link can read the feed.
+ */
+async function fetchOwnerBookingEvents(supabase: AdminClient, ownerId: string, now: Date): Promise<CalendarEvent[]> {
+  try {
+    const read = await readSavedBookings(supabase, ownerId);
+    if (read.status !== "ready") return [];
+    const from = perthCalendarDate(new Date(now.getTime() - BOOKING_FEED_PAST_DAYS * 24 * 60 * 60 * 1000));
+    return bookingCalendarEvents(read.state, (courseId) => ADMIN_WORK_SCREEN_HREFS.bookingCourse(courseId))
+      .filter((event) => event.date >= from)
+      .map((event): CalendarEvent => ({ ...event, notes: undefined }));
+  } catch (error) {
+    logger.warn("calendar feed bookings unavailable", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
 export async function calendarFeedEvents(supabase: AdminClient, ownerId: string, now: Date): Promise<CalendarEvent[]> {
   const year = cpdYearOf(now);
-  const [thisYear, nextYear, routines, teaching, teachingSessions, reminders, rosterSettings, rotations] =
+  const [thisYear, nextYear, routines, teaching, teachingSessions, reminders, rosterSettings, rotations, bookings] =
     await Promise.all([
       fetchOwnerCmeYear(supabase, ownerId, year),
       fetchOwnerCmeYear(supabase, ownerId, year + 1),
@@ -161,6 +194,7 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
       fetchOwnerReminderSettings(supabase, ownerId),
       fetchOwnerRosterSettingsForFeed(supabase, ownerId),
       fetchRotationFeedEvents(supabase, ownerId, now),
+      fetchOwnerBookingEvents(supabase, ownerId, now),
     ]);
   let rosterShifts: CalendarEvent[] = [];
   if (rosterSettings.calendarShifts) {
@@ -180,6 +214,7 @@ export async function calendarFeedEvents(supabase: AdminClient, ownerId: string,
     ...teachingCalendarEvents(teachingSessions),
     ...rosterShifts,
     ...rotations,
+    ...bookings,
   ];
   return applyReminderAlarms(events, reminders, now);
 }

@@ -78,12 +78,28 @@ export async function rosterCommand(
 ): Promise<RosterCommandResult> {
   requireActor(actorId);
   const { action: name, ...payload } = action;
-  const { data, error } = await client.rpc("roster_command", {
-    p_actor_id: actorId,
-    p_service_id: serviceId,
-    p_action: name,
-    p_payload: payload as never,
-  });
+  // The safe number goes through the stale check, which refuses it once anyone has saved since the editor's read.
+  // Taking back an open-shift request has its own function, which only the doctor who asked can call.
+  const { data, error } =
+    action.action === "open.withdraw"
+      ? await client.rpc("roster_open_withdraw", {
+          p_actor_id: actorId,
+          p_service_id: serviceId,
+          p_open_shift_id: action.openShiftId,
+        })
+      : action.action === "needs.set"
+        ? await client.rpc("roster_needs_replace", {
+            p_actor_id: actorId,
+            p_service_id: serviceId,
+            p_expected_ids: action.expectedIds as never,
+            p_needs: action.needs as never,
+          })
+        : await client.rpc("roster_command", {
+            p_actor_id: actorId,
+            p_service_id: serviceId,
+            p_action: name,
+            p_payload: payload as never,
+          });
   if (error) throw rosterApiError(error);
   const parsed = rosterCommandResultSchema.safeParse(data);
   if (!parsed.success) throw rosterUnavailable();

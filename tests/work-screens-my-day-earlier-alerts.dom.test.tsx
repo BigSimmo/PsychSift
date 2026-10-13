@@ -299,7 +299,8 @@ describe("Earlier alerts page", () => {
     worker.shown = [notification("changed", 3)];
     renderPage();
     expect(await screen.findByTestId("earlier-alert-changed")).toBeTruthy();
-    expect(areaDataState("day")).toBe("has-data");
+    // Reported from a passive effect, so wait for it rather than reading it on the same tick.
+    await waitFor(() => expect(areaDataState("day")).toBe("has-data"));
   });
 
   it("links back to Alerts and to Needs you", async () => {

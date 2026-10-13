@@ -2,14 +2,11 @@
 
 import {
   BookOpen,
-  ChevronRight,
   Compass,
-  FileText,
   GitCompareArrows,
   LifeBuoy,
   Map as MapIcon,
   Network,
-  Pill,
   Search,
   ShieldCheck,
   Tags,
@@ -33,7 +30,6 @@ import {
   FlatLabel,
   FlatList,
   flatPanel,
-  flatPanelPadded,
   FlatRow,
   FlatTag,
 } from "@/components/psychiatry/psychiatry-flat";
@@ -50,8 +46,6 @@ import {
   loadPsychiatryVisitState,
   mostOpenedForms,
   PSYCHIATRY_VISIT_KIND_LABEL,
-  psychiatryMonthFigures,
-  psychiatryWeekBySection,
   subscribePsychiatryVisits,
   type PsychiatryOpen,
   type PsychiatryVisit,
@@ -61,15 +55,15 @@ import { sharedHomePresentation } from "@/lib/ui-copy";
 import { PageTitleUnderBand, useModeBandCurrentTab, WithoutModeBand } from "@/components/mode-band/mode-band";
 
 /**
- * The Psychiatry hub, in three pages: Ask, Tools and Saved, drawn to the approved mock-up v3
- * (5 October 2026) in the calmer Work search style: flat hairline lists, grey icons and at most
- * one filled button per screen.
+ * The Psychiatry hub, in two pages: Home and Saved (owner design review, 12 October 2026, which
+ * folded the old Ask and Tools pages into one Home), drawn in the calmer Work search style: flat
+ * hairline lists, grey icons and at most one filled button per screen.
  *
  * It is a front door, not clinical content: every row is a way into a section that keeps its own
  * address and search. Green, amber and red are not used for decoration here.
  *
  * The figures are real or absent. Section counts come from the catalogues (read on the server);
- * "Continue", "Your week" and the forms list read this device's own history
+ * "Continue" and the forms list read this device's own history
  * (`src/lib/psychiatry-hub/visits.ts`), and a section with nothing to show says so in one line.
  * Offline, search is switched off and says so, rather than failing after a tap.
  */
@@ -82,13 +76,21 @@ export interface PsychiatrySectionCounts {
   readonly formulation: number;
   readonly therapy: number;
   readonly forms: number;
+  readonly calculators: number;
+  readonly dictionary: number;
 }
 
-const PAGE_IDS = ["ask", "tools", "saved"] as const;
+/** Home is `ask`, the id its tab has always had, so saved links and the band's tab key still match. */
+const PAGE_IDS = ["ask", "saved"] as const;
 type PsychiatryPageId = (typeof PAGE_IDS)[number];
 
-/** ?page= names the page; anything else (or none) falls back to `fallback`. */
-function parsePsychiatryPage(value: string | null | undefined, fallback: PsychiatryPageId): PsychiatryPageId {
+/**
+ * ?page= names the page; anything else (or none) falls back to `fallback`. The retired Tools page
+ * (`?page=tools`, folded into Home on 12 October 2026) lands on Home rather than on whatever the
+ * fallback is, so an old link or bookmark always opens the page that now holds its tools.
+ */
+export function parsePsychiatryPage(value: string | null | undefined, fallback: PsychiatryPageId): PsychiatryPageId {
+  if (value === "tools") return "ask";
   return PAGE_IDS.find((id) => id === value) ?? fallback;
 }
 
@@ -106,7 +108,10 @@ const KIND_MODE: Readonly<Record<PsychiatryVisitKind, AppModeId>> = {
   forms: "forms",
 };
 
-const QUICK_ACTIONS: readonly DashQuickAction[] = [
+// Builders: the quick actions, and every builder and comparison the retired Tools page listed, so
+// Home reaches all of them. Safety plan lives once, under "For a shift", and the MHA forms and the
+// Act once, under "Mental Health Act", so none of those is repeated here.
+const BUILDERS: readonly DashQuickAction[] = [
   { label: "Specifier builder", href: "/specifiers/builder", icon: Tags, testId: "psychiatry-qa-specifier-builder" },
   { label: "Formulation builder", href: "/formulation/builder", icon: Network, testId: "psychiatry-qa-formulation" },
   { label: "Recommend a therapy", href: "/therapy-compass/recommend", icon: Compass, testId: "psychiatry-qa-therapy" },
@@ -117,25 +122,26 @@ const QUICK_ACTIONS: readonly DashQuickAction[] = [
     testId: "psychiatry-qa-presentation",
   },
   { label: "Compare diagnoses", href: "/dsm/compare", icon: GitCompareArrows, testId: "psychiatry-qa-compare" },
-  { label: "MHA forms", href: "/forms/search", icon: FileText, testId: "psychiatry-qa-forms" },
-  { label: "Safety plan", href: "/safety-plan", icon: LifeBuoy, testId: "psychiatry-qa-safety-plan" },
+  {
+    label: "Compare therapies",
+    href: "/therapy-compass/compare",
+    icon: GitCompareArrows,
+    testId: "psychiatry-qa-compare-therapies",
+  },
+  {
+    label: "Compare specifiers",
+    href: "/specifiers/compare",
+    icon: GitCompareArrows,
+    testId: "psychiatry-qa-compare-specifiers",
+  },
+  { label: "Mechanism map", href: "/formulation/map", icon: MapIcon, testId: "psychiatry-qa-mechanism-map" },
+  { label: "Problem pathways", href: "/therapy-compass/pathways", icon: Workflow, testId: "psychiatry-qa-pathways" },
   {
     label: "First Nations",
     href: appModeHomeHref("first-nations"),
     icon: appModeIcons["first-nations"],
     testId: "psychiatry-qa-first-nations",
   },
-];
-
-const TOOL_LINKS: ReadonlyArray<{ readonly label: string; readonly href: string; readonly mode: AppModeId }> = [
-  { label: "Specifier wording builder", href: "/specifiers/builder", mode: "specifiers" },
-  { label: "Compare specifiers", href: "/specifiers/compare", mode: "specifiers" },
-  { label: "Formulation builder", href: "/formulation/builder", mode: "formulation" },
-  { label: "Mechanism map", href: "/formulation/map", mode: "formulation" },
-  { label: "Problem pathways", href: "/therapy-compass/pathways", mode: "therapy-compass" },
-  { label: "Compare therapies", href: "/therapy-compass/compare", mode: "therapy-compass" },
-  { label: "Compare diagnoses", href: "/dsm/compare", mode: "dsm" },
-  { label: "The Act and Standards", href: "/forms/act", mode: "forms" },
 ];
 
 const PsychiatrySavedCard = dynamic(
@@ -168,6 +174,10 @@ function sectionCountLine(modeId: AppModeId, counts: PsychiatrySectionCounts): s
       return plural(counts.therapy, "therapy", "therapies");
     case "forms":
       return plural(counts.forms, "form", "forms");
+    case "calculators":
+      return plural(counts.calculators, "calculator", "calculators");
+    case "dictionary":
+      return plural(counts.dictionary, "term", "terms");
     default:
       return null;
   }
@@ -277,7 +287,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={offline ? "Search is offline" : "Search your guidelines"}
+          placeholder={offline ? "Search is offline" : "Ask a psychiatry question"}
           disabled={offline}
           autoComplete="off"
           enterKeyHint="search"
@@ -297,7 +307,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
         </button>
       </div>
       {offline ? null : (
-        <div className="flex flex-wrap items-center gap-x-3.5 text-sm" data-testid="psychiatry-ask-try">
+        <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="psychiatry-ask-try">
           <span className="text-[color:var(--dash-muted)]">Try</span>
           {sharedHomePresentation.psychiatry.suggestions.map((suggestion) => (
             <Link
@@ -305,7 +315,7 @@ function AskSearch({ offline }: { readonly offline: boolean }) {
               href={appModeHomeHref("answer", { query: suggestion, run: true })}
               className={cn(
                 focusRing,
-                "inline-flex min-h-12 items-center rounded-md font-medium text-[color:var(--dash-ink)] underline decoration-[color:var(--dash-line-strong)] underline-offset-4",
+                "inline-flex min-h-12 items-center rounded-full border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-4 font-medium text-[color:var(--dash-ink)] no-underline",
               )}
             >
               {suggestion}
@@ -339,12 +349,12 @@ function ResumeRow({ latest, now }: { readonly latest: PsychiatryVisit; readonly
   );
 }
 
-/** The quick actions as a two-across hairline grid. */
+/** The builders as a two-across hairline grid. */
 function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickAction[] }) {
   return (
     <ul
       role="list"
-      aria-label="Quick actions"
+      aria-label="Builders"
       data-testid="psychiatry-quick-actions"
       className={cn(flatPanel, "grid grid-cols-2")}
     >
@@ -371,32 +381,6 @@ function QuickActionGrid({ actions }: { readonly actions: readonly DashQuickActi
         </li>
       ))}
     </ul>
-  );
-}
-
-/** A signpost to a section that lives elsewhere: a line of text and a bold link. */
-function Signpost({
-  href,
-  icon: SignIcon,
-  text,
-  link,
-  testId,
-}: {
-  readonly href: string;
-  readonly icon: LucideIcon;
-  readonly text: string;
-  readonly link: string;
-  readonly testId?: string;
-}) {
-  return (
-    <p className="flex min-h-10 items-center gap-2.5 px-0.5 text-sm text-[color:var(--dash-muted)]">
-      <SignIcon aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--dash-faint)]" />
-      <span className="min-w-0 flex-1">{text}</span>
-      <Link href={href} data-testid={testId} className={cn(flatLink, "shrink-0")}>
-        {link}
-        <ChevronRight aria-hidden="true" className="size-icon-xs" />
-      </Link>
-    </p>
   );
 }
 
@@ -556,47 +540,41 @@ function AskPage({
   visits,
   opens,
   now,
+  counts,
 }: {
   readonly visits: readonly PsychiatryVisit[];
   readonly opens: readonly PsychiatryOpen[];
   readonly now: Date | null;
+  readonly counts: PsychiatrySectionCounts;
 }) {
   const offline = useOffline();
   const latest = visits[0] ?? null;
   return (
-    <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-x-8">
-      <div className="grid min-w-0 gap-3">
+    <div className="grid items-start gap-5 lg:grid-cols-2 lg:gap-x-8">
+      <div className="grid min-w-0 gap-5">
         <AskSearch offline={offline} />
         {latest ? <ResumeRow latest={latest} now={now} /> : null}
         <section aria-labelledby="psychiatry-shift-title" className="grid gap-2">
           <FlatLabel id="psychiatry-shift-title" title="For a shift" />
           <ShiftToolsList clockLine={clockSummary} />
         </section>
+        <MentalHealthActSection visits={visits} opens={opens} />
       </div>
-      <div className="grid min-w-0 gap-3">
+      <div className="grid min-w-0 gap-5">
+        <SectionsSection counts={counts} />
         <section
           aria-labelledby="psychiatry-qa-title"
-          className="grid gap-2 lg:order-last"
+          className="grid gap-2"
           data-testid="psychiatry-card-quick-actions"
         >
-          <FlatLabel id="psychiatry-qa-title" title="Quick actions" />
-          <QuickActionGrid actions={QUICK_ACTIONS} />
+          <FlatLabel id="psychiatry-qa-title" title="Builders" />
+          <QuickActionGrid actions={BUILDERS} />
         </section>
-        <Signpost
-          href={appModeHomeHref("medicines")}
-          icon={Pill}
-          text="Medication and calculators are in Medicines"
-          link="Medicines"
-          testId="psychiatry-medicines-signpost"
-        />
         <ContinueSection visits={visits} now={now} />
-        <MentalHealthActSection visits={visits} opens={opens} />
       </div>
     </div>
   );
 }
-
-// ---------------------------------------------------------------- Tools page
 
 function SectionsSection({ counts }: { readonly counts: PsychiatrySectionCounts }) {
   return (
@@ -645,159 +623,6 @@ function SectionsSection({ counts }: { readonly counts: PsychiatrySectionCounts 
   );
 }
 
-const TOOL_ICON: Readonly<Record<string, LucideIcon>> = {
-  "/specifiers/builder": Tags,
-  "/specifiers/compare": GitCompareArrows,
-  "/formulation/builder": Network,
-  "/formulation/map": MapIcon,
-  "/therapy-compass/pathways": Workflow,
-  "/therapy-compass/compare": GitCompareArrows,
-  "/dsm/compare": GitCompareArrows,
-  "/forms/act": FileText,
-};
-
-function toolsClockLine(clocks: readonly MhaClock[]): string {
-  // Neutral while countdowns are switched off: the page holds forms, it does not always count limits.
-  const holding = "Mental Health Act forms you are holding";
-  return clocks.length > 0 ? `${holding} · ${clocks.length} running` : holding;
-}
-
-function BuildersSection() {
-  return (
-    <section aria-labelledby="psychiatry-builders-title" className="grid gap-2" data-testid="psychiatry-card-builders">
-      <FlatLabel
-        id="psychiatry-builders-title"
-        title="Builders and comparisons"
-        aside={<FlatCount>{TOOL_LINKS.length}</FlatCount>}
-      />
-      <FlatList label="Builders and comparisons">
-        {TOOL_LINKS.map((tool) => (
-          <FlatRow
-            key={tool.href}
-            href={tool.href}
-            icon={TOOL_ICON[tool.href] ?? appModeIcons[tool.mode]}
-            title={tool.label}
-            subtitle={appModeDefinition(tool.mode).label}
-          />
-        ))}
-      </FlatList>
-    </section>
-  );
-}
-
-function WeekSection({
-  week,
-  thisMonth,
-}: {
-  readonly week: ReadonlyArray<{ readonly kind: PsychiatryVisitKind; readonly count: number }>;
-  readonly thisMonth: number;
-}) {
-  const recordingOff = useRecordingOff();
-  const max = Math.max(1, ...week.map((row) => row.count));
-  const total = week.reduce((sum, row) => sum + row.count, 0);
-  const hasData = week.length > 0 || thisMonth > 0;
-  return (
-    <section aria-labelledby="psychiatry-week-title" className="grid gap-2" data-testid="psychiatry-card-week">
-      <FlatLabel id="psychiatry-week-title" title="Your week" aside={<FlatTag>On this phone</FlatTag>} />
-      <div className={flatPanelPadded}>
-        {hasData ? (
-          <>
-            <p className="flex items-center gap-3" data-testid="psychiatry-month">
-              <span className="nums text-xl font-semibold text-[color:var(--dash-ink)]">{thisMonth}</span>{" "}
-              <span className="text-sm text-[color:var(--dash-ink)]">
-                {thisMonth === 1 ? "record opened so far this month" : "records opened so far this month"}
-              </span>
-            </p>
-            {week.length > 0 ? (
-              <>
-                <p className="mt-1 border-t border-[color:var(--dash-line)] pt-2.5 text-xs text-[color:var(--dash-muted)]">
-                  Last 7 days by section{" "}
-                  <span className="nums text-[color:var(--dash-muted)]">{`· ${total} in all`}</span>
-                </p>
-                <p className="sr-only">
-                  {`Opened in the last seven days: ${week.map((row) => `${PSYCHIATRY_VISIT_KIND_LABEL[row.kind]} ${row.count}`).join(", ")}.`}
-                </p>
-                <div
-                  aria-hidden="true"
-                  className="grid grid-cols-[max-content_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 text-xs"
-                >
-                  {week.map((row) => (
-                    <div key={row.kind} className="contents">
-                      <span className="text-[color:var(--dash-muted)]">{PSYCHIATRY_VISIT_KIND_LABEL[row.kind]}</span>
-                      <svg viewBox="0 0 100 6" preserveAspectRatio="none" className="h-1.5 w-full">
-                        <rect x="0" y="0" width="100" height="6" rx="3" className="fill-[color:var(--dash-card)]" />
-                        <rect
-                          x="0"
-                          y="0"
-                          width={Math.max(4, (row.count / max) * 100)}
-                          height="6"
-                          rx="3"
-                          className="fill-[color:var(--dash-faint)] forced-colors:fill-[CanvasText]"
-                        />
-                      </svg>
-                      <span className="nums text-right font-semibold text-[color:var(--dash-ink)]">{row.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : null}
-          </>
-        ) : recordingOff ? null : (
-          <p className="text-sm text-[color:var(--dash-ink)]" data-testid="psychiatry-week-empty">
-            Nothing opened here yet.
-          </p>
-        )}
-        <p className="text-xs text-[color:var(--dash-muted)]">
-          {recordingOff && !hasData
-            ? "Turn on Save recent searches in Settings to count what you open here. It stays on this phone."
-            : "Counted on this phone while Save recent searches is on."}
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function ToolsPage({
-  counts,
-  week,
-  thisMonth,
-}: {
-  readonly counts: PsychiatrySectionCounts;
-  readonly week: ReadonlyArray<{ readonly kind: PsychiatryVisitKind; readonly count: number }>;
-  readonly thisMonth: number;
-}) {
-  return (
-    <div className="grid gap-3">
-      <SectionsSection counts={counts} />
-      <div className="grid items-start gap-3 lg:grid-cols-2 lg:gap-x-8">
-        <div className="grid min-w-0 gap-3">
-          <section
-            aria-labelledby="psychiatry-tools-shift-title"
-            className="grid gap-2"
-            data-testid="psychiatry-card-shift-tools"
-          >
-            <FlatLabel id="psychiatry-tools-shift-title" title="For a shift" aside={<FlatCount>2</FlatCount>} />
-            <ShiftToolsList clockLine={toolsClockLine} />
-          </section>
-          <BuildersSection />
-        </div>
-        <div className="grid min-w-0 gap-3">
-          <WeekSection week={week} thisMonth={thisMonth} />
-          <div className="grid">
-            <Signpost
-              href={appModeHomeHref("medicines")}
-              icon={Pill}
-              text="Medication and calculators"
-              link="Medicines"
-            />
-            <Signpost href={appModeHomeHref("documents")} icon={FileText} text="Your PDFs" link="Documents" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------- the page
 
 export function PsychiatryHome({
@@ -809,15 +634,12 @@ export function PsychiatryHome({
   readonly now?: Date;
   readonly initialPage?: PsychiatryPageId;
 }) {
-  // The band's Ask / Tools / Saved tabs are links to ?page=, so the address names the page.
+  // The band's Home / Saved tabs are links to ?page=, so the address names the page.
   const searchParams = useSearchParams();
   const page = parsePsychiatryPage(searchParams?.get("page"), initialPage);
   useModeBandCurrentTab(`psychiatry-${page}`);
   const now = useNow(nowProp);
   const state = usePsychiatryVisits();
-  const nowMs = now?.getTime() ?? null;
-  const month = nowMs === null ? { thisMonth: 0, lastMonth: 0 } : psychiatryMonthFigures(state.months, nowMs);
-  const week = nowMs === null ? [] : psychiatryWeekBySection(state.opens, nowMs);
 
   return (
     <InformationPageShell testId="psychiatry-home">
@@ -832,8 +654,7 @@ export function PsychiatryHome({
         </header>
 
         <div id="psychiatry-panel" className="grid gap-3 sm:gap-4">
-          {page === "ask" ? <AskPage visits={state.visits} opens={state.opens} now={now} /> : null}
-          {page === "tools" ? <ToolsPage counts={counts} week={week} thisMonth={month.thisMonth} /> : null}
+          {page === "ask" ? <AskPage visits={state.visits} opens={state.opens} now={now} counts={counts} /> : null}
           {page === "saved" ? <PsychiatrySavedCard /> : null}
         </div>
       </div>

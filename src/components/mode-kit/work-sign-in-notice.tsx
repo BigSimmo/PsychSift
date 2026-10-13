@@ -1,9 +1,10 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { LogIn, type LucideIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
+import { WorkButton } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { useAuthSession } from "@/lib/supabase/client";
 
@@ -29,6 +30,43 @@ function RefreshOnSignIn({ onSignedIn }: { readonly onSignedIn: () => void }) {
     if (startedSignedOut && signedIn) onSignedIn();
   }, [startedSignedOut, signedIn, onSignedIn]);
   return null;
+}
+
+/**
+ * The slim signed-out line: one sentence and Sign in, in a flat hairline card
+ * at the top of the page content (site review 12 Oct 2026, item 2). For a page
+ * whose own content still shows signed out (On Call keeps its public crisis
+ * lines and examples below), so the sign-in ask does not push them half a
+ * screen down the way the full `WorkSignInNotice` card did.
+ */
+export function WorkSignInLine({
+  title,
+  signInLabel = "Sign in",
+  signInTestId,
+  testId,
+}: {
+  readonly title: ReactNode;
+  readonly signInLabel?: string;
+  readonly signInTestId?: string;
+  readonly testId?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div
+        className="work-card flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 py-1 pr-1.5 pl-3"
+        data-testid={testId}
+      >
+        <p className="m-0 min-w-0 flex-1 basis-44 py-2 text-sm font-medium break-words text-[color:var(--text-heading)]">
+          {title}
+        </p>
+        <WorkButton icon={LogIn} onClick={() => setOpen(true)} testId={signInTestId}>
+          {signInLabel}
+        </WorkButton>
+      </div>
+      {open ? <AccountSetupDialog open onClose={() => setOpen(false)} /> : null}
+    </>
+  );
 }
 
 /**

@@ -27,6 +27,11 @@ vi.mock("@/components/on-call/on-call-entry-editor", () => ({
     props.open ? <div data-testid="mock-entry-editor">{props.entry?.title ?? "new entry"}</div> : null,
 }));
 
+// The Medical Workforce sharing card reads its own choice; its behaviour is tested in admin-new-job-sharing.dom.test.tsx.
+vi.mock("@/components/admin/new-job/admin-new-job-sharing", () => ({
+  AdminNewJobSharing: () => <div data-testid="admin-new-job-sharing" />,
+}));
+
 const loginOwn = onCallEntryFixture({
   section: "logistics",
   title: "Demo logins, paging and remote access",
@@ -123,6 +128,15 @@ describe("AdminNewJobPage", () => {
     expect(screen.getByText(jobContact.title)).toBeTruthy();
     const link = screen.getByRole("link", { name: "9000 0012" });
     expect(link.getAttribute("href")).toBe("tel:0890000012");
+  });
+
+  it("offers the Medical Workforce sharing choice to a signed-in doctor, and not with example records", () => {
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.getByTestId("admin-new-job-sharing")).toBeTruthy();
+    cleanup();
+    Object.assign(entryState, { demoMode: true });
+    render(<AdminNewJobPage now={NOW} />);
+    expect(screen.queryByTestId("admin-new-job-sharing")).toBeNull();
   });
 
   it("shows no week timings anywhere on the page", () => {
@@ -261,10 +275,10 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     ];
     render(<AdminNewJobPage now={NOW} />);
     const signpost = screen.getByTestId("admin-new-job-paperwork");
-    expect(signpost.getAttribute("href")).toBe("/admin/compliance");
+    expect(signpost.getAttribute("href")).toBe("/admin/renewals?view=group");
     expect(signpost).toHaveTextContent("Paperwork for your next job");
     expect(screen.getByTestId("admin-new-job-paperwork-count").textContent).toMatch(
-      /^\d+ to do before you start, in Compliance$/,
+      /^\d+ to do before you start, in Renewals$/,
     );
     expect(screen.getByTestId("admin-new-job-paperwork-names")).toHaveTextContent(/^Before 2 Nov 2026: /);
     expect(signpost).toHaveTextContent("Dates you entered, not a check. Your service's list may differ.");
@@ -285,9 +299,7 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
     expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent(
       "Nothing due before you start, on the dates you recorded",
     );
-    expect(screen.getByTestId("admin-new-job-paperwork-also")).toHaveTextContent(
-      "1 needs action in Compliance overall.",
-    );
+    expect(screen.getByTestId("admin-new-job-paperwork-also")).toHaveTextContent("1 needs action in Renewals overall.");
     expect(document.body.textContent).not.toMatch(/Nothing to do/);
   });
 
@@ -300,7 +312,7 @@ describe("AdminNewJobPage layout (Admin polish, lane C)", () => {
       }),
     );
     const { unmount } = render(<AdminNewJobPage now={new Date("2026-10-25T01:00:00Z")} />);
-    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent("1 needs action, in Compliance");
+    expect(screen.getByTestId("admin-new-job-paperwork-count")).toHaveTextContent("1 needs action, in Renewals");
     unmount();
     entryState.entries = ADMIN_REQUIREMENTS_CATALOGUE.map((item) =>
       complianceFixture(item.title, { requirementId: item.id, expiresOn: "2028-01-01" }),

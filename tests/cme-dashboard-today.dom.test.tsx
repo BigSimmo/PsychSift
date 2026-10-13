@@ -88,7 +88,7 @@ describe("Today", () => {
       }),
     );
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
-    expect(screen.getByTestId("applications-today-card").getAttribute("href")).toBe("/cme/applications");
+    expect(screen.getByTestId("applications-today-card").getAttribute("href")).toBe("/admin/applications");
     localStorage.removeItem(CPD_APPLICATIONS_STORAGE_KEY);
   });
 
@@ -98,7 +98,7 @@ describe("Today", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Year" })).toBeInTheDocument();
   });
 
-  it("lists the year check's open items one per row, biggest gap first, with done ones folded", () => {
+  it("lists the year check's top three open items, biggest gap first, then See all in End of year", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     expect(screen.queryByTestId("cme-fact-tiles")).toBeNull();
     expect(screen.queryByText("Next to log")).toBeNull();
@@ -110,28 +110,23 @@ describe("Today", () => {
       .getAllByRole("listitem")
       .filter((row) => row.getAttribute("data-met") === "false");
     // work-mode redesign, owner request 6 Oct 2026: the next step leads the card with its own
-    // Log button, then the rest biggest gap first, each ending in its action word.
+    // Log button, then the rest biggest gap first. Simplify plan, 12 Oct 2026: only the first three.
     expect(rows.map((row) => row.textContent?.replace(/\u00a0/g, " "))).toEqual([
       "Big gap requirement0 of 20 hLog",
       "Hours in total39 h to go",
       "Small gap requirement9 of 10 h",
-      "Professional development planNot startedStart",
-      // No evidence counts were loaded, so the check says so rather than guessing.
-      "Evidence kept for each activityNot checkedShow",
-      "Copied to your CPD home2 activities not marked copiedCopy",
     ]);
+    const seeAll = within(list).getByTestId("cme-whats-left-see-all");
+    expect(seeAll).toHaveAttribute("href", "/cme/check?year=2026");
+    expect(seeAll).toHaveTextContent("See all 6 in End of year3 more, plus evidence and handing it in");
     const done = screen.getByTestId("cme-requirements-done");
     expect(done.tagName).toBe("DETAILS");
     expect(done).not.toHaveAttribute("open");
     expect(done).toHaveTextContent("2 done · Measuring requirement, a reflection on each activity");
-    const doneRows = within(done).getAllByRole("listitem");
-    expect(doneRows).toHaveLength(2);
-    for (const row of doneRows) expect(row).toHaveAttribute("data-met", "true");
-    // Each requirement row appears exactly once on the page.
-    for (const requirement of SET.requirements) {
-      expect(
-        screen.getAllByRole("listitem").filter((row) => row.textContent?.startsWith(requirement.label)),
-      ).toHaveLength(1);
+    expect(within(done).getAllByRole("listitem")).toHaveLength(2);
+    // Each shown requirement row appears exactly once on the page.
+    for (const label of ["Big gap requirement", "Small gap requirement"]) {
+      expect(screen.getAllByRole("listitem").filter((row) => row.textContent?.startsWith(label))).toHaveLength(1);
     }
   });
 
@@ -162,15 +157,9 @@ describe("Today", () => {
     expect(screen.queryByTestId("cme-calendar-link")).toBeNull();
   });
 
-  it("opens a task row on the setup screen", () => {
-    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
-    expect(screen.getByRole("link", { name: /Professional development plan/ })).toHaveAttribute(
-      "href",
-      "/cme/setup?year=2026#cme-requirement-plan",
-    );
-  });
-
-  it("shows things to finish as chips, counted by the year check: not marked copied, no reflection, drafts", () => {
+  // Simplify plan, 12 Oct 2026: "Not marked copied" and "No reflection" repeated What's left's own rows, so
+  // only the drafts chip is left, the one thing the year check cannot see.
+  it("shows only the drafts chip, since What's left already carries copying and reflections", () => {
     const noReflection = { ...ENTRIES[0]!, id: "d", reflection: " " };
     render(<CmeDashboard set={SET} entries={[...ENTRIES, noReflection]} now={NOW} draftsToFinish={1} />);
     const chips = screen.getByTestId("cme-today-shortcuts");
@@ -178,15 +167,7 @@ describe("Today", () => {
       within(chips)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["Not marked copied3", "No reflection1", "Draft to finish1"]);
-    expect(within(chips).getByRole("link", { name: /^Not marked copied\s*3/ })).toHaveAttribute(
-      "href",
-      "/cme/log?year=2026&copy=todo",
-    );
-    expect(within(chips).getByRole("link", { name: /^No reflection\s*1/ })).toHaveAttribute(
-      "href",
-      "/cme/log?year=2026&fix=reflection",
-    );
+    ).toEqual(["Draft to finish1"]);
     // The 32 px chip face carries a 48 px tap area.
     for (const link of within(chips).getAllByRole("link")) expect(link.className).toContain("min-h-12");
   });
@@ -201,14 +182,9 @@ describe("Today", () => {
     ).toEqual(["Drafts to finish2"]);
   });
 
-  it("leaves out a chip with nothing in it, and the drafts chip when drafts did not load", () => {
+  it("shows no chips when there are no drafts, or drafts did not load", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} draftsToFinish={null as unknown as number} />);
-    const chips = screen.getByTestId("cme-today-shortcuts");
-    expect(
-      within(chips)
-        .getAllByRole("link")
-        .map((link) => link.textContent),
-    ).toEqual(["Not marked copied2"]);
+    expect(screen.queryByTestId("cme-today-shortcuts")).toBeNull();
   });
 });
 

@@ -40,7 +40,8 @@ const BOOKINGS_ERRORS: Record<string, { status: number; message: string }> = {
   work_bookings_invalid_request: { status: 400, message: "Check the details and try again." },
   work_bookings_role_denied: {
     status: 403,
-    message: "Only the course organiser, a manager of its team or an administrator can do that.",
+    message:
+      "Only the course organiser, a manager of its team, Medical Workforce or the DCT of its hospital, or an administrator can do that.",
   },
   work_bookings_not_found: { status: 404, message: "That course has changed. Refresh and try again." },
   work_bookings_already: { status: 409, message: "You already have a place or are on the waitlist." },
@@ -158,7 +159,7 @@ export interface SavedBookingsRead {
   readonly organiser: {
     /** A site administrator, who may post courses open to everyone. */
     readonly administrator: boolean;
-    /** Teams this reader may post courses for, as their Roster manager. */
+    /** Teams this reader may post courses for: as their Roster manager, or as Medical Workforce or the DCT of their hospital. */
     readonly teams: readonly { readonly serviceId: string; readonly name: string }[];
   };
 }

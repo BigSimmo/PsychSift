@@ -8,6 +8,7 @@ import {
   Check,
   ClipboardList,
   Clock,
+  GraduationCap,
   RotateCcw,
   UserPlus,
   Users,
@@ -225,7 +226,7 @@ function OpenView({ state, today }: { readonly state: BookingsState; readonly to
           <WorkIconRow
             icon={Users}
             title={sample ? "The organiser's side" : "Courses you post"}
-            sub={sample ? "Example, to see how posting works" : "Post, edit and see who is booked"}
+            sub={"Post, edit and see who is booked"}
             href={ADMIN_WORK_SCREEN_HREFS.courses}
             testId="admin-bookings-organiser-link"
           />
@@ -286,7 +287,15 @@ function AvailabilityTag({
     case "closed":
       return <WorkTag tone="neutral">Closed</WorkTag>;
     case "book":
-      return <WorkTag>Book</WorkTag>;
+      // The one state that is an action, so it looks like a button, not a
+      // status word. It sits inside the row's link (which opens the course to
+      // book), so it borrows the secondary button face as a span: a real
+      // <button> inside a link is invalid and would split the tap target.
+      return (
+        <span className="work-button" data-variant="secondary">
+          Book
+        </span>
+      );
     case "cancelled":
       return <WorkTag tone="neutral">Cancelled</WorkTag>;
     case "started":
@@ -598,6 +607,18 @@ function CourseDetail({
               onClick={addToPhone}
               testId="admin-bookings-ics"
             />
+            {(availability === "attended" || (availability === "booked" && course.date < today)) && !examples ? (
+              // A past course you were booked on may be CPD to log. Nothing marks a booking attended yet, so the
+              // words ask rather than claim. An example course never starts a real record.
+              <WorkIconRow
+                icon={GraduationCap}
+                title="Went to this course? Log it to CPD"
+                sub="Opens a new CPD entry with the course name"
+                href={`/cme/new?title=${encodeURIComponent(course.title)}`}
+                leadsTo="cme"
+                testId="admin-bookings-log-cpd"
+              />
+            ) : null}
           </>
         ) : (
           <WorkIconRow

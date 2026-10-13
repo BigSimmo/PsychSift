@@ -200,7 +200,10 @@ export function FavouritesShelf({
     <ul
       aria-labelledby={rest["aria-labelledby"]}
       data-testid={testId}
-      className="work-card m-0 grid list-none grid-cols-4 gap-x-1 gap-y-2 px-1.5 py-2.5"
+      // Four across at normal text. At large text each tile needs at least
+      // 6rem, so a 320px phone shows two across at 125% and one at 200%, and
+      // the names wrap whole instead of being cut off (12 Oct 2026).
+      className="work-card m-0 grid list-none grid-cols-4 gap-x-1 gap-y-2 px-1.5 py-2.5 [html[data-large-text]_&]:grid-cols-[repeat(auto-fill,minmax(6rem,1fr))]"
     >
       {shown.map((item) =>
         item.numberId && onOpenNumber ? (

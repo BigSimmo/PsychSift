@@ -28,7 +28,6 @@ import { SearchCommandProvider } from "@/components/clinical-dashboard/search-co
 import {
   ClinicalDesktopSidebar,
   ClinicalMobileSidebar,
-  ClinicalSidebarContent,
   deriveSidebarIdentity,
 } from "@/components/clinical-dashboard/ClinicalSidebar";
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
@@ -36,11 +35,11 @@ import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favouri
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { PhoneFooterLayerFrame } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { PageSecondaryNavigation } from "@/components/page-secondary-navigation";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import {
   LazyTwoPaneSideMenu,
   LazyWorkSideCounts,
-  LazyWorkSideMenu,
   prefetchTwoPaneSideMenu,
 } from "@/components/work-frame/lazy-work-side-nav";
 import {
@@ -131,6 +130,7 @@ import {
 } from "@/lib/mode-home-composer";
 import { readSearchNavigationContext, type SearchNavigationOptions } from "@/lib/search-navigation-context";
 import { isTherapyPhoneDockRoute, readTherapyCompareSlugCount } from "@/lib/therapy-compass-navigation";
+import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import {
   isAlwaysStandaloneShellPath,
   isDashboardOwnedModeHomePath,
@@ -476,8 +476,11 @@ function GlobalStandaloneSearchShellBody({
   const hasSubmittedModeSearch = requestedRun && requestedQuery.length > 0;
   const isDocumentCommandSearchView = pathname === "/documents/search" && requestedQuery.length > 0;
   const useCompactBottomSearch = hasSubmittedModeSearch || isDocumentCommandSearchView;
+  const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
+  // Gated on a tick like Therapy's: an empty tray must not claim the dock band.
   const differentialsCompareAddonActive =
     searchMode === "differentials" &&
+    differentialsCompareHasSelection &&
     // `/differentials` is absent on purpose: it redirects to the shared home, so a
     // branch naming it can never be true and would only read as live ownership.
     (pathname === "/differentials/diagnoses" || pathname === "/differentials/search");
@@ -521,17 +524,17 @@ function GlobalStandaloneSearchShellBody({
   const workSideNav = useWorkSideNav(searchMode);
   const workRailShown = useWorkRailShown();
   const workSideArea = workSideNav ? workSideCurrentArea(searchMode, pathname) : null;
-  // The counts reader stays mounted once the phone menu has opened on a work
-  // page, so reopening the menu never fetches the feed again.
+  // The two-pane menu's counts reader stays mounted once that menu has opened,
+  // so reopening it never fetches the feed again.
   const [workMenuOpened, setWorkMenuOpened] = useState(false);
-  // The two-pane side menu (owner pick 8 Oct 2026, behind the Live version
-  // switch) replaces both phone menus, and carries the Work side on every page.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  // The two-pane side menu (owner pick 8 Oct 2026) would replace both phone menus
+  // and carry the Work side on every page. It is off again (10 Oct 2026).
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const newWorkMode = useNewWorkMode();
   const twoPaneCounts = twoPaneSideMenu && newWorkMode;
   // Clinical pages hand 1024 px up to the full sidebar, so the rail (and its counts) stop there.
   const twoPaneRailShown = useTwoPaneRailShown(!workSideNav);
-  if ((workSideNav || twoPaneCounts) && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
+  if (twoPaneCounts && mobileMenuOpen && !workMenuOpened) setWorkMenuOpened(true);
   // The phone menu only exists below 768 px. Turning a phone to landscape past
   // that width closes it, so its backdrop never blocks the rail layout. The
   // two-pane menu is the tablet rail's own menu, so it stays open.
@@ -755,6 +758,7 @@ function GlobalStandaloneSearchShellBody({
   });
 
   function navigateToMode(mode: AppModeId, options: SearchNavigationOptions = {}) {
+    if (!confirmShellNavigation()) return;
     const nextOptions = { queryMode, scopeFilters, ...options };
     if (mode === "documents" && options.query?.trim()) {
       router.push(documentsSearchHref(nextOptions));
@@ -782,8 +786,6 @@ function GlobalStandaloneSearchShellBody({
       openAccountSetup("favourites");
       return;
     }
-    setLastAppMode(mode);
-
     // Dedicated modes return to their dedicated standalone home. Remaining modes
     // return to the shared home. Preserve any current query as an unsubmitted draft,
     // but omit `run=1`; only an explicit submit may open the selected mode's
@@ -800,6 +802,9 @@ function GlobalStandaloneSearchShellBody({
     const destination = new URL(href, window.location.origin);
     const destinationSearch = destination.search.startsWith("?") ? destination.search.slice(1) : destination.search;
     const alreadyOnDestination = pathname === destination.pathname && searchParamString === destinationSearch;
+    // A page with unsaved work may ask first; re-selecting the mode already shown never leaves, so never asks.
+    if (!alreadyOnDestination && !confirmShellNavigation()) return;
+    setLastAppMode(mode);
 
     setMobileMenuOpen(false);
 
@@ -828,6 +833,7 @@ function GlobalStandaloneSearchShellBody({
   }
 
   function startNewAnswerChat(clearClinicalAsk: () => void = () => undefined) {
+    if (!confirmShellNavigation()) return;
     clearClinicalAsk();
     setQuery("");
     setMobileMenuOpen(false);
@@ -878,8 +884,13 @@ function GlobalStandaloneSearchShellBody({
 
     const onScrollCapture = (event: Event) => {
       const target = event.target;
-      if (!(target instanceof HTMLElement) || !main.contains(target)) return;
+      // The shell's own scroll is already reported by `handleMainScroll`;
+      // reporting it again here measured the chrome twice per scroll frame.
+      if (!(target instanceof HTMLElement) || target === main || !main.contains(target)) return;
       if (target.scrollHeight <= target.clientHeight + 1) return;
+      // A desktop side list (ClinicalSplit) scrolls on its own beside the page;
+      // moving through it must not hide or reveal the app header.
+      if (target.closest("[data-chrome-scroll-ignore]")) return;
       reportChromeScrollHideRef.current({
         offset: target.scrollTop,
         maxOffset: Math.max(0, target.scrollHeight - target.clientHeight),
@@ -1269,10 +1280,11 @@ function GlobalStandaloneSearchShellBody({
           initialFocus={settingsInitialFocus}
         />
         <SidebarAccountSetupDialog open={accountSetupOpen} onClose={closeAccountSetup} intent={accountSetupIntent} />
+        {/* The rail's counts. The phone menu (ClinicalMobileSidebar) reads its own
+            once it first opens. */}
         <LazyWorkSideCounts
           active={
-            (workSideNav && (twoPaneSideMenu ? twoPaneRailShown : workRailShown)) ||
-            ((workSideNav || twoPaneCounts) && workMenuOpened)
+            (workSideNav && (twoPaneSideMenu ? twoPaneRailShown : workRailShown)) || (twoPaneCounts && workMenuOpened)
           }
         />
         {twoPaneSideMenu ? (
@@ -1298,40 +1310,11 @@ function GlobalStandaloneSearchShellBody({
               await auth.signOut();
             }}
           />
-        ) : workSideNav ? (
-          <LazyWorkSideMenu
-            open={mobileMenuOpen}
-            onOpenChange={setMobileMenuOpen}
-            identity={sidebarIdentity}
-            currentArea={workSideArea}
-            onOpenSettings={openSettingsWithDefaultFocus}
-            onSignOut={async () => {
-              clinicalAskSession.clear();
-              await auth.signOut();
-            }}
-            clinical={
-              <ClinicalSidebarContent
-                showHeader={false}
-                recentQueries={recentQueries}
-                identity={sidebarIdentity}
-                activeMode={searchMode}
-                showAccountLibrary={favouritesAccessible}
-                onNewChat={startNewChat}
-                onPickRecent={pickRecentQuery}
-                onOpenSettings={openSettingsWithDefaultFocus}
-                onOpenAccount={openAccountProfileWithDefaultFocus}
-                onPrefetchSettings={loadSettingsDialog}
-                onPrefetchAccount={prefetchAccountDialog}
-                onPrefetchApplications={prefetchApplications}
-                onOpenSearch={openSidebarSearch}
-                onSelectMode={changeMode}
-                onNavigate={() => setMobileMenuOpen(false)}
-              />
-            }
-          />
         ) : (
           <ClinicalMobileSidebar
             open={mobileMenuOpen}
+            startSide={workSideNav ? "work" : "clinical"}
+            currentArea={workSideArea}
             hiddenFrom="md"
             recentQueries={recentQueries}
             identity={sidebarIdentity}

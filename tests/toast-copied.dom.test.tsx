@@ -54,6 +54,49 @@ describe("Unified copy toast feedback (#HWYCPF)", () => {
     expect(screen.getByText("Copied to clipboard")).toBeInTheDocument();
   });
 
+  it("does not announce success when an asynchronous copy fails", async () => {
+    render(
+      <ToastProvider>
+        <CopyButton label="Copy failed" copied={false} onClick={async () => false} testId="copy-false" />
+        <CopyButton
+          label="Copy rejected"
+          copied={false}
+          onClick={() => Promise.reject(new Error("denied"))}
+          testId="copy-rejected"
+        />
+      </ToastProvider>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("copy-false"));
+      fireEvent.click(screen.getByTestId("copy-rejected"));
+    });
+    expect(screen.queryByText("Copied to clipboard")).not.toBeInTheDocument();
+  });
+
+  it("announces success after an asynchronous copy resolves", async () => {
+    render(
+      <ToastProvider>
+        <CopyButton label="Copy ok" copied={false} onClick={async () => true} testId="copy-ok" />
+      </ToastProvider>,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("copy-ok"));
+    });
+    expect(screen.getByText("Copied to clipboard")).toBeInTheDocument();
+  });
+
+  it("leaves announcing to callers that opt out of the shared toast", () => {
+    render(
+      <ToastProvider>
+        <CopyButton label="Copy clause" copied={false} onClick={() => {}} toastOnSuccess={false} testId="copy-own" />
+      </ToastProvider>,
+    );
+    act(() => {
+      fireEvent.click(screen.getByTestId("copy-own"));
+    });
+    expect(screen.queryByText("Copied to clipboard")).not.toBeInTheDocument();
+  });
+
   it("does not crash when CopyButton is used outside ToastProvider", () => {
     const handleCopy = vi.fn();
     render(<CopyButton label="Copy text" copied={false} onClick={handleCopy} testId="copy-outside" />);

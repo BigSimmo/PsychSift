@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { loadActReferenceGroups, loadChiefPsychiatristStandards } from "@/components/forms/act-and-standards-content";
 import { ActAndStandardsPage } from "@/components/forms/act-and-standards-page";
+import { FormsModeNav } from "@/components/forms/forms-mode-nav";
 import { consolidatedModeSearchPath } from "@/lib/consolidated-mode-home-redirect";
 import { mhaActMetadata } from "@/lib/mha-act-sections";
 
@@ -13,11 +14,14 @@ export const metadata: Metadata = {
 
 export default function FormsActAndStandardsRoute() {
   return (
-    <ActAndStandardsPage
-      act={mhaActMetadata}
-      groups={loadActReferenceGroups()}
-      standards={loadChiefPsychiatristStandards()}
-      backHref={consolidatedModeSearchPath("forms")}
-    />
+    <>
+      <FormsModeNav current="forms-act" />
+      <ActAndStandardsPage
+        act={mhaActMetadata}
+        groups={loadActReferenceGroups()}
+        standards={loadChiefPsychiatristStandards()}
+        backHref={consolidatedModeSearchPath("forms")}
+      />
+    </>
   );
 }

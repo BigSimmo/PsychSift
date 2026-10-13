@@ -35,9 +35,12 @@ When the user says `Clear PRs` (case-insensitive, entire message after trimming)
 
 Follow a PR's CI while it is useful, fix only this change's breakage, stop when CI settles, and never park a cron job on a PR — see [Follow CI](../../../docs/agents/pull-request-workflow.md#follow-ci) for detail and how the no-cron rule is enforced. Review-thread handling for every tool is in [Review threads](../../../docs/agents/pull-request-workflow.md#review-threads).
 
-## Automated review coverage (owner decision, 2026-08-22)
+## Automated review coverage and fallback policy
 
-For the 2026-08-22 owner decision on automated review coverage, see [Automated review coverage](../../../docs/agents/pull-request-workflow.md#automated-review-coverage-owner-decision-2026-08-22).
+<a id="automated-review-coverage"></a>
+<a id="automated-review-coverage-owner-decision-2026-08-22"></a>
+
+For the automated review coverage policy, the 2026-09-19 triple-outage trigger (#JQ3KY7), multi-layered fallback strategy (Codex connector + redundant Claude review workflow), reply-first resolution protocol (`<!-- codex-thread-disposition:resolved -->`), and deterministic CI gate invariance, see [Automated review coverage](../../../docs/agents/pull-request-workflow.md#automated-review-coverage).
 
 ## PR bundling (reduce one-task-one-PR churn)
 

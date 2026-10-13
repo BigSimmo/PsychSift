@@ -151,15 +151,19 @@ export function nextRosteredDay(
  * The "Needs you" card: the items (already in order) less anything moved to
  * later, capped. `total` is every item, which "All N" opens. An item Later
  * cannot move (`snoozable: false`) always shows, the same rule the bell uses.
+ * `flaggedId` is the item the flag card above already shows: it is left out of
+ * the rows but still counted, so "All N" matches the full list it opens.
  */
 export function selectNeedsYou<T extends { readonly id: string; readonly snoozable?: boolean }>(
   items: readonly T[],
   snoozes: MyDaySnoozes,
   today: string,
   cap: number = MY_DAY_NEEDS_YOU_CAP,
+  flaggedId?: string,
 ): { readonly shown: readonly T[]; readonly waiting: number; readonly total: number } {
   const waiting = items.filter((item) => item.snoozable === false || !isSnoozed(snoozes, item.id, today));
-  return { shown: waiting.slice(0, cap), waiting: waiting.length, total: items.length };
+  const rows = flaggedId ? waiting.filter((item) => item.id !== flaggedId) : waiting;
+  return { shown: rows.slice(0, cap), waiting: waiting.length, total: items.length };
 }
 
 /** One timed thing today, from any source, as the "Up next" card and the agenda show it. */

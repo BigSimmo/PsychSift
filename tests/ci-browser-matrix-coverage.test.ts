@@ -149,14 +149,14 @@ describe("release-browser-matrix engine coverage", () => {
       shard: number;
       total: number;
     }>;
-    expect(jobs).toHaveLength(17);
+    expect(jobs).toHaveLength(21);
     for (const [project, engine, total] of [
       ["chromium-mockups", "chromium", 1],
       ["firefox", "firefox", 3],
-      ["webkit", "webkit", 2],
+      ["webkit", "webkit", 3],
       ["mobile-webkit", "webkit", 5],
       ["mobile-pwa-standalone", "webkit", 5],
-      ["tablet", "webkit", 1],
+      ["tablet", "webkit", 4],
     ] as const) {
       expect(jobs.filter((job) => job.project === project)).toEqual(
         Array.from({ length: total }, (_, index) => ({ project, engine, shard: index + 1, total })),
@@ -189,6 +189,24 @@ describe("release-browser-matrix engine coverage", () => {
     expect(releaseJob).toContain('npx playwright install-deps "$BROWSER_ENGINE"');
     expect(releaseJob).toContain('npx playwright install "$BROWSER_ENGINE"');
     expect(releaseJob).toContain('npx playwright install --with-deps "$BROWSER_ENGINE"');
+  });
+
+  it("fails the install attempt when system libraries are missing instead of failing every test at launch", () => {
+    const steps = parsedWorkflow.jobs["release-browser-matrix"].steps as WorkflowStep[];
+    const install = steps.find((step) => step.name === "Install Playwright browsers");
+    const script = String(install?.run ?? "");
+    // Main run 38228339791: install-deps failed on a cache hit, the browser download after
+    // it succeeded, the attempt reported success, and every WebKit test died at launch.
+    expect(script).toMatch(/install_browsers\(\) \{\n\s+set -e\n/);
+    expect(script).toContain('require("playwright")[process.env.BROWSER_ENGINE].launch()');
+    // The probe sits after the cache-hit/cold-cache branch closes, so both paths are verified.
+    expect(script).toMatch(/\n\s+fi\n\s+node -e 'require\("playwright"\)\[process\.env\.BROWSER_ENGINE\]\.launch\(\)/);
+    expect(script).toContain("sudo timeout 120 dpkg --configure -a || true");
+    // Dispatch run 38234519037: the azure mirror in apt-mirrors.txt stalled apt past the
+    // attempt timeout, and the orphaned apt-get then held the lock for every retry.
+    expect(script).toContain("/etc/apt/apt-mirrors.txt");
+    expect(script).toContain("sudo pkill -x apt-get || true");
+    expect(script).toContain("sudo pkill -x dpkg || true");
   });
 
   it("reuses only the same run's matching production build, preserving the mockup build and no-producer fallback", () => {

@@ -9,10 +9,10 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  ListChecks,
   Moon,
   Phone,
   Shield,
-  SlidersHorizontal,
   TriangleAlert,
   Users,
   type LucideIcon,
@@ -24,7 +24,6 @@ import { focusRing } from "@/components/card-recipes";
 import {
   AreaIcon,
   DateBlock,
-  QuietFoot,
   QuietHideButton,
   QuietLabel,
   QuietList,
@@ -44,7 +43,6 @@ import { listNames } from "@/components/my-day/my-day-page-parts";
 import { kindOf } from "@/components/roster/roster-format";
 import { cn } from "@/components/ui-primitives";
 import { cmeWeeklyPace } from "@/lib/cme/pace";
-import { cmeCategories, type CmeCategory } from "@/lib/cme/types";
 import type { MyDayTimedEvent } from "@/lib/my-day/dashboard";
 import { addMonths, monthTitle, monthWeeks, myDayActionLabel, RUNWAY_DAYS } from "@/lib/my-day/figures";
 import { duePerthDate } from "@/lib/my-day/merge";
@@ -613,7 +611,7 @@ export function HeroCard({
                 Open handover
               </Link>
               <Link
-                href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
+                href={withMyDayReturn("/on-call#log-a-call")}
                 className={heroGlassButton}
                 data-testid="my-day-hero-log-call"
               >
@@ -624,7 +622,7 @@ export function HeroCard({
           ) : (
             <>
               <Link
-                href={withMyDayReturn("/on-call/call#on-call-call-log-heading")}
+                href={withMyDayReturn("/on-call#log-a-call")}
                 className={heroButton}
                 data-testid="my-day-hero-log-call"
               >
@@ -744,7 +742,7 @@ interface MyDayQuickAction {
 const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
   {
     label: "Log a call",
-    href: "/on-call/call#on-call-call-log-heading",
+    href: "/on-call#log-a-call",
     icon: Phone,
     testId: "my-day-qa-call",
     mode: "on-call",
@@ -754,10 +752,13 @@ const MY_DAY_QUICK_ACTIONS: readonly MyDayQuickAction[] = [
   { label: "Roster", href: "/roster", icon: CalendarDays, testId: "my-day-qa-roster", mode: "roster" },
 ];
 
-/** During on call (the mockup's 03:10 screen): Handover and Remind me take CPD's and Roster's places. */
+/**
+ * During on call the hero already offers Log a call and Handover, so the tiles
+ * offer what it does not (site review 12 Oct 2026, item 7).
+ */
 const MY_DAY_ON_CALL_ACTIONS: readonly MyDayQuickAction[] = [
-  MY_DAY_QUICK_ACTIONS[0]!,
-  { label: "Handover", href: "/on-call/handover", icon: FileText, testId: "my-day-qa-handover", mode: "on-call" },
+  { label: "Playbook", href: "/on-call/playbook", icon: ListChecks, testId: "my-day-qa-playbook", mode: "on-call" },
+  { label: "Contacts", href: "/on-call/contacts", icon: Phone, testId: "my-day-qa-contacts", mode: "on-call" },
   MY_DAY_QUICK_ACTIONS[2]!,
   { label: "Remind me", icon: Bell, testId: "my-day-qa-remind", mode: "my-day" },
 ];
@@ -1297,7 +1298,16 @@ export function ThisWeekCard({
   const [view, setView] = useState<"week" | "month">("week");
   const codes = kindsByDate ? week.map((date) => dayCode(kindsByDate.get(date) ?? [])) : [];
   const key = kindsByDate ? codeKey(codes) : "";
-  const kinds = new Set(codes.filter((code): code is ShiftKind => code !== null));
+  // The letters under each day are the key, so there is no separate key row (Work mode simplify
+  // plan, 12 Oct 2026). The spoken key stays for screen readers, beside the one Open week link.
+  const openWeek = (
+    <>
+      <span className="sr-only">{key}</span>
+      <QuietTextLink href={withMyDayReturn("/my-day/week")} testId="my-day-open-week">
+        Open week
+      </QuietTextLink>
+    </>
+  );
   return (
     <section aria-label="This week" data-testid="my-day-card-this-week" className="relative grid min-w-0 gap-2.25">
       <div className={cn(quietCard, "grid gap-2.25 px-3 py-3")}>
@@ -1336,6 +1346,7 @@ export function ThisWeekCard({
             ))}
           </WeekStrip>
         ) : null}
+        {view === "week" && rows.length === 0 ? <div className="-mt-3 -mb-2 flex justify-end">{openWeek}</div> : null}
       </div>
       {view === "week" ? (
         <>
@@ -1355,19 +1366,9 @@ export function ThisWeekCard({
                   );
                 })}
               </QuietList>
+              <div className="flex justify-end border-t border-[color:var(--work-line)] px-3.5">{openWeek}</div>
             </div>
           ) : null}
-          <ShiftLegend
-            kinds={kinds}
-            end={
-              <>
-                <span className="sr-only">{key}</span>
-                <QuietTextLink href={withMyDayReturn("/my-day/week")} testId="my-day-open-week">
-                  Open week
-                </QuietTextLink>
-              </>
-            }
-          />
         </>
       ) : (
         <MonthView today={today} kindsByDate={kindsByDate} dueByDate={dueByDate} detailFor={detailFor} />
@@ -1403,12 +1404,9 @@ export function NeedsYouRow({
       subtitle={
         <>
           {line.late ? (
-            <span
-              className={cn(
-                "font-bold",
-                lapsed ? "text-[color:var(--danger-text)]" : "text-[color:var(--warning-text)]",
-              )}
-            >{`${line.late} · `}</span>
+            <span data-late={lapsed ? "passed" : "due"} className="font-bold text-[color:var(--work-ink)]">
+              {`${line.late} · `}
+            </span>
           ) : null}
           {line.rest}
         </>
@@ -1503,8 +1501,10 @@ export function NeedsYouCard({
   shown,
   waiting,
   total,
+  flagged = false,
   checked,
   checkedAt,
+  updated = null,
   incomplete = false,
   missing = [],
   offline = false,
@@ -1521,9 +1521,13 @@ export function NeedsYouCard({
   readonly shown: readonly MyDayNeedsYouItem[];
   readonly waiting: number;
   readonly total: number;
+  /** The flag card above shows one waiting item, so it is counted here but not listed again. */
+  readonly flagged?: boolean;
   readonly checked: readonly string[];
   /** When the sources were last checked, "14:05". */
   readonly checkedAt?: string | null;
+  /** How old the data is, "4 min ago" (Ward Flow review item 5). Falls back to the clock time. */
+  readonly updated?: string | null;
   /** Some source failed: counts are "at least". */
   readonly incomplete?: boolean;
   /** The sources that did not load ("Roster"), for the stamp. */
@@ -1545,19 +1549,39 @@ export function NeedsYouCard({
   readonly onRetry: () => void;
   readonly onHide?: () => void;
 }) {
+  const age = updated ?? (checkedAt ? `at ${checkedAt}` : "just now");
+  // Every source answered and nothing is waiting: the card and the time it checked are one line
+  // (Work mode simplify plan, 12 Oct 2026). A part-read or offline check keeps its own stamp below.
+  const allClear = total === 0 && checked.length > 0 && !incomplete && !offline;
   let body: ReactNode;
-  if (total === 0) {
+  if (allClear) {
+    body = (
+      <div data-testid="my-day-empty" className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 px-3.5 py-3">
+        <span
+          aria-hidden="true"
+          className="size-1.75 shrink-0 rounded-full bg-[color:var(--success-text)] forced-colors:bg-[CanvasText]"
+        />
+        <p className="m-0 min-w-0 grow basis-auto text-sm-minus font-bold text-[color:var(--work-ink)]">
+          Nothing needs you right now
+        </p>
+        <p
+          data-testid="my-day-stamp"
+          data-tone="ok"
+          className="m-0 ml-auto text-2xs font-semibold text-[color:var(--text-muted)]"
+        >
+          {`Updated ${age}`}
+          <span className="sr-only">{` · ${checked.join(", ")}`}</span>
+        </p>
+      </div>
+    );
+  } else if (total === 0) {
     body = (
       <div data-testid="my-day-empty" className="grid gap-0.5 px-3.5 py-3">
         {checked.length > 0 ? (
-          <>
-            <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">
-              {incomplete ? "Nothing found in the sources that loaded" : "Nothing needs you right now"}
-            </p>
-            <p className="m-0 text-2xs text-[color:var(--text-muted)]">
-              {`Checked ${listNames(checked)}${checkedAt ? ` at ${checkedAt}` : ""}.`}
-            </p>
-          </>
+          // The stamp under the card already says what was checked and when, so it is not repeated here.
+          <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">
+            {incomplete ? "Nothing found in the sources that loaded" : "Nothing needs you right now"}
+          </p>
         ) : (
           <>
             <p className="m-0 text-sm-minus font-bold text-[color:var(--work-ink)]">Couldn&apos;t check your day</p>
@@ -1577,7 +1601,7 @@ export function NeedsYouCard({
         className="m-0 px-3.5 py-3 text-xs font-semibold text-[color:var(--text-muted)]"
         data-testid="my-day-needs-you-snoozed"
       >
-        {`${incomplete ? "Nothing else found in the sources that loaded." : "Nothing else needs you today."} ${total - waiting} hidden until tomorrow.`}
+        {`${incomplete ? "Nothing else found in the sources that loaded." : "Nothing else needs you today."}${total > waiting ? ` ${total - waiting} hidden until tomorrow.` : ""}`}
       </p>
     );
   } else {
@@ -1590,17 +1614,15 @@ export function NeedsYouCard({
     );
   }
   const atLeast = incomplete ? "at least " : "";
+  // The count describes the rows below, so the item already in the flag is not counted twice.
+  const listed = flagged ? Math.max(waiting - 1, 0) : waiting;
   const count =
-    waiting === 0
-      ? undefined
-      : waiting > shown.length
-        ? `${atLeast}${shown.length} of ${waiting}`
-        : `${atLeast}${waiting}`;
+    listed === 0 ? undefined : listed > shown.length ? `${atLeast}${shown.length} of ${listed}` : `${atLeast}${listed}`;
   const stampTone = checked.length === 0 ? "off" : incomplete ? "warn" : "ok";
   const stamp =
     checked.length === 0
       ? `Nothing checked yet${checkedAt ? ` · ${checkedAt}` : ""}`
-      : `Checked ${checkedAt ?? "just now"}${offline ? ", now offline" : ""} · ${
+      : `Updated ${age}${offline ? ", now offline" : ""} · ${
           incomplete && missing.length ? `${listNames(missing)} not loaded` : checked.join(", ")
         }`;
   return (
@@ -1628,179 +1650,76 @@ export function NeedsYouCard({
         {body}
       </QuietSection>
       <HiddenNote hidden={hidden} inlineUndo={inlineUndo} onUndo={onUndo} onRemindMe={onRemindMe} />
-      <QuietStamp tone={stampTone} testId="my-day-stamp">
-        {stamp}
-      </QuietStamp>
+      {allClear ? null : (
+        <QuietStamp tone={stampTone} testId="my-day-stamp">
+          {stamp}
+        </QuietStamp>
+      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------- CPD
 
-const CPD_LABEL: Readonly<Record<CmeCategory, string>> = {
-  educational: "Educational",
-  reviewing: "Reviewing performance",
-  measuring: "Measuring outcomes",
-};
-
-/** The meter and key colours for the three CPD types: the area colour, its lighter step, its soft step. */
-const CPD_TONE: Readonly<Record<CmeCategory, string>> = {
-  educational: "bg-[color:var(--mode-identity)]",
-  reviewing: "bg-[color:var(--mode-identity-2)]",
-  measuring: "bg-[color:var(--mode-identity-border)]",
-};
-
 export function hoursText(value: number): string {
   return `${Number(value.toFixed(1))}`;
 }
 
-/** The figure, the meter by CPD type and the hours per type: shared by Today and My records. */
-export function CpdSummary({
-  loggedHours,
-  targetHours,
-  byCategory,
-  categoryTargets,
-}: {
-  readonly loggedHours: number;
-  readonly targetHours: number;
-  readonly byCategory: Readonly<Record<CmeCategory, number>>;
-  readonly categoryTargets?: Readonly<Record<CmeCategory, number | null>>;
-}) {
-  const left = Math.max(0, targetHours - loggedHours);
-  const whole = Math.max(loggedHours, targetHours, 1);
-  const percent = Math.round((loggedHours / Math.max(1, targetHours)) * 100);
-  const segments = cmeCategories
-    .filter((category) => byCategory[category] > 0)
-    .map((category, index, shown) => ({
-      category,
-      from: shown.slice(0, index).reduce((sum, earlier) => sum + (byCategory[earlier] / whole) * 100, 0),
-      width: (byCategory[category] / whole) * 100,
-    }));
-  return (
-    <Link
-      href={withMyDayReturn("/cme")}
-      data-testid="my-day-cpd"
-      data-mode-identity="cme"
-      className={cn(focusRing, "-mx-1 grid min-w-0 gap-2 rounded-lg px-1 py-0.5 text-inherit no-underline")}
-    >
-      <span className="sr-only">
-        {`${hoursText(loggedHours)} of ${hoursText(targetHours)} CPD hours logged this year: ${cmeCategories
-          .map((category) => `${CPD_LABEL[category]} ${hoursText(byCategory[category])}`)
-          .join(
-            ", ",
-          )}. ${left > 0 ? `${hoursText(left)} hours to go by 31 December.` : "Your target hours are logged."}`}
-      </span>
-      <span aria-hidden="true" className="flex items-baseline justify-between gap-2">
-        <span className="text-2xl-minus font-bold tracking-tight text-[color:var(--work-ink)] nums">
-          {hoursText(loggedHours)}
-          <span className="ml-1 text-xs font-semibold tracking-normal text-[color:var(--text-muted)]">
-            {`of ${hoursText(targetHours)} h`}
-          </span>
-        </span>
-        <span className="text-2xs font-bold text-[color:var(--mode-identity)] nums">
-          {left > 0 ? `${percent}%` : "Target hours logged"}
-        </span>
-      </span>
-      <svg
-        aria-hidden="true"
-        data-testid="my-day-cpd-ring"
-        data-fraction={Math.min(1, loggedHours / Math.max(1, targetHours)).toFixed(3)}
-        className="block h-2 w-full overflow-hidden rounded-full"
-        role="presentation"
-      >
-        <rect
-          width="100%"
-          height="8"
-          className="fill-[color:var(--work-wash)] forced-colors:fill-[Canvas] forced-colors:stroke-[CanvasText]"
-        />
-        {segments.map((segment) => (
-          <rect
-            key={segment.category}
-            x={`${segment.from}%`}
-            width={`${Math.max(0, segment.width - 0.6)}%`}
-            height="8"
-            className={cn(CPD_FILL[segment.category], "forced-colors:fill-[CanvasText]")}
-          />
-        ))}
-      </svg>
-      <span aria-hidden="true" className="grid">
-        {cmeCategories.map((category) => {
-          const target = categoryTargets?.[category] ?? null;
-          const met = target !== null && byCategory[category] >= target;
-          return (
-            <span
-              key={category}
-              className="flex items-center gap-2 border-[color:var(--work-line)] py-1.5 text-xs font-semibold text-[color:var(--text-muted)] [&+&]:border-t"
-            >
-              <span className={cn("size-2 shrink-0 rounded-full", CPD_TONE[category])} />
-              <span className="min-w-0 flex-1 break-words">{CPD_LABEL[category]}</span>
-              <span className="font-bold text-[color:var(--work-ink)] nums">{`${hoursText(byCategory[category])} h`}</span>
-              {met ? <span className="text-2xs font-bold text-[color:var(--text-muted)]">met</span> : null}
-            </span>
-          );
-        })}
-      </span>
-    </Link>
-  );
-}
-
 /**
- * CPD this year: the logged hours out of the year's target, a meter split by
- * Medical Board CPD type, the hours per type, and what is left with the pace
- * that reaches the target. Only the year's total (and any per-type minimum
- * the plan states) is a real target.
+ * CPD this year as one row: the hours logged out of the year's target and the share done, opening
+ * CPD, where the breakdown by type and the pace live (Work mode simplify plan, 12 Oct 2026). Only
+ * the year's total is a real target.
  */
 export function CpdRingsCard({
   loggedHours,
   targetHours,
-  byCategory,
-  categoryTargets,
   today,
   year,
-  onHide,
 }: {
   readonly loggedHours: number;
   readonly targetHours: number;
-  readonly byCategory: Readonly<Record<CmeCategory, number>>;
-  readonly categoryTargets?: Readonly<Record<CmeCategory, number | null>>;
   readonly today?: string;
   readonly year?: number | null;
-  readonly onHide?: () => void;
 }) {
   const left = Math.max(0, targetHours - loggedHours);
-  const pace = today && year ? cmeWeeklyPace({ targetHours, loggedHours, today, year }) : null;
+  const percent = Math.round((loggedHours / Math.max(1, targetHours)) * 100);
+  const pace = today && year && left > 0 ? cmeWeeklyPace({ targetHours, loggedHours, today, year }) : null;
   return (
-    <QuietSection
-      title="CPD this year"
-      onHide={onHide}
-      testId="my-day-card-cpd"
-      aside={
-        <QuietTextLink href={withMyDayReturn("/cme")} testId="my-day-cpd-open">
-          Open CPD
-        </QuietTextLink>
-      }
-    >
-      <CpdSummary
-        loggedHours={loggedHours}
-        targetHours={targetHours}
-        byCategory={byCategory}
-        categoryTargets={categoryTargets}
-      />
-      <QuietFoot icon={CalendarDays}>
-        {left > 0
-          ? `${hoursText(left)} h to go by 31 Dec${pace ? `, about ${hoursText(pace.weeklyHours)} h a week` : ""}. Your ${hoursText(targetHours)} h target is the one you confirmed in CPD.`
-          : `Target hours logged. Your ${hoursText(targetHours)} h target is the one you confirmed in CPD.`}
-      </QuietFoot>
-    </QuietSection>
+    <section aria-label="CPD this year" data-testid="my-day-card-cpd" className="min-w-0">
+      <Link
+        href={withMyDayReturn("/cme")}
+        data-testid="my-day-cpd"
+        data-mode-identity="cme"
+        className={cn(
+          focusRing,
+          quietCard,
+          "flex min-h-14 w-full min-w-0 items-center gap-2.5 px-3.5 py-2.5 text-inherit no-underline",
+        )}
+      >
+        <span className="sr-only">
+          {`CPD this year: ${hoursText(loggedHours)} of ${hoursText(targetHours)} hours logged, ${percent}%. ${
+            left > 0
+              ? `${hoursText(left)} hours to go by 31 December${pace ? `, about ${hoursText(pace.weeklyHours)} a week` : ""}.`
+              : "Your target hours are logged."
+          } Open CPD.`}
+        </span>
+        <AreaIcon mode="cme" icon={Award} />
+        <span aria-hidden="true" className="grid min-w-0 flex-1">
+          <span className="text-2xs font-bold tracking-wide text-[color:var(--text-muted)] uppercase">
+            CPD this year
+          </span>
+          <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
+            {`${hoursText(loggedHours)} of ${hoursText(targetHours)} h`}
+          </span>
+        </span>
+        <span aria-hidden="true" className="text-xs font-bold text-[color:var(--mode-identity)] nums">
+          {left > 0 ? `${percent}%` : "Target hours logged"}
+        </span>
+        <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
+      </Link>
+    </section>
   );
 }
-
-/** The same three steps as SVG fills, for the meter. */
-const CPD_FILL: Readonly<Record<CmeCategory, string>> = {
-  educational: "fill-[color:var(--mode-identity)]",
-  reviewing: "fill-[color:var(--mode-identity-2)]",
-  measuring: "fill-[color:var(--mode-identity-border)]",
-};
 
 // ---------------------------------------------------------------- renewals
 
@@ -1913,7 +1832,9 @@ export function RenewalsRunwayCard({
             title={point.title}
             subtitle={
               point.passed ? (
-                <span className="font-bold text-[color:var(--danger-text)]">{`Date passed · ${fullDate(point.date)}`}</span>
+                <span data-late="passed" className="font-bold text-[color:var(--work-ink)]">
+                  {`Date passed · ${fullDate(point.date)}`}
+                </span>
               ) : (
                 `${relativeDays(point.date, today).replace(/^i/, "I").replace(/^t/, "T")} · ${fullDate(point.date)}`
               )
@@ -1937,27 +1858,5 @@ export function RenewalsRunwayCard({
         <p className="m-0 border-t border-[color:var(--work-line)] px-3.5 py-2.5 text-2xs font-semibold text-[color:var(--text-muted)]">{`${more} more in Admin.`}</p>
       ) : null}
     </section>
-  );
-}
-
-// ---------------------------------------------------------------- customise
-
-/** The last row on Today: opens the Customise sheet. */
-export function CustomiseRow({ onOpen }: { readonly onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-haspopup="dialog"
-      data-testid="my-day-customise"
-      className={cn(focusRing, quietCard, "flex min-h-14 w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left")}
-    >
-      <AreaIcon icon={SlidersHorizontal} />
-      <span className="grid min-w-0 flex-1">
-        <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">Customise My Day</span>
-        <span className="text-2xs text-[color:var(--text-muted)]">Show or hide these cards</span>
-      </span>
-      <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
-    </button>
   );
 }

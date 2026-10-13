@@ -98,6 +98,9 @@ export const SCANNED_LIB_MODULES = [
   "src/lib/roster/shifts/repository.ts",
   "src/lib/roster/calendar-links.ts",
   "src/lib/roster/settings.ts",
+  // A doctor's own choice to share New job progress with Medical Workforce, kept on their own
+  // user_preferences row; every read and write here is that one doctor's.
+  "src/lib/work-roles/starter-sharing.ts",
   // Owner-scoped planned leave, subscriptions and own night-shift reads.
   "src/lib/roster/leave.ts",
   "src/lib/roster/alerts/subscriptions.ts",

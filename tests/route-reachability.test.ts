@@ -34,6 +34,30 @@ const srcRoot = path.join(repoRoot, "src");
 
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
+  // Usefulness audit, 11 Oct 2026: Set up Work left My Day's More menu.
+  [
+    "/my-day/setup",
+    "Reached from Help and the setup prompt card through WORK_SETUP_HREF and workSetupStepHref, which this literal-href scan cannot see.",
+  ],
+  // CPD tidy, owner approval 11 Oct 2026: the CPD menu was cut to seven entries.
+  [
+    "/cme/evidence",
+    "Reached from End of year step 2 (a CmeTextLink with the year in its address) and Log's evidence link, which this Link-only scan does not model.",
+  ],
+  [
+    "/cme/export",
+    "Reached from End of year step 3 (a CmeTextLink with the year in its address), which this Link-only scan does not model.",
+  ],
+  [
+    "/cme/applications",
+    "Kept for old links only: redirects to /admin/applications, where Job applications now lives in the Admin menu.",
+  ],
+  ["/cme/applications/cv", "Kept for old links only: redirects to /admin/applications/cv."],
+  // Usefulness audit, 11 Oct 2026: the Playbook is the one home for "who do I call".
+  [
+    "/on-call/now",
+    "Kept for old links and bookmarks only: Now's problem buttons, its Playbook link and First night now open the matching Playbook entry. Due for removal under the 30-day dead-code rule.",
+  ],
   // Alerts work, owner approval 7 Oct 2026.
   [
     "/my-day/alerts/earlier",
@@ -86,6 +110,18 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
     "Compatibility redirect to /teaching/assessments?view=record (or ?view=all) for older links. In-app navigation (More's Doctor record) links the view directly.",
   ],
   [
+    "/admin/sharing",
+    "Merged into Requests as its Send a pack view (audit 11 Oct 2026). It redirects to /admin/requests?view=send; the page stays only for existing bookmarks.",
+  ],
+  [
+    "/admin/compliance",
+    "Merged into Renewals as its By group view (audit 11 Oct 2026). It redirects to /admin/renewals?view=group; the page stays only for existing bookmarks.",
+  ],
+  [
+    "/admin/workforce",
+    "Retired Workforce sample (audit 11 Oct 2026). It redirects to /admin/hospital, whose Medical Workforce section is the live version, so in-app navigation links Hospital directly; the page stays only for existing bookmarks.",
+  ],
+  [
     "/cme/programme",
     "Retired CPD Programme screen. It redirects to /cme/setup, which now owns both the read view and the editor, so in-app navigation links /cme/setup directly; the page stays only for existing bookmarks.",
   ],
@@ -124,6 +160,10 @@ const REACHABILITY_ALLOWLIST = new Map<string, string>([
   [
     "/on-call/education",
     "Retired On Call teaching calendar. It redirects to /teaching/week (proxy fast path plus a page backstop), so in-app navigation links Teaching Week directly; the page stays only for existing bookmarks.",
+  ],
+  [
+    "/teaching/whats-on",
+    "Retired Teaching What's on page, now Week's Other services filter. It redirects to /teaching/week?view=other (proxy fast path plus a page backstop), so in-app navigation links the filter directly; the page stays only for existing bookmarks.",
   ],
 ]);
 

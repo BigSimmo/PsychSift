@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "c099eacf-e144-4962-9a6f-ad39f2d0fa11",
+  "createdOn": "2026-10-10",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Safe number editor: two managers saving at almost the same moment can overwrite each other's cover needs",
+    "detail": "The editor (Manage, Team settings, PR #3431) re-reads the team's needs, then sends needs.set, which replaces the whole list. The read and the write are separate requests, so a dated, grade or site need, or a safe number, that another manager saves in that gap is lost. Undo has the same gap. Closing it needs a database change (owner's explicit yes required): a version check on the team's needs so needs.set only succeeds against the list it read, else re-read and ask the manager to retry. Then add a test that interleaves a second save between the read and the write. Raised by Qodo on PR #3431, left open by choice as rare. Josh asked for it to be recorded 2026-10-10.",
+    "source": "PR #3431 review (Qodo), modes and dead wiring review thread",
+    "issueUlid": "01M4HWPJ213B4S3ZYZJN2W4S2F"
+  }
+}

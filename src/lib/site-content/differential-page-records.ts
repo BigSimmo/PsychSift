@@ -6,6 +6,7 @@ import {
   differentialRecords,
   getDifferentialRecord,
   getPresentationWorkflow,
+  presentationLookupSlugs,
   scopeDifferentialRecord,
   scopePresentationWorkflow,
 } from "@/lib/differentials";
@@ -56,15 +57,21 @@ export const readPresentationPageRecord = cache(async (slug: string) => {
   const seed = getPresentationWorkflow(slug);
   if (isDemoMode() || isLocalNoAuthMode()) return seed;
   await connection();
-  const { records } = await readCanonicalSiteContentRecords({
-    supabase: createAdminClient(),
-    kind: "presentation",
-    slug,
-    seeds: seed ? [{ workflow: seed }] : [],
-    mapRecord: ({ finalRenderPayload }) => ({
-      workflow: finalRenderPayload as unknown as NonNullable<typeof seed>,
-    }),
-  });
-  const workflow = records[0]?.workflow;
+  const read = (lookupSlug: string) =>
+    readCanonicalSiteContentRecords({
+      supabase: createAdminClient(),
+      kind: "presentation",
+      slug: lookupSlug,
+      seeds: seed ? [{ workflow: seed }] : [],
+      mapRecord: ({ finalRenderPayload }) => ({
+        workflow: finalRenderPayload as unknown as NonNullable<typeof seed>,
+      }),
+    });
+  // Hosted publications seeded before the `presentation-` namespace may still carry the legacy slug.
+  let workflow: NonNullable<typeof seed> | undefined;
+  for (const lookupSlug of presentationLookupSlugs(slug)) {
+    workflow = (await read(lookupSlug)).records[0]?.workflow;
+    if (workflow) break;
+  }
   return workflow ? scopePresentationWorkflow(workflow) : null;
 });

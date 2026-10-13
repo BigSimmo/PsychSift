@@ -36,24 +36,31 @@ export type ModeMenuSideId = (typeof modeMenuSides)[number]["id"];
  * check that now fails instead: every mode id must appear in exactly one group.
  */
 export const phoneModeGroups = [
+  // Grouped by what the doctor is doing (usefulness and layout audit, 11 Oct
+  // 2026, item 8): search first, then Psychiatry, then Medicines, with the
+  // housekeeping pages (Favourites, Sources) at the foot.
   {
     id: "find",
     label: "Search",
-    hint: "Answers, sources, services",
+    hint: "Answers, documents, services",
     side: "clinical",
     showHeading: true,
-    modeIds: ["answer", "documents", "services", "sources", "favourites"],
+    drawn: true,
+    modeIds: ["answer", "documents", "services"],
   },
   // Psychiatry is a mode of its own (a dashboard at `/psychiatry`) that
   // gathers these sections. It leads the group, and the sections stay listed
   // under it so each keeps its own search. First Nations culturally safe care
   // sits with it: it is used with a patient, beside diagnosis and formulation.
+  // Calculators (psychiatric rating scales) and the Dictionary (psychiatric
+  // terms) moved here from the old Medicines & tools group.
   {
     id: "psychiatry",
     label: "Psychiatry",
-    hint: "Diagnosis, formulation, therapy, forms",
+    hint: "Diagnosis, formulation, therapy, forms, scales",
     side: "clinical",
     showHeading: true,
+    drawn: true,
     modeIds: [
       "psychiatry",
       "dsm",
@@ -62,27 +69,53 @@ export const phoneModeGroups = [
       "formulation",
       "therapy-compass",
       "forms",
+      "calculators",
+      "dictionary",
       "first-nations",
     ],
   },
-  // Medicines & tools, like Psychiatry, is a dashboard (`/medicines`) that
-  // gathers these sections and leads its group (modes review, phase 3).
+  // Medicines, like Psychiatry, is a dashboard (`/medicines`) that gathers
+  // these sections and leads its group (modes review, phase 3).
   {
     id: "care",
-    label: "Medicines & tools",
-    hint: "Medication, calculators, reference",
+    label: "Medicines",
+    hint: "Medication and factsheets",
     side: "clinical",
     showHeading: true,
-    modeIds: ["medicines", "prescribing", "tools", "calculators", "factsheets", "dictionary"],
+    drawn: true,
+    modeIds: ["medicines", "prescribing", "factsheets"],
+  },
+  // Housekeeping at the foot of the Clinical list, under no heading of its own.
+  {
+    id: "library",
+    label: "Your library",
+    hint: "Favourites and sources",
+    side: "clinical",
+    showHeading: false,
+    drawn: true,
+    modeIds: ["favourites", "sources"],
+  },
+  // Retired from the menu but still a registered mode (audit item 8), so `/tools`
+  // still opens for old links and bookmarks. Never drawn.
+  {
+    id: "retired",
+    label: "Retired",
+    hint: "Kept for old links",
+    side: "clinical",
+    showHeading: false,
+    drawn: false,
+    modeIds: ["tools"],
   },
   // One list, and the switch already names it, so the menu draws no second heading.
+  // Same area order as the side menu and the rail: My Day, On Call, Open shifts, Roster, Teaching, CPD, Admin.
   {
     id: "work",
     label: "Work",
     hint: "Your working day",
     side: "work",
     showHeading: false,
-    modeIds: ["my-day", "cme", "open-shifts", "roster", "my-work", "on-call", "teaching"],
+    drawn: true,
+    modeIds: ["my-day", "on-call", "open-shifts", "roster", "teaching", "cme", "my-work"],
   },
 ] as const satisfies ReadonlyArray<{
   id: string;
@@ -90,19 +123,35 @@ export const phoneModeGroups = [
   hint: string;
   side: ModeMenuSideId;
   showHeading: boolean;
+  /** False for a group kept only so its modes still belong to a side; the menus skip it. */
+  drawn: boolean;
   modeIds: readonly AppModeId[];
 }>;
 
-const rankedModeIds = phoneModeGroups.flatMap((group) => group.modeIds);
+const rankedModeIds = phoneModeGroups.filter((group) => group.drawn).flatMap((group) => group.modeIds);
 
 /** The groups the menu draws when `side` is selected, in draw order. */
 export function phoneModeGroupsForSide(side: ModeMenuSideId) {
-  return phoneModeGroups.filter((group) => group.side === side);
+  return phoneModeGroups.filter((group) => group.side === side && group.drawn);
 }
 
 /** Which room a mode belongs to. A mode in no group, which the exhaustiveness test forbids, reads as Clinical. */
 export function modeMenuSideForMode(modeId: AppModeId): ModeMenuSideId {
   return phoneModeGroups.find((group) => (group.modeIds as readonly AppModeId[]).includes(modeId))?.side ?? "clinical";
+}
+
+/**
+ * A Clinical page (not the shared home) wears the clinical band's soft tint on
+ * its top bar (owner design review, 11 Oct 2026; mode-band.css). Decided from
+ * the mode and address alone, so it is in the server HTML and never flashes.
+ * Returns the `data-clinical-band` attribute value.
+ */
+export function clinicalBandAttribute(
+  modeId: AppModeId,
+  pathname: string | null | undefined,
+  onWorkArea: boolean,
+): "" | undefined {
+  return !onWorkArea && (pathname ?? "/") !== "/" && modeMenuSideForMode(modeId) === "clinical" ? "" : undefined;
 }
 
 /**

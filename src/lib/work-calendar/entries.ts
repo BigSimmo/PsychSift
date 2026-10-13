@@ -2,6 +2,7 @@ import type { CalendarEvent } from "@/lib/calendar/calendar-event";
 import { EXAMPLE_ID_PREFIX, isExampleRecord } from "@/lib/example-data/guards";
 import { ordinal } from "@/lib/roster/rotations/allocate";
 import type { MyRound } from "@/lib/roster/rotations/model";
+import { zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
 
 /**
  * Work calendar entries: things that sit on a doctor's calendar beside their
@@ -39,6 +40,10 @@ export type WorkCalendarEntry = {
   readonly startTime?: string;
   /** `HH:MM` on the work zone's clock, on `end`. */
   readonly endTime?: string;
+  /** ISO instant of the start, when the entry is one moment (a deadline), so an export can place it exactly. */
+  readonly startsAt?: string;
+  /** ISO instant of the end, beside `startsAt`, so an export's length is right across a clock change. */
+  readonly endsAt?: string;
   /** Where, e.g. a hospital or a room. Never a patient detail. */
   readonly location?: string;
   /** Defaults to confirmed. */
@@ -241,6 +246,39 @@ export function rotationCalendarEntries(myRounds: readonly MyRound[]): WorkCalen
         ...(example ? { isExample: true } : {}),
       });
     }
+  }
+  return entries.sort(compareEntries);
+}
+
+/**
+ * The closing time of each open round the reader is in, so the date to send
+ * preferences by is on the calendar too (owner request 10 Oct 2026, "wired up
+ * to everything with a date or time"). One timed entry, kind "deadline", at
+ * the round's close on the work zone's clock. A round no longer open gives
+ * nothing, and neither does a close date that cannot be read.
+ */
+export function rotationDeadlineEntries(myRounds: readonly MyRound[], zone: string): WorkCalendarEntry[] {
+  const entries: WorkCalendarEntry[] = [];
+  for (const mine of myRounds) {
+    const { round } = mine;
+    const closes = Date.parse(round.closesAt);
+    if (round.status !== "open" || !Number.isFinite(closes)) continue;
+    const example = isExampleRecord(round.id);
+    const id = `rotation-close:${withoutExamplePrefix(round.id)}`;
+    const date = zonedDateOf(closes, zone);
+    entries.push({
+      id: example ? `${EXAMPLE_ID_PREFIX}${id}` : id,
+      kind: "deadline",
+      title: "Rotation preferences close",
+      detail: [round.name, mine.submittedAt ? "yours are sent" : "yours aren't sent yet"].join(" · "),
+      start: date,
+      end: date,
+      startTime: zonedTimeOf(closes, zone),
+      startsAt: new Date(closes).toISOString(),
+      status: "confirmed",
+      href: rotationRoundHref(round.id),
+      ...(example ? { isExample: true } : {}),
+    });
   }
   return entries.sort(compareEntries);
 }

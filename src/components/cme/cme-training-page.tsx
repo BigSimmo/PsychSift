@@ -1092,7 +1092,7 @@ function DisclosureRow({
  * button that would look like it saves.
  */
 
-const NOT_RECORDED_LINE = "Not recorded in PsychSift yet. Keep them in InTrain (RANZCP) or your ePortfolio (interns).";
+const NOT_RECORDED_LINE = "Not recorded in PsychSift yet. Keep them in InTrain (RANZCP) or CLA (interns).";
 
 /** What a sample button says when pressed: nothing is saved or drafted from an example. */
 const SAMPLE_ACTION_MESSAGE =
@@ -1585,7 +1585,7 @@ function CmeInternLinks({ teaching }: { readonly teaching: boolean }) {
         href={EPORTFOLIO_HREF}
         external
         lead={<ArrowUpRight aria-hidden="true" strokeWidth={1.6} />}
-        title="Your ePortfolio"
+        title="Clinical Learning Australia (CLA)"
         subtitle="The official record of your training"
       />
       {teaching ? (

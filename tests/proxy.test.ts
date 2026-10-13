@@ -507,6 +507,7 @@ describe("Admin mode redirects", () => {
     ["/on-call/compliance", "/admin/renewals"],
     ["/on-call/logistics", "/admin/help"],
     ["/on-call/education", "/teaching/week"],
+    ["/teaching/term/folder", "/teaching/term"],
   ])("sends %s to %s as one 307 and keeps the query string", async (from, to) => {
     const response = await proxy(requestFor(`${from}?from=bookmark`));
     expect(response.status).toBe(307);
@@ -514,6 +515,19 @@ describe("Admin mode redirects", () => {
     expect(location.pathname).toBe(to);
     expect(location.searchParams.get("from")).toBe("bookmark");
     expect(response.headers.get("content-security-policy")).toBeTruthy();
+  });
+
+  it("leaves an earlier term's evidence folder on its own page", async () => {
+    expect((await proxy(requestFor("/teaching/term/folder?term=term-2026-1"))).headers.get("location")).toBeNull();
+  });
+
+  it("sends What's on to Week with the Other services filter chosen", async () => {
+    const response = await proxy(requestFor("/teaching/whats-on?from=bookmark"));
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/teaching/week");
+    expect(location.searchParams.get("view")).toBe("other");
+    expect(location.searchParams.get("from")).toBe("bookmark");
   });
 
   it("leaves the pages On Call keeps where they are", async () => {

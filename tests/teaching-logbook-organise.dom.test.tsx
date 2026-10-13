@@ -224,9 +224,9 @@ describe("My record", () => {
       "href",
       "/teaching/feedback",
     );
-    expect(screen.getByRole("link", { name: /^Supervision hours/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^Registrar supervision/ })).toHaveAttribute(
       "href",
-      "/teaching/teach#supervision",
+      "/teaching/supervision",
     );
   });
 

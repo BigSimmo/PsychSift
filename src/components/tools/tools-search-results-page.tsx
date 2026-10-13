@@ -16,6 +16,7 @@ import { CategoryIconTile } from "@/components/category-icon-tile";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
 import { modeHomeComposerReservePendingValue } from "@/lib/mode-home-composer";
 import { cn, controlBase, floatingControl } from "@/components/ui-primitives";
+import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
 import { Sheet } from "@/components/ui/sheet";
 import { TOOL_AREA_ACCENT, toolIdentity } from "@/lib/category-identity";
 import { isLocalNoAuthMode, resolveClientDemoMode } from "@/lib/client-env";
@@ -429,11 +430,9 @@ export function ToolsSearchResultsPage({
       ) : null}
       <div className="mx-auto grid max-w-6xl gap-6">
         {searching ? null : (
-          <header className="grid gap-1 px-1">
-            <h1 className="text-2xl font-bold tracking-tight text-[color:var(--text-heading)] sm:text-3xl">Tools</h1>
-            <p className="text-sm text-[color:var(--text-muted)]">
-              Grouped by the job you are doing. Tap a tool to open it.
-            </p>
+          <header className="grid gap-1.5 px-1">
+            <h1 className={pageHeadingTitleClass}>Tools</h1>
+            <p className={pageHeadingDescriptionClass}>Grouped by the job you are doing. Tap a tool to open it.</p>
           </header>
         )}
         <ToolLocalSearch value={query} onChange={setLocalQuery} onSubmit={submitLocalSearch} className="w-full" />

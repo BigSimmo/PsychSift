@@ -13,7 +13,6 @@ import {
 } from "@/components/admin/admin-status-tag";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import { WorkButton, WorkCard, WorkChip, WorkDock, WorkEmpty, WorkIconCircle } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import {
@@ -36,7 +35,6 @@ import { ADMIN_PAGE_HREFS } from "@/lib/admin/page-hrefs";
 import { formatDateEcho } from "@/lib/admin/renewal-dates";
 import { ADMIN_REQUIREMENTS_CATALOGUE } from "@/lib/admin/requirements";
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
-import { useExampleData } from "@/lib/example-data/store";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 
 const RECORD_DATES_HREF = `${ADMIN_PAGE_HREFS.renewals}?record=missing`;
@@ -316,25 +314,22 @@ function FirstUse({ overview, canEdit }: { readonly overview: ComplianceOverview
 }
 
 /**
- * Admin · Compliance (More, work-mode redesign, owner request 6 Oct 2026): the
- * requirements a health service asks for, grouped, with what is recorded, the
- * export, filter chips and "Record dates" in the dock. A view over the same
- * rows as Renewals (`src/lib/admin/compliance-overview.ts`), which stays the
- * one place dates are recorded. A failed load stays fail-closed.
+ * Renewals' "By group" view (audit 11 Oct 2026: Compliance merged into Renewals): the requirements a
+ * health service asks for, grouped, with what is recorded, the export, what to do before the next job
+ * and filter chips. A view over the same rows as Soonest (`src/lib/admin/compliance-overview.ts`), so
+ * Renewals stays the one place dates are recorded. The caller handles loading, failure and sign-in.
  */
-export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
-  const state = useOnCallEntries();
-  // The example data banner already says these are example records; this notice is for the demo build.
-  const examplesBanner = useExampleData("admin").active;
-  const mountedAt = useMemo(() => new Date(), []);
-  const now = nowProp ?? mountedAt;
+export function ComplianceByGroup({
+  state,
+  now,
+  canEdit,
+}: {
+  readonly state: ReturnType<typeof useOnCallEntries>;
+  readonly now: Date;
+  readonly canEdit: boolean;
+}) {
   const today = perthCalendarDate(now);
-  const loadState = adminLoadState(state);
-  const [signInOpen, setSignInOpen] = useState(false);
   const [filter, setFilter] = useState<ComplianceFilter>("all");
-  const canEdit = loadState === "ready" && !state.demoMode;
-  useModeBandHeading({ eyebrow: "What your health service asks you to keep current" });
-
   const overview = useMemo(() => {
     const own = selectAdminOwnEntries(state);
     const shared = selectAdminSharedEntries(state);
@@ -342,6 +337,47 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
     return buildComplianceOverview(ADMIN_REQUIREMENTS_CATALOGUE, own, now, start?.startsOn ?? null);
   }, [state, now]);
   const firstUse = complianceIsFirstUse(overview);
+  return (
+    <div className={adminStyles.column} data-testid="admin-compliance-ready">
+      {firstUse ? (
+        <FirstUse overview={overview} canEdit={canEdit} />
+      ) : (
+        <>
+          <SummaryCard overview={overview} />
+          <WorkCard as="ul" testId="admin-compliance-actions">
+            <AdminRow
+              lead={<WorkIconCircle icon={FileSpreadsheet} />}
+              href={ADMIN_PAGE_HREFS.complianceExport}
+              title="Export a copy for yourself"
+              sub="Excel, saved on this device"
+              testId="admin-compliance-export-link"
+            />
+          </WorkCard>
+          <BeforeNextJob overview={overview} />
+          <FilterChips overview={overview} filter={filter} onFilter={setFilter} />
+          <GroupLists overview={overview} filter={filter} today={today} />
+        </>
+      )}
+      <AdminNote>
+        Linked to your account only, not shared with your health service. Rules come from the statewide requirements
+        list. Rule to confirm means its source did not state it clearly.
+      </AdminNote>
+    </div>
+  );
+}
+
+/**
+ * Admin · Compliance as a page of its own. Its route now opens Renewals' By group view; this stays for
+ * that view's own tests and older imports. A failed load stays fail-closed.
+ */
+export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
+  const state = useOnCallEntries();
+  const mountedAt = useMemo(() => new Date(), []);
+  const now = nowProp ?? mountedAt;
+  const loadState = adminLoadState(state);
+  const [signInOpen, setSignInOpen] = useState(false);
+  const canEdit = loadState === "ready" && !state.demoMode;
+  useModeBandHeading({ eyebrow: "What your health service asks you to keep current" });
 
   return (
     <AdminPage testId="admin-compliance-main">
@@ -370,43 +406,16 @@ export function AdminCompliancePage({ now: nowProp }: { now?: Date } = {}) {
           <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
         </>
       ) : (
-        <div className={adminStyles.column} data-testid="admin-compliance-ready">
-          {state.demoMode && !examplesBanner ? (
-            <ModeNotice testId="admin-compliance-demo-notice">
-              Example records. These dates are made up, and nothing here is your own.
-            </ModeNotice>
-          ) : null}
-          {firstUse ? (
-            <FirstUse overview={overview} canEdit={canEdit} />
-          ) : (
-            <>
-              <SummaryCard overview={overview} />
-              <WorkCard as="ul" testId="admin-compliance-actions">
-                <AdminRow
-                  lead={<WorkIconCircle icon={FileSpreadsheet} />}
-                  href={ADMIN_PAGE_HREFS.complianceExport}
-                  title="Export a copy for yourself"
-                  sub="Excel, saved on this device"
-                  testId="admin-compliance-export-link"
-                />
-              </WorkCard>
-              <BeforeNextJob overview={overview} />
-              <FilterChips overview={overview} filter={filter} onFilter={setFilter} />
-              <GroupLists overview={overview} filter={filter} today={today} />
-            </>
-          )}
-          <AdminNote>
-            Linked to your account only, not shared with your health service. Rules come from the statewide requirements
-            list. Rule to confirm means its source did not state it clearly.
-          </AdminNote>
-          {canEdit && !firstUse ? (
+        <>
+          <ComplianceByGroup state={state} now={now} canEdit={canEdit} />
+          {canEdit ? (
             <WorkDock aria-label="Compliance actions">
               <WorkButton icon={CalendarPlus} href={RECORD_DATES_HREF} testId="admin-compliance-record-dates">
                 Record dates
               </WorkButton>
             </WorkDock>
           ) : null}
-        </div>
+        </>
       )}
     </AdminPage>
   );

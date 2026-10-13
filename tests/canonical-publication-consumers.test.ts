@@ -106,4 +106,17 @@ describe("canonical publication consumers", () => {
     canonicalRead.mockResolvedValue({ records: [], source: "canonical_public", snapshot: null });
     await expect(Page(props)).rejects.toThrow();
   });
+
+  it("falls back to the legacy presentation slug when hosted content predates the presentation- namespace", async () => {
+    const workflow = { ...differentialPresentations()[0], title: "Hosted legacy depression" };
+    canonicalRead.mockImplementation(async (args?: { kind: string; slug: string | null }) => ({
+      records: args?.kind === "presentation" && args.slug === "depression" ? [{ workflow }] : [],
+      source: "canonical_public",
+      snapshot: null,
+    }));
+    const { readPresentationPageRecord } = await import("@/lib/site-content/differential-page-records");
+    const resolved = await readPresentationPageRecord("presentation-depression");
+    expect(resolved?.title).toBe("Hosted legacy depression");
+    expect(canonicalRead.mock.calls.map(([args]) => args?.slug)).toEqual(["presentation-depression", "depression"]);
+  });
 });

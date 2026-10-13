@@ -13,7 +13,7 @@ describe("workFrameForRoute", () => {
 
   it("names the frame's page and area for a framed work page", () => {
     expect(named("roster", "/roster/swaps")).toEqual(["Roster", "Swaps", "roster"]);
-    expect(named("open-shifts", "/open-shifts")).toEqual(["Open shifts", "Browse", "roster"]);
+    expect(named("open-shifts", "/open-shifts")).toEqual(["Roster", "Open shifts", "roster"]);
     expect(named("roster", "/roster/manage")).toEqual(["Manage team", "Inbox", "roster"]);
     expect(named("my-day", "/my-day")).toEqual(["My Day", "Today", "my-day"]);
     expect(named("teaching", "/teaching/assessments")).toEqual(["Assessments", "To do", "teaching"]);
@@ -66,9 +66,10 @@ describe("workFrameCurrentItem", () => {
     for (const item of supervisorLinks) expect(supervise?.items).toContain(item);
   });
 
-  it("ticks Privacy on the profile's privacy tab and Work profile elsewhere", () => {
+  it("ticks Work profile on the profile and its privacy tab", () => {
     const day = WORK_AREAS.day;
-    expect(workFrameCurrentItem(day, "/my-day/profile", "?tab=privacy")?.id).toBe("my-day-privacy");
+    // Privacy is a tab of Work profile, so one More entry covers both (usefulness audit, 11 Oct 2026).
+    expect(workFrameCurrentItem(day, "/my-day/profile", "?tab=privacy")?.id).toBe("my-day-profile");
     expect(workFrameCurrentItem(day, "/my-day/profile", "")?.id).toBe("my-day-profile");
   });
 
@@ -81,10 +82,11 @@ describe("workFrameCurrentItem", () => {
   });
 
   it("names the features' pages as their own items, not a tab", () => {
-    expect(workFrameCurrentItem(WORK_AREAS.cpd, "/cme/applications/cv", "")?.id).toBe("applications");
+    expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/applications/cv", "")?.id).toBe("applications");
     expect(workFrameCurrentItem(WORK_AREAS.admin, "/admin/new-job/ready", "")?.id).toBe("admin-ready");
-    expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson-roster");
-    expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term/folder", "")?.id).toBe("term-folder");
+    // Who's on covers its roster names page since More was trimmed (usefulness audit, 11 Oct 2026).
+    expect(workFrameCurrentItem(WORK_AREAS.call, "/on-call/whos-on/roster", "")?.id).toBe("whoson");
+    expect(workFrameCurrentItem(WORK_AREAS.teach, "/teaching/term", "")?.id).toBe("term");
   });
 
   it("keeps pages that draw their own header off the band", () => {
@@ -96,7 +98,8 @@ describe("workFrameCurrentItem", () => {
   });
 
   it("draws the band on the two Export pages, which have no header of their own", () => {
-    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("Export");
+    // CPD's Export is a step of End of year, so End of year stays current there; the page names itself.
+    expect(workFrameForRoute("cme", "/cme/export")?.page.label).toBe("End of year");
     expect(workFrameForRoute("teaching", "/teaching/assessments/export")?.page.label).toBe("Export");
   });
 });

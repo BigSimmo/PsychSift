@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase/client", () => import("./helpers/teaching-auth"));
@@ -91,5 +91,33 @@ describe("My exam prep", () => {
       "/teaching/resources",
     );
     expect(screen.queryByTestId("teaching-exam-collection")).toBeNull();
+  });
+
+  it("says plainly that exam prep is on this phone only, and saves a copy without sending anything", async () => {
+    const fetchMock = serveFetch((url) =>
+      url.startsWith("/api/teaching/resources?action=resources.read&weekStart=")
+        ? json(200, { forThisWeek: [], collections: [], recordingsCount: 0, savedCount: 0 })
+        : null,
+    );
+    const createObjectURL = vi.fn((blob: Blob) => (blob.size > 0 ? "blob:exam-prep" : ""));
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<TeachingExamPrep demoMode={false} />);
+    const notice = await screen.findByTestId("teaching-device-only-notice");
+    expect(notice).toHaveTextContent("Saved on this phone only.");
+    expect(notice).toHaveTextContent("lost if the browser’s data is cleared");
+    const before = fetchMock.mock.calls.length;
+    fireEvent.click(within(notice).getByRole("button", { name: "Download a copy" }));
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.length).toBe(before);
+  });
+
+  it("shows no phone-only notice on the made-up sample, which is never saved", async () => {
+    serveFetch(() => null);
+    render(<TeachingExamPrep demoMode />);
+    await screen.findByRole("link", { name: /Teaching resources/ });
+    expect(screen.queryByTestId("teaching-device-only-notice")).toBeNull();
   });
 });

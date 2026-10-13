@@ -6,7 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { factsheetsTopicsHref } from "@/lib/app-modes";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 import {
+  desktopComposerSlotReadyAttr,
+  desktopComposerSlotReadyValue,
+  desktopPageComposerSlotId,
   modeHomeComposerReserveAttr,
   modeHomeComposerReservePendingValue,
   modeHomeDesktopComposerSlotId,
@@ -203,6 +207,24 @@ describe("MasterSearchHeader DOM", () => {
     expect(router.push).toHaveBeenCalledWith(factsheetsTopicsHref);
   });
 
+  it("asks a page with unsaved work before a shell option routes away", async () => {
+    // The safety plan registers a guard like this while it holds entries.
+    const guard = vi.fn(() => false);
+    const unregister = registerNavigationGuard(guard);
+    try {
+      const user = userEvent.setup();
+      render(<MasterSearchHeader {...defaultHeaderProps()} searchMode="factsheets" />);
+
+      await user.click(screen.getByRole("button", { name: "Open factsheets options" }));
+      await user.click(screen.getByRole("button", { name: "Browse all sheets" }));
+
+      expect(guard).toHaveBeenCalledTimes(1);
+      expect(router.push).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
   describe("#WJDQ0X - privacy notice landmark / role=group wrapping", () => {
     it("wraps the composer privacy notice in role='group' with aria-label='Search privacy notice'", () => {
       render(<MasterSearchHeader {...defaultHeaderProps()} />);
@@ -278,6 +300,7 @@ describe("MasterSearchHeader DOM", () => {
     // next test resolves to it instead of that test's own slot.
     afterEach(() => {
       document.getElementById(modeHomeDesktopComposerSlotId)?.remove();
+      document.getElementById(desktopPageComposerSlotId)?.remove();
     });
 
     function mountSlot() {
@@ -327,7 +350,29 @@ describe("MasterSearchHeader DOM", () => {
       expect(removals).toEqual([]);
     });
 
-    it("still clears the reserve marker when the composer is suppressed (invariant 15)", async () => {
+    it.each(["home", "page"] as const)(
+      "preserves the %s slot's SSR attributes on a phone until hydration",
+      async (kind) => {
+        installMatchMediaStub(false);
+        const slot = mountSlot();
+        if (kind === "page") slot.id = desktopPageComposerSlotId;
+        const props = {
+          ...defaultHeaderProps(),
+          ...(kind === "home"
+            ? { desktopHomeComposerSlotId: modeHomeDesktopComposerSlotId }
+            : { desktopPageComposerSlotId }),
+        };
+        render(<MasterSearchHeader {...props} heroComposerBreakpoint="sm-up" />);
+        await Promise.resolve();
+        expect(slot.getAttribute(modeHomeComposerReserveAttr)).toBe(modeHomeComposerReservePendingValue);
+
+        slot.setAttribute(desktopComposerSlotReadyAttr, desktopComposerSlotReadyValue);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(slot.hasAttribute(modeHomeComposerReserveAttr)).toBe(false);
+      },
+    );
+
+    it("waits for hydration before clearing a suppressed composer's reserve (invariant 15)", async () => {
       installMatchMediaStub(true);
       const slot = mountSlot();
 
@@ -338,6 +383,10 @@ describe("MasterSearchHeader DOM", () => {
       };
       render(<MasterSearchHeader {...props} />);
       // The suppression path clears in a queued microtask.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(slot.getAttribute(modeHomeComposerReserveAttr)).toBe(modeHomeComposerReservePendingValue);
+      slot.setAttribute(desktopComposerSlotReadyAttr, desktopComposerSlotReadyValue);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(slot.hasAttribute(modeHomeComposerReserveAttr)).toBe(false);

@@ -172,6 +172,26 @@ export function getPatientProfileSnapshot(): PatientProfile {
   return cachedProfile;
 }
 
+/**
+ * True when the profile holds anything a clinician typed. The default unit
+ * (`scrUnit`) is not content, so a profile that has only ever been opened and
+ * emptied reads as empty and the Settings clear action stays disabled.
+ */
+export function patientProfileHasContent(profile: PatientProfile): boolean {
+  return (
+    profile.ageYears !== null ||
+    profile.egfr !== null ||
+    profile.crcl !== null ||
+    profile.scr !== null ||
+    profile.hepatic !== null ||
+    profile.qtc !== null ||
+    profile.pregnant ||
+    profile.breastfeeding ||
+    (profile.allergies?.length ?? 0) > 0 ||
+    (profile.medications?.length ?? 0) > 0
+  );
+}
+
 export function getServerPatientProfileSnapshot(): PatientProfile {
   return EMPTY_PATIENT_PROFILE;
 }
@@ -252,12 +272,36 @@ export function clearPatientProfile(): void {
  * field's point of view they are the same event: everything you are showing is
  * gone, whoever asked for it.
  */
-export function resetPatientProfile(): void {
-  if (typeof window === "undefined") return;
+export function resetPatientProfile(): boolean {
+  if (typeof window === "undefined") return false;
   // Bumped first so the single write below carries both halves of the clear in
   // one change event, rather than notifying twice and rendering an in-between
   // state in which the profile is already empty but the fields do not yet know
   // a clear is what emptied it.
   clearGeneration += 1;
-  writePatientProfile({ ...EMPTY_PATIENT_PROFILE, medications: [] });
+  const emptyProfile = { ...EMPTY_PATIENT_PROFILE, medications: [] };
+  const serialized = JSON.stringify(emptyProfile);
+  let cleared = false;
+  try {
+    window.sessionStorage.setItem(PATIENT_PROFILE_STORAGE_KEY, serialized);
+    cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === serialized;
+  } catch {
+    // Writing can fail (quota) while deleting still works, and a privacy clear must
+    // not leave patient details behind because of that: remove the key instead.
+    try {
+      window.sessionStorage.removeItem(PATIENT_PROFILE_STORAGE_KEY);
+      // A completed delete is a completed clear; the read-back below only catches a
+      // key that is somehow still present, and a read that throws proves nothing.
+      cleared = true;
+      try {
+        cleared = window.sessionStorage.getItem(PATIENT_PROFILE_STORAGE_KEY) === null;
+      } catch {
+        // Verification unavailable; the delete itself did not throw.
+      }
+    } catch {
+      // Storage entirely unavailable; report the failed clear to the caller.
+    }
+  }
+  window.dispatchEvent(new Event(PATIENT_PROFILE_CHANGE_EVENT));
+  return cleared;
 }

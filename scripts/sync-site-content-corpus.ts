@@ -297,7 +297,7 @@ async function main() {
     const eventSequence = Number(options.eventSequence);
     if (!Number.isSafeInteger(eventSequence) || eventSequence < 1) throw new Error("Event sequence is invalid.");
     const { createAdminClient } = await import("../src/lib/supabase/admin");
-    const { data, error } = await createAdminClient().rpc("record_site_content_sync_event_plan", {
+    const { data, error } = await createAdminClient({ timeoutMs: null }).rpc("record_site_content_sync_event_plan", {
       p_event_sequence: eventSequence,
       p_expected_change_epoch: Number(plan.targetChangeEpoch),
       p_plan_digest: plan.planDigest,

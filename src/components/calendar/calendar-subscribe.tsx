@@ -6,13 +6,15 @@ import { useEffect, useState } from "react";
 import { cardSurface } from "@/components/card-recipes";
 import { Button, buttonFaceClass } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useCopyToast } from "@/components/ui/toast";
 import { cn, InlineNotice, textMuted } from "@/components/ui-primitives";
 
 /**
  * SUBSCRIBE — a private link the owner's own calendar app (Google, Outlook,
  * Apple) reads every few hours, so CME deadlines, routines, their On Call
  * teaching list and the Teaching sessions they chose to add appear there
- * without exporting again. See `@/lib/calendar/feed-repository` for exactly
+ * without exporting again, along with rotations, booked courses and (when
+ * turned on in Roster settings) shifts. See `@/lib/calendar/feed-repository` for exactly
  * what a feed carries.
  *
  * The link is shown once, straight after it is made: only a hash of it is
@@ -45,6 +47,7 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
   const [message, setMessage] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"reset" | "off" | null>(null);
   const [copied, setCopied] = useState(false);
+  const showToast = useCopyToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -100,11 +103,13 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
     }
   }
 
-  async function copy() {
+  async function handleCopy() {
     if (!links) return;
     try {
       await navigator.clipboard.writeText(links.https);
       setCopied(true);
+      showToast("Copied calendar URL");
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       setMessage("Could not copy. Press and hold the link below to copy it.");
     }
@@ -118,10 +123,11 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
         Keep your calendar up to date automatically
       </h2>
       <p className={cn(textMuted, "mt-1 text-sm")}>
-        One private link keeps Google, Outlook or Apple Calendar up to date with your CPD deadlines, routines and
-        teaching sessions, including Teaching sessions you chose to add. Cancelled sessions show as cancelled. It never
-        includes your logged activities, attendance, join links, personal entries or anything about patients. Anyone
-        with the link can see those dates, so keep it to yourself.
+        One private link keeps Google, Outlook or Apple Calendar up to date with your CPD deadlines and routines,
+        teaching sessions (including Teaching sessions you chose to add), rotations, booked courses and, once you turn
+        them on in Roster settings, your shifts. Cancelled sessions and courses show as cancelled. It never includes
+        your logged activities, attendance, join links, personal entries or anything about patients. Anyone with the
+        link can see those dates, so keep it to yourself.
       </p>
 
       {status === "loading" ? (
@@ -166,7 +172,7 @@ export function CalendarSubscribe({ testId = "calendar-subscribe" }: { testId?: 
             >
               Apple Calendar
             </a>
-            <Button variant="secondary" size="sm" icon={Copy} onClick={copy} testId={`${testId}-copy`}>
+            <Button variant="secondary" size="sm" icon={Copy} onClick={handleCopy} testId={`${testId}-copy`}>
               {copied ? "Copied" : "Copy link"}
             </Button>
           </div>

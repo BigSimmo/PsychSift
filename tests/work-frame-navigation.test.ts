@@ -40,11 +40,12 @@ describe("work frame navigation", () => {
     }
   });
 
-  it("names the crisis lines page Numbers in Admin and On Call, apart from How it works", () => {
+  it("names the crisis lines page Numbers in Admin, apart from How it works", () => {
     const adminNumbers = workAreaItems(WORK_AREAS.admin).find((item) => item.href === "/admin/help");
     expect(adminNumbers?.label).toBe("Numbers");
-    const callNumbers = workAreaItems(WORK_AREAS.call).find((item) => item.href === "/admin/help");
-    expect(callNumbers?.label).toBe("Numbers");
+    // On Call's More no longer links Admin's copy (Work mode simplify plan, 12 Oct 2026): Now itself
+    // carries the public crisis lines.
+    expect(workAreaItems(WORK_AREAS.call).some((item) => item.href === "/admin/help")).toBe(false);
     for (const area of areas)
       for (const item of workAreaItems(area))
         if (item.label === "Help" && item.href !== "/my-day/help")
@@ -53,7 +54,7 @@ describe("work frame navigation", () => {
 
   it("links every inner area from its parent's More, and back to that parent", () => {
     const inner = areas.filter((area) => area.parent);
-    expect(inner.map((area) => area.id).sort()).toEqual(["assess", "manage", "notify", "open"]);
+    expect(inner.map((area) => area.id).sort()).toEqual(["assess", "manage", "notify"]);
     for (const area of inner) {
       const parent = workAreaParent(area)!;
       const entry = workAreaItems(parent).find((item) => item.opens === area.id);
@@ -67,14 +68,19 @@ describe("work frame navigation", () => {
         if (item.opens) expect(WORK_AREAS[item.opens].parent, item.label).toBe(area.id);
   });
 
-  it("draws Manage team and Open shifts as their own areas, with views as tabs", () => {
+  it("draws Manage team as its own area, and Open shifts as a Roster tab", () => {
     const manage = workAreaFor("roster", "/roster/manage");
     expect(manage?.id).toBe("manage");
     expect(workFrameCurrentItem(manage!, "/roster/manage", "")?.label).toBe("Inbox");
     expect(workFrameCurrentItem(manage!, "/roster/manage", "view=cover")?.label).toBe("Cover");
     expect(workFrameCurrentItem(manage!, "/roster/manage", "?view=team&team=a")?.label).toBe("Team");
     expect(workAreaFor("roster", "/roster/requests")?.id).toBe("rost");
-    expect(workAreaFor("open-shifts", "/open-shifts/mine")?.id).toBe("open");
+    // Open shifts folded into Roster (12 Oct 2026): every Open shifts page lights Roster's tab.
+    const roster = workAreaFor("open-shifts", "/open-shifts/mine");
+    expect(roster?.id).toBe("rost");
+    expect(roster!.tabs.map((tab) => tab.label)).toEqual(["Month", "Open shifts", "Swaps"]);
+    for (const path of ["/open-shifts", "/open-shifts/mine", "/open-shifts/alerts", "/open-shifts/shift/a/b"])
+      expect(workFrameCurrentItem(roster!, path, "")?.label, path).toBe("Open shifts");
   });
 
   // Alerts work, owner approval 7 Oct 2026: one Notifications area inside My Day
@@ -102,21 +108,28 @@ describe("work frame navigation", () => {
 
   it("offers the next plain pages from More as extra tabs for wider screens", () => {
     const labels = (id: keyof typeof WORK_AREAS) => workFrameExtraTabs(WORK_AREAS[id]).map((item) => item.label);
-    expect(labels("rost").slice(0, 3)).toEqual(["Today", "My shifts", "Leave"]);
+    expect(labels("rost").slice(0, 3)).toEqual(["Team", "My shifts", "Leave"]);
     // Pages with their own header, inner areas and links into other areas never become tabs.
     expect(labels("rost")).not.toContain("Calendar sync");
-    expect(labels("rost")).not.toContain("Open shifts");
+    expect(labels("rost")).not.toContain("Manage team");
     expect(labels("admin")).not.toContain("Overtime");
     expect(labels("day")).not.toContain("Reminders");
     const hours = workFrameCurrentItem(WORK_AREAS.rost, "/roster", "view=hours")!;
     expect(workFrameTabLabel(hours)).toBe("Hours");
   });
 
-  it("lists inner area pages in AI Search, but never a manager's pages", () => {
-    const ids = workSearchPages().map((page) => page.id);
-    expect(ids).toContain("open:open-shifts-browse");
-    expect(ids.some((id) => id.startsWith("manage:"))).toBe(false);
+  it("lists inner area pages in AI Search, and a manager's pages only behind Manage team's gate", () => {
+    const pages = workSearchPages();
+    const ids = pages.map((page) => page.id);
+    expect(ids).toContain("rost:open-shifts");
+    expect(ids).toContain("open:open-shifts-mine");
+    const manage = pages.filter((page) => page.id.startsWith("manage:"));
+    expect(manage.length).toBeGreaterThan(0);
+    for (const page of manage) expect(page.gates?.length, page.id).toBeGreaterThan(0);
     expect(searchWorkPages("locum")[0]?.page.href).toBe("/open-shifts");
+    // Refer, Who's who and the Pocket card folded into Contacts and the Handbook, and their search words with them.
+    expect(searchWorkPages("referrals")[0]?.page.href).toBe("/on-call/refer");
+    expect(searchWorkPages("pocket card")[0]?.page.href).toBe("/on-call/find");
   });
 
   it("puts the reader's chosen tabs first, then the area's own, then the rest by width", () => {
@@ -133,7 +146,7 @@ describe("work frame navigation", () => {
     expect(leave.first.length + leave.extras.length).toBeLessThanOrEqual(6);
     // Gone, gated or repeated picks are skipped, and the row still starts with three.
     const odd = workFrameTabRow(WORK_AREAS.rost, ["nope", "requests", "requests"], (item) => item.id !== "month");
-    expect(odd.first.map((item) => item.id)).toEqual(["requests", "team", "swaps"]);
+    expect(odd.first.map((item) => item.id)).toEqual(["requests", "open-shifts", "swaps"]);
   });
 
   it("reads stored tab picks defensively", () => {

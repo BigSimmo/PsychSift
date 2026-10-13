@@ -54,7 +54,6 @@ import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-d
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
-import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
@@ -85,7 +84,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
 import { useScopeDocumentList } from "@/components/clinical-dashboard/master-search-header-scope-documents";
 import { workAreaFor } from "@/lib/work-frame/areas";
-import { useLivePreview } from "@/components/live-version/live-version-provider";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { LargeTextFlag } from "@/components/work-frame/use-large-text";
 import { modePickerHint } from "@/lib/mode-picker-hints";
 import {
@@ -112,10 +111,11 @@ import {
 } from "@/lib/app-modes";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import {
-  desktopComposerSlotReadyAttr,
   isDesktopComposerSlotReady,
+  observeDesktopComposerSlots,
   phoneHeaderCollapseAddonSlotId,
   setModeHomeComposerReservePending,
+  syncHydratedComposerReserve,
   universalHeaderTrailingSlotId,
   type PhoneDockAddonKind,
 } from "@/lib/mode-home-composer";
@@ -144,6 +144,7 @@ import {
   useTeachingRoles,
 } from "@/lib/teaching/page-visibility";
 import {
+  clinicalBandAttribute,
   modeMenuSideForMode,
   modeMenuSides,
   orderModesForSide,
@@ -156,11 +157,14 @@ import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-
 import type { ClinicalDocument, ClinicalQueryMode } from "@/lib/types";
 import { type SearchScopeFilters } from "@/lib/search-scope";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 
-// The bell and AI Search only render on staff work pages. A separate chunk keeps their code,
-// the notification feed helpers and their CSS off every clinical page's main thread.
+// Lazy chunks; the clinical bell loads the bell alone, never AI Search.
 const StaffWorkHeaderControls = dynamic(() =>
   import("@/components/needs-you/staff-work-header-controls").then((m) => m.StaffWorkHeaderControls),
+);
+const ClinicalHeaderBell = dynamic(() =>
+  import("@/components/needs-you/needs-you-button").then((m) => m.NeedsYouButton),
 );
 
 // Shared between the composer input's aria-describedby and the rendered
@@ -382,11 +386,13 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
   const router = useRouter();
+  // Direct pushes skip link guards and beforeunload: ask any page with unsaved work first.
+  const pushIfLeaveConfirmed = (href: string) => confirmShellNavigation() && router.push(href);
   const currentPathname = usePathname();
   const [, setLastAppMode] = useLastAppMode();
-  // The two-pane side menu (Live version: Newest) keeps the menu button
+  // The two-pane side menu (off again since 10 Oct 2026) keeps the menu button
   // beside Back on phones, so the menu opens from every work page.
-  const twoPaneSideMenu = useLivePreview("two-pane-side-menu");
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const visibleAppModeOptions = visibleAppModeDefinitionsForSession({
     authenticated: canAccessFavourites,
     demoMode: false,
@@ -616,13 +622,20 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
    */
   const onCallEditor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
   /** What the mode pill names (the page, the mode or a work area) and this address's work frame. */
-  const { activeModePage, pillShowsAreaOnly, pillModeLabel, routeWorkArea, routeWorkFrame, routeWorkFramed } =
-    useHeaderModePill({
-      modeId: selectedAppMode.id,
-      modeLabel: selectedAppMode.label,
-      pathname: currentPathname ?? "",
-      modeOwnPages,
-    });
+  const {
+    activeModePage,
+    pillPageLine,
+    pillShowsAreaOnly,
+    pillModeLabel,
+    routeWorkArea,
+    routeWorkFrame,
+    routeWorkFramed,
+  } = useHeaderModePill({
+    modeId: selectedAppMode.id,
+    modeLabel: selectedAppMode.label,
+    pathname: currentPathname ?? "",
+    modeOwnPages,
+  });
   /** A mode that shows no results has nowhere for a new conversation to land. */
   const modeHasConversation = selectedAppMode.search.resultsSurface !== "none";
   const pendingModeSelectionFocusRef = useRef<AppModeId | null>(null);
@@ -670,7 +683,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   // One task-oriented placeholder per mode (PT-14): the follow-up composer must
   // not swap to brand copy that hides what the input actually does.
   const queryPlaceholder = composerPlaceholder ?? selectedSearch.placeholder;
-  const SelectedAppModeIcon = appModeIcons[selectedAppMode.id];
+  const SelectedAppModeIcon = appModeIcons[routeWorkArea?.identity ?? selectedAppMode.id]; // Open shifts wears Roster's badge
   const actionMenuModeOptions: ModeActionModeOption[] = visibleAppModeOptions.map((mode) => ({
     id: mode.id,
     label: mode.label,
@@ -801,23 +814,23 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "factsheets-browse") {
-      router.push(factsheetsTopicsHref);
+      pushIfLeaveConfirmed(factsheetsTopicsHref);
       return;
     }
     if (actionId === "dictionary-search") {
-      router.push(`/dictionary/search${trimmedQuery ? `?q=${encodeURIComponent(trimmedQuery)}` : ""}`);
+      pushIfLeaveConfirmed(`/dictionary/search${trimmedQuery ? `?q=${encodeURIComponent(trimmedQuery)}` : ""}`);
       return;
     }
     if (actionId === "dictionary-topics") {
-      router.push("/dictionary/topics");
+      pushIfLeaveConfirmed("/dictionary/topics");
       return;
     }
     if (actionId === "dictionary-compare") {
-      router.push("/dictionary/compare");
+      pushIfLeaveConfirmed("/dictionary/compare");
       return;
     }
     if (actionId === "dictionary-sources") {
-      router.push("/dictionary/sources");
+      pushIfLeaveConfirmed("/dictionary/sources");
       return;
     }
     if (actionId === "services-search") {
@@ -876,7 +889,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "calculators-browse") {
-      router.push("/calculators");
+      pushIfLeaveConfirmed("/calculators");
       return;
     }
     if (actionId === "differentials-build") {
@@ -904,7 +917,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "dsm-compare") {
-      router.push("/dsm/compare");
+      pushIfLeaveConfirmed("/dsm/compare");
       return;
     }
     if (actionId === "dsm-criteria") {
@@ -917,15 +930,15 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "specifiers-builder") {
-      router.push("/specifiers/builder");
+      pushIfLeaveConfirmed("/specifiers/builder");
       return;
     }
     if (actionId === "specifiers-compare") {
-      router.push("/specifiers/compare");
+      pushIfLeaveConfirmed("/specifiers/compare");
       return;
     }
     if (actionId === "specifiers-map") {
-      router.push("/specifiers/map");
+      pushIfLeaveConfirmed("/specifiers/map");
       return;
     }
     if (actionId === "formulation-search") {
@@ -933,22 +946,23 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       return;
     }
     if (actionId === "formulation-builder") {
-      router.push("/formulation/builder");
+      pushIfLeaveConfirmed("/formulation/builder");
       return;
     }
     if (actionId === "formulation-compare") {
-      router.push("/formulation/compare");
+      pushIfLeaveConfirmed("/formulation/compare");
       return;
     }
     if (actionId === "formulation-map") {
-      router.push("/formulation/map");
+      pushIfLeaveConfirmed("/formulation/map");
       return;
     }
   }
 
   function selectAppMode(mode: (typeof appModeDefinitions)[number]) {
-    setModeMenuOpen(false);
     const standaloneHref = standaloneModeHomeHref(mode.id as AppModeId);
+    if (standaloneHref && !confirmShellNavigation()) return;
+    setModeMenuOpen(false);
     if (standaloneHref) {
       // Dedicated modes navigate to their canonical standalone homes
       // instead of retargeting the shared-home composer.
@@ -1002,7 +1016,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       onSearchModeChange(mode.id);
       return;
     }
-    if ("href" in mode && mode.href) router.push(mode.href);
+    if ("href" in mode && mode.href) pushIfLeaveConfirmed(mode.href);
   }
 
   function selectAppModeById(modeId: string) {
@@ -1579,6 +1593,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // during route transitions where both slots can briefly coexist.
     const composerSlotId = desktopHomeComposerSlotId ?? desktopPageComposerSlotId;
     const composerSlotKind = desktopHomeComposerSlotId ? "home" : "page";
+    // The page's first client render still expects its SSR reserve attribute.
+    // Every mutation, including phone/suppression/fallback clears, must wait
+    // for the owning segment's hydration, just like portal adoption does.
+    const syncReserve = (pending: boolean) => syncHydratedComposerReserve(composerSlotId, pending);
 
     if (!composerSlotId || !searchComposerVisible) {
       // No page-owned slot at this route, or the shell suppressed the composer:
@@ -1586,11 +1604,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       // Deferred to a microtask (not requestAnimationFrame) so it stays off the
       // synchronous effect body without being frame-gated — headless CI can starve rAF.
       let cancelled = false;
+      const observer = composerSlotId ? observeDesktopComposerSlots(() => syncReserve(false)) : null;
       queueMicrotask(() => {
         if (cancelled) return;
-        if (composerSlotId) {
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), false);
-        }
+        syncReserve(false);
         setDesktopComposerPortalActive(false);
         setDesktopComposerPortalHost(null);
         setDesktopComposerPortalFallback(false);
@@ -1598,6 +1615,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
       });
       return () => {
         cancelled = true;
+        observer?.disconnect();
       };
     }
 
@@ -1664,7 +1682,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           portalFailureStartedAt = null;
           setDesktopComposerPortalFallback(false);
           // Viewport never hosts this hero slot — collapse the SSR reserve band.
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), false);
+          syncReserve(false);
           return;
         }
         const now = window.performance.now();
@@ -1684,26 +1702,20 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             );
           }
           // Keep the SSR pending reserve while we retry adoption.
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), true);
+          syncReserve(true);
         } else {
           // A missing/unhydrated page slot must not remove search forever. Home
           // routes suppress the header fallback during the bounded retry window
           // because ModeHomeTemplate already reserves the settled hero geometry;
           // only surface the fallback after portal adoption has genuinely failed.
           // Collapse the empty hero band once the header fallback takes over.
-          setModeHomeComposerReservePending(document.getElementById(composerSlotId), false);
+          syncReserve(false);
           setDesktopComposerPortalFallback(true);
         }
       }
     };
 
-    const observer = new MutationObserver(syncTarget);
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: [desktopComposerSlotReadyAttr],
-    });
+    const observer = observeDesktopComposerSlots(syncTarget);
     syncTarget();
     mediaQuery.addEventListener("change", syncTarget);
     return () => {
@@ -1718,13 +1730,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
         // in which the DOM lacks an attribute the page's client render still
         // produces — a page segment hydrating inside it logs a
         // `data-composer-reserve` mismatch (client "pending" vs server null).
-        // Nothing is stranded by skipping: the effect body re-establishes the
-        // reserve on the very next tick, and a real unmount takes the slot
-        // element with it. Invariant 15's three required clears (media query
-        // mismatch, suppressed composer, portal fallback) live in `syncTarget`
-        // and the suppression branch above, and are untouched.
-        const slot = document.getElementById(composerSlotId);
-        if (isDesktopComposerSlotReady(slot)) setModeHomeComposerReservePending(slot, false);
+        // Hydration readiness is observed by the effect body, so its pending
+        // clear still runs once the owning segment is safe to mutate. A real
+        // unmount takes the slot element with it.
+        syncHydratedComposerReserve(composerSlotId, false);
       }
       setDesktopComposerPortalActive(false);
       setDesktopComposerPortalHost(null);
@@ -2435,7 +2444,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             <PrivacyInputNotice
               id={composerPrivacyWarningId}
               testId={composerPrivacyWarningId}
-              className="mt-1.5 justify-center px-3 text-center"
+              className="mt-1.5 justify-center px-3 text-center sm:px-0"
               returnMode={searchMode === "answer" ? undefined : searchMode}
             />
           </div>
@@ -2533,13 +2542,12 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     <header
       id="search"
       data-scroll-hidden={hideStrategy === "overlay" && headerChromeHidden ? "true" : undefined}
-      // The work-mode frame's round glass buttons and glass pill (work-mode.css).
-      // Decided from the mode and address alone, so it is in the server HTML.
+      // Work frame (glass buttons and pill) and band tints, decided from the mode and
+      // address alone so they are in the server HTML (work-mode.css, mode-band.css).
       data-work-frame={routeWorkArea?.id}
-      // A framed page's top bar wears its band's tint from the first paint,
-      // before the band has published it on <html> (work-mode.css).
       data-work-band={routeWorkFramed ? "" : undefined}
       data-mode-identity={routeWorkFrame?.area.identity}
+      data-clinical-band={clinicalBandAttribute(selectedAppMode.id, currentPathname, Boolean(routeWorkArea))}
       className={cn(
         // No backdrop-filter on the header itself: it would form a backdrop
         // root and starve the .edge-glass-header-backdrop scrim (the single
@@ -2608,30 +2616,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
           >
             <Menu aria-hidden="true" className="size-icon-lg" />
           </button>
-          {sharedHomeIdentity ? (
-            <div data-testid="shared-home-brand" className="hidden min-w-0 items-center gap-3 lg:flex">
-              <BrandMark tone="emphasis" className="h-10 w-10" />
-              <span className="min-w-0">
-                {/* The name leads and the strapline supports, which is a weight and a
-                    colour apart, not just a size. The wordmark takes the display
-                    tracking the rest of the interface's headings use — at 20px/800 the
-                    untracked default reads loose. The strapline drops from 600 to 500:
-                    at 600 it sat almost level with the name and the two lines competed.
-                    The colour stays --text-muted and the size stays 12px, both measured
-                    rather than chosen — on this surface --text-soft composites to
-                    #8894a6 and gives 3.07:1 against the header, under the 4.5:1 floor,
-                    and 11px made the block bottom-light for no gain. Tracking stays on
-                    the ladder's zero step; positive tracking belongs to uppercase
-                    labels, and this is a sentence. */}
-                <span className="block truncate text-lg font-extrabold leading-5 tracking-[var(--tracking-display)] text-[color:var(--text-heading)]">
-                  PsychSift
-                </span>
-                <span className="block truncate text-xs font-medium text-[color:var(--text-muted)]">
-                  From question to source
-                </span>
-              </span>
-            </div>
-          ) : isServicesMode ? (
+          {/* The shared home draws no wordmark here (owner design review, 12 Oct
+              2026): the side rail already carries the PsychSift mark on every
+              desktop page, so a second lockup in the header showed the logo twice. */}
+          {sharedHomeIdentity ? null : isServicesMode ? (
             <div className="hidden min-w-0 items-center gap-3 lg:flex">
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-[color:var(--clinical-accent)] text-[color:var(--clinical-accent-contrast)] shadow-[var(--e1)]">
                 <ShieldCheck className="h-5 w-5" aria-hidden />
@@ -2658,7 +2646,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) return;
             closeModeMenu();
           }}
-          className="relative z-[60] min-w-0 justify-self-center"
+          className="universal-header-mode relative z-[60] min-w-0 justify-self-center"
         >
           <button
             ref={modeButtonRef}
@@ -2666,7 +2654,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             onClick={toggleModeMenu}
             onKeyDown={handleModeTriggerKeyDown}
             className={cn(
-              "universal-header-mode-button inline-grid h-12 w-[min(13rem,calc(100vw-9rem))] min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:w-auto sm:min-w-[13rem] sm:pr-3",
+              "universal-header-mode-button inline-grid h-tap w-auto min-w-0 max-w-[calc(100vw-9rem)] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-left transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:pr-3",
             )}
             aria-haspopup="dialog"
             aria-expanded={modeMenuOpen}
@@ -2701,7 +2689,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               <SelectedAppModeIcon aria-hidden="true" className="size-icon-md" strokeWidth={2.25} />
             </span>
             <span className="min-w-0">
-              {activeModePage ? (
+              {pillPageLine ? (
                 // Page first, mode underneath. The order is the point: the big
                 // line answers "where am I", which changes, and the small
                 // coloured line answers "which mode", which does not. Reversing
@@ -2714,7 +2702,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                 // stops naming it.
                 <>
                   <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                    {activeModePage.label}
+                    {pillPageLine.label}
                   </span>
                   <span className="universal-header-mode-area block truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--clinical-accent)]">
                     {pillModeLabel}
@@ -2731,14 +2719,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                   {pillModeLabel}
                 </span>
               ) : (
-                <>
-                  <span className="hidden truncate text-2xs font-semibold uppercase leading-3 tracking-eyebrow text-[color:var(--text-muted)] sm:block">
-                    Mode
-                  </span>
-                  <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                    {selectedAppMode.label}
-                  </span>
-                </>
+                <span className="block truncate text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
+                  {selectedAppMode.label}
+                </span>
               )}
             </span>
             <ChevronDown
@@ -2860,6 +2843,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
               a chat-less mode that own their control somewhere else — On Call's
               section pages moved the page menu into their own in-page header, and
               the button reappeared in a mode that has never had a chat. */}
+          {appModeHasWorkSearch(selectedAppMode.id) ? null : (
+            <ClinicalHeaderBell modeId={selectedAppMode.id} clinical />
+          )}
           {modeHasConversation ? (
             <button
               type="button"
@@ -2876,8 +2862,11 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             </button>
           ) : null}
           {appModeHasWorkSearch(selectedAppMode.id) ? <StaffWorkHeaderControls modeId={selectedAppMode.id} /> : null}
-          {/* At large text, work pages let cut-off labels wrap (work-mode.css). */}
-          {appModeHasWorkSearch(selectedAppMode.id) ? <LargeTextFlag /> : null}
+          {/* At large text, work pages let cut-off labels wrap (work-mode.css).
+              Favourites is drawn with the work tokens and rows, so it opts in
+              too: at 320px with large text its tiles and labels were cut off
+              (12 Oct 2026). Clinical reference pages stay untouched. */}
+          {appModeHasWorkSearch(selectedAppMode.id) || selectedAppMode.id === "favourites" ? <LargeTextFlag /> : null}
         </div>
       </div>
 
@@ -2952,7 +2941,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             modePickerGlassClass,
           )}
         >
-          {modeSheetView === "sections" ? (
+          {/* Built only while open: the Sheet draws nothing closed, and this list is
+              every mode's row, which the header would otherwise rebuild each time it
+              slides away or back on a scroll. */}
+          {!modeMenuOpen ? null : modeSheetView === "sections" ? (
             renderModeSectionLevel()
           ) : (
             <div

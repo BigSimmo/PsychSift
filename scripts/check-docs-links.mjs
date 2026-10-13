@@ -215,7 +215,7 @@ function collectDocs(dirRelative, targets) {
 }
 
 export function defaultTargets() {
-  const targets = ["README.md", "AGENTS.md"];
+  const targets = ["README.md", "AGENTS.md", "PROJECT-INSTRUCTIONS-CONTINUATION.md"];
   collectDocs("docs", targets);
   collectDocs(".claude/cloud-profile/skills", targets);
   return targets;

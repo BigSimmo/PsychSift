@@ -31,12 +31,13 @@ describe("favourites auth gate", () => {
     expect(sidebar).toContain("const visibleSidebarToolItems = sidebarToolItems");
     expect(sidebar).not.toMatch(/const sidebarToolItems = \[[\s\S]*\{ id: "favourites", label: "Favourites"/);
 
-    // The persistent rail is the six-item canonical list only; Favourites stays
+    // The persistent rail is the five-item canonical list only (Tools left the menu,
+    // audit item 8, 11 Oct 2026); Favourites stays
     // in Your library, and specialist catalogues stay out of the rail source.
     const sidebarToolInitializer = sidebar.match(/const sidebarToolItems = \[([\s\S]*?)\] as const;/)?.[1];
     expect(sidebarToolInitializer).toBeTruthy();
     const sidebarToolIds = [...(sidebarToolInitializer ?? "").matchAll(/id: "([^"]+)"/g)].map((match) => match[1]);
-    expect(sidebarToolIds).toEqual(["answer", "documents", "services", "prescribing", "factsheets", "tools"]);
+    expect(sidebarToolIds).toEqual(["answer", "documents", "services", "prescribing", "factsheets"]);
     for (const excludedId of [
       "differentials",
       "dsm",

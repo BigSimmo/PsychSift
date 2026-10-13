@@ -27,6 +27,9 @@ describe("psychiatryVisitKindForPath", () => {
     expect(psychiatryVisitKindForPath("/differentials/presentations")).toBeNull();
     expect(psychiatryVisitKindForPath("/differentials/diagnoses")).toBeNull();
     expect(psychiatryVisitKindForPath("/forms/search")).toBeNull();
+    // The Act page and the MHA clock live under /forms/ but are not forms.
+    expect(psychiatryVisitKindForPath("/forms/act")).toBeNull();
+    expect(psychiatryVisitKindForPath("/forms/clock")).toBeNull();
     expect(psychiatryVisitKindForPath("/documents/abc")).toBeNull();
     expect(psychiatryVisitKindForPath("/psychiatry")).toBeNull();
     // Tools keep their working state in the query, which a bare path cannot reopen.
@@ -109,6 +112,14 @@ describe("figures", () => {
   it("leaves the Act and Standards page out of the most-opened forms", () => {
     const visits: PsychiatryVisit[] = [
       { href: "/forms/act", title: "Mental Health Act 2014", kind: "forms", at: now - 1 },
+      { href: "/forms/a", title: "A", kind: "forms", at: now - 2 },
+    ];
+    expect(mostOpenedForms(visits, []).map((v) => v.href)).toEqual(["/forms/a"]);
+  });
+
+  it("leaves the MHA clock tab out of the most-opened forms", () => {
+    const visits: PsychiatryVisit[] = [
+      { href: "/forms/clock", title: "MHA clock", kind: "forms", at: now - 1 },
       { href: "/forms/a", title: "A", kind: "forms", at: now - 2 },
     ];
     expect(mostOpenedForms(visits, []).map((v) => v.href)).toEqual(["/forms/a"]);

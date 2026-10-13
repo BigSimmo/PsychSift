@@ -520,6 +520,7 @@ export const userFacingProductSurfaces = [
   ".design-sync/NOTES.md",
   ".design-sync/conventions.md",
   "AGENTS.md",
+  "PROJECT-INSTRUCTIONS-CONTINUATION.md",
   "CLAUDE.md",
   "CONTEXT.md",
   "Dockerfile",

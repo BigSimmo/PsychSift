@@ -963,7 +963,7 @@
       }
     },
     {
-      "id": "substance-intoxication",
+      "id": "presentation-substance-intoxication",
       "title": "Substance Intoxication",
       "status": "emergent",
       "subtitle": "Significant intoxication can cause airway compromise, hyperthermia or trauma and needs immediate ABC and toxidrome assessment.",
@@ -1131,7 +1131,7 @@
       }
     },
     {
-      "id": "substance-withdrawal",
+      "id": "presentation-substance-withdrawal",
       "title": "Substance Withdrawal",
       "status": "emergent",
       "subtitle": "Alcohol and benzodiazepine withdrawal can progress to seizures and delirium tremens within hours.",
@@ -2123,7 +2123,7 @@
       }
     },
     {
-      "id": "depression",
+      "id": "presentation-depression",
       "title": "Depression",
       "status": "urgent",
       "subtitle": "Depression",

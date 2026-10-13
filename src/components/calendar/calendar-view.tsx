@@ -3,9 +3,10 @@
 import { CalendarPlus, ChevronLeft, ChevronRight, Download, Repeat } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 
+import { AddToCalendarOptions, downloadIcs } from "@/components/calendar/add-to-calendar-options";
 import { Checkbox } from "@/components/ui/choice";
 import { Sheet } from "@/components/ui/sheet";
-import { ExternalTextLink, TextLink } from "@/components/ui/link";
+import { TextLink } from "@/components/ui/link";
 import { cardSurface } from "@/components/card-recipes";
 import { cn, eyebrowText, floatingControl, textMuted, toolbarButton } from "@/components/ui-primitives";
 import {
@@ -17,11 +18,8 @@ import {
   type CalendarEvent,
   type CalendarEventKind,
 } from "@/lib/calendar/calendar-event";
-import { icsFileName, toIcs } from "@/lib/calendar/ics";
 import { monthGrid, monthGridRange, monthKeyOf, shiftMonth, WEEKDAY_SHORT_LABELS } from "@/lib/calendar/month-grid";
-import { googleCalendarUrl, outlookCalendarUrl } from "@/lib/calendar/provider-links";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
-import { applyReminderAlarms, type ReminderSettings } from "@/lib/reminders/settings";
 import { guardExampleAction, isExampleRecord, withoutExampleRecords } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
 import type { WorkAreaId } from "@/lib/work-frame/areas";
@@ -116,25 +114,6 @@ function dayLabel(date: string): string {
 function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-").map(Number);
   return `${MONTHS_LONG[month - 1]} ${year}`;
-}
-
-/**
- * The file carries a calendar alarm on an event only when the owner turned
- * that reminder's "Phone calendar alert" on in Settings; with the defaults it
- * is exactly the file it always was.
- */
-function downloadIcs(events: readonly CalendarEvent[], name: string, reminders: ReminderSettings) {
-  const now = new Date();
-  const withAlarms = applyReminderAlarms(events, reminders, now);
-  const blob = new Blob([toIcs(withAlarms, { name, now })], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = icsFileName(name);
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
@@ -575,60 +554,5 @@ function CalendarEventRow({
         <CalendarPlus aria-hidden="true" className="size-icon-sm" />
       </button>
     </li>
-  );
-}
-
-function AddToCalendarOptions({
-  event,
-  reminders,
-  example,
-}: {
-  event: CalendarEvent;
-  reminders: ReminderSettings;
-  example: boolean;
-}) {
-  const blocked = example || isExampleRecord(event);
-  return (
-    <div className="flex flex-col gap-3 pb-2">
-      <button
-        type="button"
-        className={cn(floatingControl, "justify-start")}
-        onClick={() => {
-          if (!guardExampleAction(blocked, "export")) return;
-          downloadIcs([event], event.title, reminders);
-        }}
-        data-testid="calendar-add-file"
-      >
-        <Download aria-hidden="true" className="size-icon-sm" />
-        Calendar file (Apple, any calendar)
-      </button>
-      <ExternalTextLink
-        href={googleCalendarUrl(event)}
-        tone="inherit"
-        className={cn(floatingControl, "justify-start no-underline")}
-        onClick={(click) => {
-          if (!guardExampleAction(blocked, "export")) click.preventDefault();
-        }}
-        data-testid="calendar-add-google"
-      >
-        Google Calendar
-      </ExternalTextLink>
-      <ExternalTextLink
-        href={outlookCalendarUrl(event)}
-        tone="inherit"
-        className={cn(floatingControl, "justify-start no-underline")}
-        onClick={(click) => {
-          if (!guardExampleAction(blocked, "export")) click.preventDefault();
-        }}
-        data-testid="calendar-add-outlook"
-      >
-        Outlook
-      </ExternalTextLink>
-      <p className={cn(textMuted, "text-xs")}>
-        Google and Outlook open their own page with this event filled in, which sends its title and time to them. The
-        calendar file stays on this device.
-        {event.recurrence ? " Outlook adds the first date only. Set the repeat there, or use the calendar file." : ""}
-      </p>
-    </div>
   );
 }

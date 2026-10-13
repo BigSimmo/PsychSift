@@ -218,12 +218,7 @@ test.describe("Live Browser User Journeys", () => {
   // -------------------------------------------------------------------------
   test("Journey 1 (Login/Auth): unauthenticated guest journey and account setup gateway", async ({
     page,
-    baseURL,
   }, testInfo) => {
-    // The phone menu checked below is Everyone's version; the offline build defaults to the newest.
-    await page
-      .context()
-      .addCookies([{ name: "psychsift-live-version", value: "everyone", url: new URL("/", baseURL).toString() }]);
     // Navigate to personal favourites page which presents the sign-in guidance
     await page.goto("/favourites");
     await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
@@ -473,7 +468,12 @@ test.describe("Synthetic preview-origin navigation", () => {
         url: `${configuredAppOrigin}${url.pathname}${url.search}`,
         maxRedirects: 0,
       });
-      await route.fulfill({ response });
+      // A request the page abandons mid-fetch (a navigation or a superseded asset)
+      // disposes its response before it can be fulfilled. Only that teardown is
+      // ignored; fetch errors and every other fulfil error still fail the test.
+      await route.fulfill({ response }).catch((error: unknown) => {
+        if (!/Fetch response has been disposed/.test(String(error))) throw error;
+      });
     });
     const query = "Synthetic preview-origin lithium completion";
     const state = await installSyntheticAnswerApis(page, query, baseURL);

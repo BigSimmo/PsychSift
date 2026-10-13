@@ -25,6 +25,7 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
+import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -520,12 +521,24 @@ function useNightShift(): boolean {
   return Number.isFinite(at) && new Date().getTime() - at < ON_CALL_SHIFT_PICK_TTL_MS;
 }
 
+/** Where the frame turns into the desktop layout (tablet on its side, and up). */
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
 export function OnCallHandoverPage() {
   const view = useOnCallHandover();
+  const underBand = useModeBandShown();
   const patients = useMemo(() => view?.patients ?? [], [view]);
   const night = useNightShift();
   const [mode, setMode] = useState<"form" | "table">("form");
   const hasPatients = patients.length > 0;
+  // On a computer the handover opens as the table when it already holds patients, since rows of
+  // patients and columns of fields is what a wide screen is for (usefulness audit, 11 Oct 2026).
+  // Decided once, when this device's handover first loads; a phone keeps opening on the form.
+  const [openingChosen, setOpeningChosen] = useState(false);
+  if (!openingChosen && view !== null) {
+    setOpeningChosen(true);
+    if (hasPatients && typeof window !== "undefined" && window.matchMedia?.(DESKTOP_QUERY).matches) setMode("table");
+  }
   useEffect(() => {
     // A failed prefetch is not an error: the tap that needs the table loads it again.
     if (hasPatients) void handoverTable.preload().catch(() => undefined);
@@ -710,7 +723,10 @@ export function OnCallHandoverPage() {
           ) : (
             <div className="grid min-w-0 gap-2 print:hidden">
               <div className="flex min-w-0 items-center justify-between gap-3">
-                <h1 className="text-2xl font-semibold text-[color:var(--text-heading)]">Handover</h1>
+                {/* Under the work band its title already says Handover, so the heading stays for screen readers only. */}
+                <h1 className={underBand ? "sr-only" : "text-2xl font-semibold text-[color:var(--text-heading)]"}>
+                  Handover
+                </h1>
                 {patients.length > 0 && !confirmClear ? (
                   <button
                     type="button"
@@ -761,13 +777,19 @@ export function OnCallHandoverPage() {
           )}
 
           {tableOpen ? (
-            <OnCallHandoverTable
-              patients={patients}
-              heading={{ dates, shift: night ? "Night to day" : null }}
-              clearsAt={clearsAt}
-              toTeam={night ? "Day team" : null}
-              onEdit={pick}
-            />
+            <>
+              {/* The table is where a desktop opens, so it carries the same privacy line as the form. */}
+              <div className="print:hidden">
+                <PrivacyBand expiresAt={view.expiresAt} />
+              </div>
+              <OnCallHandoverTable
+                patients={patients}
+                heading={{ dates, shift: night ? "Night to day" : null }}
+                clearsAt={clearsAt}
+                toTeam={night ? "Day team" : null}
+                onEdit={pick}
+              />
+            </>
           ) : (
             <>
               <PrivacyBand expiresAt={view.expiresAt} />

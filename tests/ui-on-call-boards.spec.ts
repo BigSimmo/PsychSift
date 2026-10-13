@@ -242,10 +242,10 @@ test.describe("01 Home", () => {
     const modules = [
       "on-call-now-hospital",
       "on-call-now-emergency",
-      "on-call-now-right-now",
       "on-call-home-recent",
+      "on-call-now-right-now",
       "on-call-now-team",
-      "on-call-now-footer",
+      "on-call-now-shift-tools",
     ];
     for (const id of modules) {
       await expect(visibleByTestId(page, id), `${id} is drawn on Now but does not render`).toBeVisible();
@@ -253,7 +253,7 @@ test.describe("01 Home", () => {
 
     // Top to bottom in the drawn order. A module that renders in the wrong
     // place still passes a presence check, and the order is the safety order:
-    // hospital, its emergency route, Right now, Your usual, Your team, footer.
+    // hospital, its emergency route, Your usual (usefulness audit, 11 Oct 2026), Right now, Your team, the shift tools.
     const tops = await Promise.all(
       modules.map(async (id) => (await visibleByTestId(page, id).boundingBox())?.y ?? Number.NaN),
     );
@@ -262,12 +262,12 @@ test.describe("01 Home", () => {
     }
   });
 
-  test("leads with Who do I call now, which opens the escalation steps with call buttons", async ({ page }) => {
+  // Usefulness audit, 11 Oct 2026: the Playbook is the one home for "who do I call", its first problem open.
+  test("leads with Who do I call now, which opens the Playbook's escalation steps", async ({ page }) => {
     await openBoard(page, ROUTES.home);
     await visibleByTestId(page, "on-call-home-call-now").click();
-    await expect(page).toHaveURL(/\/on-call\/now$/);
-    await expect(page.getByTestId("on-call-now-ladder")).toBeVisible();
-    await expect(page.getByTestId("on-call-now-steps").getByRole("listitem").first()).toBeVisible();
+    await expect(page).toHaveURL(/\/on-call\/playbook$/);
+    await expect(page.locator('[data-testid^="on-call-playbook-step-"]').first()).toBeVisible();
   });
 
   test("answers Right now with the hospital's switchboard, and reaches all roles in one tap", async ({ page }) => {
@@ -281,22 +281,18 @@ test.describe("01 Home", () => {
     await expectTapFloor(allRoles, "Right now's All roles link");
   });
 
-  test("keeps First night in the footer group and the escalation ladder under Who do I call now", async ({ page }) => {
+  test("keeps no link list on Now, and the escalation ladder under Who do I call now", async ({ page }) => {
     await openBoard(page, ROUTES.home);
-    const footer = visibleByTestId(page, "on-call-now-footer");
-    const firstNight = footer.getByTestId("on-call-home-first-night");
-    await expect(firstNight).toHaveAttribute("href", "/on-call/first-night");
-    await expectTapFloor(firstNight, "First night row");
-    await expect(footer.getByTestId("on-call-now-footer-shifts")).toHaveAttribute("href", "/roster");
-    await expect(footer.getByTestId("on-call-now-footer-card")).toHaveAttribute("href", "/on-call/card");
-    // Amended for the work-mode redesign wiring audit (owner request 6 Oct 2026): the
-    // link goes straight to the calendar's real page, not through the old redirect.
-    await expect(footer.getByTestId("on-call-now-footer-calendar")).toHaveAttribute("href", "/roster/calendar");
+    // Work mode simplify plan, owner approval 12 Oct 2026: My shifts and Calendar live in Roster, the
+    // Pocket card in the Handbook, First night in Starting here.
+    await expect(page.getByTestId("on-call-now-footer")).toHaveCount(0);
+    const tools = visibleByTestId(page, "on-call-now-shift-tools");
+    await expect(tools.getByTestId("on-call-now-checklists")).toBeVisible();
     // Mock-up v10: "Who do I call now?" is its own group with the ladder link
     // at its right. The literal href is what the route-reachability guard reads;
     // the click test above proves the destination actually renders.
     const who = visibleByTestId(page, "on-call-now-who");
-    await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
+    await expect(who.getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/playbook");
   });
 
   test("does not put a page-menu ellipsis in the header; AI Search stays", async ({ page }) => {
@@ -308,7 +304,7 @@ test.describe("01 Home", () => {
 
   test("holds together at the site's narrow width, which the drawing never shows", async ({ page }) => {
     await openBoard(page, ROUTES.home, NARROW);
-    await expect(visibleByTestId(page, "on-call-now-footer")).toBeVisible();
+    await expect(visibleByTestId(page, "on-call-now-shift-tools")).toBeVisible();
     await expectNoHorizontalOverflow(page, "Now at 320px");
   });
 });
@@ -567,24 +563,41 @@ test.describe("02 More — the second row is about the page you are on", () => {
     // slug from the word in the bar and checks it against that `admin-help-`
     // prefix, which holds for every word this page's rail can show.
     await openBoard(page, ROUTES.logistics);
-    for (const label of await barWords(page, ADMIN_SECTION_HEADER_PREFIX)) {
-      const slug = label
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      if (!slug) continue;
-      await expect(page.locator(`#admin-help-${slug}`), `${label} is offered but absent`).toHaveCount(1);
-    }
+    // While the rows load, every section (Support included) is drawn as a skeleton. Once they
+    // arrive, Support drops out when it has no rows (admin-help-page.tsx), so read the bar only
+    // after loading has finished, or a slower engine reads a word the settled page no longer has.
+    await expect(page.locator('[data-testid^="admin-help-"][data-testid$="-loading"]')).toHaveCount(0, {
+      timeout: 20_000,
+    });
+    // The bar resolves its words from the rendered sections one animation frame after the page
+    // changes (use-resolved-page-sections.ts), so a single read can still hold Support for a
+    // frame after it left the page (WebKit, 12 Oct 2026). Poll until the two agree.
+    await expect
+      .poll(
+        async () => {
+          const absent: string[] = [];
+          for (const label of await barWords(page, ADMIN_SECTION_HEADER_PREFIX)) {
+            const slug = label
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "");
+            if (slug && (await page.locator(`#admin-help-${slug}`).count()) !== 1) absent.push(label);
+          }
+          return absent;
+        },
+        { message: "words the bar offers but the page does not render", timeout: 10_000 },
+      )
+      .toEqual([]);
   });
 });
 
 test.describe("05 Page menu", () => {
-  test("opens from in-page More, not a round header ellipsis", async ({ page }) => {
+  test("opens from in-page Options, not a round header ellipsis", async ({ page }) => {
     await openBoard(page, ROUTES.contacts);
     const trigger = page.getByTestId("on-call-page-menu-trigger");
     await expect(trigger).toBeVisible();
-    await expect(trigger).toHaveText(/More/);
+    await expect(trigger).toHaveText(/Options/);
     await expectTapFloor(trigger, "page menu trigger");
   });
 
@@ -949,9 +962,9 @@ test.describe("Compliance — the view the boards never drew", () => {
     expect(summaryBox!.y, "the 'not a check' line has slipped below the list").toBeLessThan(firstGroup!.y);
   });
 
-  test("keeps Checklist and Personal tabs, and Personal holds only the reader's own renewals", async ({ page }) => {
+  test("keeps Soonest and Personal tabs, and Personal holds only the reader's own renewals", async ({ page }) => {
     await openBoard(page, ROUTES.compliance);
-    await expect(page.getByRole("radio", { name: "Checklist" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Soonest" })).toBeVisible();
     await page.getByRole("radio", { name: "Personal" }).click();
 
     const personal = visibleByTestId(page, "admin-renewals-personal");

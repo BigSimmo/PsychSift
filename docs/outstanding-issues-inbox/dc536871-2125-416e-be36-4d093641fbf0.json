@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "dc536871-2125-416e-be36-4d093641fbf0",
+  "createdOn": "2026-10-12",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Some pages render no main landmark: /dsm/search and /first-nations confirmed in a browser; admin pages need a full-load recheck",
+    "detail": "In a real browser on 2026-10-12 every sampled page had exactly one #main-content (no duplicates, desktop and phone), but /dsm/search and /first-nations contain no main element or role=main, so screen-reader landmark navigation has no main region there. A wider sweep of 195 static routes timed out on most pages (dev server compiles on demand), so the admin pages that also showed none are unconfirmed. Next action: confirm with a full-load axe landmark-one-main run over the static routes, then give each page without one a main root. Related: /cme/applications showed two main landmarks.",
+    "source": "Review of five Antigravity reports against main, 2026-10-12",
+    "issueUlid": "01M4R2MA52568M420AAY3AGE35"
+  }
+}

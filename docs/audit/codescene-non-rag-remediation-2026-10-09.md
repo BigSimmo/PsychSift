@@ -100,3 +100,22 @@ Six complete local suites passed: 60 adoption/visual-baseline tests, 73 design-h
 Controlled timings and their limitations are recorded in the external `testing-speed-20261009` evidence directory under the existing remediation workspace. Benchmarks use fresh processes and disable result reuse. The existing content-pinned test receipts were also checked separately; a reused result is labelled as reused proof.
 
 The adoption and contract utility hashes changed in this phase, so their earlier CodeScene reviews are historical. Fresh reviews of these versions are saved separately. The remaining maintainability programme and broader RAG deferral are unchanged. These local performance checks do not establish full-suite, hosted CI or release acceptance, and the prepared changes remain isolated from the newer primary checkout.
+
+## PR #3512 integration repair - 13 October 2026
+
+The published head `29fa506084d57ad72d12427728fc4d3aa8939bca` was merged with main
+`08d8fb3eb10c039c507c3a13ebd43b7761b6ed87` in an isolated repair checkout. The only
+content conflict was the CI scope self-test: the instruction-continuation assertion
+now remains in the workflow/policy group, before the extracted dependency/container
+group. Main's instruction routing, starter-sharing tenancy inventory and 224-route
+expectation are retained. The original refactors and immutable review record are
+preserved.
+
+Fresh provider-free evidence: the CI scope self-test, static Cloud contracts and
+owner-scope scanner passed. Ten focused suites passed all 230 tests, covering CI
+scope, tenancy, adoption, design utilities, Cloud setup/policy and ledger handling.
+Dependency provisioning initially waited behind another worktree's exclusive lease;
+normal coordinator admission later succeeded and an exact-lock local donor was
+reused. Historical results above remain historical. Hosted CI and release readiness
+still require their own evidence. No merge, deployment, live canary or provider call
+is authorized by this repair.

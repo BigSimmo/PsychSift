@@ -15,10 +15,19 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import { MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
-import { MhaClockPage, mhaClockHandoverText, type MhaClockForm } from "@/components/psychiatry/mha-clock-page";
+import { MHA_TIMELINE_AWAITING_REVIEW, MHA_TIMELINE_REFERENCE_NOTE } from "@/components/forms/mha-timeline-panel";
+import {
+  MHA_CLOCK_HANDOVER_NOT_CALCULABLE,
+  MHA_CLOCK_NO_LIMITS,
+  MhaClockPage,
+  mhaClockHandoverText,
+  type MhaClockForm,
+} from "@/components/psychiatry/mha-clock-page";
+import mhaTimeframes from "../data/mha-timeframes.json";
+import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
+import type { MhaTimeframesFile } from "@/lib/mha-timeline";
 import { PsychiatryHome } from "@/components/psychiatry/psychiatry-home";
-import { mhaTimers } from "@/lib/on-call/mha-timers";
+import { mhaTimers, type MhaTimerItem } from "@/lib/on-call/mha-timers";
 import {
   clearAccountScopedBrowserStorage,
   PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY,
@@ -228,21 +237,141 @@ describe("MhaClockPage", () => {
     expect(screen.getByTestId("mha-clock-undo")).toHaveTextContent("Form 3A clock put back");
   });
 
-  it("copies the form and made-at time only for handover, with the reference line", () => {
+  it("copies each form, its name, when it was made and the limits the page shows, for handover", async () => {
     addMhaClock("2", new Date("2026-10-04T15:40:00Z")); // Sun 23:40 Perth
     addMhaClock("3A", new Date("2026-10-04T17:55:00Z")); // Mon 01:55 Perth
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     render(<MhaClockPage forms={forms} now={now} />);
-    fireEvent.click(screen.getByTestId("mha-clock-handover-copy"));
-    expect(writeText).toHaveBeenCalledWith(
-      [
-        "As at Mon 5 Oct 2026, 18:00 (Perth time)",
-        "Form 2 · made Sun 4 Oct 2026, 23:40 (Perth time)",
-        "Form 3A · made Mon 5 Oct 2026, 01:55 (Perth time)",
-        MHA_TIMELINE_REFERENCE_NOTE,
-      ].join("\n"),
+    const copyButton = screen.getByTestId("mha-clock-handover-copy");
+    expect(copyButton).toHaveTextContent("Copy for handover");
+    await act(async () => {
+      fireEvent.click(copyButton);
+    });
+    const [text] = writeText.mock.calls[0] as unknown as [string];
+    const lines = text.split("\n");
+    expect(lines[0]).toBe("As at Mon 5 Oct 2026, 18:00 (Perth time)");
+    expect(lines).toContain(
+      "Form 2 (Order to detain voluntary inpatient in authorised hospital for assessment) · made Sun 4 Oct 2026, 23:40 (Perth time)",
     );
+    expect(lines).toContain("Form 3A (Detention order) · made Mon 5 Oct 2026, 01:55 (Perth time)");
+    expect(lines.at(-1)).toBe(MHA_TIMELINE_REFERENCE_NOTE);
+    // Every limit line is one the page itself shows for that clock, indented under its form. No
+    // time left or running time: those go out of date once pasted.
+    const limitLines = lines.filter((line) => line.startsWith("  "));
+    expect(limitLines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line).not.toMatch(/\b(left|running|ago)\b/);
+    expect(screen.getByTestId("mha-clock-handover-status")).toHaveTextContent("Copied.");
+  });
+
+  it("says the browser would not copy, and leaves the lines on screen to copy by hand", async () => {
+    addMhaClock("2", new Date("2026-10-04T15:40:00Z"));
+    const writeText = vi.fn(() => Promise.reject(new Error("denied")));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<MhaClockPage forms={forms} now={now} />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mha-clock-handover-copy"));
+    });
+    expect(screen.getByTestId("mha-clock-handover-status")).toHaveTextContent("This browser would not copy.");
+    expect(screen.getByTestId("mha-clock-handover-lines")).toHaveTextContent("Form 2");
+  });
+
+  it("puts a signed-off limit's end time on the handover as a Perth time, never as time left", () => {
+    const clock = { id: "abcdefgh-1", formCode: "3A", madeAt: new Date("2026-10-04T17:55:00Z").getTime() };
+    // Real governed entries, so the copied sub-lines are the page's own condition, caveat and section.
+    const entries = (mhaTimeframes as MhaTimeframesFile).entries;
+    const form3a = entries.find((entry) => entry.id === "form-3a-detention-to-take-person")!;
+    const metro = entries.find((entry) => entry.id === "form-3a-continuous-limit-metropolitan")!;
+    const conditional = entries.find((entry) => entry.id === "form-3d-6b-detention-to-take-person")!;
+    const base = { timerId: clock.id, occurrence: 1, repeatsEveryHours: null } as const;
+    const running: MhaTimerItem = {
+      ...base,
+      entry: form3a,
+      kind: "countdown",
+      deadline: new Date("2026-10-05T17:55:00Z"),
+      remainingMs: 1,
+      expired: false,
+    };
+    const passed: MhaTimerItem = {
+      ...base,
+      entry: form3a,
+      kind: "countdown",
+      deadline: new Date("2026-10-05T05:55:00Z"),
+      remainingMs: -1,
+      expired: true,
+    };
+    const review: MhaTimerItem = { timerId: clock.id, entry: metro, kind: "quote-only", reason: "awaiting-review" };
+    const notCalculated: MhaTimerItem = {
+      timerId: clock.id,
+      entry: conditional,
+      kind: "quote-only",
+      reason: "not-calculable",
+    };
+    const text = mhaClockHandoverText([clock], now.getTime(), false, {
+      formTitle: (code) => (code === "3A" ? "Detention order" : undefined),
+      items: [running, passed, review, notCalculated, { ...running, timerId: "another-clock" }],
+    });
+    const caveat = `    The Act also says (s 28): “${form3a.caveat!.quote}”`;
+    const s28 = `    Mental Health Act 2014 (WA) s 28${mhaActSection("28")?.title ? ` — ${mhaActSection("28")!.title}` : ""}`;
+    const s62 = `    Mental Health Act 2014 (WA) s 62${mhaActSection("62")?.title ? ` — ${mhaActSection("62")!.title}` : ""}`;
+    expect(text.split("\n")).toEqual([
+      "As at Mon 5 Oct 2026, 18:00 (Perth time)",
+      "Form 3A (Detention order) · made Mon 5 Oct 2026, 01:55 (Perth time)",
+      `  ${form3a.trigger}: time limit Tue 6 Oct 2026, 01:55 (Perth time)`,
+      caveat,
+      s28,
+      `  ${form3a.trigger}: time limit passed Mon 5 Oct 2026, 13:55 (Perth time)`,
+      caveat,
+      s28,
+      `  ${metro.trigger}: ${MHA_TIMELINE_AWAITING_REVIEW}`,
+      caveat,
+      s28,
+      `  ${conditional.trigger}: ${MHA_CLOCK_HANDOVER_NOT_CALCULABLE}`,
+      `    ${conditional.condition}`,
+      s62,
+      `Mental Health Act 2014 (WA): ${mhaActMetadata.sourceUrl}`,
+      MHA_TIMELINE_REFERENCE_NOTE,
+    ]);
+    // Form 3A's earlier-expiry caveat travels with the copy, word for word as the page shows it.
+    expect(text).toContain(
+      "The Act also says (s 28): “The person cannot continue to be detained if the referral expires before the person is taken to the authorised hospital or other place”",
+    );
+    // The full Act quote stays on the page only, to keep the copy short.
+    expect(text).not.toContain(form3a.quote);
+    // A clock whose form has no limits in the app says so, in the page's own words.
+    expect(mhaClockHandoverText([clock], now.getTime(), false, { items: [] }).split("\n")[2]).toBe(
+      `  ${MHA_CLOCK_NO_LIMITS}`,
+    );
+    // Without details, a clock is its form code and made-at time only, as before.
+    expect(mhaClockHandoverText([clock], now.getTime()).split("\n")[1]).toBe(
+      "Form 3A · made Mon 5 Oct 2026, 01:55 (Perth time)",
+    );
+  });
+
+  it("copies each limit's caveat and section exactly as the page renders them", () => {
+    addMhaClock("3A", new Date(now.getTime() - 45 * 60_000));
+    render(<MhaClockPage forms={forms} now={now} />);
+    const lines = screen.getByTestId("mha-clock-handover-lines").textContent ?? "";
+    for (const link of screen.getAllByTestId("mha-clock-act-section")) {
+      expect(lines).toContain(link.textContent!.trim());
+    }
+    expect(lines).toContain("The Act also says (s 28):");
+  });
+
+  it("names Forms as the breadcrumb parent on the Forms mode's Clock tab, Psychiatry otherwise", () => {
+    const { unmount } = render(<MhaClockPage forms={forms} now={now} />);
+    expect(screen.getByRole("link", { name: /Psychiatry/ })).toHaveAttribute("href", "/psychiatry");
+    unmount();
+    render(<MhaClockPage forms={forms} now={now} home={{ label: "Forms", href: "/forms/search" }} />);
+    expect(screen.getByRole("link", { name: /Forms/ })).toHaveAttribute("href", "/forms/search");
+  });
+
+  it("draws Start as the Clinical primary button, not the ink fill", () => {
+    render(<MhaClockPage forms={forms} now={now} />);
+    const start = screen.getByTestId("mha-clock-start");
+    expect(start.className).toContain("var(--clinical-accent)");
+    expect(start.className).not.toContain("bg-[color:var(--dash-ink)]");
+    expect(start.className).toContain("min-h-tap");
   });
 
   it("says when clocks could not be read, never that there are none", () => {
@@ -408,7 +537,17 @@ describe("MhaClockPage", () => {
 });
 
 describe("Psychiatry hub · For a shift", () => {
-  const counts = { dsm: 1, differentials: 1, presentations: 1, specifiers: 1, formulation: 1, therapy: 1, forms: 1 };
+  const counts = {
+    dsm: 1,
+    differentials: 1,
+    presentations: 1,
+    specifiers: 1,
+    formulation: 1,
+    therapy: 1,
+    forms: 1,
+    calculators: 1,
+    dictionary: 1,
+  };
 
   it("links the MHA clock with this device's running count and form codes", () => {
     addMhaClock("2", now);
@@ -429,13 +568,14 @@ describe("Psychiatry hub · For a shift", () => {
     );
   });
 
-  it("signposts Medicines instead of copying Medication and Calculators", () => {
+  it("keeps Safety plan and MHA forms out of the builders, and First Nations in them", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
-    const actions = within(screen.getByRole("list", { name: "Quick actions" }));
+    const actions = within(screen.getByRole("list", { name: "Builders" }));
     expect(actions.queryByText("Medication")).toBeNull();
     expect(actions.queryByText("Calculators")).toBeNull();
-    expect(actions.getByText("Safety plan")).toBeTruthy();
+    expect(actions.queryByText("Safety plan")).toBeNull();
+    expect(actions.queryByText("MHA forms")).toBeNull();
+    expect(screen.getByTestId("psychiatry-shift-safety-plan").getAttribute("href")).toBe("/safety-plan");
     expect(actions.getByText("First Nations")).toBeTruthy();
-    expect(screen.getByTestId("psychiatry-medicines-signpost").getAttribute("href")).toBe("/medicines");
   });
 });

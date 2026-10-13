@@ -131,6 +131,7 @@ Smaller top-level directories that are easy to miss:
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `data/`         | Committed clinical **snapshot exports** loaded at runtime by `src/lib/` (differentials, forms, medications, services, specifiers). Regenerate via the matching `scripts/import-*-export.ts` / `build-*-index.mjs`; do not hand-edit. Distinct from `src/data/`, which holds hand-authored static content.           |
 | `eval/`         | Isolated evaluation labs, outside the product/runtime dependency graph. `eval/docling/` is the sandboxed, dispatch-only Docling extraction benchmark (own hashed Python lock + venvs, egress-blocked Docker run, synthetic fixtures + hostile corpus, aggregate-only reports; `docs/rag-improvement/README.md` §B3) |
+| `bench/`        | CodSpeed CPU-simulation benchmarks (tinybench v5 + `@codspeed/tinybench-plugin`) for the pure clinical text pipeline: chunking, query classification, medication entities, evidence ranking, catalog search. Synthetic fixtures only; run with `npm run bench`; CI runs `.github/workflows/codspeed.yml`            |
 | `eslint-rules/` | Repo-specific lint rules enforced by `npm run lint` (button wiring, hardcoded hex, type/icon scale, z-index ladder)                                                                                                                                                                                                 |
 | `mockups/`      | Notes for the design-scratch routes under `src/app/mockups/` (the routes themselves 404 in production)                                                                                                                                                                                                              |
 | `plugins/`      | `plugins/clinical-kb/` Codex plugin manifest and workflow skill                                                                                                                                                                                                                                                     |
@@ -185,7 +186,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | `/medications/[slug]` (bare `/medications` redirects to `/?mode=prescribing`)                                                                                                                           | `src/app/(search-app)/medications/`                                                                                             |
 | `/privacy`                                                                                                                                                                                              | `src/app/privacy/page.tsx` → `privacy-quiet-signal-page.tsx` + `privacy-page-content.tsx`                                       |
 | `/reference/colour-coding`                                                                                                                                                                              | `src/app/reference/`                                                                                                            |
-| `/safety-plan`                                                                                                                                                                                          | `src/app/safety-plan/page.tsx`                                                                                                  |
+| `/safety-plan`                                                                                                                                                                                          | `src/app/(search-app)/safety-plan/page.tsx`                                                                                     |
 | `/calculators`, `/calculators/search`                                                                                                                                                                   | `src/app/(search-app)/calculators/`                                                                                             |
 | `/services/search`, `/services/[slug]`                                                                                                                                                                  | `src/app/(search-app)/services/`                                                                                                |
 | `/therapy-compass/search`, `/recommend`, `/compare`, `/pathways`, `/review`, `/[slug]`, `/[slug]/brief`, `/[slug]/sheet`                                                                                | `src/app/(search-app)/therapy-compass/`                                                                                         |
@@ -216,7 +217,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | `/medications/[slug]` (bare `/medications` redirects to `/?mode=prescribing`)                                                                                                                           | `src/app/(search-app)/medications/`                                                                                             |
 | `/privacy`                                                                                                                                                                                              | `src/app/privacy/page.tsx` → `privacy-quiet-signal-page.tsx` + `privacy-page-content.tsx`                                       |
 | `/reference/colour-coding`                                                                                                                                                                              | `src/app/reference/`                                                                                                            |
-| `/safety-plan`                                                                                                                                                                                          | `src/app/safety-plan/page.tsx`                                                                                                  |
+| `/safety-plan`                                                                                                                                                                                          | `src/app/(search-app)/safety-plan/page.tsx`                                                                                     |
 | `/calculators`, `/calculators/search`                                                                                                                                                                   | `src/app/(search-app)/calculators/`                                                                                             |
 | `/services/search`, `/services/[slug]`                                                                                                                                                                  | `src/app/(search-app)/services/`                                                                                                |
 | `/therapy-compass/search`, `/recommend`, `/compare`, `/pathways`, `/review`, `/[slug]`, `/[slug]/brief`, `/[slug]/sheet`                                                                                | `src/app/(search-app)/therapy-compass/`                                                                                         |
@@ -231,7 +232,7 @@ Local task coordination lives in `.superpowers/`: ignored task briefs, review pa
 | PWA and SEO (`/manifest.webmanifest`, `/robots.txt`, `/sitemap.xml`, OG image, icons)                                                                                                                   | `src/app/manifest.ts`, `robots.ts`, `sitemap.ts`, `opengraph-image.tsx`, `apple-icon.tsx`, `icons/[variant]/route.tsx`          |
 
 Added 7 October 2026 and described in their mode sections below: `/on-call/first-week`, `/on-call/whos-on/roster`,
-`/cme/cpd-home`, `/cme/applications`, `/cme/applications/cv`, `/admin/contract`, `/admin/leave`,
+`/cme/cpd-home`, `/admin/applications`, `/admin/applications/cv` (first at `/cme/applications`, moved to Admin 11 Oct and redirected), `/admin/contract`, `/admin/leave`,
 `/admin/new-job/starter`, `/admin/new-job/ready`, `/roster/sick`, `/roster/staffing`, `/my-day/profile/agreement`
 and `/teaching/term/folder`.
 
@@ -459,8 +460,16 @@ pure rules (`decideWorkCapability`, `decideGrantWorkRole`), `server.ts` reads a 
 Granted roles live in `work_role_grants`, with hospitals in `work_hospitals` and their teams in
 `work_hospital_teams` (service role only, written by `/api/work/people` through `people.ts`); SQL callers
 use `work_can()`, kept in step with `model.ts` by `tests/work-roles-sql-parity.test.ts`. `hospital-sick.ts`
-backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce), and
+backs `/api/work/hospital/sick` (sick calls across a hospital's teams for Medical Workforce),
+`hospital-short-staffed.ts` backs `/api/work/hospital/short-staffed` (days a linked team is below its safe
+number, read only, counts and team names only, laid out by `hospital-short-staffed-view.ts` for
+`/admin/hospital/short-staffed`; its `staffing.overview` capability is checked in TypeScript only), and
 `hospital-hub.ts`, `people-model.ts` and the two `*-client.ts` files serve `/admin/hospital` and `/admin/people`.
+`hospital-starters.ts` backs `/api/work/hospital/starters` and `/admin/hospital/starters` (New starters, held by
+`starters.view`): the New job progress of active members of the hospital's linked teams who opted in on their
+own New job page, shared items only. The opt-in is `user_preferences.preferences.starterSharing`, off by default,
+written only by `/api/work/starters/sharing` through `starter-sharing.ts`; `hospital-starters-model.ts` and
+`hospital-starters-client.ts` are the client-safe shape and fetchers.
 
 **Work choices sync.** `src/lib/work-sync/` copies a few device-kept work choices (saved work pages,
 My Day's hidden cards, moved-to-tomorrow items and quick note; `sections.ts`) to the account and back.
@@ -512,14 +521,6 @@ per-device rollback cookie. `routes.ts` lists the new-only routes, and `src/prox
 ordinary 404 for them to anyone on the classic work mode. Pages and the frame hide links with
 `useWorkModeRouteVisible()` and `NewWorkModeOnly` from `src/components/work-mode-launch/`.
 Restyled existing pages are not gated: they ship to everyone.
-
-**Live version switch.** `src/lib/live-version/` lets testers (the administrator, the
-`work_mode_preview` app-metadata flag or `WORK_MODE_PREVIEW_USER_IDS`) use unreleased work on the
-live site. `live-version.ts` resolves Newest or Everyone's from the verified user and the
-`psychsift-live-version` cookie, `features.ts` registers each preview feature, and `server.ts`
-gives `isLivePreviewOn` and `requireLivePreview`. Components gate with `useLivePreview` and
-`LivePreview` from `src/components/live-version/`. The switch sits in Settings for testers only.
-See `docs/live-version-switch.md`.
 
 **Search my work.** `src/lib/work-search/` backs the "Search my work" header icon on the staff
 modes (declared per mode as `workSearch: true` in `app-modes.ts`). `items.ts` maps each area's own
@@ -579,8 +580,14 @@ Limits come only from `mhaTimers` (`src/lib/on-call/mha-timers.ts`), so a countd
 the signed switch is on (a passed limit is red); otherwise the owner-approved quote-only lines from
 the form-page Timeline. Every limit, countdown or not, carries the Act's own words and a
 section-labelled link to the Act (the hazard-analysis control). `/psychiatry/*` are information
-pages, so the clock page has no shared composer. The page also copies the running clocks for handover (form and made-at time
-only) and offers Undo after a removal. Linked from the hub's "For a shift" list on Ask and Tools.
+pages, so the clock page has no shared composer. The page also copies the running clocks for handover (each form's code
+and name, made-at time, and the limits the page already shows — a signed-off countdown's end as a Perth time,
+otherwise the not-calculated line; never time left) and offers Undo after a removal. Linked from the hub's "For a
+shift" list on Ask and Tools. The same page is also Clinical Forms' **Clock** tab at `/forms/clock` (breadcrumb
+"Forms"): Forms has three tabs — Forms (`/forms/search`), Clock and Act (`/forms/act`) — registered in
+`src/lib/mode-secondary-navigation.ts`; the shell draws the bar on the list, and Clock and Act (information pages)
+mount it themselves through `src/components/forms/forms-mode-nav.tsx`. Both clock routes read their form list
+from `src/lib/psychiatry-hub/mha-clock-forms.ts` on the server.
 The hub and the clock page are drawn with the flat list parts in
 `src/components/psychiatry/psychiatry-flat.tsx`.
 
@@ -785,14 +792,15 @@ age-and-sex readings; it leans towards a false alarm).
   like one are left out of every file and copy. The device keeps the files made (when, row count,
   activity ids) and which were marked added, under `psychsift:cpd:cpd-home-v1`
   (`CPD_HOME_SEND_STORAGE_KEY`). Linked from Summary (`CpdHomeEntryLink` in `cme-annual-summary.tsx`).
-- `/cme/applications` (`src/components/cme/applications/applications-page.tsx`, season rail and
+- `/admin/applications` (moved from `/cme/applications` on 11 Oct 2026, which now redirects; the page lives in Admin's
+  More under Work and leave; `src/components/cme/applications/applications-page.tsx`, season rail and
   referees, over `src/lib/cme/applications.ts`) is the doctor's plan for one recruitment season. **No
   recruitment date is built in**: every date is one the doctor typed from the advert, and a stage
   without one says "Date not added". Referees keep a colleague's name, role, status and a short dated
   history. The server page reads only the sign-in state. Kept under `psychsift:cpd:applications-v1`
   (`CPD_APPLICATIONS_STORAGE_KEY`). Linked from Summary (`ApplicationsEntryLink`) and the CPD home's
   Today card (`ApplicationsTodayCard` in `cme-dashboard.tsx`).
-- `/cme/applications/cv` (`applications-cv-page.tsx` over `src/lib/cme/applications-cv.ts`) builds a
+- `/admin/applications/cv` (old `/cme/applications/cv` redirects; `applications-cv-page.tsx` over `src/lib/cme/applications-cv.ts`) builds a
   CV only from records PsychSift already holds: the registration renewal date from Admin, terms from
   Teaching's term tracker, teaching given and attended and registrars supervised (the Teaching
   `teach`, logbook and `supervision` reads), CPD hours and outcome work (all years, loaded on the

@@ -160,7 +160,8 @@ describe("MyDayPage", () => {
 
   it("runs the sources in a local demo build with no sign-in configured", () => {
     auth.status = "unconfigured";
-    setState({ items: [item("a", "soon")] });
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
+    setState({ items: [item("a", "info")] });
     render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
     expect(screen.queryByTestId("my-day-signed-out")).toBeNull();
@@ -276,8 +277,9 @@ describe("MyDayPage", () => {
   });
 
   it("names failed sources, keeps the rest, and retries on click", () => {
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
     setState({
-      items: [item("a", "soon")],
+      items: [item("a", "info")],
       sources: readySources.map((source) =>
         source.mode === "roster" || source.mode === "cme" ? { ...source, status: "failed" as const } : source,
       ),
@@ -305,11 +307,12 @@ describe("MyDayPage", () => {
   });
 
   // Demo data is shown only in a local demo build with no sign-in ("unconfigured").
-  it("says when the data is example data, in a local demo build", () => {
+  it("draws no example notice in a local demo build", () => {
     auth.status = "unconfigured";
-    setState({ demoMode: true, items: [item("a", "soon")] });
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
+    setState({ demoMode: true, items: [item("a", "info")] });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-demo-notice").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-demo-notice")).toBeNull();
     expect(screen.getByTestId("my-day-item-a")).toBeTruthy();
   });
 
@@ -325,7 +328,7 @@ describe("MyDayPage", () => {
       ),
     });
     render(<MyDayPage now={NOW} />);
-    expect(screen.getByTestId("my-day-small-print").textContent).toBe("Example data: made up to look around.");
+    expect(screen.queryByTestId("my-day-small-print")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-notice")).toBeNull();
     expect(screen.queryByTestId("my-day-unavailable-other-notice")).toBeNull();
   });
@@ -333,7 +336,8 @@ describe("MyDayPage", () => {
   it("never shows a signed-in reader items from a source that answered with sample data", () => {
     setState({
       demoMode: true,
-      items: [item("a", "soon", { mode: "cme" }), item("b", "soon")],
+      // "b" is info, so the flag card (overdue or soon only) leaves it in Needs you.
+      items: [item("a", "soon", { mode: "cme" }), item("b", "info")],
       sources: readySources.map((source) => (source.mode === "cme" ? { ...source, sample: true } : source)),
     });
     const { rerender } = render(<MyDayPage now={NOW} />);
@@ -347,12 +351,15 @@ describe("MyDayPage", () => {
   // Design review 2026-10-03, item 1: the full list has its own address, so the
   // phone's Back returns to the dashboard instead of leaving My Day.
   it("opens the full list at its own address and steps back to the dashboard", () => {
-    setState({ items: [item("a", "overdue"), item("b", "soon"), item("c", "soon"), item("d", "info")] });
+    // "a" leads the flag card, so Needs you lists b, c and e, and d is only in the full list.
+    setState({
+      items: [item("a", "overdue"), item("b", "soon"), item("c", "soon"), item("e", "soon"), item("d", "info")],
+    });
     const { rerender } = render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
     expect(screen.queryByTestId("my-day-item-d")).toBeNull();
     const before = window.history.length;
-    openAll("See all 4", rerender);
+    openAll("See all 5", rerender);
     expect(window.history.length).toBe(before + 1);
     expect(screen.getByTestId("my-day-full-list")).toBeTruthy();
     expect(screen.getByTestId("my-day-item-d")).toBeTruthy();
@@ -460,7 +467,8 @@ describe("MyDayPage", () => {
           },
         ]),
       );
-      setState({ items: [item("a", "soon")] });
+      // Info, so the flag card (overdue or soon only) leaves "a" in Needs you beside the reminder.
+      setState({ items: [item("a", "info")] });
       render(<MyDayPage now={NOW} />);
       const card = screen.getByTestId("my-day-card-needs-you");
       expect(within(card).getByTestId("my-day-item-remind:r1").textContent).toContain("Reminders");
@@ -499,7 +507,8 @@ describe("MyDayPage", () => {
   // so My Day never says nothing needs you before the feed has looked.
   it("keeps the skeleton until Needs you's feed has answered", () => {
     readerLoaded.current = false;
-    setState({ items: [item("a", "soon")] });
+    // Info, so the flag card (overdue or soon only) leaves the row in Needs you.
+    setState({ items: [item("a", "info")] });
     const { rerender } = render(<MyDayPage now={NOW} />);
     expect(screen.getByTestId("my-day-loading")).toBeTruthy();
     expect(screen.queryByTestId("my-day-ready")).toBeNull();
@@ -514,7 +523,12 @@ describe("MyDayPage", () => {
     render(<MyDayPage now={NOW} />);
     const empty = screen.getByTestId("my-day-empty");
     expect(empty.textContent).toContain("Nothing needs you right now");
-    expect(empty.textContent).toMatch(/Checked .* at \d{2}:\d{2}\./);
+    // The all-clear and when it checked are one line, said once (Work mode simplify plan, 12 Oct 2026).
+    const stamp = screen.getByTestId("my-day-stamp");
+    expect(empty.contains(stamp)).toBe(true);
+    // Ward Flow review item 5: the line says how old the data is, not only the clock time.
+    expect(stamp.textContent).toContain("Updated just now");
+    expect(screen.getAllByText(/Updated just now/)).toHaveLength(1);
   });
 
   it("names only the modes that were checked, and never says nothing needs you while one failed", () => {
@@ -527,9 +541,11 @@ describe("MyDayPage", () => {
     const empty = screen.getByTestId("my-day-empty");
     expect(empty.textContent).toContain("Nothing found in the sources that loaded");
     expect(empty.textContent).not.toContain("Nothing needs you right now");
-    expect(empty.textContent).toContain("On Call");
-    expect(empty.textContent).toContain("Teaching");
-    expect(empty.textContent).not.toContain("Roster");
+    // The stamp under the card names what was checked; the card does not repeat it.
+    const stamp = screen.getByTestId("my-day-stamp").textContent ?? "";
+    expect(stamp).toContain("On Call");
+    expect(stamp).toContain("Teaching");
+    expect(stamp).not.toContain("Roster,");
     // Design review item 10: the "Read-only…" footer line is gone; with nothing
     // unavailable and no demo data there is no small print at all.
     expect(screen.queryByTestId("my-day-footer")).toBeNull();

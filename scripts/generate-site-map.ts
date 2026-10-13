@@ -89,6 +89,8 @@ const documentedRedirectTargets: Record<string, string> = {
   // for the same reason as the entries above it: the target is computed, not a
   // string literal the `redirect("…")` regex can read.
   "/medications": "/?mode=prescribing",
+  // The target is computed from the current route, so pin it here for route discovery.
+  "/my-work": "/admin",
 };
 
 const routeDescriptions: Record<string, string> = {
@@ -117,7 +119,8 @@ const routeDescriptions: Record<string, string> = {
   "/differentials/presentations/[slug]": "Presentation comparison workflow.",
   "/documents": "Documents mode home and source document library surface.",
   "/documents/[id]": "Document viewer/detail page.",
-  "/documents/search": "Documents search command centre.",
+  "/documents/search":
+    "Documents search entry. Opened bare it shows a short prompt; a submitted search (`?q=…&run=1`) shows its results in the shared search shell.",
   "/documents/source": "Compatibility redirect to the canonical live document viewer when a valid id is supplied.",
   "/documents/source/evidence": "Compatibility redirect sharing the canonical live document viewer handoff.",
   "/dsm": "DSM-5 Diagnosis home.",
@@ -147,7 +150,8 @@ const routeDescriptions: Record<string, string> = {
   "/medications/[slug]": "Medication detail.",
   "/privacy": "Public privacy and data-processing transparency notice; governance approval pending.",
   "/reference/colour-coding": "Clinical domain and category colour-coding palette reference.",
-  "/safety-plan": "Patient safety plan generator (Stanley-Brown six steps) — a Tools-page clinical tool.",
+  "/safety-plan":
+    "Patient safety plan generator (Stanley-Brown six steps), inside the search shell under Psychiatry; opened from the Psychiatry page's For a shift row.",
   "/services": "Services home and search surface.",
   "/services/[slug]": "Registry-backed service detail.",
   "/services/search":
@@ -214,9 +218,9 @@ const routeDescriptions: Record<string, string> = {
   "/on-call/whos-on/roster": "Who is on today from the team roster, names and shift kind only, with no phone numbers.",
   "/cme/cpd-home":
     "Prepare the year's CPD log to add to AMA CPD Home by file or copy. The CPD Home import format has not been checked.",
-  "/cme/applications":
+  "/admin/applications":
     "Job applications season: the doctor's own applications, typed season dates and referee status, kept on the device.",
-  "/cme/applications/cv": "A CV draft built from the doctor's CPD, teaching and terms, to copy or print.",
+  "/admin/applications/cv": "A CV draft built from the doctor's CPD, teaching and terms, to copy or print.",
   "/my-day/profile/agreement":
     "Ask the agreement: rest and hours questions answered with the verified clause 15 text of the WA Health AMA agreement, not yet signed off. Anything else is marked not checked.",
   "/teaching/term/folder":
@@ -225,6 +229,8 @@ const routeDescriptions: Record<string, string> = {
   "/my-work": "Compatibility redirect to `/admin`, carrying the query string.",
   "/my-day/week":
     "My Day Week: the next seven Perth days, one list per day, gathering your roster shifts, teaching sessions, CPD routines and dated My Day items. No search surface.",
+  "/my-day/calendar":
+    "My Day Calendar: one full-size month of everything dated in Work mode (shifts, leave, rotations, booked courses, teaching, CPD and Admin dates), each item linking to its own page. On for everyone. No search surface.",
   "/my-day/hours":
     "My Day Hours: your rostered hours this week and this fortnight and your next leave, from Roster's own hours helpers. No search surface.",
   "/my-day/profile":
@@ -298,14 +304,13 @@ const routeDescriptions: Record<string, string> = {
     "The activities done on a regular schedule, such as monthly or by term, and when each is next due. A Log control opens the new-entry form prefilled from the routine.",
   "/cme/training":
     "The trainee's own training timeline: stages, rotations and breaks they enter themselves, where they are now, the training clock in FTE months (half-time counts half, breaks pause it) and the next milestone due. Nothing is preloaded, and it never changes CPD targets.",
-  "/cme/plan":
-    "The yearly development plan screen. Not yet built in this phase — the page says so plainly, and offers logging the time spent writing the plan as an activity so the hours still count toward the year.",
+  "/cme/plan": "The yearly development plan: your goals for the year and how the year's hours fall across them.",
   "/cme/learning":
     "A curated list of upcoming Western Australian courses and events, read from a checked-in data file. Past events drop off by today's Perth date, items with unconfirmed dates sit in their own section, and each item links to the organiser and to a prefilled Log as CPD form.",
   "/cme/programme":
-    "The requirement targets confirmed for this year — hours required in each category — and the source document they were confirmed against.",
+    "Bookmark only: forwards to Set up, which shows and edits the year's requirement targets (the year carries across).",
   "/cme/setup":
-    "The one-time setup checklist: confirm this year's requirement targets, set up routines, and the other steps this phase has not built yet.",
+    "Set up: the few things to do once so the mode runs itself, including confirming this year's requirement targets (hours required in each category) and their source. Also serves the old Programme bookmark.",
   "/cme/customise":
     "Choose which modules show on the CPD dashboard below the hours, pace and next-action rows, and reorder them with up/down controls that work as well from a keyboard as from a pointer.",
   "/tools": "Clinical tools and applications launcher directory.",
@@ -386,7 +391,7 @@ const routeOwnershipRows = [
   ["Therapy Compass", "src/app/(search-app)/therapy-compass, src/lib/therapies.ts"],
   ["Factsheets", "src/app/(search-app)/factsheets, src/components/factsheets"],
   ["Dictionary", "src/app/(search-app)/dictionary, src/lib/dictionary.ts"],
-  ["Safety Plan", "src/app/safety-plan, src/components/patient-safety-plan.tsx"],
+  ["Safety Plan", "src/app/(search-app)/safety-plan, src/components/patient-safety-plan.tsx"],
   ["Privacy", "src/app/privacy"],
   [
     "Tools",
@@ -764,7 +769,7 @@ function renderModePageIndex() {
       home: appModeHomeHref("roster"),
       search: appModeHomeHref("roster"),
       detail:
-        'No results page — `resultsSurface: "none"`, like On Call. `/roster` Today dashboard, `/roster/shifts` full schedule and month calendar, `/roster/calendar` feed subscribe, and `/roster/settings`.',
+        'No results page — `resultsSurface: "none"`, like On Call. `/roster` Shifts, `/roster/shifts` full schedule and month calendar, `/roster/swaps` Swaps & leave (with `/roster/requests`), `/roster/team`, `/roster/settings` and `/roster/today` Today dashboard; plus `/roster/manage` (managers only), `/roster/join` (invite), `/roster/rotations`, `/roster/staffing`, `/roster/sick`, and `/roster/calendar` (teaching sessions and expiry dates, shown by the On Call calendar page under this address).',
     },
     {
       mode: "Open shifts",
@@ -802,7 +807,7 @@ function renderDocumentFlowIndex() {
     bullet(DOCUMENTS_MODE_HOME_ROUTE, "Redirects to the shared home with Documents preselected (consolidated mode)."),
     bullet(
       documentsSearchHref({ query: "clozapine monitoring table", focus: true, run: true }),
-      "Documents search command centre used after submitting a search in Documents mode.",
+      "Documents search results, shown in the shared search shell after a search is submitted in Documents mode.",
     ),
     bullet(
       "/documents/source?id=11111111-1111-4111-8111-111111111111&page=12&chunk=monitoring-table",

@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 type EvalSummary = Record<string, unknown>;
 
@@ -270,7 +270,7 @@ function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   try {
     main();
   } catch (error) {

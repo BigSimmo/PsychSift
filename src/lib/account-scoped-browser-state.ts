@@ -33,7 +33,6 @@
  */
 
 import { sweepAccountDeviceData } from "@/lib/account-device-sweep";
-import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
 import { WORK_MODE_PREFERENCE_COOKIE } from "@/lib/work-mode-launch/launch";
 
 export const ACCOUNT_TRANSITION_EVENT = "clinical-kb-account-transition";
@@ -133,6 +132,14 @@ export const PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY = "psychsift:psychiatry:mha-clock
  * searches" is on, cleared with recent searches.
  */
 export const MEDICINES_RECENT_STORAGE_KEY = "psychsift:medicines:recent-v1";
+/**
+ * localStorage — the "Recent pages" list shared by Work and Clinical (side menu, AI Search and the
+ * Clinical mode homes' Continue): a page's path without its query, the page's own title, its mode
+ * and section, and a time. Record and area pages only, never a search, a draft, call notes, a
+ * handover or an MHA clock; recorded only while "Save recent searches" is on, cleared with recent
+ * searches.
+ */
+export const RECENT_PAGES_STORAGE_KEY = "psychsift:recent-pages-v1";
 /**
  * localStorage — Teaching's term tracker: the doctor's own term dates, assessment due dates, EPA
  * counts, learning goals and "to raise" notes. Backed up to the account in `work_backups`
@@ -237,10 +244,8 @@ function removeQuietly(storage: () => Storage, key: string): void {
  */
 export function clearAccountScopedBrowserStorage(): void {
   if (typeof window === "undefined") return;
-  // Cookie — the live version switch (src/lib/live-version): a tester's choice of version only.
+  // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
   try {
-    document.cookie = `${LIVE_VERSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
-    // Cookie — the classic or new work view choice: the person's, so the next person starts on the default.
     document.cookie = `${WORK_MODE_PREFERENCE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
   } catch {
     // No document (a worker) or cookies blocked: nothing was set.
@@ -282,6 +287,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, PSYCHIATRY_VISITS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, PSYCHIATRY_MHA_CLOCKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, MEDICINES_RECENT_STORAGE_KEY);
+  removeQuietly(() => window.localStorage, RECENT_PAGES_STORAGE_KEY);
   removeQuietly(() => window.localStorage, REMIND_ME_STORAGE_KEY);
   removeQuietly(() => window.localStorage, BELL_PHONE_QUEUE_STORAGE_KEY);
   removeQuietly(() => window.localStorage, TEACHING_TERM_TRACKER_STORAGE_KEY);

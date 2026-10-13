@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, CalendarDays, Search, Star } from "lucide-react";
+import { Award, Search, Star } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -10,7 +10,6 @@ import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import {
-  examPrepRow,
   filterResources,
   resourceTypeWords,
   resourceWriteError,
@@ -34,9 +33,7 @@ import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
 import { teachingPost } from "@/lib/teaching/client";
 import type { CollectionRead, ResourceRow, ResourcesForWeek, TeamSummary } from "@/lib/teaching/model";
-import { sampleExamPrep } from "@/lib/teaching/term-tracker";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
-import { useExamPrepStore } from "@/lib/teaching/term-tracker-store";
 import {
   useSignedOutSampleRead,
   useTeachingDemoMode,
@@ -46,7 +43,7 @@ import {
 const itemCount = (n: number) => withUnit(n, n === 1 ? "item" : "items");
 
 /**
- * Resources (spec §5a), in the approved v5 mock-up's order: the filter, this week's materials, My exam prep,
+ * Resources (spec §5a), in the approved v5 mock-up's order: the filter, this week's materials,
  * recordings, collections, saved items, then the way to CPD's learning directory, which lives there and is
  * never copied here. This week's recordings sit under Recordings, not twice. The catch-up list of ended
  * sessions with no check-in recorded (`#catch-up`, which Today links to) follows Saved, and only when it has
@@ -82,8 +79,6 @@ export function TeachingResources({
   const [filter, setFilter] = useState("");
   const [creating, setCreating] = useState(false);
   const today = now ? perthDateKey(now) : null;
-  const examSample = useMemo(() => (demoMode && today ? sampleExamPrep(today) : null), [demoMode, today]);
-  const examPrep = useExamPrepStore(examSample);
   const extras = useResourceExtras(signedOut, Boolean(monday));
   // Master plan R19: organisers only. `collection.save` refuses an admin who does not organise.
   const organised = teams.filter((candidate) => !sampleData && candidate.role === "organiser");
@@ -162,7 +157,6 @@ export function TeachingResources({
     );
     // The server's totals cover every service; with one service chosen, count what is shown.
     const allTeams = team === ALL_TEAMS;
-    const exam = today ? examPrepRow(examPrep.state, today) : null;
     body = (
       <>
         <label className="mt-3 flex min-h-12 items-center gap-2 rounded-md bg-[color:var(--surface-inset)] px-3 text-[color:var(--text-muted)] focus-within:outline-2 focus-within:outline-[color:var(--focus)]">
@@ -196,19 +190,6 @@ export function TeachingResources({
             </T5Meta>
           )}
         </T5Section>
-        {exam && !needle ? (
-          <T5Section label="My exam prep">
-            <T5List ruled>
-              <T5Row
-                title={exam.title}
-                meta={exam.meta}
-                lead={<T5Icon icon={CalendarDays} />}
-                href="/teaching/exam-prep"
-                testId="teaching-resources-exam-prep"
-              />
-            </T5List>
-          </T5Section>
-        ) : null}
         <T5Section
           label={`Recordings · ${allTeams ? data.recordingsCount : recordings.length}`}
           right={<T5Link href="/teaching/resources/recordings">All</T5Link>}

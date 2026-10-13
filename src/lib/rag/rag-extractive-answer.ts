@@ -30,7 +30,6 @@ import {
   analyzeClinicalQuery,
   classifyRagQuery,
   hasForeignThresholdLabel,
-  medicationMonitoringQuerySubjects,
   medicationDoseEvidenceQueryIntent,
   normalizedClinicalSearchTokens,
 } from "@/lib/clinical-search";
@@ -106,6 +105,9 @@ import {
   sourceLabelledNumericBandConflictsAffectingText,
   sourceDirectlySupportsAnswerText,
   sourceEvidenceText,
+  bulletItemsAfter,
+  toxicityActionHeadingPattern,
+  toxicityListHeadingPattern,
 } from "@/lib/rag/rag-claim-support";
 import {
   atomicNmhsClozapineRedRangeSegment,
@@ -116,15 +118,17 @@ import {
 } from "@/lib/rag/rag-source-segmentation";
 import { containsDanglingProceduralComparatorStepArtifact } from "@/lib/rag/rag-extractive-artifacts";
 
-type AnswerIntent =
-  | "dose"
-  | "contraindication"
-  | "monitoring_schedule"
-  | "red_result_action"
-  | "document_lookup"
-  | "pathway_referral"
-  | "unsupported"
-  | "general";
+import {
+  classifyAnswerIntent,
+  clinicalQuerySignalPattern,
+  isCompoundMonitoringToxicityQuery,
+  isMonitoringLevelRangeLookupQuery,
+  isToxicityFeatureQuery,
+  requestedMonitoringScheduleFacets,
+  type AnswerIntent,
+  type MonitoringFacet,
+} from "@/lib/rag/rag-answer-intent";
+export { classifyAnswerIntent };
 
 type ExtractedClinicalFactKind =
   | "bottom_line"
@@ -142,17 +146,6 @@ type ExtractedClinicalFact = {
   citationChunkIds: string[];
   priority: number;
 };
-
-type MonitoringFacet =
-  | "baseline"
-  | "level_range"
-  | "sample_timing"
-  | "after_change"
-  | "stable_monitoring"
-  | "steady_state"
-  | "ongoing"
-  | "higher_risk"
-  | "other";
 
 const extractiveLabelPattern =
   /\b(?:Medication point|Table evidence|Threshold\/action|Risk\/escalation|Workflow step|Section summary|Source point|Dose detail|Monitoring)\s*:\s*/gi;
@@ -198,7 +191,7 @@ function rewriteLeadingHeadingContext(value: string) {
     if (structuralHeadingStoplistPattern.test(label)) return match;
     if (advisoryHeadingPattern.test(label)) return match;
     if (directiveHeadingPattern.test(label)) return match;
-    if (/\b[A-Z]{2,}\b/.test(label)) return match;
+    if (/\b[A-Z]{2,}s?\b/.test(label)) return match;
     return `For ${label.toLowerCase()}, `;
   });
 }
@@ -450,84 +443,6 @@ function asksForEscalationTrigger(query: string) {
   );
 }
 
-const narrativeMonitoringRangeContextPattern =
-  /\b(?:adult\s+)?age\s+ranges?\b|\branges?\s+of\s+(?:baseline\s+)?(?:tests?|checks?|monitoring|ages?)\b/i;
-const explicitMonitoringLevelValueLookupPattern =
-  /\b(?:therapeutic|target|trough|serum|plasma|maintenance)\s+(?:levels?|ranges?|concentrations?)\b|\b(?:levels?|ranges?|concentrations?)\s+(?:is|are)\s+(?:used|recommended|targeted|maintained)\b|\blevels?\s+ranges?\b/i;
-
-function isMonitoringLevelRangeLookupQuery(query: string) {
-  if (narrativeMonitoringRangeContextPattern.test(query)) return false;
-  const hasExplicitDoseCue = /\b(?:dose|doses|dosing|dosage)\b/i.test(query);
-  const hasExplicitMeasuredLevelCue = /\b(?:serum|plasma|trough|levels?|concentrations?)\b/i.test(query);
-  if (hasExplicitDoseCue && !hasExplicitMeasuredLevelCue) return false;
-  if (
-    /\b(?:therapeutic\s+)?(?:dose|dosing|dosage)\s+ranges?\b|\branges?\s+(?:of|for)\s+(?:the\s+)?(?:dose|dosing|dosage)\b/i.test(
-      query,
-    )
-  ) {
-    return false;
-  }
-  if (explicitMonitoringLevelValueLookupPattern.test(query)) return true;
-  return medicationMonitoringQuerySubjects(query).length > 0 && /\branges?\b/i.test(query);
-}
-
-/** Classify answer intent. */
-export function classifyAnswerIntent(query: string, queryClass: RagQueryClass): AnswerIntent {
-  const normalized = normalizeSectionText(query).toLowerCase();
-  if (!normalized) return "unsupported";
-  if (
-    /\b(?:what|which|list|show|find)\s+(?:documents?|sources?|guidelines?|files?)\b.*\b(?:support|cover|contain|for|about)\b/.test(
-      normalized,
-    ) ||
-    /\b(?:documents?|sources?|guidelines?|files?)\s+(?:support|cover|contain|for|about)\b/.test(normalized)
-  ) {
-    return "document_lookup";
-  }
-  if (/\b(?:contraindicat\w*|avoid|do not use|must not|should not|not use|opioid[-\s]?free)\b/.test(normalized)) {
-    return "contraindication";
-  }
-  const hasResultActionSignal =
-    /\b(?:red|amber|green|anc|fbc|wbc|result|results|threshold|withhold|cease|stop|stopped|toxicity)\b/.test(
-      normalized,
-    ) || /\b(?:what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/.test(normalized);
-  const hasScheduleSignal =
-    /\b(?:monitor|monitoring|schedule|baseline|follow[-\s]?up|level|levels|test|tests)\b/.test(normalized) ||
-    isMonitoringLevelRangeLookupQuery(normalized);
-  if (hasScheduleSignal && isCompoundMonitoringToxicityQuery(normalized)) return "monitoring_schedule";
-  // Toxicity and explicit action queries take priority over monitoring even if schedule/baseline/follow-up terms appear.
-  const hasStrongResultSignal =
-    /\b(?:toxicity|what\s+action|action\s+is\s+required|required\s+action|suspected\s+\w+\s+toxicity)\b/.test(
-      normalized,
-    );
-  if (
-    hasResultActionSignal &&
-    (!/\b(?:schedule|baseline|follow[-\s]?up)\b/.test(normalized) || hasStrongResultSignal)
-  ) {
-    return "red_result_action";
-  }
-  if (hasScheduleSignal) {
-    return "monitoring_schedule";
-  }
-  if (hasResultActionSignal) return "red_result_action";
-  if (/\b(?:doses?|dosing|dosage|max(?:imum)?|mg|mcg|renal|eGFR|creatinine)\b/i.test(query)) return "dose";
-  if (/\b(?:pathway|refer|referral|criteria|ect|electroconvulsive)\b/.test(normalized)) return "pathway_referral";
-  // Retrieval classification and answer intent are different concerns. A
-  // document_lookup route can still ask for the document's clinical content
-  // (for example, "What should a safety plan include?"). Treat it as a source
-  // lookup only when the wording explicitly asks to find/open/select a source;
-  // otherwise the extractive path must select responsive clinical facts rather
-  // than reference-list lines that merely mention a guideline or procedure.
-  if (
-    /\b(?:find|show|open|which)\b.*\b(?:document|guideline|procedure|policy|protocol|form|source|file)\b/.test(
-      normalized,
-    )
-  ) {
-    return "document_lookup";
-  }
-  if (queryClass === "unsupported_or_general" && !clinicalQuerySignalPattern.test(query)) return "unsupported";
-  return "general";
-}
-
 /** Query entity tokens. */
 function queryEntityTokens(query: string, intent: AnswerIntent) {
   const tokens = extractiveQueryTokens(query).filter((token) => !answerIntentTerms.has(token));
@@ -542,6 +457,15 @@ function queryEntitySubject(query: string, intent: AnswerIntent) {
   // monitored. Prefer the one explicit medicine over the first residual token.
   const medicines = medicationEntitiesInText(query);
   if (intent === "monitoring_schedule" && medicines.length === 1) return medicines[0];
+  // A leading verb ("prescribe", "make") is never the subject. When the query
+  // names a medicine, use it rather than printing "For prescribe, …" (#ZZ4RAP).
+  if (
+    medicines.length > 0 &&
+    tokens[0] &&
+    !medicines.includes(tokens[0]) &&
+    !medicationEntitiesInText(tokens[0]).length
+  )
+    return medicines[0];
   return tokens[0];
 }
 
@@ -559,6 +483,10 @@ function queryIntentTokens(query: string, intent: AnswerIntent) {
   if (intent === "monitoring_schedule") return uniqueAnswerTokens(["monitoring", ...tokens]);
   if (intent === "red_result_action")
     return uniqueAnswerTokens(["red", "range", "blood", "result", "results", "threshold", "action", ...tokens]);
+  // An interaction question ("ibuprofen for someone on lithium") is answered by
+  // avoid-the-combination prose that never says "contraindication" (#ZZ4RAP).
+  if (intent === "contraindication" && medicationEntitiesInText(query).length >= 2)
+    return uniqueAnswerTokens(["contraindication", "avoid", "combination", "together", ...tokens]);
   if (intent === "contraindication") return uniqueAnswerTokens(["contraindication", ...tokens]);
   if (intent === "pathway_referral") return uniqueAnswerTokens(["referral", "criteria", ...tokens]);
   return tokens;
@@ -1007,7 +935,7 @@ export function splitClinicalEvidenceSentences(value: string) {
     ),
     { joiner: "\n" },
   )
-    .split(/\r?\n+|(?<=[.!?])\s+|\s+[•]\s+|\s+\|\s+/)
+    .split(/\r?\n+|(?<=[.!?])(?<!\b[Ee]\.[Gg]\.|\b[Ii]\.[Ee]\.)\s+|\s+[•]\s+|\s+\|\s+/)
     .map((fragment) => fragment.trim())
     .filter(Boolean);
   const merged: string[] = [];
@@ -1582,11 +1510,63 @@ function baselineMonitoringFactFromResult(
   };
 }
 
+const wordsOf = (text: string) => (text.toLowerCase().match(/[a-z0-9]+/g) ?? []).join(" ");
+
+// A heading such as "Signs and symptoms of severe toxicity:" carries its toxicity context to the
+// bullets listed under it, up to the next colon-led heading (owner decision, #ZZ4RAP).
+const cleanToxicityHeading = (line: string) =>
+  // "…contributors to lithium toxicity are4:" → "…contributors to lithium toxicity".
+  line
+    .replace(/^[\s•]+/, "")
+    .replace(/\s*\d*\s*:\s*$/, "")
+    .replace(/\s+(?:include|includes|are|is)(?:\s+the\s+following)?\s*\d*$/i, "")
+    .trim();
+
+/**
+ * A toxicity list heading ("Signs and symptoms of severe toxicity:") stated with the bullets listed
+ * under it: "Signs and symptoms of severe toxicity include increased muscle tone, …". Null when the
+ * sentence is not such a heading, the heading is an action heading, or it names another severity.
+ */
+export function toxicityListSentences(sentence: string, content: string | null | undefined, query: string) {
+  if (!content || !/:\s*$/.test(sentence)) return null;
+  // A question about one severity ("signs of severe toxicity") takes only that severity's list.
+  const severities = query.toLowerCase().match(/\b(?:severe|mild|moderate)\b/g) ?? [];
+  const wanted = wordsOf(sentence);
+  const lines = content.split("\n");
+  for (const [index, line] of lines.entries()) {
+    if (!wanted || !wordsOf(line).endsWith(wanted)) continue;
+    if (!toxicityListHeadingPattern.test(line) || toxicityActionHeadingPattern.test(line)) return null;
+    if (severities.length > 0 && !severities.some((severity) => line.toLowerCase().includes(severity))) return null;
+    const items = bulletItemsAfter(lines.slice(index + 1), /^\s*•/.test(line)).map((item) =>
+      item.trim().replace(/[\s.;,]+$/, ""),
+    );
+    if (items.length === 0) return null;
+    // One statement per bullet, so claim support can verify each against its heading and bullet.
+    return items.map((item) => `${cleanToxicityHeading(line)} include ${lowerFirst(item)}.`);
+  }
+  return null;
+}
+
 function bindMonitoringAnaphoricQualifiers(sentences: string[], intent: AnswerIntent) {
-  if (intent !== "monitoring_schedule") return sentences;
+  if (intent !== "monitoring_schedule" && intent !== "contraindication") return sentences;
   const bound: string[] = [];
   for (const sentence of sentences) {
     const previous = bound.at(-1);
+    if (
+      intent === "contraindication" &&
+      previous &&
+      /[.!?]$/.test(previous) &&
+      /^(?:avoid|do not (?:use|combine|co-?prescribe))\b[^.]*\b(?:the|this|that|such)\s+combinations?\b/i.test(
+        sentence,
+      ) &&
+      medicationEntitiesInText(previous).length > 0
+    ) {
+      // "Avoid the combination" names no drug. Keep it with the sentence that
+      // does ("NSAIDs (e.g. ibuprofen) can reduce lithium clearance…"), so the
+      // answer states what to avoid and claim support sees the drug (#ZZ4RAP).
+      bound[bound.length - 1] = `${previous} ${sentence}`;
+      continue;
+    }
     if (previous && /\bsteady\s+state\b/i.test(previous) && /^This may be longer\b/i.test(sentence)) {
       // Keep the source's original period and anaphora together. This retains
       // the exact two supported claims while the explicit first sentence gives
@@ -1654,6 +1634,7 @@ function extractClinicalFactsFromResults(
   const seen = new Set<string>();
   const facts: ExtractedClinicalFact[] = [];
   const usableResults = results.filter((result) => resultCoversAnswerIntent(result, query, intent));
+  const toxicityFeatureQuery = intent === "general" && isToxicityFeatureQuery(query.toLowerCase());
   const adjacentBandConflicts = adjacentLabelledNumericBandConflicts(usableResults);
 
   for (const result of usableResults) {
@@ -1743,8 +1724,17 @@ function extractClinicalFactsFromResults(
         : splitClinicalEvidenceSentences(text),
       intent,
     );
-    for (const sentence of sentences) {
-      if (referencesConflictingBand(sentence)) continue;
+    const statedLists = new Set<string>();
+    const expandedSentences = toxicityFeatureQuery
+      ? sentences.flatMap((candidate) => {
+          const listed = /:\s*$/.test(candidate) ? toxicityListSentences(candidate, result.content, query) : null;
+          listed?.forEach((statement) => statedLists.add(statement));
+          return listed ?? [candidate];
+        })
+      : sentences;
+    for (const rawSentence of expandedSentences) {
+      if (referencesConflictingBand(rawSentence)) continue;
+      const sentence = rawSentence;
       if (
         labelledTargetFacts.length > 1 &&
         (/(?:^|:\s*)Target\s+(?:serum|plasma)\s+level\s*:/i.test(sentence) ||
@@ -1752,11 +1742,18 @@ function extractClinicalFactsFromResults(
       ) {
         continue;
       }
+      // A toxicity-features question is answered only by text about toxicity; a dose cap or
+      // titration note from the same chunk is not an answer to it (#ZZ4RAP).
+      // A colon-led lead-in ("…complete the following:") introduces a list and is not itself an answer;
+      // toxicity list headings were already stated with their bullets above (owner decision).
+      if (toxicityFeatureQuery && (/:\s*$/.test(sentence) || !/\btoxic\w*/i.test(sentence))) continue;
       if (!factSentenceMatchesQueryFromResult(sentence, result, query, intent)) continue;
       const kind = factKindForSentence(sentence, query, intent);
       if (!kind) continue;
       if (!factSupportsAnswerIntent(kind, sentence, query, intent, sourceProseOnly)) continue;
-      const cleaned = sentence.length <= 280 ? sentence : `${sentence.slice(0, 277).trim()}...`;
+      // A stated toxicity list is never cut mid-list.
+      const cleaned =
+        sentence.length <= 280 || sentence !== rawSentence ? sentence : `${sentence.slice(0, 277).trim()}...`;
       const key = `${kind}:${normalizeSectionText(cleaned).toLowerCase().slice(0, 160)}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -1806,7 +1803,7 @@ export function sentenceFromFact(
 /** Lower first. */
 function lowerFirst(value: string) {
   if (!value) return value;
-  if (/^[A-Z][A-Z0-9&+-]{1,}\b/.test(value)) return value;
+  if (/^[A-Z][A-Z0-9&+-]{1,}s?\b/.test(value)) return value;
   return `${value.charAt(0).toLowerCase()}${value.slice(1)}`;
 }
 
@@ -1917,44 +1914,6 @@ function isBroadMonitoringOverviewQuery(query: string) {
     /\b(?:what|which|list|summari[sz]e|overview)\b[^?]{0,100}\bmonitor(?:ing)?\b/.test(normalized) ||
     /\bmonitor(?:ing)?\b[^?]{0,100}\b(?:required|needed|used|include\w*|involve\w*)\b/.test(normalized)
   );
-}
-
-function requestedMonitoringScheduleFacets(query: string) {
-  const normalized = normalizeSectionText(query).toLowerCase();
-  const facets = new Set<MonitoringFacet>();
-  if (/\bbaseline\b|\bpre[-\s]?treatment\b|\bbefore\s+(?:starting|commencing)\b/.test(normalized)) {
-    facets.add("baseline");
-  }
-  if (/\b(?:sample|sampling|post[-\s]?dose|last\s+dose|trough)\b/.test(normalized)) {
-    facets.add("sample_timing");
-  }
-  if (/\b(?:target|targets|therapeutic\s+(?:level|levels|range|ranges))\b/.test(normalized)) {
-    facets.add("level_range");
-  }
-  if (/\b(?:after|following)\b[^?]{0,60}\b(?:dose\s+changes?|chang\w*\s+(?:the\s+)?dose)\b/.test(normalized)) {
-    facets.add("after_change");
-  }
-  if (/\b(?:stable\s+treatment|once\s+stable|maintenance\s+monitoring)\b/.test(normalized)) {
-    facets.add("stable_monitoring");
-  }
-  if (/\b(?:higher[-\s]?risk|high[-\s]?risk|renal\s+impairment|closer\s+monitoring)\b/.test(normalized)) {
-    facets.add("higher_risk");
-  }
-  return facets;
-}
-
-/** A schedule overview that also explicitly asks for toxicity actions. */
-function isCompoundMonitoringToxicityQuery(query: string) {
-  const normalized = normalizeSectionText(query).toLowerCase();
-  const asksForScheduleOverview =
-    /\bmonitor(?:ing)?\s+schedule\b|\b(?:detailed|complete|comprehensive)\b[^?]{0,80}\bmonitor(?:ing)?\b/.test(
-      normalized,
-    );
-  const asksForToxicityAction =
-    /\bactions?\b[^?]{0,60}\b(?:suspected\s+)?toxicity\b|\b(?:suspected\s+)?toxicity\b[^?]{0,60}\bactions?\b/.test(
-      normalized,
-    );
-  return asksForScheduleOverview && asksForToxicityAction && requestedMonitoringScheduleFacets(normalized).size >= 2;
 }
 
 function monitoringFacetForFact(fact: ExtractedClinicalFact): MonitoringFacet {
@@ -2304,8 +2263,12 @@ export function isSourceBoundClozapineBloodActionThresholdQuery(query: string, q
   return (
     queryClass === "table_threshold" &&
     namesClozapine &&
-    /\b(?:fbc|full blood count|blood count|wbc|wcc|white blood cells?|neutrophils?|anc)\b/i.test(query) &&
-    /\b(?:threshold|withhold|withheld|withholding|cease|stop|stopped|discontinue|discontinued)\b/i.test(query)
+    /\b(?:fbc|full blood count|blood count|blood results?|bloods|wbc|wcc|white blood cells?|neutrophils?|anc)\b/i.test(
+      query,
+    ) &&
+    /\b(?:threshold|withhold|withheld|withholding|cease|stop|stopped|discontinue|discontinued|red[-\s]range|red result)\b/i.test(
+      query,
+    )
   );
 }
 
@@ -2776,7 +2739,10 @@ function isAtomicNmhsClozapineRedRangeSource(result: SearchResult) {
 function buildClozapineBloodActionThresholdAnswer(args: { query: string; results: SearchResult[] }) {
   const source = args.results.find(isAtomicNmhsClozapineRedRangeSource);
   if (!source) return null;
-  const body = "Red-range WBC <3.0 × 10⁹/L and/or neutrophils <1.5 × 10⁹/L: stop clozapine therapy immediately.";
+  // The source row pairs the stop with "Contact haematologist and Clozapine Monitoring Centre";
+  // dropping it lost the escalation step from the red-range answer (#ZZ4RAP).
+  const body =
+    "Red-range WBC <3.0 × 10⁹/L and/or neutrophils <1.5 × 10⁹/L: stop clozapine therapy immediately. Contact haematologist and Clozapine Monitoring Centre.";
   return {
     answer: body,
     body,
@@ -3769,9 +3735,6 @@ function isEssentialSimpleQuestionSection(section: Pick<AnswerSection, "heading"
   );
 }
 
-const clinicalQuerySignalPattern =
-  /\b(?:lithium|clozapine|acamprosate|naltrexone|sertraline|valproate|antipsychotic|ect|bulimia|anorexia|eating disorder|dose|renal|pregnan(?:t|cy|cies)|monitor|fbc|anc|qtc|opioid|contraindicat(?:e|es|ed|ion|ions)|referral|pathway|patient|clinical|guideline|medication|medicine|prescrib(?:e|es|ed|er|ers|ing)|therapy|treatment)\b/i;
-
 /** Is clearly non clinical unsupported query. */
 function isClearlyNonClinicalUnsupportedQuery(query: string) {
   return (
@@ -3943,13 +3906,15 @@ function compoundMonitoringCoverageSatisfiesIntent(answer: RagAnswer, query: str
   return requestedFacetsCovered && toxicityCovered;
 }
 
-const openingSentenceTerminatorPattern = /[.!?]["')\]]*(?:\s|$)/;
+// "e.g." and "i.e." do not end a sentence: "contributors are interactions with drugs (e.g. NSAIDs)"
+// was cut at "(e.g." and rejected as an incomplete opening (#ZZ4RAP).
+const openingSentenceTerminatorPattern = /(?<!\b(?:e\.g|i\.e))[.!?]["')\]]*(?:\s|$)/i;
 const incompleteOpeningSentencePattern =
   /^(?:and|or|but|because|although|while|when|where|after|before|during|with|without|including|such as|then|to|recommended\s+over|alternative\s+agent|chart\s+reference|table\s+summari[sz]ing)\b/i;
 const sourceHeadingOpeningPattern =
   /^(?:appendix\s+\d+|dosage|dose|dosing|dosage and monitoring|dose table|monitoring|referral criteria|contraindications?|adverse effects?|required actions?|thresholds?|summary|overview|formulations?|available products?|product information|table|figure)\.?$/i;
 const openingSentenceActionPattern =
-  /\b(?:avoid|arrange|be|can|cannot|cease|check|contact|continue|could|discontinue|document|escalate|give|include|includes|included|increase|inform|involves|is|list|lists|may|might|monitor|must|need|needed|needs|notify|provide|provides|recommend(?:s|ed|ing|ation|ations)?|recommends|reduce|refer|repeat|report|required|requires|review|should|start|starts|stop|support|supports|use|uses|was|were|will|withhold|would)\b/i;
+  /\b(?:are|avoid|arrange|be|can|cannot|cease|check|contact|continue|could|discontinue|document|escalate|give|include|includes|included|increase|inform|involves|is|list|lists|may|might|monitor|must|need|needed|needs|notify|provide|provides|recommend(?:s|ed|ing|ation|ations)?|recommends|reduce|refer|repeat|report|required|requires|review|should|start|starts|stop|support|supports|use|uses|was|were|will|withhold|would)\b/i;
 
 /** First sentence. */
 function firstSentence(value: string) {

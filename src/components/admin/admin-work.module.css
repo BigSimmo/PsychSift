@@ -159,6 +159,7 @@
   display: inline-flex;
   align-items: center;
   gap: calc(var(--spacing) * 1.75);
+  font-family: var(--font-mono);
   font-size: var(--text-2xl-minus);
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -177,6 +178,61 @@
   color: var(--text-muted);
 }
 
+/* Coming up's tally (12 Oct 2026 simplify plan): the three counts as one hairline strip at the top of
+   the Coming up card, replacing the three separate count cards. Each third still opens Renewals filtered. */
+.tally {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--work-line, var(--border));
+}
+
+.tally > li + li {
+  border-left: 1px solid var(--work-line, var(--border));
+}
+
+.tallyItem {
+  display: grid;
+  min-height: var(--spacing-tap, calc(var(--spacing) * 12));
+  align-content: center;
+  gap: calc(var(--spacing) * 0.25);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  color: var(--text-heading);
+  text-decoration: none;
+}
+
+.tallyItem:active {
+  background: var(--surface-wash);
+}
+
+.tallyItem:focus-visible {
+  outline: 2px solid var(--mode-identity);
+  outline-offset: -2px;
+}
+
+.tallyFigure {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  font-size: var(--text-lg-minus);
+  font-weight: 600;
+  line-height: var(--work-leading-tag);
+  font-variant-numeric: tabular-nums;
+}
+
+.tallyItem[data-zero] .tallyFigure {
+  color: var(--text-muted);
+}
+
+.tallyWord {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: var(--work-leading-row-sub);
+  color: var(--text-muted);
+}
+
 /* ------------------------------------------------ the at-a-glance card */
 
 .glanceHead {
@@ -187,29 +243,40 @@
   gap: calc(var(--spacing) * 2);
 }
 
+/* Four compact tiles in one row, as Today draws its counts (audit 11 Oct 2026: the tall list took a
+   whole phone screen at 320 px). */
 .glance {
   display: grid;
-  gap: calc(var(--spacing) * 0.25);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 1.5);
   margin: calc(var(--spacing) * 1.5) 0 0;
   padding: 0;
   list-style: none;
+}
+
+.glance > li {
+  display: flex;
+  min-width: 0;
 }
 
 .glanceRow {
   display: flex;
   width: 100%;
   min-height: var(--spacing-tap, calc(var(--spacing) * 12));
+  flex-direction: column;
   align-items: center;
-  gap: calc(var(--spacing) * 2.5);
-  padding: 0 calc(var(--spacing) * 2);
-  border: 0;
+  justify-content: flex-start;
+  gap: calc(var(--spacing) * 0.5);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 1);
+  border: 1px solid var(--work-line, var(--border));
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: var(--text-sm-minus);
+  font-size: var(--text-2xs);
   font-weight: 600;
-  text-align: left;
+  text-align: center;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 
@@ -229,9 +296,8 @@
 }
 
 .glanceFigure {
-  width: calc(var(--spacing) * 6);
   flex: none;
-  text-align: right;
+  text-align: center;
   font-size: var(--text-lg-minus);
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -255,6 +321,7 @@
 /* ------------------------------------------------------ the timeline */
 
 .timeline {
+  container-type: inline-size;
   display: grid;
   gap: calc(var(--spacing) * 2);
   margin-top: calc(var(--spacing) * 2.5);
@@ -316,6 +383,28 @@
 
 .tlAxisMonths {
   display: contents;
+}
+
+/* On a narrow card (a 320 px phone) a side name column leaves the twelve months about
+   10 px each, so names clip and the month initials run together. Stack each name over
+   a full-width track instead. */
+@container (max-width: 22rem) {
+  .tlRows {
+    gap: calc(var(--spacing) * 2);
+  }
+
+  .tlRow {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: calc(var(--spacing) * 0.5);
+  }
+
+  .tlAxis {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .tlAxis > span:first-child {
+    display: none;
+  }
 }
 
 .tlLegend {

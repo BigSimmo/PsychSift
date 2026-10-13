@@ -39,7 +39,6 @@ import { MY_DAY_ALWAYS_ON, MyDayLaterSheet } from "@/components/my-day/my-day-sh
 import { listNames } from "@/components/my-day/my-day-page-parts";
 import {
   CpdRingsCard,
-  CustomiseRow,
   FlagCard,
   HeroCard,
   longDay,
@@ -170,8 +169,6 @@ export interface MyDayDashboardProps {
   readonly sources: MyDayDashboardSources;
   /** Names of the My Day sources that were checked, for the empty "Needs you" line. */
   readonly checked: readonly string[];
-  /** Opens the Customise sheet from the "Customise My Day" row. */
-  readonly onCustomise?: () => void;
   /** Opens Remind me, with the words to start from (a Needs you row's title). */
   readonly onRemindMe?: (text?: string, shiftEndsAt?: string | null) => void;
   /** Opens Your reminders, from the end-of-shift card. */
@@ -182,6 +179,8 @@ export interface MyDayDashboardProps {
   readonly newJob?: NewJobProgress | null;
   /** When the sources last answered, "14:05", for the "Checked … at" line. */
   readonly checkedAt?: string | null;
+  /** How old the data is, "4 min ago", for the Needs you stamp. */
+  readonly updated?: string | null;
   /** A My Day item source failed, so the Needs you count is "at least". */
   readonly incomplete?: boolean;
   /** Which page (tab) to draw. */
@@ -231,7 +230,7 @@ function teachingEvent(session: SessionSummary): MyDayTimedEvent {
   };
 }
 
-const ALL_HIDDEN = "Every card is hidden. Choose Customise My Day to bring them back.";
+const ALL_HIDDEN = "Every card is hidden. Choose More, then Customise, to bring them back.";
 const WORK_EMPTY =
   "Nothing for Work yet. Tonight's calls, pinned numbers, your team and your next talk show here once they exist.";
 
@@ -246,12 +245,12 @@ export function MyDayDashboard({
   helpItems = NO_HELP,
   sources,
   checked,
-  onCustomise,
   onRemindMe: openRemindMe,
   onOpenReminders,
   pendingReminders,
   newJob = null,
   checkedAt = null,
+  updated = null,
   incomplete: itemsIncomplete = false,
   page = "today",
   onShowAll,
@@ -414,7 +413,6 @@ export function MyDayDashboard({
   // ---------------------------------------------------------------- items
   // The feed hides what Later moved by the snoozes kept on this device, so Needs you reads the same ones.
   const needsYouDevice = needsYouList === items ? device : stored;
-  const needsYou = selectNeedsYou(needsYouList, needsYouDevice.snoozes, today);
   // The flag repeats only what Needs you lists, so it never shows an item the bell leaves out.
   const flagItems = useMemo(() => {
     const listed = new Set(needsYouList.map((item) => item.id));
@@ -423,6 +421,9 @@ export function MyDayDashboard({
       (id) => isSnoozed(needsYouDevice.snoozes, id, today),
     );
   }, [items, needsYouList, needsYouDevice.snoozes, today]);
+  // The item the flag shows is not listed again straight below it; with the flag hidden, Needs you keeps it.
+  const flaggedId = !device.hidden.has("flag") ? flagItems[0]?.id : undefined;
+  const needsYou = selectNeedsYou(needsYouList, needsYouDevice.snoozes, today, undefined, flaggedId);
   const tomorrow = addDaysToDate(today, 1);
   // The next rostered day, offered by Later only when it is not tomorrow (and only from a roster that loaded).
   const workingDay = useMemo(
@@ -716,8 +717,10 @@ export function MyDayDashboard({
             shown={needsYou.shown}
             waiting={needsYou.waiting}
             total={needsYou.total}
+            flagged={flaggedId !== undefined}
             checked={checked}
             checkedAt={checkedAt}
+            updated={updated}
             incomplete={incomplete}
             missing={missing}
             offline={!online}
@@ -750,14 +753,7 @@ export function MyDayDashboard({
       </>
     ),
     cpd: () => (
-      <CpdRingsCard
-        loggedHours={cpd.loggedHours}
-        targetHours={cpd.targetHours}
-        byCategory={cpd.byCategory}
-        categoryTargets={cpd.categoryTargets}
-        today={today}
-        year={cpd.year}
-      />
+      <CpdRingsCard loggedHours={cpd.loggedHours} targetHours={cpd.targetHours} today={today} year={cpd.year} />
     ),
     renewals: () => <RenewalsRunwayCard points={runway} today={today} />,
     calls: () => (
@@ -884,7 +880,6 @@ export function MyDayDashboard({
       {page === "today" && incomplete ? (
         <QuietFoot icon={History}>A missing card means not checked, not nothing due.</QuietFoot>
       ) : null}
-      {onCustomise ? <CustomiseRow onOpen={onCustomise} /> : null}
       <MyDayLaterSheet
         item={laterItem}
         tomorrow={tomorrow}
@@ -974,7 +969,9 @@ function FirstSteps() {
 }
 
 /** Today's left column on a computer; the rest go on the right. */
-const TODAY_LEFT: ReadonlySet<MyDayCardId> = new Set(["up-next", "flag", "needs-you"]);
+// CPD sits under Needs you on the left so the two columns end near each other (usefulness audit,
+// 11 Oct 2026: at 1440 px the left column stopped after Needs you while the right ran about 1,000 px on).
+const TODAY_LEFT: ReadonlySet<MyDayCardId> = new Set(["up-next", "flag", "needs-you", "cpd"]);
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
 

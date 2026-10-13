@@ -213,6 +213,62 @@ convergence.
 
 ---
 
+## C8 · One look for both modes (owner design review, 11 October 2026)
+
+**Chose.** After a review of every Work and Clinical screen at 320 px, 390 px, desktop and
+dark mode, the owner approved these seven rules for both modes:
+
+1. **One look for both modes.** Clinical keeps its own components and behaviour, including
+   the search box at the bottom of the screen and how it works, but shares Work's look: round
+   header buttons on a tinted top bar, the tab bar in the same tint, hairline cards, the same
+   controls and illustrations, in Clinical blue. No search bar is added at the top.
+2. **Calmer bands.** The band and top bar carry no dot texture, and the band's line drawing
+   is fainter (0.08 light, 0.11 dark, from 0.11 and 0.14).
+3. **Primary buttons take the area colour.** Never black or ink-filled buttons, in either mode. First Nations keeps its own standard (v13.1), which holds its olive to the pill, current tab, icon tiles, day track and quotation accents, so its buttons stay neutral.
+4. **Filter chips stay on one line.** They scroll sideways with an edge fade and never wrap to
+   leave one chip alone.
+5. **Red means overdue, lapsed or urgent only,** in both modes. Priority and category labels
+   ("High", "Medium") use neutral tags.
+6. **One way back.** If the header shows Back, the page adds no extra "‹ My Day" style link
+   under the band.
+7. **One card per group,** in both modes: items sit as divided rows in one hairline card, with
+   no cards inside cards and no coloured side bars.
+
+**Rejected.** A top search bar or a title band in Clinical mode. The owner asked that the
+Clinical search box keep its bottom position and behaviour, and that Clinical keep its own
+components; a title band would also have moved the tab bar out of the top bar's collapse
+track and changed how it hides on scroll.
+
+**Why.** The two modes read as two different apps (different header, list, card and button
+styles). Sharing one visual language while keeping each mode's own controls balances them
+without retraining the reader.
+
+---
+
+## C9 · The desktop and tablet shell (usefulness and layout audit, 11 October 2026)
+
+**Chose.** Built on the owner's go-ahead for the 11 October usefulness and layout audit:
+
+1. **Tablet rule.** Page content behaves like a phone at 768 px (an upright tablet: one
+   column) and like desktop from 1024 px (a tablet on its side: two columns, a list beside a
+   record). The side rail still replaces the menu button from 768 px (owner pick "Burger and
+   rail", 7 October), so only the content follows the rule.
+2. **One width per kind of page.** Reading pages (lists, forms, settings) keep the 45rem
+   column; wide pages (calendars, boards, tables, a list beside a record, the shared page
+   shell) take 64rem from 1024 px. The band's title and tabs always take the page's width,
+   so the title lines up with the cards. Declared with `data-page-width` (work-mode.css,
+   "page widths"); `src/components/work-frame/work-desktop-layout.tsx` gives area pages
+   `WorkWidePage`, `WorkSplit` (list beside record) and `WorkColumns` (two or three columns).
+3. **Desktop Clinical matches Work.** The Clinical rail shows a name under every icon, in the
+   work rail's style and Clinical blue; the mode pill drops its small "Mode" label at every
+   width; tablets and desktop show the bell in the Clinical header, as on Work pages. Phones,
+   the brand lockup on mode homes and the Clinical search box are unchanged.
+
+**Rejected.** Moving the side rail to 1024 px: it was the owner's own 7 October pick, and an
+upright tablet reads well with it.
+
+---
+
 ## Q&A record — clinical inputs (31 July 2026)
 
 | #   | Question                                               | Answer                                                  | Design consequence                                                                                                                                                                                                                                                           |

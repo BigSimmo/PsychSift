@@ -8,7 +8,8 @@ import { OnCallTrackBar } from "@/components/on-call/kit/track-bar";
 import { onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { OnCallDialSheet, onCallCallRoute } from "@/components/on-call/kit/dial-sheet";
 import { OnCallGroupActionControl } from "@/components/on-call/kit/grouped-list";
-import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { ON_CALL_SERVICE_HANDBOOK_ACTION, OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { WorkEmptyLine } from "@/components/mode-kit/work-empty-line";
 import { useOnCallYouCalledAt } from "@/components/on-call/kit/use-you-called";
 import { useOnCallHospitalPhone } from "@/components/on-call/call/call-device-stores";
 import { modeHeadingText, modeNumberText, modeSecondaryText } from "@/components/mode-kit/type";
@@ -92,7 +93,12 @@ export function NowRightNow({
         ) : (
           <>
             <div className="grid min-w-0 gap-1">
-              <p className={cn(modeHeadingText, "break-words text-xl leading-7 text-[color:var(--text-heading)]")}>
+              <p
+                className={cn(
+                  modeHeadingText,
+                  "break-words text-base-minus leading-6 text-[color:var(--text-heading)]",
+                )}
+              >
                 {title}
               </p>
               {cover ? (
@@ -148,9 +154,13 @@ export function NowRightNow({
                 ) : null}
               </div>
             ) : (
-              <p className="border-t border-[color:var(--border)] pt-2" data-testid="on-call-now-right-now-not-set-up">
+              <WorkEmptyLine
+                className="border-t border-[color:var(--border)] pt-1"
+                testId="on-call-now-right-now-not-set-up"
+                action={ON_CALL_SERVICE_HANDBOOK_ACTION}
+              >
                 <OnCallStateLabel state={{ kind: "not-set-up" }} />
-              </p>
+              </WorkEmptyLine>
             )}
 
             {cover ? (

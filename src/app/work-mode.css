@@ -99,6 +99,16 @@
   --work-primary-text: var(--text-heading);
 }
 
+/* The dark neutral ramp runs the other way, so --neutral-300 sits closer to the
+   card than --border does and the "strong" chip and button edge almost vanished.
+   Dark takes the theme's own strong border instead. Light is unchanged. */
+:root.dark[data-work-frame],
+.dark [data-work-frame],
+.dark .work-band,
+.dark .work-more-sheet {
+  --work-line-strong: var(--border-strong);
+}
+
 /* The app's filled "command" button (Sign in, Save, Send) is the area's primary
    colour inside a work page, as WorkButton's primary is, rather than the
    clinical near-black. On Call did this alone (on-call-work.css), so six areas
@@ -109,6 +119,11 @@
   --command: var(--work-primary);
   --command-hover: var(--mode-identity-deep, var(--work-primary));
   --command-contrast: var(--work-primary-text);
+  /* The shared primary Button (button-face.ts) reads these; outside a work frame it falls back to Clinical blue. */
+  --action: var(--command);
+  --action-hover: var(--command-hover);
+  --action-active: var(--mode-identity-deep, var(--work-primary));
+  --action-contrast: var(--command-contrast);
 }
 
 /* Glass fallback. Blur is the costliest paint in the frame: on an older or
@@ -146,15 +161,206 @@ html[data-glass="flat"][data-work-frame],
 html[data-glass="flat"] [data-work-frame],
 html[data-glass="flat"] .work-band,
 html[data-glass="flat"] .work-more-sheet,
-html[data-glass="flat"] .universal-header[data-work-frame] {
+html[data-glass="flat"] .universal-header[data-work-frame],
+html[data-bright]:not(.dark)[data-work-frame],
+html[data-bright]:not(.dark) [data-work-frame],
+html[data-bright]:not(.dark) .work-band,
+html[data-bright]:not(.dark) .work-more-sheet,
+html[data-bright]:not(.dark) .universal-header[data-work-frame] {
   --work-glass-fill: color-mix(in srgb, var(--surface-raised) 94%, transparent) !important;
   --work-glass-blur: none !important;
 }
+html[data-bright]:not(.dark)[data-work-frame],
+html[data-bright]:not(.dark) [data-work-frame],
+html[data-bright]:not(.dark) .work-band,
+html[data-bright]:not(.dark) .work-more-sheet,
+html[data-bright]:not(.dark) .universal-header[data-work-frame] {
+  /* Bright light (reading-aids.css) is fully solid: nothing shows through. */
+  --work-glass-fill: var(--surface-raised) !important;
+}
+html[data-bright]:not(.dark) .work-more-sheet.work-more-sheet {
+  background: var(--surface-raised);
+}
 
-/* Work pages sit on crisp white, under the tinted band. */
+/* Work pages sit on crisp white, under the tinted band. The page shell and
+   the root take it too, so a short page fills the screen in one surface
+   instead of stopping at its last card over the darker app background
+   (plain to see in dark mode on a desktop). */
+html[data-work-frame],
 html[data-work-frame] body,
+html[data-work-frame] .phone-viewport-shell,
 html[data-work-frame] main {
   background-color: var(--surface-raised);
+}
+
+/* ------------------------------------------------------ page widths
+
+   One column width per kind of work page, and the band's title and tabs
+   always line up with it (desktop and tablet shell, 11 Oct 2026 audit).
+
+   - Reading pages (lists, forms, settings) keep the 45rem column.
+   - Wide pages (calendars, boards, tables, list beside a record) declare
+     `data-page-width="wide"` on their outer container, and from 1024px the
+     whole frame, band included, takes the 64rem column. A reading page that
+     sizes its own container says `data-page-width="reading"`.
+
+   Tablet rule: below 1024px (an upright tablet) every page stays the single
+   phone column; from 1024px (sideways, and desktop) wide pages open out.
+   `:has()` keeps it in CSS, so the server render is already the right width. */
+body {
+  --work-col: 45rem;
+}
+
+@media (min-width: 1024px) {
+  body:has([data-work-frame] [data-page-width="wide"]) {
+    --work-col: 64rem;
+  }
+}
+
+/* The shared page shell inside a work area takes the frame's column rather
+   than the clinical 80rem container, so the title and the cards line up. */
+[data-work-frame] [data-page-width] {
+  max-width: var(--work-col);
+}
+
+/* A column that draws its own 12px side padding (the work body's) holds the
+   same content width as the band. */
+[data-work-frame] [data-page-width][data-page-padded] {
+  max-width: calc(var(--work-col) + 1.5rem);
+}
+
+/* ------------------------------------------------------ desktop layouts
+
+   The pieces in work-desktop-layout.tsx. One phone column below 1024px; from
+   1024px a list beside the record, or two or three columns of cards. */
+.work-wide,
+.work-split,
+.work-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: calc(var(--spacing) * 2.25);
+  width: 100%;
+  margin: 0 auto;
+  padding: calc(var(--spacing) * 3) calc(var(--spacing) * 3)
+    max(calc(var(--spacing) * 7.5), calc(var(--safe-area-bottom, 0px) + var(--spacing) * 4));
+  box-sizing: border-box;
+}
+
+.work-split__list,
+.work-split__detail,
+.work-columns > * {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: calc(var(--spacing) * 2.25);
+}
+
+/* A column with nothing in it takes no gap; a dock spans every column. */
+.work-columns > :empty {
+  display: none;
+}
+
+/* Clinical's list beside the record (ClinicalSplit in work-desktop-layout.tsx)
+   uses the same columns as WorkSplit. Below 1024px it draws no list and its
+   wrappers take no box, so a Clinical record keeps exactly its phone and
+   upright-tablet layout; the page shell around it already pads the column. */
+.clinical-split__list {
+  display: none;
+}
+
+.clinical-split,
+.clinical-split__detail {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  .work-split,
+  .clinical-split {
+    grid-template-columns: minmax(17rem, 22rem) minmax(0, 1fr);
+    gap: calc(var(--spacing) * 5);
+    align-items: start;
+  }
+
+  .clinical-split {
+    display: grid;
+  }
+
+  /* A Clinical record carries wider content than a work record (a row of
+     four fact tiles, a two-column summary), so on a tablet on its side the
+     list takes the narrow end of the shared range and gives the record the
+     rest; from 1280px it takes the shared range again. */
+  @media (max-width: 1279.98px) {
+    .clinical-split {
+      grid-template-columns: 17rem minmax(0, 1fr);
+    }
+  }
+
+  .clinical-split__detail {
+    display: block;
+    min-width: 0;
+  }
+
+  /* Sticks under the record's own nav header, which pins at the top once the
+     app header scrolls away: by default the same 5rem the DSM record's summary
+     column uses. A page whose pinned header is taller (Therapy's carries its
+     tabs) sets `--clinical-split-top` on the split. */
+  .clinical-split__list {
+    display: block;
+    position: sticky;
+    top: var(--clinical-split-top, calc(var(--spacing) * 20));
+    max-height: calc(100dvh - var(--clinical-split-top, calc(var(--spacing) * 20)) - var(--spacing) * 4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background-color: var(--surface);
+    box-shadow: var(--shadow-inset);
+  }
+
+  .work-split__list {
+    position: sticky;
+    top: calc(var(--work-chrome-h, 0px) + var(--work-tabs-h, 0px) + var(--spacing) * 3);
+    max-height: calc(100dvh - var(--work-chrome-h, 0px) - var(--work-tabs-h, 0px) - var(--spacing) * 6);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .work-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(var(--spacing) * 4);
+    align-items: start;
+  }
+
+  .work-columns[data-columns="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Keep a remaining dock in the first column when the right column is empty. */
+  .work-columns:has(> :nth-child(2):empty) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The CPD log's filter column (from 1024px, desktop layout audit 11 Oct 2026):
+   it holds every filter, so the chip row over the list steps aside, the
+   column's chips wrap rather than cut off mid-word, and the Log button sits
+   over the list instead of across the column. */
+@media (min-width: 1024px) {
+  [data-filter-column] .work-chips {
+    flex-wrap: wrap;
+    row-gap: calc(var(--spacing) * 1.5);
+    overflow-x: visible;
+    mask-image: none;
+  }
+
+  .work-chips[data-beside-filters] {
+    display: none;
+  }
+
+  .work-dock[data-beside-filters] {
+    margin-inline-start: calc(var(--spacing) * 72);
+  }
 }
 
 /* ------------------------------------------------------------ the band */
@@ -172,19 +378,15 @@ html[data-work-frame] main {
   container-name: mode-band;
 }
 
-/* The dot texture, lined up with the top bar's so the two read as one. */
-.work-band::before,
-html[data-work-frame] .universal-header[data-work-frame]::after,
-.universal-header[data-work-band]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: var(--work-z-under);
-  pointer-events: none;
-  background-image: radial-gradient(var(--mode-identity-border) 0.7px, transparent 0.8px);
-  background-size: 12px 12px;
-  background-position: 0 var(--work-band-offset, 0);
-  opacity: 0.55;
+/* A pull past the top of the page (the iPhone bounce) drags the band down
+   from under the top bar. Its colour carries on above it, so the gap shows the
+   band's tint rather than a white strip between the bar and the band (owner
+   report, 10 Oct 2026). A box shadow, so the band's own overflow does not clip
+   it, it adds no scroll range, and the pinned trim (clip-path) still cuts it. */
+@media (max-width: 639px) {
+  .work-band {
+    box-shadow: 0 -50vh 0 50vh var(--mode-band-bg);
+  }
 }
 
 /* The faint line drawing, cropped by its own box at the band's corner. */
@@ -198,12 +400,13 @@ html[data-work-frame] .universal-header[data-work-frame]::after,
   background: var(--mode-identity);
   mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
   -webkit-mask: var(--work-band-mark, none) left top / 12.25rem 12.25rem no-repeat;
-  opacity: 0.11;
+  /* Fainter since the 11 Oct design review: colour says where you are, the drawing only adds a hint. */
+  opacity: 0.08;
   pointer-events: none;
 }
 
 .dark .work-band__mark {
-  opacity: 0.14;
+  opacity: 0.11;
 }
 
 /* Pinned tabs (owner request 8 Oct 2026). Once the title has scrolled under
@@ -260,30 +463,34 @@ html[data-work-frame] #main-content {
 
 /* The top bar slides away on a scroll down and back on a scroll up; the
    pinned row goes and comes back with it, so the two stay one unit and a
-   hidden bar leaves the whole screen to the page. Only while pinned: a band
-   still in its own place on the page scrolls as normal. A keyboard user who
-   tabs into the hidden row brings it back (`:focus-within`), so focus never
-   lands on a tab that is off screen. */
-html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-stuck]:not(:focus-within) {
-  translate: 0 calc(-1 * (var(--work-chrome-h) + var(--work-tabs-h, 0px)));
+   hidden bar leaves the whole screen to the page.
+
+   Hidden (`data-bar-hidden`, set by use-sticky-work-tabs.ts as the bar
+   goes), the band's sticky offset drops by the bar and the row, to minus the
+   band's own height. That is the shift the row needs to leave with the bar,
+   but the sticky engine applies it: a band held below its own place on the
+   page goes back to that place, and one already past it leaves the screen.
+   A fixed translate instead lifted a band that had only just pinned off its
+   own place, leaving a white hole the size of the band at the top of the page
+   (found 10 Oct 2026). The hook slides the band between the two positions on
+   the compositor.
+
+   A keyboard user who tabs into the hidden row brings it back
+   (`:focus-within`), so focus never lands on a tab that is off screen. */
+.work-band[data-pinned][data-bar-hidden]:not(:focus-within) {
+  top: calc(-1 * (var(--work-band-tabs-top, 0px) + var(--work-tabs-h, 0px)));
+}
+
+.work-band[data-stuck][data-bar-hidden]:not(:focus-within) {
   pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .work-band[data-pinned] {
-    transition: translate var(--duration-moderate) var(--ease-chrome-reveal);
-  }
-
-  html:has([data-scroll-hidden="true"] .universal-header) .work-band[data-pinned] {
-    transition: translate var(--duration-slow) var(--ease-chrome-hide);
-  }
-
   .work-band__mark {
     transition: opacity var(--duration-moderate) var(--ease-out, ease-out);
   }
 }
 
-html[data-motion="reduced"] .work-band[data-pinned],
 html[data-motion="reduced"] .work-band__mark {
   transition: none;
 }
@@ -293,7 +500,7 @@ html[data-motion="reduced"] .work-band__mark {
   align-items: flex-end;
   justify-content: space-between;
   gap: calc(var(--spacing) * 2.5);
-  max-width: calc(45rem + var(--work-gutter) * 2);
+  max-width: calc(var(--work-col, 45rem) + var(--work-gutter) * 2);
   margin: 0 auto;
   padding: 0.375rem var(--work-gutter-right) 0 var(--work-gutter-left);
 }
@@ -325,7 +532,7 @@ html[data-motion="reduced"] .work-band__mark {
 }
 
 .work-band__status {
-  max-width: calc(45rem + var(--work-gutter) * 2);
+  max-width: calc(var(--work-col, 45rem) + var(--work-gutter) * 2);
   margin: calc(var(--spacing) * 1.5) auto 0;
   padding: 0 var(--work-gutter-right) 0 var(--work-gutter-left);
   box-sizing: border-box;
@@ -370,7 +577,8 @@ html[data-motion="reduced"] .work-band__mark {
   -webkit-backdrop-filter: var(--work-glass-blur);
 }
 
-/* Tabs: three pinned pages and More, underlined in the mode colour. */
+/* Tabs: the three pinned pages, then the area's next pages as the width allows,
+   and More last, underlined in the mode colour. */
 .work-band__tabs {
   position: relative;
   /* The space between tab labels. Each tab's tap area reaches half of it on
@@ -380,7 +588,7 @@ html[data-motion="reduced"] .work-band__mark {
   --work-tab-gap: calc(var(--spacing) * 5);
   display: flex;
   gap: var(--work-tab-gap);
-  max-width: calc(45rem + var(--work-gutter) * 2);
+  max-width: calc(var(--work-col, 45rem) + var(--work-gutter) * 2);
   margin: calc(var(--spacing) * 1) auto -1px;
   /* The 1px under the row holds the current tab's underline, which sits on
      the band's bottom line, inside the row's own box. */
@@ -632,7 +840,8 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   }
 }
 
-/* Round glass buttons: a 48px tap, a 44px glass circle. */
+/* Round glass buttons: a 48px glass circle, the same size as the clinical
+   header's round buttons (Josh, 10 Oct 2026). */
 .universal-header[data-work-frame] .universal-header-icon-control {
   position: relative;
   isolation: isolate;
@@ -645,7 +854,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 .universal-header[data-work-frame] .universal-header-icon-control::before {
   content: "";
   position: absolute;
-  inset: 2px;
+  inset: 0;
   z-index: var(--work-z-under);
   border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
@@ -658,6 +867,12 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   border-color: transparent;
   background: transparent;
   color: var(--work-ink);
+}
+
+/* One focus colour: the bell and AI Search ring in the area colour, as the
+   band's tabs and the kit controls below them do. */
+.universal-header[data-work-frame] .universal-header-icon-control:focus-visible {
+  outline-color: var(--mode-identity);
 }
 
 /* A page reached from More shows Back, so the menu button stands down. */
@@ -720,26 +935,27 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-frame-back:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
-/* The mode pill: glass, a flat mode-colour badge, page over area. */
+/* The mode pill: glass, a flat mode-colour badge, page over area. The same
+   48px height as the clinical pill (Josh, 10 Oct 2026), and like it the pill
+   hugs its name with the chevron right after it, leaving no empty space
+   (Josh, 10 Oct 2026). A long name grows the pill up to its limit. */
 .universal-header[data-work-frame] .universal-header-mode-button {
   position: relative;
   isolation: isolate;
   width: auto;
   min-width: 0;
-  /* Room for the longest area name ("Assessments") beside two round
-     buttons on a 390px phone, without truncating it, and for a short one
-     ("Roster") at 320px now the pill names the area only. Never narrower than
-     a tap, so at large text sizes the badge still shows when the name cannot. */
+  /* Never narrower than a tap, so at large text sizes the badge still shows
+     when the name cannot. */
   max-width: max(var(--spacing-tap, 3rem), min(15rem, calc(100vw - 11rem)));
   /* The name's track sizes to the name itself, so a name that fits is never
      cut short by rounding; it shortens only once the pill reaches its limit. */
   grid-template-columns: auto minmax(0, max-content) auto;
-  gap: calc(var(--spacing) * 1.75);
-  padding: 0 calc(var(--spacing) * 2) 0 calc(var(--spacing) * 1.5);
+  gap: calc(var(--spacing) * 2);
+  padding: 0 calc(var(--spacing) * 2.5);
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -747,14 +963,16 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 
 @media (min-width: 640px) {
   .universal-header[data-work-frame] .universal-header-mode-button {
+    width: auto;
     max-width: 18rem;
+    padding-right: calc(var(--spacing) * 3);
   }
 }
 
 .universal-header[data-work-frame] .universal-header-mode-button::before {
   content: "";
   position: absolute;
-  inset: 0.25rem 0;
+  inset: 0;
   z-index: var(--work-z-under);
   border-radius: var(--radius-pill);
   background: var(--work-glass-fill);
@@ -782,7 +1000,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .universal-header[data-work-frame] .universal-header-mode-area {
-  font-size: 0.5625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   line-height: var(--work-leading-heading);
@@ -828,6 +1046,8 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
     .universal-header[data-work-frame] .universal-header-mode-button {
       grid-template-columns: auto minmax(0, 1fr);
       gap: calc(var(--spacing) * 0.5);
+      width: auto;
+      min-width: 0;
       max-width: 100%;
       height: auto;
       min-height: 48px;
@@ -974,7 +1194,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-more-sheet__close:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
 }
 
@@ -1058,11 +1278,15 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-more-tile__sub {
+  /* Two lines before it shortens, so a two-column tile on a phone reads
+     "Saved pages and items" in full rather than "Saved pages and ite…". */
+  display: -webkit-box;
   overflow: hidden;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   color: var(--work-ink-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .work-more-tile__tick {
@@ -1193,7 +1417,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   border-radius: var(--radius-pill);
   background: var(--mode-identity-soft);
   color: var(--mode-identity-deep, var(--mode-identity));
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1235,7 +1459,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
   justify-content: space-between;
   gap: calc(var(--spacing) * 2);
   margin: 0;
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   line-height: var(--work-leading-meta);
@@ -1244,7 +1468,7 @@ html:not([data-mode-band]) [data-testid="chrome-safe-area-top"][data-work-band] 
 }
 
 .work-label__count {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 600;
   letter-spacing: 0;
@@ -1400,7 +1624,7 @@ button.work-row:focus-visible {
 
 .work-row__sub {
   margin-top: calc(var(--spacing) * 0.25);
-  font-size: 0.71875rem;
+  font-size: var(--text-xs, 0.75rem);
   line-height: var(--work-leading-row-sub);
   color: var(--work-ink-muted);
 }
@@ -1410,7 +1634,7 @@ button.work-row:focus-visible {
   flex: none;
   justify-items: end;
   gap: calc(var(--spacing) * 0.75);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   color: var(--work-ink-muted);
 }
@@ -1433,7 +1657,7 @@ button.work-row:focus-visible {
 }
 
 .work-date__month {
-  font-size: 0.5625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1463,7 +1687,7 @@ button.work-row:focus-visible {
 }
 
 a.work-hero:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
@@ -1481,7 +1705,7 @@ a.work-hero:focus-visible {
 }
 
 .work-hero__eyebrow {
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -1553,7 +1777,7 @@ a.work-hero:focus-visible {
   position: relative;
   display: block;
   margin-top: calc(var(--spacing) * 0.5);
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   line-height: var(--work-leading-none);
 }
@@ -1595,7 +1819,7 @@ a.work-hero:focus-visible {
   display: inline-block;
   padding: calc(var(--spacing) * 0.75) calc(var(--spacing) * 2);
   border-radius: var(--radius-pill);
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: var(--work-leading-tag);
@@ -1629,19 +1853,74 @@ a.work-hero:focus-visible {
   .work-tag {
     border: 1px solid CanvasText;
   }
+  .work-tag::before {
+    background: CanvasText !important;
+  }
 }
 
 /* Chips: filters and choices. A 30px shape inside a 48px tap. */
+/* Chip rows stay on one line and scroll sideways (design pass, October 2026):
+   wrapping left one chip alone on a second line. Where scroll-driven
+   animations exist, a soft fade appears only at an edge with more chips past
+   it, and only while the row actually overflows. Elsewhere (older iPhone
+   Safari) there is no fade at all, so no chip is ever dimmed. The tab swipe
+   already ignores a row that scrolls sideways. */
 .work-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0 calc(var(--spacing) * 1.5);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
 
-.work-chips[data-scroll] {
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
+.work-chips::-webkit-scrollbar {
+  display: none;
+}
+
+@property --work-chips-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --work-chips-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes work-chips-fade {
+  from {
+    --work-chips-fade-start: 0px;
+    --work-chips-fade-end: 1.75rem;
+  }
+  1% {
+    --work-chips-fade-start: 1.75rem;
+  }
+  99% {
+    --work-chips-fade-end: 1.75rem;
+  }
+  to {
+    --work-chips-fade-start: 1.75rem;
+    --work-chips-fade-end: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .work-chips {
+    /* A row that does not overflow has an inactive timeline, so both fades
+       stay at 0px and nothing is masked. */
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--work-chips-fade-start),
+      black calc(100% - var(--work-chips-fade-end)),
+      transparent
+    );
+    animation: work-chips-fade linear both;
+    animation-timeline: scroll(self inline);
+  }
 }
 
 .work-chip {
@@ -1801,9 +2080,28 @@ a.work-hero:focus-visible {
 }
 
 .work-button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -3px;
   border-radius: var(--radius-pill);
+}
+
+/* A primary fill is the area colour itself, so a ring in the same colour would
+   vanish where it crosses the pill. Draw it around the pill instead, with a
+   surface gap. The transparent outline still shows in forced colours. */
+.work-button[data-variant="primary"]:focus-visible {
+  outline-color: transparent;
+}
+
+.work-button[data-variant="primary"]:focus-visible::before {
+  box-shadow:
+    0 0 0 2px var(--work-surface),
+    0 0 0 4px var(--mode-identity);
+}
+
+@media (forced-colors: active) {
+  .work-button[data-variant="primary"]:focus-visible {
+    outline-color: Highlight;
+  }
 }
 
 .work-button:disabled,
@@ -1853,7 +2151,7 @@ a.work-hero:focus-visible {
 }
 
 .work-glass-button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: -2px;
 }
 
@@ -1883,7 +2181,8 @@ a.work-hero:focus-visible {
 
 /* While a dock is on the page, a control that takes focus (a tab, the keyboard
    opening on a field) scrolls clear of the dock rather than under it. */
-html:has(.work-dock) {
+html:has(.work-dock),
+html:has(.work-dock) #main-content {
   scroll-padding-bottom: calc(5.75rem + var(--safe-area-bottom, 0px));
 }
 
@@ -2001,7 +2300,7 @@ html:has(.work-dock) {
   border-radius: var(--work-radius-field);
   background: var(--work-surface);
   font: inherit;
-  font-size: 0.59375rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--work-ink-muted);
@@ -2111,7 +2410,7 @@ button.work-week__day {
 }
 
 .work-check__value {
-  font-size: 0.71875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 600;
   font-style: normal;
   font-variant-numeric: tabular-nums;
@@ -2295,7 +2594,7 @@ html[data-work-frame] .app-toast-region {
   place-items: center;
   border: 1.5px solid var(--work-line);
   border-radius: var(--radius-pill);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -2404,7 +2703,7 @@ html[data-work-frame] .app-toast-region {
 
 .work-side-menu__label {
   padding: calc(var(--spacing) * 2) calc(var(--spacing) * 2) calc(var(--spacing) * 0.5);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 750;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -2456,6 +2755,12 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu__row[aria-current="true"] .work-side-menu__name {
   font-weight: 750;
   color: var(--mode-identity-deep, var(--mode-identity));
+}
+
+/* In dark themes the deep identity is too dark to read on the drawer, and the
+   identity itself is the light tint, so the current row uses it there. */
+.dark .work-side-menu__row[aria-current="true"] .work-side-menu__name {
+  color: var(--mode-identity);
 }
 
 .work-side-menu__count {
@@ -2547,7 +2852,7 @@ html[data-work-frame] .app-toast-region {
 .work-side-menu button:focus-visible,
 .work-rail a:focus-visible,
 .work-rail button:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--mode-identity);
   outline-offset: 2px;
 }
 
@@ -2571,6 +2876,28 @@ html[data-work-frame] .app-toast-region {
   width: 2.75rem;
   height: 2.75rem;
   margin-bottom: calc(var(--spacing) * 3);
+}
+
+/* Signed in: initials on a calm grey disc, not a solid black (or, in dark
+   mode, glaring white) one. Signed out: the same soft "G" as the Clinical
+   rail and the side menu, so the account spot looks the same in every mode. */
+.work-rail__avatar[data-signed-in="true"] {
+  background: var(--text-muted);
+  color: var(--surface-raised);
+}
+
+.work-rail__avatar[data-signed-in="false"] {
+  border: 1px solid color-mix(in srgb, var(--clinical-accent-border) 60%, transparent);
+  background: var(--clinical-accent-soft);
+  color: var(--clinical-accent);
+  font-size: 0.75rem;
+}
+
+/* Rail glyphs at the header-control size (20 px), so the 84 px rail reads
+   like a tab bar rather than a column of specks. Both rails share it. */
+.work-rail__pill > svg {
+  width: var(--spacing-icon-lg);
+  height: var(--spacing-icon-lg);
 }
 
 .work-rail__list {
@@ -2615,8 +2942,13 @@ html[data-work-frame] .app-toast-region {
 .work-rail__label {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs, 0.75rem);
   font-weight: 650;
+  /* One fixed line, held as a floor too: the label clips (overflow hidden),
+     so as a grid item its minimum height is otherwise zero, and inside the
+     Clinical rail's scrolling column "More" was squeezed and cut off. */
+  min-height: calc(var(--spacing) * 4);
+  line-height: calc(var(--spacing) * 4);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2624,6 +2956,37 @@ html[data-work-frame] .app-toast-region {
 .work-rail__item[aria-current="true"] .work-rail__label {
   font-weight: 750;
   color: var(--mode-identity-deep, var(--mode-identity));
+}
+
+/* The clinical rail wears the same items (ClinicalSidebar's collapsed rail),
+   lit in Clinical blue and marked current by `aria-current="page"`. */
+.clinical-rail__item {
+  --mode-identity: var(--clinical-accent);
+  --mode-identity-soft: var(--clinical-accent-soft);
+  --mode-identity-deep: var(--clinical-accent);
+  flex: none;
+  text-align: center;
+}
+
+.clinical-rail__item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.clinical-rail__item[aria-current="page"] .work-rail__pill,
+.clinical-rail__item[data-current="true"] .work-rail__pill {
+  background: var(--mode-identity-soft);
+  color: var(--mode-identity);
+}
+
+.clinical-rail__item[aria-current="page"] .work-rail__label,
+.clinical-rail__item[data-current="true"] .work-rail__label {
+  font-weight: 750;
+  color: var(--mode-identity-deep);
+}
+
+.clinical-rail__item:hover .work-rail__pill {
+  background: var(--surface-subtle);
 }
 
 .work-rail__count {
@@ -2636,7 +2999,7 @@ html[data-work-frame] .app-toast-region {
   border-radius: var(--radius-pill);
   background: var(--text-heading);
   color: var(--surface);
-  font-size: 0.625rem;
+  font-size: var(--text-xs, 0.75rem);
   font-style: normal;
   font-weight: 800;
   line-height: calc(var(--spacing) * 4.25);
@@ -2646,7 +3009,9 @@ html[data-work-frame] .app-toast-region {
 
 @media (forced-colors: active) {
   .work-side-menu__row[aria-current="true"],
-  .work-rail__item[aria-current="true"] .work-rail__pill {
+  .work-rail__item[aria-current="true"] .work-rail__pill,
+  .clinical-rail__item[aria-current="page"] .work-rail__pill,
+  .clinical-rail__item[data-current="true"] .work-rail__pill {
     outline: 2px solid Highlight;
   }
 
@@ -2689,4 +3054,84 @@ html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .t
   height: auto;
   min-height: calc(var(--spacing) * 7.5);
   padding-block: calc(var(--spacing) * 1);
+}
+
+/* Ward Flow review (owner decision, 12 Oct 2026): figures in Geist Mono,
+   one shape per status with plain words, a paler colour instead of
+   transparency, and the Bright light mode. */
+
+/* Figures in Geist Mono beside words in Geist. */
+.work-ring__value,
+.work-ring__figure,
+.work-mring__value,
+.work-mring__figure,
+.work-date__day,
+.work-label__count,
+.work-chip__count,
+.work-week__num,
+[data-figure] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* One shape per status. On a status tag the word is plain grey ink and only
+   the glyph carries colour: triangle red, filled dot amber, tick green.
+   Colour is never the only signal. Neutral and mode tags are labels, not
+   statuses ("Met", "Sending", "In your week"), so they carry no glyph. */
+.work-tag[data-tone="red"]:not([data-plain]),
+.work-tag[data-tone="amber"]:not([data-plain]),
+.work-tag[data-tone="green"]:not([data-plain]) {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 1);
+  background: var(--work-wash);
+  color: var(--work-ink-muted);
+  box-shadow: var(--work-edge-inset) var(--work-line);
+}
+.work-tag[data-tone="red"]:not([data-plain])::before,
+.work-tag[data-tone="amber"]:not([data-plain])::before,
+.work-tag[data-tone="green"]:not([data-plain])::before {
+  content: "";
+  flex: none;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: var(--radius-pill);
+  background: var(--warning, var(--warning-text));
+}
+.work-tag[data-tone="red"]:not([data-plain])::before {
+  border-radius: 0;
+  background: var(--danger-text);
+  clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
+}
+.work-tag[data-tone="green"]:not([data-plain])::before {
+  border-radius: 0;
+  background: var(--success-text);
+  clip-path: polygon(8% 52%, 22% 38%, 40% 56%, 80% 14%, 94% 28%, 40% 84%);
+}
+.work-tag[data-tone="neutral"] {
+  box-shadow: var(--work-edge-inset) var(--work-line);
+}
+
+/* A late line on My Day: dark words with the status shape in front, a red
+   triangle once a date has passed and an amber dot while it is overdue but in
+   hand (Ward Flow review, 12 Oct 2026; the same shapes as .work-tag). */
+[data-late]::before {
+  content: "";
+  display: inline-block;
+  width: calc(var(--spacing) * 2);
+  height: calc(var(--spacing) * 2);
+  margin-inline-end: calc(var(--spacing) * 1);
+  background: var(--warning-text);
+  border-radius: var(--radius-pill);
+}
+[data-late="passed"]::before {
+  background: var(--danger-text);
+  border-radius: 0;
+  clip-path: polygon(50% 4%, 98% 94%, 2% 94%);
+}
+@media (forced-colors: active) {
+  [data-late]::before {
+    background: CanvasText;
+  }
 }

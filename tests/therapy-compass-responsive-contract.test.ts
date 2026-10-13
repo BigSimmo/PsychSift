@@ -223,6 +223,11 @@ describe("Therapy Compass responsive contract", () => {
     expect(resultCardSource).toContain("sm:grid-cols-3");
     expect(resultCardSource).toMatch(/data-therapy-result-actions\s+className="grid grid-cols-3/);
     expect(resultCardSource).toContain('<span className="sm:hidden">Open</span>');
+    // Desktop: the stretched Open link makes the whole card the target, so the actions
+    // sit at the row's end at their own width instead of three full-width buttons.
+    expect(resultCardSource).toContain("md:flex md:justify-end");
+    expect(therapyCardSource).toMatch(/const cardActionButton = "[^"]*md:w-auto/);
+    expect(resultCardSource).toContain("stretchedRowLinkClass");
     expect(resultCardSource).not.toContain("<IconTile");
   });
 

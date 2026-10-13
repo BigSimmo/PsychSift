@@ -1,4 +1,4 @@
-// Answer-quality / targeting eval (P3). Runs the 30-case `answerQualityEvalCases` fixture through
+// Answer-quality / targeting eval (P3). Runs the 48-case `answerQualityEvalCases` fixture through
 // the live answer path and reports the five answer-quality metrics PLUS a structural per-intent
 // `targeting` metric (dose→figure, red-result→withhold action, monitoring→schedule, etc.).
 //
@@ -7,7 +7,6 @@
 // unless --fail-on-threshold is passed with an explicit floor, so it can be calibrated safely.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { loadEnvConfig } from "@next/env";
 import {
   answerQualityEvalCases,
@@ -20,6 +19,7 @@ import {
 } from "@/lib/rag/rag-eval-cases";
 import type { RagAnswer } from "@/lib/types";
 import { estimateCostUsd, loadAdminClient, resolveEvalOwnerId, withProviderBackoff } from "./eval-utils";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 loadEnvConfig(process.cwd());
 
@@ -533,7 +533,7 @@ async function main() {
 
 // Main-guard (eval-quality.ts precedent) so tests can import parseArgs/buildAnswerDumpRecord
 // without executing the provider-backed eval.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main()
     .then(() => process.exit(0))
     .catch((error) => {

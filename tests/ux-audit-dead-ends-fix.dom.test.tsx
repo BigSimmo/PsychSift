@@ -144,7 +144,9 @@ describe("UX Audit 4 Findings Verification", () => {
       const { PatientSafetyPlan } = await import("@/components/patient-safety-plan");
       render(<PatientSafetyPlan />);
       const button = screen.getByRole("button", { name: /Finalise plan/i });
-      expect(button).toBeDisabled();
+      // aria-disabled, not native disabled, so the button keeps its tab stop and the reason is reachable.
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAttribute("aria-disabled", "true");
       expect(button.getAttribute("title")).toMatch(/complete all \d+ steps to finalise/i);
       const describedBy = button.getAttribute("aria-describedby");
       expect(describedBy).toBeTruthy();

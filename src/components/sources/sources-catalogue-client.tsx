@@ -132,10 +132,11 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
       href={`/sources/${entry.id}`}
       aria-label={`View source details: ${entry.title}`}
       className={cn(
-        "group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[color:var(--border)]",
-        "bg-[color:var(--surface)] p-4 shadow-[var(--e2)] transition",
-        "hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-raised)]",
-        "hover:shadow-[var(--e3)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        // A row of the one catalogue card, not a card of its own: the list
+        // draws the box and a hairline divides each source from the next.
+        "group grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-3.5 transition-colors",
+        "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
       )}
     >
       <span className="min-w-0">
@@ -432,11 +433,16 @@ export function SourcesCatalogueClient({
     >
       {entries.length ? (
         <>
-          <div className="grid gap-3 md:grid-cols-2">
+          {/* One hairline card for the page of sources, rows divided by a
+              hairline. One column at every width: two columns of rows inside
+              one card read as a table with no header. */}
+          <ul className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]">
             {entries.map((entry) => (
-              <SourceTile key={entry.id} entry={entry} />
+              <li key={entry.id}>
+                <SourceTile entry={entry} />
+              </li>
             ))}
-          </div>
+          </ul>
           <Pagination
             className="pt-4"
             page={page}

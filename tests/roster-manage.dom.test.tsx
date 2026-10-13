@@ -56,6 +56,29 @@ it("opens the team named by ?team= when the reader manages more than one", async
   window.history.replaceState(null, "", "/");
 });
 
+it("says a named team isn't the reader's and offers their own, rather than opening another", async () => {
+  window.history.replaceState(null, "", "/roster/manage?team=elsewhere");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL) =>
+      String(input).endsWith("/api/roster/team")
+        ? Promise.resolve(
+            Response.json({
+              actorId: "alex",
+              teams: [{ serviceId: "first", name: "First team", enabled: true, role: "manager", grade: null }],
+            }),
+          )
+        : new Promise<Response>(() => {}),
+    ),
+  );
+  render(<RosterManagePage />);
+  expect(await screen.findByText("That team isn't one you manage")).toBeTruthy();
+  expect(screen.queryByText("Only your team's roster manager can see this page.")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Open First team" }));
+  expect(await screen.findByText(/First team · Cover, publishing and team settings\./)).toBeTruthy();
+  window.history.replaceState(null, "", "/");
+});
+
 const overview: RosterOverview = {
   service: { id: "team", name: "Example team" },
   me: { role: "manager", grade: null, rotationEndsOn: null },

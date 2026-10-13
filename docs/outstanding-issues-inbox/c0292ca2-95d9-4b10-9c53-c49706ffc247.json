@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "c0292ca2-95d9-4b10-9c53-c49706ffc247",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#383YXX",
+    "outcome": "Widened the gate rather than adding a retry: scripts/check-lighthouse-budget.mjs now applies the bimodal-runner LCP tolerance floor to mobile-root (alongside desktop-root and the documents-search runs). No rerun path exists in the checker or CI.",
+    "baseRowFingerprint": "a46e50f534d4abb68f22dfa1fa6b5f61743d6de2027b7519ba25ae655e27ff29"
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { useCourseChangeSource, useHospitalSickSource } from "@/components/needs-you/use-admin-notification-sources";
 import { useFirstWeekPack } from "@/components/on-call/first-week/use-first-week-pack";
 import { selectContractEndNeedsYou } from "@/lib/admin/contract-end";
 import { adminLoadState, selectAdminOwnEntries } from "@/lib/admin/own-entries";
@@ -23,6 +24,7 @@ import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { isFirstWeekHighlighted, selectFirstWeekNeedsYou } from "@/lib/on-call/first-week-pack";
 import { sharedGet } from "@/lib/shared-get";
 import { useAuthSession } from "@/lib/supabase/client";
+import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
 import { termFolderNeedsYou } from "@/lib/teaching/term-folder";
 import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
 
@@ -31,7 +33,10 @@ import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
  * Your first week pack (On Call), Contract, Starter pack and Ready for day one
  * (Admin), Job applications and CPD Home (CPD), and the Term evidence folder
  * (Teaching). Each uses its feature's own selector, so the bell and the page
- * can never disagree.
+ * can never disagree. Two Admin sources for the new work mode follow them:
+ * hospital Sick calls needing cover (Medical Workforce and the site
+ * administrator) and course changes for booked doctors (the "course-bookings"
+ * preview), from `use-admin-notification-sources.ts`.
  *
  * Rules every source keeps:
  * - nothing is emitted until this device's store has been read (a null store
@@ -42,9 +47,11 @@ import { useTermTrackerStore } from "@/lib/teaching/term-tracker-store";
  * - a read another source already reports (On Call entries) is "unavailable"
  *   here when it fails, so the sheet names it once.
  *
- * Network: only CPD Home reads anything new (this year's activities), and only
- * once the doctor has marked a CPD Home file added, or in December. The first
- * week pack reads the hospital handbook only while the pack is highlighted.
+ * Network: CPD Home reads this year's activities, and only once the doctor has
+ * marked a CPD Home file added, or in December. The first week pack reads the
+ * hospital handbook only while the pack is highlighted. Sick calls read only for
+ * a reader holding Medical Workforce or the administrator role, and course
+ * changes only in the "course-bookings" preview, each from a module loaded then.
  */
 
 /** The local demo build (no Supabase in the browser) or an explicit demo deploy. */
@@ -143,6 +150,11 @@ export function useFeatureNotificationSources({
     (lastAddedFile(cpdHome, year) !== null || Number(today.slice(5, 7)) >= CPD_HOME_YEAR_END_MONTH);
   const cpdEntries = useCpdHomeEntries(year, cpdHomeNeeded, authEpoch);
 
+  // Admin, new work mode: sick calls needing cover and course changes. Their own hooks keep them light.
+  const workZone = zone ?? currentWorkTimeZone();
+  const hospitalSick = useHospitalSickSource({ enabled, demo, readAt, zone: workZone });
+  const courseChanges = useCourseChangeSource({ enabled, demo, today });
+
   return useMemo((): NotificationSource[] => {
     if (!enabled) return [];
 
@@ -221,6 +233,8 @@ export function useFeatureNotificationSources({
       source("applications", "Job applications", applications ? "ready" : "loading", applicationsItems),
       source("cpd-home", "CPD Home", cpdHomeStatus, cpdHomeItems),
       source("term-folder", "Term evidence folder", demo ? "unavailable" : terms ? "ready" : "loading", termItems),
+      hospitalSick,
+      courseChanges,
     ];
   }, [
     enabled,
@@ -243,5 +257,7 @@ export function useFeatureNotificationSources({
     cpdEntries,
     year,
     terms,
+    hospitalSick,
+    courseChanges,
   ]);
 }

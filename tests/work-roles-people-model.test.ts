@@ -5,6 +5,8 @@ import { isExampleRecord } from "@/lib/example-data/guards";
 import { workPeopleOutcome } from "@/lib/work-roles/people-client";
 import {
   applyExampleAction,
+  archiveBlockedReason,
+  archiveHospitalEffects,
   EMPTY_GRANT_DRAFT,
   exampleResponse,
   exampleViewerGrants,
@@ -16,11 +18,14 @@ import {
   hospitalNameProblem,
   joinNames,
   mayRemoveGrant,
+  isWholeTeamSupervisor,
+  moveTeamEffects,
   parseWorkPeopleResponse,
   peopleScreenAllowed,
   peopleSections,
   pickablePeople,
   removeBlockedReason,
+  renameHospitalProblem,
   roleSentence,
   rolesViewerMayGive,
   supervisorCover,
@@ -274,6 +279,92 @@ describe("hospital names", () => {
   });
 });
 
+describe("fixing a hospital mix-up", () => {
+  const hospitals = [
+    { id: H, name: "Example Hospital" },
+    { id: "h2", name: "Example Health Campus" },
+  ];
+
+  it("checks a new name like adding one, leaving the hospital itself out", () => {
+    expect(renameHospitalProblem("Example Hospital", hospitals[0]!, hospitals)).toBe("That's its name now.");
+    expect(renameHospitalProblem("EXAMPLE HOSPITAL", hospitals[0]!, hospitals)).toBeNull();
+    expect(renameHospitalProblem("example health campus", hospitals[0]!, hospitals)).toBe(
+      "That hospital is already listed.",
+    );
+    expect(renameHospitalProblem(" ", hospitals[0]!, hospitals)).toBe("Type the hospital's name.");
+    expect(renameHospitalProblem("Bed 12 UMRN A1234567", hospitals[0]!, hospitals)).not.toBeNull();
+  });
+
+  it("says what a move and an archive change, in plain words without semicolons or arrows", () => {
+    const move = moveTeamEffects("Ward A team", "Example Hospital", "Example Health Campus", 2);
+    expect(move[0]).toBe(
+      "Medical Workforce and the DCT at Example Health Campus start seeing Ward A team, and those at Example Hospital stop.",
+    );
+    expect(move).toContain("Roster managers for Ward A team keep their roles.");
+    expect(move).toContain("2 supervisors of Ward A team will lose the role. Give it again at Example Health Campus.");
+    expect(moveTeamEffects("Ward A team", "Example Hospital", "Example Health Campus", 0).join(" ")).not.toMatch(
+      /lose the role/,
+    );
+    const archive = archiveHospitalEffects("Example Hospital");
+    for (const line of [...move, ...archive]) expect(line).not.toMatch(/[;→]|->/);
+  });
+
+  it("blocks archiving while teams are linked", () => {
+    const hospital = exampleWorkPeople().hospitals[1]!;
+    expect(archiveBlockedReason(hospital)).toBe("Move its teams first. Example Health Campus still has one team.");
+    expect(archiveBlockedReason({ ...hospital, teams: [] })).toBeNull();
+  });
+
+  it("apply moves, renames and archives in memory, with the same refusals as the server", () => {
+    const opts = { now: "2026-10-09T01:00:00.000Z", newId: counter() };
+    const state = exampleWorkPeople();
+    const [main, campus] = state.hospitals;
+    const wardB = main!.teams.find((team) => team.name === "Ward B team")!;
+
+    const moved = applyExampleAction(
+      state,
+      { action: "move-team", serviceId: wardB.serviceId, toHospitalId: campus!.id },
+      opts,
+    );
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    expect(moved.hospitalId).toBe(main!.id);
+    const [afterMain, afterCampus] = moved.state.hospitals;
+    expect(afterMain!.teams.some((team) => team.serviceId === wardB.serviceId)).toBe(false);
+    expect(afterCampus!.teams.some((team) => team.serviceId === wardB.serviceId)).toBe(true);
+    // Ward B's members follow it. Its whole-team supervisors lose the role, every other grant stays.
+    expect(afterCampus!.people.some((person) => person.name === "Dr Robin Wattle")).toBe(true);
+    expect(afterMain!.people.some((person) => person.name === "Dr Robin Wattle")).toBe(false);
+    expect(afterMain!.grants).toEqual(main!.grants.filter((grant) => !isWholeTeamSupervisor(grant, wardB.serviceId)));
+
+    expect(
+      applyExampleAction(state, { action: "move-team", serviceId: wardB.serviceId, toHospitalId: main!.id }, opts),
+    ).toEqual({ ok: false, problem: "That team is already in this hospital." });
+    expect(
+      applyExampleAction(state, { action: "move-team", serviceId: "nope", toHospitalId: campus!.id }, opts).ok,
+    ).toBe(false);
+
+    const renamed = applyExampleAction(
+      state,
+      { action: "rename-hospital", hospitalId: main!.id, name: " Example General Hospital " },
+      opts,
+    );
+    expect(renamed.ok && renamed.state.hospitals[0]!.name).toBe("Example General Hospital");
+    expect(
+      applyExampleAction(state, { action: "rename-hospital", hospitalId: main!.id, name: campus!.name }, opts),
+    ).toEqual({ ok: false, problem: "That hospital is already listed." });
+
+    expect(applyExampleAction(state, { action: "archive-hospital", hospitalId: campus!.id }, opts)).toEqual({
+      ok: false,
+      problem: "Move its teams first. Example Health Campus still has one team.",
+    });
+    const emptied = { ...state, hospitals: [main!, { ...campus!, teams: [] }] };
+    const archived = applyExampleAction(emptied, { action: "archive-hospital", hospitalId: campus!.id }, opts);
+    expect(archived.ok && archived.state.hospitals.map((hospital) => hospital.id)).toEqual([main!.id]);
+    expect(archived.ok && archived.hospitalId).toBe(main!.id);
+  });
+});
+
 describe("example records", () => {
   it("are all example ids and answer like the API", () => {
     const state = exampleWorkPeople();
@@ -371,7 +462,7 @@ describe("example records", () => {
       },
     );
     expect(created.ok && created.state.hospitals.at(-1)?.name).toBe("Example Rural Hospital");
-    expect(created.ok && isExampleRecord(created.hospitalId)).toBe(true);
+    expect(created.ok && created.hospitalId !== null && isExampleRecord(created.hospitalId)).toBe(true);
     expect(applyExampleAction(state, { action: "create-hospital", name: "Example Hospital" }, { now, newId }).ok).toBe(
       false,
     );

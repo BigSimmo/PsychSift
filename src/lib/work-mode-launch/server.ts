@@ -3,7 +3,6 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
 
-import { LIVE_VERSION_COOKIE } from "@/lib/live-version/live-version";
 import { PROXY_AUTH_USER_HEADER } from "@/lib/supabase/auth";
 import { verifyProxyAuthHeader } from "@/lib/supabase/proxy-auth-crypto";
 import {
@@ -40,7 +39,6 @@ export async function getWorkModeLaunch(): Promise<WorkModeLaunch> {
     user: proxyVerifiedLaunchUser(headerStore.get(PROXY_AUTH_USER_HEADER)),
     environment: process.env,
     preference: cookieStore.get(WORK_MODE_PREFERENCE_COOKIE)?.value ?? null,
-    liveVersion: cookieStore.get(LIVE_VERSION_COOKIE)?.value ?? null,
   });
 }
 

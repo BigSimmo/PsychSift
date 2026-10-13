@@ -733,6 +733,12 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check "PyMuPDF==1.28.0"
 
       - name: Unit tests with partial coverage
+        # A partition takes 5-9 minutes. On PR #3450 (run 38102156845) partition 1 printed its last
+        # result after 6.5 minutes, went silent, and held the run until the 20-minute job cap. Every
+        # test already has a 30-second timeout, so a freeze outside a test body (a file import or a
+        # worker that never exits) is what this catches: the step now fails at 13 minutes instead,
+        # 7 minutes sooner, with the same red result. Nothing is skipped or retried.
+        timeout-minutes: 13
         run: >-
           node scripts/run-vitest.mjs run --config=vitest.coverage-shard.config.mts
           --coverage --shard=${{ matrix.shard }}/2 --reporter=default --reporter=blob
@@ -867,6 +873,20 @@ jobs:
           key: nextjs-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}-${{ hashFiles('src/**', 'data/**', 'public/**', 'next.config.ts', 'tsconfig.json', 'postcss.config.mjs') }}
           restore-keys: |
             nextjs-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}-
+
+      # A cold build already peaks near 8.3 GB of system memory (measured 2026-10-10), and
+      # rebuilding a changed branch on top of the restored cache needs more. Without swap the
+      # kernel kills webpack ("Killed", then "The runner has received a shutdown signal"),
+      # which hit PRs #3417 and #3424 three times each while the cache-free Playwright build
+      # of the same code passed. Swap only slows a build that would otherwise die.
+      - name: Add swap for the production build
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 12G /mnt/ci-build-swap
+          sudo chmod 600 /mnt/ci-build-swap
+          sudo mkswap /mnt/ci-build-swap
+          sudo swapon /mnt/ci-build-swap
+          free -m
 
       - name: Build
         env:
@@ -1965,13 +1985,21 @@ jobs:
         # Before iPhone legs were five, two and three both timed out (runs
         # 36156676861, 36210366372, 36214387379); refresh the table from the
         # release-ui-timings artifacts before changing any count.
+        #
+        # 2026-10-11: tablet ran whole on one leg and never finished. Main run
+        # 38053471704 hit the 30-minute global timeout with 345 tablet tests not
+        # run, and that one leg held Railway's "Wait for CI" for ~35 min on every
+        # merge (main runs took 36-40 min). Tablet now splits four ways (~12 min
+        # each by its new timing table) and webkit three ways (19.5 -> 13 min by
+        # its existing table), so every tablet test runs and main finishes sooner.
         include:
           - { engine: chromium, project: chromium-mockups, shard: 1, total: 1 }
           - { engine: firefox, project: firefox, shard: 1, total: 3 }
           - { engine: firefox, project: firefox, shard: 2, total: 3 }
           - { engine: firefox, project: firefox, shard: 3, total: 3 }
-          - { engine: webkit, project: webkit, shard: 1, total: 2 }
-          - { engine: webkit, project: webkit, shard: 2, total: 2 }
+          - { engine: webkit, project: webkit, shard: 1, total: 3 }
+          - { engine: webkit, project: webkit, shard: 2, total: 3 }
+          - { engine: webkit, project: webkit, shard: 3, total: 3 }
           - { engine: webkit, project: mobile-webkit, shard: 1, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 2, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 3, total: 5 }
@@ -1982,7 +2010,10 @@ jobs:
           - { engine: webkit, project: mobile-pwa-standalone, shard: 3, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 4, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 5, total: 5 }
-          - { engine: webkit, project: tablet, shard: 1, total: 1 }
+          - { engine: webkit, project: tablet, shard: 1, total: 4 }
+          - { engine: webkit, project: tablet, shard: 2, total: 4 }
+          - { engine: webkit, project: tablet, shard: 3, total: 4 }
+          - { engine: webkit, project: tablet, shard: 4, total: 4 }
 
     steps:
       - name: Checkout
@@ -2009,7 +2040,7 @@ jobs:
           BROWSER_ENGINE: ${{ matrix.engine }}
         run: |
           if command -v sudo >/dev/null 2>&1; then
-            sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+            sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
             sudo mkdir -p /etc/apt/apt.conf.d
             sudo tee /etc/apt/apt.conf.d/99flaky-mirror-resilience >/dev/null << 'EOF'
           Acquire::Retries "3";
@@ -2017,19 +2048,39 @@ jobs:
           Acquire::https::Timeout "30";
           EOF
           fi
+          # The runner's apt sources resolve through the mirror list in apt-mirrors.txt, so
+          # rewriting only the sources files left apt waiting on the azure mirror until the
+          # attempt timed out.
+          # `set -e`: without it a failed `install-deps` on a cache hit was masked by the
+          # browser download that followed, so the attempt "passed" with apt libraries
+          # missing and every WebKit test died at launch (libevent-2.1.so.7, main run
+          # 38228339791). The launch probe proves the engine actually starts on this
+          # runner, so a missing library fails here and retries instead of in each test.
           install_browsers() {
+            set -e
             if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
               npx playwright install-deps "$BROWSER_ENGINE"
               npx playwright install "$BROWSER_ENGINE"
             else
               npx playwright install --with-deps "$BROWSER_ENGINE"
             fi
+            node -e 'require("playwright")[process.env.BROWSER_ENGINE].launch().then((browser) => browser.close())'
           }
           for attempt in 1 2 3; do
             if timeout 180 bash -c "$(declare -f install_browsers); install_browsers"; then
               exit 0
             fi
             echo "Playwright browsers install attempt $attempt timed out or failed, retrying..." >&2
+            # `timeout` kills the attempt's shell but not the root apt-get it started, which
+            # then holds the apt lock and fails every retry (dispatch run 38234519037). Stop
+            # it (and any dpkg it started), then finish half-configured packages, bounded so a stalled
+            # recovery cannot hold the loop, before the next attempt.
+            if command -v sudo >/dev/null 2>&1; then
+              sudo pkill -x apt-get || true
+              sudo pkill -x dpkg || true
+              sleep 2
+              sudo timeout 120 dpkg --configure -a || true
+            fi
             sleep 5
           done
           exit 1

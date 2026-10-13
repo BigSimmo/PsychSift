@@ -7,9 +7,11 @@ import {
   Bookmark,
   BookmarkCheck,
   Check,
+  ChevronDown,
   ExternalLink,
   GitCompareArrows,
   ListChecks,
+  Phone,
   X,
 } from "lucide-react";
 import { useCallback, useDeferredValue, useId, useMemo, useRef, useState } from "react";
@@ -60,6 +62,7 @@ import {
   type ServiceFacetDimension,
 } from "@/lib/service-facets";
 import { serviceMatchesEveryQueryToken } from "@/lib/service-best-fit";
+import { serviceCallTarget } from "@/lib/service-call";
 import { rankServiceRecords, type ServiceRecord, type ServiceStatusChip } from "@/lib/service-ranker";
 import { replaceResultFilterUrl } from "@/lib/result-filter-url";
 import { sortResultItems } from "@/lib/result-sort";
@@ -121,6 +124,12 @@ function ServiceCard({
   onToggleSaved: (slug: string) => void;
 }) {
   const showBestFit = relevanceRank !== null && relevanceRank <= 2 && serviceMatchesEveryQueryToken(service, query);
+  // The number, one tap away: in a crisis the call is the job, so it is the
+  // card's one visible action. No dialable phone on the record, no button —
+  // never a guessed number.
+  const call = serviceCallTarget(service);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const morePanelId = useId();
 
   return (
     <article
@@ -156,7 +165,17 @@ function ServiceCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <h2 className="text-base font-bold leading-5 text-[color:var(--text-heading)] sm:text-lg">
-              {service.title}
+              {/* The whole card opens the record, where the referral decision
+                  is made. Call, save and "More" stay their own controls. */}
+              <Link
+                href={`/services/${service.slug}`}
+                className={cn(
+                  "rounded-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                  stretchedRowLinkClass,
+                )}
+              >
+                {service.title}
+              </Link>
             </h2>
             {showBestFit ? (
               <span className="rounded-full bg-[color:var(--clinical-accent)] px-2 py-0.5 text-2xs font-bold text-[color:var(--clinical-accent-contrast)]">
@@ -167,7 +186,7 @@ function ServiceCard({
           {/* A fixed 150-character cut clipped short records mid-word at every
               width ("Immedia…" on 13YARN, ledger #8RWKA0). Clamp by lines on a
               phone instead and show the whole line where there is room. */}
-          <p className="mt-1 line-clamp-4 text-sm font-medium leading-5 text-[color:var(--text-muted)] sm:line-clamp-none">
+          <p className="mt-1 line-clamp-2 text-sm font-medium leading-5 text-[color:var(--text-muted)] sm:line-clamp-3">
             {compactText(
               service.bestUse ?? service.subtitle,
               400,
@@ -236,20 +255,40 @@ function ServiceCard({
       </div>
 
       {/* The Catchment/Eligibility/Cost strip that used to sit here is gone
-          (direction B, ledger #163): three truncated fields per row turned a
-          scan of 45 crisis services into a wall of clipped prose. The full,
-          untruncated values are one tap away on the record via "Review
-          referral", which is where a referral decision is actually made. */}
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+          (direction B, ledger #163), and so is the always-open two-button
+          row: 85 crisis results at ~270px each was ~23,000px on a phone with
+          no number anywhere. The card now leads with the phone number and a
+          call button; "Review referral" and "Add to shortlist" sit behind
+          "More" (the whole card still opens the record). */}
+      <div className="mt-3 flex items-stretch gap-2">
+        {call ? (
+          <a
+            href={call.href}
+            aria-label={`Call ${call.display}, ${service.title}`}
+            data-testid={`service-call-${service.slug}`}
+            className="relative z-10 inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] px-3 text-sm font-bold text-[color:var(--clinical-accent-contrast)] hover:bg-[color:var(--clinical-accent-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] sm:flex-none"
+          >
+            <Phone className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate tabular-nums">Call {call.display}</span>
+          </a>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setMoreOpen((open) => !open)}
+          aria-expanded={moreOpen}
+          aria-controls={morePanelId}
+          aria-label={`More actions for ${service.title}`}
+          className="relative z-10 ml-auto inline-flex min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        >
+          <span className="hidden sm:inline">More</span>
+          <ChevronDown className={cn("h-4 w-4 transition-transform", moreOpen && "rotate-180")} aria-hidden />
+        </button>
+      </div>
+      <div id={morePanelId} hidden={!moreOpen} className="mt-2 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
         <Link
           href={`/services/${service.slug}`}
           aria-label={`Review referral for ${service.title}`}
-          className={cn(
-            "inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-            // The whole row reviews the referral, which is the one thing this
-            // list exists to do. Save and shortlist stay their own controls.
-            stretchedRowLinkClass,
-          )}
+          className="relative z-10 inline-flex min-h-12 items-center justify-center gap-1.5 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-3 text-xs font-bold text-[color:var(--text)] hover:bg-[color:var(--surface-subtle)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
         >
           <ExternalLink className="h-3.5 w-3.5" aria-hidden />
           Review referral

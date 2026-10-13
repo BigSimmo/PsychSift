@@ -21,7 +21,8 @@ import { NowRightNow } from "@/components/on-call/now/right-now";
 import { NowShiftClock } from "@/components/on-call/now/shift-clock";
 import { NowShiftPulseCard } from "@/components/on-call/now/shift-pulse-card";
 import { NowShiftShortcuts } from "@/components/on-call/now/shift-shortcuts";
-import { NowFooter, NowWhoToCall, type OnCallSituation } from "@/components/on-call/now/systems-down";
+import { NowShiftLists } from "@/components/on-call/now/shift-lists";
+import { NowWhoToCall, type OnCallSituation } from "@/components/on-call/now/systems-down";
 import { NowYourTeam } from "@/components/on-call/now/your-team";
 import { NowYourUsual, usualTiles } from "@/components/on-call/now/your-usual";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
@@ -35,6 +36,7 @@ import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
+import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries } from "@/lib/on-call/handbook-items";
@@ -69,7 +71,7 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *  5. "Needs you", only while a call to a rung of the reader's ladder waits;
  *  6. "Your usual", four tiles;
  *  7. "Your team", three roles;
- *  8. the footer group: shift lists, Systems down, First night, On site;
+ *  8. the shift tools: Log a call, Handover, the shift lists and Shift pulse;
  *  9. the state modules: example content, then first run.
  *
  * There is no ask box and no search box on Now (amendment r6, Task 2), no tile
@@ -282,6 +284,9 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
         .map((ladder) => ({
           id: ladder.id,
           title: ladder.title,
+          // The time-aware page: it puts the rungs that apply at this hour first and labels the
+          // rest "At other times". The Playbook lists every rung in recorded order, so a chip
+          // must not land there at 3 am with an in-hours contact on top.
           href: `/on-call/now?situation=${encodeURIComponent(ladder.id)}`,
         })),
     [ladders, pinnedReminder],
@@ -322,6 +327,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
           mode="on-call"
           modeName="On Call"
           testId="on-call-home-shell"
+          columns="two"
           status={
             <>
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
@@ -332,11 +338,23 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             <>
               <NowEmergencyPin handbook={handbook} pins={pins} now={now} />
               {numbersOnScreen ? null : <NowCrisisLines now={now} />}
+              {/* Never between the emergency pin and crisis lines. When hospital numbers are on screen the crisis lines sit at the foot of the page, as on main. */}
+              <NewWorkModeOnly>
+                <WorkSetupRow />
+              </NewWorkModeOnly>
             </>
           }
           nowSurface="own"
           now={
             <>
+              {/* The reader's own numbers first, straight under the header (usefulness audit, 11 Oct 2026). */}
+              <NowYourUsual
+                tiles={tiles}
+                outlineCount={usualOutlines}
+                canClear={usual.length > 0}
+                hospitalName={hospitalName}
+                now={now}
+              />
               {ready || handbookLoading ? (
                 <NowRightNow
                   status={ready ? "ready" : "loading"}
@@ -370,12 +388,10 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                 now={now}
                 live={!pinnedNow}
               />
-              <NowShiftShortcuts />
-              <NowShiftPulseCard now={now} />
-              {/* A week before a new job starts until the end of its first week. */}
-              <NewWorkModeOnly>
-                <FirstWeekTodayCardLive now={now} />
-              </NewWorkModeOnly>
+              {/* Who to call sits in the left column with the numbers, so on a computer the
+                  numbers and escalation balance the shift tools on the right (Work mode
+                  simplify plan, 12 Oct 2026). */}
+              <NowWhoToCall situations={situations} reminder={pinnedReminder?.title ?? null} />
             </>
           }
           comingUp={
@@ -384,13 +400,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
               <NewWorkModeOnly>
                 <OnCallRosterRightNow now={now} />
               </NewWorkModeOnly>
-              <NowYourUsual
-                tiles={tiles}
-                outlineCount={usualOutlines}
-                canClear={usual.length > 0}
-                hospitalName={hospitalName}
-                now={now}
-              />
               {ready || handbookLoading ? (
                 <NowYourTeam
                   status={ready ? "ready" : "loading"}
@@ -401,12 +410,33 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                   now={now}
                 />
               ) : null}
-              <NowWhoToCall situations={situations} reminder={pinnedReminder?.title ?? null} />
+            </>
+          }
+          atAGlance={
+            <>
+              {/* Shift tools sit after the team's numbers, so on a computer the numbers and the
+                  escalation fill the left column and the tools the right (usefulness audit, 11 Oct 2026). */}
+              {/* The shift lists, the one row kept from "More for this shift" (Work mode simplify plan,
+                  12 Oct 2026), share the tools' card: the rest live where they belong (Roster, Handbook,
+                  Starting here). */}
+              <NowShiftShortcuts>
+                <NowShiftLists
+                  context={context}
+                  shifts={shifts}
+                  items={handbookItems}
+                  now={now}
+                  handbookReady={ready || handbook.status === "no-service"}
+                />
+              </NowShiftShortcuts>
+              <NowShiftPulseCard now={now} />
+              {/* A week before a new job starts until the end of its first week. */}
+              <NewWorkModeOnly>
+                <FirstWeekTodayCardLive now={now} />
+              </NewWorkModeOnly>
             </>
           }
           shortcuts={
             <>
-              <NowFooter context={context} shifts={shifts} items={handbookItems} now={now} />
               {/* The public lines close the page whenever the hospital's own
                   numbers are on screen; otherwise they sit near the top. */}
               {numbersOnScreen ? <NowCrisisLines now={now} /> : null}

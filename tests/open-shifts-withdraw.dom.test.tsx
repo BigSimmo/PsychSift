@@ -1,0 +1,191 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { OpenShiftsState } from "@/components/open-shifts/use-open-shifts";
+import type { OpenShiftListing } from "@/lib/open-shifts/model";
+import { sampleListings, sampleRoster } from "@/lib/open-shifts/sample";
+
+// Mon 5 Oct 2026, 08:00 Perth.
+const NOW = new Date("2026-10-05T00:00:00.000Z");
+
+const mocks = vi.hoisted(() => ({
+  state: null as unknown as OpenShiftsState,
+  post: vi.fn(),
+}));
+vi.mock("@/components/open-shifts/use-open-shifts", () => ({ useOpenShifts: () => mocks.state }));
+vi.mock("@/components/mode-kit/use-signed-out-sample", () => ({ useSignedOut: () => false }));
+vi.mock("@/components/roster/roster-format", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/roster/roster-format")>()),
+  useRosterNow: () => NOW,
+}));
+vi.mock("@/components/roster/use-roster-team", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/roster/use-roster-team")>()),
+  postRosterAction: mocks.post,
+}));
+
+import { OpenShiftsAdvertPage } from "@/components/open-shifts/open-shifts-advert-page";
+
+function waiting(overrides: Partial<OpenShiftListing> = {}): OpenShiftListing {
+  const future = sampleListings(NOW).find((row) => Date.parse(row.startsAt) > NOW.getTime() + 86_400_000)!;
+  return { ...future, status: "claimed", claimedByMe: true, mine: false, ...overrides };
+}
+
+function stateWith(listing: OpenShiftListing, overrides: Partial<OpenShiftsState> = {}): OpenShiftsState {
+  return {
+    status: "ready",
+    listings: [listing],
+    teams: [],
+    roster: sampleRoster(NOW),
+    rosterStatus: "ready",
+    readAt: NOW,
+    sample: null,
+    offline: false,
+    failedTeams: [],
+    refreshFailed: false,
+    actorId: null,
+    message: null,
+    reload: vi.fn(),
+    ...overrides,
+  };
+}
+
+function renderFor(listing: OpenShiftListing) {
+  return render(<OpenShiftsAdvertPage serviceId={listing.serviceId} openShiftId={listing.id} />);
+}
+
+beforeEach(() => mocks.post.mockReset());
+afterEach(cleanup);
+
+describe("Open shifts, taking back a waiting request", () => {
+  it("takes back a waiting request after the doctor confirms, and says the shift is open again", async () => {
+    const listing = waiting();
+    mocks.state = stateWith(listing);
+    mocks.post.mockResolvedValue({ ok: true, result: { ok: true, openShiftId: listing.id, status: "open" } });
+    renderFor(listing);
+    expect(screen.getByText("Waiting for approval")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    // Nothing is sent until the doctor confirms.
+    expect(mocks.post).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() => expect(screen.getByText("Request taken back. The shift is open again.")).toBeTruthy());
+    expect(mocks.post).toHaveBeenCalledWith(listing.serviceId, { action: "open.withdraw", openShiftId: listing.id });
+    expect(mocks.state.reload).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Waiting for approval")).toBeNull();
+    expect(screen.queryByText(/Someone else has it now/)).toBeNull();
+    // The button that opened the take-back is gone, so focus moves to the result.
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Request taken back. The shift is open again."),
+    );
+  });
+
+  it("shows the request as waiting again when a newer read finds it asked for again elsewhere", async () => {
+    const listing = waiting();
+    mocks.state = stateWith(listing);
+    mocks.post.mockResolvedValue({ ok: true, result: { ok: true, openShiftId: listing.id, status: "open" } });
+    const view = renderFor(listing);
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledOnce());
+    // The same doctor asks again from another device before this page's re-read lands.
+    mocks.state = stateWith(listing, { readAt: new Date(NOW.getTime() + 60_000) });
+    view.rerender(<OpenShiftsAdvertPage serviceId={listing.serviceId} openShiftId={listing.id} />);
+    expect(screen.getByText("Waiting for approval")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Request this shift" })).toBeNull();
+    expect(screen.queryByText("Request taken back. The shift is open again.")).toBeNull();
+  });
+
+  it("does not call the shift open when someone else asked for it before the page re-read it", async () => {
+    const listing = waiting();
+    mocks.state = stateWith(listing);
+    mocks.post.mockResolvedValue({ ok: true, result: { ok: true, openShiftId: listing.id, status: "open" } });
+    const view = renderFor(listing);
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledOnce());
+    const taken = { ...listing, status: "claimed" as const, claimedByMe: false };
+    mocks.state = stateWith(taken);
+    view.rerender(<OpenShiftsAdvertPage serviceId={taken.serviceId} openShiftId={taken.id} />);
+    expect(screen.getByText("Request taken back.")).toBeTruthy();
+    expect(screen.queryByText(/The shift is open again/)).toBeNull();
+  });
+
+  it("explains a request decided before it could be taken back, and keeps it", async () => {
+    const listing = waiting();
+    mocks.state = stateWith(listing);
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_conflict", message: "Already decided." });
+    renderFor(listing);
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toMatch(
+        /can't be taken back now\. Your roster manager has decided, or the shift has started/,
+      ),
+    );
+    // The page reads the request again, so it shows what the manager decided.
+    expect(mocks.state.reload).toHaveBeenCalledOnce();
+    // The same take-back can't be sent again against what the page last read.
+    expect((screen.getByRole("button", { name: "Yes, take it back" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("drops a request sent on this visit once a take-back finds it already declined", async () => {
+    const open = waiting({ status: "open", claimedByMe: false });
+    mocks.state = stateWith(open);
+    const view = renderFor(open);
+    mocks.post.mockResolvedValueOnce({ ok: true, result: { ok: true, openShiftId: open.id, status: "claimed" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Request this shift" })[0]!);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, send request" }));
+    await waitFor(() => expect(screen.getByText("Waiting for approval")).toBeTruthy());
+
+    // The manager declines before the take-back lands, which clears the request.
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_not_found", message: "Not found." });
+    fireEvent.click(screen.getByRole("button", { name: "Take back my request" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, take it back" }));
+    await waitFor(() => expect(mocks.state.reload).toHaveBeenCalledTimes(2));
+    mocks.state = stateWith(open);
+    view.rerender(<OpenShiftsAdvertPage serviceId={open.serviceId} openShiftId={open.id} />);
+    expect(screen.queryByText("Waiting for approval")).toBeNull();
+  });
+
+  it("lets a request sent on this visit lapse once a later read shows it declined", async () => {
+    const open = waiting({ status: "open", claimedByMe: false });
+    mocks.state = stateWith(open);
+    const view = renderFor(open);
+    mocks.post.mockResolvedValueOnce({ ok: true, result: { ok: true, openShiftId: open.id, status: "claimed" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Request this shift" })[0]!);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, send request" }));
+    await waitFor(() => expect(screen.getByText("Waiting for approval")).toBeTruthy());
+
+    // The manager declines, and the next read shows the shift open again and not this doctor's.
+    mocks.state = stateWith(open, { readAt: new Date(NOW.getTime() + 60_000) });
+    view.rerender(<OpenShiftsAdvertPage serviceId={open.serviceId} openShiftId={open.id} />);
+    expect(screen.queryByText("Waiting for approval")).toBeNull();
+  });
+
+  it("never offers to take back an approved shift, or while offline", () => {
+    const approved = waiting({ status: "approved" });
+    mocks.state = stateWith(approved);
+    renderFor(approved);
+    expect(screen.queryByRole("button", { name: "Take back my request" })).toBeNull();
+    cleanup();
+
+    const listing = waiting();
+    mocks.state = stateWith(listing, { offline: true });
+    renderFor(listing);
+    expect(screen.queryByRole("button", { name: "Take back my request" })).toBeNull();
+  });
+
+  it("stops offering a take-back once the shift has started", () => {
+    const started = waiting({
+      startsAt: new Date(NOW.getTime() - 3_600_000).toISOString(),
+      endsAt: new Date(NOW.getTime() + 7 * 3_600_000).toISOString(),
+    });
+    mocks.state = stateWith(started);
+    renderFor(started);
+    expect(screen.queryByRole("button", { name: "Take back my request" })).toBeNull();
+  });
+});

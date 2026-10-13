@@ -37,6 +37,8 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/on-call/first-week", owner: "junior-features" },
   { path: "/on-call/whos-on/roster", owner: "junior-features" },
   { path: "/cme/cpd-home", owner: "junior-features" },
+  { path: "/admin/applications", owner: "junior-features" },
+  // The old address of Job applications, which now redirects to Admin.
   { path: "/cme/applications", owner: "junior-features" },
   { path: "/my-day/profile/agreement", owner: "junior-features" },
   { path: "/teaching/term/folder", owner: "junior-features" },
@@ -50,7 +52,7 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/admin/pay", owner: "wiring" },
   { path: "/admin/tax", owner: "wiring" },
   { path: "/admin/workforce", owner: "wiring" },
-  // Course bookings (also behind the Live version switch).
+  // Course bookings.
   { path: "/admin/bookings", owner: "course-bookings" },
   { path: "/admin/courses", owner: "course-bookings" },
   // Favourites.
@@ -62,7 +64,8 @@ export const NEW_WORK_MODE_ROUTES: readonly WorkModeRouteEntry[] = [
   { path: "/my-day/notifications", owner: "alerts" },
   // Hospital roles: People and roles, for Medical Workforce, the DCT and administrators.
   { path: "/admin/people", owner: "hospital-roles" },
-  // Hospital roles: Hospital, the way in for hospital role holders, and its sick calls.
+  // Hospital roles: Hospital, the way in for hospital role holders, and everything below it
+  // (its sick calls, short-staffed days and new starters).
   { path: "/admin/hospital", owner: "hospital-roles" },
   // Rotation preferences: a doctor's rounds and year, and the administrator's rounds (each matches its rounds below it).
   { path: "/roster/rotations", owner: "roster-rotations" },

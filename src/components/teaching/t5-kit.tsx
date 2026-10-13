@@ -533,7 +533,8 @@ export function T5Segments<T extends string>({
   label,
 }: {
   value: T;
-  options: readonly { value: T; label: string }[];
+  /** `short` is shown below 390px wide, so three segments fit a 320px phone; the full label stays the name. */
+  options: readonly { value: T; label: string; short?: string }[];
   onChange: (value: T) => void;
   label: string;
 }) {
@@ -551,6 +552,7 @@ export function T5Segments<T extends string>({
             key={option.value}
             type="button"
             aria-pressed={on}
+            aria-label={option.short ? option.label : undefined}
             onClick={() => onChange(option.value)}
             className={cn("relative grid min-h-12 min-w-0 place-items-center rounded-full", focusRing)}
           >
@@ -565,7 +567,14 @@ export function T5Segments<T extends string>({
                   : cn("font-semibold", sub),
               )}
             >
-              {option.label}
+              {option.short ? (
+                <>
+                  <span className="max-w-full truncate min-[390px]:hidden">{option.short}</span>
+                  <span className="hidden max-w-full truncate min-[390px]:inline">{option.label}</span>
+                </>
+              ) : (
+                option.label
+              )}
             </span>
           </button>
         );

@@ -4937,6 +4937,14 @@ export type Database = {
         Args: { p_service_id: string; p_user_id: string; p_actor_id: string; p_manager: boolean };
         Returns: Json;
       };
+      roster_needs_replace: {
+        Args: { p_actor_id: string; p_service_id: string; p_expected_ids: Json; p_needs: Json };
+        Returns: Json;
+      };
+      roster_open_withdraw: {
+        Args: { p_actor_id: string; p_service_id: string; p_open_shift_id: string };
+        Returns: Json;
+      };
       on_call_service_set_verified: {
         Args: { p_service_id: string; p_actor_id: string; p_verified: boolean; p_is_demo: boolean };
         Returns: Json;

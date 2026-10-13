@@ -1,17 +1,17 @@
 "use client";
 
-import { BookOpen, CalendarPlus, ChevronLeft, CloudOff, Copy, ListChecks, RotateCcw, Smartphone } from "lucide-react";
+import { OnCallStartingHereChips } from "@/components/on-call/starting-here-chips";
+import { BookOpen, CalendarPlus, CloudOff, Copy, Eye, ListChecks, RotateCcw, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useId, useState } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { FirstWeekPackCard } from "@/components/on-call/first-week/first-week-pack-card";
 import { FirstWeekSectionView } from "@/components/on-call/first-week/first-week-section-view";
 import { useFirstWeekPack } from "@/components/on-call/first-week/use-first-week-pack";
 import { flatQuietAction } from "@/components/on-call/flat-recipes";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { useHospitalClock } from "@/components/on-call/use-hospital-clock";
 import { WorkBody, WorkButton, WorkCard, WorkEmpty, WorkIconCircle, WorkIconRow } from "@/components/mode-kit/work";
@@ -212,7 +212,9 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
   const handbookState = (
     <>
       <OnCallHandbookState handbook={handbook} page="find" />
-      {ready || handbook.status === "loading" ? null : <OnCallCrisisLines now={now} />}
+      {ready || handbook.status === "loading" ? null : (
+        <OnCallCrisisLines now={now} compact={onCallCrisisLinesCompact(handbook.status)} />
+      )}
     </>
   );
 
@@ -294,13 +296,20 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
   const footer = (
     <div className="flex flex-wrap items-center justify-between gap-x-3">
       <span className="inline-flex min-h-12 items-center gap-1.5 text-sm text-[color:var(--text-muted)]">
-        <Smartphone aria-hidden="true" className="size-icon-sm" />
+        {/* An eye for "shows on", not the phone outline, which at this size reads as a tick box that
+            cannot be ticked. The phone stays for the line that is about this phone. */}
         {phase.kind === "ahead" && pack.landAlert !== false ? (
-          <span data-testid="on-call-first-week-ahead">
-            {`Shows on On Call Now from ${formatFirstWeekDate(phase.highlightFrom)}`}
-          </span>
+          <>
+            <Eye aria-hidden="true" className="size-icon-sm" />
+            <span data-testid="on-call-first-week-ahead">
+              {`Shows on On Call Now from ${formatFirstWeekDate(phase.highlightFrom)}`}
+            </span>
+          </>
         ) : (
-          "Read marks stay on this phone"
+          <>
+            <Smartphone aria-hidden="true" className="size-icon-sm" />
+            Read marks stay on this phone
+          </>
         )}
       </span>
       {phase.kind !== "no-date" ? (
@@ -325,18 +334,30 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
     <main data-testid="on-call-first-week-main" className="min-w-0">
       <WorkBody>
         {/* The pack card's visible title is the page's h1, so no hidden copy is read twice. */}
-        <ContextualBackLink
-          fallbackHref="/on-call"
-          data-testid="on-call-first-week-page-back"
-          className={cn(
-            focusRing,
-            "-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
-          )}
-        >
-          <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-          On Call
-        </ContextualBackLink>
-        <OnCallHospitalLine handbook={handbook} testId="on-call-first-week-hospital" />
+        {/* One way back: the band's Now tab is On Call, so the page adds no second link to it. */}
+        <OnCallStartingHereChips />
+        {/* Mark all (or Start again) sits on the hospital line that heads the pack, not loose under it. */}
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3">
+          <OnCallHospitalLine handbook={handbook} testId="on-call-first-week-hospital" />
+          {canMarkAll || canStartAgain ? (
+            <div className="ml-auto">
+              {canMarkAll ? (
+                <WorkButton variant="quiet" onClick={markAll} testId="on-call-first-week-mark-all">
+                  Mark all as read
+                </WorkButton>
+              ) : (
+                <WorkButton
+                  variant="quiet"
+                  icon={RotateCcw}
+                  onClick={startAgain}
+                  testId="on-call-first-week-start-again"
+                >
+                  Start again
+                </WorkButton>
+              )}
+            </div>
+          ) : null}
+        </div>
         {offline}
         <FirstWeekPackCard
           phase={phase}
@@ -360,19 +381,6 @@ export function OnCallFirstWeekPage({ section, now: pinned }: { section?: string
                     : "Sign in to see"
           }
         />
-        {canMarkAll || canStartAgain ? (
-          <div className="flex justify-end">
-            {canMarkAll ? (
-              <WorkButton variant="quiet" onClick={markAll} testId="on-call-first-week-mark-all">
-                Mark all as read
-              </WorkButton>
-            ) : (
-              <WorkButton variant="quiet" icon={RotateCcw} onClick={startAgain} testId="on-call-first-week-start-again">
-                Start again
-              </WorkButton>
-            )}
-          </div>
-        ) : null}
         {phase.kind === "ahead" && pack.landAlert !== null && !pack.sample ? (
           <WorkCard testId="on-call-first-week-land-alert">
             <div className="flex min-h-12 items-center gap-3 py-1 pl-3 pr-1">

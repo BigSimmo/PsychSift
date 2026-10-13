@@ -23,7 +23,7 @@ const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 // `tests/playwright-project-isolation.test.ts` asserts every such file on disk is
 // matched here.
 const productionSpecPattern =
-  /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|smoke|stress|accessibility|clinical-ask|cme-phone|dictionary|document-canvas|tools|tools-show-all|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/;
+  /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|smoke|stress|accessibility|clinical-ask|cme-phone|dictionary|document-canvas|tools|tools-show-all|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|my-day-calendar|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|open-shifts-withdraw|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/;
 const mockupSpecPattern =
   /.*ui-(accessible-table-mockup|answer-chat-perfected-mockup|care-plan-mockup|document-image-status-mockup|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-search-mode-mockup|tools-task-directory)\.spec\.ts/;
 const mockupTag = /@mockup/;
@@ -34,7 +34,9 @@ const mockupTag = /@mockup/;
 // iPhone-project journey that typed a question and pressed Send timed out on
 // "pwa-notice-stack subtree intercepts pointer events" (release-browser-matrix, 2026-09-22 on).
 // A returning user who has dismissed it once is the state these journeys are about, so the two
-// iPhone projects start from that state. `ui-pwa.spec.ts` resets it to prove the sheet itself.
+// iPhone projects and the iPad `tablet` project start from that state (the iPad user agent gets the
+// same sheet; once WebKit could launch it covered tablet clicks across shards, matrix run
+// 38236585559). `ui-pwa.spec.ts` resets it to prove the sheet itself.
 const IOS_INSTALL_DISMISSAL_KEY = "clinical-kb-pwa-ios-install-dismissed-at";
 const iosInstallHintDismissed = {
   cookies: [],
@@ -49,7 +51,7 @@ const iosInstallHintDismissed = {
 export default defineConfig({
   testDir: "./tests",
   testMatch:
-    /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|accessible-table-mockup|smoke|stress|accessibility|answer-chat-perfected-mockup|care-plan-mockup|clinical-ask|cme-phone|dictionary|document-canvas|document-image-status-mockup|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-show-all|tools-search-mode-mockup|tools-task-directory|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/,
+    /.*(?:adaptive-answer-ui|api-csrf-proxy|answer-progress-ui-smoke|dsm-ui-smoke|ui-(admin|accessible-table-mockup|smoke|stress|accessibility|answer-chat-perfected-mockup|care-plan-mockup|clinical-ask|cme-phone|dictionary|document-canvas|document-image-status-mockup|document-top-navigation-mockup|sidebar-live-mockup|therapy-navigation-mockup|tools|tools-collapse|tools-show-all|tools-search-mode-mockup|tools-task-directory|overlap|universal-search|specifiers|sources|formulation(?:-result-cards)?|forms-section-nav|chrome-scroll|therapy-nav-scroll|therapy-pathways|mode-nav-density|my-day-calendar|on-call-(?:boards|call|now|service)|teaching|patient-number-field|phone-motion|phone-scroll(?:-[a-z0-9-]+)?|pwa|roster-team|open-shifts-withdraw|route-coverage|style-contract|token-layer-resolution|visual-artifacts|hydration|user-journeys))\.spec\.ts/,
   timeout: 60_000,
   retries: 0,
   // Fail the run if a stray `test.only` is committed: otherwise it silently
@@ -163,6 +165,7 @@ export default defineConfig({
       grepInvert: mockupTag,
       use: {
         ...devices["iPad Mini"],
+        storageState: iosInstallHintDismissed,
         viewport: { width: 768, height: 1024 },
       },
     },

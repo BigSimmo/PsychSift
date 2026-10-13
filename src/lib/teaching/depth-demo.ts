@@ -14,6 +14,7 @@ import {
 import {
   DEMO_TEACHING_SERVICE_ID,
   DEMO_TEACHING_TEAM,
+  demoPresentingDate,
   demoTeachingFeedbackOwed,
   demoTeachingLogbook,
 } from "@/lib/teaching/demo-programme";
@@ -137,15 +138,15 @@ function shortDate(dateKey: string): string {
 }
 
 /**
- * The made-up presenter (mock-up v5, Presenting): a journal club today at 14:00 with three of four
- * items done and the patient-details check already confirmed, three later talks, and six talks given.
- * Every date is relative to today. Once 14:45 has passed (Perth), the talk moves to tomorrow so it is
- * never shown as next after it has ended.
+ * The made-up presenter (mock-up v5, Presenting): the programme's next journal club at 14:00 with three
+ * of four items done and the patient-details check already confirmed, three later talks, and six talks
+ * given. Every other date is relative to today. Once that talk's 15:00 end has passed (Perth), it moves to
+ * the following journal club so it is never shown as next after it has ended.
  */
 export function demoTeach(today: string, now?: Date): { upcoming: DemoTeachSession[]; taught: SessionRef[] } {
   const day = (offset: number) => addDays(today, offset);
-  const over = now ? now.getTime() >= Date.parse(perthInstant(today, "14:45")) : false;
-  const talkDay = over ? day(1) : today;
+  // The talk is the programme's own journal club, so every page names the same day.
+  const talkDay = demoPresentingDate(today, now);
   const later = (
     n: number,
     title: string,
@@ -178,7 +179,7 @@ export function demoTeach(today: string, now?: Date): { upcoming: DemoTeachSessi
         serviceId: DEMO_TEACHING_SERVICE_ID,
         title: "Journal club",
         startsAt: perthInstant(talkDay, "14:00"),
-        endsAt: perthInstant(talkDay, "14:45"),
+        endsAt: perthInstant(talkDay, "15:00"),
         venue: "Library meeting room",
         status: "scheduled",
         items: ["reading_list", "aims", "slides_link"],
