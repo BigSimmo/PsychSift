@@ -28,7 +28,11 @@ export type ModeNavItem = {
 const focusRing =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[color:var(--focus)]";
 
-/** 48px hit area — matches `--spacing-tap`, clear of the `expectMinTouchTarget` rounding flake. */
+/**
+ * 48px hit area — matches `--spacing-tap`, clear of the `expectMinTouchTarget` rounding flake. The link or
+ * button inside reaches back over the slot's `px-3` (`-mx-3 px-3`, at least 48px wide), so a short word
+ * ("Act", "Map") is a full-width target while its ink stays exactly where it was.
+ */
 const slotBase =
   "mode-nav__slot relative flex min-h-12 min-w-0 items-center justify-center px-3 no-underline transition-colors";
 
@@ -253,7 +257,7 @@ export function ModeNav({
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "flex h-full w-full items-center justify-center rounded-lg no-underline transition-colors motion-reduce:transition-none",
+                    "-mx-3 flex h-full min-w-12 flex-1 items-center px-3 justify-center rounded-lg no-underline transition-colors motion-reduce:transition-none",
                     // Background only, and pointer-only. Never the rule: the
                     // density spec counts PAINTED `.mode-nav__rule` elements and
                     // asserts exactly one, so a hovered rule would make "which
@@ -287,7 +291,7 @@ export function ModeNav({
                 aria-haspopup="dialog"
                 aria-expanded={open}
                 className={cn(
-                  "flex h-full w-full items-center justify-center rounded-lg transition-colors motion-reduce:transition-none sm:hover:bg-[color:var(--surface-subtle)]",
+                  "-mx-3 flex h-full min-w-12 flex-1 items-center px-3 justify-center rounded-lg transition-colors motion-reduce:transition-none sm:hover:bg-[color:var(--surface-subtle)]",
                   focusRing,
                 )}
               >
