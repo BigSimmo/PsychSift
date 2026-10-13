@@ -43,6 +43,10 @@ import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
 import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import {
+  clinicalQuestionPatientDetail,
+  clinicalQuestionPatientDetailMessage,
+} from "@/lib/clinical-question-patient-check";
+import {
   splitFilterText,
   filterText,
   labelScopeFilterFields,
@@ -398,7 +402,14 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     demoMode: false,
   });
   const trimmedQuery = query.trim();
-  const hasPhiWarning = Boolean(query && identifierShapeWarning(query));
+  // Clinical questions go to an overseas AI service, so in Answer mode a question that looks like it
+  // holds a patient detail is held back (Work's check, read for clinical questions; audit S2,
+  // 2026-10-13). Other modes keep the narrower advisory warning.
+  const clinicalPatientDetail = useMemo(
+    () => (searchMode === "answer" && query ? clinicalQuestionPatientDetail(query) : null),
+    [query, searchMode],
+  );
+  const hasPhiWarning = Boolean(clinicalPatientDetail || (query && identifierShapeWarning(query)));
   const composerPhiWarningId = "composer-phi-warning";
   const selectedSearch = appModeSearchConfig(searchMode);
   // The trigger names the route the user is viewing. Session filtering still
@@ -424,7 +435,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     selectedSearch.kind === "formulation" ||
     selectedSearch.kind === "dsm";
   const searchSetupNotReady = !realDataReady && !canRunLocalSearch;
-  const canAsk = trimmedQuery.length >= 1 && !loading && selectedSearchable && !searchSetupNotReady;
+  const canAsk =
+    trimmedQuery.length >= 1 && !loading && selectedSearchable && !searchSetupNotReady && !clinicalPatientDetail;
   const indexedDocumentTotal = documentTotal ?? documents.length;
   const hasUnloadedDocuments = indexedDocumentTotal > documents.length;
   const loadedScopeSummary = hasUnloadedDocuments
@@ -2456,7 +2468,9 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             data-testid={composerPhiWarningId}
             className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
           >
-            Remove identifiable patient details before searching.
+            {clinicalPatientDetail
+              ? clinicalQuestionPatientDetailMessage(clinicalPatientDetail)
+              : "Remove identifiable patient details before searching."}
           </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can

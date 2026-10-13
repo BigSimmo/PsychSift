@@ -32,7 +32,9 @@ describe("catalogue option review status", () => {
       const control = screen.getByRole("radio", { name: item.label });
       const describedBy = control.getAttribute("aria-describedby");
       expect(describedBy).toBe(`${item.slug}-review-status`);
-      expect(document.getElementById(describedBy!)?.textContent).toMatch(/Review due|Source reviewed|Source n\/a/);
+      expect(document.getElementById(describedBy!)?.textContent).toMatch(
+        /Review due|Source checked, not signed off|Source n\/a/,
+      );
     }
   });
 });

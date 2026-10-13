@@ -58,6 +58,7 @@ import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboa
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
+import { AnswerProviderNotice } from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
   AnswerProgress,
@@ -192,6 +193,10 @@ import {
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
 import { hasCrisisWording } from "@/lib/crisis-wording";
+import {
+  clinicalQuestionPatientDetail,
+  clinicalQuestionPatientDetailMessage,
+} from "@/lib/clinical-question-patient-check";
 import { useDeferredRegistrySearch } from "@/components/clinical-dashboard/use-deferred-registry-search";
 import { buildAnswerFollowUpQuery, buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
 import {
@@ -2007,6 +2012,17 @@ function ClinicalDashboardContent({
 
   async function ask(searchText = query, contextOverride?: SearchNavigationContext, replaceExistingAnswer = false) {
     const trimmedQuery = searchText.trim();
+    // A Clinical question goes to an overseas AI service. One that looks like it holds a patient
+    // detail is not sent, saved as a recent question or written into the address bar (audit S2,
+    // 2026-10-13). The composer already disables Ask for it; this covers every other way in
+    // (a link with ?run=1, a recent question). The answer API refuses it again.
+    if (searchMode === "answer" && trimmedQuery) {
+      const patientDetail = clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const effectiveQueryMode = contextOverride?.queryMode ?? queryMode;
     const effectiveScopeFilters = contextOverride?.scopeFilters ?? scopeFilters;
     const privateScopeRef =
@@ -3209,8 +3225,10 @@ function ClinicalDashboardContent({
                       // sitting almost on the bottom edge once the dock scroll-hides
                       // and its reserve releases to zero. `pb-10` matches the
                       // `sm:pb-10` every other mode wrapper already uses. sm+/desktop
-                      // keep the original generous padding.
-                      "pb-10 sm:pb-36 lg:pb-40"
+                      // keep the original generous padding. Raised to `pb-16` on phones
+                      // (audit D07, 2026-10-13): the last "Also in your library" rows
+                      // still slid under the bottom box; the box itself is unchanged.
+                      "pb-16 sm:pb-36 lg:pb-40"
                   : hasMobileBottomSearch
                     ? compactMobileModeHome
                       ? "sm:pb-10 lg:pb-12"
@@ -3541,6 +3559,12 @@ function ClinicalDashboardContent({
                         generating={loading}
                         onScopeDocument={handleScopeDocument}
                       />
+                      {/* Once per page, under the latest answer: where a question goes (audit S3). */}
+                      {explicitDemoMode ||
+                      answer.demoMode === true ||
+                      answer.fallbackMode === "non_production_demo" ? null : (
+                        <AnswerProviderNotice className="mt-1" />
+                      )}
                     </>
                   ) : null
                 ) : null}

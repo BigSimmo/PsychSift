@@ -74,6 +74,7 @@ describe("Chief Psychiatrist's Standards", () => {
         sourceUrl: "https://www.chiefpsychiatrist.wa.gov.au/example/",
         reviewed: false,
         reviewedBy: null,
+        reviewedAt: null,
       },
     ]);
   });

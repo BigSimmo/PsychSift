@@ -65,7 +65,7 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
     <article
       role="listitem"
       data-category-accent={APP_MODE_ACCENT[link.modeId]}
-      className={cn(sourceCard, "flex min-h-12 min-w-0 items-center gap-2.5 px-2.5 py-1.5", "md:max-w-full")}
+      className={cn(sourceCard, "relative flex min-h-12 min-w-0 items-center gap-2.5 px-2.5 py-1.5", "md:max-w-full")}
     >
       <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-[color:var(--cat-border)] bg-[color:var(--cat-soft)] text-[color:var(--cat-accent)]">
         <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -73,7 +73,12 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
       <Link
         href={link.detailHref}
         onClick={() => logCrossModeLinkOpen(query, link)}
-        className="inline-flex min-h-tap min-w-0 items-center text-sm font-semibold leading-5 text-[color:var(--text-heading)] transition hover:text-[color:var(--cat-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+        className={cn(
+          "inline-flex min-h-tap min-w-0 items-center text-sm font-semibold leading-5 text-[color:var(--text-heading)] transition hover:text-[color:var(--cat-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+          // Phone: the whole row opens the record (audit D07, 2026-10-13). The title link
+          // stretches over the card, so a tap anywhere on the row lands on it.
+          "max-sm:after:absolute max-sm:after:inset-0 max-sm:after:content-['']",
+        )}
       >
         <span className="truncate">{link.title}</span>
       </Link>
@@ -96,7 +101,7 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
         </span>
       ) : null}
       {/* Two signposted actions rather than one magnifying glass that had to
-          stand for both. The glass alone did not say whether it searched or
+          stand for both (from sm up; a phone shows the open arrow alone). The glass alone did not say whether it searched or
           opened, and the only route to the record itself was the title text. */}
       <span className="ml-auto flex shrink-0 items-center gap-1.5">
         <button
@@ -110,7 +115,9 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
           }}
           aria-label={`Search ${link.title} in ${link.modeLabel}`}
           title={`Search in ${link.modeLabel}`}
-          className={cardActionControl}
+          // Phone shows one icon only, the open arrow (audit D07, 2026-10-13): two
+          // unlabelled squares read as the same thing at that size. From sm up both stay.
+          className={cn(cardActionControl, "max-sm:hidden")}
         >
           <Search className="h-4 w-4 shrink-0" aria-hidden />
         </button>
@@ -121,7 +128,8 @@ function CrossModeLinkCard({ link, Icon, query, onModeSearch }: CrossModeLinkCar
           onClick={() => logCrossModeLinkOpen(query, link)}
           aria-label={`Open ${link.title}`}
           title="Open page"
-          className={cardActionControl}
+          // Above the stretched title link, so it stays its own tap target and focus stop.
+          className={cn(cardActionControl, "relative")}
         >
           <ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden />
         </Link>
