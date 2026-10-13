@@ -142,6 +142,11 @@ function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysi
   if (analysis.medications.some((medicine) => side.toLowerCase().includes(medicine.toLowerCase()))) return true;
   if (hasClinicalPopulationSignal(side) || jurisdictionSignal.test(side) || settingSignal.test(side)) return true;
   if (/\b(?:guideline|policy|procedure|protocol|form|service|therapy|medication)\b/i.test(side)) return true;
+  // A care-pathway stage ("admission", "community discharge") is a retrievable side: without its
+  // own lane, one stage's documents can crowd the other out of a stage-vs-stage comparison.
+  if (/^(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)$/i.test(side.trim())) {
+    return true;
+  }
   return /^[A-Z][A-Z0-9-]{1,}$/.test(side.trim());
 }
 
