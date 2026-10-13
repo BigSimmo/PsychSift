@@ -36,7 +36,6 @@ import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { OnCallEmptyState } from "@/components/on-call/kit/empty-state";
 import { cn, eyebrowText } from "@/components/ui-primitives";
 import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
-import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { onCallCallNowScenarios, onCallCallNowSteps } from "@/lib/on-call/call-now";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import { pinnedEmergencyEntries } from "@/lib/on-call/handbook-items";
@@ -338,10 +337,6 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
             <>
               <NowEmergencyPin handbook={handbook} pins={pins} now={now} />
               {numbersOnScreen ? null : <NowCrisisLines now={now} />}
-              {/* Never between the emergency pin and crisis lines. When hospital numbers are on screen the crisis lines sit at the foot of the page, as on main. */}
-              <NewWorkModeOnly>
-                <WorkSetupRow />
-              </NewWorkModeOnly>
             </>
           }
           nowSurface="own"
