@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   calculateCaseMetrics,
+  extractDomainCases,
   formatCaseLine,
   renderCanaryReleaseReport,
   type CanaryEvalReport,
@@ -9,6 +10,13 @@ import {
 } from "../scripts/eval-reporter";
 
 describe("eval-reporter", () => {
+  it("counts a count-only domain summary instead of reporting 0/0", () => {
+    const metrics = calculateCaseMetrics(extractDomainCases({ case_count: 5, passed_count: 4, failed_count: 1 }));
+    expect(metrics.total).toBe(5);
+    expect(metrics.passed).toBe(4);
+    expect(metrics.failed).toBe(1);
+  });
+
   it("formats individual passing cases with latency", () => {
     const item: EvalCaseResult = {
       id: "lithium-monitoring",

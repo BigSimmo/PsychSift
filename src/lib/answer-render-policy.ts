@@ -148,7 +148,8 @@ export function isAnswerSourceBacked(answer: ClientRagAnswerPayload): boolean {
   return answerRelevance(answer)?.isSourceBacked === true;
 }
 
-function deriveTrust(answer: ClientRagAnswerPayload): AnswerRenderTrust {
+/** The one trust derivation: the render policy and the support-label recalculation script share it. */
+export function deriveTrust(answer: ClientRagAnswerPayload): AnswerRenderTrust {
   const retrievalBlocked = answer.retrievalGateBlocked === true;
   const sourceBacked = isAnswerSourceBacked(answer);
   const hasFaithfulnessWarning = Boolean(answer.faithfulnessWarning || answer.unverifiedNumericTokens?.length);

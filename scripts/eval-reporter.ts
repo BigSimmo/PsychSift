@@ -85,15 +85,17 @@ export function extractDomainCases(summary?: CanaryDomainSummary): EvalCaseResul
     });
   }
 
-  // If no explicit passed/failed arrays, but case_count is given with failed_cases
+  // Count-only summary (no case arrays): synthesise one entry per counted case so the report reads
+  // e.g. 4/5, not 0/0. Without explicit counts, every counted case is unknown and reads as failed,
+  // never as passed.
   if (passed.length === 0 && failed.length === 0 && summary.case_count > 0) {
-    for (const item of failed) {
-      results.push({
-        id: item.id,
-        status: "FAIL",
-        latencyMs: item.latencyMs,
-        failures: item.failures,
-      });
+    const failedCount = Math.max(0, summary.failed_count ?? summary.case_count - (summary.passed_count ?? 0));
+    const passedCount = Math.max(0, Math.min(summary.passed_count ?? 0, summary.case_count - failedCount));
+    for (let index = 0; index < passedCount; index += 1) {
+      results.push({ id: `case-${index + 1}`, status: "PASS" });
+    }
+    for (let index = 0; index < failedCount; index += 1) {
+      results.push({ id: `case-${passedCount + index + 1}`, status: "FAIL" });
     }
   }
 

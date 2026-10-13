@@ -23,6 +23,14 @@ describe("ISMP Tall Man Lettering for Psychotropic Safety (CS-002)", () => {
     expect(formatTallMan("Clonidine")).toBe("cloNIDine");
   });
 
+  it("letters a registered generic inside a formulation-qualified catalogue name, whole words only", () => {
+    expect(formatTallMan("Bupropion SR")).toBe("buPROPion SR");
+    expect(formatTallMan("Olanzapine (wafer/ODT)")).toBe("OLANZapine (wafer/ODT)");
+    expect(formatTallMan("Escitalopram")).toBe("escitaloPRAM");
+    expect(isTallManMedication("Bupropion SR")).toBe(true);
+    expect(isTallManMedication("Lithium carbonate CR")).toBe(false);
+  });
+
   it("returns original string unchanged when medication is not in LASA list", () => {
     expect(formatTallMan("lithium")).toBe("lithium");
     expect(formatTallMan("metformin")).toBe("metformin");

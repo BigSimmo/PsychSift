@@ -50,21 +50,28 @@ export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Objec
   hydralazine: "hydrALAZINE",
 });
 
+const hasEntry = (key: string) => Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key);
+
 /**
  * Formats a medication name using standard ISMP Tall Man lettering if recognized.
- * Returns the original medication name unmodified if not present in the LASA registry.
+ * A registered generic is matched as a whole word inside a catalogue name, so formulation-qualified
+ * names keep their suffix ("Bupropion SR" -> "buPROPion SR", "Olanzapine (wafer/ODT)" ->
+ * "OLANZapine (wafer/ODT)"). Whole words only: "escitalopram" never matches "citalopram".
+ * Returns the original medication name unmodified if no registered generic is present.
  */
 export function formatTallMan(name: string): string {
-  if (!name) return name;
-  const key = name.toLowerCase().trim();
-  return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key) ? ISMP_TALL_MAN_MEDICATIONS[key] : name;
+  if (!name || !isTallManMedication(name)) return name;
+  return name.trim().replace(/[A-Za-z]+/g, (word) => {
+    const key = word.toLowerCase();
+    return hasEntry(key) ? ISMP_TALL_MAN_MEDICATIONS[key] : word;
+  });
 }
 
 /**
- * Checks whether a given medication is an ISMP / ACSQHC identified high-alert LASA drug.
+ * Checks whether a given medication (or a formulation-qualified catalogue name containing one) is
+ * an ISMP / ACSQHC identified high-alert LASA drug.
  */
 export function isTallManMedication(name: string): boolean {
   if (!name) return false;
-  const key = name.toLowerCase().trim();
-  return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key);
+  return (name.match(/[A-Za-z]+/g) ?? []).some((word) => hasEntry(word.toLowerCase()));
 }

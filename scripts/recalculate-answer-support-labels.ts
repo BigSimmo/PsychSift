@@ -1,7 +1,7 @@
 import type { RagAnswer, SupportedClaim } from "../src/lib/types";
 import type { ClientRagAnswerPayload } from "../src/lib/answer-client-payload";
 import { type AnswerSupportStrength } from "../src/components/ui/answer-card";
-import { type AnswerRenderTrust } from "../src/lib/answer-render-policy";
+import { deriveTrust, type AnswerRenderTrust } from "../src/lib/answer-render-policy";
 import { type PersistedAnswerThread, type StoredAnswerTurn } from "../src/lib/answer-thread-storage";
 
 export const SUPPORT_SCORE_THRESHOLDS = {
@@ -60,26 +60,12 @@ export function isStrongSupportCapped(answer: Partial<RagAnswer | ClientRagAnswe
 }
 
 /**
- * Derives the underlying answer trust level.
+ * Derives the underlying answer trust level with the render policy's own derivation, so a
+ * recalculated label can never be stronger than the one the app renders (source backing,
+ * faithfulness warnings, unverified numbers and evidence-gap mode all count).
  */
 export function deriveAnswerTrust(answer: Partial<RagAnswer | ClientRagAnswerPayload>): AnswerRenderTrust {
-  if (answer.routingMode === "unsupported" || answer.confidence === "unsupported" || answer.grounded === false) {
-    return "unsupported";
-  }
-
-  if (answer.retrievalGateBlocked === true || answer.confidence === "low") {
-    return "low";
-  }
-
-  if (answer.authorityTrustCapRequired === true) {
-    return "medium";
-  }
-
-  if (answer.confidence === "high") {
-    return "high";
-  }
-
-  return "medium";
+  return deriveTrust(answer as ClientRagAnswerPayload);
 }
 
 export type RecalculatedSupportResult<T extends Partial<RagAnswer | ClientRagAnswerPayload>> = {
