@@ -876,11 +876,35 @@ export function cloudSetupContainsMcpRegistration(setup) {
   let escaped = false;
   let wordStart = true;
   let uncommented = "";
+  const substitutions = [];
   for (let index = 0; index < setup.length; index += 1) {
     const character = setup[index];
     if (escaped) {
       uncommented += character;
       escaped = false;
+      continue;
+    }
+    if (quote !== "'" && character === "$" && ["(", "{"].includes(setup[index + 1])) {
+      const opening = setup[++index];
+      substitutions.push({ quote, closing: opening === "(" ? ")" : "}", depth: 1 });
+      quote = null;
+      ansiQuoted = false;
+      uncommented += `$${opening}`;
+      wordStart = true;
+      continue;
+    }
+    if (quote !== "'" && character === "`") {
+      const active = substitutions.at(-1);
+      if (!quote && active?.closing === "`") {
+        quote = substitutions.pop().quote;
+        wordStart = false;
+      } else {
+        substitutions.push({ quote, closing: "`", depth: 1 });
+        quote = null;
+        wordStart = true;
+      }
+      ansiQuoted = false;
+      uncommented += character;
       continue;
     }
     if (quote) {
@@ -891,7 +915,18 @@ export function cloudSetupContainsMcpRegistration(setup) {
       } else if (character === "\\" && (quote === '"' || ansiQuoted)) escaped = true;
       continue;
     }
-    if (character === "#" && wordStart) {
+    const active = substitutions.at(-1);
+    if (active && active.closing !== "`") {
+      if (character === active.closing) {
+        active.depth -= 1;
+        if (active.depth === 0) quote = substitutions.pop().quote;
+        uncommented += character;
+        wordStart = false;
+        continue;
+      }
+      if (character === (active.closing === ")" ? "(" : "{")) active.depth += 1;
+    }
+    if (character === "#" && wordStart && active?.closing !== "}") {
       while (index < setup.length && setup[index] !== "\n") index += 1;
       uncommented += "\n";
       wordStart = true;

@@ -164,7 +164,20 @@ Fresh direct checks of the follow-up source reported:
 ledger inbox self-test passed.
 ```
 
-Follow-up Vitest evidence is currently **unverified**. Normal admission returned
-`DATABASE_HEAVY_RUN_ADMISSION_BUSY` while another dependency task held capacity;
-no test or lock bypass was used. The earlier 230 passing tests are historical
-evidence for the integration source, not acceptance of these new review fixes.
+The initial follow-up Vitest attempt did not run: normal admission returned
+`DATABASE_HEAVY_RUN_ADMISSION_BUSY` while another dependency task held capacity.
+After normal release, the final review-fix source passed five focused owners with
+result reuse disabled (`GATE_RECEIPTS=refresh`): ledger inbox, remote ledger
+interlock, ledger cancellation, Cloud setup and the policy-only harness.
+
+```text
+Test Files  5 passed (5)
+Tests  109 passed (109)
+```
+
+These tests include quoted/escaped hashes and nested shell substitutions, invalid
+add domains and accepted writer domains, the deterministic stale-recoverer race,
+an abandoned admission claim, and inherited/ordinary-runtime harness refusal.
+No test or lock bypass was used. The earlier 230 passing tests remain historical
+evidence for the integration source. Local passing checks and unresolved review
+threads do not establish merge or release clearance.

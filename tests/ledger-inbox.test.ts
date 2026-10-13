@@ -97,6 +97,7 @@ describe("ledger inbox intake and lock admission", () => {
           // window, after stale-owner inspection but before lock removal.
           expect(() => acquireReconcileLock({ lockPath })).toThrow(/admission is already claimed/);
           expect(JSON.parse(readFileSync(path.join(lockPath, "owner.json"), "utf8")).pid).toBe(2147483647);
+          return false;
         },
       });
       const owner = readFileSync(path.join(lockPath, "owner.json"), "utf8");

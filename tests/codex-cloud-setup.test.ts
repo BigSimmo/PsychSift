@@ -157,12 +157,16 @@ describe("Codex Cloud environment contract", () => {
     "printf '%s\\n' prefix\\ #mcp_servers.hidden",
     'printf "%s\\n" "first line\n# [mcp_servers.hidden]"',
     "printf '%s\\n' $'escaped\\' # [mcp_servers.hidden]'",
+    'printf "%s" "$(printf "prefix # [mcp_servers.hidden]")"',
+    'printf "%s" "`printf "prefix # [mcp_servers.hidden]"`"',
+    'printf "%s" "${unused:-"prefix # [mcp_servers.hidden]"}"',
   ])("detects MCP output despite quoted or escaped hashes: %s", (source) => {
     expect(cloudSetupContainsMcpRegistration(source)).toBe(true);
   });
 
   it("ignores real full-line and inline shell comments", () => {
     expect(cloudSetupContainsMcpRegistration('# mcp_servers.hidden\nprintf "policy" # mcp_servers.hidden')).toBe(false);
+    expect(cloudSetupContainsMcpRegistration('printf "%s" "$(printf policy)" # mcp_servers.hidden')).toBe(false);
   });
 
   it("keeps the checked-in setup reproducible and provider-safe", () => {
