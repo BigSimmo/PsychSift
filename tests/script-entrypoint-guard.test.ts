@@ -18,6 +18,15 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // pathToFileURL(path.resolve(process.argv[1])) or pathToFileURL(process.argv[1] ?? ""): all of them
 // compare a path the launcher spelled one way with a URL spelled another.
 const RAW_PATTERN = /pathToFileURL\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*process\.argv\[1\]/;
+// The same mistake built by hand: `file://${process.argv[1]}`, bare or inside new URL(...). On Windows argv
+// carries backslashes and a drive letter, so the URL it builds never equals import.meta.url.
+const TEMPLATE_PATTERN = /file:\/\/\$\{process\.argv\[1\]\}/;
+
+function usesRawComparison(source: string): boolean {
+  if (RAW_PATTERN.test(source)) return true;
+  // Comment lines that quote the bad form to warn against it do not count.
+  return source.split("\n").some((line) => !/^\s*(?:\/\/|\*|\/\*)/.test(line) && TEMPLATE_PATTERN.test(line));
+}
 
 // Files that may keep the raw comparison, each with the reason. Remove an entry when the file is
 // converted; the second test below fails if an entry no longer needs to be here.
@@ -34,6 +43,22 @@ const ALLOWED_RAW = new Map<string, string>([
     "scripts/sync-open-pr-branches.mjs",
     "Already falls back to an endsWith match on both of its file names, so it still runs on Windows.",
   ],
+  [
+    "scripts/check-coverage-inventory.mjs",
+    "Keeps the file:// comparison but also falls back to an endsWith match on its own file name, so it still runs on Windows.",
+  ],
+  [
+    "scripts/check-lighthouse-budget.mjs",
+    "Keeps the file:// comparison but also falls back to an endsWith match on its own file name, so it still runs on Windows.",
+  ],
+  [
+    "scripts/summarise-web-vitals.mjs",
+    "Keeps the file:// comparison but also falls back to an endsWith match on its own file name, so it still runs on Windows.",
+  ],
+  [
+    "scripts/verify-locality-metadata.ts",
+    "Keeps the file:// comparison but also falls back to an endsWith match on its own file name, so it still runs on Windows.",
+  ],
 ]);
 
 function scriptFiles(dir: string): string[] {
@@ -45,7 +70,7 @@ function scriptFiles(dir: string): string[] {
 }
 
 const rawUsers = scriptFiles(path.join(root, "scripts"))
-  .filter((file) => RAW_PATTERN.test(readFileSync(file, "utf8")))
+  .filter((file) => usesRawComparison(readFileSync(file, "utf8")))
   .map((file) => path.relative(root, file).split(path.sep).join("/"))
   .sort();
 
