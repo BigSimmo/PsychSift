@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -186,6 +186,23 @@ describe("documents zero-result state when retrieval degraded", () => {
     expect(screen.getByText(/search could not complete/i)).toBeInTheDocument();
     expect(screen.queryByText(/check the spelling/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no matches for/i)).not.toBeInTheDocument();
+  });
+
+  it("offers Retry and keeps the failure reason inside the one degraded message", () => {
+    const onRetrySearch = vi.fn();
+    render(
+      <DocumentSearchResultsPanel
+        {...baseProps}
+        searchFailed
+        searchFailureReason="Search setup not ready."
+        onRetrySearch={onRetrySearch}
+        scopeFilters={{}}
+      />,
+    );
+
+    expect(screen.getByText("Reason: Search setup not ready.")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("search-results-empty-retry"));
+    expect(onRetrySearch).toHaveBeenCalledTimes(1);
   });
 
   it("outranks the filtered-to-zero copy, which also asserts a real zero", () => {
