@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useDeferredValue, useId, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Lightbulb, ListChecks, MessageSquareQuote, Search, Target } from "lucide-react";
+import { CheckCircle2, ChevronRight, ListChecks, Search } from "lucide-react";
 
 import {
   FormulationPageShell,
@@ -21,7 +21,7 @@ import {
   resultFilterFacetGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { AnswerSuggestionChips } from "@/components/clinical-dashboard/answer-suggestion-chips";
-import { cn, eyebrowText } from "@/components/ui-primitives";
+import { cn } from "@/components/ui-primitives";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { consolidatedModeSearchPath } from "@/lib/consolidated-mode-home-redirect";
 import {
@@ -288,141 +288,79 @@ function FormulationResults({ query }: { query: string }) {
       {results.length === 0 && conceptResults.length === 0 && rankingReady ? (
         <EmptySearchResults query={query} />
       ) : results.length === 0 ? null : (
-        <section
-          aria-label={browsing ? "Formulation mechanisms, A to Z" : "Mechanism matches"}
-          className="grid gap-4 sm:gap-5"
-        >
-          {results.map(({ mechanism }, index) => (
-            <article
-              key={mechanism.id}
-              data-testid={index === 0 && hasUniqueTopMatch ? "formulation-top-match" : undefined}
-              data-formulation-result-card
-              className={cn(
-                formulationCard,
-                "group relative overflow-hidden rounded-xl border-[color:var(--border-strong)] shadow-[var(--e2)] transition hover:border-[color:var(--clinical-accent-border)] motion-reduce:transition-none",
-                index === 0 &&
-                  hasUniqueTopMatch &&
-                  "border-[color:var(--clinical-accent)] ring-1 ring-[color:var(--clinical-accent)]/10",
-              )}
-            >
-              <div
-                aria-hidden
-                data-formulation-card-accent
-                className={cn(
-                  "h-1 w-full bg-[color:var(--clinical-accent-border)]",
-                  index === 0 && hasUniqueTopMatch && "bg-[color:var(--clinical-accent)]",
-                )}
-              />
-              <div
-                data-formulation-card-header
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-                    <h2 className="text-xl font-extrabold tracking-tight text-[color:var(--text-heading)] sm:text-2xl">
+        <section aria-label={browsing ? "Formulation mechanisms, A to Z" : "Mechanism matches"}>
+          {/* Compact rows (Clinical audit, 13 Oct 2026, item 12), the same row
+              Therapy search uses: one hairline card with divided rows, the whole
+              row opens the mechanism, and Use and Open stay as small 48px
+              buttons. Patient language, clues and formulation use are on the
+              mechanism's own page, where they are shown in full. */}
+          <ul
+            data-testid="formulation-result-list"
+            className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
+          >
+            {results.map(({ mechanism }, index) => {
+              const topMatch = index === 0 && hasUniqueTopMatch;
+              return (
+                <li
+                  key={mechanism.id}
+                  data-testid={topMatch ? "formulation-top-match" : undefined}
+                  data-formulation-result-card
+                  className="group relative px-4 py-3 transition-colors motion-reduce:transition-none sm:px-5 md:hover:bg-[color:var(--surface-subtle)]"
+                >
+                  {topMatch ? (
+                    // Ranking order is not clinical fit: the caution travels with the tag.
+                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2.5 py-0.5 text-2xs font-extrabold tracking-wide text-[color:var(--clinical-accent)] uppercase forced-colors:border-[CanvasText] forced-colors:text-[CanvasText]">
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        Top match
+                      </span>
+                      <span className="text-xs font-semibold text-[color:var(--text-muted)]">
+                        Review fit and alternatives
+                      </span>
+                    </div>
+                  ) : null}
+                  <div data-formulation-card-header className="flex items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="m-0 text-base leading-snug font-semibold tracking-display text-[color:var(--text-heading)]">
+                        <Link
+                          href={`/formulation/${mechanism.id}`}
+                          className={cn(
+                            "rounded-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+                            stretchedRowLinkClass,
+                          )}
+                        >
+                          {mechanism.name}
+                        </Link>
+                      </h2>
+                      <p className="m-0 mt-0.5 line-clamp-1 text-sm-minus leading-snug text-[color:var(--text-muted)]">
+                        {mechanism.summary}
+                      </p>
+                      <div className="mt-2">
+                        <MechanismDomainChips values={mechanism.domains} limit={2} />
+                      </div>
+                    </div>
+                    <div data-formulation-card-action className="-mr-2 flex shrink-0 items-center self-center">
+                      <Link
+                        href={`/formulation/builder?mechanism=${mechanism.id}`}
+                        aria-label={`Use ${mechanism.name} in formulation`}
+                        title="Use in formulation"
+                        className="relative z-10 grid min-h-tap min-w-tap place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                      >
+                        <ListChecks className="size-icon-md shrink-0" aria-hidden />
+                      </Link>
                       <Link
                         href={`/formulation/${mechanism.id}`}
-                        className={cn(
-                          "transition hover:text-[color:var(--clinical-accent)] focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none",
-                          // The whole card opens the mechanism. The title carries it
-                          // because its text names the result; both actions on the
-                          // title row stay separate controls on top of it.
-                          stretchedRowLinkClass,
-                        )}
+                        aria-label={`Open ${mechanism.name}`}
+                        className="relative z-10 grid min-h-tap min-w-tap place-items-center rounded-lg text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                       >
-                        {mechanism.name}
+                        <ChevronRight className="size-icon-md shrink-0" aria-hidden />
                       </Link>
-                    </h2>
-                    {index === 0 && hasUniqueTopMatch ? (
-                      <>
-                        {/* The banner this replaces spent a whole row saying what a
-                            chip says on the title line. The caution beside it is the
-                            part worth keeping: ranking order is not clinical fit. */}
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--clinical-accent)] px-2.5 py-1 text-2xs font-extrabold uppercase tracking-label text-[color:var(--clinical-accent-contrast)]">
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                          Top match
-                        </span>
-                        <span className="hidden text-xs font-semibold text-[color:var(--text-muted)] sm:inline">
-                          Review fit and alternatives
-                        </span>
-                      </>
-                    ) : null}
-                  </div>
-                  <p className="mt-1.5 max-w-3xl text-sm font-medium leading-6 text-[color:var(--text-muted)]">
-                    {mechanism.summary}
-                  </p>
-                </div>
-
-                {/* Both actions sit on the title row rather than in a footer band of
-                    their own: the old strip cost a full card row per result to hold
-                    one button the heading already linked to. */}
-                <div data-formulation-card-action className="flex shrink-0 items-center gap-2">
-                  <Link
-                    href={`/formulation/builder?mechanism=${mechanism.id}`}
-                    aria-label={`Use ${mechanism.name} in formulation`}
-                    className="relative z-10 inline-flex min-h-tap flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 text-sm font-semibold text-[color:var(--text)] transition hover:border-[color:var(--clinical-accent-border)] hover:text-[color:var(--clinical-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none sm:flex-none"
-                  >
-                    <ListChecks className="h-4 w-4 shrink-0" aria-hidden />
-                    Use
-                  </Link>
-                  <Link
-                    href={`/formulation/${mechanism.id}`}
-                    aria-label={`Open ${mechanism.name}`}
-                    className="relative z-10 inline-flex min-h-tap flex-1 items-center justify-center gap-2 rounded-lg border border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent)] px-4 text-sm font-semibold text-[color:var(--clinical-accent-contrast)] shadow-[var(--shadow-inset)] transition hover:bg-[color:var(--clinical-accent-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)] motion-reduce:transition-none sm:flex-none sm:px-5"
-                  >
-                    Open
-                    <ArrowRight
-                      className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
-                      aria-hidden
-                    />
-                  </Link>
-                </div>
-              </div>
-
-              {/* One band instead of three: the clue keeps its tinted panel, and the
-                  supporting lines sit beside it rather than under two more rules. */}
-              <div
-                data-formulation-card-details
-                className="grid border-t border-[color:var(--border)] sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.62fr)]"
-              >
-                <div className="grid content-start gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
-                  <MechanismDomainChips values={mechanism.domains} limit={3} />
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--info-soft)] text-[color:var(--info)]">
-                      <MessageSquareQuote className="h-4 w-4" aria-hidden />
-                    </span>
-                    <div className="min-w-0">
-                      <p className={eyebrowText}>Patient language</p>
-                      <p className="mt-1 text-sm font-medium leading-5 text-[color:var(--text-muted)]">
-                        “{mechanism.patientPhrases[0]}”
-                      </p>
                     </div>
                   </div>
-                </div>
-
-                <div className="grid content-start gap-3.5 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-4 py-3.5 sm:border-l sm:border-t-0 sm:px-5 sm:py-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-[color:var(--clinical-accent)]">
-                      <Target className="h-4 w-4 shrink-0" aria-hidden />
-                      <p className={eyebrowText}>Look for</p>
-                    </div>
-                    <p className="mt-1.5 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
-                      {mechanism.clinicalClues[0]}
-                    </p>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-[color:var(--clinical-accent)]">
-                      <Lightbulb className="h-4 w-4 shrink-0" aria-hidden />
-                      <p className={eyebrowText}>Formulation use</p>
-                    </div>
-                    <p className="mt-1 text-sm font-medium leading-5 text-[color:var(--text-muted)]">
-                      {mechanism.formulationUse}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 

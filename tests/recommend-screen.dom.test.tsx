@@ -94,7 +94,7 @@ describe("Recommend screen", () => {
     expect(screen.getByText("1 ranked match")).toBeInTheDocument();
   });
 
-  it("renders ranked matches with ResultCard evidence cells and a single featured primary", () => {
+  it("renders ranked matches as compact rows with the full Avoid / modify warning", () => {
     const second = { ...therapy, slug: "act", name: "Acceptance and commitment therapy" } as Therapy;
     bindings.recommendations = [
       { therapy, score: 40, reasons: ["Matches the described presentation", "Fits outpatient"] },
@@ -102,13 +102,30 @@ describe("Recommend screen", () => {
     ];
     render(<RecommendScreen />);
 
-    const cards = document.querySelectorAll("[data-therapy-result-card]");
+    const list = screen.getByTestId("therapy-recommend-list");
+    const cards = list.querySelectorAll("[data-therapy-result-card]");
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveAttribute("data-therapy-result-featured");
+    expect(cards[1]).not.toHaveAttribute("data-therapy-result-featured");
     expect(within(cards[0] as HTMLElement).getByText("Best match")).toBeInTheDocument();
-    const featuredOpen = cards[0]?.querySelector('[aria-label="Open record"]');
-    expect(featuredOpen).toHaveClass("bg-[color:var(--command)]");
-    expect(screen.getAllByText("Why matched").length).toBeGreaterThan(0);
+    // Rank leads each row, and the whole row opens the record.
+    expect(cards[0]?.querySelector("[data-therapy-result-rank]")).toHaveTextContent("1");
+    expect(cards[1]?.querySelector("[data-therapy-result-rank]")).toHaveTextContent("2");
+    expect(within(cards[0] as HTMLElement).getByRole("link", { name: therapy.name })).toHaveAttribute(
+      "href",
+      "/therapy-compass/cognitive-behavioural-therapy",
+    );
+    expect(cards[0]?.querySelector("[data-therapy-result-why]")).toHaveTextContent(
+      "Matches the described presentation · Fits outpatient",
+    );
+    // Safety: the warning is shown in full, with no line clamp or ellipsis.
+    const avoid = cards[0]?.querySelector("[data-therapy-result-avoid]");
+    expect(avoid).toHaveTextContent("Avoid / modify: Adapt for trauma and mania risk.");
+    expect(avoid?.outerHTML).not.toMatch(/line-clamp|truncate/);
+    // Every action from the large card survives as a small button.
+    expect(within(cards[0] as HTMLElement).getByRole("button", { name: /favourites/ })).toBeInTheDocument();
+    expect(within(cards[0] as HTMLElement).getByRole("button", { name: /compare/ })).toBeInTheDocument();
+    expect(within(cards[0] as HTMLElement).getByRole("button", { name: /Patient sheet/ })).toBeInTheDocument();
     expect(screen.queryByText("Strong match")).not.toBeInTheDocument();
     expect(screen.queryByText("QUICK CONSTRAINTS")).not.toBeInTheDocument();
   });
