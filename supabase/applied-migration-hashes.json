@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-13T18:16:55.392Z",
+  "sealed_at": "2026-10-13T18:49:50.326Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -306,7 +306,7 @@
     "20261012090000_roster_open_withdraw.sql": "35a6591442186ba238d96695d7a407d08aa6a019fa5eb01318c039039fedc8a5",
     "20261013140000_enable_always_release_records_immutability.sql": "bb81f7682fd440a84f35fa95ef042986e73f5f506f4edf17541716bb095176b9",
     "20261013150000_api_rate_limit_subjects_retention.sql": "f4e31507fdbf6fa58bcb8823125345d376853ce59311002fadc33bf3cf05e137",
-    "20261013160000_teaching_assessments_and_milestones.sql": "acbe08dbfa7f26ca92f7605290ee366d221d6dd36386d12031e48f224d8c4c73",
+    "20261013160000_teaching_assessments_and_milestones.sql": "adb491df9ace7fa9cbf20091d14e8411df216a53935e7b95f7dcd23d1fd5776b",
     "20261013170000_force_rls_control_plane.sql": "46d746dd78ed0c62489d72244ffc70b38dc08e3adb7d62ef360482dcb7214a85"
   }
 }

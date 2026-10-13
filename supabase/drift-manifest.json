@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-13T18:20:42.276Z",
+  "generated_at": "2026-10-13T18:50:06.206Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "257dead1e28ea8d0a13219d1e89ff14655b37dd0d3b8a475f7f1e81aa91ac7f4",
+  "schema_sha256": "c194e7e015c87d6b7860df7a1d5667ba9aa7deb17208959a148e2aeaa3e816ac",
   "replay_seconds": 15,
   "snapshot": {
     "views": [
@@ -8048,7 +8048,6 @@
       },
       {
         "acl": [
-          "authenticated=arw/postgres",
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
@@ -8141,7 +8140,6 @@
       },
       {
         "acl": [
-          "authenticated=arw/postgres",
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
@@ -17359,42 +17357,6 @@
         "with_check": "true"
       },
       {
-        "cmd": "INSERT",
-        "name": "registrar_assessments_registrar_insert",
-        "qual": null,
-        "roles": [
-          "authenticated"
-        ],
-        "table": "registrar_assessments",
-        "schema": "public",
-        "permissive": "PERMISSIVE",
-        "with_check": "(registrar_id = auth.uid())"
-      },
-      {
-        "cmd": "SELECT",
-        "name": "registrar_assessments_registrar_select",
-        "qual": "(registrar_id = auth.uid())",
-        "roles": [
-          "authenticated"
-        ],
-        "table": "registrar_assessments",
-        "schema": "public",
-        "permissive": "PERMISSIVE",
-        "with_check": null
-      },
-      {
-        "cmd": "UPDATE",
-        "name": "registrar_assessments_registrar_update",
-        "qual": "(registrar_id = auth.uid())",
-        "roles": [
-          "authenticated"
-        ],
-        "table": "registrar_assessments",
-        "schema": "public",
-        "permissive": "PERMISSIVE",
-        "with_check": "(registrar_id = auth.uid())"
-      },
-      {
         "cmd": "ALL",
         "name": "registrar_assessments_service_role_all",
         "qual": "true",
@@ -17405,42 +17367,6 @@
         "schema": "public",
         "permissive": "PERMISSIVE",
         "with_check": "true"
-      },
-      {
-        "cmd": "INSERT",
-        "name": "registrar_training_milestones_registrar_insert",
-        "qual": null,
-        "roles": [
-          "authenticated"
-        ],
-        "table": "registrar_training_milestones",
-        "schema": "public",
-        "permissive": "PERMISSIVE",
-        "with_check": "(registrar_id = auth.uid())"
-      },
-      {
-        "cmd": "SELECT",
-        "name": "registrar_training_milestones_registrar_select",
-        "qual": "(registrar_id = auth.uid())",
-        "roles": [
-          "authenticated"
-        ],
-        "table": "registrar_training_milestones",
-        "schema": "public",
-        "permissive": "PERMISSIVE",
-        "with_check": null
-      },
-      {
-        "cmd": "UPDATE",
-        "name": "registrar_training_milestones_registrar_update",
-        "qual": "(registrar_id = auth.uid())",
-        "roles": [
-          "authenticated"
-        ],
-        "table": "registrar_training_milestones",
-        "schema": "public",
-        "permissive": "PERMISSIVE",
-        "with_check": "(registrar_id = auth.uid())"
       },
       {
         "cmd": "ALL",

@@ -27427,13 +27427,11 @@ alter table public.registrar_assessments force row level security;
 alter table public.registrar_training_milestones enable row level security;
 alter table public.registrar_training_milestones force row level security;
 
-revoke all on table public.registrar_assessments from anon;
+revoke all on table public.registrar_assessments from public, anon, authenticated;
 grant select, insert, update, delete on table public.registrar_assessments to service_role;
-grant select, insert, update on table public.registrar_assessments to authenticated;
 
-revoke all on table public.registrar_training_milestones from anon;
+revoke all on table public.registrar_training_milestones from public, anon, authenticated;
 grant select, insert, update, delete on table public.registrar_training_milestones to service_role;
-grant select, insert, update on table public.registrar_training_milestones to authenticated;
 
 create policy "registrar_assessments_service_role_all"
   on public.registrar_assessments
@@ -27441,40 +27439,8 @@ create policy "registrar_assessments_service_role_all"
   using (true)
   with check (true);
 
-create policy "registrar_assessments_registrar_select"
-  on public.registrar_assessments
-  for select to authenticated
-  using (registrar_id = auth.uid());
-
-create policy "registrar_assessments_registrar_insert"
-  on public.registrar_assessments
-  for insert to authenticated
-  with check (registrar_id = auth.uid());
-
-create policy "registrar_assessments_registrar_update"
-  on public.registrar_assessments
-  for update to authenticated
-  using (registrar_id = auth.uid())
-  with check (registrar_id = auth.uid());
-
 create policy "registrar_training_milestones_service_role_all"
   on public.registrar_training_milestones
   for all to service_role
   using (true)
   with check (true);
-
-create policy "registrar_training_milestones_registrar_select"
-  on public.registrar_training_milestones
-  for select to authenticated
-  using (registrar_id = auth.uid());
-
-create policy "registrar_training_milestones_registrar_insert"
-  on public.registrar_training_milestones
-  for insert to authenticated
-  with check (registrar_id = auth.uid());
-
-create policy "registrar_training_milestones_registrar_update"
-  on public.registrar_training_milestones
-  for update to authenticated
-  using (registrar_id = auth.uid())
-  with check (registrar_id = auth.uid());

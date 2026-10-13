@@ -3,7 +3,7 @@
 -- Teaching Assessments & CPD Registrar Milestones Schema:
 -- - public.registrar_assessments
 -- - public.registrar_training_milestones
--- Includes RLS policies and FORCE ROW LEVEL SECURITY.
+-- Service-role only, with RLS enabled and FORCED.
 
 set local lock_timeout = '5s';
 set local statement_timeout = '30s';
@@ -64,57 +64,24 @@ alter table public.registrar_assessments force row level security;
 alter table public.registrar_training_milestones enable row level security;
 alter table public.registrar_training_milestones force row level security;
 
--- Table permissions
-revoke all on table public.registrar_assessments from anon;
+-- Table permissions. Service role only, like the rest of this schema: the browser Data API stays closed
+-- (tests/supabase-schema.test.ts). Any browser access to these tables needs its own reviewed change.
+revoke all on table public.registrar_assessments from public, anon, authenticated;
 grant select, insert, update, delete on table public.registrar_assessments to service_role;
-grant select, insert, update on table public.registrar_assessments to authenticated;
 
-revoke all on table public.registrar_training_milestones from anon;
+revoke all on table public.registrar_training_milestones from public, anon, authenticated;
 grant select, insert, update, delete on table public.registrar_training_milestones to service_role;
-grant select, insert, update on table public.registrar_training_milestones to authenticated;
 
--- 4. RLS policies for public.registrar_assessments
+-- 4. RLS policy for public.registrar_assessments
 create policy "registrar_assessments_service_role_all"
   on public.registrar_assessments
   for all to service_role
   using (true)
   with check (true);
 
-create policy "registrar_assessments_registrar_select"
-  on public.registrar_assessments
-  for select to authenticated
-  using (registrar_id = auth.uid());
-
-create policy "registrar_assessments_registrar_insert"
-  on public.registrar_assessments
-  for insert to authenticated
-  with check (registrar_id = auth.uid());
-
-create policy "registrar_assessments_registrar_update"
-  on public.registrar_assessments
-  for update to authenticated
-  using (registrar_id = auth.uid())
-  with check (registrar_id = auth.uid());
-
--- 5. RLS policies for public.registrar_training_milestones
+-- 5. RLS policy for public.registrar_training_milestones
 create policy "registrar_training_milestones_service_role_all"
   on public.registrar_training_milestones
   for all to service_role
   using (true)
   with check (true);
-
-create policy "registrar_training_milestones_registrar_select"
-  on public.registrar_training_milestones
-  for select to authenticated
-  using (registrar_id = auth.uid());
-
-create policy "registrar_training_milestones_registrar_insert"
-  on public.registrar_training_milestones
-  for insert to authenticated
-  with check (registrar_id = auth.uid());
-
-create policy "registrar_training_milestones_registrar_update"
-  on public.registrar_training_milestones
-  for update to authenticated
-  using (registrar_id = auth.uid())
-  with check (registrar_id = auth.uid());
