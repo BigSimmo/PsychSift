@@ -2,9 +2,13 @@
 
 import { Disclosure } from "@/components/ui/disclosure";
 import { SourceDesignationBadge, SourceStatusBadge } from "@/components/ui-primitives";
-import { therapySourceMetadata } from "@/lib/therapy-source-governance";
+import {
+  isLaterAddedNiceReference,
+  splitSourceCitations,
+  therapyNiceGuidelineMetadata,
+  therapySourceMetadata,
+} from "@/lib/therapy-source-governance";
 
-import { splitSourceCitations } from "../prose";
 import type { Therapy } from "../data/types";
 
 /**
@@ -32,6 +36,7 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
   const reviewStatusClass = reviewed
     ? "text-xs font-semibold text-[color:var(--success-text)]"
     : "text-xs font-semibold text-[color:var(--warning-text)]";
+  const hasLaterAddedNice = isLaterAddedNiceReference(blob);
 
   return (
     <>
@@ -49,19 +54,39 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
         <div className="space-y-3 pb-1">
           {citations.length ? (
             <ol className="m-0 list-none space-y-2 p-0">
-              {citations.map((citation, index) => (
-                <li
-                  key={`${citation.authority}-${index}`}
-                  className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2"
-                >
-                  <p className="m-0 text-xs leading-5 text-[color:var(--text)]">{citation.text}</p>
-                  {citation.authority ? (
-                    <span className="mt-1.5 inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
-                      {citation.authority}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
+              {citations.map((citation, index) => {
+                const isNiceCitation =
+                  citation.authority.toUpperCase().includes("NICE") ||
+                  citation.text.toLowerCase().includes("nice.org.uk");
+                const niceMetadata =
+                  isNiceCitation && hasLaterAddedNice
+                    ? therapyNiceGuidelineMetadata(citation, therapy.reviewStatus)
+                    : null;
+
+                return (
+                  <li
+                    key={`${citation.authority}-${index}`}
+                    className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-3 py-2"
+                  >
+                    <p className="m-0 text-xs leading-5 text-[color:var(--text)]">{citation.text}</p>
+                    {niceMetadata ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {citation.authority ? (
+                          <span className="inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
+                            {citation.authority}
+                          </span>
+                        ) : null}
+                        <SourceDesignationBadge metadata={niceMetadata} />
+                        <SourceStatusBadge metadata={niceMetadata} />
+                      </div>
+                    ) : citation.authority ? (
+                      <span className="mt-1.5 inline-flex rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-px text-3xs font-semibold text-[color:var(--clinical-accent)]">
+                        {citation.authority}
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ol>
           ) : (
             <p className="m-0 text-xs leading-5 text-[color:var(--text-muted)]">
@@ -85,7 +110,18 @@ export function TherapySourceProvenance({ therapy }: { therapy: Therapy }) {
           {source ? (
             <div className="space-y-2 border-t border-[color:var(--border)] pt-2.5">
               <p className="m-0 text-xs text-[color:var(--text-muted)]">
-                Imported from <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span>
+                {hasLaterAddedNice ? (
+                  <>
+                    Record content imported from{" "}
+                    <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span> (guideline
+                    citations added separately from source register)
+                  </>
+                ) : (
+                  <>
+                    Imported from{" "}
+                    <span className="break-words font-medium">{source.title ?? "an uploaded source"}</span>
+                  </>
+                )}
               </p>
               <span className="flex flex-wrap gap-2">
                 <SourceDesignationBadge metadata={therapySourceMetadata(source, therapy.reviewStatus)} />
