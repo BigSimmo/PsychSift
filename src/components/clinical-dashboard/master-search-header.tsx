@@ -137,8 +137,6 @@ import {
   visibleModeSecondaryNavigationEntries,
 } from "@/lib/mode-secondary-navigation";
 import { readOnCallEditorFlag, subscribeOnCallEditorFlag } from "@/lib/on-call/device-state-keys";
-import { isAdministratorUser } from "@/lib/authorization";
-import { useAuthIfAvailable } from "@/lib/example-data/store";
 import {
   modePageVisible,
   useOpenShiftsIsPoster,
@@ -623,8 +621,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
    * needs no fetch of its own (F24). False on the server.
    */
   const onCallEditor = useSyncExternalStore(subscribeOnCallEditorFlag, readOnCallEditorFlag, () => false);
-  // Administrator-only pages (the Therapy sign-off queue) list only for a site administrator.
-  const isAdministrator = isAdministratorUser(useAuthIfAvailable()?.session?.user);
   /** What the mode pill names (the page, the mode or a work area) and this address's work frame. */
   const {
     activeModePage,
@@ -1399,7 +1395,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // Hidden pages and editor-only pages leave the sheet; the pill still names
     // them when one is open, because `modeOwnPages` itself is unfiltered.
     const { main, tools, more } = groupModeSecondaryNavigationEntries(
-      visibleModeSecondaryNavigationEntries(modeOwnPages, { isEditor: onCallEditor, isAdministrator }),
+      visibleModeSecondaryNavigationEntries(modeOwnPages, { isEditor: onCallEditor }),
     );
     return (
       <div data-testid="app-mode-section-list" className="grid pt-1">
