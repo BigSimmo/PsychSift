@@ -737,7 +737,8 @@ test.describe("Tablet usability regressions", () => {
       .click();
 
     const controls = [
-      page.getByRole("link", { name: /^Call .+, / }).first(),
+      // The compact phone button (Clinical audit, 13 Oct 2026, item 8), named "Call <service>".
+      page.locator('[data-testid^="service-call-"]').first(),
       page.getByRole("button", { name: /^More actions for / }).first(),
       page.getByRole("link", { name: /^Review referral for / }).first(),
       page.getByRole("button", { name: /^Add .+ to shortlist$/ }).first(),

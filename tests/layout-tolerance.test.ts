@@ -17,7 +17,7 @@ import { meetsCssPxFloor, subpixelTolerance } from "./helpers/layout-tolerance";
  */
 describe("meetsCssPxFloor", () => {
   it("accepts the three values Firefox actually reported", () => {
-    // tests/ui-formulation-result-cards.spec.ts:109 — a 16px card gap.
+    // A 16px card gap Firefox reported (formerly tests/ui-formulation-result-cards.spec.ts).
     expect(meetsCssPxFloor(15.999969482421875, 16)).toBe(true);
     // tests/ui-stress.spec.ts:624 — a 12px medication column gap.
     expect(meetsCssPxFloor(11.999954223632812, 12)).toBe(true);

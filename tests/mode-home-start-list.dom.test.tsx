@@ -26,23 +26,64 @@ afterEach(() => {
 });
 
 describe("mode home start list", () => {
-  it("is offered on DSM, Medication, Therapy, Documents and Differentials only", () => {
-    for (const modeId of ["dsm", "prescribing", "therapy-compass", "documents", "differentials"] as const) {
+  it("is offered on the Clinical mode homes, and not on Answer, Psychiatry or On Call", () => {
+    for (const modeId of [
+      "dsm",
+      "prescribing",
+      "therapy-compass",
+      "documents",
+      "differentials",
+      "formulation",
+      "specifiers",
+      "forms",
+      "factsheets",
+      "dictionary",
+      "services",
+    ] as const) {
       expect(modeHomeStartListConfig(modeId), modeId).not.toBeNull();
     }
-    for (const modeId of ["answer", "psychiatry", "services", "forms", "on-call"] as const) {
+    for (const modeId of ["answer", "psychiatry", "on-call", "calculators", "sources"] as const) {
       expect(modeHomeStartListConfig(modeId), modeId).toBeNull();
     }
   });
 
-  it("shows a first visit only the Browse link, and nothing at all where there is no catalogue page", () => {
+  it("shows an empty home two Browse links to the mode's existing pages", () => {
     render(<ModeHomeStartList modeId="dsm" />);
     expect(screen.queryByTestId("mode-home-continue")).toBeNull();
-    expect(screen.getByTestId("mode-home-browse").getAttribute("href")).toBe("/dsm/search");
+    const browse = screen.getByTestId("mode-home-browse-list");
+    expect(
+      within(browse)
+        .getAllByRole("link")
+        .map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["Browse all diagnoses", "/dsm/search"],
+      ["Compare diagnoses", "/dsm/compare"],
+    ]);
     cleanup();
 
+    // Medication has no medicine catalogue page: its links go to the Medicines pages around it.
     render(<ModeHomeStartList modeId="prescribing" />);
-    expect(screen.queryByRole("link")).toBeNull();
+    expect(
+      within(screen.getByTestId("mode-home-browse-list"))
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/factsheets/search", "/medicines"]);
+    cleanup();
+
+    for (const modeId of ["therapy-compass", "differentials", "formulation", "specifiers", "forms"] as const) {
+      render(<ModeHomeStartList modeId={modeId} />);
+      const count = within(screen.getByTestId("mode-home-browse-list")).getAllByRole("link").length;
+      expect(count, modeId).toBe(2);
+      cleanup();
+    }
+  });
+
+  it("keeps only the first Browse link once Continue has something", () => {
+    recordRecentPage("/dsm/diagnoses/a", "Disorder A");
+    render(<ModeHomeStartList modeId="dsm" />);
+    expect(screen.getByTestId("mode-home-continue")).toBeTruthy();
+    expect(screen.queryByTestId("mode-home-browse-list")).toBeNull();
+    expect(screen.getByTestId("mode-home-browse").getAttribute("href")).toBe("/dsm/search");
   });
 
   it("continues with the last three records of this mode, newest first", () => {
