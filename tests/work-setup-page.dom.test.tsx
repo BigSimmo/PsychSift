@@ -5,7 +5,7 @@
 // step bringing its area back, the step position counting only visible steps,
 // the done step, and the signed-out welcome asking the doctor to sign in.
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const nav = vi.hoisted(() => ({
@@ -52,7 +52,6 @@ import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame
 import { WorkSetupPage } from "@/components/work-setup/work-setup-page";
 import { WORK_SETUP_STEP_COPY, workSetupStepHref } from "@/components/work-setup/work-setup-copy";
 import { WorkSetupPromptCard } from "@/components/work-setup/work-setup-prompt-card";
-import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { WORK_SETUP_PROGRESS_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 import {
   parseWorkSetupProgress,
@@ -277,7 +276,7 @@ describe("done", () => {
   });
 });
 
-describe("My Day's Set up Work card", () => {
+describe("My Day's Get set up card", () => {
   it("offers Start to a signed-in doctor who has not begun", () => {
     render(<WorkSetupPromptCard />);
     expect(screen.getByTestId("work-setup-prompt")).toHaveTextContent("Stage, areas, time zone, roster and alerts");
@@ -315,35 +314,40 @@ describe("My Day's Set up Work card", () => {
   });
 });
 
-describe("Finish setting up row on each area's first page", () => {
-  it("opens setup, resuming at the stored step with how many are done", () => {
-    seed({ step: "roster", completed: ["stage", "areas"] });
-    render(<WorkSetupRow />);
-    const link = screen.getByRole("link", { name: /Finish setting up/ });
-    expect(link).toHaveAttribute("href", workSetupStepHref("roster"));
-    expect(link).toHaveTextContent("2 of 7 done");
+// Design audit 13 Oct 2026, D11: the per-area "Finish setting up" rows are
+// gone; My Day's card is the one setup prompt and lists every step.
+describe("My Day's Get set up checklist", () => {
+  it("lists each step this doctor sees, with a link straight to it", () => {
+    render(<WorkSetupPromptCard />);
+    const list = screen.getByRole("list", { name: "Setup steps" });
+    const steps = ["stage", "areas", "time-zone", "roster", "rotation", "other-areas", "alerts"] as const;
+    expect(within(list).getAllByRole("link")).toHaveLength(steps.length);
+    for (const step of steps) {
+      expect(screen.getByTestId(`work-setup-prompt-step-${step}`)).toHaveAttribute("href", workSetupStepHref(step));
+      expect(screen.getByTestId(`work-setup-prompt-step-${step}`)).toHaveTextContent(WORK_SETUP_STEP_COPY[step].short);
+    }
   });
 
-  it("opens the setup page from the start before anything is begun, signed in or not", () => {
-    auth.status = "signed_out";
-    render(<WorkSetupRow />);
-    expect(screen.getByRole("link", { name: "Finish setting up" })).toHaveAttribute("href", "/my-day/setup");
+  it("ticks a finished step, tags a skipped one and marks the rest to do", () => {
+    seed({ step: "roster", completed: ["stage", "areas"], skipped: ["time-zone"] });
+    render(<WorkSetupPromptCard />);
+    expect(screen.getByTestId("work-setup-prompt-step-stage")).toHaveTextContent("Done");
+    expect(screen.getByTestId("work-setup-prompt-step-areas")).toHaveTextContent("Done");
+    expect(screen.getByTestId("work-setup-prompt-step-time-zone")).toHaveTextContent("Skipped");
+    expect(screen.getByTestId("work-setup-prompt-step-roster")).toHaveTextContent("To do");
   });
 
-  it("puts setup away on this device from its cross", () => {
-    render(<WorkSetupRow />);
-    fireEvent.click(screen.getByRole("button", { name: "Hide Finish setting up on this device" }));
-    expect(screen.queryByTestId("work-setup-row")).not.toBeInTheDocument();
-    expect(stored().status).toBe("dismissed");
+  it("lists only the steps for the areas this doctor uses", () => {
+    seed({ areas: ["teach"] });
+    render(<WorkSetupPromptCard />);
+    expect(screen.queryByTestId("work-setup-prompt-step-roster")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("work-setup-prompt-step-other-areas")).not.toBeInTheDocument();
+    expect(screen.getByTestId("work-setup-prompt-step-rotation")).toBeInTheDocument();
   });
 
-  it("stays away once setup is finished or put away", () => {
-    seed({ status: "done", step: "done" });
-    const { unmount } = render(<WorkSetupRow />);
-    expect(screen.queryByTestId("work-setup-row")).not.toBeInTheDocument();
-    unmount();
-    seed({ status: "dismissed" });
-    render(<WorkSetupRow />);
-    expect(screen.queryByTestId("work-setup-row")).not.toBeInTheDocument();
+  it('is headed "Get set up"', () => {
+    render(<WorkSetupPromptCard />);
+    expect(screen.getByRole("heading", { name: "Get set up" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Get set up" })).toBeInTheDocument();
   });
 });

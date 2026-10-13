@@ -39,7 +39,7 @@ export function NotificationsPage() {
           </PageTitleUnderBand>
           <p className="text-sm text-[color:var(--text-muted)]">{description}</p>
         </header>
-        <NotificationCentreBody feed={feed} active onNavigate={stay} />
+        <NotificationCentreBody feed={feed} active onNavigate={stay} surface="page" />
       </div>
     </InformationPageShell>
   );

@@ -8,8 +8,6 @@ import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeBandAction } from "@/components/mode-band/mode-band";
 import { WorkGlassButton, WorkMiniRing, WorkRing, useWorkUndoToast } from "@/components/mode-kit/work";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
-import { WorkSetupRow } from "@/components/work-setup/work-setup-row";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { recordChart } from "@/components/teaching/my-record-model";
@@ -131,9 +129,6 @@ function TodayScreen({ demoMode }: { demoMode: boolean }) {
     <InformationPageShell width="narrow" gap={false} testId="teaching-today">
       <T5Page>
         <h1 className="sr-only">Today</h1>
-        <NewWorkModeOnly>
-          <WorkSetupRow />
-        </NewWorkModeOnly>
         {now && today ? (
           <TodayBody
             view={view}

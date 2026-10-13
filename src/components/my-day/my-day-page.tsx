@@ -334,12 +334,45 @@ function MyDayFullList({
 
 // ---------------------------------------------------------------- the page
 
+/** The page's loading shape: grey blocks where the day's cards go. */
+function MyDayLoadingSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
+      <div className="col-span-2">
+        <ModeModuleSkeleton rows={2} twoLine eyebrow />
+      </div>
+      <ModeModuleSkeleton rows={2} eyebrow />
+      <ModeModuleSkeleton rows={2} eyebrow />
+      <div className="col-span-2">
+        <ModeModuleSkeleton rows={3} twoLine eyebrow />
+      </div>
+    </div>
+  );
+}
+
 /** The dashboard's own reads, mounted only for an enabled reader and remounted per sign-in. */
 function MyDayDashboardView({
   allowSample,
   ...props
 }: Omit<MyDayDashboardProps, "sources"> & { readonly allowSample: boolean }) {
   const sources = useMyDayDashboardSources({ today: props.today, now: props.now, allowSample });
+  // Today keeps the loading shape until its own reads (roster, teaching, CPD) have answered. Drawn
+  // earlier, the hero and This week arrived about a second later and pushed Quick actions and Needs
+  // you down the screen (design audit 13 Oct 2026, D16: layout shift 0.13 to 0.17). Only the first
+  // load waits: a later re-read (Try again, a new day) keeps the cards on screen as before.
+  const settling = [sources.roster.status, sources.teaching.status, sources.cpd.status].includes("loading");
+  const [settledOnce, setSettledOnce] = useState(!settling);
+  if (!settling && !settledOnce) setSettledOnce(true);
+  if (props.page === "today" && settling && !settledOnce) {
+    return (
+      <>
+        <span role="status" className="sr-only">
+          Loading My Day
+        </span>
+        <MyDayLoadingSkeleton />
+      </>
+    );
+  }
   return <MyDayDashboard {...props} sources={sources} />;
 }
 
@@ -565,16 +598,7 @@ export function MyDayPage({ now: nowProp }: { now?: Date } = {}) {
             <span role="status" className="sr-only">
               Loading My Day
             </span>
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" data-testid="my-day-loading" aria-hidden="true">
-              <div className="col-span-2">
-                <ModeModuleSkeleton rows={2} twoLine eyebrow />
-              </div>
-              <ModeModuleSkeleton rows={2} eyebrow />
-              <ModeModuleSkeleton rows={2} eyebrow />
-              <div className="col-span-2">
-                <ModeModuleSkeleton rows={3} twoLine eyebrow />
-              </div>
-            </div>
+            <MyDayLoadingSkeleton />
           </>
         ) : null}
 
