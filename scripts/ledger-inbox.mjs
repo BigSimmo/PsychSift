@@ -640,21 +640,24 @@ function assertFreshReconciliationBase() {
  *
  * @param {{
  *   lsRemoteOutput?: string,
- *   runner?: (args: string[]) => string,
+ *   runner?: (args: string[], options?: {input?: string}) => string,
  *   originRef?: string,
  *   currentBranch?: string,
- *   warn?: (message: string) => void
+ *   warn?: (message: string) => void,
+ *   strictRemote?: boolean,
+ *   expectedSource?: {branch: string, sha: string}
  * }} [options]
  * @returns {Array<{ branch: string, sha: string, unmergedCount?: number, reason: string }>}
  */
 function remoteGitRunner(options) {
   return (
     options.runner ??
-    ((args) =>
+    ((args, executionOptions = {}) =>
       execFileSync("git", args, {
         cwd: ROOT,
         encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
+        stdio: [executionOptions.input === undefined ? "ignore" : "pipe", "pipe", "ignore"],
+        ...executionOptions,
       }).trim())
   );
 }
@@ -664,6 +667,8 @@ function readRemoteHeads(options, runner) {
   try {
     return runner(["ls-remote", "--heads", "origin"]);
   } catch {
+    if (options.strictRemote)
+      throw new Error("remote branch status is unavailable; preserved-source admission is blocked");
     // Offline or network error: fail open safely.
     return null;
   }
@@ -678,7 +683,7 @@ function readCurrentBranch(options, runner) {
   }
 }
 
-function parseRemoteCandidates(lsRemoteText, currentBranch) {
+function parseRemoteCandidates(lsRemoteText, currentBranch, strictRemote = false) {
   const lines = lsRemoteText
     .split("\n")
     .map((l) => l.trim())
@@ -691,7 +696,12 @@ function parseRemoteCandidates(lsRemoteText, currentBranch) {
     const ref = parts[1];
     const branchName = ref.replace(/^refs\/heads\//, "");
     if (!/^[0-9a-f]{40}$/i.test(sha)) continue;
-    if (branchName === "main" || branchName === "master" || (currentBranch && branchName === currentBranch)) continue;
+    if (
+      branchName === "main" ||
+      (!strictRemote && branchName === "master") ||
+      (currentBranch && branchName === currentBranch)
+    )
+      continue;
     candidateBranches.push({ branch: branchName, sha });
   }
   return candidateBranches;
@@ -818,14 +828,132 @@ function detectUnfetchedNamedReconciliations(candidateBranches, localShas) {
     }));
 }
 
+/** Strict (preserved-source) admission: the remote-head snapshot must be complete and current. */
+function assertStrictRemoteSnapshot(lsRemoteText, options, runner, originMainRef) {
+  if (
+    options.strictRemote &&
+    lsRemoteText
+      .split(/\r?\n/)
+      .filter((line) => line.trim())
+      .some((line) => !/^[0-9a-f]{40}\s+refs\/heads\/\S+$/i.test(line.trim()))
+  ) {
+    throw new Error("remote branch status is malformed; preserved-source admission is blocked");
+  }
+  if (options.strictRemote) {
+    const mainRows = lsRemoteText
+      .split(/\r?\n/)
+      .map((line) => line.trim().split(/\s+/))
+      .filter((row) => row[1] === "refs/heads/main");
+    let fetchedMain;
+    try {
+      fetchedMain = runner(["rev-parse", "--verify", `${originMainRef}^{commit}`]).trim();
+    } catch {
+      throw new Error("cannot resolve the fetched origin/main; preserved-source admission is blocked");
+    }
+    if (mainRows.length !== 1 || mainRows[0][0].toLowerCase() !== fetchedMain.toLowerCase()) {
+      throw new Error(
+        "remote main has moved since the last fetch (or is missing); fetch, merge origin/main and recheck; preserved-source admission is blocked",
+      );
+    }
+  }
+  if (options.expectedSource) {
+    const ref = `refs/heads/${options.expectedSource.branch}`;
+    const sourceRows = lsRemoteText
+      .split(/\r?\n/)
+      .map((line) => line.trim().split(/\s+/))
+      .filter((row) => row[1] === ref);
+    if (sourceRows.length !== 1 || sourceRows[0][0] !== options.expectedSource.sha) {
+      throw new Error(
+        "preserved source is missing or moved in the complete remote-head snapshot; reconciliation remains blocked",
+      );
+    }
+  }
+}
+
+/** Strict admission: every candidate commit and its applied tree must be inspectable. */
+function detectStrictReconciliations(candidateBranches, runner, originMainRef) {
+  const shasToCheck = candidateBranches.map((candidate) => candidate.sha);
+  let mainApplied;
+  try {
+    mainApplied = new Set(
+      runner(["ls-tree", "-r", "--name-only", originMainRef, "--", APPLIED_DIR]).split(/\r?\n/).filter(Boolean),
+    );
+  } catch {
+    throw new Error("cannot inspect the current-main applied inbox; preserved-source admission is blocked");
+  }
+
+  const uniqueShas = [...new Set(shasToCheck)];
+  let available;
+  try {
+    available = runner(["cat-file", "--batch-check=%(objectname) %(objecttype)"], {
+      input: uniqueShas.join("\n") + "\n",
+    })
+      .split(/\r?\n/)
+      .filter(Boolean);
+  } catch {
+    throw new Error("cannot inspect remote commit availability; preserved-source admission is blocked");
+  }
+  // cat-file exits successfully for missing objects. Verify its complete output,
+  // including ordinary branch names, rather than treating exit status as proof.
+  const availableShas = new Set(available.map((entry) => entry.split(" ")[0]));
+  if (
+    available.length !== uniqueShas.length ||
+    available.some((entry) => !/^[0-9a-f]{40} commit$/i.test(entry)) ||
+    availableShas.size !== uniqueShas.length ||
+    uniqueShas.some((sha) => !availableShas.has(sha))
+  ) {
+    const branches = candidateBranches.map((candidate) => candidate.branch).join(", ");
+    throw new Error(
+      `cannot inspect every remote candidate commit (${branches}); fetch remote heads and recheck; preserved-source admission is blocked`,
+    );
+  }
+
+  const detected = [];
+  for (const candidate of candidateBranches) {
+    let applied;
+    try {
+      // Inspect the tip directly: a later edit to an already-landed record must
+      // not hide an earlier unmerged record still present on this branch.
+      applied = runner(["ls-tree", "-r", "--name-only", candidate.sha, "--", APPLIED_DIR])
+        .split(/\r?\n/)
+        .filter(Boolean);
+    } catch {
+      throw new Error(
+        `cannot inspect the applied inbox on remote branch ${candidate.branch}; preserved-source admission is blocked`,
+      );
+    }
+    const unmerged = applied.filter((path) => !mainApplied.has(path));
+    if (unmerged.length) {
+      detected.push({
+        branch: candidate.branch,
+        sha: candidate.sha,
+        unmergedCount: unmerged.length,
+        reason: `carries ${unmerged.length} unmerged applied inbox record(s) under ${APPLIED_DIR}`,
+      });
+    }
+  }
+  return detected;
+}
+
 export function findUnmergedRemoteReconciliations(options = {}) {
   const runner = remoteGitRunner(options);
   const lsRemoteText = readRemoteHeads(options, runner);
-  if (!lsRemoteText || typeof lsRemoteText !== "string") return [];
-  const candidateBranches = parseRemoteCandidates(lsRemoteText, readCurrentBranch(options, runner));
-  if (candidateBranches.length === 0) return [];
-
+  if (!lsRemoteText || typeof lsRemoteText !== "string") {
+    if (options.strictRemote)
+      throw new Error("remote branch status is empty or invalid; preserved-source admission is blocked");
+    return [];
+  }
   const originMainRef = options.originRef ?? "refs/remotes/origin/main";
+  if (options.strictRemote || options.expectedSource)
+    assertStrictRemoteSnapshot(lsRemoteText, options, runner, originMainRef);
+  const candidateBranches = parseRemoteCandidates(
+    lsRemoteText,
+    readCurrentBranch(options, runner),
+    Boolean(options.strictRemote),
+  );
+  if (candidateBranches.length === 0) return [];
+  if (options.strictRemote) return detectStrictReconciliations(candidateBranches, runner, originMainRef);
+
   const mainApplied = readMainAppliedPaths(originMainRef);
   const localShas = locallyAvailableCommitShas(candidateBranches.map((candidate) => candidate.sha));
   const presentCandidates = candidateBranches.filter((candidate) => localShas.has(candidate.sha));
@@ -840,7 +968,116 @@ export function findUnmergedRemoteReconciliations(options = {}) {
   ];
 }
 
+function preservedSourcePin(argv) {
+  const prFlag = "--preserved-source-pr";
+  const shaFlag = "--preserved-source-sha";
+  const prCount = argv.filter((arg) => arg === prFlag).length;
+  const shaCount = argv.filter((arg) => arg === shaFlag).length;
+  if (argv.some((arg) => arg.startsWith("--preserved-source-") && arg !== prFlag && arg !== shaFlag)) {
+    throw new Error(
+      "preserved-source admission requires exactly one --preserved-source-pr and --preserved-source-sha selector using separate values",
+    );
+  }
+  if (!prCount && !shaCount) return undefined;
+  const pr = argValue(argv, "preserved-source-pr");
+  const sha = argValue(argv, "preserved-source-sha");
+  if (
+    prCount !== 1 ||
+    shaCount !== 1 ||
+    !/^[1-9][0-9]*$/.test(pr ?? "") ||
+    !Number.isSafeInteger(Number(pr)) ||
+    !/^[0-9a-f]{40}$/i.test(sha ?? "")
+  ) {
+    throw new Error("preserved-source admission requires exactly one positive PR number and one full source SHA");
+  }
+  return { number: Number(pr), sha: sha.toLowerCase() };
+}
+
+/** Fresh, read-only GitHub evidence for one explicitly pinned preserved source. */
+function verifyPreservedSource(pin, options) {
+  const gitRunner = options.runner ?? git;
+  const githubRunner =
+    options.githubRunner ??
+    ((args) =>
+      execFileSync("gh", args, {
+        cwd: ROOT,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+        timeout: 15_000,
+        maxBuffer: 2 * 1024 * 1024,
+      }).trim());
+  const origin = gitRunner(["remote", "get-url", "origin"]);
+  const match =
+    /^(?:https:\/\/(?:[^@/\s]+@)?github\.com\/|ssh:\/\/git@github\.com(?::22)?\/|git@github\.com:)([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?)(?:\.git)?\/?$/.exec(
+      origin,
+    );
+  if (!match) throw new Error("preserved-source admission requires an unambiguous github.com origin");
+  const repository = match[1];
+  const read = (args) => {
+    try {
+      return JSON.parse(githubRunner(["api", "--hostname", "github.com", ...args]));
+    } catch {
+      throw new Error("preserved-source GitHub status is unavailable or invalid; reconciliation remains blocked");
+    }
+  };
+  const validate = (pr) => {
+    const sameRepo = (repo) =>
+      typeof repo?.full_name === "string" && repo.full_name.toLowerCase() === repository.toLowerCase();
+    if (
+      pr?.number !== pin.number ||
+      pr.state !== "closed" ||
+      pr.merged !== false ||
+      pr.merged_at !== null ||
+      typeof pr.closed_at !== "string" ||
+      !Number.isFinite(Date.parse(pr.closed_at)) ||
+      pr.base?.ref !== "main" ||
+      !sameRepo(pr.base?.repo) ||
+      !sameRepo(pr.head?.repo) ||
+      !Number.isSafeInteger(pr.base?.repo?.id) ||
+      pr.base.repo.id <= 0 ||
+      pr.head.repo.id !== pr.base.repo.id ||
+      typeof pr.head?.ref !== "string" ||
+      !pr.head.ref ||
+      pr.head.sha !== pin.sha
+    ) {
+      throw new Error("preserved source must be a verified closed, unmerged PR in this repository at the pinned SHA");
+    }
+    return pr.head.ref;
+  };
+  const endpoint = `repos/${repository}/pulls/${pin.number}`;
+  const branch = validate(read([endpoint]));
+  const currentBranch = options.currentBranch ?? gitRunner(["branch", "--show-current"]);
+  if (branch === currentBranch)
+    throw new Error("reconciliation must use a separate branch; the preserved source cannot be its writer");
+  const head = encodeURIComponent(`${repository.split("/")[0]}:${branch}`);
+  const pages = read(["--paginate", "--slurp", `repos/${repository}/pulls?state=open&head=${head}&per_page=100`]);
+  if (!Array.isArray(pages) || !pages.length || !pages.every(Array.isArray) || pages.some((page) => page.length)) {
+    throw new Error("open or uncertain same-head PR status keeps the preserved source blocked");
+  }
+  if (validate(read([endpoint])) !== branch) throw new Error("preserved source changed during verification");
+  let sourceRef;
+  try {
+    if (gitRunner(["cat-file", "-t", pin.sha]) !== "commit") throw new Error("source is not a commit");
+    sourceRef = gitRunner(["ls-remote", "--heads", "origin", `refs/heads/${branch}`]).trim();
+  } catch {
+    throw new Error(
+      "cannot verify the preserved source commit and remote branch; fetch and recheck without changing the source",
+    );
+  }
+  const lines = sourceRef.split(/\r?\n/).filter(Boolean);
+  if (lines.length !== 1 || lines[0] !== `${pin.sha}\trefs/heads/${branch}`) {
+    throw new Error("preserved remote source is missing or moved from the pinned SHA; reconciliation remains blocked");
+  }
+  return { number: pin.number, repository, branch, sha: pin.sha };
+}
+
+/**
+ * @param {string[]} [argv]
+ * @param {{runner?: (args: string[]) => string, githubRunner?: (args: string[]) => string,
+ * lsRemoteOutput?: string, originRef?: string, currentBranch?: string, warn?: (message: string) => void}} [options]
+ */
 export function assertSafeRemoteReconciliation(argv = [], options = {}) {
+  const pin = preservedSourcePin(argv);
   const allowConcurrent =
     argv.includes("--allow-concurrent") ||
     argv.includes("--force") ||
@@ -850,10 +1087,21 @@ export function assertSafeRemoteReconciliation(argv = [], options = {}) {
     argv.includes("--skip-remote-check") ||
     process.env.SKIP_REMOTE_CHECK === "true";
 
+  if (pin && (skipRemoteCheck || allowConcurrent)) {
+    throw new Error("verified preserved-source admission cannot be combined with reconciliation overrides");
+  }
   if (skipRemoteCheck) return;
 
-  const conflicts = findUnmergedRemoteReconciliations(options);
-  if (conflicts.length === 0) return;
+  const preservedSource = pin ? verifyPreservedSource(pin, options) : undefined;
+  const conflicts = findUnmergedRemoteReconciliations({
+    ...options,
+    strictRemote: Boolean(pin),
+    expectedSource: preservedSource,
+  }).filter(
+    (conflict) =>
+      !preservedSource || conflict.branch !== preservedSource.branch || conflict.sha !== preservedSource.sha,
+  );
+  if (conflicts.length === 0) return preservedSource;
 
   const detail = conflicts.map((c) => `  - ${c.branch} (${c.sha.slice(0, 12)}): ${c.reason}`).join("\n");
   const message =
@@ -1062,13 +1310,18 @@ function verifyTrackedPendingRequests(pending) {
   }
 }
 
+/** @returns {{ok: boolean, preservedSource?: {number: number, branch: string, sha: string}}} */
 function verifySafeRemoteReconciliation(argv) {
   try {
-    assertSafeRemoteReconciliation(argv);
-    return true;
+    const preservedSource = assertSafeRemoteReconciliation(argv);
+    if (preservedSource)
+      console.log(
+        `Verified closed/unmerged preserved source PR #${preservedSource.number}: ${preservedSource.branch} at ${preservedSource.sha}. Branch retained; other reconciliation protections remain active.`,
+      );
+    return { ok: true, preservedSource };
   } catch (error) {
     refuseReconciliation(error);
-    return false;
+    return { ok: false };
   }
 }
 
@@ -1093,7 +1346,7 @@ function previewReconciliation(pending) {
   return result;
 }
 
-function commitReconciliation(pending, initialResult) {
+function commitReconciliation(pending, initialResult, argv, preservedSource) {
   const decisions =
     initialResult.cancellations.length > 0
       ? ` with ${initialResult.cancellations.length} cancellation decision(s)`
@@ -1108,6 +1361,9 @@ function commitReconciliation(pending, initialResult) {
       throw new Error(`${ISSUES_PATH} changed while reconciliation was waiting for its lock`);
     pendingRequestsAreTrackedAndClean(pending);
     assertFreshReconciliationBase();
+    // The preserved source was admitted before the lock; re-verify it (GitHub state, pinned SHA,
+    // remote heads and remote main) now that we hold the lock, so a moved source cannot pass.
+    if (preservedSource) assertSafeRemoteReconciliation(argv);
     const result = applyPendingRequests(pending);
 
     const current = readFileSync(path.join(ROOT, ISSUES_PATH), "utf8");
@@ -1159,7 +1415,8 @@ function reconcile(argv) {
     return;
   }
   assertFreshReconciliationBase();
-  if (!verifySafeRemoteReconciliation(argv)) return;
+  const remote = verifySafeRemoteReconciliation(argv);
+  if (!remote.ok) return;
   const result = previewReconciliation(pending);
   if (!result) return;
   const decisions =
@@ -1168,7 +1425,7 @@ function reconcile(argv) {
     console.log(`Would reconcile ${pending.length} request(s) into ${ISSUES_PATH}${decisions}.`);
     return;
   }
-  commitReconciliation(pending, result);
+  commitReconciliation(pending, result, argv, remote.preservedSource);
 }
 
 function selfTestRemoteInterlock() {

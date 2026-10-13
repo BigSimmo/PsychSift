@@ -43,10 +43,13 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
   const clinicalGuidance: string[] = [];
 
   if (level > 2.0) {
+    // A level alone is not a dialysis threshold (owner decision, 13 Oct 2026 10:23 PM AWST).
+    // Extracorporeal treatment is decided on clinical criteria, EXTRIP-style.
     status = "toxic";
-    severity = "severe_dialysis_threshold";
+    severity = "severe";
     clinicalGuidance.push(
-      "CRITICAL: Serum lithium > 2.0 mmol/L is a medical emergency. High risk of neurotoxicity, acute renal failure, and seizures. Immediate cessation, urgent hospital admission, and consideration of hemodialysis required.",
+      "URGENT: Serum lithium > 2.0 mmol/L. Stop lithium and arrange urgent medical assessment. Discuss with a toxicologist or Poisons Information Centre (13 11 26).",
+      "Whether to use haemodialysis depends on clinical criteria, not this level alone: severity and clinical features (reduced consciousness, seizures, dysrhythmias, confusion), renal function, the trajectory of repeat levels, and acute versus chronic exposure (EXTRIP).",
     );
   } else if (level > 1.2) {
     status = "toxic";

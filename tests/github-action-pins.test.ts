@@ -6,6 +6,20 @@ import { validateActionReference } from "../scripts/github-action-pins.mjs";
 import { yamlBlock } from "../scripts/yaml-contract.mjs";
 
 describe("GitHub Action pin validation", () => {
+  it.each([
+    ["actions/setup-node", "949feb2413d6458794dcd2491c4babbbce0c15c1", "v7.1.0"],
+    ["actions/upload-artifact", "cf430e030ddbb5b0abf93d22962f4752f3646cd9", "v7.0.2"],
+    ["actions/download-artifact", "9000827ccba6bdab643e8b6fd33ac0654aef8333", "v8.0.2"],
+    ["anthropics/claude-code-action", "1d6de8cb0c237e7c15e9e1bdf973826ebae490cc", "v1.0.248"],
+  ])("accepts the reviewed %s release and rejects mismatched annotations", (action, sha, version) => {
+    expect(validateActionReference(`uses: ${action}@${sha} # ${version}`)).toBeNull();
+    expect(validateActionReference(`uses: ${action}@${sha} # v0.0.0`)).toContain("exact reviewed release comment");
+    expect(validateActionReference(`uses: ${action}@${sha}`)).toContain("exact reviewed release comment");
+    expect(validateActionReference(`uses: ${action}@${"1".repeat(40)} # ${version}`)).toContain(
+      "not a reviewed commit SHA",
+    );
+  });
+
   it("accepts a reviewed immutable action reference with its exact version comment", () => {
     expect(
       validateActionReference("        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0"),

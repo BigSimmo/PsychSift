@@ -305,14 +305,14 @@
     "evidenceNotes": "NICE NG69 eating-disorder recommendations state that if FT-AN is unacceptable, contraindicated, or ineffective for children and young people with anorexia nervosa, clinicians should consider individual CBT-ED or AFP-AN. (NICE) NICE NG69 specifies AFP-AN structure as 32–40 individual sessions over 12–18 months plus 8–12 additional family sessions, with review at 4 weeks and then every 3 months, and with focus on self-image, emotions, interpersonal processes, psychological formulation, anorexic behaviour as coping, fears about weight gain, and healthy eating/weight gain. (NICE) NICE public guidance summarises AFP as up to 40 sessions over 12–18 months, with possible parent/carer sessions, and with focus on fears about weight gain, nutrition/starvation, causes of anorexia, and behaviour change.",
     "limitations": "AFP-AN is not first-line ahead of FT-AN in current NICE sequencing. It is also not a substitute for medical stabilisation, nutritional rehabilitation, family/carer support, or specialist eating-disorder multidisciplinary care when physical risk is high. Comparative evidence generally supports family-based approaches more strongly for adolescent anorexia outcomes, so AFP-AN should be chosen deliberately rather than by default.",
     "references": "NICE NG69 eating-disorder recommendations state that if FT-AN is unacceptable, contraindicated, or ineffective for children and young people with anorexia nervosa, clinicians should consider individual CBT-ED or AFP-AN. (NICE) NICE NG69 specifies AFP-AN structure as 32–40 individual sessions over 12–18 months plus 8–12 additional family sessions, with review at 4 weeks and then every 3 months, and with focus on self-image, emotions, interpersonal processes, psychological formulation, anorexic behaviour as coping, fears about weight gain, and healthy eating/weight gain. (NICE) NICE public guidance summarises AFP as up to 40 sessions over 12–18 months, with possible parent/carer sessions, and with focus on fears about weight gain, nutrition/starvation, causes of anorexia, and behaviour change.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 100,
+    "reviewCompleteness": 0,
     "tags": [
       "Trauma",
       "Personality/interpersonal",
@@ -351,17 +351,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": true,
-      "sourceChecked": true,
-      "evidenceAppraised": true,
-      "safetyCautionsChecked": true,
-      "patientExplanationChecked": true,
-      "proofread": true,
-      "australianEnglishChecked": true
+      "clinicalAccuracyReviewed": false,
+      "sourceChecked": false,
+      "evidenceAppraised": false,
+      "safetyCautionsChecked": false,
+      "patientExplanationChecked": false,
+      "proofread": false,
+      "australianEnglishChecked": false
     },
-    "reviewedBy": "PsychSift",
-    "reviewedAt": "2026-09-26T17:26:59.987Z",
-    "reviewedContentSha256": "aaa706bca8bd3e405ab1cc244cbc3d83376ff66dbe737aa63f398edd124f8c38"
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewedContentSha256": null
   },
   {
     "slug": "advocacy-informed-therapeutic-work",
@@ -393,14 +393,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
     "limitations": "It is not a substitute for acute treatment, medication optimisation, or diagnosis-specific psychotherapy. It is also weak if the clinician focuses on advocacy language without practical follow-through, or if the main clinical driver is acute illness severity rather than external barriers. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 100,
+    "reviewCompleteness": 0,
     "tags": [
       "Trauma",
       "Psychosis",
@@ -437,17 +437,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": true,
-      "sourceChecked": true,
-      "evidenceAppraised": true,
-      "safetyCautionsChecked": true,
-      "patientExplanationChecked": true,
-      "proofread": true,
-      "australianEnglishChecked": true
+      "clinicalAccuracyReviewed": false,
+      "sourceChecked": false,
+      "evidenceAppraised": false,
+      "safetyCautionsChecked": false,
+      "patientExplanationChecked": false,
+      "proofread": false,
+      "australianEnglishChecked": false
     },
-    "reviewedBy": "PsychSift",
-    "reviewedAt": "2026-10-06T09:19:29.756Z",
-    "reviewedContentSha256": "199f753824830f528853359b653f17db07f8432b252d7a2ee9ece23157652aad"
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewedContentSha256": null
   },
   {
     "slug": "app-supported-therapy",
@@ -7763,14 +7763,14 @@
     "evidenceNotes": "CDC Tourette treatment guidance describes CBIT as evidence-based behavioural therapy for Tourette syndrome and chronic tic disorders, including habit reversal, education, relaxation, and environmental/function-based strategies. (CDC) CDC CBIT article states CBIT can help people with tic disorders manage tics and notes medication is not the only treatment pathway. (CDC) MSD Manual Professional describes body-focused repetitive behaviour disorders and notes CBT, most often habit reversal training, including awareness training, stimulus control, and competing response training. (MSD Manuals) Body-focused repetitive behaviour interventions share a behavioural treatment logic with exposure therapies, but remain clinically distinct from OCD rituals.",
     "limitations": "Poor fit if the person cannot identify urges/triggers, cannot practise responses, or if the behaviour is primarily driven by acute psychosis, mania, delirium, intoxication, severe self-injury, or a medical/neurological condition needing different management. CBIT/HRT may reduce tics/habits but does not “cure” the underlying vulnerability.",
     "references": "CDC Tourette treatment guidance describes CBIT as evidence-based behavioural therapy for Tourette syndrome and chronic tic disorders, including habit reversal, education, relaxation, and environmental/function-based strategies. (CDC) CDC CBIT article states CBIT can help people with tic disorders manage tics and notes medication is not the only treatment pathway. (CDC) MSD Manual Professional describes body-focused repetitive behaviour disorders and notes CBT, most often habit reversal training, including awareness training, stimulus control, and competing response training. (MSD Manuals) Body-focused repetitive behaviour interventions share a behavioural treatment logic with exposure therapies, but remain clinically distinct from OCD rituals.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 100,
+    "reviewCompleteness": 0,
     "tags": [
       "Mood",
       "Anxiety",
@@ -7812,17 +7812,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": true,
-      "sourceChecked": true,
-      "evidenceAppraised": true,
-      "safetyCautionsChecked": true,
-      "patientExplanationChecked": true,
-      "proofread": true,
-      "australianEnglishChecked": true
+      "clinicalAccuracyReviewed": false,
+      "sourceChecked": false,
+      "evidenceAppraised": false,
+      "safetyCautionsChecked": false,
+      "patientExplanationChecked": false,
+      "proofread": false,
+      "australianEnglishChecked": false
     },
-    "reviewedBy": "PsychSift",
-    "reviewedAt": "2026-09-26T17:26:59.987Z",
-    "reviewedContentSha256": "20a9ec3167c7e0c06f57c249adb2e895d9e6c9d6a73e05bd99389c4a64ab207e"
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewedContentSha256": null
   },
   {
     "slug": "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
@@ -15641,14 +15641,14 @@
     "evidenceNotes": "Trauma-informed skills work is commonly preparatory or adjunctive, with STAIR typically delivered over 10 weekly sessions drawing on cognitive, behavioural, and DBT-informed strategies. A 2024 systematic review of STAIR for complex trauma reported significant symptom reductions across seven studies, including improvements in disturbances in self-organisation, but found mixed results when compared with direct trauma-focused approaches. (ScienceDirect) The RESTORE pilot RCT studied enhanced STAIR versus treatment as usual for ICD-11 complex PTSD, supporting STAIR’s relevance to CPTSD while keeping claims appropriately cautious. (PubMed) Phoenix Australia PTSD Guidelines provide the Australian PTSD/CPTSD guideline frame and continue to prioritise evidence-based trauma-focused treatments for PTSD while recognising complexity in implementation. (Phoenix Australia)",
     "limitations": "STAIR is not the same as PE, CPT, EMDR, CT-PTSD, or TF-CBT, and should not be presented as the default first-line PTSD treatment when standard trauma-focused therapy is feasible and appropriate. It is also insufficient alone when PTSD remains dominated by unprocessed trauma memories and avoidance that require trauma-focused treatment.",
     "references": "Trauma-informed skills work is commonly preparatory or adjunctive, with STAIR typically delivered over 10 weekly sessions drawing on cognitive, behavioural, and DBT-informed strategies. A 2024 systematic review of STAIR for complex trauma reported significant symptom reductions across seven studies, including improvements in disturbances in self-organisation, but found mixed results when compared with direct trauma-focused approaches. (ScienceDirect) The RESTORE pilot RCT studied enhanced STAIR versus treatment as usual for ICD-11 complex PTSD, supporting STAIR’s relevance to CPTSD while keeping claims appropriately cautious. (PubMed) Phoenix Australia PTSD Guidelines provide the Australian PTSD/CPTSD guideline frame and continue to prioritise evidence-based trauma-focused treatments for PTSD while recognising complexity in implementation. (Phoenix Australia)",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 100,
+    "reviewCompleteness": 0,
     "tags": [
       "Mood",
       "Trauma",
@@ -15692,17 +15692,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": true,
-      "sourceChecked": true,
-      "evidenceAppraised": true,
-      "safetyCautionsChecked": true,
-      "patientExplanationChecked": true,
-      "proofread": true,
-      "australianEnglishChecked": true
+      "clinicalAccuracyReviewed": false,
+      "sourceChecked": false,
+      "evidenceAppraised": false,
+      "safetyCautionsChecked": false,
+      "patientExplanationChecked": false,
+      "proofread": false,
+      "australianEnglishChecked": false
     },
-    "reviewedBy": "PsychSift",
-    "reviewedAt": "2026-09-26T17:26:59.987Z",
-    "reviewedContentSha256": "58d8a15b0da877576e28d5bc0be5e0e4151da423fa149ffb3d831bfc227782d1"
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewedContentSha256": null
   },
   {
     "slug": "strengths-based-case-management",
@@ -15904,14 +15904,14 @@
     "evidenceNotes": "BMC Psychiatry trial description of SCM as protocol-driven best current clinical practice, including crisis plans, pharmacotherapy, general psychiatric review, written information, weekly individual/group sessions, and 3-monthly medication review. (SpringerLink) Springer/Nature trial summary describing SCM as manualised supportive counselling plus case management, advocacy support, and problem-oriented psychotherapeutic interventions. (Springer) RCT comparing MBT with structured case management in a mainstream public health service. (PubMed) SCM provides a structured generalist personality-disorder model with explicit protocols, supervision, and active case management rather than unstructured supportive care.",
     "limitations": "Insufficient alone when the patient needs full DBT, MBT, schema therapy, TFP, inpatient containment, eating-disorder admission, substance withdrawal management, or acute psychosis/mania treatment. It can also fail if “structured” becomes only administrative structure without a therapeutic formulation and active problem-solving.",
     "references": "BMC Psychiatry trial description of SCM as protocol-driven best current clinical practice, including crisis plans, pharmacotherapy, general psychiatric review, written information, weekly individual/group sessions, and 3-monthly medication review. (SpringerLink) Springer/Nature trial summary describing SCM as manualised supportive counselling plus case management, advocacy support, and problem-oriented psychotherapeutic interventions. (Springer) RCT comparing MBT with structured case management in a mainstream public health service. (PubMed) SCM provides a structured generalist personality-disorder model with explicit protocols, supervision, and active case management rather than unstructured supportive care.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 100,
+    "reviewCompleteness": 0,
     "tags": [
       "Mood",
       "Trauma",
@@ -15953,17 +15953,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": true,
-      "sourceChecked": true,
-      "evidenceAppraised": true,
-      "safetyCautionsChecked": true,
-      "patientExplanationChecked": true,
-      "proofread": true,
-      "australianEnglishChecked": true
+      "clinicalAccuracyReviewed": false,
+      "sourceChecked": false,
+      "evidenceAppraised": false,
+      "safetyCautionsChecked": false,
+      "patientExplanationChecked": false,
+      "proofread": false,
+      "australianEnglishChecked": false
     },
-    "reviewedBy": "PsychSift",
-    "reviewedAt": "2026-09-26T17:26:59.987Z",
-    "reviewedContentSha256": "0fa5684ed3740629bd4559d107333ac545bdcf67ec175823ff269d437ff1270b"
+    "reviewedBy": null,
+    "reviewedAt": null,
+    "reviewedContentSha256": null
   },
   {
     "slug": "support-groups",
@@ -17665,7 +17665,7 @@
     "contraindicationsOrCautions": "Check bipolar disorder, current or past mania/hypomania, mixed features, psychosis, suicide risk, agitation, seizure disorder, delirium risk, substance use, sleep apnoea, medical frailty, shift-work constraints, medication interactions, current sleep deprivation, and ability to be supervised. In bipolar disorder, wake therapy should only be considered with careful mood-stabilising context because sleep loss can precipitate mania or mixed states. Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
     "deliverySteps": "Confirm indication and safety → explain rapid but potentially transient response → use a protocolised total or partial sleep-deprivation schedule → monitor mood, suicidality, agitation, cognition, and emerging hypomania/mania → follow with sleep phase advance and/or bright-light therapy where used → consolidate with rhythm stabilisation, medication optimisation, relapse-prevention planning, and close follow-up.",
     "patientExplanation": "Some depressive states can improve rapidly after controlled sleep deprivation, but the response is often transient unless paired with circadian-stabilising strategies such as light therapy, sleep phase advance, medication, or structured rhythm management. It is used to target: Depressed mood, circadian dysregulation, hypersomnia or disrupted sleep–wake timing, melancholic/biological rhythm features, treatment-resistant depressive symptoms, and mood states linked to abnormal sleep/circadian regulation. In practice, the clinician may use these steps: Confirm indication and safety → explain rapid but potentially transient response → use a protocolised total or partial sleep-deprivation schedule → monitor mood, suicidality, agitation, cognition, and emerging hypomania/mania → follow with sleep phase advance and/or bright-light therapy where used → consolidate with rhythm stabilisation, medication optimisation, relapse-prevention planning, and close follow-up. Wake therapy can be rapid, but the clinical question is whether you can sustain the response safely. Without circadian follow-through and monitoring, sleep deprivation is more risk than treatment.",
-    "sourceNotes": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance.",
+    "sourceNotes": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha",
     "targetSymptoms": "Depressed mood, circadian dysregulation, hypersomnia or disrupted sleep–wake timing, melancholic/biological rhythm features, treatment-resistant depressive symptoms, and mood states linked to abnormal sleep/circadian regulation.",
     "patientPopulation": "Selected patients with unipolar depression or bipolar depression under specialist supervision, especially where circadian dysregulation is prominent and monitoring is available. Better fit in inpatient, day-programme, or specialist mood-disorder settings than unsupervised outpatient self-directed use.",
     "setting": "Emergency/acute, Inpatient, Outpatient/community",
@@ -17682,17 +17682,17 @@
     "alternatives": "Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
     "relatedTherapies": null,
     "evidenceLevel": "Source recorded - not appraised",
-    "evidenceNotes": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance.",
+    "evidenceNotes": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha",
     "limitations": "Poor fit for acute mania, mixed states, psychosis with sleep loss, delirium, severe agitation, uncontrolled suicidality without containment, seizure vulnerability, frailty, unsafe home environment, or inability to monitor. Response can be rapid but short-lived, so it should not be used as a stand-alone maintenance strategy.",
-    "references": null,
-    "reviewStatus": "needs_review",
+    "references": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -17712,7 +17712,7 @@
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
         "sourceType": "uploaded_source",
-        "reference": "Wake and sleep-deprivation approaches are protocolised short-term chronotherapies, frequently combined with bright light therapy and sleep phase advance."
+        "reference": "Your uploaded guide already describes wake/sleep-deprivation approaches as chronotherapeutic, short-term, protocolised, and often combined with bright light and sleep pha"
       }
     ],
     "patientSheetTemplates": [
@@ -17732,17 +17732,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "PsychSift",
+    "reviewedAt": "2026-09-26T17:26:59.987Z",
+    "reviewedContentSha256": "fe945b838990f3b0f0fa72db46c4d49ba07628b51257b94a3431c5358fafd1cc"
   },
   {
     "slug": "workbook-based-therapy",
