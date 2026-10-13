@@ -37,6 +37,8 @@ export type GateRetrySummary = {
   retried_case_ids: string[];
   cases: GateRetryCase[];
   final_blocking_threshold_failures: string[];
+  /** Set when the rerun itself threw; the first-attempt verdict then stands. */
+  retry_error?: string | null;
 };
 
 const p95Pattern = /^RAG p95_latency_ms \S+ above (\d+(?:\.\d+)?)$/;
@@ -97,19 +99,21 @@ export function blockingGateRetryCaseIds(
   return { caseIds: [...ids].sort(), nonRetryable };
 }
 
-/** Return first-attempt latency samples that must remain in a latency gate's population. */
+/**
+ * First attempts superseded by a retry. Every retried case keeps its first-attempt latency in the
+ * latency-gate population (whichever gate selected it) and its cost in the run total, so a retry
+ * can never hide a slow first attempt or understate spend.
+ */
 export function latencySamplesForRetry(report: EvalQualityReport, caseIds: readonly string[]) {
   const results = report.rag.results as RagQualityResult[];
   const ids = new Set(caseIds);
-  const global = report.blocking_threshold_failures.some((failure) => p95Pattern.test(failure));
-  const routes = new Set(
-    report.blocking_threshold_failures
-      .map((failure) => routeP95Pattern.exec(failure)?.[1])
-      .filter((route): route is string => Boolean(route)),
-  );
   return results
-    .filter((result) => ids.has(result.id) && (global || routes.has(result.latencyRoute)))
-    .map((result) => ({ route: result.latencyRoute, latencyMs: result.latencyMs }));
+    .filter((result) => ids.has(result.id))
+    .map((result) => ({
+      route: result.latencyRoute,
+      latencyMs: result.latencyMs,
+      estimatedCostUsd: result.estimatedCostUsd,
+    }));
 }
 
 /** Substitute each retried case's single retry result for its first attempt, preserving case order. */
@@ -160,10 +164,11 @@ export function renderGateRetryMarkdown(retry: GateRetrySummary | null | undefin
         `| ${item.id} | ${item.initial_failures.join("; ") || "none"} | ${item.retry_failures.join("; ") || "none"} | ${item.initial_latency_ms} | ${item.retry_latency_ms} | ${item.initial_routing_reason ?? "n/a"} | ${item.retry_routing_reason ?? "n/a"} |`,
     )
     .join("\n");
+  const errorNote = retry.retry_error ? `\nRetry failed (first-attempt verdict kept): ${retry.retry_error}\n` : "";
   return `
 ## Blocking-Gate Retry
-
-Each case implicated in a blocking RAG gate was re-run once. Gates were re-evaluated with the retry result in place of the first attempt (latency gates as p95 over the population including the retry samples). Threshold values are unchanged.
+${errorNote}
+Each case implicated in a blocking RAG gate was re-run once. Answer-quality gates were re-evaluated with the retry result in place of the first attempt. Latency gates keep BOTH samples (first attempt and retry), so a slow first attempt still counts and a retry cannot clear a latency gate on its own; estimated cost includes both attempts. Threshold values are unchanged.
 
 Initial blocking failures (first attempt):
 

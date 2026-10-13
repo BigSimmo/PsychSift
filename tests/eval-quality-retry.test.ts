@@ -120,15 +120,21 @@ describe("blocking-gate retry", () => {
     const initial = report(first);
     const retried = [{ ...slowRefusal, latencyMs: 280 }];
     const merged = mergeRetriedRagResults(first, retried);
-    const final = report(merged);
-    expect(final.blocking_threshold_failures).toEqual([]);
+    const additionalLatencySamples = latencySamplesForRetry(initial, ["unsupported-coffee-machine"]);
+    const final = buildEvalQualityReport({
+      retrievalResults: [],
+      ragResults: merged,
+      skippedComponents: ["retrieval"],
+      additionalLatencySamples,
+    });
+    expect(final.blocking_threshold_failures).toEqual(["RAG route unsupported p95_latency_ms 6360 above 4000"]);
     expect(merged.map((result) => result.id)).toEqual(first.map((result) => result.id));
 
     const withRetry = buildEvalQualityReport({
       retrievalResults: [],
       ragResults: merged,
       skippedComponents: ["retrieval"],
-      additionalLatencySamples: latencySamplesForRetry(initial, ["unsupported-coffee-machine"]),
+      additionalLatencySamples,
       gateRetry: summarizeGateRetry({ initial, final, retried, nonRetryable: [] }),
     });
     const markdown = renderEvalQualityMarkdown(withRetry);
@@ -138,6 +144,19 @@ describe("blocking-gate retry", () => {
     expect(withRetry.gate_retry?.final_blocking_threshold_failures).toEqual([
       "RAG route unsupported p95_latency_ms 6360 above 4000",
     ]);
+  });
+
+  it("gates a route whose only slow first attempt retried onto another route", () => {
+    const first = [...healthy, ...refusals, slowRefusal];
+    const initial = report(first);
+    const retried = [{ ...slowRefusal, latencyMs: 280, latencyRoute: "moved-route" }];
+    const final = buildEvalQualityReport({
+      retrievalResults: [],
+      ragResults: mergeRetriedRagResults(first, retried),
+      skippedComponents: ["retrieval"],
+      additionalLatencySamples: latencySamplesForRetry(initial, ["unsupported-coffee-machine"]),
+    });
+    expect(final.blocking_threshold_failures).toContain("RAG route unsupported p95_latency_ms 6360 above 4000");
   });
 
   it("still blocks when the same case fails again", () => {

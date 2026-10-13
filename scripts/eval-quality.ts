@@ -645,6 +645,9 @@ function topResultGovernanceCounts(results: GoldenRetrievalResult[]) {
   };
 }
 
+/** A first attempt replaced by its retry: still counted in latency populations and run cost. */
+export type SupersededAttemptSample = { route: string; latencyMs: number; estimatedCostUsd: number | null };
+
 export function isGroundedSupported(result: RagQualityResult, providerMode: EvalQualityProviderMode) {
   if (providerMode === "offline") {
     return result.model === null && result.expectedHit && result.citations > 0;
@@ -656,7 +659,7 @@ function summarizeRagQualityResults(
   results: RagQualityResult[],
   providerMode: EvalQualityProviderMode,
   allowanceOverride?: ReadonlyArray<{ id: string; reason: string }>,
-  additionalLatencySamples: ReadonlyArray<{ route: string; latencyMs: number }> = [],
+  additionalLatencySamples: ReadonlyArray<SupersededAttemptSample> = [],
 ) {
   const fallbackAllowance = allowanceOverride ?? qualityThresholds.ragSourceBackedReviewFallbackAllowance;
   const supported = results.filter((result) => result.supported);
@@ -717,28 +720,26 @@ function summarizeRagQualityResults(
   ];
   const routeLatencyP95 = Object.fromEntries(
     Array.from(
-      results.reduce((accumulator, result) => {
-        const current = accumulator.get(result.latencyRoute) ?? [];
-        current.push(result.latencyMs);
-        accumulator.set(result.latencyRoute, current);
+      [
+        ...results.map((result) => ({ route: result.latencyRoute, latencyMs: result.latencyMs })),
+        ...additionalLatencySamples,
+      ].reduce((accumulator, sample) => {
+        // Buckets come from final results AND retained samples, so a route whose only
+        // case moved route on retry still has its slow first attempt gated.
+        const current = accumulator.get(sample.route) ?? [];
+        current.push(sample.latencyMs);
+        accumulator.set(sample.route, current);
         return accumulator;
       }, new Map<string, number[]>()),
-    ).map(([route, routeLatencies]) => [
-      route,
-      percentile(
-        [
-          ...routeLatencies,
-          ...additionalLatencySamples
-            .filter((sample) => sample.route === route)
-            .map((sample) => sample.latencyMs),
-        ],
-        95,
-      ),
-    ]),
+    ).map(([route, routeLatencies]) => [route, percentile(routeLatencies, 95)]),
   );
-  const estimatedCostUsd = results.some((result) => result.estimatedCostUsd === null)
+  const costSamples = [
+    ...results.map((result) => result.estimatedCostUsd),
+    ...additionalLatencySamples.map((sample) => sample.estimatedCostUsd),
+  ];
+  const estimatedCostUsd = costSamples.some((cost) => cost === null)
     ? null
-    : results.reduce((sum, result) => sum + (result.estimatedCostUsd ?? 0), 0);
+    : costSamples.reduce<number>((sum, cost) => sum + (cost ?? 0), 0);
 
   return {
     case_count: results.length,
@@ -795,7 +796,7 @@ export function buildEvalQualityReport(args: {
   /** Blocking-gate retry receipt (scripts/lib/eval-quality-retry.ts); null when no retry ran. */
   gateRetry?: GateRetrySummary | null;
   /** First-attempt latency samples retained when latency-triggered cases are retried. */
-  additionalLatencySamples?: ReadonlyArray<{ route: string; latencyMs: number }>;
+  additionalLatencySamples?: ReadonlyArray<SupersededAttemptSample>;
 }) {
   const providerMode = args.providerMode ?? "openai";
   const retrievalSummary = summarizeGoldenRetrievalResults(args.retrievalResults);
@@ -1586,7 +1587,7 @@ async function main() {
   const reportFor = (
     results: RagQualityResult[],
     gateRetry?: GateRetrySummary | null,
-    additionalLatencySamples?: ReadonlyArray<{ route: string; latencyMs: number }>,
+    additionalLatencySamples?: ReadonlyArray<SupersededAttemptSample>,
   ) =>
     buildEvalQualityReport({
       retrievalResults,
@@ -1608,23 +1609,40 @@ async function main() {
   let report = reportFor(ragResults);
   if (args.failOnThreshold && args.gateRetry && report.blocking_threshold_failures.length > 0) {
     const { caseIds, nonRetryable } = blockingGateRetryCaseIds(report, qualityFailureCategory, args.providerMode);
-    const retryRun = caseIds.length
-      ? await runRagQualityCases({
+    const initial = report;
+    let retryRun:
+      Awaited<ReturnType<typeof runRagQualityCases>> | { results: RagQualityResult[]; diagnosticCases: [] } = {
+      results: [],
+      diagnosticCases: [],
+    };
+    let retryError: string | null = null;
+    try {
+      if (caseIds.length) {
+        retryRun = await runRagQualityCases({
           ...args,
           ownerId,
           supabase,
           caseIds,
           captureDiagnostics: Boolean(args.dumpRagCases),
-        })
-      : { results: [] as RagQualityResult[], diagnosticCases: [] };
+        });
+      }
+    } catch (error) {
+      // A failed rerun must not discard the completed first evaluation: keep its
+      // report and blocking verdict, and record the failure in the receipt.
+      retryError = error instanceof Error ? error.message : String(error);
+      console.error(`[eval:quality] blocking-gate retry failed; keeping first-attempt report: ${retryError}`);
+    }
     const retried = retryRun.results;
     retryDiagnosticCases = retryRun.diagnosticCases.map((record) => ({ ...record, attempt: "retry" }));
-    const initial = report;
-    const additionalLatencySamples = latencySamplesForRetry(initial, caseIds);
-    const merged = reportFor(mergeRetriedRagResults(ragResults, retried), null, additionalLatencySamples);
+    const additionalLatencySamples = latencySamplesForRetry(
+      initial,
+      retried.map((result) => result.id),
+    );
+    const mergedResults = mergeRetriedRagResults(ragResults, retried);
+    const merged = reportFor(mergedResults, null, additionalLatencySamples);
     report = reportFor(
-      mergeRetriedRagResults(ragResults, retried),
-      summarizeGateRetry({ initial, final: merged, retried, nonRetryable }),
+      mergedResults,
+      { ...summarizeGateRetry({ initial, final: merged, retried, nonRetryable }), retry_error: retryError },
       additionalLatencySamples,
     );
     console.error(
