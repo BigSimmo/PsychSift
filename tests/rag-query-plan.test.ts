@@ -349,6 +349,17 @@ describe("bounded RAG query planning", () => {
     ]);
   });
 
+  it("preserves clinical context after stage qualifiers", () => {
+    const query = "Compare admission management of schizophrenia and discharge management of schizophrenia";
+    const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));
+
+    expect(result.kind).toBe("decomposed");
+    expect(result.subquestions.slice(1).map((item) => item.question)).toEqual([
+      "admission management of schizophrenia: directly relevant evidence for this comparison.",
+      "discharge management of schizophrenia: directly relevant evidence for this comparison.",
+    ]);
+  });
+
   it("does not treat a stage word inside a longer phrase as a comparison side", () => {
     const query = "Compare admission criteria and bed capacity escalation";
     const result = buildRagQueryPlan(query, analyzeClinicalQuery(query));

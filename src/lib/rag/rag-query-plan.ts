@@ -144,10 +144,20 @@ function identifiableComparisonSide(side: string, analysis: ClinicalQueryAnalysi
   if (/\b(?:guideline|policy|procedure|protocol|form|service|therapy|medication)\b/i.test(side)) return true;
   // A care-pathway stage ("admission", "community discharge") is a retrievable side: without its
   // own lane, one stage's documents can crowd the other out of a stage-vs-stage comparison.
-  if (/^(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)$/i.test(side.trim())) {
+  const trimmed = side.trim();
+  if (/^(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)$/i.test(trimmed)) {
     return true;
   }
-  return /^[A-Z][A-Z0-9-]{1,}$/.test(side.trim());
+  // Keep a clinical subject that follows a stage qualifier (for example,
+  // "admission management of schizophrenia") in the stage-specific lane.
+  if (
+    /^(?:(?:community|inpatient|patient)\s+)?(?:admissions?|discharges?|transfers?|referrals?)\s+(?:monitoring|treatment|management|requirements?|approaches?|guidance)\b.+/i.test(
+      trimmed,
+    )
+  ) {
+    return true;
+  }
+  return /^[A-Z][A-Z0-9-]{1,}$/.test(trimmed);
 }
 
 function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [string, string] | null {
@@ -158,7 +168,9 @@ function comparisonSides(query: string, analysis: ClinicalQueryAnalysis): [strin
   const clean = (value: string) =>
     value
       .replace(/[?.!]+$/g, "")
-      .replace(/\s+(?:monitoring|treatment|management|requirements?|approaches?|guidance)\b.*$/i, "")
+      // Remove a trailing generic qualifier only when it has no further context;
+      // otherwise retain the stage and its clinical subject for retrieval.
+      .replace(/\s+(?:monitoring|treatment|management|requirements?|approaches?|guidance)\b\s*$/i, "")
       .trim();
   const left = clean(match[1]);
   const right = clean(match[2]);
