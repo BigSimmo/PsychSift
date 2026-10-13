@@ -36,7 +36,7 @@ const SUPERVISOR_QUERY_PATTERN =
   /\b(who is (?:my )?(?:clinical )?(?:supervisor|assessing me)|my (?:clinical )?supervisor)\b/i;
 const DUE_PATTERN = /\b(due|overdue|pending|need to complete|deadline|expir\w*)\b/i;
 const COUNT_PATTERN = /\b(how many|count|number of|remaining|hours? left)\b/i;
-const NEXT_PATTERN = /\b(upcoming|when is (?:my )?next|when am i next)\b/i;
+const NEXT_PATTERN = /\b(upcoming|(?:when is (?:my )?)?next(?!\s+(?:week|month|term)\b)|when am i next)\b/i;
 
 // Timeframe patterns
 const TIMEFRAMES: readonly [RegExp, string][] = [

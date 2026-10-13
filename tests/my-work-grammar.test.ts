@@ -50,6 +50,11 @@ describe("Search My Work Assessment Grammar (#PT83FG)", () => {
       expect(match?.intent).toBe("next");
       expect(match?.understood).toBe("Showing your next upcoming EPA milestones");
       expect(match?.targetArea).toBe("assessments");
+
+      const directMatch = parseMyWorkAssessmentGrammar("next EPA");
+      expect(directMatch).not.toBeNull();
+      expect(directMatch?.category).toBe("epa");
+      expect(directMatch?.intent).toBe("next");
     });
 
     it("parses assessment due question with timeframe", () => {

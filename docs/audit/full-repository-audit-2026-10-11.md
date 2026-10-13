@@ -103,7 +103,7 @@ Despite these strengths, the audit identified **3 Critical Blockers (P0)** and *
 - **Defect Analysis (CS-002 - Look-Alike / Sound-Alike Hazard):** Drug entities in `src/lib/medication-entities.ts` use flat lowercase strings. Under ISMP (Institute for Safe Medication Practices) standards, high-risk psychiatric pairs require Tall Man lettering to prevent dangerous confusion:
   - `cloZAPine` (antipsychotic with agranulocytosis risk) vs `cloNIDine` (alpha-2 agonist antihypertensive).
   - `hydrOXYzine` (antihistamine/anxiolytic) vs `hydrALAZINE` (potent vasodilator).
-  - `fluOXEtine` vs `fluvOXAMine` vs `FLUphenazine`.
+  - `FLUoxetine` vs `fluvoxaMINE` vs `fluPHENAZine`.
 - **Defect Analysis (CS-003 - Interaction Coverage):** `src/lib/medication-interaction-lexicon.ts` excludes non-stocked or over-the-counter interactants. Omitting St John's Wort (_Hypericum perforatum_) is a severe clinical hazard, as concurrent use with SSRIs/SNRIs frequently precipitates life-threatening Serotonin Syndrome.
 
 ### Domain 3: AI Architecture, RAG Retrieval & Prompt Engineering
@@ -143,7 +143,7 @@ Despite these strengths, the audit identified **3 Critical Blockers (P0)** and *
   1. The maps never evict entries, growing monotonically until Node runs out of memory.
   2. In warm containers, cache entries persist across requests from different authenticated users, risking cross-tenant data leakage if keys do not strictly incorporate tenant IDs.
 - **Defect Analysis (MEM-02 - In-Flight Request Maps):** In-flight deduplication maps in `src/app/api/search/route.ts:79` and `src/lib/shared-get.ts:19` lack timeout or abort-signal cleanup handlers. An aborted HTTP client connection permanently retains the promise in the map.
-- **Defect Analysis (TS-01 - Double-Casting Escape Hatch):** Over 30 occurrences of `as unknown as T` in `src/lib/openai.ts` and `src/lib/answer-client-payload.ts` completely bypass the TypeScript compiler's type checker, leaving downstream code vulnerable to runtime `undefined` property crashes if LLM JSON responses diverge.
+- **Defect Analysis (TS-CAST-01 - Double-Casting Escape Hatch):** Over 30 occurrences of `as unknown as T` in `src/lib/openai.ts` and `src/lib/answer-client-payload.ts` completely bypass the TypeScript compiler's type checker, leaving downstream code vulnerable to runtime `undefined` property crashes if LLM JSON responses diverge.
 
 ### Domain 7: Test Suite Integrity, E2E Reliability & CI Flake Hunting
 
