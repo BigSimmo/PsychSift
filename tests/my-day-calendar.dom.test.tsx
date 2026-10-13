@@ -41,8 +41,8 @@ describe("My Day Calendar signed out", () => {
     expect(screen.queryByTestId("my-day-calendar-signed-out")).toBeNull();
     const calendar = await screen.findByTestId("my-day-calendar-ready");
     expect(within(calendar).getAllByText("Registrar teaching: agitation").length).toBeGreaterThan(0);
-    // The private calendar link belongs to an account, so the sample leaves it out.
-    expect(screen.queryByTestId("my-day-calendar-subscribe")).toBeNull();
+    // Nothing in the sample can be exported, so the export panel and private link are left out.
+    expect(screen.queryByTestId("my-day-calendar-export")).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(setItem).not.toHaveBeenCalled();
   });

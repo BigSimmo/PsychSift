@@ -37,7 +37,7 @@ import { CALENDAR_TIME_ZONE } from "@/lib/calendar/calendar-event";
 import { guardExampleAction, isExampleRecord } from "@/lib/example-data/guards";
 import { addMonths, monthTitle, monthWeeks } from "@/lib/my-day/figures";
 import type { MyDayItem } from "@/lib/my-day/model";
-import { mergeMyDayItems } from "@/lib/my-day/merge";
+import { mergeMyDayItems, myDaySeverityForDue } from "@/lib/my-day/merge";
 import { shiftTitle } from "@/lib/my-day/quiet-figures";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
 import { addDaysToDate } from "@/lib/roster/shifts/perth-time";
@@ -206,6 +206,7 @@ export function MyDayCalendarPage({ now }: { now?: Date } = {}) {
                 shifts={sample.sources.roster.shifts}
                 sessions={sample.sources.teaching.ahead ?? []}
                 items={sample.items}
+                renewals={sample.renewals}
                 shownMonth={shownMonth}
                 onMonth={setShownMonth}
               />
@@ -236,6 +237,7 @@ function SampleCalendar({
   shifts,
   sessions,
   items,
+  renewals,
   shownMonth,
   onMonth,
 }: {
@@ -243,6 +245,7 @@ function SampleCalendar({
   readonly shifts: readonly MyShift[];
   readonly sessions: readonly SessionSummaryRead[];
   readonly items: readonly MyDayItem[];
+  readonly renewals: readonly { entryId: string; title: string; date: string; href: string }[];
   readonly shownMonth: string | null;
   readonly onMonth: (month: string) => void;
 }) {
@@ -256,10 +259,26 @@ function SampleCalendar({
           shifts.map((shift) => shiftItem(shift, zone)),
           sessions.map((session) => sessionItem(session, zone)),
           myDayCalendarItems(items, areaLabel, zone),
+          // The sample's later renewals, which its My Day list leaves out, so later months are not empty.
+          myDayCalendarItems(
+            renewals
+              .filter((renewal) => !items.some((item) => item.title === renewal.title))
+              .map((renewal): MyDayItem => ({
+                id: `sample:my-work:${renewal.entryId}`,
+                mode: "my-work",
+                title: renewal.title,
+                detail: "Recorded date",
+                due: renewal.date,
+                severity: myDaySeverityForDue(renewal.date, now),
+                href: renewal.href,
+              })),
+            areaLabel,
+            zone,
+          ),
         ]),
         routeVisible,
       ),
-    [shifts, sessions, items, zone, routeVisible],
+    [shifts, sessions, items, renewals, now, zone, routeVisible],
   );
   return (
     <CalendarScreen
@@ -476,7 +495,7 @@ function CalendarScreen({
   readonly reminders: ReminderSettings;
   readonly onMonth: (month: string) => void;
   readonly notices?: ReactNode;
-  /** The signed-out sample: no account, so no private calendar link. */
+  /** The signed-out sample: nothing in it can be exported and it has no account's calendar link, so no export panel. */
   readonly sample?: boolean;
 }) {
   const from = `${month}-01`;
@@ -581,17 +600,18 @@ function CalendarScreen({
         <MonthList month={month} today={today} items={shown} onAdd={openAdd} />
       )}
 
-      <CalendarExport
-        month={month}
-        // The whole month, whatever areas are hidden on screen.
-        items={all.filter((item) => item.start <= to && item.end >= from)}
-        updating={loading}
-        subscribe={!sample}
-        onDownload={(events) => {
-          if (loading || !guardExampleAction(example, "export")) return;
-          downloadIcs(events, `PsychSift ${monthTitle(month)}`, reminders);
-        }}
-      />
+      {sample ? null : (
+        <CalendarExport
+          month={month}
+          // The whole month, whatever areas are hidden on screen.
+          items={all.filter((item) => item.start <= to && item.end >= from)}
+          updating={loading}
+          onDownload={(events) => {
+            if (loading || !guardExampleAction(example, "export")) return;
+            downloadIcs(events, `PsychSift ${monthTitle(month)}`, reminders);
+          }}
+        />
+      )}
 
       <div className="px-1">
         <QuietFoot icon={Info}>
@@ -1047,13 +1067,10 @@ function CalendarExport({
   month,
   items,
   updating,
-  subscribe,
   onDownload,
 }: {
   readonly month: string;
   readonly items: readonly MainCalendarItem[];
-  /** False for the signed-out sample: the private link belongs to an account. */
-  readonly subscribe: boolean;
   /** True while the shown month is still loading, so a download can't miss part of it. */
   readonly updating: boolean;
   readonly onDownload: (events: ReturnType<typeof calendarExportEvents>) => void;
@@ -1087,7 +1104,7 @@ function CalendarExport({
           </Button>
         </div>
       </div>
-      {subscribe ? <CalendarSubscribe testId="my-day-calendar-subscribe" /> : null}
+      <CalendarSubscribe testId="my-day-calendar-subscribe" />
     </section>
   );
 }
