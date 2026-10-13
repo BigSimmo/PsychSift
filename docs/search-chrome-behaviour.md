@@ -123,6 +123,22 @@ the rendered heights, or pass explicit weights when the sections are discrete ta
 with no on-screen height to measure. Ownership and reserves for that chrome are the
 “Document section navigation” row above.
 
+**Header standard (owner decision, 13 Oct 2026).** Every header hides on a scroll down and
+comes back on a scroll up; what comes back is the top bar plus the page's tab row, never a
+big title. For `InPageNavHeader` that means:
+
+- **Back is in the top bar.** `back` is drawn by `WorkPageBack` in the top bar's round left
+  button (the 11 Oct "one Back, in the top bar" rule), never in the page's own row.
+- **A tab rail pins in the page.** With `rail`, the header stays in page flow and
+  `useStickyWorkTabs` (the Work band mechanism, not a new scroll-hide owner) pins the rail
+  under the bar; the title row scrolls away. Under a mode band the band's tabs are the pinned
+  row, so the header is not pinned there.
+- **Section navigation without a rail rides the collapse row** through
+  `PhoneHeaderCollapsePortal`, as before: the title disclosure is that page's navigation.
+- **A row with no section navigation scrolls away** in page flow, like a band title.
+
+Psychiatry, Medicines and First Nations bands (`ModeBandHeader`) pin their tabs the same way.
+
 Sections that the reader can jump to carry `inPageAnchor`
 (`src/components/in-page-nav/in-page-nav-classes.ts`), which is
 `scroll-mt-[var(--inpage-anchor-offset,6rem)]`. The property is published from the live chrome
