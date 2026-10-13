@@ -3061,6 +3061,33 @@ html[data-large-text]
   overflow: visible;
 }
 
+/* A chip row that normally scrolls sideways (CPD Log's filters, AI Search's
+   area chips) wraps onto more lines instead, so no chip sits past the right
+   edge at 320px (design audit D17, 13 Oct 2026). Each chip keeps its label on
+   one line. */
+html[data-large-text] [data-large-text-wrap] {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: 0;
+  mask-image: none;
+  animation: none;
+}
+
+/* An equal-width segmented control (Renewals' Soonest, By group, Personal)
+   lets a segment that no longer fits move to a second row rather than squeeze
+   its word past the edge (design audit D17). */
+html[data-large-text] main [role="radiogroup"][data-layout="equal"] {
+  flex-wrap: wrap;
+}
+
+html[data-large-text] main [role="radiogroup"][data-layout="equal"] > [role="radio"] {
+  flex: 1 1 auto;
+}
+
+html[data-large-text] main [role="radiogroup"][data-layout="equal"] > [role="radio"] .truncate {
+  white-space: nowrap;
+}
+
 /* A fixed-height chip grows with its wrapped label. */
 html[data-large-text] :is(main, [role="dialog"], [data-inpage-sticky-header]) .truncate.h-7\.5 {
   height: auto;

@@ -1034,6 +1034,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               )}
               role="group"
               aria-label="Filter by area"
+              data-large-text-wrap=""
             >
               {(["all", ...tabAreas] as const).map((area) => {
                 const selected = filter === area;

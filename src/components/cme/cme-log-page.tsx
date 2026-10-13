@@ -409,6 +409,7 @@ export function CmeLogPage({
           role="group"
           aria-label="Narrow the log"
           className="work-chips flex-wrap"
+          data-large-text-wrap=""
           data-beside-filters={wide ? "" : undefined}
         >
           {yearChip}
