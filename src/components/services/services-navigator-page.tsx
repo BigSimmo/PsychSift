@@ -33,6 +33,7 @@ import {
   resultFilterFacetGroup,
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
+import { AlphabetStrip, alphabetStripEntries, alphabetStripTargetClass } from "@/components/mode-kit/alphabet-strip";
 import { StatusTag, type StatusTagShape } from "@/components/mode-kit/status-tag";
 import { cn } from "@/components/ui-primitives";
 import { useResultSort } from "@/components/use-result-sort";
@@ -101,6 +102,10 @@ function serviceChipLabel(chip: ServiceStatusChip) {
     : label;
 }
 
+function serviceRowId(slug: string) {
+  return `service-row-${slug}`;
+}
+
 function ServiceCard({
   service,
   index,
@@ -143,10 +148,12 @@ function ServiceCard({
 
   return (
     <article
+      id={serviceRowId(service.slug)}
       data-testid={`service-search-result-${service.slug}`}
       className={cn(
         cardSurface,
         "relative p-3 sm:p-4",
+        alphabetStripTargetClass,
         // One selected encoding, shared with every other card. The old
         // `ring-1 …/35` was a fourth way of saying "this one" and put an alpha
         // on a token colour, so what it actually contrasted against depended on
@@ -527,6 +534,15 @@ export function ServicesNavigatorPage() {
   const displayedMatches = useMemo(
     () => sortResultItems(facetedMatches, sortValue, (service) => service.title),
     [facetedMatches, sortValue],
+  );
+  const alphabetEntries = useMemo(
+    () =>
+      alphabetStripEntries(
+        displayedMatches,
+        (service) => service.title,
+        (service) => serviceRowId(service.slug),
+      ),
+    [displayedMatches],
   );
   // Both scope segments show the current facet selection applied — "counts
   // on both" — differing only in whether the query/group scoping applies.
@@ -1088,7 +1104,7 @@ export function ServicesNavigatorPage() {
           {showComparison && selected.length >= 2 ? (
             <ComparisonPanel services={selected} onRemove={toggleSelected} onClose={() => setShowComparison(false)} />
           ) : null}
-          <div data-testid="service-search-results" className="grid gap-3">
+          <div id="service-search-results" data-testid="service-search-results" className="grid gap-3">
             {displayedMatches.map((service, index) => (
               <ServiceCard
                 key={service.slug}
@@ -1106,6 +1122,9 @@ export function ServicesNavigatorPage() {
               />
             ))}
           </div>
+          {/* Phone A to Z strip (audit item 13): drawn only when the list is
+              in A to Z order, never over a ranked list. */}
+          <AlphabetStrip listId="service-search-results" testId="services-alphabet-strip" entries={alphabetEntries} />
           {query ? <UniversalSearchAlsoMatches modeId="services" query={query} /> : null}
         </>
       )}
