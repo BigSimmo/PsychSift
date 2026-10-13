@@ -99,7 +99,6 @@ import {
   generatedAnswerQualityFailureReason,
   hasInvalidModelEvidenceIds,
   isAdmissionDischargeRequirementsComparisonQuery,
-  withAdmissionDischargeSideEvidence,
   isExplicitEscalationQuery,
   isSourceBoundAdmissionDischargeComparisonAnswer,
   isOverExpandedSimpleGeneratedAnswer,
@@ -113,6 +112,7 @@ import {
   strongReasoningEffortForQueryClass,
 } from "@/lib/rag/rag-extractive-answer";
 import { contextPackAdmissionMatches } from "./rag-context-admission";
+import { withAdmissionDischargeSideEvidence } from "./rag-admission-discharge-side-evidence";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
 export {

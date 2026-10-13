@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildAdmissionDischargeComparisonAnswer,
-  withAdmissionDischargeSideEvidence,
-} from "../src/lib/rag/rag-extractive-answer";
+import { withAdmissionDischargeSideEvidence } from "../src/lib/rag/rag-admission-discharge-side-evidence";
+import { buildAdmissionDischargeComparisonAnswer } from "../src/lib/rag/rag-extractive-answer";
 import type { SearchResult } from "../src/lib/types";
 
 // Regression guard for the #019 fix (shipped 2026-07-27): the admission/discharge
@@ -197,5 +195,22 @@ describe("admission/discharge fallback keeps both sides in its evidence", () => 
       candidates: [dual, dischargeBound, admissionBound],
     });
     expect(selected.map((item) => item.id)).toContain("admission-chunk");
+  });
+
+  it("adds a second document when one selected document supplies both sides", () => {
+    const combined = result({
+      id: "combined-chunk",
+      document_id: "combined-doc",
+      title: "Referral, Admission and Discharge Policy",
+      content: `${ADMISSION_BOUND} ${DISCHARGE_BOUND}`,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [combined],
+      candidates: [combined, admissionBound, dischargeBound],
+    });
+    expect(selected.length).toBeGreaterThan(1);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
   });
 });

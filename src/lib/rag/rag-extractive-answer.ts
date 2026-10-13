@@ -1056,8 +1056,8 @@ function factKindForSentence(sentence: string, query: string, intent: AnswerInte
 }
 
 /** Fact supports answer intent. */
-const admissionComparisonTermPattern = /\badmissions?\b/i;
-const dischargeComparisonTermPattern = /\bdischarg(?:e|es|ed|ing)\b/i;
+export const admissionComparisonTermPattern = /\badmissions?\b/i;
+export const dischargeComparisonTermPattern = /\bdischarg(?:e|es|ed|ing)\b/i;
 const sourceBoundTerminalContinuation = String.raw`(?=\s*(?:[.,;:]|$))`;
 const medicalClearanceContinuation = String.raw`(?=\s*(?:[.,;:]|$|\bor\s+if\s+(?:the\s+)?(?:consumer|patient)\b|\bfor\s+(?:an?\s+)?admission\b|\bvia\s+(?:the\s+)?emergency department\b|\band\s+arrang\w*\s+(?:an?\s+)?transfer\b|\bafter\s+(?:(?:a|the)\s+)?(?:(?:physical|clinical|medical)\s+)?assessment\b|\bby\s+(?:the\s+)?(?:treating\s+)?(?:doctor|clinician|consultant)\b|\bbefore\s+(?:an?\s+)?transfer\b|\bat\s+admission\b|\bprior\s+to\s+(?:admission|assessment|transfer)\b))`;
 const bedLocationContinuation = String.raw`(?=\s*(?:[.,;:]|$|\bat\s+(?:an?\s+)?(?:alternative\s+)?health service\b|\bfor\s+(?:an?\s+)?admission\b|\bwithin\s+(?:the\s+)?(?:service|ward|unit)\b|\bthrough\s+(?:the\s+)?(?:patient|bed)\s+flow\b|\band\s+notif\w*\s+(?:the\s+)?(?:staff|coordinator|clinician)\b))`;
@@ -1065,7 +1065,7 @@ const directBedLocationAction = String.raw`(?:locate\s+(?:an?\s+)?bed|(?:liaise|
 const subordinateBedLocationReportPattern = /\bwhether\b[^.!?]{0,180}\blocate\s+(?:an?\s+)?bed\b/i;
 const nonClinicalComparisonWrapperPattern =
   /^\s*(?:(?:for|regarding)\s+)?(?:(?:the|an?)\s+)?(?:(?:annual|monthly|quarterly|retrospective|historical)\s+)?(?:audit(?:\s+(?:observations?|findings?|reports?|records?))?|reports?|reporting|archives?|archival\s+records?|training(?:\s+(?:materials?|records?|requirements?))?|education(?:al)?\s+(?:materials?|records?)|governance(?:\s+(?:observations?|reports?|records?))?|historical\s+(?:records?|reports?)|retrospective\s+(?:reviews?|reports?))\b/i;
-const admissionRequirementBindingPatterns = [
+export const admissionRequirementBindingPatterns = [
   /\b(?:patient|consumer)\s+(?:will|must)\s+only\s+be\s+able\s+to\s+(?:come|enter)\b[^.!?]{0,180}\bmeet\s+(?:the\s+)?(?:identified\s+)?inclusion criteria\s+for admission\b/i,
   new RegExp(String.raw`\b(?:provide|obtain)\s+(?:an?\s+)?medical clearance\b${medicalClearanceContinuation}`, "i"),
   /\bmedical clearance\s+(?:(?:must|should)\s+be\s+(?:provided|obtained)|(?:is|are)\s+(?:required|provided|obtained))\b/i,
@@ -1083,7 +1083,7 @@ const admissionRequirementBindingPatterns = [
     "i",
   ),
 ] as const;
-const dischargeRequirementBindingPatterns = [
+export const dischargeRequirementBindingPatterns = [
   /\bclinicians?\s+(?:must|should|will)\s+actively\s+plan\s+(?:the\s+)?effective\s+and\s+timely\s+discharge\b/i,
   /\bdischarge planning\s+(?:(?:must be|is)\s+integral|(?:must|should)\s+(?:include|ensure|complete|notify|refer|document|arrange))\b/i,
   /\bdischarge plans?\s+(?:must|should)\s+(?:include|ensure|complete|notify|refer|document|arrange)\b/i,
@@ -2228,48 +2228,6 @@ export function isAdmissionDischargeRequirementsComparisonQuery(query: string, q
   );
 }
 
-/**
- * Give the admission/discharge fallback builder both sides to work from. Answer-evidence selection
- * can fill every slot with one stage's documents (live canary 38363682098: the admission guideline
- * ranked in search but never reached the builder), so the builder failed closed. When the selected
- * evidence yields no source-bound requirement fact for a side, append up to three governed eligible
- * chunks that do, using the builder's own fact extraction. Every claim still passes the claim-support
- * gate, so a side with no bound requirement still fails closed.
- */
-export function withAdmissionDischargeSideEvidence(args: {
-  query: string;
-  queryClass: RagQueryClass;
-  selected: SearchResult[];
-  candidates: readonly SearchResult[];
-}) {
-  if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.selected;
-  const selectedIds = new Set(args.selected.map((result) => result.id));
-  const unselected = args.candidates.filter((result) => !selectedIds.has(result.id));
-  const additions: SearchResult[] = [];
-  for (const side of [
-    {
-      subjectPattern: admissionComparisonTermPattern,
-      otherSubjectPattern: dischargeComparisonTermPattern,
-      requirementBindingPatterns: admissionRequirementBindingPatterns,
-    },
-    {
-      subjectPattern: dischargeComparisonTermPattern,
-      otherSubjectPattern: admissionComparisonTermPattern,
-      requirementBindingPatterns: dischargeRequirementBindingPatterns,
-    },
-  ]) {
-    if (sourceBoundComparisonFacts({ ...side, results: args.selected }).length) continue;
-    additions.push(
-      ...sourceBoundComparisonFacts({ ...side, results: unselected })
-        .map((fact) => fact.result)
-        // One chunk can yield several facts; add each chunk once.
-        .filter((result, index, side) => side.indexOf(result) === index && !additions.includes(result))
-        .slice(0, 3),
-    );
-  }
-  return additions.length ? [...args.selected, ...additions] : args.selected;
-}
-
 /** Whether the query is one of the measured admission/discharge comparison shapes. */
 export function isSourceBoundAdmissionDischargeComparisonQuery(query: string, queryClass: RagQueryClass) {
   if (!isAdmissionDischargeRequirementsComparisonQuery(query, queryClass)) return false;
@@ -2839,7 +2797,7 @@ function cleanSourceBoundComparisonCandidate(candidate: string) {
     .trim();
 }
 
-function sourceBoundComparisonFacts(args: {
+export function sourceBoundComparisonFacts(args: {
   results: SearchResult[];
   subjectPattern: RegExp;
   otherSubjectPattern: RegExp;
