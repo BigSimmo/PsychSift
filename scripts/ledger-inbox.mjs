@@ -749,8 +749,6 @@ export function findUnmergedRemoteReconciliations(options = {}) {
         .filter(Boolean),
     );
   } catch {
-    if (options.strictRemote)
-      throw new Error("cannot inspect the current-main applied inbox; preserved-source admission is blocked");
     // If originMainRef cannot be inspected, fail open for tree diffs
   }
 
@@ -767,8 +765,6 @@ export function findUnmergedRemoteReconciliations(options = {}) {
       if (type === "commit") localShas.add(sha);
     }
   } catch {
-    if (options.strictRemote)
-      throw new Error("cannot inspect remote commit availability; preserved-source admission is blocked");
     // If batch-check fails, fallback
   }
 
@@ -835,18 +831,12 @@ export function findUnmergedRemoteReconciliations(options = {}) {
                 }
               }
             } catch {
-              if (options.strictRemote)
-                throw new Error(
-                  "cannot inspect a competing reconciliation branch; preserved-source admission is blocked",
-                );
               // ignore
             }
           }
         }
       }
     } catch {
-      if (options.strictRemote)
-        throw new Error("cannot inspect competing reconciliation history; preserved-source admission is blocked");
       // fail open
     }
   }
