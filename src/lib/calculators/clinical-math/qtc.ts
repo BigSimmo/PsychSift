@@ -16,7 +16,12 @@ export function calculateQtc(input: QtcInput): QtcResult {
   let rrSeconds: number;
   let hr: number;
 
-  if (input.rrIntervalSeconds !== undefined && input.rrIntervalSeconds > 0) {
+  // Missing or NaN inputs give no result, never a guessed value (owner ruling, 13 Oct 2026).
+  if (
+    input.rrIntervalSeconds !== undefined &&
+    Number.isFinite(input.rrIntervalSeconds) &&
+    input.rrIntervalSeconds > 0
+  ) {
     rrSeconds = input.rrIntervalSeconds;
     hr = 60 / rrSeconds;
   } else if (input.heartRateBpm !== undefined && Number.isFinite(input.heartRateBpm) && input.heartRateBpm > 0) {
@@ -58,6 +63,19 @@ export function calculateQtc(input: QtcInput): QtcResult {
   const fridericia = input.qtMs / Math.cbrt(rrSeconds);
   const framingham = input.qtMs + 154 * (1 - rrSeconds);
   const hodges = input.qtMs + 1.75 * (hr - 60);
+
+  if (![bazett, fridericia, framingham, hodges].every(Number.isFinite)) {
+    return {
+      isValid: false,
+      bazettMs: null,
+      fridericiaMs: null,
+      framinghamMs: null,
+      hodgesMs: null,
+      riskCategory: null,
+      alerts: [],
+      errors: ["Calculated QTc is not finite"],
+    };
+  }
 
   // Kinetic rate cautions
   if (hr > 85) {
