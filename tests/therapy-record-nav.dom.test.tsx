@@ -8,6 +8,7 @@ import {
   THERAPY_RECORD_DESTINATIONS,
 } from "@/components/therapy-compass/therapy-record-nav-header";
 import type { Therapy } from "@/components/therapy-compass/data/types";
+import { withTopBarLeadingSlot } from "./helpers/top-bar-slot";
 
 const bindings = vi.hoisted(() => ({
   open: vi.fn(),
@@ -68,6 +69,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("therapy record header", () => {
+  withTopBarLeadingSlot();
+
   it("names every available destination in the visible rail", () => {
     renderHeader();
     const rail = screen.getByTestId("therapy-detail-section-rail");
