@@ -573,6 +573,8 @@ export function PsychiatryHome({
   useModeBandCurrentTab(`psychiatry-${page}`);
   const now = useNow(nowProp);
   const state = usePsychiatryVisits();
+  // Offline the shell hides the box, so its reserved space goes too.
+  const offline = useOffline();
 
   return (
     <InformationPageShell testId="psychiatry-home">
@@ -583,7 +585,7 @@ export function PsychiatryHome({
         <DesktopComposerPortalSlot
           id={desktopPageComposerSlotId}
           data-testid="psychiatry-composer"
-          data-composer-reserve={modeHomeComposerReservePendingValue}
+          data-composer-reserve={offline ? undefined : modeHomeComposerReservePendingValue}
           className="desktop-page-composer-slot mx-auto hidden w-full min-w-0 sm:block sm:min-h-0 sm:data-[composer-reserve=pending]:min-h-[var(--spacing-mode-home-composer-wide)] sm:[&:not(:empty)]:min-h-[var(--spacing-mode-home-composer-wide)]"
         />
         <header className="grid min-w-0 gap-0.5" data-testid="psychiatry-header">

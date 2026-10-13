@@ -878,7 +878,11 @@ function GlobalStandaloneSearchShellBody({
 
   function pickRecentQuery(recentQuery: string) {
     setMobileMenuOpen(false);
-    navigateToMode(searchMode, { query: recentQuery, focus: false, run: true });
+    navigateToMode(isDockedModeHomePath(pathname) ? "answer" : searchMode, {
+      query: recentQuery,
+      focus: false,
+      run: true,
+    });
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
