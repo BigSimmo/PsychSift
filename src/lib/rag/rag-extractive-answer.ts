@@ -2228,6 +2228,41 @@ export function isAdmissionDischargeRequirementsComparisonQuery(query: string, q
   );
 }
 
+/**
+ * Give the admission/discharge fallback builder both sides to work from. Answer-evidence selection
+ * can fill every slot with one stage's documents (live canary 38363682098: the admission guideline
+ * ranked in search but never reached the builder), so the builder failed closed. When the selected
+ * evidence has no exclusively-labelled source for a side, append up to three of that side's chunks
+ * from the governed eligible set. Every claim still passes the builder's requirement binding and the
+ * claim-support gate, so a missing side still fails closed.
+ */
+export function withAdmissionDischargeSideEvidence(args: {
+  query: string;
+  queryClass: RagQueryClass;
+  selected: SearchResult[];
+  candidates: readonly SearchResult[];
+}) {
+  if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.selected;
+  const exclusiveTo = (result: SearchResult, side: RegExp, other: RegExp) => {
+    const label = comparisonSourceLabel(result);
+    return side.test(label) && !other.test(label);
+  };
+  const selectedIds = new Set(args.selected.map((result) => result.id));
+  const additions: SearchResult[] = [];
+  for (const [side, other] of [
+    [admissionComparisonTermPattern, dischargeComparisonTermPattern],
+    [dischargeComparisonTermPattern, admissionComparisonTermPattern],
+  ] as const) {
+    if (args.selected.some((result) => exclusiveTo(result, side, other))) continue;
+    additions.push(
+      ...args.candidates
+        .filter((result) => !selectedIds.has(result.id) && exclusiveTo(result, side, other))
+        .slice(0, 3),
+    );
+  }
+  return additions.length ? [...args.selected, ...additions] : args.selected;
+}
+
 /** Whether the query is one of the measured admission/discharge comparison shapes. */
 export function isSourceBoundAdmissionDischargeComparisonQuery(query: string, queryClass: RagQueryClass) {
   if (!isAdmissionDischargeRequirementsComparisonQuery(query, queryClass)) return false;

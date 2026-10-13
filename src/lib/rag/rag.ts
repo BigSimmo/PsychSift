@@ -99,6 +99,7 @@ import {
   generatedAnswerQualityFailureReason,
   hasInvalidModelEvidenceIds,
   isAdmissionDischargeRequirementsComparisonQuery,
+  withAdmissionDischargeSideEvidence,
   isExplicitEscalationQuery,
   isSourceBoundAdmissionDischargeComparisonAnswer,
   isOverExpandedSimpleGeneratedAnswer,
@@ -2284,6 +2285,7 @@ async function answerQuestionWithScopeUncoalesced(
   const results = annotateSearchResults(answerFocusQuery, answerRanking.rankedResults);
   const {
     crossDocumentPlan,
+    eligibleResults: eligibleAnswerResults,
     rawResults: rawAnswerInputResults,
     routeSelection,
   } = selectAnswerRouteEvidence({
@@ -3711,6 +3713,12 @@ ${buildContextSourceBlock(contextResults, { query: answerFocusQuery, queryClass 
         throw relatedDocumentsError;
       }
     }
+    generationFallbackResults = withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected: generationFallbackResults,
+      candidates: eligibleAnswerResults,
+    });
     relatedDocuments = retainRelatedDocumentsForResults(relatedDocuments, generationFallbackResults);
     // #231: retain the specific quality-gate verdict alongside the stable degraded reason below.
     const generationQualityFailure = initialGenerationQualityFailure ?? generationQualityFailureDiagnostics(error);

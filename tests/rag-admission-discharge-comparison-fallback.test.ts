@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildAdmissionDischargeComparisonAnswer } from "../src/lib/rag/rag-extractive-answer";
+import {
+  buildAdmissionDischargeComparisonAnswer,
+  withAdmissionDischargeSideEvidence,
+} from "../src/lib/rag/rag-extractive-answer";
 import type { SearchResult } from "../src/lib/types";
 
 // Regression guard for the #019 fix (shipped 2026-07-27): the admission/discharge
@@ -104,5 +107,63 @@ describe("#019 admission/discharge comparison fallback — conservative contract
     expect(
       buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: [sameDocAdmission, sameDocDischarge] }),
     ).toBeNull();
+  });
+});
+
+describe("admission/discharge fallback keeps both sides in its evidence", () => {
+  const dischargeOnly = [
+    dischargeBound,
+    result({
+      id: "discharge-2",
+      document_id: "discharge-2-doc",
+      title: "Patient Discharge Policy",
+      content: DISCHARGE_BOUND,
+    }),
+  ];
+
+  it("adds the missing admission side from the eligible evidence so both sides can be cited", () => {
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: dischargeOnly,
+      candidates: [...dischargeOnly, admissionBound],
+    });
+
+    expect(selected.map((item) => item.id)).toEqual(["discharge-chunk", "discharge-2", "admission-chunk"]);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })?.citationChunkIds).toEqual([
+      "admission-chunk",
+      "discharge-chunk",
+    ]);
+  });
+
+  it("leaves the selection unchanged when both sides are present or the query is not this comparison", () => {
+    const both = [admissionBound, dischargeBound];
+    expect(
+      withAdmissionDischargeSideEvidence({ query: QUERY, queryClass: "comparison", selected: both, candidates: both }),
+    ).toBe(both);
+    expect(
+      withAdmissionDischargeSideEvidence({
+        query: "Compare lithium and valproate",
+        queryClass: "comparison",
+        selected: dischargeOnly,
+        candidates: [admissionBound],
+      }),
+    ).toBe(dischargeOnly);
+  });
+
+  it("does not count a dual-title policy as the admission side", () => {
+    const dual = result({
+      id: "dual-chunk",
+      document_id: "dual-doc",
+      title: "Referral, Admission and Discharge Policy",
+      content: DISCHARGE_BOUND,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [dual, dischargeBound],
+      candidates: [dual, dischargeBound, admissionBound],
+    });
+    expect(selected.map((item) => item.id)).toContain("admission-chunk");
   });
 });
