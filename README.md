@@ -322,7 +322,7 @@ npm run samples:check
 npm run lint
 npm run typecheck
 npm run test
-npm run test:focused -- --files <paths>
+npm run test:focused -- --files tests/a.test.ts,tests/b.test.ts  # replace with real paths
 npm run test:live # requires ALLOW_PROVIDER_TESTS=true
 npm run test:coverage
 npm run test:e2e

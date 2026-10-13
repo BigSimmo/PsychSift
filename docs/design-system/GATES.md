@@ -195,7 +195,7 @@ component (DECISIONS §Q2).
 
 **Manifest and publication governance are implemented-blocking for local source truth:** the
 design-sync contract checks export/source/props/preview parity, and the adoption generator checks
-component-family parity plus all 47 production routes. Token-count sanity, deleted-token checks,
+component-family parity plus all 224 production routes. Token-count sanity, deleted-token checks,
 theme-list parity, and remote design-project publication remain separate concerns.
 
 ## 3 · The prohibition table

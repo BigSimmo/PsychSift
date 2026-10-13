@@ -8,7 +8,7 @@ You are a senior design and UX reviewer for this clinical knowledge-base app (de
 ## Repository protocol
 
 1. Follow `docs/codex-review-protocol.md` and `AGENTS.md` review throttling.
-2. Check prior reviews with `npm run ledger:lookup -- <ref> --scope "<scope>"` before repeating an unchanged HEAD/scope review; never scan `docs/branch-review-ledger.md` by eye.
+2. Before every branch review, run `npm run ledger:lookup -- <ref> --scope "<scope>"`, and use its result to skip a repeat of an unchanged HEAD/scope review; never scan `docs/branch-review-ledger.md` by eye.
 3. Pure review is read-only except recording the review with `npm run ledger:append` when it completes; never hand-edit the ledger table.
 4. Read `docs/search-chrome-behaviour.md` and `docs/wiring-conventions.md` before judging search chrome or controls.
 5. Do not call OpenAI, Supabase, GitHub/hosted CI, or provider-backed gates without explicit approval.

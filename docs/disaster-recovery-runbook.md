@@ -142,13 +142,13 @@ A schema restore is not operationally complete until all five environment-owned 
 
 1. **`pg_cron` schedules & retention jobs:**
    - Re-create the `invoke_indexing_v3_agent` schedule (create it inactive on a non-production target and activate it only after step 3 confirms its endpoint GUC) and the telemetry retention jobs (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`). Do **not** re-create `invoke_ingestion_worker`: it was retired by `20260926041000` and the container worker owns ingestion.
-   - Sanity check: Run `SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobid;` and confirm all 4 retention jobs and the `invoke_indexing_v3_agent` job are active (`active = true`), and that no `invoke_ingestion_worker` job exists.
+   - Sanity check: Run `SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobid;` and confirm all 4 retention jobs are active (`active = true`), that `invoke_indexing_v3_agent` exists (active on production; still inactive on a non-production target until step 3 passes, then activate it and re-run this query), and that no `invoke_ingestion_worker` job exists.
 2. **Supabase Vault secrets:**
    - Re-add required secrets (`cron_ingestion_jwt`, `indexing_v3_agent_secret`) via Supabase Vault.
    - Sanity check: Run `SELECT name, description, created_at FROM vault.decrypted_secrets ORDER BY name;` (names only; never log decrypted secret values).
 3. **Custom database GUCs:**
-   - Re-set custom parameters (e.g. `app.indexing_v3_agent_base_url`) by running `ALTER DATABASE postgres SET ...` as the project owner (`postgres`) in an operator session; the `schema.sql` statement skips with a notice when its role lacks the privilege, so do not rely on it. If the value is left unset, `invoke_indexing_v3_agent` falls back to the hardcoded production host (`supabase/schema.sql`, `invoke_indexing_v3_agent`) and would send the Vault secret there, so confirm the value with the `pg_settings` check below before activating that job (step 1).
-   - Sanity check: Run `SELECT name, setting, source FROM pg_settings WHERE name LIKE 'app.%';`.
+   - Re-set custom parameters (e.g. `app.indexing_v3_agent_base_url`) by running `ALTER DATABASE postgres SET ...` as the project owner (`postgres`) in an operator session; the `schema.sql` statement skips with a notice when its role lacks the privilege, so do not rely on it. If the value is left unset, `invoke_indexing_v3_agent` falls back to the hardcoded production host (`supabase/schema.sql`, `invoke_indexing_v3_agent`) and would send the Vault secret there, so confirm the value with the check below before activating that job (step 1).
+   - Sanity check: Confirm the stored database-level value with `SELECT unnest(setconfig) FROM pg_db_role_setting WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = 'postgres') AND setrole = 0;` (or `pg_settings` from a new connection): `ALTER DATABASE ... SET` does not change the current session, so `pg_settings` in the same session can show a stale value.
 4. **Supabase Edge Functions:**
    - Redeploy required functions (`indexing-v3-agent`, `site-content-sync`) with the Deno v2.x toolchain in an approved change window:
      ```bash
