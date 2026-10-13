@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "f1bd7d17-da23-4984-bdeb-f2905a49748b",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Test-deletion guard blind spots: each-tables count as one case, Python tests are invisible, mass skip is undetected",
+    "detail": "scripts/check-diff-integrity.mjs counts each it.each(table) once (100 tables with 8+ rows, largest 48), TEST_FILE_PATTERN matches only TS/JS .spec/.test files (worker/python/test_*.py and tests/roster-publication-concurrency.mjs are outside it), and skip/only are counted as declared cases. Next action: owner decision on counting each-rows, adding .py, and flagging mass .skip; do not add skip to NON_CASE_MEMBERS (that would be wrong).",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67N833ZHFH9X3YYR7EKNZ"
+  }
+}

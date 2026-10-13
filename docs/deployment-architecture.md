@@ -581,9 +581,9 @@ using Railway's `ALWAYS` restart policy so repeated bootstrap failures cannot
 exhaust a finite retry allowance and leave the queue undrained.
 The `indexing-v3-agent` Edge Function **stays** in its current role as the
 cron-triggered completion/repair gate — the two are complementary, not
-alternatives. The worker service selects its Dockerfile via the
-`RAILWAY_DOCKERFILE_PATH=Dockerfile.worker` variable (captured in
-`railway.worker.json`).
+alternatives. The worker service selects its Dockerfile through
+`build.dockerfilePath: "Dockerfile.worker"` in `railway.worker.json` (Railway
+config-as-code), not through a service variable.
 
 > **Operator run recipe:** the copy-pasteable build/run/verify steps, the
 > required env + secrets, and the pre-deploy migration gate live in

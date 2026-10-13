@@ -55,6 +55,7 @@ If the response includes `safety.safeToRun: false`, do not retry repeatedly. Use
 
 - `supabase_unavailable`: pause reindexing and rerun `npm run supabase:recovery-status`.
 - `active_jobs`: wait for pending or processing jobs to finish before retrying.
+- `active_agent_enrichment`: an agent-enrichment pass is running on one or more selected documents; wait for it to finish before reindexing.
 - `stale_processing_jobs`: run `npm run recover:ingestion -- --apply --limit 20`, then rerun `npm run reindex:health`.
 - `queued` documents with no open job (upload crash between document insert and job insert): dry-run `npm run recover:ingestion -- --include-stranded-queued`, then re-run with `--apply` after reviewing the candidate list. Optional `--owner-id` and `--stranded-min-age-minutes` keep the sweep bounded. The six-hour ingestion-autopilot probe detects aged owner-scoped rows and opens/updates the operator alert issue; it never applies this recovery unless the guarded manual apply dispatch is used.
 

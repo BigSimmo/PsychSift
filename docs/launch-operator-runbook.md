@@ -64,7 +64,7 @@ PIA-4 retention migrations. **Do not redeploy the worker until `20260708130000` 
 apply the reviewed committed migration through the normal guarded workflow. Do not use this status
 reconciliation as authority to replay the verified July-8 or forward-codification groups.
 
-After applying, query `cron.job` and expect exactly these active retention jobs: `purge-rag-query-misses`
+After applying, query `cron.job` and expect at least these active retention jobs: `purge-rag-query-misses`
 at `45 3 * * *` and `purge-rag-response-cache` at `15 * * * *`. The obsolete
 `purge-expired-rag-response-cache` name must be absent.
 

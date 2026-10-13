@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "334f4e12-2bb6-4545-8318-ce9e86f0b933",
+  "createdOn": "2026-10-13",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "ui-specifiers Top match assertion cannot fail in the broken state, and the duplicate render behind it is uninvestigated",
+    "detail": "tests/ui-specifiers.spec.ts:149 uses visibleByText, which passes when a second copy of the Top match badge exists. The failing-run payload contains one copy and the React 19 reveal runtime moves children rather than copying, so the second copy is created by client JS after the reveal (assertion aborts at ~100 ms on the strict-mode violation). Next action: replace with expectSingleSettledOwner (reports count/visibleCount), then find and fix the app-level double render; the corrected assertion may stay red until that is fixed.",
+    "source": "PsychSift audit review (16 audit reports) checked against main 4382217, 2026-10-13",
+    "issueUlid": "01M4T67N59HN9RD00VG8KRWJ3S"
+  }
+}

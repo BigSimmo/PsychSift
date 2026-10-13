@@ -6,6 +6,24 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 describe("container delivery contract", () => {
+  it.each([
+    "eval/docling/requirements.txt",
+    "eval/docling/verify-model-artifacts.mjs",
+    "eval/docling/model-artifacts.json",
+  ])("builds the worker for its copied Docling input %s", (input) => {
+    expect(read("Dockerfile.worker")).toContain(input);
+    expect(execFileSync("node", ["scripts/ci-change-scope.mjs", "--files", input], { encoding: "utf8" })).toContain(
+      "container_changed=true",
+    );
+    expect(read(".github/workflows/docker-image.yml")).toContain(`      - "${input}"`);
+  });
+
+  it("does not rebuild containers for Docling lab documentation alone", () => {
+    expect(
+      execFileSync("node", ["scripts/ci-change-scope.mjs", "--files", "eval/docling/README.md"], { encoding: "utf8" }),
+    ).toContain("container_changed=false");
+  });
+
   it("routes container-affecting pull requests through the required CI aggregate", () => {
     const ci = read(".github/workflows/ci.yml");
     const imageWorkflow = read(".github/workflows/docker-image.yml");
