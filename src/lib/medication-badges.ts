@@ -485,7 +485,15 @@ export function medicationAccessFields(record: MedicationRecord): Array<{ label:
 
   const routes = firstRowValue(record, "form", "oral routes");
   if (routes) {
-    fields.push({ label: "Formulation", value: routes.replace(/\*\*/g, "").split(".")[0]?.trim() ?? routes });
+    // Split at a sentence end only: a bare "." split cut "Tablets (12.5, 25…" to "Tablets (12".
+    fields.push({
+      label: "Formulation",
+      value:
+        routes
+          .replace(/\*\*/g, "")
+          .split(/\.(?=\s|$)/)[0]
+          ?.trim() || routes,
+    });
   }
 
   return fields;
