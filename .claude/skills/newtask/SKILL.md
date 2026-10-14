@@ -53,7 +53,7 @@ almost always has a pushed branch named after it. Report which check you used. O
    under `C:\Users\…`:
 
    ```bash
-   git worktree add -b claude/<task-slug> D:/Repos/Database/.claude/worktrees/<task-slug> origin/main
+   git worktree add -b claude/<task-slug> D:/Repos/PsychSift/.claude/worktrees/<task-slug> origin/main
    ```
 
    Use a short, descriptive `<task-slug>`.
@@ -73,12 +73,23 @@ almost always has a pushed branch named after it. Report which check you used. O
    and `C:\Users\joshs\.gemini\` belong to Codex and Antigravity sessions — leave them
    alone and do not count them.
 
-3. **Install deps in the new worktree** (worktrees do NOT share `node_modules`; a cold
-   worktree fails `vitest`/`tsc`). `npm ci` keeps the lockfile untouched:
+3. **Install deps in the new worktree** (a cold worktree fails `vitest`/`tsc`). Prefer
+   `node scripts/setup-codex-worktree.mjs`, which reuses a byte-identical donor `node_modules`
+   before falling back to `npm ci --include=dev --prefer-offline --no-audit --no-fund`:
+
    ```bash
-   cd D:/Repos/Database/.claude/worktrees/<task-slug> && npm ci --no-audit --no-fund
+   cd D:/Repos/PsychSift/.claude/worktrees/<task-slug>
+   node scripts/setup-codex-worktree.mjs
    ```
-   `postinstall` installs the pre-push guards automatically.
+
+   **Fallback — direct install when the setup helper cannot be used:**
+
+   ```bash
+   npm ci --include=dev --prefer-offline --no-audit --no-fund
+   ```
+
+   `postinstall` writes the lock-parity stamp and installs the pre-push guards automatically.
+
 4. **Confirm the base is current:** `node scripts/check-base-freshness.mjs` — expect
    `behind 0`. If it reports behind, the fetch/worktree base is stale; recreate.
 5. **Warm routes before any browser/UI work** (fresh worktrees can hash onto a

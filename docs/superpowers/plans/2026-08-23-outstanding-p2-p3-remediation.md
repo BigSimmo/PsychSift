@@ -268,7 +268,7 @@ Remove the `home` asset kind, alias, loader union, and byte-identical generated 
 - Modify: focused fixture contract tests only
 - Create: ledger inbox closure request
 
-Generate the fixtures deterministically, run `npm run generate:docling-lab-lock`, then `npm run check:docling-lab`. Assert the extractor implementation has no diff. Commit fixture, manifest, tests, and closure.
+Generate the fixtures deterministically, run `npm run generate:docling-lab-lock`, then `node scripts/run-vitest.mjs run tests/docling-lab-contract.test.ts` (replacing the historical `check:docling-lab` script alias). Assert the extractor implementation has no diff. Commit fixture, manifest, tests, and closure.
 
 ### Task 20: Split client-specific repository instructions safely (`#8A00R7`)
 

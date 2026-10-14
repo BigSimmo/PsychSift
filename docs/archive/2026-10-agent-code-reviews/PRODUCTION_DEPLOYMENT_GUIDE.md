@@ -1,5 +1,7 @@
 # Production Deployment & Optimization Implementation Guide
 
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
+
 ## Summary of Changes
 
 This guide documents all production-ready enhancements applied to PsychSift's Docker infrastructure for improved caching, security, multi-platform support, and staged rollouts.

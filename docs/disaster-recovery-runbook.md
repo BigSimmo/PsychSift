@@ -157,7 +157,7 @@ A schema restore is not operationally complete until all five environment-owned 
      ```
    - Sanity check: Verify function list via `supabase functions list`, and confirm `OPENAI_API_KEY` appears in `supabase secrets list --project-ref <PROJECT_REF>` (names and digests only); restore it through the approved secret-management procedure if missing. Do not `POST` to `site-content-sync` as a probe: it has no read-only endpoint and a `POST` claims queued outbox events, so invoking it needs separate approval.
 5. **Dashboard-owned configuration:**
-   - Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating secrets), connection-pool caps (auth pool pinned at 10 connections), per-project API keys (`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), and `E2E_USER_*` test credentials.
+   - Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating secrets), connection-pool settings (percentage-mode pool setting at `20–25%` of compute-managed `max_connections` rather than pinning at 10 connections; see `docs/auth-connection-cap-runbook.md`), per-project API keys (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — note that `Dockerfile` bakes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` into the client bundle at image build time, so rotating it requires a Railway image rebuild, not just a restart), and `E2E_USER_*` test credentials.
    - Sanity check: Run `npm run check:env-parity` and names-only checks to verify all consuming environments have valid references without logging secrets.
 6. **System health verification:**
    - Run `SELECT (public.search_schema_health())->>'ok';` (must return `true` with `missing: []`).

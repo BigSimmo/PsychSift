@@ -2,7 +2,7 @@
 
 > **DRAFT — requires clinical sign-off by the owner before any real-patient use.**
 >
-> This is a record of what the repository already asserts about four public telephone numbers, and
+> This is a record of what the repository already asserts about eight public telephone numbers, and
 > of what it does **not** assert. It is not clinical authority, it is not itself a verification, and
 > nothing in it approves the Care Plan prototype for use with a patient. **No number was dialled or
 > checked online while this document was written** — there was no network access in that session.
@@ -12,9 +12,9 @@
 2026-09-25 WA safety fixes, the array itself is defined once in
 `src/lib/crisis-contacts.ts` (`WA_CRISIS_CONTACTS`) and re-exported unchanged as
 `publicCrisisContacts` from `src/components/care-plan/mockups/fixtures.ts`, so every consumer
-listed in this document still reads the same values under the same name. Three more real
-numbers (Lifeline, Suicide Call Back Service, 13YARN) were added there in that change; this
-record still covers only the original four.
+listed in this document still reads the same values under the same name. This record covers
+all eight contacts: the original four, Lifeline, Suicide Call Back Service, and 13YARN added
+in that change, and the separate `POISONS_INFORMATION_CONTACT` added in October.
 **No number in this document has been changed.** This record was written alongside a
 verification-record comment in the fixture; the values themselves are untouched.
 
@@ -32,16 +32,20 @@ The audit's own skeptic note is worth repeating, because it sets the size of the
 the prototype is developer-gated synthetic data behind the production mockup block, so nobody takes
 this sheet home today. The risk materialises if these fixtures are copied into a production screen.
 
-## The four real public numbers
+## The public crisis numbers
 
-Every source URL below is already present in this repository. Nothing was looked up to write this.
+Every source URL below is already present in this repository. Nothing was looked up to write this. The table covers only numbers represented by records in `src/lib/crisis-contacts.ts`.
 
-| #   | Service                                                            | Number as printed | Source used to check it                                                                                                                  | Where that source is recorded in this repository                                                                                                      | `verifiedOn` in the fixture | Definition and other call sites                                                                                                       |
-| --- | ------------------------------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Emergency services                                                 | `000`             | https://www.triplezero.gov.au/ (organisation root — no deep link, and `sdd-ledger.md` records that a slug was deliberately not invented) | `src/lib/crisis-contacts.ts:34`; the organisation-root decision at `docs/care-plan/sdd-ledger.md:609`                                                 | `2026-08-20`                | `crisis-contacts.ts:34` (the record). Also printed in `patient-safety-plan.tsx`'s prose, sourced from the module rather than retyped. |
-| 2   | Mental Health Emergency Response Line (MHERL) — Perth metropolitan | `1300 555 788`    | https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/MHERL            | `crisis-contacts.ts:46`; also `docs/care-plan/claude-build-handover-2026-08-21.md:157` and `docs/superpowers/specs/2026-08-20-care-plan-design.md:31` | `2026-08-20`                | `crisis-contacts.ts:46` (the record), `fixtures.ts:200` (North River after-hours)                                                     |
-| 3   | Mental Health Emergency Response Line (MHERL) — Peel               | `1800 676 822`    | the same WA Health MHERL page as #2                                                                                                      | `crisis-contacts.ts:59`                                                                                                                               | `2026-08-20`                | `crisis-contacts.ts:59` (the record), `fixtures.ts:217` (Coastal Plains after-hours)                                                  |
-| 4   | Rurallink                                                          | `1800 552 002`    | https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/Rurallink        | `crisis-contacts.ts:72`; also `docs/care-plan/claude-build-handover-2026-08-21.md:158`                                                                | `2026-08-20`                | `crisis-contacts.ts:72` (the record), `fixtures.ts:234` (Wandoo after-hours)                                                          |
+| #   | Service                                                            | Number as printed | Source used to check it                                                                                                                  | Where that source is recorded in this repository                                                                                                      | `verifiedOn` in the fixture         | Definition and other call sites                                                                                                       |
+| --- | ------------------------------------------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Emergency services                                                 | `000`             | https://www.triplezero.gov.au/ (organisation root — no deep link, and `sdd-ledger.md` records that a slug was deliberately not invented) | `src/lib/crisis-contacts.ts:44`; the organisation-root decision at `docs/care-plan/sdd-ledger.md:609`                                                 | `2026-08-20`                        | `crisis-contacts.ts:36` (the record). Also printed in `patient-safety-plan.tsx`'s prose, sourced from the module rather than retyped. |
+| 2   | Mental Health Emergency Response Line (MHERL) — Perth metropolitan | `1300 555 788`    | https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/MHERL            | `crisis-contacts.ts:57`; also `docs/care-plan/claude-build-handover-2026-08-21.md:157` and `docs/superpowers/specs/2026-08-20-care-plan-design.md:31` | `2026-09-27` (`2026-08-20` initial) | `crisis-contacts.ts:48` (the record), `fixtures.ts:200` (North River after-hours)                                                     |
+| 3   | Mental Health Emergency Response Line (MHERL) — Peel               | `1800 676 822`    | the same WA Health MHERL page as #2                                                                                                      | `crisis-contacts.ts:70`                                                                                                                               | `2026-09-27` (`2026-08-20` initial) | `crisis-contacts.ts:61` (the record), `fixtures.ts:217` (Coastal Plains after-hours)                                                  |
+| 4   | Rurallink                                                          | `1800 552 002`    | https://emhs.health.wa.gov.au/Hospitals-and-Services/Mental-Health-Alcohol-and-Other-Drugs/Inpatient-and-Other-Services/Rurallink        | `crisis-contacts.ts:84`; also `docs/care-plan/claude-build-handover-2026-08-21.md:158`                                                                | `2026-09-27` (`2026-08-20` initial) | `crisis-contacts.ts:74` (the record), `fixtures.ts:234` (Wandoo after-hours)                                                          |
+| 5   | Lifeline                                                           | `13 11 14`        | https://www.lifeline.org.au/get-help/                                                                                                    | `crisis-contacts.ts:96`                                                                                                                               | `2026-09-25`                        | `crisis-contacts.ts:88` (`SYN-CRISIS-CONTACT-005`), re-exported via `publicCrisisContacts`                                            |
+| 6   | Suicide Call Back Service                                          | `1300 659 467`    | https://www.suicidecallbackservice.org.au/                                                                                               | `crisis-contacts.ts:108`                                                                                                                              | `2026-09-25`                        | `crisis-contacts.ts:100` (`SYN-CRISIS-CONTACT-006`), re-exported via `publicCrisisContacts`                                           |
+| 7   | 13YARN (for Aboriginal and Torres Strait Islander people)          | `13 92 76`        | https://www.13yarn.org.au/                                                                                                               | `crisis-contacts.ts:120`                                                                                                                              | `2026-09-27` (`2026-09-25` initial) | `crisis-contacts.ts:112` (`SYN-CRISIS-CONTACT-007`), re-exported via `publicCrisisContacts`                                           |
+| 8   | Poisons Information Centre                                         | `13 11 26`        | https://scgh.health.wa.gov.au/Our-Services/Service-directory/Poisons                                                                     | `crisis-contacts.ts:141`                                                                                                                              | `2026-10-13`                        | `crisis-contacts.ts:132` (`POISONS_INFORMATION_CONTACT` / `SYN-CRISIS-CONTACT-008`, separate from `WA_CRISIS_CONTACTS`)               |
 
 The safety-plan-prose line references this table used to carry (`patient-safety-plan.tsx:787`,
 `:818`, `:847`, `:876`) were already stale before this update — that file has grown well past
@@ -54,11 +58,13 @@ file), so no further line-number chase is needed there — the identity guarante
 
 ### What is verified, and by what
 
-- **The values are pinned.** `tests/care-plan-domain.test.ts:414` asserts the exact seven names,
-  numbers and emergency-service flags (the four covered by this record, plus Lifeline, Suicide
-  Call Back Service and 13YARN added 2026-09-25), and `:443-452` asserts that every entry carries
-  an `https://` source URL, the correct `verifiedOn` for its cohort, and — for both MHERL
-  entries — a caveat matching "not an emergency service".
+- **All eight contacts are pinned.** `tests/care-plan-domain.test.ts` asserts the seven
+  `WA_CRISIS_CONTACTS` names, numbers, emergency-service flags and cohort dates, and that each
+  carries an `https://` source URL, including the "not an emergency service" caveat for both MHERL
+  entries. `tests/crisis-contacts.test.ts` also pins those contacts and the separate
+  `POISONS_INFORMATION_CONTACT` number, `verifiedOn` and non-emergency flag. The tests check only
+  that each source URL starts with `https://` (for the Poisons contact, `https://scgh.health.wa.gov.au/`);
+  they do not pin the exact URLs, so a changed source link must be caught at the next verification.
 - **The after-hours pathway must stay real.** `tests/care-plan-domain.test.ts:498` fails if any
   of the three WA numbers disappears from the fixtures, so a later change cannot quietly swap a
   working crisis line for a dead fictional one. The reasoning is `docs/care-plan/sdd-ledger.md:634`:
@@ -89,9 +95,12 @@ file), so no further line-number chase is needed there — the identity guarante
 
 **Every six months, from the `verifiedOn` date recorded in the fixture.**
 
-| Last verified | Next due       | Owner        |
-| ------------- | -------------- | ------------ |
-| 2026-08-20    | **2027-02-20** | Josh (owner) |
+| Contacts                                   | Last verified | Next due       | Owner        |
+| ------------------------------------------ | ------------- | -------------- | ------------ |
+| Emergency services                         | 2026-08-20    | **2027-02-20** | Josh (owner) |
+| Lifeline, Suicide Call Back Service        | 2026-09-25    | **2027-03-25** | Josh (owner) |
+| MHERL Perth, MHERL Peel, Rurallink, 13YARN | 2026-09-27    | **2027-03-27** | Josh (owner) |
+| Poisons Information Centre                 | 2026-10-13    | **2027-04-13** | Josh (owner) |
 
 **Six months is the canonical re-verification cadence across the repository, reconciling and
 superseding the 2026-09-02 audit finding L4 (which had proposed 12 months).** Two things bear on the
@@ -112,18 +121,20 @@ retired on 2026-09-26.)
 
 1. Open each source URL in the table above.
 2. Confirm the number, the coverage area, and the availability window still match what
-   `WA_CRISIS_CONTACTS` holds (`src/lib/crisis-contacts.ts`).
+   the seven `WA_CRISIS_CONTACTS` entries and the separate `POISONS_INFORMATION_CONTACT`
+   hold (`src/lib/crisis-contacts.ts`).
 3. **If a value has changed, correct it in `src/lib/crisis-contacts.ts` and nowhere else.**
+   The poisons contact is a separate record in that module, not an array entry.
    `fixtures.ts` only re-exports the array by identity, and `patient-safety-plan.tsx` reads the
    same array by id — neither hand-types a number, so neither needs a matching edit. The
    after-hours entries in `syntheticCmhtContacts` (`fixtures.ts`) still repeat the three WA
    numbers as plain strings and must be corrected separately — they are listed per number in the
    table above.
 4. Update `verifiedOn` for every entry checked, and update the matching assertion in
-   `tests/care-plan-domain.test.ts:414` (and, for the year-2026-09-25 cohort, the corresponding
-   check in `tests/crisis-contacts.test.ts`), which pin the exact date.
+   `tests/care-plan-domain.test.ts` and `tests/crisis-contacts.test.ts`, which pin the cohort
+   dates; the separate poisons record is pinned in `tests/crisis-contacts.test.ts`.
 5. Update the "Last verified" and "Next due" rows in this document, and record who checked.
-6. Run `npx vitest run tests/care-plan-domain.test.ts`.
+6. Run `npx vitest run tests/care-plan-domain.test.ts tests/crisis-contacts.test.ts`.
 
 ### Verification history
 
@@ -172,7 +183,7 @@ This paragraph is a pointer for whoever picks it up.
 
 ## Claims in this document that could not be verified from the repository
 
-1. **That the four numbers are still correct today.** To verify — no network access in this session.
+1. **That all eight numbers are still correct today.** To verify — no network access in this session.
 2. **That the stated availability windows are still correct.** Same reason.
 3. **Who performed the 2026-08-20 verification.** The repository records the date, not the person.
 4. **The six-month re-verification cadence.** Now established as canonical across the repository,

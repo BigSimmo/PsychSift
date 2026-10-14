@@ -33,7 +33,7 @@
 - Preserve and reuse `scripts/eval-answer-quality.ts` and `scripts/blind-answer-pairs.ts`; do not create a second human-quality pack format. The closed v18-versus-v19 owner read is historical baseline evidence, while v19-versus-v20 is the separate promotion comparison for this programme.
 - Keep `src/lib/rag/rag.ts` at or below 4,362 lines by placing evaluator, rollout, telemetry, and reconciliation logic in their named modules. Never raise the maintainability budget.
 - Gate receipts are valid local evidence only when reported as reused receipts with their timestamp. They are not fresh executions and never substitute for hosted/provider proof.
-- Before an applicable expensive gate, run its exact arbiter command and quote the verdict: `npm run arbiter -- lint`, `npm run arbiter -- typecheck`, `npm run arbiter -- test`, `npm run arbiter -- verify:cheap`, or `npm run arbiter -- verify:pr-local`. RAG/database/UI scopes are deliberately non-deferrable; `RUN` is expected unless exact content is already `PROVEN`.
+- Before an applicable expensive gate (`npm run lint`, `npm run typecheck`, `npm run test`, `npm run verify:cheap`, or `npm run verify:pr-local`), check content-addressed gate receipts (`npm run receipts`); the former gate-arbiter helper was retired on 2026-09-17.
 
 ---
 
@@ -776,9 +776,9 @@ npm run check:rag:fixtures
 npm run check:rag:adversarial-fixtures
 npm run eval:rag:offline
 npm run eval:rag:adversarial:offline
-npm run eval:rag:programme:offline -- --variant legacy --out .local/rag-programme/baseline.json
-npm run eval:rag:programme:offline -- --variant candidate --out .local/rag-programme/candidate.json
-npm run eval:rag:programme:compare -- --baseline .local/rag-programme/baseline.json --candidate .local/rag-programme/candidate.json --out .local/rag-programme/comparison.json --fail-on-regression
+node scripts/run-tsx.mjs scripts/eval-rag-programme-offline.ts --variant legacy --out .local/rag-programme/baseline.json
+node scripts/run-tsx.mjs scripts/eval-rag-programme-offline.ts --variant candidate --out .local/rag-programme/candidate.json
+node scripts/run-tsx.mjs scripts/compare-rag-programme-eval.ts --baseline .local/rag-programme/baseline.json --candidate .local/rag-programme/candidate.json --out .local/rag-programme/comparison.json --fail-on-regression
 npm run check:production-readiness
 ```
 
@@ -819,8 +819,8 @@ The capture is paid/provider-backed and requires explicit approval. The offline 
 After the candidate code is merged to the default branch and only with explicit GitHub/provider approval:
 
 ```text
-gh api repos/BigSimmo/Database/dispatches -f event_type=eval-canary -f 'client_payload[rag_programme_eval]=true'
-npm run eval:rag:programme:compare -- --baseline rag-programme-baseline.json --candidate rag-programme-candidate.json --out rag-programme-comparison.json --fail-on-regression
+gh api repos/BigSimmo/PsychSift/dispatches -f event_type=eval-canary -f 'client_payload[rag_programme_eval]=true'
+node scripts/run-tsx.mjs scripts/compare-rag-programme-eval.ts --baseline rag-programme-baseline.json --candidate rag-programme-candidate.json --out rag-programme-comparison.json --fail-on-regression
 ```
 
 The default-branch workflow runs the same case set twice at the same `EVAL_GIT_SHA`: once with `RAG_PROGRAMME_MODE=legacy` into `rag-programme-baseline.json`, then with the reviewed candidate flags into `rag-programme-candidate.json`, before comparing those exact filenames. The dispatch has no branch/ref input. A green hosted run proves only the exact recorded default-branch SHA, corpus fingerprint, source-policy version, site registry/release/manifest, prompt version, and index generation.
@@ -940,15 +940,15 @@ npm run check:rag:fixtures
 npm run check:rag:adversarial-fixtures
 npm run eval:rag:offline
 npm run eval:rag:adversarial:offline
-npm run eval:rag:programme:offline -- --variant legacy --out .local/rag-programme/final-baseline.json
-npm run eval:rag:programme:offline -- --variant candidate --out .local/rag-programme/final-candidate.json
-npm run eval:rag:programme:compare -- --baseline .local/rag-programme/final-baseline.json --candidate .local/rag-programme/final-candidate.json --out .local/rag-programme/final-comparison.json --fail-on-regression
+node scripts/run-tsx.mjs scripts/eval-rag-programme-offline.ts --variant legacy --out .local/rag-programme/final-baseline.json
+node scripts/run-tsx.mjs scripts/eval-rag-programme-offline.ts --variant candidate --out .local/rag-programme/final-candidate.json
+node scripts/run-tsx.mjs scripts/compare-rag-programme-eval.ts --baseline .local/rag-programme/final-baseline.json --candidate .local/rag-programme/final-candidate.json --out .local/rag-programme/final-comparison.json --fail-on-regression
 npm run check:production-readiness
 ```
 
 For source-governance, migration, retrieval/RPC, clinical output, or UI files, include the additional domain checks selected by their respective plans. Run `npm run format` and commit the result before any separately authorized push.
 
-Before each selected expensive gate, quote the matching literal arbiter command from the global constraints above. When a content-addressed gate receipt is reused, report the command as “reused receipt” with the timestamp emitted by that receipt and preserve its decisive output. A `DEFER` is “deferred to CI,” not passed; a `PROVEN` verdict names the exact SHA. Use `GATE_RECEIPTS=refresh` only when fresh evidence is itself required; do not rerun unchanged gates by habit.
+When a content-addressed gate receipt (`npm run receipts`) is reused, report the command as “reused receipt” with the timestamp emitted by that receipt and preserve its decisive output (the former gate-arbiter helper was retired on 2026-09-17). Use `GATE_RECEIPTS=refresh` only when fresh evidence is itself required; do not rerun unchanged gates by habit.
 
 Provider-backed evals, live Supabase/recovery/drift checks, migrations, source acquisition/activation, re-index staging/promotion, GitHub dispatch, deployment, production flag changes, and live alert verification remain explicitly unrun until each is authorized and its exact target is confirmed.
 

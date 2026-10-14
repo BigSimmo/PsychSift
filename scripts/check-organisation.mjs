@@ -99,6 +99,11 @@ function workingTreeSnapshot(root) {
   for (const file of [...blobs.keys()]) {
     if (!fs.existsSync(path.join(root, file))) blobs.delete(file);
   }
+  // Include non-ignored untracked files so placement and verification see new files
+  // before they are added to the index.
+  for (const file of splitZ(git(root, ["ls-files", "-z", "--others", "--exclude-standard"]))) {
+    blobs.set(file, "(untracked)");
+  }
   return {
     label: "working tree",
     blobs,

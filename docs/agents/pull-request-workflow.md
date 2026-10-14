@@ -50,19 +50,22 @@ sufficient gate (`npm run verify:pr-local` by default — see
 body. Write it from `.github/pull_request_template.md` in full normal prose, with the exact
 `## Summary` / `## Verification` / `## Risk and rollout` headings, a satisfying `RAG impact:`
 line when a RAG-ranking surface is touched, and — when `classifyPullRequestFiles` reports
-clinical risk — a complete `## Clinical Governance Preflight`. Output-style compression never
-applies to PR titles and bodies.
+clinical risk — a complete `## Clinical Governance Preflight`. (Since 2026-09-17, missing or
+incomplete `## Clinical Governance Preflight` and `RAG impact:` declarations emit **advisory
+warnings** in `pr-policy` rather than hard-blocking merges — see `docs/process-hardening.md` —
+but contributors and agents should still include them on every applicable PR.) Output-style
+compression never applies to PR titles and bodies.
 `npm run pr:areas` prints the `Areas touched:` line from the organisation map and, when a
 ranking-protected file changed, a `RAG impact:` placeholder to replace; include both in the body.
 
 - Complete the Preflight **truthfully**: check only the boxes that are actually true for this
   change. Never tick every box to satisfy the parser.
-- `governanceItemSatisfied` compares with exact string equality, so a checked line must
-  reproduce the template wording and nothing else. Appending a reason (for example `- [x] <item> — because ...`) silently fails to match. Copy the seven lines verbatim and put reasoning in a paragraph
-  beneath them.
+- `governanceItemSatisfied` first checks exact string equality, then falls back to matching
+  legacy evidence, which may still be accepted even with appended reasons. Copy the seven
+  template lines verbatim and put reasoning in a paragraph beneath them.
 - Check a body offline before pushing rather than learning it from CI;
   `evaluatePullRequestPolicy` is the same function the workflow calls. Expect `ok: true` with
-  empty `errors`:
+  empty `errors` (and address any relevant `warnings`):
 
   ```bash
   node -e "import('./scripts/pr-policy.mjs').then(m=>{
@@ -249,8 +252,9 @@ human review comments must follow the repository's strict resolution discipline:
   are unavailable, failing, rate-limited, or unconfigured, no required test, check, lint, build, or
   security gate may be bypassed, skipped, or weakened. Required gates form the deterministic safety net
   and remain absolute.
-- Clinical-risk and RAG-surface pull requests still require their PR-body preflight governance and
-  impact declarations in full (`scripts/pr-policy.mjs`).
+- Clinical-risk and RAG-surface pull requests are still expected to include their PR-body preflight
+  governance and impact declarations in full (`scripts/pr-policy.mjs` emits advisory warnings since
+  2026-09-17 when omitted rather than hard-blocking merges).
 - Never undraft a PR prematurely merely to obtain automated review; undrafting immediately triggers
   heavy browser and build shards and cancels in-flight CI runs.
 - Reduce PR churn by bundling low-risk append-only paperwork with product PRs (see

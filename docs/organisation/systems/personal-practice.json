@@ -4,7 +4,7 @@
   "kind": "area",
   "name": "Personal practice",
   "owns": "The clinician's own records and tools: their logic, data and server routes. Pages sit in App experience.",
-  "canonicalDocs": ["docs/personal-practice/README.md", "docs/codebase-index.md"],
+  "canonicalDocs": ["docs/personal-practice/README.md"],
   "paths": [
     "docs/cme/**",
     "docs/current-clinical-work-brief.md",

@@ -1056,10 +1056,12 @@ export function evaluatePullRequestPolicy({
   enforceMigrationHistory = false,
   now = new Date(),
 }) {
-  // Three conditions block the PR (hard failure): a clinical-risk diff without a
-  // complete Clinical Governance Preflight, a RAG-ranking-surface diff without an
-  // explicit `RAG impact:` declaration, and a Supabase-migration diff whose metadata
-  // claims a deferred deploy that merging does not honour. Intermittent automated
+  // Hard-blocking conditions (`errors`): a lingering `PR_POLICY_BODY.md` transport file,
+  // a Supabase-migration diff whose metadata claims a deferred deploy that merging does
+  // not honour, and immutable applied-migration history / workflow-trigger violations.
+  // Missing or incomplete `## Clinical Governance Preflight` and `RAG impact:` declarations
+  // are advisory warnings since 2026-09-17 (owner decision; no longer hard-blocking merges;
+  // see docs/process-hardening.md:813-818). Intermittent automated
   // review (usage limits / eligibility) is explicitly not a gate (owner decision
   // 2026-08-22 / #CCZ4HB; correction 2026-09-02 — decision stands until revisited).
   // Every other metadata expectation (title, summary, verification, UI, risk and
@@ -1121,9 +1123,10 @@ export function evaluatePullRequestPolicy({
     );
   }
 
-  // Blocking gate: a PR touching RAG-ranking protected surfaces must declare its impact
-  // explicitly (docs/rag-behaviour/safeguards.md — layer 1). Ordering behaviour is
-  // live-validated; the declaration forces every session/task to consciously state either
+  // Advisory warning since 2026-09-17 (no longer a blocking gate): a PR touching
+  // RAG-ranking protected surfaces is nudged to declare its impact explicitly
+  // (docs/rag-behaviour/safeguards.md — layer 1). Ordering behaviour is
+  // live-validated; the declaration prompts every session/task to consciously state either
   // "no behaviour change" (with a reason) or the canary pair covering the change.
   if (classification.ragRanking) {
     const ragImpact = ragImpactDeclared(body);

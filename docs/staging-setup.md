@@ -11,8 +11,8 @@ Staging is two independent tiers: a **staging Supabase project** (data) and a
 > staging project `ikoiolksxqxfxgiyqpnu` and production each report 211 migration
 > versions through `20260820120000`; ledger item `#056` is closed. This is a
 > point-in-time provider fact, not permission to apply future migrations.
-> **Compute-tier facts were last provider-verified 2026-07-30:** the Railway staging
-> app existed, was healthy, used `RAG_PROVIDER_MODE=offline`, and had no OpenAI key.
+> **Compute-tier facts were last provider-verified 2026-07-30 (and 2026-09-21 service inventory):** the Railway staging
+> `app` service existed, was healthy, used `RAG_PROVIDER_MODE=offline`, and had no OpenAI key, while `worker-5g6o` also exists in `staging` and carries `OPENAI_API_KEY` (operators must not point it at production or trigger unintended background work).
 > Revalidate those facts and the deployed SHA before release evidence. Do not create
 > a replacement environment merely because that dated verification needs renewal.
 
@@ -64,7 +64,7 @@ Host: **Railway**, same as production (see `docs/deployment-architecture.md` §2
 Stand staging up as a **second environment** in the active `PsychSift` Railway project,
 with one `app` service pinned to **Southeast Asia
 (`asia-southeast1-eqsg3a`, Singapore)** — the closest region to the staging
-Supabase project in Sydney. Do not create a worker for this release profile.
+Supabase project in Sydney. Do not use a worker for the offline tenancy release profile (`worker-5g6o` exists in `staging` and carries `OPENAI_API_KEY`; warn operators not to point it at production or trigger unintended background work).
 Reuse the app image; only the environment variables differ.
 
 1. **Build the image** — Railway builds it remotely from the committed
@@ -94,7 +94,7 @@ Reuse the app image; only the environment variables differ.
    | `RAG_PROVIDER_MODE`                         | `offline`                  |
 
    Do not set `OPENAI_API_KEY`, `OPENAI_ORG_ID`, or `OPENAI_PROJECT_ID` in the
-   staging environment. Offline mode uses lexical retrieval and deterministic,
+   staging `app` service. Offline mode uses lexical retrieval and deterministic,
    cited source-only answers; it performs no embedding or generation request.
 
    The two `SUPABASE_STAGING_PROJECT_*` vars are what make the identity guard
@@ -108,9 +108,7 @@ Reuse the app image; only the environment variables differ.
    replica pinned to `southeast-asia` with no scale-to-zero. Use `GET
 /api/health` only as a manual liveness smoke check.
 
-4. **No worker:** this staging environment intentionally has no ingestion
-   service. The tenancy harness inserts and removes its synthetic lexical rows
-   directly through its dedicated staging credentials.
+4. **Staging worker caution (`worker-5g6o`):** the offline tenancy release profile does not use an ingestion service — the tenancy harness inserts and removes its synthetic lexical rows directly through its dedicated staging credentials. However, `worker-5g6o` exists in the Railway `staging` environment and carries `OPENAI_API_KEY`; operators must not point it at production, copy the whole `staging` environment as an offline template, or trigger unintended background work.
 
 ## C. Validate staging
 

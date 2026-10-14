@@ -1,6 +1,6 @@
 # Codex Cloud prompt — design-system clinical status semantics
 
-Copy the complete prompt below into a new Codex Cloud task for the **Database / Clinical KB**
+Copy the complete prompt below into a new Codex Cloud task for the **PsychSift (`BigSimmo/PsychSift`)**
 repository. This task is deliberately limited to PR 1 of the
 [design-system/live-design convergence programme](../plans/design-system-live-convergence-plan.md#pr-1--clinical-status-semantics-and-baseline-provenance).
 Do not combine it with the later interaction, edge, motion, density, or shared-home tranches.
@@ -10,7 +10,7 @@ Do not combine it with the later interaction, edge, motion, density, or shared-h
 ## Perfected prompt
 
 You are the implementation owner for **PR 1 — clinical status semantics and baseline provenance**
-in the Database / Clinical KB repository. Complete the smallest safe, independently revertible
+in the PsychSift (`BigSimmo/PsychSift`) repository. Complete the smallest safe, independently revertible
 change that removes the currently recorded colour-only status meaning and status-coloured numeral.
 Also resolve the screenshot-provenance contradiction without ever representing automated review as
 human approval.

@@ -130,7 +130,7 @@ Migration `20260705230000_reconcile_live_database_drift.sql` codifies live-only 
 - `match_document_embedding_fields_text` RPC with service-role-only execute grants (was present on live with anon/auth execute)
 - `rag_visual_eval_cases` / `rag_visual_eval_runs` tables with service-role-only RLS (were present on live without RLS)
 
-`supabase/schema.sql` has been reconciled to match. Apply the migration through the normal linked workflow when ready; do not use raw dashboard SQL for retrieval RPCs.
+`supabase/schema.sql` has been reconciled to match. Merging `supabase/migrations/*.sql` to `main` triggers the Supabase GitHub integration auto-deploy (~34s) to production (`sjrfecxgysukkwxsowpy`); manual apply through the linked workflow is only for recovery/reconciliation when auto-deploy fails (do not use raw dashboard SQL for retrieval RPCs).
 
 The repo also includes additional July 2026 migrations beyond the June checkpoint above, including:
 
@@ -153,11 +153,11 @@ its statements under a new version, with approval. The complete reconciliation
 backlog (index estate, grant posture, remaining live-only functions) lives in
 the drift doc.
 
-Before applying pending migrations to live:
+Note that merging `supabase/migrations/*.sql` to `main` triggers the Supabase GitHub integration auto-deploy (~34s) to production (`sjrfecxgysukkwxsowpy`). Manual apply is reserved only for recovery/reconciliation when auto-deploy fails (with explicit operator approval):
 
 1. Run `npx supabase migration list --linked` and confirm local vs remote alignment.
 2. Run `npm run supabase:recovery-status` and confirm Supabase is healthy.
-3. Apply only through the normal migration workflow; update `supabase/schema.sql` when the migration changes canonical schema shape.
+3. For normal changes, merge the reviewed migration PR inside the approved window so the GitHub integration auto-deploys it; use manual linked apply only for recovery/reconciliation when auto-deploy fails, and update `supabase/schema.sql` when the migration changes canonical schema shape.
 
 ## Supabase Preview / fresh replay rules
 

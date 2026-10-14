@@ -4,7 +4,7 @@
   "kind": "workstream",
   "name": "Prototypes",
   "owns": "Admin-only work that is not yet part of the product: Care Plan, the developer hub and design-scratch mock-ups.",
-  "canonicalDocs": ["docs/care-plan/CLAUDE-START-HERE.md"],
+  "canonicalDocs": ["docs/care-plan/HANDOFF-START-HERE.md"],
   "paths": [
     "data/hazard-register-snapshot.json",
     "docs/care-plan-context.md",

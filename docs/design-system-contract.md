@@ -34,7 +34,7 @@ npm run check:icon-scale
 ### 2.2 Typography Scale
 
 - **Named Steps Only**: Font sizes must use the registered type steps in `@theme`:
-  - `text-3xs` (10px - absolute floor), `text-2xs` (11px), `text-xs` (12px), `text-sm` / `text-sm-minus` (13px; v2 `--text-sm` equals `@theme --text-sm-minus` at `0.8125rem`), `text-base-minus` (15px), `text-base` (16px), `text-lg-minus` (17px), `text-lg` (18px), `text-xl` (20px), `text-2xl-minus` (22px), `text-2xl` (24px).
+  - `text-3xs` (12px / `0.75rem` — legacy alias of `text-xs` at the clinical legibility floor), `text-2xs` (12px / `0.75rem` — legacy alias of `text-xs` at the clinical legibility floor), `text-xs` (12px — clinical legibility floor), `text-sm` / `text-sm-minus` (13px; v2 `--text-sm` equals `@theme --text-sm-minus` at `0.8125rem`), `text-base-minus` (15px), `text-base` (16px), `text-lg-minus` (17px), `text-lg` (18px), `text-xl` (20px), `text-2xl-minus` (22px), `text-2xl` (24px).
 - **Arbitrary Size Prohibited**: `text-[12px]`, `text-[13px]`, etc. are blocked by `npm run check:type-scale --strict`.
 - **Declared Steps Usage**: Any type step declared in `@theme` must have production consumers (no dead or unselected type tokens).
 

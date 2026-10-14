@@ -29,6 +29,7 @@ Reading order:
 5. [GATES.md](GATES.md) — every rule paired with its enforcement status. A prohibition
    with no row there is a suggestion.
 6. [FIX-GUIDE.md](FIX-GUIDE.md) — Hazard 1–2 sweep dispositions (Fixed / Documented / Deferred / Out-of-scope).
+7. [ADOPTION.md](ADOPTION.md) — surface ownership, registration dispositions, proof status, and the generated v2 adoption manifest across all 14 clinical surface families.
 
 Canonical code: `src/app/ckb-v2-tokens.css` is the **v2 target layer** and `globals.css` remains
 the compatibility layer. The source now mounts `.ckb-v2` literally on the global `<html>`, so every

@@ -136,7 +136,7 @@ src/components/DocumentViewer.tsx
 navigation, zoom, fit, rotation, the viewing aid and fullscreen, and `PdfCanvasViewer` renders
 source pixels only. There is exactly one toolbar and one page readout in the viewer, and the
 contract test `tests/document-frame-contract.test.ts` holds that. It is not yet design-sync
-registered among the 54 published visual exports. Do not invent a second frame or add inversion/filters; route document renders through
+registered among the 55 published visual exports. Do not invent a second frame or add inversion/filters; route document renders through
 the existing viewer + frame. Keep every `role="alert"` semantic; route announcements through
 the announcer policy rather than deleting roles, because many `role="status"` sites are
 implicit polite live regions with no `aria-live` attribute and removing the role without an
@@ -245,7 +245,7 @@ clamp, hidden instruction, retrieval change, visual baseline or patient/plain-la
 ## 3 · Registration disposition
 
 The Phase 1 local registration gap is closed. The visual symbols below are now included in the
-54-component source-derived registry; support APIs remain entry-only by design:
+55-component source-derived registry across the 26 app modes in `src/lib/app-modes.ts`; support APIs remain entry-only by design:
 
 | Module                                        | Symbols                                                         | First adopting surface   |
 | --------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
