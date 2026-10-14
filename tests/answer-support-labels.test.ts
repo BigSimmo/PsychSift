@@ -41,6 +41,9 @@ function createMockSource(id: string, validationStatus = "approved"): SearchResu
   };
 }
 
+// Source-backed relevance, as the render policy requires for any label above "Limited".
+const sourceBacked = { isSourceBacked: true } as unknown as NonNullable<RagAnswer["relevance"]>;
+
 describe("recalculate-answer-support-labels", () => {
   it("defines the standard support scoring thresholds", () => {
     expect(SUPPORT_SCORE_THRESHOLDS.HIGH).toBe(0.82);
@@ -115,6 +118,7 @@ describe("recalculate-answer-support-labels", () => {
       answer: "Start dose at 25mg daily.",
       confidence: "high",
       grounded: true,
+      relevance: sourceBacked,
       sources: [createMockSource("c1", "approved")],
       supportedClaims: [
         {
@@ -139,6 +143,7 @@ describe("recalculate-answer-support-labels", () => {
       answer: "Start dose at 25mg daily.",
       confidence: "high",
       grounded: true,
+      relevance: sourceBacked,
       sources: [createMockSource("c1", "unverified")],
       supportedClaims: [
         {
@@ -163,6 +168,7 @@ describe("recalculate-answer-support-labels", () => {
       answer: "Old cached answer text.",
       confidence: "high" as const,
       grounded: true,
+      relevance: sourceBacked,
     };
 
     const result = recalculateAnswerSupportLabel(legacyStoredAnswer);
@@ -176,6 +182,7 @@ describe("recalculate-answer-support-labels", () => {
       answer: "Medium confidence recommendation.",
       confidence: "medium" as const,
       grounded: true,
+      relevance: sourceBacked,
     };
     expect(recalculateAnswerSupportLabel(mediumAnswer).supportLabel).toBe("Supported");
 
@@ -183,6 +190,7 @@ describe("recalculate-answer-support-labels", () => {
       answer: "Low confidence recommendation.",
       confidence: "low" as const,
       grounded: true,
+      relevance: sourceBacked,
     };
     expect(recalculateAnswerSupportLabel(lowAnswer).supportLabel).toBe("Limited support");
 
@@ -192,6 +200,23 @@ describe("recalculate-answer-support-labels", () => {
       grounded: false,
     };
     expect(recalculateAnswerSupportLabel(unsupportedAnswer).supportLabel).toBe("Review support");
+  });
+
+  it("never labels stronger than the render policy: unbacked, warned, unverified-number or evidence-gap answers", () => {
+    const base = { answer: "Start dose at 25mg daily.", confidence: "high" as const, grounded: true };
+    expect(recalculateAnswerSupportLabel(base).supportStrength).toBe("limited");
+    expect(
+      recalculateAnswerSupportLabel({ ...base, relevance: sourceBacked, faithfulnessWarning: "x" } as never)
+        .supportStrength,
+    ).toBe("limited");
+    expect(
+      recalculateAnswerSupportLabel({ ...base, relevance: sourceBacked, unverifiedNumericTokens: ["25"] } as never)
+        .supportStrength,
+    ).toBe("limited");
+    expect(
+      recalculateAnswerSupportLabel({ ...base, relevance: sourceBacked, responseMode: "evidence_gap" } as never)
+        .supportStrength,
+    ).toBe("unassessed");
   });
 
   it("recalculates all turns in a persisted answer thread", () => {
