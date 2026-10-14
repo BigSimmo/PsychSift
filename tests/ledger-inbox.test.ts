@@ -320,6 +320,101 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       const plan = planRequestBatch([close, add]);
       expect(plan.active.map((request) => (request as { action: string }).action)).toEqual(["add", "done"]);
     });
+
+    it("disambiguates mutations targeting pending adds that share a 6-character prefix when targetUlid is specified", () => {
+      const add1 = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "First add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123DBX940FYMC",
+        },
+      };
+      const add2 = {
+        version: 2,
+        id: "ffffaaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Second add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123AAAAAAAAAA",
+        },
+      };
+      const closeSecond = {
+        version: 2,
+        id: "0000aaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#ABC123",
+          targetUlid: "01M31F4Y1HABC123AAAAAAAAAA",
+          outcome: "Resolved second add in PR #3510",
+        },
+      };
+
+      const result = applyRequestBatch(BASE_LEDGER, [add1, add2, closeSecond]);
+      const parsed = parseIssues(result.markdown);
+
+      // add1 should be allocated #ABC123 and stay in Open items
+      const openRows = parsed.rows.filter((r) => r.table === "open");
+      const add1Row = openRows.find((r) => r.ulid === "01M31F4Y1HABC123DBX940FYMC");
+      expect(add1Row).toBeDefined();
+      expect(add1Row?.id).toBe("#ABC123");
+
+      // add2 should be allocated #ABC123A and be resolved in Archive
+      const archiveRows = parsed.rows.filter((r) => r.table === "archive");
+      const add2Row = archiveRows.find((r) => r.ulid === "01M31F4Y1HABC123AAAAAAAAAA");
+      expect(add2Row).toBeDefined();
+      expect(add2Row?.id).toBe("#ABC123A");
+      expect(add2Row?.raw).toContain("Resolved second add in PR #3510");
+    });
+
+    it("rejects an ambiguous mutation targeting pending adds sharing a prefix when targetUlid is omitted", () => {
+      const add1 = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "First add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123DBX940FYMC",
+        },
+      };
+      const add2 = {
+        version: 2,
+        id: "ffffaaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Second add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123AAAAAAAAAA",
+        },
+      };
+      const closeAmbiguous = {
+        version: 2,
+        id: "0000aaaa-3333-4333-8333-333333333333",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#ABC123",
+          outcome: "Ambiguous close without targetUlid",
+        },
+      };
+
+      expect(() => planRequestBatch([add1, add2, closeAmbiguous])).toThrow(
+        /targets ambiguous display ID #ABC123; multiple pending adds share this prefix/,
+      );
+    });
   });
 
   describe("concurrent duplicate done requests in a batch", () => {

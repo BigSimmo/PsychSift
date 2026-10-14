@@ -88,6 +88,9 @@ function validateDoneRequest(payload, problems) {
   if (!isIssueDisplayId(payload?.id)) problems.push("done requires a canonical issue display id");
   if (!payload?.outcome) problems.push("done requires outcome");
   validateFingerprint(payload, "done", problems);
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("done targetUlid must be a valid ULID");
+  }
 }
 
 function validateUpdateRequest(action, payload, problems) {
@@ -109,6 +112,9 @@ function validateUpdateRequest(action, payload, problems) {
   if (payload?.pri !== undefined && !["P1", "P2", "P3"].includes(String(payload.pri))) {
     problems.push("update pri must be P1, P2, or P3");
   }
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("update targetUlid must be a valid ULID");
+  }
 }
 
 function validateQueueRequest(payload, problems) {
@@ -120,6 +126,9 @@ function validateQueueRequest(payload, problems) {
     problems.push(`queue requires one of ${QUEUE_FIELDS.join(", ")}`);
   }
   validateFingerprint(payload, "queue", problems);
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("queue targetUlid must be a valid ULID");
+  }
 }
 
 function validateCancelRequest(payload, problems) {
@@ -264,9 +273,11 @@ export function applyRequest(markdown, request, options = {}) {
   return applyValidatedRequest(markdown, request, options, dateOptions, autoAllowArchived);
 }
 
-function mutationTargets(request) {
+function mutationTargets(request, addUlids = new Set()) {
   if (request.action === "add" || request.action === "cancel") return [];
-  const id = normalizeIssueDisplayId(request.payload.id);
+  const targetUlid = request.payload?.targetUlid;
+  const isPendingAddTarget = targetUlid && addUlids.has(targetUlid);
+  const id = isPendingAddTarget ? `ulid:${targetUlid}` : normalizeIssueDisplayId(request.payload.id);
   // Key by the rows a request actually mutates. `update` changes only the
   // Open-items row and `queue` changes only its queue row, so they can safely
   // share a batch. `done` moves the Open-items row *and* prunes its queue
@@ -275,10 +286,10 @@ function mutationTargets(request) {
   return [request.action === "queue" ? `queue ${id}` : id];
 }
 
-function requestsByMutationTarget(requests) {
+function requestsByMutationTarget(requests, addUlids = new Set()) {
   const byTarget = new Map();
   for (const request of requests) {
-    for (const target of mutationTargets(request)) {
+    for (const target of mutationTargets(request, addUlids)) {
       const entries = byTarget.get(target) ?? [];
       entries.push(request);
       byTarget.set(target, entries);
@@ -287,9 +298,9 @@ function requestsByMutationTarget(requests) {
   return byTarget;
 }
 
-function mutationConflicts(requests) {
+function mutationConflicts(requests, addUlids = new Set()) {
   const conflicts = [];
-  for (const [target, targetRequests] of requestsByMutationTarget(requests).entries()) {
+  for (const [target, targetRequests] of requestsByMutationTarget(requests, addUlids).entries()) {
     if (targetRequests.length <= 1) continue;
     // Duplicate closes are batch-aware: after the first archives the row, later
     // closes append their outcomes. Archive amendments retain their original
@@ -409,7 +420,42 @@ export function planRequestBatch(requests, options = {}) {
     ...remaining.filter((request) => request.action === "add"),
     ...remaining.filter((request) => request.action !== "add"),
   ];
-  const conflicts = mutationConflicts(active);
+
+  const addRequests = active.filter((request) => request.action === "add");
+  const addsByPrefix = new Map();
+  const addUlids = new Set();
+  for (const add of addRequests) {
+    const ulid = add.payload?.issueUlid ?? issueUlidFromRequest(add.createdOn, add.id);
+    addUlids.add(ulid);
+    const prefix = displayIdForUlid(ulid);
+    const list = addsByPrefix.get(prefix) ?? [];
+    list.push({ request: add, ulid });
+    addsByPrefix.set(prefix, list);
+  }
+
+  for (const mutation of active.filter((request) => request.action !== "add")) {
+    const targetDisplayId = normalizeIssueDisplayId(mutation.payload?.id);
+    const matchingAdds = addsByPrefix.get(targetDisplayId) ?? [];
+    if (matchingAdds.length > 1) {
+      if (!mutation.payload?.targetUlid) {
+        throw new Error(
+          `mutation ${mutation.id} targets ambiguous display ID ${mutation.payload?.id}; multiple pending adds share this prefix. Specify targetUlid to disambiguate.`,
+        );
+      }
+      const match = matchingAdds.find((a) => a.ulid === mutation.payload.targetUlid);
+      if (!match) {
+        throw new Error(
+          `mutation ${mutation.id} targets ULID ${mutation.payload.targetUlid} which does not match any pending add with prefix ${targetDisplayId}`,
+        );
+      }
+    } else if (matchingAdds.length === 1 && !mutation.payload?.baseRowFingerprint) {
+      if (!mutation.payload?.targetUlid) {
+        mutation.payload.targetUlid = matchingAdds[0].ulid;
+      }
+    }
+  }
+
+  const conflicts = mutationConflicts(active, addUlids);
   if (conflicts.length > 0) {
     const detail = conflicts.map(([id, requestIds]) => `${id}: ${requestIds.join(", ")}`).join("; ");
     throw new Error(
@@ -425,19 +471,47 @@ export function applyRequestBatch(markdown, requests, options = {}) {
   const plan = planRequestBatch(requests, options);
   let next = markdown;
   const closedInBatch = new Set();
+  const ulidToDisplayId = new Map();
+
+  for (const row of parseIssues(markdown).rows) {
+    if (row.ulid && row.id) {
+      ulidToDisplayId.set(row.ulid, normalizeIssueDisplayId(row.id));
+    }
+  }
+
   for (const request of plan.active) {
-    const id = normalizeIssueDisplayId(request.payload?.id);
-    const isDuplicateClose = request.action === "done" && id && closedInBatch.has(id);
-    // Honor payload.allowArchived from createRequest. Passing a literal false
-    // would shadow it via `options.allowArchived ?? payload.allowArchived` and
-    // reintroduce the silent idempotent omit for archive-aware closes.
-    next = applyRequest(next, request, {
-      ...options,
-      idempotent: true,
-      allowArchived: Boolean(options.allowArchived || isDuplicateClose || request.payload?.allowArchived),
-    });
-    if (request.action === "done" && id) {
-      closedInBatch.add(id);
+    if (request.action === "add") {
+      const durableId = request.payload?.issueUlid ?? issueUlidFromRequest(request.createdOn, request.id);
+      next = applyRequest(next, request, {
+        ...options,
+        idempotent: true,
+        onAllocated: ({ id, ulid }) => {
+          if (ulid && id) ulidToDisplayId.set(ulid, normalizeIssueDisplayId(id));
+        },
+      });
+      if (!ulidToDisplayId.has(durableId)) {
+        const addedRow = parseIssues(next).rows.find((r) => r.ulid === durableId);
+        if (addedRow?.id) {
+          ulidToDisplayId.set(durableId, normalizeIssueDisplayId(addedRow.id));
+        }
+      }
+    } else {
+      if (request.payload?.targetUlid && ulidToDisplayId.has(request.payload.targetUlid)) {
+        request.payload.id = ulidToDisplayId.get(request.payload.targetUlid);
+      }
+      const id = normalizeIssueDisplayId(request.payload?.id);
+      const isDuplicateClose = request.action === "done" && id && closedInBatch.has(id);
+      // Honor payload.allowArchived from createRequest. Passing a literal false
+      // would shadow it via `options.allowArchived ?? payload.allowArchived` and
+      // reintroduce the silent idempotent omit for archive-aware closes.
+      next = applyRequest(next, request, {
+        ...options,
+        idempotent: true,
+        allowArchived: Boolean(options.allowArchived || isDuplicateClose || request.payload?.allowArchived),
+      });
+      if (request.action === "done" && id) {
+        closedInBatch.add(id);
+      }
     }
   }
   return { markdown: next, ...plan };
@@ -1124,6 +1198,17 @@ export function assertSafeRemoteReconciliation(argv = [], options = {}) {
   }
 }
 
+function extractTargetUlid(argv) {
+  const explicit = argValue(argv, "targetUlid");
+  if (explicit && isIssueUlid(explicit)) return explicit;
+  const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
+  const rawTargetId = argValue(argv, "id") ?? positionalId;
+  if (!rawTargetId) return undefined;
+  const stripped = rawTargetId.startsWith("#") ? rawTargetId.slice(1) : rawTargetId;
+  if (isIssueUlid(stripped)) return stripped;
+  return undefined;
+}
+
 function requestTargetId(argv) {
   const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
   const rawTargetId = argValue(argv, "id") ?? positionalId;
@@ -1135,6 +1220,7 @@ function requestTargetId(argv) {
 
 function createRequestPayload(action, argv) {
   const targetId = requestTargetId(argv);
+  const targetUlid = extractTargetUlid(argv);
   if (action === "add") {
     return {
       pri: argValue(argv, "pri"),
@@ -1146,7 +1232,9 @@ function createRequestPayload(action, argv) {
     };
   }
   if (action === "done" || action === "amend-outcome") {
-    return { id: targetId, outcome: argValue(argv, "outcome") ?? argValue(argv, "reason") };
+    const payload = { id: targetId, outcome: argValue(argv, "outcome") ?? argValue(argv, "reason") };
+    if (targetUlid) payload.targetUlid = targetUlid;
+    return payload;
   }
   if (action === "cancel") {
     const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
@@ -1156,7 +1244,7 @@ function createRequestPayload(action, argv) {
     };
   }
   if (action === "queue") {
-    return {
+    const payload = {
       id: targetId,
       acuity: argValue(argv, "acuity"),
       capability: argValue(argv, "capability"),
@@ -1164,8 +1252,10 @@ function createRequestPayload(action, argv) {
       estimate: argValue(argv, "estimate"),
       outcome: argValue(argv, "outcome") ?? argValue(argv, "reason"),
     };
+    if (targetUlid) payload.targetUlid = targetUlid;
+    return payload;
   }
-  return {
+  const payload = {
     // `pri` rides the same update request as the prose fields so a demotion and
     // its reason land as one auditable mutation. Without it, the CLI could not
     // express the re-prioritisation that updateIssue and validation both support.
@@ -1176,6 +1266,8 @@ function createRequestPayload(action, argv) {
     source: argValue(argv, "source"),
     outcome: argValue(argv, "outcome") ?? argValue(argv, "reason"),
   };
+  if (targetUlid) payload.targetUlid = targetUlid;
+  return payload;
 }
 
 function attachIssueFingerprint(action, payload) {
@@ -1189,6 +1281,10 @@ function attachIssueFingerprint(action, payload) {
       );
     }
     payload.baseRowFingerprint = currentFingerprint;
+    const row = findIssueRow(current, payload.id, ["open"]);
+    if (row?.ulid && !payload.targetUlid) {
+      payload.targetUlid = row.ulid;
+    }
     return;
   }
 
@@ -1198,6 +1294,10 @@ function attachIssueFingerprint(action, payload) {
       // Carry archive-aware intent so reconcile merges the outcome instead of
       // no-oping via the idempotent archived fast-path.
       payload.allowArchived = true;
+      const row = findIssueRow(current, payload.id, ["archive"]);
+      if (row?.ulid && !payload.targetUlid) {
+        payload.targetUlid = row.ulid;
+      }
       return;
     }
     const archiveFingerprint = archiveRowFingerprint(current, payload.id);
@@ -1205,19 +1305,35 @@ function attachIssueFingerprint(action, payload) {
       payload.baseRowFingerprint = archiveFingerprint;
       payload.allowArchived = true;
       payload.targetTable = "archive";
+      const row = findIssueRow(current, payload.id, ["archive"]);
+      if (row?.ulid && !payload.targetUlid) {
+        payload.targetUlid = row.ulid;
+      }
       return;
     }
   }
 
   const targetDisplayId = normalizeIssueDisplayId(payload.id);
   const pending = loadPending();
-  const pendingMatch = pending.find(({ request }) => {
+  const pendingMatches = pending.filter(({ request }) => {
     if (request?.action !== "add" || !request?.payload?.issueUlid) return false;
     const derived = displayIdForUlid(request.payload.issueUlid);
     return derived === targetDisplayId;
   });
-  if (pendingMatch) {
+  if (pendingMatches.length === 1) {
+    if (!payload.targetUlid) {
+      payload.targetUlid = pendingMatches[0].request.payload.issueUlid;
+    }
     return;
+  }
+  if (pendingMatches.length > 1) {
+    if (payload.targetUlid) {
+      const match = pendingMatches.find(({ request }) => request.payload.issueUlid === payload.targetUlid);
+      if (match) return;
+    }
+    throw new Error(
+      `ledger request rejected: ${payload.id} matches multiple pending add requests; specify the full ULID via --id to disambiguate`,
+    );
   }
 
   throw new Error(`ledger request rejected: ${payload.id} is not in Open items`);
