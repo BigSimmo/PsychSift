@@ -58,7 +58,7 @@ export function therapySheetSlugs(): string[] {
 }
 
 /** True when a therapy still awaits qualified-clinician sign-off. */
-export function therapyNeedsReview(record: TherapyIndexRecord): boolean {
+export function therapyNeedsReview(record: Pick<TherapyIndexRecord, "reviewStatus">): boolean {
   return record.reviewStatus !== "reviewed";
 }
 

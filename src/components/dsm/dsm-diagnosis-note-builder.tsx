@@ -35,6 +35,10 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: DsmCriterionStatus; label: string }
 const COPY_RESET_MS = 2200;
 
 export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderRecord }) {
+  return <DsmDiagnosisNoteBuilderInner key={record.icdCode} record={record} />;
+}
+
+function DsmDiagnosisNoteBuilderInner({ record }: { record: DsmNoteBuilderRecord }) {
   const { criteria, differentials, specifiers: selectableSpecifiers, isDsmCriteria } = record;
   // On 145 of the 146 records these rows are the key-feature summary, not DSM-5-TR
   // criteria. The controls say which one the clinician is actually ticking, so the

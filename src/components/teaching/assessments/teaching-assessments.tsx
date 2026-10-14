@@ -19,7 +19,7 @@ import {
 import { Award, BookOpen, TriangleAlert } from "lucide-react";
 import type { DctProps } from "@/components/teaching/assessments/assessments-dct";
 import { AssessHeader, AssessNote } from "@/components/teaching/assessments/assess-kit";
-import { ConcernsHelp, type SheetState } from "@/components/teaching/assessments/assessments-help";
+import { AssessmentsSheets, ConcernsHelp, type SheetState } from "@/components/teaching/assessments/assessments-help";
 import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
 import { AssessmentsKeptInCla, useAssessmentsAccess } from "@/components/teaching/assessments/assessments-kept-in-cla";
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
@@ -108,10 +108,6 @@ const AssessmentReport = dynamic(
 const SignForm = dynamic(() => import("@/components/teaching/assessments/assessments-report").then((m) => m.SignForm), {
   loading: sampleLoading,
 });
-const AssessmentsSheets = dynamic(
-  () => import("@/components/teaching/assessments/assessments-help").then((m) => m.AssessmentsSheets),
-  { ssr: false },
-);
 const DoctorRecord = dynamic(
   () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.DoctorRecord),
   { loading: sampleLoading },
@@ -473,15 +469,25 @@ function AssessmentsApp() {
     }
     setSheet(null);
     setSavedNote(null);
-    const heading =
-      root.current?.querySelector<HTMLElement>("[data-screen-heading]") ??
-      root.current?.querySelector<HTMLElement>("h2");
-    if (heading && !heading.hasAttribute("tabindex")) {
-      heading.setAttribute("tabindex", "-1");
-      // A title focused for screen readers is not a control, so it gets no focus ring.
-      heading.classList.add("outline-none");
-    }
-    heading?.focus({ preventScroll: true });
+    const focusHeading = () => {
+      const screenHeading = root.current?.querySelector<HTMLElement>("[data-screen-heading]");
+      const skeletonActive = Boolean(root.current?.querySelector('[data-testid="assess-skeleton"]'));
+      const heading = screenHeading ?? (skeletonActive ? null : root.current?.querySelector<HTMLElement>("h2"));
+      if (!heading) return false;
+      if (!heading.hasAttribute("tabindex")) {
+        heading.setAttribute("tabindex", "-1");
+        // A title focused for screen readers is not a control, so it gets no focus ring.
+        heading.classList.add("outline-none");
+      }
+      heading.focus({ preventScroll: true });
+      return true;
+    };
+    if (focusHeading() || !root.current || typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(() => {
+      if (focusHeading()) observer.disconnect();
+    });
+    observer.observe(root.current, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [place]);
   const switchRole = (next: Role) => {
     if (next === role) return;
@@ -514,7 +520,7 @@ function AssessmentsApp() {
           <span>{savedNote}</span>
         </p>
       ) : null}
-      {sheet ? <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} /> : null}
+      <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
     </div>
   );
 }
@@ -544,7 +550,7 @@ function AssessmentsOpenPage({ view }: { view: "help" | "words" }) {
   return (
     <>
       {view === "help" ? <ConcernsHelp {...props} /> : <SupervisorWords {...props} />}
-      {sheet ? <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} /> : null}
+      <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
     </>
   );
 }

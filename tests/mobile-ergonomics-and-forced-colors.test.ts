@@ -31,7 +31,7 @@ describe("Mobile ergonomics, touch targets, forced-colors, and 12px floor (Task 
 
   it("enforces >= 44px touch targets on credentials wallet Edit, mode switcher, and home recent rows", () => {
     const credentialsWallet = readRepoFile("src/components/admin/admin-credentials-wallet.tsx");
-    expect(credentialsWallet).toContain("size-tap items-center justify-center");
+    expect(credentialsWallet).toContain("min-h-tap min-w-tap items-center justify-center");
 
     const modeActionPopup = readRepoFile("src/components/clinical-dashboard/mode-action-popup.tsx");
     expect(modeActionPopup).toContain(

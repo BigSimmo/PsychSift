@@ -269,6 +269,7 @@ export function AgreementAskPage() {
         <form
           role="search"
           aria-label="Ask the agreement"
+          data-shortcut-owner="slash"
           className="grid min-w-0 gap-2"
           onSubmit={(event) => {
             event.preventDefault();

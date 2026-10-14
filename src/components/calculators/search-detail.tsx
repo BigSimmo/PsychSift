@@ -454,7 +454,7 @@ export function ScorePanel({
   derived,
   onReset,
 }: {
-  calc: CalculatorFixture & { disclaimer?: string };
+  calc: CalculatorFixture;
   derived: DerivedCalculator;
   onReset: () => void;
 }) {
@@ -505,10 +505,9 @@ export function ScorePanel({
             Governance reference: <GovernanceReferenceList sources={governanceSources} />
           </p>
         ) : null}
-        <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
-          {calc.disclaimer ??
-            "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument."}
-        </p>
+        {calc.disclaimer ? (
+          <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{calc.disclaimer}</p>
+        ) : null}
       </div>
     </section>
   );
@@ -555,7 +554,7 @@ function CalculatorDetail({
   onAnswersChange,
   onBack,
 }: {
-  calc: CalculatorFixture & { disclaimer?: string };
+  calc: CalculatorFixture;
   answers: AnswerMap;
   onAnswersChange: (next: AnswerMap) => void;
   onBack: () => void;

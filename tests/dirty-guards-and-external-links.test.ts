@@ -77,10 +77,7 @@ describe("Dirty-state guards, download attributes & external link rel attributes
 
     expect(isBeforeUnloadPrevented()).toBe(false);
 
-    const startBtn = screen.queryByRole("button", { name: /Start a new version/i });
-    if (startBtn) {
-      fireEvent.click(startBtn);
-    }
+    fireEvent.click(screen.getByRole("button", { name: /Start a new version/i }));
 
     expect(isBeforeUnloadPrevented()).toBe(false);
 

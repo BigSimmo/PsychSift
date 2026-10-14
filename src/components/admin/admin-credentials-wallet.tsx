@@ -128,7 +128,7 @@ export function AdminCredentialsWallet({ testId = "admin-credentials-wallet" }: 
               setEditing(true);
             }}
             className={cn(
-              "inline-flex size-tap items-center justify-center gap-1 rounded-md px-2.5 py-0.5 text-xs text-[color:var(--primary)] hover:bg-[color:var(--surface-subtle)]",
+              "inline-flex min-h-tap min-w-tap items-center justify-center gap-1 rounded-md px-2.5 py-0.5 text-xs text-[color:var(--primary)] hover:bg-[color:var(--surface-subtle)]",
               focusRing,
             )}
           >

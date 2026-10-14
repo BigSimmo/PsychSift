@@ -54,7 +54,7 @@ export function buildBriefCopy(
   const scripts = brief.clinicianScripts ?? [];
   return [
     `${brief.name} — ${durationLabel} intervention`,
-    ...(therapyNeedsReview(brief as Therapy) ? ["[Awaiting clinical review — verify against primary guidelines]"] : []),
+    ...(therapyNeedsReview(brief) ? ["[Awaiting clinical review — verify against primary guidelines]"] : []),
     "",
     ...steps.map((st, i) => `${i + 1}. ${st}`),
     ...(scripts.length

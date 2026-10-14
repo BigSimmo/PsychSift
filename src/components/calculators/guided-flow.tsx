@@ -250,7 +250,7 @@ function ResultScreen({
   onRestart,
   onExit,
 }: {
-  calc: CalculatorFixture & { disclaimer?: string };
+  calc: CalculatorFixture;
   answers: AnswerMap;
   onRestart: () => void;
   onExit: () => void;

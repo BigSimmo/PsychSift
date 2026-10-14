@@ -82,26 +82,29 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
   });
 
   describe("calculateCockcroftGault & calculateCkdEpi2021 physiological bounds (P0-1)", () => {
-    it("rejects adult weight below 25 kg in calculateCockcroftGault", () => {
+    it("rejects adult weight below 20 kg and warns below 35 kg in calculateCockcroftGault", () => {
       const lowWeight = calculateCockcroftGault({
         age: 45,
-        weightKg: 24.9,
+        weightKg: 19.9,
         sex: "female",
         serumCreatinine: 80,
         creatinineUnit: "umol/L",
       });
       expect(lowWeight.isValid).toBe(false);
       expect(lowWeight.crClMlMin).toBeNull();
-      expect(lowWeight.errors).toContain("Weight is below adult physiological bounds (<25 kg)");
+      expect(lowWeight.errors).toContain("Weight is below adult physiological bounds (<20 kg)");
 
       const minWeight = calculateCockcroftGault({
         age: 45,
-        weightKg: 25,
+        weightKg: 20,
         sex: "female",
         serumCreatinine: 80,
         creatinineUnit: "umol/L",
       });
       expect(minWeight.isValid).toBe(true);
+      expect(minWeight.warnings).toContain(
+        "Low body weight (<35 kg): Cockcroft-Gault may overestimate creatinine clearance in cachexia or low muscle mass.",
+      );
     });
 
     it("enforces unit-aware serum creatinine bounds (15–3000 umol/L and 0.17–34.0 mg/dL) in Cockcroft-Gault", () => {

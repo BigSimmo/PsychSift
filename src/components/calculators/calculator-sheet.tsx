@@ -112,6 +112,13 @@ export function CalculatorSheet({
       if (target && target.isConnected && typeof target.focus === "function" && canRestoreFocusTo(target)) {
         target.focus();
       }
+      if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => {
+          if (target && target.isConnected && typeof target.focus === "function" && canRestoreFocusTo(target)) {
+            target.focus();
+          }
+        });
+      }
     };
   }, [isOpen]);
 

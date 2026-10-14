@@ -30,10 +30,14 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
 
   if (!Number.isFinite(input.weightKg) || input.weightKg <= 0) {
     errors.push("Weight must be greater than zero kg");
-  } else if (input.weightKg < 25) {
-    errors.push("Weight is below adult physiological bounds (<25 kg)");
+  } else if (input.weightKg < 20) {
+    errors.push("Weight is below adult physiological bounds (<20 kg)");
   } else if (input.weightKg > 350) {
     errors.push("Weight exceeds physiological bounds (>350 kg)");
+  } else if (input.weightKg < 35) {
+    warnings.push(
+      "Low body weight (<35 kg): Cockcroft-Gault may overestimate creatinine clearance in cachexia or low muscle mass.",
+    );
   }
 
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {

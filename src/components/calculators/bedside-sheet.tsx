@@ -29,7 +29,7 @@ function SheetSection({
   onToggleOpen,
   onAnswersChange,
 }: {
-  calc: CalculatorFixture & { disclaimer?: string };
+  calc: CalculatorFixture;
   answers: AnswerMap;
   open: boolean;
   onToggleOpen: () => void;

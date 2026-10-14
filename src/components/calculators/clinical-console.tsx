@@ -87,7 +87,7 @@ export function CalculatorsClinicalConsoleMockup() {
   const [activeId, setActiveId] = useState<string>("phq9");
   const [session, setSession] = useState<SessionAnswers>({});
 
-  const calc: CalculatorFixture & { disclaimer?: string } = useMemo(
+  const calc: CalculatorFixture = useMemo(
     () => calculators.find((entry) => entry.id === activeId) ?? calculators[0],
     [activeId],
   );

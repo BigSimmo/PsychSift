@@ -132,7 +132,8 @@ export function useRosterShifts(
   options?: { readonly ownHistory?: boolean; readonly skipWhenUnauthenticated?: boolean },
 ): RosterShiftsState {
   const { zone } = useWorkTimeZone();
-  const teams = useRosterTeams();
+  const skipGuest = Boolean(options?.skipWhenUnauthenticated && !hasSupabaseAuthSession());
+  const teams = useRosterTeams({ skip: skipGuest });
   const today = zonedToday(zone);
   const from = teamRange?.from ?? addDaysToDate(today, -LISTED_PAST_DAYS);
   const to = teamRange?.to ?? addDaysToDate(today, 40);

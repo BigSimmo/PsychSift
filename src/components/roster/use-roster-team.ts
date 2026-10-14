@@ -107,8 +107,9 @@ function useLoaded<T>(url: string | null, what: RosterReadWhat | "teams"): Roste
 export type RosterTeamsPayload = { teams: RosterTeam[]; actorId?: string; sample?: boolean };
 
 /** The teams I belong to. */
-export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
-  const loaded = useLoaded<RosterTeamsPayload>("/api/roster/team", "teams");
+export function useRosterTeams(options?: { readonly skip?: boolean }): RosterReadState<RosterTeamsPayload> {
+  const skip = Boolean(options?.skip);
+  const loaded = useLoaded<RosterTeamsPayload>(skip ? null : "/api/roster/team", "teams");
   // The invented team served while the real-staff release is held shows only
   // while Roster shows example data. With the switch off, nothing made up shows,
   // labelled or not: the reader has no teams yet.
@@ -119,7 +120,11 @@ export function useRosterTeams(): RosterReadState<RosterTeamsPayload> {
     () => (hideSample && loaded.data ? { ...loaded.data, teams: [] } : null),
     [hideSample, loaded.data],
   );
-  const state = hiddenData ? { ...loaded, data: hiddenData } : loaded;
+  const state: RosterReadState<RosterTeamsPayload> = skip
+    ? { status: "signed-out", data: null, message: SIGNED_OUT_MESSAGE, readAt: null, reload: loaded.reload }
+    : hiddenData
+      ? { ...loaded, data: hiddenData }
+      : loaded;
   useEffect(() => {
     if (state.status !== "ready") return;
     const enabled = Array.isArray(state.data?.teams) ? state.data.teams.some((team) => team.enabled) : false;

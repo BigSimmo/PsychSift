@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useDeferredValue, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -576,7 +576,8 @@ function MedicationResults({
   // Keep the full catalogue payload here: Safety/Monitoring chips and patient
   // alerts need sections/stats/quick that `fields=index` strips. Cross-mode
   // identity consumers still use `fields=index`.
-  const catalog = useMedicationCatalog(query);
+  const deferredQuery = useDeferredValue(query);
+  const catalog = useMedicationCatalog(deferredQuery);
   const isDesktop = useDesktopViewport();
   const { profile, isEmpty: profileEmpty } = usePatientProfile();
   const searchParams = useSearchParams();
@@ -852,7 +853,7 @@ function MedicationResults({
     >
       <SearchResultsHeaderBand
         modeId="prescribing"
-        query={query}
+        query={deferredQuery}
         matchCount={resultCount}
         status={
           catalog.error ? "error" : initialCatalogLoading ? "loading" : catalogRefetching ? "refetching" : "ready"
@@ -892,7 +893,7 @@ function MedicationResults({
       {catalog.data?.retainedSnapshot ? <RetainedSnapshotNotice /> : null}
 
       <MedicationInterpretationChip
-        query={query}
+        query={deferredQuery}
         // Only once the catalogue answers this query: a kept response would pair the new words with an old correction.
         interpretation={catalog.loading ? undefined : catalog.data?.interpretation}
         // Before filters: a filter hiding every match is not "no results" for the corrected spelling.
@@ -967,7 +968,7 @@ function MedicationResults({
           </div>
         ) : (
           <MedicationNothingFound
-            query={query}
+            query={deferredQuery}
             catalogueCount={catalog.data?.records?.length ?? 0}
             onBrowseAll={
               scope === "all" || (catalog.data?.records?.length ?? 0) === 0
@@ -1000,7 +1001,7 @@ function MedicationResults({
           <div className="divide-y divide-[color:var(--border)]">
             {rows.map((row, index) => {
               const result = row.result;
-              const selected = index === 0 && Boolean(query.trim());
+              const selected = index === 0 && Boolean(deferredQuery.trim());
               // The verdict ring replaces the selected-row accent ring rather
               // than stacking with it: one edge mechanism, one owner, and safety
               // outranks "this is the top hit".
@@ -1025,7 +1026,7 @@ function MedicationResults({
                       <span className="block break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
                         <span className="sr-only">{result.name}</span>
                         <span aria-hidden="true">
-                          <HighlightedName text={formatTallMan(result.name)} term={query} />
+                          <HighlightedName text={formatTallMan(result.name)} term={deferredQuery} />
                         </span>
                       </span>
                       <span className="mt-0.5 line-clamp-1 break-words text-xs font-medium leading-4 text-[color:var(--text-muted)]">
@@ -1101,7 +1102,7 @@ function MedicationResults({
         <div className="medication-mobile-results grid gap-2 lg:hidden">
           {rows.map((row, index) => {
             const result = row.result;
-            const selected = index === 0 && Boolean(query.trim());
+            const selected = index === 0 && Boolean(deferredQuery.trim());
             const cardClassName = cn(
               "medication-mobile-result min-w-0 w-full rounded-lg border bg-[color:var(--surface-raised)] p-2 text-left shadow-[var(--shadow-inset)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
               selected
@@ -1118,7 +1119,7 @@ function MedicationResults({
                     <p className="line-clamp-2 break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
                       <span className="sr-only">{result.name}</span>
                       <span aria-hidden="true">
-                        <HighlightedName text={formatTallMan(result.name)} term={query} />
+                        <HighlightedName text={formatTallMan(result.name)} term={deferredQuery} />
                       </span>
                     </p>
                     <p className="line-clamp-1 break-words text-xs font-medium text-[color:var(--text-muted)]">
@@ -1192,7 +1193,7 @@ function MedicationResults({
       {/* Mounted (so its lookup runs in parallel) but kept out of view until the medication
           list itself has arrived: it fills in underneath the results, never ahead of them. */}
       <div hidden={initialCatalogLoading}>
-        <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
+        <UniversalSearchAlsoMatches modeId="prescribing" query={deferredQuery} />
       </div>
 
       <StatusNotice

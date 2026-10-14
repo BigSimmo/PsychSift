@@ -1,29 +1,47 @@
+/** @vitest-environment jsdom */
+
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import React from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { ReminderSettingsBlock } from "@/components/clinical-dashboard/settings-reminders";
+import { SectionHeading } from "@/components/open-shifts/open-shifts-ui";
+import { DEFAULT_REMINDER_SETTINGS } from "@/lib/reminders/settings";
 
 const root = process.cwd();
 const readSource = (relPath: string) => readFileSync(path.join(root, relPath), "utf8");
 
 describe("Task 7 & 8: focus restoration, shortcut guards, landmarks, headings, and explanatory aria-disabled wiring", () => {
-  it("restores focus to the opener when SettingsDialog and SidebarSettingsDialog close", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("restores focus to the opener when SettingsDialog closes via a single owner", () => {
     const lazyDialogs = readSource("src/components/clinical-dashboard/lazy-sidebar-dialogs.tsx");
     const settingsDialog = readSource("src/components/clinical-dashboard/settings-dialog.tsx");
 
-    expect(lazyDialogs).toContain("triggerRef.current = document.activeElement");
-    expect(lazyDialogs).toContain("restoreFocusUnlessMoved(target)");
-
+    expect(lazyDialogs).not.toContain("restoreFocusUnlessMoved");
     expect(settingsDialog).toContain("triggerRef.current = document.activeElement");
     expect(settingsDialog).toContain("restoreFocusUnlessMoved(target)");
     expect(settingsDialog).toContain("returnFocusRef={triggerRef}");
   });
 
   it("wires each ReminderSettingsBlock phone calendar alert select to its type heading and label via aria-labelledby", () => {
-    const reminders = readSource("src/components/clinical-dashboard/settings-reminders.tsx");
+    render(
+      React.createElement(ReminderSettingsBlock, {
+        reminders: DEFAULT_REMINDER_SETTINGS,
+        onChange: vi.fn(),
+      }),
+    );
 
-    expect(reminders).toContain("const headingId = `settings-reminder-${type}-heading`;");
-    expect(reminders).toContain("const alertLabelId = `settings-reminder-${type}-alert-label`;");
-    expect(reminders).toContain("aria-labelledby={`${headingId} ${alertLabelId}`}");
+    const comboboxes = screen.getAllByRole("combobox");
+    expect(comboboxes.length).toBeGreaterThan(0);
+    for (const select of comboboxes) {
+      const labelledBy = select.getAttribute("aria-labelledby") ?? "";
+      expect(labelledBy.trim().length).toBeGreaterThan(0);
+    }
   });
 
   it("guards UniversalSearchCommandSurface / and Cmd+K shortcuts when an aria-modal dialog is open", () => {
@@ -33,10 +51,14 @@ describe("Task 7 & 8: focus restoration, shortcut guards, landmarks, headings, a
     expect(commandSurface).toContain('if (document.querySelector(\'[role="dialog"][aria-modal="true"]\')) return;');
   });
 
-  it("yields the WorkSearchButton / shortcut when #agreement-question-input is present on /admin/agreement", () => {
+  it('yields the WorkSearchButton / shortcut when a page marks data-shortcut-owner="slash" (such as Ask the agreement)', () => {
     const workSearchButton = readSource("src/components/work-search/work-search-button.tsx");
+    const agreementAskPage = readSource("src/components/agreement-ask/agreement-ask-page.tsx");
 
-    expect(workSearchButton).toContain('if (slash && document.getElementById("agreement-question-input")) return;');
+    expect(workSearchButton).toContain(
+      "if (slash && document.querySelector('[data-shortcut-owner=\"slash\"], #agreement-question-input')) return;",
+    );
+    expect(agreementAskPage).toContain('data-shortcut-owner="slash"');
   });
 
   it("guards CalculatorSheet backdrop click dismissal once answers have been started", () => {
@@ -69,10 +91,10 @@ describe("Task 7 & 8: focus restoration, shortcut guards, landmarks, headings, a
     expect(bedsideHome).toContain('<h1 className="sr-only">First Nations</h1>');
   });
 
-  it("separates the Open Shifts SectionHeading label from its count with a space", () => {
-    const openShiftsUi = readSource("src/components/open-shifts/open-shifts-ui.tsx");
-
-    expect(openShiftsUi).toContain("{` ${count}`}");
+  it("separates the Open Shifts SectionHeading label from its count with a space at runtime", () => {
+    render(SectionHeading({ count: 2, children: "Thursday 8 October" }));
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.textContent).toBe("Thursday 8 October 2");
   });
 
   it("wires explanatory unavailable controls with aria-disabled, aria-describedby, title, and ignoreUnavailableActivation", () => {

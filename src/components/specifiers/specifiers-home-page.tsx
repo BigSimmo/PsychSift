@@ -159,12 +159,13 @@ function SpecifierResults({ query }: { query: string }) {
   const diagnosisValues = useMemo(() => new Set(diagnosisOptions.map((option) => option.value)), []);
   const family = readResultFilterValue(searchParams, "family", familyValues, "all") as "all" | SpecifierFamily;
   const diagnosis = readResultFilterValue(searchParams, "diagnosis", diagnosisValues, "");
+  const fullCatalogueMatches = useMemo(() => searchSpecifierCatalog("", {}, true), []);
   const categoryOptions = useMemo(
     () =>
-      [...new Map(allCatalogueMatches.map(({ item }) => [item.categoryId, item.category])).entries()]
+      [...new Map(fullCatalogueMatches.map(({ item }) => [item.categoryId, item.category])).entries()]
         .map(([value, label]) => ({ value, label }))
         .sort((left, right) => left.label.localeCompare(right.label)),
-    [allCatalogueMatches],
+    [fullCatalogueMatches],
   );
   const categoryValues = useMemo(() => new Set(categoryOptions.map((option) => option.value)), [categoryOptions]);
   const selectedCategories = useMemo(

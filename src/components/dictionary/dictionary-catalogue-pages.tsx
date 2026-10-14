@@ -83,25 +83,35 @@ function useDictionaryUrl() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const replace = (edit: (params: URLSearchParams) => void) => {
-    const next = new URLSearchParams(searchParams.toString());
-    edit(next);
-    const suffix = next.toString();
-    router.replace(`${pathname}${suffix ? `?${suffix}` : ""}`, { scroll: false });
-  };
-  const setOne = (key: string, value: string, defaultValue?: string) =>
-    replace((next) => {
-      if (!value || value === defaultValue) next.delete(key);
-      else next.set(key, value);
-    });
-  const toggleMany = (key: string, value: string) =>
-    replace((next) => {
-      const values = new Set(next.getAll(key));
-      next.delete(key);
-      if (values.has(value)) values.delete(value);
-      else values.add(value);
-      for (const selected of values) next.append(key, selected);
-    });
+  const serializedParams = searchParams.toString();
+  const replace = useCallback(
+    (edit: (params: URLSearchParams) => void) => {
+      const next = new URLSearchParams(serializedParams);
+      edit(next);
+      const suffix = next.toString();
+      router.replace(`${pathname}${suffix ? `?${suffix}` : ""}`, { scroll: false });
+    },
+    [pathname, router, serializedParams],
+  );
+  const setOne = useCallback(
+    (key: string, value: string, defaultValue?: string) =>
+      replace((next) => {
+        if (!value || value === defaultValue) next.delete(key);
+        else next.set(key, value);
+      }),
+    [replace],
+  );
+  const toggleMany = useCallback(
+    (key: string, value: string) =>
+      replace((next) => {
+        const values = new Set(next.getAll(key));
+        next.delete(key);
+        if (values.has(value)) values.delete(value);
+        else values.add(value);
+        for (const selected of values) next.append(key, selected);
+      }),
+    [replace],
+  );
   return { searchParams, replace, setOne, toggleMany };
 }
 
