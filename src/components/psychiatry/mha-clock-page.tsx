@@ -413,7 +413,7 @@ function LimitRow({ item, nowMs }: { readonly item: MhaTimerItem; readonly nowMs
       <a
         href={mhaActMetadata.sourceUrl}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
         data-testid="mha-clock-act-section"
         className={cn(
           focusRing,
@@ -849,7 +849,7 @@ export function MhaClockPage({
         <a
           href={mhaActMetadata.sourceUrl}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className={cn(flatLink, "-mt-2 self-start")}
           data-testid="mha-clock-act-link"
         >

@@ -442,8 +442,8 @@ describe("passwordless developer-area access (?devkey)", () => {
       expect(cookie).toBeTruthy();
       expect(cookie).toContain("HttpOnly");
       expect(cookie).toContain("SameSite=lax");
-      // The cookie is never sent on a clinical request.
-      expect(cookie).toContain("Path=/mockups");
+      // The cookie is scoped to / so both /mockups and /admin/developer-hub receive it.
+      expect(cookie).toContain("Path=/");
       // And it carries a signature, not the key.
       expect(cookie).not.toContain(KEY);
 

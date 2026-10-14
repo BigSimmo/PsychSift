@@ -125,6 +125,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
       const command = event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey) && !event.shiftKey;
       const help = event.key === "?" && !event.metaKey && !event.ctrlKey;
       if (!slash && !command && !help) return;
+      if (slash && document.getElementById("agreement-question-input")) return;
       // Captured first, so no other page shortcut acts on the same key as well.
       event.preventDefault();
       event.stopPropagation();

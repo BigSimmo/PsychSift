@@ -71,6 +71,7 @@ export function BedsideHomeView({
       />
       <div className="mx-auto grid w-full max-w-[80rem] lg:grid-cols-[minmax(0,1fr)_22.5rem]">
         <div className="grid min-w-0 content-start gap-3 px-3 pb-6 pt-3 lg:px-5">
+          <h1 className="sr-only">First Nations</h1>
           <TodayShell
             mode="first-nations"
             modeName="First Nations"

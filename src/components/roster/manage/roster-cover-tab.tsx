@@ -364,6 +364,7 @@ export function RosterCoverTab({ serviceId, overview }: { serviceId: string; ove
         {exportDays >= 1 && exportDays <= 62 ? (
           <a
             className="inline-flex min-h-12 items-center underline"
+            download
             href={`/api/roster/team/${encodeURIComponent(serviceId)}/export?${new URLSearchParams({ from, to })}`}
           >
             Download Excel

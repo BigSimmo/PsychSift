@@ -16,38 +16,25 @@ import {
   rememberedStory,
   type AssessRole,
 } from "@/components/teaching/assessments/assess-memory";
-import { AssessorForm } from "@/components/teaching/assessments/assessments-assessor";
-import { DctHome, DctPlan, DctSignoff, type DctProps } from "@/components/teaching/assessments/assessments-dct";
-import { AssessmentsHome } from "@/components/teaching/assessments/assessments-home";
-import {
-  AllAssessments,
-  BeginningOfTerm,
-  TermDetails,
-  YearRequirements,
-} from "@/components/teaching/assessments/assessments-year";
-import { AssessmentForm } from "@/components/teaching/assessments/assessments-form";
-import { AskSupervisor, BookMeeting, EndOfTermSteps } from "@/components/teaching/assessments/assessments-steps";
-import { AssessmentReport, SignForm } from "@/components/teaching/assessments/assessments-report";
-import { ConcernsHelp, AssessmentsSheets, type SheetState } from "@/components/teaching/assessments/assessments-help";
-import {
-  DoctorRecord,
-  SideBySide,
-  SupervisorHistory,
-  SupervisorHome,
-  SupervisorProgress,
-  SupervisorTimes,
-  SupervisorWords,
-} from "@/components/teaching/assessments/assessments-supervisor";
+import { Award, BookOpen, TriangleAlert } from "lucide-react";
+import type { DctProps } from "@/components/teaching/assessments/assessments-dct";
+import { AssessHeader, AssessNote } from "@/components/teaching/assessments/assess-kit";
+import { ConcernsHelp, type SheetState } from "@/components/teaching/assessments/assessments-help";
 import { AssessmentsExtrasProvider } from "@/components/teaching/assessments/assessments-extras";
 import { AssessmentsKeptInCla, useAssessmentsAccess } from "@/components/teaching/assessments/assessments-kept-in-cla";
 import { ExampleOnlyGate } from "@/components/example-data/example-only-gate";
-import { AssessmentsInbox } from "@/components/teaching/assessments/assessments-inbox";
-import { AssessmentsTermOverview } from "@/components/teaching/assessments/assessments-term-overview";
-import { viewHref, type AssessmentsView } from "@/components/teaching/assessments/assessments-parts";
+import {
+  List,
+  Row,
+  SectionLabel,
+  viewHref,
+  type AssessmentsView,
+} from "@/components/teaching/assessments/assessments-parts";
 import { TeachingAccountPage } from "@/components/teaching/teaching-depth-page";
 import { perthDateKey } from "@/components/teaching/teaching-dates";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
+import { GLOSSARY } from "@/lib/teaching/assessments/content";
 import {
   assessmentsReducer,
   dayLabel,
@@ -61,6 +48,102 @@ import { SAMPLE_DOCTOR, WINDOW_DAYS } from "@/lib/teaching/assessments/sample";
 import { dctReducer, dctWaiting, initialDctState, type DctState } from "@/lib/teaching/assessments/dct";
 import { useAuthSession } from "@/lib/supabase/client";
 import { useExampleData } from "@/lib/example-data/store";
+
+const sampleLoading = () => <AssessSkeleton />;
+
+const AssessorForm = dynamic(
+  () => import("@/components/teaching/assessments/assessments-assessor").then((m) => m.AssessorForm),
+  { loading: sampleLoading },
+);
+const DctHome = dynamic(() => import("@/components/teaching/assessments/assessments-dct").then((m) => m.DctHome), {
+  loading: sampleLoading,
+});
+const DctPlan = dynamic(() => import("@/components/teaching/assessments/assessments-dct").then((m) => m.DctPlan), {
+  loading: sampleLoading,
+});
+const DctSignoff = dynamic(
+  () => import("@/components/teaching/assessments/assessments-dct").then((m) => m.DctSignoff),
+  { loading: sampleLoading },
+);
+const AssessmentsHome = dynamic(
+  () => import("@/components/teaching/assessments/assessments-home").then((m) => m.AssessmentsHome),
+  { loading: sampleLoading },
+);
+const AllAssessments = dynamic(
+  () => import("@/components/teaching/assessments/assessments-year").then((m) => m.AllAssessments),
+  { loading: sampleLoading },
+);
+const BeginningOfTerm = dynamic(
+  () => import("@/components/teaching/assessments/assessments-year").then((m) => m.BeginningOfTerm),
+  { loading: sampleLoading },
+);
+const TermDetails = dynamic(
+  () => import("@/components/teaching/assessments/assessments-year").then((m) => m.TermDetails),
+  { loading: sampleLoading },
+);
+const YearRequirements = dynamic(
+  () => import("@/components/teaching/assessments/assessments-year").then((m) => m.YearRequirements),
+  { loading: sampleLoading },
+);
+const AssessmentForm = dynamic(
+  () => import("@/components/teaching/assessments/assessments-form").then((m) => m.AssessmentForm),
+  { loading: sampleLoading },
+);
+const AskSupervisor = dynamic(
+  () => import("@/components/teaching/assessments/assessments-steps").then((m) => m.AskSupervisor),
+  { loading: sampleLoading },
+);
+const BookMeeting = dynamic(
+  () => import("@/components/teaching/assessments/assessments-steps").then((m) => m.BookMeeting),
+  { loading: sampleLoading },
+);
+const EndOfTermSteps = dynamic(
+  () => import("@/components/teaching/assessments/assessments-steps").then((m) => m.EndOfTermSteps),
+  { loading: sampleLoading },
+);
+const AssessmentReport = dynamic(
+  () => import("@/components/teaching/assessments/assessments-report").then((m) => m.AssessmentReport),
+  { loading: sampleLoading },
+);
+const SignForm = dynamic(() => import("@/components/teaching/assessments/assessments-report").then((m) => m.SignForm), {
+  loading: sampleLoading,
+});
+const AssessmentsSheets = dynamic(
+  () => import("@/components/teaching/assessments/assessments-help").then((m) => m.AssessmentsSheets),
+  { ssr: false },
+);
+const DoctorRecord = dynamic(
+  () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.DoctorRecord),
+  { loading: sampleLoading },
+);
+const SideBySide = dynamic(
+  () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.SideBySide),
+  { loading: sampleLoading },
+);
+const SupervisorHistory = dynamic(
+  () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.SupervisorHistory),
+  { loading: sampleLoading },
+);
+const SupervisorHome = dynamic(
+  () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.SupervisorHome),
+  { loading: sampleLoading },
+);
+const SupervisorProgress = dynamic(
+  () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.SupervisorProgress),
+  { loading: sampleLoading },
+);
+const SupervisorTimes = dynamic(
+  () => import("@/components/teaching/assessments/assessments-supervisor").then((m) => m.SupervisorTimes),
+  { loading: sampleLoading },
+);
+const AssessmentsInbox = dynamic(
+  () => import("@/components/teaching/assessments/assessments-inbox").then((m) => m.AssessmentsInbox),
+  { loading: sampleLoading },
+);
+const AssessmentsTermOverview = dynamic(
+  () => import("@/components/teaching/assessments/assessments-term-overview").then((m) => m.AssessmentsTermOverview),
+  { loading: sampleLoading },
+);
 
 /* Teaching's term card, with the doctor's own EPA tally, loads only on a signed-in doctor's Progress tab. */
 const TeachingTermCard = dynamic(
@@ -169,6 +252,53 @@ export function resolveRole(view: AssessmentsView, as: string | null, remembered
   if (DCT_ONLY.has(view)) return "dct";
   const role = isRole(as) ? as : ROLE_KEPT.has(view) ? remembered : "doctor";
   return role === "dct" && !DCT_VIEWS.has(view) ? "doctor" : role;
+}
+
+const WORDS_FOR: Record<ScreenProps["role"], { eyebrow: string; back: string; label: string }> = {
+  doctor: { eyebrow: "For doctors in training", back: viewHref("home"), label: "Assessments" },
+  supervisor: { eyebrow: "For supervisors", back: viewHref("home", { as: "supervisor" }), label: "To do" },
+  dct: { eyebrow: "For the DCT", back: viewHref("home", { as: "dct" }), label: "Assessments" },
+};
+
+function SupervisorWords({ role }: ScreenProps) {
+  const words = WORDS_FOR[role];
+  return (
+    <>
+      <AssessHeader eyebrow={words.eyebrow} title="Help and words" back={{ href: words.back, label: words.label }} />
+      {role === "doctor" ? null : (
+        <>
+          <SectionLabel>How to rate</SectionLabel>
+          <List label="How to rate">
+            <Row icon={BookOpen} iconTone="mode" title="Rate against PGY1 or PGY2" subtitle="Not against a registrar" />
+            <Row
+              icon={TriangleAlert}
+              iconTone="mode"
+              title="A doctor is struggling"
+              subtitle="Talk to the DCT or MEU early. A 1 or 2 means talking to them about an improvement plan."
+            />
+            <Row
+              icon={Award}
+              iconTone="mode"
+              title="Direct supervision is not a fail"
+              subtitle="It is feedback for that moment"
+            />
+          </List>
+        </>
+      )}
+      <SectionLabel>Words used here</SectionLabel>
+      <dl className="work-card m-0">
+        {GLOSSARY.map(([term, meaning]) => (
+          <div key={term} className="assess-word" data-long={term.length > 8 ? "" : undefined}>
+            <dt>{term}</dt>
+            <dd>{meaning}</dd>
+          </div>
+        ))}
+      </dl>
+      <AssessNote icon={BookOpen} center>
+        Rules from the AMC National Framework 2024
+      </AssessNote>
+    </>
+  );
 }
 
 function Screen(props: ScreenProps & Omit<DctProps, keyof ScreenProps> & { view: AssessmentsView }) {
@@ -384,7 +514,7 @@ function AssessmentsApp() {
           <span>{savedNote}</span>
         </p>
       ) : null}
-      <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
+      {sheet ? <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} /> : null}
     </div>
   );
 }
@@ -414,7 +544,7 @@ function AssessmentsOpenPage({ view }: { view: "help" | "words" }) {
   return (
     <>
       {view === "help" ? <ConcernsHelp {...props} /> : <SupervisorWords {...props} />}
-      <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} />
+      {sheet ? <AssessmentsSheets sheet={sheet} close={() => setSheet(null)} {...props} /> : null}
     </>
   );
 }

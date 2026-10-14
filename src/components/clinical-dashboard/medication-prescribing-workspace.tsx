@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useDeferredValue, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -576,7 +576,8 @@ function MedicationResults({
   // Keep the full catalogue payload here: Safety/Monitoring chips and patient
   // alerts need sections/stats/quick that `fields=index` strips. Cross-mode
   // identity consumers still use `fields=index`.
-  const catalog = useMedicationCatalog(query);
+  const deferredQuery = useDeferredValue(query);
+  const catalog = useMedicationCatalog(deferredQuery);
   const isDesktop = useDesktopViewport();
   const { profile, isEmpty: profileEmpty } = usePatientProfile();
   const searchParams = useSearchParams();
@@ -666,7 +667,7 @@ function MedicationResults({
     [searchParams],
   );
 
-  const { rows, scopeCounts, matchCounts, classCounts, signalCounts, totalAvailable } = useMemo(() => {
+  const filterChipCounts = useMemo(() => {
     const filters = { match: matchFilter, classes: classFilters, signals: signalFilters };
     const rowsForScope = (nextScope: MedicationScope) => (nextScope === "best" ? bestRows : allRows);
     const matches = (candidateRows: MedicationRow[], candidateFilters = filters) =>
@@ -702,108 +703,142 @@ function MedicationResults({
     };
   }, [allRows, bestRows, classFilters, classValues, matchFilter, scope, signalFilters]);
 
-  const setScope = (value: MedicationScope) =>
-    replaceResultFilterUrl((params) => writeResultFilterValue(params, "scope", value, "best", medicationScopeValues));
-  const setMatchFilter = (value: MedicationMatchQuality) =>
-    replaceResultFilterUrl((params) => writeResultFilterValue(params, "match", value, "all", medicationMatchValues));
-  const toggleClass = (value: string) => {
-    if (classValueSet.size === 0) return;
-    replaceResultFilterUrl((params) => {
-      const next = new Set(readResultFilterValues(params, "class", classValueSet));
-      if (!next.delete(value)) next.add(value);
-      writeResultFilterValues(params, "class", next, classValueSet);
-    });
-  };
-  const toggleSignal = (value: MedicationClinicalSignal) => {
+  const visibleCards = useMemo(() => filterChipCounts.rows, [filterChipCounts.rows]);
+  const { scopeCounts, matchCounts, classCounts, signalCounts, totalAvailable } = filterChipCounts;
+  const rows = visibleCards;
+
+  const setScope = useCallback(
+    (value: MedicationScope) =>
+      replaceResultFilterUrl((params) => writeResultFilterValue(params, "scope", value, "best", medicationScopeValues)),
+    [],
+  );
+  const setMatchFilter = useCallback(
+    (value: MedicationMatchQuality) =>
+      replaceResultFilterUrl((params) => writeResultFilterValue(params, "match", value, "all", medicationMatchValues)),
+    [],
+  );
+  const toggleClass = useCallback(
+    (value: string) => {
+      if (classValueSet.size === 0) return;
+      replaceResultFilterUrl((params) => {
+        const next = new Set(readResultFilterValues(params, "class", classValueSet));
+        if (!next.delete(value)) next.add(value);
+        writeResultFilterValues(params, "class", next, classValueSet);
+      });
+    },
+    [classValueSet],
+  );
+  const toggleSignal = useCallback((value: MedicationClinicalSignal) => {
     replaceResultFilterUrl((params) => {
       const next = new Set(readResultFilterValues(params, "signal", medicationSignalValues));
       if (!next.delete(value)) next.add(value);
       writeResultFilterValues(params, "signal", next, medicationSignalValues);
     });
-  };
-  const clearFilters = () =>
-    replaceResultFilterUrl((params) => {
-      params.delete("scope");
-      params.delete("match");
-      params.delete("class");
-      params.delete("signal");
-    });
+  }, []);
+  const clearFilters = useCallback(
+    () =>
+      replaceResultFilterUrl((params) => {
+        params.delete("scope");
+        params.delete("match");
+        params.delete("class");
+        params.delete("signal");
+      }),
+    [],
+  );
 
   const resultCount = rows.length;
   const activeFilterCount =
     (scope === "best" ? 0 : 1) + (matchFilter === "all" ? 0 : 1) + classFilters.size + signalFilters.size;
-  const filterGroups = [
-    resultFilterGroup({
-      id: "match-quality",
-      label: "Match quality",
-      value: matchFilter,
-      options: medicationMatchOptions.map((option) => ({
-        ...option,
-        hint: String(matchCounts[option.value]),
-        disabled: option.value !== matchFilter && matchCounts[option.value] === 0,
+  const groupedSections = useMemo(
+    () => [
+      resultFilterGroup({
+        id: "match-quality",
+        label: "Match quality",
+        value: matchFilter,
+        options: medicationMatchOptions.map((option) => ({
+          ...option,
+          hint: String(matchCounts[option.value]),
+          disabled: option.value !== matchFilter && matchCounts[option.value] === 0,
+        })),
+        onChange: setMatchFilter,
+      }),
+      resultFilterFacetGroup({
+        id: "drug-class",
+        label: "Drug class",
+        selected: classFilters,
+        options: classValues.map((value) => ({
+          value,
+          label: value,
+          hint: String(classCounts[value] ?? 0),
+          disabled: !classFilters.has(value) && (classCounts[value] ?? 0) === 0,
+        })),
+        onToggle: toggleClass,
+      }),
+      resultFilterFacetGroup({
+        id: "clinical-signal",
+        label: "Clinical signal",
+        description: "Safety and monitoring are one OR group; choosing either keeps records with that signal.",
+        selected: signalFilters,
+        options: medicationSignalOptions.map((option) => ({
+          ...option,
+          hint: String(signalCounts[option.value]),
+          disabled: !signalFilters.has(option.value) && signalCounts[option.value] === 0,
+        })),
+        onToggle: toggleSignal,
+      }),
+    ],
+    [
+      matchFilter,
+      matchCounts,
+      setMatchFilter,
+      classFilters,
+      classValues,
+      classCounts,
+      toggleClass,
+      signalFilters,
+      signalCounts,
+      toggleSignal,
+    ],
+  );
+  const filterGroups = groupedSections;
+  const appliedFilters = useMemo(
+    () => [
+      ...(scope === "all"
+        ? [
+            {
+              id: "scope",
+              groupLabel: "Search in",
+              valueLabel: "All medications",
+              accessibleLabel: "Search in all medications",
+              onRemove: () => setScope("best"),
+            },
+          ]
+        : []),
+      ...(matchFilter === "all"
+        ? []
+        : [
+            {
+              id: "match",
+              groupLabel: "Match",
+              valueLabel: medicationMatchOptions.find((option) => option.value === matchFilter)?.label ?? matchFilter,
+              onRemove: () => setMatchFilter("all"),
+            },
+          ]),
+      ...[...classFilters].map((value) => ({
+        id: `class-${value}`,
+        groupLabel: "Class",
+        valueLabel: value,
+        onRemove: () => toggleClass(value),
       })),
-      onChange: setMatchFilter,
-    }),
-    resultFilterFacetGroup({
-      id: "drug-class",
-      label: "Drug class",
-      selected: classFilters,
-      options: classValues.map((value) => ({
-        value,
-        label: value,
-        hint: String(classCounts[value] ?? 0),
-        disabled: !classFilters.has(value) && (classCounts[value] ?? 0) === 0,
+      ...[...signalFilters].map((value) => ({
+        id: `signal-${value}`,
+        groupLabel: "Signal",
+        valueLabel: medicationSignalOptions.find((option) => option.value === value)?.label ?? value,
+        onRemove: () => toggleSignal(value),
       })),
-      onToggle: toggleClass,
-    }),
-    resultFilterFacetGroup({
-      id: "clinical-signal",
-      label: "Clinical signal",
-      description: "Safety and monitoring are one OR group; choosing either keeps records with that signal.",
-      selected: signalFilters,
-      options: medicationSignalOptions.map((option) => ({
-        ...option,
-        hint: String(signalCounts[option.value]),
-        disabled: !signalFilters.has(option.value) && signalCounts[option.value] === 0,
-      })),
-      onToggle: toggleSignal,
-    }),
-  ];
-  const appliedFilters = [
-    ...(scope === "all"
-      ? [
-          {
-            id: "scope",
-            groupLabel: "Search in",
-            valueLabel: "All medications",
-            accessibleLabel: "Search in all medications",
-            onRemove: () => setScope("best"),
-          },
-        ]
-      : []),
-    ...(matchFilter === "all"
-      ? []
-      : [
-          {
-            id: "match",
-            groupLabel: "Match",
-            valueLabel: medicationMatchOptions.find((option) => option.value === matchFilter)?.label ?? matchFilter,
-            onRemove: () => setMatchFilter("all"),
-          },
-        ]),
-    ...[...classFilters].map((value) => ({
-      id: `class-${value}`,
-      groupLabel: "Class",
-      valueLabel: value,
-      onRemove: () => toggleClass(value),
-    })),
-    ...[...signalFilters].map((value) => ({
-      id: `signal-${value}`,
-      groupLabel: "Signal",
-      valueLabel: medicationSignalOptions.find((option) => option.value === value)?.label ?? value,
-      onRemove: () => toggleSignal(value),
-    })),
-  ];
+    ],
+    [scope, setScope, matchFilter, setMatchFilter, classFilters, toggleClass, signalFilters, toggleSignal],
+  );
   // The match-quality badge only earns its slot when it differentiates: hide it on
   // "Exact clinical fit" rows when every visible row says the same thing.
   const showMatchBadge = useMemo(() => new Set(rows.map((row) => row.result.match)).size > 1, [rows]);

@@ -79,6 +79,7 @@ function NumberField({
   testId,
   min,
   max,
+  step,
   resetNonce,
 }: {
   label: string;
@@ -88,6 +89,7 @@ function NumberField({
   testId?: string;
   min: number;
   max: number;
+  step?: number | string;
   /** Changes whenever the whole profile is cleared, from anywhere. */
   resetNonce: number;
 }) {
@@ -149,6 +151,7 @@ function NumberField({
       inputMode="decimal"
       min={min}
       max={max}
+      step={step}
       value={text}
       onChange={(event) => {
         const raw = event.target.value;
@@ -367,6 +370,7 @@ export function PatientProfilePanel({
               testId="patient-scr"
               min={scrBounds.min}
               max={scrBounds.max}
+              step={scrUnit === "mg/dL" ? "0.01" : "1"}
               resetNonce={resetNonce}
             />
           </div>

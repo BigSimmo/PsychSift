@@ -23,7 +23,7 @@
   outline: 2px solid var(--surface-raised);
   background: var(--mode-identity, var(--clinical-accent));
   color: var(--mode-identity-contrast, var(--text-inverse, var(--surface-raised)));
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-tight);

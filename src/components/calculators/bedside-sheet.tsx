@@ -29,7 +29,7 @@ function SheetSection({
   onToggleOpen,
   onAnswersChange,
 }: {
-  calc: CalculatorFixture;
+  calc: CalculatorFixture & { disclaimer?: string };
   answers: AnswerMap;
   open: boolean;
   onToggleOpen: () => void;
@@ -125,6 +125,9 @@ function SheetSection({
             <p className="font-mono text-3xs font-semibold text-[color:var(--text-muted)]">
               {calc.scoringNote} · {calc.source}
             </p>
+            {calc.disclaimer ? (
+              <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{calc.disclaimer}</p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -142,8 +145,14 @@ export function CalculatorsBedsideSheetMockup() {
     .map((calc) => ({ calc, derived: deriveCalculator(calc, session[calc.id] ?? {}) }))
     .filter((entry) => entry.derived.started);
 
+  const completedCalcs = startedCalcs.filter((entry) => {
+    const canCopy = Boolean(entry?.derived.complete);
+    return canCopy;
+  });
+
   const handleCopy = async () => {
-    const lines = startedCalcs.map(({ calc, derived }) => formatResultSummary(calc, derived));
+    if (!completedCalcs.length) return;
+    const lines = completedCalcs.map(({ calc, derived }) => formatResultSummary(calc, derived));
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
       setCopied(true);
@@ -212,7 +221,11 @@ export function CalculatorsBedsideSheetMockup() {
 
       {/* Session summary dock — floats above the site composer */}
       <div className="pointer-events-none fixed inset-x-0 bottom-32 z-20 px-3 sm:bottom-36">
-        <div className="pointer-events-auto mx-auto grid max-w-4xl gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface-glass)] px-4 py-3 shadow-[var(--e2)] backdrop-blur-md sm:px-5">
+        <div
+          role="region"
+          aria-label="Session summary"
+          className="pointer-events-auto mx-auto grid max-w-4xl gap-2 rounded-lg border border-[color:var(--border-strong)] bg-[color:var(--surface-glass)] px-4 py-3 shadow-[var(--e2)] backdrop-blur-md sm:px-5"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-sm-minus font-extrabold text-[color:var(--text-heading)]">
               <NotebookPen className="size-icon-md text-[color:var(--clinical-accent)]" aria-hidden="true" />
@@ -222,7 +235,7 @@ export function CalculatorsBedsideSheetMockup() {
               type="button"
               onClick={handleCopy}
               aria-label="Copy summary"
-              disabled={!startedCalcs.length}
+              disabled={!completedCalcs.length}
               className={cn(
                 "inline-flex min-h-tap items-center gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-2.5 text-2xs font-bold text-[color:var(--text-muted)] transition hover:border-[color:var(--border-strong)] hover:text-[color:var(--text)] disabled:pointer-events-none disabled:opacity-40",
                 focusRing,
@@ -271,6 +284,10 @@ export function CalculatorsBedsideSheetMockup() {
               No scales started yet — completed scores collect here for your note.
             </p>
           )}
+          <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+            {startedCalcs[0]?.calc.disclaimer ??
+              "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument."}
+          </p>
         </div>
       </div>
     </div>

@@ -43,7 +43,7 @@ import { ChoiceChip } from "@/components/ui/chip";
 import { announce } from "@/components/ui/live-announcer";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Sheet } from "@/components/ui/sheet";
-import { cn } from "@/components/ui-primitives";
+import { cn, ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
 import { samSignOff } from "@/lib/teaching/assessments/dct";
@@ -184,29 +184,39 @@ function Totals({ done, due, overdue }: { done: number; due: number; overdue: nu
 type BellState = "pending" | "reminded" | "offline" | "none";
 
 function BellButton({ state, label, onClick }: { state: BellState; label: string; onClick: () => void }) {
+  const reasonId = useId();
   if (state === "none") return <span aria-hidden="true" className="size-12 shrink-0" />;
   const live = state === "pending";
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-disabled={live ? undefined : true}
-      onClick={live ? onClick : undefined}
-      data-bell={state}
-      className={cn(
-        focusRing,
-        "grid size-12 shrink-0 place-items-center rounded-full",
-        state === "pending" && "text-[color:var(--mode-identity)] hover:bg-[color:var(--surface-wash)]",
-        state === "reminded" && "cursor-default text-[color:var(--success-text)]",
-        state === "offline" && "cursor-default text-[color:var(--text-muted)]",
-      )}
-    >
-      {state === "reminded" ? (
-        <Check aria-hidden="true" strokeWidth={2.25} className="size-icon-sm" />
-      ) : (
-        <Bell aria-hidden="true" className="size-icon-sm" />
-      )}
-    </button>
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        aria-disabled={live ? undefined : "true"}
+        aria-describedby={live ? undefined : reasonId}
+        title={live ? undefined : label}
+        onClick={live ? onClick : ignoreUnavailableActivation}
+        data-bell={state}
+        className={cn(
+          focusRing,
+          "grid size-12 shrink-0 place-items-center rounded-full",
+          state === "pending" && "text-[color:var(--mode-identity)] hover:bg-[color:var(--surface-wash)]",
+          state === "reminded" && "cursor-default text-[color:var(--success-text)]",
+          state === "offline" && "cursor-default text-[color:var(--text-muted)]",
+        )}
+      >
+        {state === "reminded" ? (
+          <Check aria-hidden="true" strokeWidth={2.25} className="size-icon-sm" />
+        ) : (
+          <Bell aria-hidden="true" className="size-icon-sm" />
+        )}
+      </button>
+      {!live ? (
+        <span id={reasonId} className="sr-only">
+          {label}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -506,12 +516,11 @@ function OverviewHome({ s, role, params, dct }: ScreenProps) {
               <Button
                 variant="primary"
                 size="sm"
-                aria-disabled={remindWhyNot ? true : undefined}
+                aria-disabled={remindWhyNot ? "true" : undefined}
                 aria-describedby={remindWhyNot ? remindWhyId : undefined}
+                title={remindWhyNot ?? undefined}
                 className="aria-disabled:cursor-not-allowed aria-disabled:border-[color:var(--border)] aria-disabled:bg-[color:var(--surface-subtle)] aria-disabled:text-[color:var(--text-muted)]"
-                onClick={() => {
-                  if (!remindWhyNot) setSheet("bulk");
-                }}
+                onClick={remindWhyNot ? ignoreUnavailableActivation : () => setSheet("bulk")}
                 testId="assessments-overview-bulk-open"
               >
                 Remind
@@ -766,7 +775,15 @@ function ExportSheet({
       </Inset>
       {blocker ? (
         <>
-          <Button variant="primary" block disabled aria-describedby={whyId}>
+          <Button
+            variant="primary"
+            block
+            aria-disabled="true"
+            aria-describedby={whyId}
+            title={blocker}
+            onClick={ignoreUnavailableActivation}
+            className="aria-disabled:cursor-not-allowed aria-disabled:border-[color:var(--border)] aria-disabled:bg-[color:var(--surface-subtle)] aria-disabled:text-[color:var(--text-muted)]"
+          >
             Download spreadsheet
           </Button>
           <WhyNot id={whyId}>{blocker}</WhyNot>

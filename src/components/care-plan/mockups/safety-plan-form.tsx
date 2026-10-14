@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorSummary } from "@/components/ui/form-field";
 import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { EmptyState, InlineNotice, ignoreUnavailableActivation } from "@/components/ui-primitives";
 
 import styles from "./care-plan.module.css";
@@ -268,6 +269,10 @@ export function SafetyPlanFormSurface({
     setValues(valuesFrom(draft));
     setErrors([]);
   }
+
+  const baselineValues = draft === null ? EMPTY_FORM_VALUES : valuesFrom(draft);
+  const isDirty = draft !== null && JSON.stringify(values) !== JSON.stringify(baselineValues);
+  useDirtyStateGuard(isDirty);
 
   /*
    * There is deliberately no focus effect here. `ErrorSummary` moves focus to

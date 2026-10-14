@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState, useDeferredValue, useEffect } from "react";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
+import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 
 import {
   FormulationPageShell,
@@ -41,6 +42,8 @@ import {
   suggestionsForFormulationSection,
   type FormulationMechanismSummary,
 } from "@/lib/formulation-mechanism-index";
+
+const STORAGE_KEY = "psychsift_formulation_draft";
 
 const builderSteps = [
   { id: "select", label: "Select", description: "Mechanisms" },
@@ -208,7 +211,7 @@ export function FormulationBuilderPage({
   const initialDraft = useMemo(() => {
     if (typeof window === "undefined") return null;
     try {
-      const raw = sessionStorage.getItem("psychsift_formulation_draft");
+      const raw = sessionStorage.getItem(STORAGE_KEY);
       return raw
         ? (JSON.parse(raw) as {
             selectedIds?: string[];
@@ -272,13 +275,35 @@ export function FormulationBuilderPage({
   useDirtyStateGuard(isDirty);
 
   useEffect(() => {
-    if (isDirty || selectedIds.length > 0) {
-      sessionStorage.setItem(
-        "psychsift_formulation_draft",
-        JSON.stringify({ sectionNotes, qualityNotes, selectedIds, templateId, editedDraft }),
-      );
+    try {
+      if (isDirty || selectedIds.length > 0) {
+        sessionStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ sectionNotes, qualityNotes, selectedIds, templateId, editedDraft }),
+        );
+      } else {
+        sessionStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // Ignore storage errors
     }
   }, [isDirty, sectionNotes, qualityNotes, selectedIds, templateId, editedDraft]);
+
+  useEffect(() => {
+    return subscribeAccountTransition(() => {
+      setSelectedIds([]);
+      setTemplateId(validInitialTemplate);
+      setSectionNotes({});
+      setQualityNotes({});
+      setEditedDraft(null);
+      setActiveStep("select");
+      try {
+        sessionStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Ignore storage errors
+      }
+    });
+  }, [validInitialTemplate]);
 
   function toggleMechanism(id: string) {
     setSelectedIds((current) =>
@@ -289,7 +314,14 @@ export function FormulationBuilderPage({
 
   function clearMechanisms() {
     setSelectedIds([]);
+    setSectionNotes({});
+    setQualityNotes({});
     setEditedDraft(null);
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
+    }
   }
 
   function updateSection(id: string, value: string) {
@@ -570,6 +602,10 @@ export function FormulationBuilderPage({
                           rows={3}
                           aria-label={section.label}
                           placeholder="Add de-identified case evidence…"
+                          autoComplete="off"
+                          spellCheck={false}
+                          data-gramm="false"
+                          data-enable-grammarly="false"
                           className={cn(fieldControlPlain, "mt-3 h-auto min-h-24 resize-y p-3 font-medium leading-6")}
                         />
                         {suggestions.length ? (
@@ -630,6 +666,10 @@ export function FormulationBuilderPage({
                         rows={4}
                         aria-label={prompt.label}
                         placeholder="Record a concise review note…"
+                        autoComplete="off"
+                        spellCheck={false}
+                        data-gramm="false"
+                        data-enable-grammarly="false"
                         className={cn(fieldControlPlain, "mt-3 h-auto min-h-28 resize-y p-3 font-medium leading-6")}
                       />
                       {starter.length ? (
@@ -693,6 +733,10 @@ export function FormulationBuilderPage({
                   onChange={(event) => setEditedDraft(event.target.value)}
                   rows={22}
                   aria-label="Formulation draft"
+                  autoComplete="off"
+                  spellCheck={false}
+                  data-gramm="false"
+                  data-enable-grammarly="false"
                   className={cn(fieldControlPlain, "h-auto min-h-[32rem] resize-y rounded-xl p-4 font-mono leading-6")}
                 />
                 <div className="rounded-xl border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] p-4 text-sm font-medium leading-6 text-[color:var(--text-muted)]">

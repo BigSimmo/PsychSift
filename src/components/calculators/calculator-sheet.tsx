@@ -113,7 +113,7 @@ export function CalculatorSheet({
         target.focus();
       }
     };
-  }, [calc.id, isOpen]);
+  }, [isOpen]);
 
   // Switching calculators in place keeps this sheet mounted, so reset its scroll
   // on calc change — otherwise the next one opens at the prior sheet's offset

@@ -688,6 +688,10 @@ export function CmeEntryForm({
         id="cme-entry-title"
         required
         placeholder="Grand round, course, reading…"
+        autoComplete="off"
+        spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
         value={title}
         onChange={(event) => setTitle(event.target.value)}
         onBlur={applyTitleDefaults}
@@ -740,6 +744,9 @@ export function CmeEntryForm({
             type="text"
             inputMode="decimal"
             autoComplete="off"
+            spellCheck={false}
+            data-gramm="false"
+            data-enable-grammarly="false"
             placeholder="1.25 or 90 min"
             value={statedHoursText}
             onChange={(event) => {
@@ -815,6 +822,10 @@ export function CmeEntryForm({
             id={field.id}
             aria-describedby={field.describedBy}
             rows={2}
+            autoComplete="off"
+            spellCheck={false}
+            data-gramm="false"
+            data-enable-grammarly="false"
             value={reflection}
             onChange={(event) => setReflection(event.target.value)}
             className={cn(fieldControlPlain, "h-auto min-h-16 resize-y py-2 leading-6")}
@@ -847,6 +858,10 @@ export function CmeEntryForm({
         <div className="flex flex-col gap-5 border-t border-[color:var(--border)] p-3">
           <TextField
             label="Learning source URL (optional)"
+            autoComplete="off"
+            spellCheck={false}
+            data-gramm="false"
+            data-enable-grammarly="false"
             value={sourceUrl}
             maxLength={2000}
             onChange={(event) => setSourceUrl(event.target.value)}
@@ -858,6 +873,10 @@ export function CmeEntryForm({
             id="cme-entry-peer-review-hours"
             type="text"
             inputMode="decimal"
+            autoComplete="off"
+            spellCheck={false}
+            data-gramm="false"
+            data-enable-grammarly="false"
             value={formalPeerReviewText}
             onChange={(event) => setFormalPeerReviewText(event.target.value)}
             hint="Credit within reviewing-performance hours. It does not add extra hours."
@@ -905,6 +924,10 @@ export function CmeEntryForm({
                     type="text"
                     inputMode="decimal"
                     placeholder="0.00"
+                    autoComplete="off"
+                    spellCheck={false}
+                    data-gramm="false"
+                    data-enable-grammarly="false"
                     aria-describedby={field.describedBy}
                     value={costText}
                     onChange={(event) => setCostText(event.target.value)}

@@ -16,7 +16,14 @@ import { useAuthSession } from "@/lib/supabase/client";
  */
 const CmeSignedOutSample = dynamic(
   () => import("@/components/cme/cme-signed-out-sample").then((module) => module.CmeSignedOutSample),
-  { ssr: false, loading: () => <div data-testid="cme-sample-loading" aria-hidden="true" className="min-h-48" /> },
+  {
+    ssr: false,
+    loading: () => (
+      <main data-testid="cme-sample-loading" className="min-h-48">
+        <h1 className="sr-only">CPD</h1>
+      </main>
+    ),
+  },
 );
 
 /* The sign-in dialog is closed at first paint, so it loads only when first opened. */
@@ -101,7 +108,8 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
 
   const unavailable = !serverAuthVerified || auth.status === "error" || auth.status === "unconfigured";
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-owner-boundary">
+    <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-owner-boundary">
+      <h1 className="sr-only">CPD</h1>
       {/* The mode band's line: offline, or loading while the session is checked.
           Nothing when the session could not be verified; the line below says so. */}
       <ModeBandStatus value={isOffline ? { kind: "offline" } : unavailable ? null : { kind: "loading" }} />
@@ -131,7 +139,7 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
           ) : null}
         </>
       )}
-    </section>
+    </main>
   );
 }
 
@@ -139,7 +147,8 @@ export function CmeOwnerBoundary({ serverOwnerId, serverAuthVerified, demoMode, 
 function CmeSignInRequired() {
   const [open, setOpen] = useState(false);
   return (
-    <section className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-signed-out">
+    <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6" data-testid="cme-signed-out">
+      <h1 className="sr-only">CPD</h1>
       <WorkStateNotice
         kind="signed-out"
         title="Sign in to see your CPD record"
@@ -147,6 +156,6 @@ function CmeSignInRequired() {
         onSignIn={() => setOpen(true)}
       />
       {open ? <AccountSetupDialog open onClose={() => setOpen(false)} /> : null}
-    </section>
+    </main>
   );
 }

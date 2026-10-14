@@ -922,6 +922,15 @@ a.nextLine {
   font-size: var(--text-sm);
 }
 
+@media (max-width: 639px) {
+  .searchBox,
+  .field,
+  .select,
+  .copyBox {
+    font-size: 1rem;
+  }
+}
+
 /* Coming up's month labels inside its card ("Date passed", "Oct 2026"). */
 .monthHead {
   display: flex;

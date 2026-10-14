@@ -164,3 +164,17 @@
     transition: none;
   }
 }
+
+@media (forced-colors: active) {
+  .two-pane-menu__rail-item[aria-pressed="true"] .two-pane-menu__indicator,
+  .two-pane-menu__rail-item[data-current="true"] .two-pane-menu__indicator,
+  .two-pane-menu__rail-item[aria-current="page"] .two-pane-menu__indicator {
+    border: 2px solid Highlight;
+  }
+
+  .two-pane-menu__pip {
+    border: 1px solid CanvasText;
+    background: Highlight;
+    forced-color-adjust: none;
+  }
+}

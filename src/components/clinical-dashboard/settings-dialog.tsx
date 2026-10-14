@@ -21,6 +21,7 @@ import {
   BookOpen,
   BriefcaseBusiness,
   Check,
+  ChevronDown,
   ChevronRight,
   CloudOff,
   FlaskConical,
@@ -78,7 +79,14 @@ import {
   subscribePatientProfile,
 } from "@/lib/patient-profile-storage";
 import { clearRecentQueries, countRecentQueries } from "@/lib/recent-query-storage";
-import { cn, floatingControl, InlineNotice, primaryControl, toggleThumbSurface } from "@/components/ui-primitives";
+import {
+  cn,
+  fieldControl,
+  floatingControl,
+  InlineNotice,
+  primaryControl,
+  toggleThumbSurface,
+} from "@/components/ui-primitives";
 import { ProviderBrandMark, type SsoProvider } from "@/components/clinical-dashboard/provider-brand-icons";
 import { ReminderSettingsBlock } from "@/components/clinical-dashboard/settings-reminders";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -86,6 +94,7 @@ import { Select } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { TextField } from "@/components/ui/text-field";
+import { restoreFocusUnlessMoved } from "@/components/use-dismissable-layer";
 import {
   matchingSettingsRowIds,
   matchingSettingsSectionIds,
@@ -279,6 +288,7 @@ export function SettingsDialog({
 }) {
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const guideButtonRef = useRef<HTMLButtonElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // The title bar is sticky inside the scroll region on every breakpoint, so its
   // height is the amount of the scroll port a section would otherwise land
@@ -723,6 +733,28 @@ export function SettingsDialog({
     // visible work if the email form is already open.
   }, [emailEntryOpen, accountEntryMode]);
 
+  useEffect(() => {
+    if (open) {
+      if (
+        typeof document !== "undefined" &&
+        document.activeElement instanceof HTMLElement &&
+        document.activeElement !== document.body &&
+        document.activeElement !== closeButtonRef.current &&
+        document.activeElement !== guideButtonRef.current &&
+        !scrollRef.current?.contains(document.activeElement)
+      ) {
+        triggerRef.current = document.activeElement;
+      }
+      return undefined;
+    }
+    const target = triggerRef.current;
+    if (!target) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      restoreFocusUnlessMoved(target);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
   const closeButton = (
     <button
       ref={closeButtonRef}
@@ -744,6 +776,7 @@ export function SettingsDialog({
       closeLabel="Close settings"
       labelledBy="account-settings-title"
       initialFocusRef={initialFocus === "guide" ? guideButtonRef : closeButtonRef}
+      returnFocusRef={triggerRef}
       mobilePlacement="fullscreen"
       contentClassName="w-full max-w-none border-[color:var(--border-lux)] bg-[color:var(--background)] font-sans shadow-none max-lg:!pb-0 lg:max-w-[940px] lg:bg-[color:var(--surface-lux)] lg:shadow-[var(--shadow-lux)]"
       bodyClassName="p-0"
@@ -1883,6 +1916,33 @@ function SettingsSelect<T extends string>({
   options: ReadonlyArray<{ value: T; label: string }>;
   describedBy?: string;
 }) {
+  if (labelledBy) {
+    return (
+      <div className="relative w-full md:w-56">
+        <select
+          id={id}
+          value={value}
+          aria-labelledby={labelledBy}
+          aria-describedby={describedBy}
+          onChange={(event) => onChange(event.target.value as T)}
+          className={cn(
+            fieldControl,
+            "cursor-pointer appearance-none py-0 pl-3 pr-9 font-semibold text-[color:var(--text-heading)]",
+          )}
+        >
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          aria-hidden="true"
+          className="pointer-events-none absolute right-3 top-1/2 size-icon-sm -translate-y-1/2 text-[color:var(--text-muted)]"
+        />
+      </div>
+    );
+  }
   return (
     <Select
       id={id}

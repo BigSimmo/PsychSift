@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useMemo, useState } from "react";
 import {
   ArrowRight,
   BookOpenText,
@@ -178,159 +178,198 @@ export function DictionaryCataloguePage() {
     () => parseDictionaryCatalogueParams(new URLSearchParams(serializedSearchParams)),
     [serializedSearchParams],
   );
-  const searching = params.q.length > 0;
+  const deferredParams = useDeferredValue(params);
+  const searching = deferredParams.q.length > 0;
   const [filterOpen, setFilterOpen] = useState(false);
   const [letterOpen, setLetterOpen] = useState(false);
 
-  const hits = useMemo(() => dictionaryCatalogue(params), [params]);
-  const hitGroups = useMemo(
-    () => groupHitsByLetter(hits, params.sort === "az" || params.sort === "za"),
-    [hits, params.sort],
+  const filteredEntries = useMemo(() => dictionaryCatalogue(deferredParams), [deferredParams]);
+  const hits = filteredEntries;
+  const groupedByLetter = useMemo(
+    () => groupHitsByLetter(filteredEntries, deferredParams.sort === "az" || deferredParams.sort === "za"),
+    [filteredEntries, deferredParams.sort],
   );
+  const hitGroups = groupedByLetter;
   // Both counts come from the same predicate as the list, so a segment's number
   // is what pressing it actually returns (docs/filter-contract.md). While a
   // query runs they are the matches for that query, not the catalogue totals.
   const scopeCounts = useMemo(
     () =>
       Object.fromEntries(
-        scopeOptions.map((option) => [option.value, dictionaryCatalogue({ ...params, scope: option.value }).length]),
+        scopeOptions.map((option) => [
+          option.value,
+          dictionaryCatalogue({ ...deferredParams, scope: option.value }).length,
+        ]),
       ) as Record<DictionaryCatalogueScope, number>,
-    [params],
+    [deferredParams],
   );
   // Letters the current scope and facets can actually fill. The rest stay
   // visible — the alphabet is a fixed mental model — but inert, so the index can
   // never strand the reader on an empty page.
   const letterCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const hit of dictionaryCatalogue({ ...params, letter: "all" })) {
+    for (const hit of dictionaryCatalogue({ ...deferredParams, letter: "all" })) {
       const initial = dictionaryBrowseLetter(hit);
       counts.set(initial, (counts.get(initial) ?? 0) + 1);
     }
     return counts;
-  }, [params]);
+  }, [deferredParams]);
   const letterTotal = useMemo(
     () => [...letterCounts.values()].reduce((total, count) => total + count, 0),
     [letterCounts],
+  );
+  const categoryCounts = useMemo(
+    () => ({
+      topics: new Map(
+        dictionaryTopics.map((topic) => [
+          topic.slug,
+          dictionaryCatalogue({ ...deferredParams, topics: [topic.slug] }).length,
+        ]),
+      ),
+      kinds: new Map(
+        dictionaryEntryKinds.map((kind) => [kind, dictionaryCatalogue({ ...deferredParams, kinds: [kind] }).length]),
+      ),
+      sources: new Map(
+        dictionarySources.map((source) => [
+          source.id,
+          dictionaryCatalogue({ ...deferredParams, sources: [source.id] }).length,
+        ]),
+      ),
+    }),
+    [deferredParams],
   );
   // Sort lives in the sheet but is not a filter: it reorders rather than
   // narrows, so counting it in the badge would claim results were withheld.
   const activeCount = params.topics.length + params.kinds.length + params.sources.length;
   const noun = catalogueNoun(params.scope, hits.length);
 
-  const clearFilters = () =>
-    replace((next) => {
-      for (const key of ["topic", "kind", "source"]) next.delete(key);
-    });
+  const clearFilters = useCallback(
+    () =>
+      replace((next) => {
+        for (const key of ["topic", "kind", "source"]) next.delete(key);
+      }),
+    [replace],
+  );
   // Clearing the query drops `run` with it, because the shell re-derives the
   // composer's value from the URL on every search-string change and a leftover
   // submitted marker would restore the results view the reader just dismissed.
   // Letter and facets stay: they remain visible under the band / in Filter.
-  const clearQuery = () =>
-    replace((next) => {
-      for (const key of dictionaryClearedQueryKeys) next.delete(key);
-    });
+  const clearQuery = useCallback(
+    () =>
+      replace((next) => {
+        for (const key of dictionaryClearedQueryKeys) next.delete(key);
+      }),
+    [replace],
+  );
 
-  const sortOptions: ResultFilterOption<DictionaryCatalogueSort>[] = [
-    // Relevance ranks against a query. With none, `entryScore` gives every entry
-    // the same flat score, so offering it would be an option that reorders
-    // nothing while looking like it might.
-    ...(searching ? [{ value: "relevance" as const, label: "Best match" }] : []),
-    { value: "az", label: "A–Z" },
-    { value: "za", label: "Z–A" },
-  ];
-
-  const groups = [
-    resultFilterGroup({
-      id: "sort",
-      label: "Sort",
-      value: params.sort,
-      options: sortOptions,
-      onChange: (value) => setOne("sort", value, searching ? "relevance" : "az"),
-      note: "one only",
-    }),
-    resultFilterFacetGroup({
-      id: "topics",
-      label: "Topics",
-      description: "Select one or more governed collections.",
-      selected: new Set(params.topics),
-      options: dictionaryTopics.map((topic) => ({
-        value: topic.slug,
-        label: topic.title,
-        hint: String(dictionaryCatalogue({ ...params, topics: [topic.slug] }).length),
-      })),
-      onToggle: (value) => toggleMany("topic", value),
-    }),
-    resultFilterFacetGroup({
-      id: "kinds",
-      label: "Entry kind",
-      selected: new Set(params.kinds),
-      options: dictionaryEntryKinds.map((kind) => ({
-        value: kind,
-        label: dictionaryKindLabel(kind),
-        hint: String(dictionaryCatalogue({ ...params, kinds: [kind] }).length),
-      })),
-      onToggle: (value) => toggleMany("kind", value),
-    }),
-    resultFilterFacetGroup({
-      id: "sources",
-      // Labelled by the source's own title, not its organisation: five of the
-      // twelve sources are published by Healthdirect Australia, so an
-      // organisation label rendered five identical options that each filtered to
-      // a different single document.
-      label: "Source",
-      selected: new Set(params.sources),
-      options: dictionarySources.map((source) => ({
-        value: source.id,
-        label: source.title,
-        searchText: `${source.title} ${source.organisation}`,
-        hint: String(dictionaryCatalogue({ ...params, sources: [source.id] }).length),
-      })),
-      onToggle: (value) => toggleMany("source", value),
-    }),
-  ];
-
-  const letterGroups = [
-    resultFilterGroup({
-      id: "letter",
-      label: "Jump to letter",
-      value: params.letter,
-      options: [
-        { value: "all", label: "All letters", hint: String(letterTotal) },
-        ...alphabet.map((letter) => ({
-          value: letter,
-          label: letter,
-          hint: String(letterCounts.get(letter) ?? 0),
-          disabled: !letterCounts.has(letter),
+  const groups = useMemo(() => {
+    const sortOptions: ResultFilterOption<DictionaryCatalogueSort>[] = [
+      // Relevance ranks against a query. With none, `entryScore` gives every entry
+      // the same flat score, so offering it would be an option that reorders
+      // nothing while looking like it might.
+      ...(searching ? [{ value: "relevance" as const, label: "Best match" }] : []),
+      { value: "az", label: "A–Z" },
+      { value: "za", label: "Z–A" },
+    ];
+    return [
+      resultFilterGroup({
+        id: "sort",
+        label: "Sort",
+        value: params.sort,
+        options: sortOptions,
+        onChange: (value) => setOne("sort", value, searching ? "relevance" : "az"),
+        note: "one only",
+      }),
+      resultFilterFacetGroup({
+        id: "topics",
+        label: "Topics",
+        description: "Select one or more governed collections.",
+        selected: new Set(params.topics),
+        options: dictionaryTopics.map((topic) => ({
+          value: topic.slug,
+          label: topic.title,
+          hint: String(categoryCounts.topics.get(topic.slug) ?? 0),
         })),
-      ],
-      onChange: (value) => {
-        setOne("letter", value, "all");
-        setLetterOpen(false);
-      },
-      note: "one only",
-    }),
-  ];
+        onToggle: (value) => toggleMany("topic", value),
+      }),
+      resultFilterFacetGroup({
+        id: "kinds",
+        label: "Entry kind",
+        selected: new Set(params.kinds),
+        options: dictionaryEntryKinds.map((kind) => ({
+          value: kind,
+          label: dictionaryKindLabel(kind),
+          hint: String(categoryCounts.kinds.get(kind) ?? 0),
+        })),
+        onToggle: (value) => toggleMany("kind", value),
+      }),
+      resultFilterFacetGroup({
+        id: "sources",
+        // Labelled by the source's own title, not its organisation: five of the
+        // twelve sources are published by Healthdirect Australia, so an
+        // organisation label rendered five identical options that each filtered to
+        // a different single document.
+        label: "Source",
+        selected: new Set(params.sources),
+        options: dictionarySources.map((source) => ({
+          value: source.id,
+          label: source.title,
+          searchText: `${source.title} ${source.organisation}`,
+          hint: String(categoryCounts.sources.get(source.id) ?? 0),
+        })),
+        onToggle: (value) => toggleMany("source", value),
+      }),
+    ];
+  }, [searching, params.sort, params.topics, params.kinds, params.sources, categoryCounts, setOne, toggleMany]);
 
-  const appliedFilters = [
-    ...params.topics.map((slug) => ({
-      id: `topic-${slug}`,
-      groupLabel: "Topic",
-      valueLabel: findDictionaryTopic(slug)?.title ?? slug,
-      onRemove: () => toggleMany("topic", slug),
-    })),
-    ...params.kinds.map((kind) => ({
-      id: `kind-${kind}`,
-      groupLabel: "Kind",
-      valueLabel: dictionaryKindLabel(kind),
-      onRemove: () => toggleMany("kind", kind),
-    })),
-    ...params.sources.map((sourceId) => ({
-      id: `source-${sourceId}`,
-      groupLabel: "Source",
-      valueLabel: dictionarySources.find((source) => source.id === sourceId)?.title ?? sourceId,
-      onRemove: () => toggleMany("source", sourceId),
-    })),
-  ];
+  const letterGroups = useMemo(
+    () => [
+      resultFilterGroup({
+        id: "letter",
+        label: "Jump to letter",
+        value: params.letter,
+        options: [
+          { value: "all", label: "All letters", hint: String(letterTotal) },
+          ...alphabet.map((letter) => ({
+            value: letter,
+            label: letter,
+            hint: String(letterCounts.get(letter) ?? 0),
+            disabled: !letterCounts.has(letter),
+          })),
+        ],
+        onChange: (value) => {
+          setOne("letter", value, "all");
+          setLetterOpen(false);
+        },
+        note: "one only",
+      }),
+    ],
+    [params.letter, letterTotal, letterCounts, setOne],
+  );
+
+  const appliedFilters = useMemo(
+    () => [
+      ...params.topics.map((slug) => ({
+        id: `topic-${slug}`,
+        groupLabel: "Topic",
+        valueLabel: findDictionaryTopic(slug)?.title ?? slug,
+        onRemove: () => toggleMany("topic", slug),
+      })),
+      ...params.kinds.map((kind) => ({
+        id: `kind-${kind}`,
+        groupLabel: "Kind",
+        valueLabel: dictionaryKindLabel(kind),
+        onRemove: () => toggleMany("kind", kind),
+      })),
+      ...params.sources.map((sourceId) => ({
+        id: `source-${sourceId}`,
+        groupLabel: "Source",
+        valueLabel: dictionarySources.find((source) => source.id === sourceId)?.title ?? sourceId,
+        onRemove: () => toggleMany("source", sourceId),
+      })),
+    ],
+    [params.topics, params.kinds, params.sources, toggleMany],
+  );
 
   /* One equal-layout rail: both catalogue scopes have identical geometry while
      the shared primitive owns radio semantics, arrow-key navigation, focus and
@@ -644,32 +683,48 @@ function topicMatches(topicSlug: string, query: string, kinds: readonly Dictiona
 
 export function DictionaryTopicsPage() {
   const { searchParams, replace, setOne, toggleMany } = useDictionaryUrl();
+  const serializedParams = searchParams.toString();
   const query = searchParams.get("q") ?? "";
-  const kinds = searchParams
-    .getAll("kind")
-    .filter((kind): kind is DictionaryEntryKind => dictionaryEntryKinds.includes(kind as DictionaryEntryKind));
+  const deferredQuery = useDeferredValue(query);
+  const kinds = useMemo(
+    () =>
+      new URLSearchParams(serializedParams)
+        .getAll("kind")
+        .filter((kind): kind is DictionaryEntryKind => dictionaryEntryKinds.includes(kind as DictionaryEntryKind)),
+    [serializedParams],
+  );
   const sort = searchParams.get("sort") === "za" ? "za" : "az";
   const [filterOpen, setFilterOpen] = useState(false);
   // Clears both narrowing inputs: `kind` from the filter sheet and a `q` carried
   // in from a deep link. Either one alone can empty the list, so a Clear that
   // only dropped `kind` would leave a `?q=` visitor stuck on an empty page.
-  const clearTopicFilters = () =>
-    replace((next) => {
-      next.delete("kind");
-      next.delete("q");
-    });
-  const visible = dictionaryTopics
-    .filter((topic) => topicMatches(topic.slug, query, kinds))
-    .sort((a, b) => (sort === "az" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)));
-  const groups = [
-    resultFilterFacetGroup({
-      id: "kinds",
-      label: "Entry kind",
-      selected: new Set(kinds),
-      options: dictionaryEntryKinds.map((kind) => ({ value: kind, label: dictionaryKindLabel(kind) })),
-      onToggle: (value) => toggleMany("kind", value),
-    }),
-  ];
+  const clearTopicFilters = useCallback(
+    () =>
+      replace((next) => {
+        next.delete("kind");
+        next.delete("q");
+      }),
+    [replace],
+  );
+  const visible = useMemo(
+    () =>
+      dictionaryTopics
+        .filter((topic) => topicMatches(topic.slug, deferredQuery, kinds))
+        .sort((a, b) => (sort === "az" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title))),
+    [deferredQuery, kinds, sort],
+  );
+  const groups = useMemo(
+    () => [
+      resultFilterFacetGroup({
+        id: "kinds",
+        label: "Entry kind",
+        selected: new Set(kinds),
+        options: dictionaryEntryKinds.map((kind) => ({ value: kind, label: dictionaryKindLabel(kind) })),
+        onToggle: (value) => toggleMany("kind", value),
+      }),
+    ],
+    [kinds, toggleMany],
+  );
   return (
     <>
       <InformationPageShell width="bleed" gap={false} testId="dictionary-topics-main">
@@ -850,38 +905,56 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
   const router = useRouter();
   const sectionNav = useInPageSectionNav(topicDetailSections);
   const { searchParams, replace, setOne, toggleMany } = useDictionaryUrl();
+  const serializedParams = searchParams.toString();
   const query = (searchParams.get("q") ?? "").trim().toLocaleLowerCase();
-  const kinds = searchParams
-    .getAll("kind")
-    .filter((kind): kind is DictionaryEntryKind => dictionaryEntryKinds.includes(kind as DictionaryEntryKind));
+  const deferredQuery = useDeferredValue(query);
+  const kinds = useMemo(
+    () =>
+      new URLSearchParams(serializedParams)
+        .getAll("kind")
+        .filter((kind): kind is DictionaryEntryKind => dictionaryEntryKinds.includes(kind as DictionaryEntryKind)),
+    [serializedParams],
+  );
   const sort = searchParams.get("sort") === "za" ? "za" : "az";
   const [filterOpen, setFilterOpen] = useState(false);
+  const topicEntries = useMemo(() => (topic ? dictionaryTopicEntries(topic) : []), [topic]);
+  const entries = useMemo(
+    () =>
+      topicEntries
+        .filter(
+          (entry) =>
+            (!deferredQuery ||
+              `${entry.term} ${entry.definition} ${entry.aliases.map((alias) => alias.value).join(" ")}`
+                .toLocaleLowerCase()
+                .includes(deferredQuery)) &&
+            (!kinds.length || kinds.includes(entry.kind)),
+        )
+        .sort((a, b) => (sort === "az" ? a.term.localeCompare(b.term) : b.term.localeCompare(a.term))),
+    [topicEntries, deferredQuery, kinds, sort],
+  );
+  const grouped = useMemo(
+    () =>
+      dictionaryEntryKinds
+        .map((kind) => ({ kind, entries: entries.filter((entry) => entry.kind === kind) }))
+        .filter((group) => group.entries.length),
+    [entries],
+  );
+  const groups = useMemo(
+    () => [
+      resultFilterFacetGroup({
+        id: "kinds",
+        label: "Entry kind",
+        selected: new Set(kinds),
+        options: Array.from(new Set(topicEntries.map((entry) => entry.kind))).map((kind) => ({
+          value: kind,
+          label: dictionaryKindLabel(kind),
+        })),
+        onToggle: (value) => toggleMany("kind", value),
+      }),
+    ],
+    [kinds, topicEntries, toggleMany],
+  );
   if (!topic) return null;
-  const entries = dictionaryTopicEntries(topic)
-    .filter(
-      (entry) =>
-        (!query ||
-          `${entry.term} ${entry.definition} ${entry.aliases.map((alias) => alias.value).join(" ")}`
-            .toLocaleLowerCase()
-            .includes(query)) &&
-        (!kinds.length || kinds.includes(entry.kind)),
-    )
-    .sort((a, b) => (sort === "az" ? a.term.localeCompare(b.term) : b.term.localeCompare(a.term)));
-  const grouped = dictionaryEntryKinds
-    .map((kind) => ({ kind, entries: entries.filter((entry) => entry.kind === kind) }))
-    .filter((group) => group.entries.length);
-  const groups = [
-    resultFilterFacetGroup({
-      id: "kinds",
-      label: "Entry kind",
-      selected: new Set(kinds),
-      options: Array.from(new Set(dictionaryTopicEntries(topic).map((entry) => entry.kind))).map((kind) => ({
-        value: kind,
-        label: dictionaryKindLabel(kind),
-      })),
-      onToggle: (value) => toggleMany("kind", value),
-    }),
-  ];
   return (
     <>
       <InPageNavHeader

@@ -77,25 +77,14 @@ export function isInformationPage(pathname: string): boolean {
   // information page is also what stops the shell drawing a second bar over the
   // top. The two facts are one fact, which is why they share this line.
   //
-  // `isSlugDetail` covers the single-segment children and excludes nothing that
-  // still exists: `search` was in the shared `TOOL_SUFFIXES` set and that route
-  // is gone. `/on-call` itself is the bare path, not a slug detail, so it needs
-  // its own test.
-  if (isSlugDetail(pathname, "/on-call")) return true;
-  if (pathname === "/on-call") return true;
+  if (pathname === "/on-call" || (pathname.startsWith("/on-call/") && pathname.length > "/on-call/".length))
+    return true;
   // Every CME route, the mode home included, for On Call's reason exactly: the
   // mode declares no search surface, so it has no composer on any page and this
-  // is what keeps the shell from mounting one. `isSlugDetail` covers the
-  // single-segment children (`/cme/log`, `/cme/new`, `/cme/routines`,
-  // `/cme/plan`, `/cme/programme`, `/cme/setup`, `/cme/customise`) and `/cme`
-  // itself is the bare path rather than a slug detail, so it needs its own test.
-  // One entry (`/cme/log/[id]`) is two segments deep and `isSlugDetail` stops
-  // short of it, so it is named separately — the entry record is the most
-  // read-focused page in the mode and must not be the only one wearing a
-  // composer.
-  if (isSlugDetail(pathname, "/cme")) return true;
-  if (pathname === "/cme") return true;
-  if (pathname.startsWith("/cme/log/") && !pathname.slice("/cme/log/".length).includes("/")) return true;
+  // is what keeps the shell from mounting one. Match the mode root and any
+  // nested sub-route under `/cme/` (including `/cme/log/[id]` and deep training
+  // or programme routes) so no child route inherits a shell search composer.
+  if (pathname === "/cme" || (pathname.startsWith("/cme/") && pathname.length > "/cme/".length)) return true;
   // The Psychiatry dashboard and its own pages (the MHA clock), for On Call's
   // reason: the mode declares no search surface, so none of them may wear a
   // composer. The sections it links to keep their own routes and their own
@@ -111,11 +100,8 @@ export function isInformationPage(pathname: string): boolean {
   // Its pages also own their in-page header (`InPageNavHeader`, the
   // DocumentViewer template) rather than the shared mode-nav bar, so being an
   // information page is also what stops the shell drawing a second bar over
-  // the top. `isSlugDetail` covers the single-segment children (`/roster/shifts`,
-  // `/roster/settings`, `/roster/calendar`) and `/roster` itself is the bare
-  // path rather than a slug detail, so it needs its own test.
-  if (isSlugDetail(pathname, "/roster")) return true;
-  if (pathname === "/roster") return true;
+  // the top.
+  if (pathname === "/roster" || (pathname.startsWith("/roster/") && pathname.length > "/roster/".length)) return true;
   // Every Open shifts route, the mode home included, for Roster's reason: the
   // mode declares no search surface, so no route may wear a composer.
   if (pathname === "/open-shifts" || pathname.startsWith("/open-shifts/")) return true;

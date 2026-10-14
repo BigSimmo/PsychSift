@@ -250,7 +250,7 @@ function ResultScreen({
   onRestart,
   onExit,
 }: {
-  calc: CalculatorFixture;
+  calc: CalculatorFixture & { disclaimer?: string };
   answers: AnswerMap;
   onRestart: () => void;
   onExit: () => void;
@@ -271,6 +271,10 @@ function ResultScreen({
           <SeverityPill tone={derived.result.tone} label={derived.result.label} />
         </div>
         <ScoreBandBar calc={calc} score={derived.score} started />
+        <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+          {calc.disclaimer ??
+            "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument."}
+        </p>
         {derived.result.guidance ? (
           <p className="rounded-lg bg-[color:var(--surface-inset)] p-3 text-left text-sm-minus font-medium leading-5 text-[color:var(--text)]">
             {derived.result.guidance}

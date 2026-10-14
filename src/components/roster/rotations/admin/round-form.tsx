@@ -21,6 +21,7 @@ import { formatTermDates } from "@/components/roster/rotations/rotation-format";
 import { useRotations, type RotationsRead } from "@/components/roster/rotations/use-rotations";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { announce } from "@/components/ui/live-announcer";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, controlDisabled } from "@/components/ui-primitives";
 import type { ManagedRound } from "@/lib/roster/rotations/model";
 import { zonedDateOf } from "@/lib/work-time/format";
@@ -211,6 +212,8 @@ export function RoundForm({
   const [step, setStep] = useState<FormStep>("terms");
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const isDirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
+  useDirtyStateGuard(isDirty && !busy);
   const now = useRosterNow();
   const toast = useWorkUndoToast();
   const makeId = useIdMaker(read.source);

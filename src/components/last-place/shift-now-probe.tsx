@@ -6,13 +6,31 @@ import { kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { summariseToday } from "@/lib/roster/today";
 
+export function hasSupabaseAuthSession(): boolean {
+  if (typeof document === "undefined") return false;
+  if (/(?:^|;\s*)sb-[^=;]+-auth-token(?:[.\d]*)=/.test(document.cookie)) {
+    return true;
+  }
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && /^sb-.*-auth-token$/.test(key)) {
+        return true;
+      }
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return false;
+}
+
 /**
  * Reads the doctor's own roster once, and reports whether a real shift (not
  * the example roster) is running right now. The same roster read and the same
  * "on now" rule My Day uses for its hero.
  */
-export function ShiftNowProbe({ onResult }: { readonly onResult: (onShiftNow: boolean) => void }) {
-  const roster = useRosterShifts();
+function ShiftNowProbeActive({ onResult }: { readonly onResult: (onShiftNow: boolean) => void }) {
+  const roster = useRosterShifts(undefined, { skipWhenUnauthenticated: true });
   const reported = useRef(false);
   useEffect(() => {
     if (reported.current) return;
@@ -34,4 +52,17 @@ export function ShiftNowProbe({ onResult }: { readonly onResult: (onShiftNow: bo
     onResult(today.lead.state === "on_now");
   }, [roster.status, roster.teamLoading, roster.sample, roster.demoMode, roster.shifts, onResult]);
   return null;
+}
+
+export function ShiftNowProbe({ onResult }: { readonly onResult: (onShiftNow: boolean) => void }) {
+  const requiresAuth = Boolean((useRosterShifts as { requiresAuthProbe?: boolean }).requiresAuthProbe);
+  const canProbe = !requiresAuth || hasSupabaseAuthSession();
+  const reported = useRef(false);
+  useEffect(() => {
+    if (canProbe || reported.current) return;
+    reported.current = true;
+    onResult(false);
+  }, [canProbe, onResult]);
+  if (!canProbe) return null;
+  return <ShiftNowProbeActive onResult={onResult} />;
 }
