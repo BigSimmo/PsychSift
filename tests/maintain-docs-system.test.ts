@@ -49,6 +49,12 @@ describe("maintain-docs-system pipeline", () => {
           expectedResolved: "source-intake",
         },
         {
+          input: "src/lib/sources/registry.ts",
+          expectedSystem: "clinical-modes",
+          expectedSystemFile: "docs/organisation/systems/clinical-modes.json",
+          expectedResolved: "clinical-content",
+        },
+        {
           input: "docs/source-governance.md",
           expectedSystem: "sources-and-ingestion",
           expectedSystemFile: "docs/organisation/systems/sources-and-ingestion.json",

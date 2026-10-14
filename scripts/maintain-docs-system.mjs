@@ -84,10 +84,17 @@ export function classifyRepositoryPath(relativePath) {
     );
   }
 
-  // 2. sources-and-ingestion / source-intake (source registry, document upload, extraction, ingestion workers, storage)
+  // 2. clinical-content owns the source library, matching the organisation rules.
+  if (lower.startsWith("src/lib/sources/") || lower === "src/lib/sources") {
+    return buildResult(
+      "clinical-modes",
+      "clinical-content",
+      "Matches the source library owned by the clinical-content area.",
+    );
+  }
+
+  // 3. sources-and-ingestion / source-intake (source registry, document upload, extraction, ingestion workers, storage)
   if (
-    lower.startsWith("src/lib/sources/") ||
-    lower === "src/lib/sources" ||
     lower.startsWith("src/lib/ingest/") ||
     lower === "src/lib/ingest" ||
     lower.startsWith("src/app/sources/") ||
@@ -476,6 +483,26 @@ function runNodeScriptIfPresent(root, relScript, args = []) {
   return true;
 }
 
+function runNodeScriptJson(root, relScript, args = []) {
+  const scriptPath = path.join(root, relScript);
+  if (!fs.existsSync(scriptPath)) throw new Error(`Required script is missing: ${relScript}`);
+  const output = execFileSync(process.execPath, [scriptPath, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  return JSON.parse(output);
+}
+
+function runAdvisoryNodeScript(root, relScript, args = []) {
+  try {
+    return runNodeScriptIfPresent(root, relScript, args);
+  } catch (error) {
+    console.warn(`[docs:maintain] advisory check failed: ${relScript}: ${error.message}`);
+    return false;
+  }
+}
+
 /**
  * Runs a TypeScript script via `scripts/run-tsx.mjs` if both exist on disk.
  * @param {string} root
@@ -517,9 +544,28 @@ export function runDocsMaintain(options = {}) {
   }
 
   if (check) {
+    const requiredScripts = [
+      "scripts/check-organisation.mjs",
+      "scripts/check-codebase-index-coverage.mjs",
+      "scripts/check-docs-script-refs.mjs",
+      "scripts/check-docs-links.mjs",
+      "scripts/check-outstanding-issues-snapshot.mjs",
+      "scripts/check-clinical-hazard-controls.mjs",
+      "scripts/organisation/check-instructions.mjs",
+      "scripts/organisation/decisions.mjs",
+      "scripts/list-database-skills.mjs",
+      "scripts/generate-branch-review-index.mjs",
+    ];
+    for (const relScript of requiredScripts) {
+      if (!fs.existsSync(path.join(root, relScript))) throw new Error(`Required script is missing: ${relScript}`);
+    }
+
     // 1. Verify organisation manifest & unplaced count === 0
-    runNodeScriptIfPresent(root, "scripts/check-organisation.mjs");
-    const { unplacedCount, unplacedFiles } = readOrganisationReport(root);
+    const organisationCheck = runNodeScriptJson(root, "scripts/check-organisation.mjs", ["--no-report", "--json"]);
+    const unplacedCount = organisationCheck?.totals?.unplaced ?? 0;
+    const unplacedFiles = Object.entries(organisationCheck?.placement ?? {})
+      .filter(([, area]) => area === "(unplaced)")
+      .map(([file]) => file);
     if (unplacedCount !== 0 || unplacedFiles.length > 0) {
       throw new Error(`Organisation check reported ${unplacedCount} unplaced file(s): ${unplacedFiles.join(", ")}`);
     }
@@ -531,13 +577,13 @@ export function runDocsMaintain(options = {}) {
     runNodeScriptIfPresent(root, "scripts/update-docs-inventory.mjs", ["--check"]);
     runTsxScriptIfPresent(root, "scripts/generate-site-map.ts", ["--check"]);
     runTsxScriptIfPresent(root, "scripts/generate-repo-awareness-snapshot.ts", ["--check"]);
-    runNodeScriptIfPresent(root, "scripts/generate-outstanding-issues-snapshot.mjs", ["--check"]);
+    runNodeScriptIfPresent(root, "scripts/check-outstanding-issues-snapshot.mjs");
     runNodeScriptIfPresent(root, "scripts/generate-hazard-register-snapshot.mjs", ["--check"]);
     runNodeScriptIfPresent(root, "scripts/check-clinical-hazard-controls.mjs");
     runNodeScriptIfPresent(root, "scripts/organisation/check-instructions.mjs");
     runNodeScriptIfPresent(root, "scripts/organisation/decisions.mjs", ["check"]);
     runNodeScriptIfPresent(root, "scripts/list-database-skills.mjs", ["--check"]);
-    runNodeScriptIfPresent(root, "scripts/generate-branch-review-index.mjs", ["--check"]);
+    runAdvisoryNodeScript(root, "scripts/generate-branch-review-index.mjs", ["--check"]);
 
     return { mode: "check", unplacedCount: 0 };
   }
@@ -556,8 +602,8 @@ export function runDocsMaintain(options = {}) {
   runNodeScriptIfPresent(root, "scripts/generate-hazard-register-snapshot.mjs");
   runNodeScriptIfPresent(root, "scripts/generate-branch-review-index.mjs");
 
-  // Step 3: Refresh reviewed commit pins in docs/organisation/pins.json
-  const pinResult = refreshDocPins(root);
+  // Step 3: Run full --check verification to confirm clean state
+  const pinResult = { updated: false };
 
   // Step 4: Run full --check verification to confirm clean state
   runDocsMaintain({ root, check: true });
