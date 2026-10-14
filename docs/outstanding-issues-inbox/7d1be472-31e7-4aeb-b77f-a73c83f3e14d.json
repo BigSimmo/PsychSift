@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "7d1be472-31e7-4aeb-b77f-a73c83f3e14d",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#NB4SHF",
+    "outcome": "Resolved: Unified On Call components to resolve labels, glyphs, and destinations from onCallViewForEntry view abstraction.",
+    "baseRowFingerprint": "2f26e21013ffb430854053ba805d47b0dda50569d95fbf20804f78b32b0016f2"
+  }
+}

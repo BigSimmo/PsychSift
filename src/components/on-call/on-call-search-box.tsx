@@ -133,7 +133,7 @@ function SearchResultGroup({ view, results }: { view: OnCallPageView; results: r
 function groupByView(results: readonly OnCallSearchResult[]): Array<[OnCallPageView, OnCallSearchResult[]]> {
   const groups = new Map<OnCallPageView, OnCallSearchResult[]>();
   for (const result of results) {
-    const view = onCallViewForEntry(result.entry);
+    const view = result.entry.view ?? onCallViewForEntry(result.entry);
     const existing = groups.get(view);
     if (existing) existing.push(result);
     else groups.set(view, [result]);

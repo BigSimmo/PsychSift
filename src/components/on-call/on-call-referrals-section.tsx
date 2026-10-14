@@ -131,7 +131,7 @@ export function OnCallReferralsSection({
   onEditEntry,
   onVerified,
 }: OnCallReferralsSectionProps) {
-  const allReferrals = entries.filter((entry) => entry.section === "referrals");
+  const allReferrals = entries.filter((entry) => (entry.view ?? entry.section) === "referrals");
 
   if (allReferrals.length === 0) {
     return (

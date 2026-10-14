@@ -330,7 +330,7 @@ function whoIsWhoGroups(entries: readonly OnCallEntry[]): Group[] {
 
 /** Playbook: the scenarios, then the ones with nothing linked. */
 function playbookGroups(entries: readonly OnCallEntry[], linkedIds: ReadonlySet<string>): Group[] {
-  const playbook = entries.filter((entry) => entry.section === "playbook");
+  const playbook = entries.filter((entry) => (entry.view ?? entry.section) === "playbook");
   const linked = playbook.filter((entry) => entry.linkedDocumentIds.some((id) => linkedIds.has(id)));
   const unlinked = playbook.filter((entry) => !entry.linkedDocumentIds.some((id) => linkedIds.has(id)));
   const groups: Group[] = [];
@@ -362,7 +362,7 @@ function playbookGroups(entries: readonly OnCallEntry[], linkedIds: ReadonlySet<
  * for it, and the two stopped being the same list the moment folders existed.
  */
 function referralTagGroups(entries: readonly OnCallEntry[]): Group[] {
-  const sorted = sortOnCallEntries(entries.filter((entry) => entry.section === "referrals"));
+  const sorted = sortOnCallEntries(entries.filter((entry) => (entry.view ?? entry.section) === "referrals"));
   return onCallEntryGroups(sorted, onCallTagFacet, "Other services").map((group) => ({
     slug: group.slug,
     label: group.label,
@@ -405,7 +405,7 @@ export const onCallOrientationCategoryFacet: OnCallFacetReader = (entry) => {
 
 /** Orientation: one group per folder, in the shelf's own order. */
 function orientationGroups(entries: readonly OnCallEntry[]): Group[] {
-  const sorted = sortOnCallEntries(entries.filter((entry) => entry.section === "orientation"));
+  const sorted = sortOnCallEntries(entries.filter((entry) => (entry.view ?? entry.section) === "orientation"));
   return onCallEntryGroups(sorted, onCallOrientationCategoryFacet, ON_CALL_ORIENTATION_UNFILED_LABEL).map((group) => ({
     slug: group.slug,
     label: group.label,

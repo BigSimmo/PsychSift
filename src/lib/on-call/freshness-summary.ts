@@ -91,7 +91,7 @@ export function summariseOnCallFreshness(
     const freshness = onCallEntryFreshness(entry, now);
     if (freshness.state !== "stale") continue;
     stale.push({ entry, freshness });
-    const view = onCallViewForEntry(entry);
+    const view = entry.view ?? onCallViewForEntry(entry);
     bySection.set(view, (bySection.get(view) ?? 0) + 1);
     if (freshness.reason === "never-verified") neverVerifiedCount += 1;
     else overdueCount += 1;

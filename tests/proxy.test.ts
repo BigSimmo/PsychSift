@@ -221,6 +221,11 @@ describe("developer-area header (x-developer-area)", () => {
       "/mockups/care-plan/patients/SYN-PATIENT-001/presentations",
     );
 
+    const adminDevRequest = requestFor("/admin/developer-hub");
+    const adminDevResponse = await proxy(adminDevRequest);
+    expect(adminDevResponse.headers.get("x-middleware-request-x-developer-area")).toBe("1");
+    expect(adminDevResponse.headers.get("x-middleware-request-x-developer-area-path")).toBe("/admin/developer-hub");
+
     const carePlanLookAlikeResponse = await proxy(requestFor("/mockups/care-plan-archive"));
     expect(carePlanLookAlikeResponse.headers.get("x-middleware-request-x-developer-area")).toBeNull();
 

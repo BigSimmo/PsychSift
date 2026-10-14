@@ -301,6 +301,271 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
     });
   });
 
+  describe("pending add ordering", () => {
+    it("planRequestBatch applies an add before a mutation of its issue even when the mutation's UUID sorts first", () => {
+      const close = {
+        version: 1,
+        id: "0000aaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: { id: "#ABC123", outcome: "Resolved in PR #3510" },
+      };
+      const add = {
+        version: 1,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: { pri: "P2", type: "task", summary: "New issue", issueUlid: "01M31F4Y1HABC123DBX940FYMC" },
+      };
+      const plan = planRequestBatch([close, add]);
+      expect(plan.active.map((request) => (request as { action: string }).action)).toEqual(["add", "done"]);
+    });
+
+    it("disambiguates mutations targeting pending adds that share a 6-character prefix when targetUlid is specified", () => {
+      const add1 = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "First add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123DBX940FYMC",
+        },
+      };
+      const add2 = {
+        version: 2,
+        id: "ffffaaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Second add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123AAAAAAAAAA",
+        },
+      };
+      const closeSecond = {
+        version: 2,
+        id: "0000aaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#ABC123",
+          targetUlid: "01M31F4Y1HABC123AAAAAAAAAA",
+          outcome: "Resolved second add in PR #3510",
+        },
+      };
+
+      const result = applyRequestBatch(BASE_LEDGER, [add1, add2, closeSecond]);
+      const parsed = parseIssues(result.markdown);
+
+      // add1 should be allocated #ABC123 and stay in Open items
+      const openRows = parsed.rows.filter((r) => r.table === "open");
+      const add1Row = openRows.find((r) => r.ulid === "01M31F4Y1HABC123DBX940FYMC");
+      expect(add1Row).toBeDefined();
+      expect(add1Row?.id).toBe("#ABC123");
+
+      // add2 should be allocated #ABC123A and be resolved in Archive
+      const archiveRows = parsed.rows.filter((r) => r.table === "archive");
+      const add2Row = archiveRows.find((r) => r.ulid === "01M31F4Y1HABC123AAAAAAAAAA");
+      expect(add2Row).toBeDefined();
+      expect(add2Row?.id).toBe("#ABC123A");
+      expect(add2Row?.raw).toContain("Resolved second add in PR #3510");
+    });
+
+    it("rejects an ambiguous mutation targeting pending adds sharing a prefix when targetUlid is omitted", () => {
+      const add1 = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "First add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123DBX940FYMC",
+        },
+      };
+      const add2 = {
+        version: 2,
+        id: "ffffaaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Second add sharing prefix",
+          issueUlid: "01M31F4Y1HABC123AAAAAAAAAA",
+        },
+      };
+      const closeAmbiguous = {
+        version: 2,
+        id: "0000aaaa-3333-4333-8333-333333333333",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#ABC123",
+          outcome: "Ambiguous close without targetUlid",
+        },
+      };
+
+      expect(() => planRequestBatch([add1, add2, closeAmbiguous])).toThrow(
+        /targets ambiguous display ID #ABC123; multiple pending adds share this prefix/,
+      );
+    });
+
+    it("rejects an explicit targetUlid that does not match the single matching pending add", () => {
+      const add = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Only add",
+          issueUlid: "01M31F4Y1HABC123DBX940FYMC",
+        },
+      };
+      const closeMismatched = {
+        version: 2,
+        id: "0000aaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#ABC123",
+          targetUlid: "01M31F4Y1HABC1239999999999",
+          outcome: "Mismatched close",
+        },
+      };
+
+      expect(() => planRequestBatch([add, closeMismatched])).toThrow(
+        /targets ULID 01M31F4Y1HABC1239999999999 which does not match pending add/,
+      );
+    });
+
+    it("allows existing-row mutations when unrelated pending adds share its display-ID prefix", () => {
+      const add1 = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "New add 1 sharing prefix DREDWA",
+          issueUlid: "01M09A9WXBDREDWA1111111111",
+        },
+      };
+      const add2 = {
+        version: 2,
+        id: "ffffaaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "New add 2 sharing prefix DREDWA",
+          issueUlid: "01M09A9WXBDREDWA2222222222",
+        },
+      };
+      const closeExisting = {
+        version: 2,
+        id: "0000aaaa-4444-4444-8444-444444444444",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#DREDWA",
+          targetUlid: "01M09A9WXBDREDWA7KN2EB1JRA",
+          baseRowFingerprint: issueRowFingerprint(BASE_LEDGER, "#DREDWA"),
+          outcome: "Closed existing issue",
+        },
+      };
+
+      const plan = planRequestBatch([add1, add2, closeExisting]);
+      expect(plan.active).toHaveLength(3);
+
+      const result = applyRequestBatch(BASE_LEDGER, [add1, add2, closeExisting]);
+      const parsed = parseIssues(result.markdown);
+      const archived = parsed.rows.find((r) => r.ulid === "01M09A9WXBDREDWA7KN2EB1JRA");
+      expect(archived?.table).toBe("archive");
+      expect(archived?.id).toBe("#DREDWA");
+    });
+
+    it("correctly closes a colliding new issue when an existing issue already has its prefix", () => {
+      const collidingAdd = {
+        version: 2,
+        id: "ffffaaaa-5555-4555-8555-555555555555",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Colliding add with DREDWA prefix",
+          issueUlid: "01M09A9WXBDREDWA1111111111",
+        },
+      };
+      const closeColliding = {
+        version: 2,
+        id: "0000aaaa-5555-4555-8555-555555555555",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#DREDWA",
+          targetUlid: "01M09A9WXBDREDWA1111111111",
+          outcome: "Closed colliding new add",
+        },
+      };
+
+      const result = applyRequestBatch(BASE_LEDGER, [collidingAdd, closeColliding]);
+      const parsed = parseIssues(result.markdown);
+
+      // Existing issue #DREDWA should remain open
+      const existingRow = parsed.rows.find((r) => r.ulid === "01M09A9WXBDREDWA7KN2EB1JRA");
+      expect(existingRow?.table).toBe("open");
+      expect(existingRow?.id).toBe("#DREDWA");
+
+      // Colliding new add should have been allocated a length-7 ID and resolved
+      const collidingRow = parsed.rows.find((r) => r.ulid === "01M09A9WXBDREDWA1111111111");
+      expect(collidingRow?.table).toBe("archive");
+      expect(collidingRow?.id).toBe("#DREDWA1");
+      expect(collidingRow?.raw).toContain("Closed colliding new add");
+    });
+
+    it("allows archived-row done when a pending add shares its display-ID prefix", () => {
+      const add = {
+        version: 2,
+        id: "ffffaaaa-6666-4666-8666-666666666666",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "New add with DREDWA prefix",
+          issueUlid: "01M09A9WXBDREDWA1111111111",
+        },
+      };
+      const doneArchived = {
+        version: 2,
+        id: "0000aaaa-6666-4666-8666-666666666666",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#DREDWA",
+          targetUlid: "01M09A9WXBDREDWA7KN2EB1JRA",
+          allowArchived: true,
+          targetTable: "archive",
+          outcome: "Merged outcome note",
+        },
+      };
+
+      const plan = planRequestBatch([add, doneArchived]);
+      expect(plan.active).toHaveLength(2);
+    });
+  });
+
   describe("concurrent duplicate done requests in a batch", () => {
     it("planRequestBatch does not flag duplicate done requests as mutation conflicts", () => {
       const req1 = {

@@ -4,10 +4,13 @@ import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateA
 
 import {
   clearPersistedAnswerThread,
+  guestAnswerThreadOwnerId,
   loadPersistedAnswerThread,
+  savePersistedAnswerThread,
   type PersistedAnswerThread,
   type StoredAnswerTurn,
 } from "@/lib/answer-thread-storage";
+import { demoRecentQueryOwnerId } from "@/lib/recent-query-storage";
 import type { ClientRagAnswerPayload, ClientSearchResult } from "@/lib/answer-client-payload";
 
 import type { AnswerThreadSnapshotMetadata } from "@/components/clinical-dashboard/use-persisted-answer-thread";
@@ -84,10 +87,21 @@ export function useAnswerThreadBootstrap({
 }) {
   const previousAnswerThreadOwnerIdRef = useRef(answerThreadOwnerId);
   useEffect(() => {
+    activeAnswerThreadOwnerIdRef.current = answerThreadOwnerId ?? null;
     const previousOwnerId = previousAnswerThreadOwnerIdRef.current;
     previousAnswerThreadOwnerIdRef.current = answerThreadOwnerId;
-    activeAnswerThreadOwnerIdRef.current = answerThreadOwnerId;
-    if (!previousOwnerId || previousOwnerId === answerThreadOwnerId) return;
+    const isGuestDemoTransition =
+      (previousOwnerId === guestAnswerThreadOwnerId && answerThreadOwnerId === demoRecentQueryOwnerId) ||
+      (previousOwnerId === demoRecentQueryOwnerId && answerThreadOwnerId === guestAnswerThreadOwnerId);
+    if (!previousOwnerId || previousOwnerId === answerThreadOwnerId || isGuestDemoTransition) {
+      if (isGuestDemoTransition && answerThreadOwnerId) {
+        const currentThread = loadPersistedAnswerThread(previousOwnerId, { expectedSubmissionSignature });
+        if (currentThread) {
+          savePersistedAnswerThread(answerThreadOwnerId, currentThread);
+        }
+      }
+      return;
+    }
     clearPersistedAnswerThread(previousOwnerId);
     if (answerThreadOwnerId) clearPersistedAnswerThread(answerThreadOwnerId);
     answerThreadBootstrappedRef.current = false;
@@ -105,6 +119,7 @@ export function useAnswerThreadBootstrap({
     activeAnswerThreadOwnerIdRef,
     answerThreadBootstrappedRef,
     answerThreadOwnerId,
+    expectedSubmissionSignature,
     latestAnswerSnapshotMetadataRef,
     latestAnswerTurnRef,
     setAnswer,

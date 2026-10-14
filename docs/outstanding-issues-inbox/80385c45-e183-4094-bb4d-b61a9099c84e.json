@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "80385c45-e183-4094-bb4d-b61a9099c84e",
+  "createdOn": "2026-10-14",
+  "action": "update",
+  "payload": {
+    "id": "#CFHRJY",
+    "detail": "In src/components/clinical-dashboard/document-search-results.tsx (which has a 30-result initial progressive reveal) and src/components/differentials/differential-stream-workspace.tsx, evaluate virtualization or DOM recycling for large query results exceeding initial reveal limits to prevent memory bloat and scroll stutter while preserving keyboard/screen-reader accessibility.",
+    "targetUlid": "01M4WDK09FCFHRJY1KW36CHJAA"
+  }
+}

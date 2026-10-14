@@ -214,6 +214,17 @@ export function resolvePlaywrightBrowserExecutable(
         source: "playwright chromium-headless-shell",
       };
     }
+    if (platform === "win32") {
+      const defaultChrome = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+      if (fileExists(defaultChrome)) {
+        env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH = defaultChrome;
+        return {
+          family,
+          path: defaultChrome,
+          source: "system Google Chrome",
+        };
+      }
+    }
     if (downloadsDisabled && designatedContainerRoot) {
       const preinstalled = newestPreinstalledChromiumHeadlessShell(exposedBrowsersRoot, {
         fileExists,

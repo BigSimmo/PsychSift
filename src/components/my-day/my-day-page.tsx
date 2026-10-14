@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { RemindMeSheet, YourRemindersSheet } from "@/components/alerts/remind-me-sheet";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
@@ -27,7 +26,6 @@ import {
   quietPillQuiet,
 } from "@/components/my-day/my-day-quiet";
 import { LazyMyDayNeedsYouReader } from "@/components/my-day/lazy-my-day-needs-you-reader";
-import { MyDayCustomiseSheet, MyDayQuickAddSheet } from "@/components/my-day/my-day-sheets";
 import { NeedsYouRow } from "@/components/my-day/my-day-today-cards";
 import { useMyDayDashboardSources } from "@/components/my-day/use-my-day-dashboard-sources";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
@@ -60,6 +58,27 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 // Hospital roles (Medical Workforce, DCT, supervisor, roster manager): loaded only when My Day shows Today.
 const HospitalRolesCard = dynamic(
   () => import("@/components/work-screens/hospital/hospital-roles-card").then((module) => module.HospitalRolesCard),
+  { ssr: false },
+);
+
+// Side sheets: dynamically imported on demand to eliminate bundle bloat from initial route loads.
+const RemindMeSheet = dynamic(
+  () => import("@/components/alerts/remind-me-sheet").then((module) => module.RemindMeSheet),
+  { ssr: false },
+);
+
+const YourRemindersSheet = dynamic(
+  () => import("@/components/alerts/remind-me-sheet").then((module) => module.YourRemindersSheet),
+  { ssr: false },
+);
+
+const MyDayCustomiseSheet = dynamic(
+  () => import("@/components/my-day/my-day-sheets").then((module) => module.MyDayCustomiseSheet),
+  { ssr: false },
+);
+
+const MyDayQuickAddSheet = dynamic(
+  () => import("@/components/my-day/my-day-sheets").then((module) => module.MyDayQuickAddSheet),
   { ssr: false },
 );
 

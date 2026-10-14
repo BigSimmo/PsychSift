@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "a37ff8c7-1a2a-4026-a307-e710529d265a",
+  "createdOn": "2026-10-14",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Virtualize long document and differential diagnosis result lists",
+    "detail": "In src/components/documents/document-search-results.tsx and src/components/differentials/differential-stream-workspace.tsx, large clinical queries returning 50-200+ cards mount all DOM elements at once, elevating memory and causing scroll stutter. Introducing virtualized windowing (e.g. @tanstack/react-virtual or windowed DOM pagination) maintains a constant DOM footprint (~10-12 cards) while preserving full keyboard and screen-reader accessibility.",
+    "source": "session 2026-10-14 performance audit follow-up",
+    "issueUlid": "01M4WDK09FCFHRJY1KW36CHJAA"
+  }
+}

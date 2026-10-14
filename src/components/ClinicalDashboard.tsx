@@ -5,7 +5,16 @@ import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-subm
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
 import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
@@ -302,6 +311,7 @@ function ClinicalDashboardContent({
   const activeAnswerThreadOwnerIdRef = useRef<string | null>(null);
   const [answerThreadBootstrapped, setAnswerThreadBootstrapped] = useState(false);
   const [query, setQuery] = useState(initialQuery);
+  const deferredQuery = useDeferredValue(query);
   const [searchMode, setSearchMode] = useState<AppModeId>(initialSearchMode);
   const {
     activeScrollOwner,
@@ -535,10 +545,10 @@ function ClinicalDashboardContent({
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const searchCommandContextValue = useMemo(
     () => ({
-      query,
+      query: deferredQuery,
       modeId: searchMode,
     }),
-    [query, searchMode],
+    [deferredQuery, searchMode],
   );
   const [indexingActionId, setIndexingActionId] = useState<string | null>(null);
   const [indexingActive, setIndexingActive] = useState(false);
@@ -2771,7 +2781,7 @@ function ClinicalDashboardContent({
         activeModeSearch,
         answer,
         documentMatchCount: documentMatches.length,
-        query,
+        query: deferredQuery,
         quoteCount: answerRenderModel?.quoteCards.length ?? 0,
         reviewSourceCount: answerRenderModel?.reviewSources.length ?? 0,
         toolCatalogCount: toolCatalogRecords.length,
@@ -2783,7 +2793,7 @@ function ClinicalDashboardContent({
       activeModeSearch,
       answer,
       documentMatches.length,
-      query,
+      deferredQuery,
       answerRenderModel?.quoteCards.length,
       answerRenderModel?.reviewSources.length,
       visualEvidence.length,
@@ -3455,7 +3465,7 @@ function ClinicalDashboardContent({
                   </>
                 ) : activeModeResultKind === "differentials" ? (
                   <DifferentialsHome
-                    query={query}
+                    query={deferredQuery}
                     loading={loading}
                     searchSubmitted={modeSearchSubmitted}
                     evidenceQuery={differentialEvidenceQuery}
@@ -3487,10 +3497,10 @@ function ClinicalDashboardContent({
                     }}
                   />
                 ) : searchMode === "tools" ? (
-                  <ToolsHub query={query} desktopComposerSlotId={desktopHomeComposerSlotId} />
+                  <ToolsHub query={deferredQuery} desktopComposerSlotId={desktopHomeComposerSlotId} />
                 ) : activeModeResultKind === "favourites" && favouritesAccessible ? (
                   <FavouritesHub
-                    query={query}
+                    query={deferredQuery}
                     demoMode={clientDemoMode}
                     onClearQuery={() => {
                       setQuery("");
@@ -3506,7 +3516,7 @@ function ClinicalDashboardContent({
                   activeModeResultKind === "forms" ? (
                   searchMode === "prescribing" ? (
                     <MedicationPrescribingWorkspace
-                      query={query}
+                      query={deferredQuery}
                       loading={false}
                       realDataReady
                       authUnavailable={false}
@@ -3525,7 +3535,7 @@ function ClinicalDashboardContent({
                         recordStatus={recordStatus}
                         recordDegraded={recordsDegraded}
                         showRecordMatches={searchMode === "services" || searchMode === "forms"}
-                        query={query}
+                        query={deferredQuery}
                         loading={loading}
                         documentCount={indexedDocumentTotal}
                         recentDocuments={documents}
@@ -3593,7 +3603,7 @@ function ClinicalDashboardContent({
                       ))}
                       <StagedAnswerResultSurface
                         answer={answer}
-                        query={latestAnswerQuery ?? query}
+                        query={latestAnswerQuery ?? deferredQuery}
                         bestSource={bestSource}
                         sourceSummary={sourceSummary}
                         renderModel={answerRenderModel}

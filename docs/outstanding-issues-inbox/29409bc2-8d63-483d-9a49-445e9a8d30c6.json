@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "29409bc2-8d63-483d-9a49-445e9a8d30c6",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#1A1H9N",
+    "outcome": "Resolved: Bumped answer-thread-storage version to 3 and ensured legacy cached answers lacking strongSupportLabelCapped are invalidated.",
+    "baseRowFingerprint": "857ceb7a0543e62a807394fa52c2e2cccb50fc1be47f81cbe4c8dcd6a47b2b5d"
+  }
+}

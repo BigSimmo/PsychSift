@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { BadgeCluster } from "@/components/clinical-dashboard/clinical-badge";
+import { formatTallMan } from "@/lib/medications/tall-man";
 import {
   MedicationConsiderations,
   MedicationInteractionCallout,
@@ -332,7 +333,7 @@ function MedicationRecordDetail({
                 ) : null}
               </>
             }
-            title={record.name}
+            title={formatTallMan(record.name)}
             line={indication || undefined}
             tags={<BadgeCluster items={badges} limit={5} showOverflowCount />}
           >
