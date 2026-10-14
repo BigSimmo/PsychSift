@@ -1,4 +1,5 @@
 import { type OnCallEntry } from "@/lib/on-call/entry-model";
+import { ON_CALL_DEMO_PLAYBOOK_TRIGGER } from "@/lib/on-call/demo-playbook";
 import { ON_CALL_HOME_TAGS } from "@/lib/on-call/home-modules";
 
 /**
@@ -766,7 +767,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     subtitle: "Any decision the registrar cannot make alone. The Playbook has the ladder.",
     body: null,
     details: {
-      trigger: "Example escalation scenario shown in demo mode",
+      trigger: ON_CALL_DEMO_PLAYBOOK_TRIGGER,
       escalationSteps: [
         { order: 1, whoToCall: "Nurse in charge, on the ward", when: "First, before any call." },
         {
@@ -798,7 +799,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     subtitle: null,
     body: null,
     details: {
-      trigger: "Example escalation scenario shown in demo mode",
+      trigger: ON_CALL_DEMO_PLAYBOOK_TRIGGER,
       escalationSteps: [
         { order: 1, whoToCall: "Ward clerk", when: "First." },
         { order: 2, whoToCall: "IT service desk", when: "If it is still down after ten minutes." },
@@ -826,7 +827,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     subtitle: "Do not sit on this one",
     body: null,
     details: {
-      trigger: "Example escalation scenario shown in demo mode",
+      trigger: ON_CALL_DEMO_PLAYBOOK_TRIGGER,
       escalationSteps: [
         { order: 1, whoToCall: "Registrar on call", when: "Twice, five minutes apart.", phone: demoNumber(2) },
         {
@@ -863,7 +864,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     subtitle: null,
     body: null,
     details: {
-      trigger: "Example escalation scenario shown in demo mode",
+      trigger: ON_CALL_DEMO_PLAYBOOK_TRIGGER,
       escalationSteps: [
         { order: 1, whoToCall: "Bed management, after hours", when: "First.", phone: demoNumber(5) },
         { order: 2, whoToCall: "After-hours duty manager", when: "If nothing is found within the hour." },
@@ -890,7 +891,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     subtitle: "Security first, then the people who have to know",
     body: null,
     details: {
-      trigger: "Example escalation scenario shown in demo mode",
+      trigger: ON_CALL_DEMO_PLAYBOOK_TRIGGER,
       escalationSteps: [
         { order: 1, whoToCall: "Security escort", when: "Immediately.", phone: demoNumber(3) },
         { order: 2, whoToCall: "Nurse in charge, on the ward", when: "As soon as the area is safe." },
@@ -916,7 +917,7 @@ export const DEMO_ON_CALL_ENTRIES: readonly OnCallEntry[] = [
     // and the row has to read properly when the owner has not recorded a
     // number for any of them.
     details: {
-      trigger: "Example escalation scenario shown in demo mode",
+      trigger: ON_CALL_DEMO_PLAYBOOK_TRIGGER,
       escalationSteps: [
         {
           order: 1,

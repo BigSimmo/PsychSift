@@ -17,9 +17,3 @@ export const privacyToneSurface: Record<PrivacyTone, string> = {
   neutral: "bg-[color:var(--surface-subtle)]/80",
   warn: "bg-[color:var(--warning-bg)]/80",
 };
-
-export const privacyToneEdge: Record<PrivacyTone, string> = {
-  accent: "bg-[color:var(--clinical-accent)]",
-  neutral: "bg-[color:var(--decoration-soft)]",
-  warn: "bg-[color:var(--warning)]",
-};

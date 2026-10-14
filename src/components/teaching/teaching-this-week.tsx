@@ -2,13 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { CalendarClock, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight, Network } from "lucide-react";
+import { CalendarClock, CalendarDays, ChevronLeft, ChevronRight, Network } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeBandAction } from "@/components/mode-band/mode-band";
-import { WorkGlassButton, WorkTag } from "@/components/mode-kit/work";
+import { WorkTag } from "@/components/mode-kit/work";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { focusOnCallEntryFromHash, onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
@@ -388,7 +387,19 @@ function ThisWeekBody({
               ? "This week"
               : "That week"
         }
-        right={otherRows.length > 0 ? "Tap plus to add to your week" : undefined}
+        right={
+          live && !offlineAt ? (
+            // Other services replaces the week list, so it carries the calendar action too (review, 13 Oct).
+            <span className="flex items-center gap-2">
+              {otherRows.length > 0 ? <span>Tap plus to add to your week</span> : null}
+              <T5Link onClick={() => setCalendarOpen(true)} testId="teaching-calendar-other">
+                {calendarLabel}
+              </T5Link>
+            </span>
+          ) : otherRows.length > 0 ? (
+            "Tap plus to add to your week"
+          ) : undefined
+        }
         testId="teaching-week-other"
       >
         {whatsOn === null ? (
@@ -608,17 +619,8 @@ function ThisWeekBody({
       ) : null}
       {live && !offlineAt ? (
         <>
-          <ModeBandAction>
-            {() => (
-              <WorkGlassButton
-                icon={CalendarPlus}
-                label={calendarLabel}
-                className="work-band__action"
-                onClick={() => setCalendarOpen(true)}
-                testId="teaching-week-calendar-action"
-              />
-            )}
-          </ModeBandAction>
+          {/* Add to calendar sits on the week list's heading above; the band's corner is
+              for Favourite only (audit D18). */}
           <T5Section
             label="Your On Call teaching list"
             right={<T5Link onClick={() => setEditor({ entry: null })}>Add to the list</T5Link>}

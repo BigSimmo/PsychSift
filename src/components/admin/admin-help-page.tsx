@@ -16,9 +16,9 @@ import { ADMIN_HELP_SECTIONS } from "@/components/admin/admin-page-sections";
 import { AdminPinnedNumbers } from "@/components/admin/admin-pinned-numbers";
 import { AdminShowAll } from "@/components/admin/admin-show-all";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { ModeBandAction, PageTitleUnderBand } from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand } from "@/components/mode-band/mode-band";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
-import { WorkButton, WorkGlassButton, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkButton, WorkSectionLabel } from "@/components/mode-kit/work";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { TextField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
@@ -163,24 +163,10 @@ export function AdminHelpPage({ now: nowProp }: { now?: Date } = {}) {
             />
           </div>
           {canAdd ? (
-            // The band's plus when the band is shown (spec item 6), otherwise a plain button beside the box.
-            <ModeBandAction>
-              {(underBand) =>
-                underBand ? (
-                  <WorkGlassButton
-                    icon={Plus}
-                    label="Add your own"
-                    onClick={openNewEntry}
-                    className="work-band__action"
-                    testId="admin-help-add"
-                  />
-                ) : (
-                  <WorkButton variant="secondary" icon={Plus} testId="admin-help-add" onClick={openNewEntry}>
-                    Add your own
-                  </WorkButton>
-                )
-              }
-            </ModeBandAction>
+            // Beside the box, in the page: the band's corner is for Favourite only (audit D18).
+            <WorkButton variant="secondary" icon={Plus} testId="admin-help-add" onClick={openNewEntry}>
+              Add your own
+            </WorkButton>
           ) : null}
         </div>
         {/* role="status" is already a polite live region, so no aria-live beside it (SPEC §9.2). */}

@@ -2782,6 +2782,22 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
   vertical-align: baseline;
 }
 
+/* The tap area. The box above is ~18px, far under the 48px tap rule, and it cannot
+   grow without growing the line box. This invisible square, centred on the mark,
+   takes the tap instead: absolutely positioned, so it changes neither the visible
+   size nor the text flow (audit D05, 2026-10-13). Adjacent marks in a cluster
+   overlap here; the later mark paints last and takes a tap in the overlap, which
+   still opens a source of that same sentence. */
+.answer-source-mark::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, var(--spacing-tap));
+  height: var(--spacing-tap);
+  transform: translate(-50%, -50%);
+}
+
 /* The partial-support glyph. One glyph reads at this size; a dotted underline
    and a 1px bottom border were both tried under it and neither draws. */
 .answer-source-mark-star {

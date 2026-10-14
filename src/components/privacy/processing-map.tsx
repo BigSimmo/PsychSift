@@ -18,9 +18,7 @@ export function ProcessingMap({ density = "comfortable" }: { density?: "comforta
   return (
     <section aria-label="Where processing happens" className={cn(compact ? "space-y-1.5" : "space-y-2")}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <p className="text-3xs font-extrabold uppercase tracking-kicker text-[color:var(--text-muted)]">
-          Processing map
-        </p>
+        <p className="text-xs font-semibold text-[color:var(--text-muted)]">Processing map</p>
         <p className="text-3xs font-medium text-[color:var(--text-muted)]">Operator must verify regions</p>
       </div>
       <div
@@ -48,8 +46,8 @@ export function ProcessingMap({ density = "comfortable" }: { density?: "comforta
               <div className="min-w-0">
                 <p
                   className={cn(
-                    "font-extrabold uppercase tracking-kicker",
-                    compact ? "text-3xs leading-3" : "text-3xs leading-3 sm:text-2xs sm:leading-4",
+                    "font-bold",
+                    compact ? "text-xs leading-4" : "text-xs leading-4 sm:text-sm sm:leading-5",
                     privacyToneText[cell.tone],
                   )}
                 >

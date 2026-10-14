@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminHelpPage } from "@/components/admin/admin-help-page";
 import { adminPinsStorageKey } from "@/lib/admin/pins";
-import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { onCallEntryFixture } from "./helpers/on-call-entry-fixture";
 
@@ -231,10 +231,11 @@ describe("AdminHelpPage layout (Admin polish, lane C)", () => {
     render(<AdminHelpPage now={NOW} />);
     const crisis = screen.getByTestId("admin-help-crisis");
     const rows = within(crisis).getAllByRole("listitem");
+    const shown = [...WA_CRISIS_CONTACTS, POISONS_INFORMATION_CONTACT];
     expect(rows.map((row) => row.getAttribute("data-testid"))).toEqual(
-      WA_CRISIS_CONTACTS.map((contact) => `admin-help-crisis-${contact.id}`),
+      shown.map((contact) => `admin-help-crisis-${contact.id}`),
     );
-    for (const contact of WA_CRISIS_CONTACTS) {
+    for (const contact of shown) {
       const row = within(crisis).getByTestId(`admin-help-crisis-${contact.id}`);
       expect(row.textContent).toContain(contact.name);
       expect(row.textContent).toContain(contact.availability);

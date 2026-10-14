@@ -4,8 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useState } from "react";
 import { WithoutModeBand } from "@/components/mode-band/mode-band";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { Button } from "@/components/ui/button";
-import { WorkStateLoading } from "@/components/mode-kit/work-state";
+import { WorkStateLoading, WorkStateNotice } from "@/components/mode-kit/work-state";
+import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
 import type { RosterTeam } from "@/lib/roster/team/model";
@@ -19,7 +19,7 @@ import { RosterSafeNumber } from "./roster-safe-number";
 import { useRosterSignedOutSample } from "@/components/roster/roster-sample-context";
 import { RosterPublishTab } from "./publish/roster-publish-tab";
 import { ClipboardList, Lock, Users } from "lucide-react";
-import { WorkButton, WorkCard, WorkEmpty } from "@/components/mode-kit/work";
+import { WorkButton } from "@/components/mode-kit/work";
 import { RosterPageHeader, rosterField } from "@/components/roster/roster-ui";
 
 /**
@@ -52,21 +52,25 @@ function useManageSection(): [string, (id: string) => void] {
   return [section, select];
 }
 
-/** Not a roster manager here: say so, and offer the doctor's own way on instead of a blank page. */
+/**
+ * Not a roster manager here: say so, and offer the doctor's own way on instead
+ * of a blank page. Every state on this page uses the shared work state card
+ * (design audit 13 Oct 2026, D13).
+ */
 function NotManager() {
   return (
-    <WorkCard testId="roster-manage-not-manager">
-      <WorkEmpty
-        icon={Lock}
-        title="For roster managers"
-        body="Only your team's roster manager can see this page."
-        action={
-          <WorkButton icon={Users} href="/roster/team">
-            Go to Team
-          </WorkButton>
-        }
-      />
-    </WorkCard>
+    <WorkStateNotice
+      kind="empty"
+      icon={Lock}
+      title="For roster managers"
+      body="Only your team's roster manager can see this page."
+      action={
+        <WorkButton icon={Users} href="/roster/team">
+          Go to Team
+        </WorkButton>
+      }
+      testId="roster-manage-not-manager"
+    />
   );
 }
 
@@ -98,10 +102,7 @@ function ManagerTeam({
   );
   if (overview.status === "error")
     return (
-      <div role="alert">
-        <p>{overview.message}</p>
-        <Button onClick={overview.reload}>Try again</Button>
-      </div>
+      <WorkStateNotice kind="error" title="Your team didn't load" body={overview.message} onRetry={overview.reload} />
     );
   if (!overview.data) return <WorkStateLoading label="Loading your team…" />;
   if (overview.data.me.role !== "manager") return <NotManager />;
@@ -189,24 +190,23 @@ export function RosterManagePage() {
         />
         {teams.status === "loading" ? (
           <WorkStateLoading label="Loading your teams…" />
+        ) : teams.status === "signed-out" ? (
+          <WorkSignInNotice title="Sign in to manage your team" body={teams.message} />
         ) : teams.status !== "ready" ? (
-          <div role="alert">
-            <p>{teams.message}</p>
-            <Button onClick={teams.reload}>Try again</Button>
-          </div>
+          <WorkStateNotice kind="error" title="Your teams didn't load" body={teams.message} onRetry={teams.reload} />
         ) : !team && available.length > 0 ? (
-          <WorkCard testId="roster-manage-not-your-team">
-            <WorkEmpty
-              icon={Lock}
-              title="That team isn't one you manage"
-              body="Pick one of your own teams instead."
-              action={
-                <WorkButton icon={Users} onClick={() => setSelected(available[0]!.serviceId)}>
-                  {`Open ${available[0]!.name}`}
-                </WorkButton>
-              }
-            />
-          </WorkCard>
+          <WorkStateNotice
+            kind="empty"
+            icon={Lock}
+            title="That team isn't one you manage"
+            body="Pick one of your own teams instead."
+            action={
+              <WorkButton icon={Users} onClick={() => setSelected(available[0]!.serviceId)}>
+                {`Open ${available[0]!.name}`}
+              </WorkButton>
+            }
+            testId="roster-manage-not-your-team"
+          />
         ) : !team ? (
           <NotManager />
         ) : (
