@@ -11,7 +11,7 @@ import { DEVELOPER_AREA_HEADER, DEVELOPER_AREA_PATH_HEADER, isDeveloperGatedPath
 import {
   DEVELOPER_ACCESS_COOKIE,
   DEVELOPER_ACCESS_COOKIE_MAX_AGE_SECONDS,
-  DEVELOPER_ACCESS_COOKIE_PATH,
+  DEVELOPER_ACCESS_COOKIE_PATHS,
   DEVELOPER_ACCESS_ERROR_PARAM,
   DEVELOPER_ACCESS_QUERY_PARAM,
   developerAccessKeyMatches,
@@ -468,13 +468,15 @@ function carrySessionRefresh(from: NextResponse, to: NextResponse): NextResponse
  * deployment is https, so this is https in practice.
  */
 function setDeveloperAccessCookie(response: NextResponse, token: string, request: NextRequest) {
-  response.cookies.set(DEVELOPER_ACCESS_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: request.nextUrl.protocol === "https:",
-    path: DEVELOPER_ACCESS_COOKIE_PATH,
-    maxAge: DEVELOPER_ACCESS_COOKIE_MAX_AGE_SECONDS,
-  });
+  for (const path of DEVELOPER_ACCESS_COOKIE_PATHS) {
+    response.cookies.set(DEVELOPER_ACCESS_COOKIE, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+      path,
+      maxAge: DEVELOPER_ACCESS_COOKIE_MAX_AGE_SECONDS,
+    });
+  }
 }
 
 export function shouldBlockProductionMockups(

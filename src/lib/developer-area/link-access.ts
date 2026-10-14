@@ -53,10 +53,14 @@ export {
 } from "@/lib/developer-area/link-access-shared";
 
 /**
- * Cookie path. Scoped to `/` so the developer access cookie is sent to both
- * `/mockups` and `/admin/developer-hub`.
+ * Cookie paths. Each cookie is scoped to one developer-gated subtree so the
+ * credential is not sent with unrelated clinical or API requests.
  */
-export const DEVELOPER_ACCESS_COOKIE_PATH = "/";
+export const DEVELOPER_ACCESS_COOKIE_PATHS = [
+  "/admin/developer-hub",
+  "/mockups/development",
+  "/mockups/care-plan",
+] as const;
 
 /**
  * One year. Deliberately inside the ~400-day ceiling Chrome and Safari clamp

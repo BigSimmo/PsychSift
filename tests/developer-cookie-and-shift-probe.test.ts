@@ -5,7 +5,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ShiftNowProbe } from "@/components/last-place/shift-now-probe";
-import { DEVELOPER_ACCESS_COOKIE_PATH } from "@/lib/developer-area/link-access";
+import { DEVELOPER_ACCESS_COOKIE_PATHS } from "@/lib/developer-area/link-access";
 
 function clearCookies() {
   for (const raw of document.cookie.split(";")) {
@@ -29,8 +29,12 @@ describe("Developer access cookie path & ShiftNowProbe guest guard", () => {
     vi.restoreAllMocks();
   });
 
-  it("sets DEVELOPER_ACCESS_COOKIE_PATH to root '/' so unlock applies across all developer-gated routes", () => {
-    expect(DEVELOPER_ACCESS_COOKIE_PATH).toBe("/");
+  it("scopes the developer access cookie to each gated subtree", () => {
+    expect(DEVELOPER_ACCESS_COOKIE_PATHS).toEqual([
+      "/admin/developer-hub",
+      "/mockups/development",
+      "/mockups/care-plan",
+    ]);
   });
 
   it("skips /api/roster/shifts network requests for unauthenticated guests and immediately reports false", async () => {
