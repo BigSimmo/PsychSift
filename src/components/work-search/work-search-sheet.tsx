@@ -792,7 +792,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         <span aria-hidden="true" className="work-ic" data-tone="amber">
           <ShieldAlert aria-hidden="true" strokeWidth={2} />
         </span>
-        <span className="min-w-0 flex-1">
+        {/* The field's description too (aria-describedby), so the warning is written once (design audit D24). */}
+        <span id="work-search-patient-note" className="min-w-0 flex-1">
           <b className="block text-sm-minus font-bold text-[color:var(--warning)]">Looks like patient details</b>
           <span className="mt-0.5 block text-xs leading-snug text-[color:var(--text)]">
             Not searched or saved. Please don&apos;t type patient details here.
@@ -991,9 +992,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   patient ? "caret-[color:var(--warning)]" : "caret-[color:var(--mode-identity)]",
                 )}
               />
-              <span id="work-search-patient-note" className="sr-only">
-                {patient ? "Looks like patient details. Not searched or saved." : ""}
-              </span>
               {typed ? (
                 <button
                   type="button"
@@ -1034,6 +1032,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               )}
               role="group"
               aria-label="Filter by area"
+              data-large-text-wrap=""
             >
               {(["all", ...tabAreas] as const).map((area) => {
                 const selected = filter === area;

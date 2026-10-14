@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -394,18 +394,64 @@ describe("MasterSearchHeader DOM", () => {
   });
 
   describe("client-side PHI detection warning", () => {
-    it("renders role=alert PHI warning when query contains identifier shapes", () => {
+    // The Answer-mode patient check loads on first use; let it arrive before asserting.
+    async function settlePatientCheck() {
+      await act(async () => {
+        await import("@/lib/clinical-question-patient-check");
+      });
+    }
+
+    it("renders role=alert PHI warning when query contains identifier shapes", async () => {
       render(
         <MasterSearchHeader {...defaultHeaderProps()} query="Patient Jane Citizen MRN: 12345678 DOB: 01/01/1980" />,
       );
+      await settlePatientCheck();
 
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent("Remove identifiable patient details before searching.");
+      // Answer mode names the kind of detail and holds the question back (audit S2).
+      expect(alert).toHaveTextContent(/^This question looks like it holds a patient detail/);
+      expect(alert).toHaveTextContent("Remove it and ask again");
       expect(alert).toHaveAttribute("id", "composer-phi-warning");
     });
 
-    it("does not render PHI warning for generic clinical queries", () => {
+    it("keeps the advisory wording outside Answer mode", async () => {
+      render(
+        <MasterSearchHeader
+          {...defaultHeaderProps()}
+          searchMode="documents"
+          query="Patient Jane Citizen MRN: 12345678 DOB: 01/01/1980"
+        />,
+      );
+      await settlePatientCheck();
+
+      expect(screen.getByRole("alert")).toHaveTextContent("Remove identifiable patient details before searching.");
+    });
+
+    it("does not send an Answer question that looks like it holds a patient detail", async () => {
+      const props = { ...defaultHeaderProps(), query: "Mr Smith lithium level 1.4" };
+      const { container } = render(<MasterSearchHeader {...props} />);
+      await settlePatientCheck();
+
+      const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+      expect(submit).not.toBeNull();
+      expect(submit).toBeDisabled();
+      fireEvent.submit(submit!.closest("form")!);
+      expect(props.onAsk).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("(a name)");
+      expect(screen.getByRole("alert")).not.toHaveTextContent("Smith");
+    });
+
+    it("does not render PHI warning for generic clinical queries", async () => {
       render(<MasterSearchHeader {...defaultHeaderProps()} query="clozapine neutropenia monitoring guidelines" />);
+      await settlePatientCheck();
+
+      expect(screen.queryByTestId("composer-phi-warning")).toBeNull();
+    });
+
+    it("lets an ordinary question with an age through in Answer mode", async () => {
+      const props = { ...defaultHeaderProps(), query: "lithium dose for 70 year old" };
+      render(<MasterSearchHeader {...props} />);
+      await settlePatientCheck();
 
       expect(screen.queryByTestId("composer-phi-warning")).toBeNull();
     });

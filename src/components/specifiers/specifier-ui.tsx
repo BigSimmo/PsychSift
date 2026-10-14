@@ -326,10 +326,12 @@ const sourceStatusMeta: Record<
   SpecifierSourceStatus,
   { label: string; icon: ComponentType<{ className?: string }>; className: string }
 > = {
+  // Grey, not green: this status says the SOURCE was checked, never that a named clinician
+  // signed the entry off, so it must not look like a sign-off (audit S6, 13 Oct 2026).
   "source-verified": {
-    label: "Source reviewed",
-    icon: CheckCircle2,
-    className: "border-[color:var(--success-border)] bg-[color:var(--success-soft)] text-[color:var(--success)]",
+    label: "Source checked, not signed off",
+    icon: Info,
+    className: "border-[color:var(--border)] bg-[color:var(--surface-inset)] text-[color:var(--text-muted)]",
   },
   "source-needs-formal-review": {
     label: "Review due",

@@ -237,6 +237,10 @@ describe("MyDayWeekPage", () => {
     const row = screen.getByTestId("my-day-week-day-2026-10-03");
     expect(row.textContent).toContain("Date passed");
     expect(row.textContent).not.toContain("Date has passed");
+    // The status shape: a red triangle before a grey word, never an amber word.
+    const state = within(row).getByText("Date passed");
+    expect(state.getAttribute("data-late")).toBe("passed");
+    expect(state.className).not.toContain("warning-text");
   });
 
   it("keeps a shift that ends at midnight on its own day", () => {

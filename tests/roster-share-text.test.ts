@@ -78,7 +78,7 @@ describe("rosterShareText", () => {
       from,
       days: 7,
     });
-    expect(text.split("\n")[1]).toBe("Thu 1 Oct · Evening 16:00–00:00");
+    expect(text.split("\n")[1]).toBe("Thu 1 Oct · Late 16:00–00:00");
   });
 
   it("never shares a shift title", () => {

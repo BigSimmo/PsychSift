@@ -1005,7 +1005,7 @@ export function PatientSafetyPlan() {
             <h2 className="whitespace-nowrap text-sm font-extrabold uppercase tracking-label text-[color:var(--text-muted)]">
               Build the plan
             </h2>
-            <div className="flex items-center gap-2 whitespace-nowrap">
+            <div className="flex flex-wrap items-center gap-2 whitespace-nowrap">
               <button type="button" onClick={loadExample} className={softButton}>
                 <Sparkles className="size-icon-sm" aria-hidden="true" />
                 Load example

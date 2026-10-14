@@ -136,6 +136,8 @@ describe("Week: Other services", () => {
     );
     expect(within(other).queryByText("Grand rounds")).toBeNull();
     expect(other).toHaveTextContent(/This week · 2\ssessions/);
+    // The week list (and its calendar action) is gone, so Other services carries its own.
+    expect(within(other).getByTestId("teaching-calendar-other")).toHaveTextContent(/calendar/i);
     // What's on's privacy note stays under the list.
     expect(screen.getByText("Organisers of each session see who checked in")).toBeInTheDocument();
   });

@@ -24,9 +24,10 @@ vi.mock("@/lib/supabase/client", () => ({
 // The dashboard's own reads (Roster shifts, today's Teaching, CPD hours) answer
 // "nothing" here, so only the My Day items drive what these tests see. The
 // dashboard cards themselves are covered in `my-day-dashboard.dom.test.tsx`.
+const dashboardSources = vi.hoisted(() => ({ rosterStatus: "unavailable" as string }));
 vi.mock("@/components/my-day/use-my-day-dashboard-sources", () => ({
   useMyDayDashboardSources: () => ({
-    roster: { status: "unavailable", shifts: [], sample: false },
+    roster: { status: dashboardSources.rosterStatus, shifts: [], sample: false },
     teaching: { status: "unavailable", sessions: [], sample: false },
     cpd: { status: "unavailable", year: null, loggedHours: 0, targetHours: 0, sample: false },
   }),
@@ -137,6 +138,7 @@ beforeEach(() => {
   retry.mockClear();
   setState({});
   readerLoaded.current = true;
+  dashboardSources.rosterStatus = "unavailable";
 });
 afterEach(cleanup);
 
@@ -148,6 +150,24 @@ describe("MyDayPage", () => {
     expect(screen.getByTestId("my-day-loading")).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Loading My Day");
     expect(screen.queryByTestId("my-day-ready")).toBeNull();
+  });
+
+  // Design audit 13 Oct 2026, D16: the hero and This week arrived after the rest and pushed
+  // the cards down. Today keeps the skeleton until its own reads answer, on the first load only.
+  it("keeps Today's skeleton until the roster has answered, then never goes back to it", () => {
+    dashboardSources.rosterStatus = "loading";
+    const { rerender } = render(<MyDayPage now={NOW} />);
+    expect(screen.getByTestId("my-day-loading")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-dashboard")).toBeNull();
+    dashboardSources.rosterStatus = "ready";
+    rerender(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-loading")).toBeNull();
+    expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
+    // A later re-read (Try again) keeps the cards on screen.
+    dashboardSources.rosterStatus = "loading";
+    rerender(<MyDayPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-loading")).toBeNull();
+    expect(screen.getByTestId("my-day-dashboard")).toBeTruthy();
   });
 
   it("shows the skeleton, not the sign-in prompt, while the sign-in is still being checked", () => {

@@ -409,10 +409,10 @@ export function weekRows(
 /** The roster codes under the strip's dates, and the words for the key. */
 export const SHIFT_CODE: Readonly<Record<ShiftKind, string>> = {
   day: "D",
-  evening: "E",
+  evening: "L",
   night: "N",
   on_call: "OC",
-  leave: "L",
+  leave: "AL",
   other: "W",
 };
 

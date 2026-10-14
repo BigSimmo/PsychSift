@@ -7,13 +7,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   applyOfflinePackMarkup,
   buildOfflinePackMarkup,
+  offlineCrisisContacts,
   formatCheckedDate,
   loadReviewedTimeframes,
   PACK_END,
   PACK_START,
 } from "../scripts/build-offline-pack";
 import { removePathSync } from "../scripts/retryable-fs.mjs";
-import { WA_CRISIS_CONTACTS } from "../src/lib/crisis-contacts";
+import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS } from "../src/lib/crisis-contacts";
 import { timeframeContentSha256, type MhaTimeframeEntry } from "../src/lib/mha-timeline";
 
 /**
@@ -100,9 +101,16 @@ describe("build-offline-pack: crisis numbers", () => {
 
   it("carries no clinical query, answer, document or patient data — only the public contact fields", () => {
     // A quick structural sanity check that the pack is built from PublicCrisisContact
-    // fields alone: every rendered number traces back to WA_CRISIS_CONTACTS.
+    // fields alone: every rendered number traces back to WA_CRISIS_CONTACTS or the Poisons line,
+    // urgent first (design audit D06): 000, then Poisons, then the shared list in its own order.
     const telMatches = [...markup.matchAll(/href="tel:([^"]+)"/g)].map((match) => match[1]);
-    expect(telMatches.sort()).toEqual(WA_CRISIS_CONTACTS.map((contact) => contact.telephoneUri).sort());
+    expect(telMatches).toEqual(offlineCrisisContacts().map((contact) => contact.telephoneUri));
+    expect(telMatches.slice(0, 2)).toEqual(["000", POISONS_INFORMATION_CONTACT.telephoneUri]);
+    expect(telMatches.slice(2).sort()).toEqual(
+      WA_CRISIS_CONTACTS.slice(1)
+        .map((contact) => contact.telephoneUri)
+        .sort(),
+    );
   });
 });
 
@@ -247,7 +255,7 @@ describe("build-offline-pack: reviewed MHA timeframes", () => {
     const markup = buildOfflinePackMarkup(NONEXISTENT_TIMEFRAMES_PATH);
     expect(markup).not.toContain("Mental Health Act deadlines");
     // The crisis section must still render.
-    expect(markup).toContain("Crisis support numbers");
+    expect(markup).toContain("Urgent numbers");
   });
 
   it("handles an empty entries array", () => {

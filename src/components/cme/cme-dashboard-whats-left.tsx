@@ -261,7 +261,7 @@ function Row({
           onClick={logHere}
           {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
           className="work-button min-h-tap mr-2 shrink-0"
-          data-variant="primary"
+          data-variant="grey"
           aria-label={`Log an activity toward ${row.title}`}
           data-testid="cme-next-log"
         >
