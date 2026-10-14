@@ -1,9 +1,7 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { WorkTag } from "@/components/mode-kit/work";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
@@ -29,6 +27,7 @@ import { TeachingStateNotice } from "@/components/teaching/teaching-states";
 import { joinLabel, sessionHref, weekDays } from "@/components/teaching/teaching-view-model";
 import { useTeachingNow } from "@/components/teaching/use-teaching-now";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
+import { useWeekAdd, WeekAddNotice, WeekToggle } from "@/components/teaching/week-add-toggle";
 import {
   filterWhatsOn,
   onNow,
@@ -37,14 +36,8 @@ import {
   type WhatsOnFilter,
   type WhatsOnRowRead,
 } from "@/components/teaching/whats-on-model";
-import { cn } from "@/components/ui-primitives";
-import { teachingErrorMessage, teachingPost } from "@/lib/teaching/client";
 import type { HealthServiceCode } from "@/lib/teaching/model";
-import {
-  useSignedOutSampleRead,
-  useTeachingDemoMode,
-  useTeachingSignedOut,
-} from "@/components/teaching/use-teaching-sample";
+import { useSignedOutSampleRead, useTeachingSignedOut } from "@/components/teaching/use-teaching-sample";
 
 /*
  * What's on (spec §5a): the reader's health service's week, "On now" first
@@ -59,14 +52,7 @@ import {
  */
 type WhatsOnRead = { healthServices: HealthServiceCode[]; sessions: WhatsOnRowRead[] };
 
-export function TeachingWhatsOn({
-  demoMode: serverDemoMode,
-  sampleData: serverSample,
-}: {
-  demoMode: boolean;
-  sampleData?: WhatsOnRead;
-}) {
-  const demoMode = useTeachingDemoMode(serverDemoMode);
+export function TeachingWhatsOn({ sampleData: serverSample }: { demoMode: boolean; sampleData?: WhatsOnRead }) {
   const signedOut = useTeachingSignedOut();
   const now = useTeachingNow();
   const today = now ? perthDateKey(now) : null;
@@ -86,30 +72,8 @@ export function TeachingWhatsOn({
   );
   const [day, setDay] = useState<string | null>(null);
   const [filter, setFilter] = useState<WhatsOnFilter>("all");
-  const [inWeek, setInWeek] = useState<Record<string, boolean>>({});
-  const [notice, setNotice] = useState<string | null>(null);
+  const weekAdd = useWeekAdd(Boolean(sampleData));
   const rows = useMemo(() => filterWhatsOn(read.data?.sessions ?? [], filter), [read.data, filter]);
-
-  async function toggle(row: WhatsOnRowRead) {
-    if (sampleData) {
-      setNotice("The sample doesn’t save changes.");
-      return;
-    }
-    const id = row.occurrenceId;
-    const next = !(inWeek[id] ?? row.inMyWeek);
-    setInWeek((current) => ({ ...current, [id]: next }));
-    setNotice(null);
-    try {
-      const result = await teachingPost<{ inMyWeek: boolean }>("/api/teaching/whats-on", {
-        action: next ? "week_add.set" : "week_add.unset",
-        occurrenceId: id,
-      });
-      setInWeek((current) => ({ ...current, [id]: result.inMyWeek }));
-    } catch (cause) {
-      setInWeek((current) => ({ ...current, [id]: !next }));
-      setNotice(teachingErrorMessage(cause));
-    }
-  }
 
   let body;
   if (read.status === "signed-out") body = <TeachingSignInNotice />;
@@ -127,9 +91,6 @@ export function TeachingWhatsOn({
           <p className="text-sm-minus font-bold text-[color:var(--text-heading)]">
             {whatsOnHeading(read.data.healthServices)}
           </p>
-          {demoMode ? (
-            <span className="shrink-0 text-xs text-[color:var(--text-muted)]">Example · made-up people</span>
-          ) : null}
         </div>
         {live.length > 0 ? (
           <div className="grid gap-y-2.25" data-testid="teaching-whats-on-now">
@@ -158,13 +119,7 @@ export function TeachingWhatsOn({
         <div className="work-card px-1">
           <DayRail days={weekDays(monday, rows, today)} value={selected} onChange={setDay} label="Day" />
         </div>
-        {notice ? (
-          <p role="status" className="text-xs font-semibold text-[color:var(--danger-text)]">
-            {notice}
-          </p>
-        ) : (
-          <p role="status" className="sr-only" />
-        )}
+        <WeekAddNotice notice={weekAdd.notice} />
         {dayRows.length === 0 ? (
           <T5Empty>Nothing on this day.</T5Empty>
         ) : (
@@ -187,8 +142,8 @@ export function TeachingWhatsOn({
                     ) : (
                       <WeekToggle
                         title={row.title}
-                        added={inWeek[row.occurrenceId] ?? row.inMyWeek}
-                        onToggle={() => void toggle(row)}
+                        added={weekAdd.added(row)}
+                        onToggle={() => void weekAdd.toggle(row)}
                       />
                     )
                   }
@@ -209,31 +164,5 @@ export function TeachingWhatsOn({
         {body}
       </T5Page>
     </InformationPageShell>
-  );
-}
-
-function WeekToggle({ title, added, onToggle }: { title: string; added: boolean; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={added}
-      aria-label={added ? `Remove ${title} from my week` : `Add ${title} to my week`}
-      onClick={onToggle}
-      data-no-tab-swipe=""
-      className={cn(focusRing, "grid size-12 shrink-0 place-items-center rounded-full")}
-    >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "grid size-8 place-items-center rounded-full border-[1.5px]",
-          added
-            ? "border-transparent bg-[color:var(--work-primary)] text-[color:var(--work-primary-text)]"
-            : "border-[color:var(--mode-identity)] text-[color:var(--mode-identity)]",
-        )}
-      >
-        {added ? <Check aria-hidden="true" className="size-4" /> : <Plus aria-hidden="true" className="size-4" />}
-      </span>
-      {added ? <span className="sr-only">In my week</span> : null}
-    </button>
   );
 }

@@ -223,7 +223,15 @@ test.describe("tablet and desktop scroll chrome", () => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
         await expect(page.locator("header#search").first()).toBeVisible({ timeout: 15_000 });
         await waitForRunway(page, minimumRunway);
-        await page.waitForTimeout(400);
+        await expect
+          .poll(
+            async () => {
+              const state = await readChromeState(page);
+              return !state.hidden && state.headerTop <= 8 && state.searchVisible;
+            },
+            { message: "top bar and search should settle at the top", timeout: 5_000 },
+          )
+          .toBe(true);
 
         const atTop = await readChromeState(page);
         expect(atTop.hidden, "top bar visible at the top").toBe(false);
@@ -274,7 +282,15 @@ test.describe("tablet and desktop scroll chrome", () => {
         await page.goto(route, { waitUntil: "domcontentloaded" });
         await expect(page.locator("header#search").first()).toBeVisible({ timeout: 15_000 });
         await waitForRunway(page, minimumRunway);
-        await page.waitForTimeout(400);
+        await expect
+          .poll(
+            async () => {
+              const state = await readChromeState(page);
+              return !state.hidden && state.searchVisible;
+            },
+            { message: "search composer should be visible at the top", timeout: 5_000 },
+          )
+          .toBe(true);
 
         const atTop = await readChromeState(page);
         expect(atTop.searchVisible).toBe(true);
@@ -315,7 +331,15 @@ test.describe("tablet and desktop scroll chrome", () => {
       });
       await expect(page.locator("header#search").first()).toBeVisible({ timeout: 15_000 });
       await waitForRunway(page, requiredRunway);
-      await page.waitForTimeout(400);
+      await expect
+        .poll(
+          async () => {
+            const state = await readChromeState(page);
+            return !state.hidden && state.headerTop <= 8;
+          },
+          { message: "top bar should settle at viewport top", timeout: 5_000 },
+        )
+        .toBe(true);
 
       await expect(page.getByTestId("global-search-input")).toHaveCount(0);
       await expect(page.getByTestId("desktop-page-search-composer-slot")).toHaveCount(0);
@@ -425,21 +449,29 @@ test.describe("pages that fit the window have no scroll range", () => {
       () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
     );
 
-    const geometry = await page.evaluate(() => {
-      const home = document.querySelector<HTMLElement>('[data-testid="shared-home-empty-state"]');
-      const canvas = document.querySelector<HTMLElement>("[data-mode-home-canvas]");
-      const main = document.getElementById("main-content");
-      if (!home || !canvas || !main) return null;
+    // WebKit (the tablet project) can paint the home card a frame or two before
+    // the centring canvas is marked, so wait for all three nodes instead of
+    // reading once and failing on a transient null.
+    const readGeometry = () =>
+      page.evaluate(() => {
+        const home = document.querySelector<HTMLElement>('[data-testid="shared-home-empty-state"]');
+        const canvas = document.querySelector<HTMLElement>("[data-mode-home-canvas]");
+        const main = document.getElementById("main-content");
+        if (!home || !canvas || !main) return null;
 
-      const homeRect = home.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      return {
-        homeMidY: homeRect.top + homeRect.height / 2,
-        canvasMidY: canvasRect.top + canvasRect.height / 2,
-        maxScrollTop: Math.max(0, main.scrollHeight - main.clientHeight),
-      };
-    });
+        const homeRect = home.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        return {
+          homeMidY: homeRect.top + homeRect.height / 2,
+          canvasMidY: canvasRect.top + canvasRect.height / 2,
+          maxScrollTop: Math.max(0, main.scrollHeight - main.clientHeight),
+        };
+      });
 
+    await expect
+      .poll(readGeometry, { message: "home card, centring canvas and main scroller all mount" })
+      .not.toBeNull();
+    const geometry = await readGeometry();
     expect(geometry).not.toBeNull();
     expect(Math.abs(geometry!.homeMidY - geometry!.canvasMidY)).toBeLessThanOrEqual(1);
     expect(geometry!.maxScrollTop).toBe(0);

@@ -616,10 +616,12 @@ describe("current administrator plain-text inspection adapter", () => {
     },
   );
 
-  it("refuses PDF by MIME without treating decoded bytes as inspected text", async () => {
+  it("refuses MIME-only PDF without native inspection evidence or treating decoded bytes as inspected text", async () => {
     const f = setup();
     Object.assign(f.current.facts, { mimeType: "application/pdf" });
-    await expect(f.loader(f.request, f.binding)).rejects.toThrow("source_format_unsupported");
+    await expect(f.loader(f.request, f.binding)).rejects.toThrow(
+      "admin_text_inspection_current_native_pdf_inspection_unavailable",
+    );
     expect(scan).not.toHaveBeenCalled();
   });
 

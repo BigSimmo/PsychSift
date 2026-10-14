@@ -25,19 +25,19 @@ const STATUS_WORDS: Record<AdminStatus, string> = {
   plain: "",
 };
 
-/** The mockup's shapes, drawn on a 10px grid: a diamond, a triangle, a dashed ring, a dot. */
+/** One shape per status (Ward Flow review, 12 Oct 2026), on a 10px grid: triangle for date passed, filled dot for start renewing, dashed ring for not recorded, tick for recorded. */
 export function AdminStatusMark({ status }: { readonly status: AdminStatus }) {
   if (status === "date-passed") {
     return (
-      <svg viewBox="0 0 10 10" aria-hidden="true" className={styles.mark} data-mark="diamond">
-        <path d="M5 .6 9.4 5 5 9.4.6 5z" />
+      <svg viewBox="0 0 10 10" aria-hidden="true" className={styles.mark} data-mark="triangle">
+        <path d="M5 .8 9.4 9H.6z" />
       </svg>
     );
   }
   if (status === "start-renewing") {
     return (
-      <svg viewBox="0 0 10 10" aria-hidden="true" className={styles.mark} data-mark="triangle">
-        <path d="M5 .8 9.4 9H.6z" />
+      <svg viewBox="0 0 10 10" aria-hidden="true" className={styles.mark} data-mark="dot">
+        <circle cx="5" cy="5" r="4" />
       </svg>
     );
   }
@@ -50,15 +50,22 @@ export function AdminStatusMark({ status }: { readonly status: AdminStatus }) {
   }
   if (status === "recorded") {
     return (
-      <svg viewBox="0 0 10 10" aria-hidden="true" className={styles.mark} data-mark="dot">
-        <circle cx="5" cy="5" r="3.2" />
+      <svg viewBox="0 0 10 10" aria-hidden="true" className={styles.mark} data-mark="tick">
+        <path
+          d="M1.2 5.4 4 8.1 8.8 2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     );
   }
   return null;
 }
 
-/** The status tag: shape, then the word in small caps, on a flat tint. */
+/** The status tag: shape, then the word in sentence case, on a flat tint. */
 export function AdminStatusTag({
   status,
   label,

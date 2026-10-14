@@ -205,7 +205,7 @@ export function OnCallFreshnessPanel() {
                 >
                   {entry.title}
                 </Link>
-                <span className={META_CLASS}>{ON_CALL_VIEW_TITLES[onCallViewForEntry(entry)]}</span>
+                <span className={META_CLASS}>{ON_CALL_VIEW_TITLES[entry.view ?? onCallViewForEntry(entry)]}</span>
                 <span className={MONO_CLASS}>{lastConfirmedLabel(entry.lastVerifiedAt, now)}</span>
               </li>
             ))}

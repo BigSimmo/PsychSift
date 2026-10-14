@@ -31,12 +31,12 @@
 // searches, answers, documents or patient data."
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { format, resolveConfig } from "prettier";
 
-import { WA_CRISIS_CONTACTS, type PublicCrisisContact } from "@/lib/crisis-contacts";
+import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS, type PublicCrisisContact } from "@/lib/crisis-contacts";
 import { isReviewedTimeframe, type MhaTimeframeEntry } from "@/lib/mha-timeline";
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 export const OFFLINE_PAGE_PATH = "public/offline.html";
 export const DEFAULT_TIMEFRAMES_PATH = "data/mha-timeframes.json";
@@ -189,7 +189,7 @@ function renderCrisisContact(contact: PublicCrisisContact): string {
 function renderCrisisSection(contacts: readonly PublicCrisisContact[]): string {
   const items = contacts.map(renderCrisisContact).join("\n");
   return `      <section aria-labelledby="offline-crisis-heading" class="offline-pack-section">
-        <h2 id="offline-crisis-heading">Crisis support numbers</h2>
+        <h2 id="offline-crisis-heading">Urgent numbers</h2>
         <ul class="crisis-list">
 ${items}
         </ul>
@@ -241,8 +241,27 @@ ${items}
  */
 export function buildOfflinePackMarkup(timeframesPath: string): string {
   const reviewed = loadReviewedTimeframes(timeframesPath);
-  return `${renderCrisisSection(WA_CRISIS_CONTACTS)}${renderActSection(reviewed)}`;
+  return `${renderCrisisSection(offlineCrisisContacts())}\n${ON_CALL_SAVED_SECTION}${renderActSection(reviewed)}`;
 }
+
+/**
+ * The offline page's numbers, urgent first (design audit D06, 13 Oct 2026): 000, then the
+ * Poisons Information Centre, then the rest of the shared crisis list in its own order.
+ */
+export function offlineCrisisContacts(): PublicCrisisContact[] {
+  const [emergency, ...rest] = WA_CRISIS_CONTACTS;
+  return [emergency, POISONS_INFORMATION_CONTACT, ...rest];
+}
+
+/**
+ * The On Call numbers this phone already saved, filled in by the page's own script. Sits between
+ * the crisis numbers and the Act quotes, so the numbers a doctor rings come before anything to read.
+ */
+const ON_CALL_SAVED_SECTION = `      <section class="on-call" id="on-call-offline" aria-labelledby="on-call-offline-title" hidden>
+        <h2 id="on-call-offline-title">On Call, saved on this phone</h2>
+        <p class="warning" id="on-call-offline-saved"></p>
+        <div id="on-call-offline-lists"></div>
+      </section>`;
 
 /**
  * Replaces the region between the offline-pack sentinels in `currentHtml` with
@@ -310,7 +329,7 @@ async function main() {
 }
 
 // Guarded so unit tests can import the pure functions above without executing the CLI.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((cause) => {
     console.error(cause);
     process.exit(1);

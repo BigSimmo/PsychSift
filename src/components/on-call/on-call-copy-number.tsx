@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toolbarButton } from "@/components/ui-primitives";
 import { cn } from "@/components/ui-primitives";
+import { useCopyToast } from "@/components/ui/toast";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { onCallDialableNumber } from "@/lib/on-call/home-modules";
 
@@ -33,11 +34,11 @@ type CopyState = "idle" | "copied" | "failed";
  * dialled from the handset, and until now the only way to get it out of the app
  * was to read it off the screen and retype it.
  *
- * **Feedback is local, not a toast.** The On Call routes do not mount a
- * `ToastProvider` (nothing in `src/app` does), and `useToast` throws outside one
- * — so this control carries its own inline confirmation rather than depending on
- * a provider that is not there. Adding one to a layout is a different change,
- * owned elsewhere.
+ * **Feedback is both local and toast-backed.** `<ToastProvider>` is mounted globally
+ * in `src/app/layout.tsx`. In addition to the global polite toast via `useCopyToast()`,
+ * this control maintains its own inline visible status and digit announcement so
+ * immediate visual confirmation and screen-reader accessibility are preserved
+ * whether inside or outside a toast host.
  *
  * **A failed copy says so.** `navigator.clipboard` is absent in an insecure
  * context and can reject outright when permission is denied, and a control that
@@ -53,6 +54,7 @@ export function OnCallCopyNumber({
 }: OnCallCopyNumberProps) {
   const [state, setState] = useState<CopyState>("idle");
   const [announcement, setAnnouncement] = useState("");
+  const showToast = useCopyToast();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(true);
 
@@ -89,10 +91,13 @@ export function OnCallCopyNumber({
     // clipboard object, a rejected write, a refused legacy fallback — resolves
     // into the "failed" state instead.
     void copyTextToClipboard(dialable).then(
-      () => settle("copied", `${dialable} copied to the clipboard.`),
+      () => {
+        settle("copied", `${dialable} copied to the clipboard.`);
+        showToast("Copied phone number");
+      },
       () => settle("failed", `Could not copy. The number is ${dialable}.`),
     );
-  }, [dialable, settle]);
+  }, [dialable, settle, showToast]);
 
   // Nothing dialable ("via switchboard") means nothing to copy, and an inert
   // control in a dense row is one more thing to aim at for no benefit.

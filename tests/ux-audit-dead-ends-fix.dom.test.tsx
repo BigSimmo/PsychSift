@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach, onTestFinished } from "vitest";
 
 import { CopyResultButton } from "@/components/calculators/calculator-ui";
 import { calculators } from "@/components/calculators/calculator-fixtures";
@@ -122,6 +122,11 @@ describe("UX Audit 4 Findings Verification", () => {
   describe("Finding 5: CPD Log Activity return path", () => {
     it("renders Back to CPD log navigation link", async () => {
       const { CmeNewEntryRoute } = await import("@/components/cme/cme-new-entry-route");
+      // Back is drawn in the top bar's round left slot, which the shell provides.
+      const slot = document.createElement("div");
+      slot.id = "universal-header-leading";
+      document.body.append(slot);
+      onTestFinished(() => slot.remove());
       render(
         <CmeNewEntryRoute
           set={{
@@ -144,7 +149,9 @@ describe("UX Audit 4 Findings Verification", () => {
       const { PatientSafetyPlan } = await import("@/components/patient-safety-plan");
       render(<PatientSafetyPlan />);
       const button = screen.getByRole("button", { name: /Finalise plan/i });
-      expect(button).toBeDisabled();
+      // aria-disabled, not native disabled, so the button keeps its tab stop and the reason is reachable.
+      expect(button).not.toBeDisabled();
+      expect(button).toHaveAttribute("aria-disabled", "true");
       expect(button.getAttribute("title")).toMatch(/complete all \d+ steps to finalise/i);
       const describedBy = button.getAttribute("aria-describedby");
       expect(describedBy).toBeTruthy();

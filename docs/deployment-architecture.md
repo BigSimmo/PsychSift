@@ -91,7 +91,7 @@ nor the worker deploy passes through this GitHub environment. Its
 protection rules are set, so it permits all branches; do not infer that the
 ruleset restricts this environment's jobs.
 
-Both production Railway services source `BigSimmo/Database` at `main` with
+Both production Railway services source `BigSimmo/PsychSift` at `main` with
 `source.checkSuites: false`. Their GitHub autodeploys can therefore start
 without waiting for the post-merge GitHub Actions verdict. The app and worker
 hold their own Railway runtime variables. Railway's **Wait for CI** setting
@@ -399,9 +399,11 @@ This is a dated observation, not proof that future settings remain unchanged.
 
 The existing staging app was observed using the separate staging Supabase
 project, offline AI and no OpenAI key. However, the staging environment also
-contains `worker-5g6o`, which has an OpenAI key and no service-specific config file.
-Do not copy that whole environment as a supposedly safe preview template. An
-app-only template and its data/access controls still need explicit verification.
+contains `worker-5g6o`, which carries `OPENAI_API_KEY` and has no service-specific config file.
+Warn operators never to point `worker-5g6o` at production or trigger unintended
+background work, and do not copy that whole environment as a supposedly safe
+preview template. An app-only template and its data/access controls still need
+explicit verification.
 
 If automatic previews are requested later, first prepare that isolated app-only
 base, then enable **Focused PR Environments** in **Project Settings → Environments**.
@@ -581,9 +583,9 @@ using Railway's `ALWAYS` restart policy so repeated bootstrap failures cannot
 exhaust a finite retry allowance and leave the queue undrained.
 The `indexing-v3-agent` Edge Function **stays** in its current role as the
 cron-triggered completion/repair gate — the two are complementary, not
-alternatives. The worker service selects its Dockerfile via the
-`RAILWAY_DOCKERFILE_PATH=Dockerfile.worker` variable (captured in
-`railway.worker.json`).
+alternatives. The worker service selects its Dockerfile through
+`build.dockerfilePath: "Dockerfile.worker"` in `railway.worker.json` (Railway
+config-as-code), not through a service variable.
 
 > **Operator run recipe:** the copy-pasteable build/run/verify steps, the
 > required env + secrets, and the pre-deploy migration gate live in
@@ -709,12 +711,16 @@ Rules:
   synthetic/public corpus. `public/demo-documents/` plus generated samples
   (`npm run samples`) are sufficient for load-shape realism; do not copy
   clinical production documents into staging.
-- One staging `app` container and **no staging worker**. The active Railway
-  `PsychSift` project has a `staging` environment pinned to Singapore with
+- One staging `app` container and **no staging worker for the offline tenancy
+  release profile**. The active Railway `PsychSift` project has a `staging`
+  environment pinned to Singapore where the `app` service uses
   `RAG_PROVIDER_MODE=offline`, isolated Supabase credentials, and no OpenAI key.
   This keeps release proofs deterministic and prevents staging ingestion from
-  draining or mutating production data. See `docs/staging-setup.md` for the
-  turnkey runbook.
+  draining or mutating production data. Note that `worker-5g6o` also exists in
+  `staging` and carries `OPENAI_API_KEY`: warn operators never to point it at
+  production, copy the full environment as an offline template, or trigger
+  unintended background work. See `docs/staging-setup.md` for the turnkey
+  runbook.
 - `src/lib/supabase/project.ts` is staging-aware only when both
   `SUPABASE_STAGING_PROJECT_REF` and `SUPABASE_STAGING_PROJECT_NAME` are set.
   The declared staging ref must differ from production and every stale project;

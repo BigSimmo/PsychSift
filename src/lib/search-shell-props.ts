@@ -115,6 +115,13 @@ export function searchShellPropsForPathname(pathname: string): SearchShellPathPr
     return { initialMode: "psychiatry", desktopSearchPlacement: "hero" };
   }
 
+  // The safety plan's one home is Psychiatry's "For a shift" row, so the header names
+  // Psychiatry. It is a working form, not a search: no composer, so nothing typed here
+  // can be mistaken for (or sent as) a search.
+  if (pathname === "/safety-plan" || pathname.startsWith("/safety-plan/")) {
+    return { initialMode: "psychiatry", desktopSearchPlacement: "hero", searchComposerVisible: false };
+  }
+
   if (pathname === "/medicines" || pathname.startsWith("/medicines/")) {
     return { initialMode: "medicines", desktopSearchPlacement: "hero" };
   }

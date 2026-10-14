@@ -156,23 +156,26 @@ announcer APIs are support-only entry exports. The focus-stack internals remain 
 The adoption contract separately declares every production page route and shared surface root
 under an explicit surface family and disposition. New undeclared routes fail generation. API and
 mockup trees are non-product exclusions; the sole route-only exception is the documented legacy
-document-source redirect. All declared roots remain on the compatibility shell until a separate
-adoption change opts in literally.
+document-source redirect. All 14 declared clinical surface families now mount `.ckb-v2` (via the
+literal `.ckb-v2` on the global `<html>` root, with the declared `v2` shell and the `passed` proof statuses
+recorded in `adoption-contract.json` / [ADOPTION.md](ADOPTION.md)). Those statuses are recorded declarations
+backed by the evidence paths in `adoption-manifest.json`; this documentation-only change did not re-run the
+browser proofs (Not run: no browser or design-system command was executed for this wording).
 
 **Rejected.** (a) A hand-maintained, partial `dtsPropsFor` list: it already drifted from final
 `Chip`, `Sheet`, `ConfirmDialog`, and callback contracts. (b) Calling every bundle symbol a visual
 component: providers, hooks, state models, and portals need public entry access without fake
 preview rows. (c) Treating registration or a product import as v2 style adoption: `AnswerCard` is
 a valid local reference with zero product imports, while the app-mounted `OverlayRoot` remains
-infrastructure on the compatibility shell. (d) Keeping
+shared overlay infrastructure. (d) Keeping
 `FilterBar` or `DataTable` as future names: `AccessibleTable` is canonical and filter composition
 belongs to the owning surface. (e) Leaving `SegmentedControl` or `OverlayRoot` as open
 specifications after their source, API, preview, and tests exist.
 
 **Why.** Source-derived publication makes API drift fail deterministically; route-complete
 adoption makes an undeclared production surface fail closed. Keeping those claims separate lets
-the repository say exactly what is ready locally without implying remote publication, browser
-acceptance, product restyling, or v2 root activation.
+the repository say exactly what is ready locally without implying remote publication or committed
+Linux visual baselines before they exist.
 
 ---
 
@@ -185,8 +188,8 @@ declined conversions rather than left as an open question for the next reader to
   `justify-center` display hero on the fluid `text-hero` token, and it is the slot the
   in-flow phone composer sits directly beneath (`desktopComposerSlotId` /
   `DesktopComposerPortalSlot` render immediately after it). `PageHeader` is a left-aligned
-  title stack. Converting the hero would be a visual redesign of all thirteen mode homes
-  (`src/lib/app-modes.ts`) and risks colliding with the "one composer per page" contract in
+  title stack. Converting the hero would be a visual redesign across the mode homes
+  (originally 13 mode homes; `src/lib/app-modes.ts` now defines 26 app modes) and risks colliding with the "one composer per page" contract in
   `docs/search-chrome-behaviour.md` — out of proportion to a header-vocabulary convergence.
 - `search-results-header-band.tsx` is a results spine carrying live status
   (`role="status"`), result counts, and applied-filter chips — not a page-title stack.
@@ -210,6 +213,62 @@ recorded so a later session does not re-derive the same two options. `PageHeader
 vocabulary now permanently excludes these two call sites; a future redesign of mode-home
 hero layout or the results spine is a separate, explicitly-scoped change, not a header
 convergence.
+
+---
+
+## C8 · One look for both modes (owner design review, 11 October 2026)
+
+**Chose.** After a review of every Work and Clinical screen at 320 px, 390 px, desktop and
+dark mode, the owner approved these seven rules for both modes:
+
+1. **One look for both modes.** Clinical keeps its own components and behaviour, including
+   the search box at the bottom of the screen and how it works, but shares Work's look: round
+   header buttons on a tinted top bar, the tab bar in the same tint, hairline cards, the same
+   controls and illustrations, in Clinical blue. No search bar is added at the top.
+2. **Calmer bands.** The band and top bar carry no dot texture, and the band's line drawing
+   is fainter (0.08 light, 0.11 dark, from 0.11 and 0.14).
+3. **Primary buttons take the area colour.** Never black or ink-filled buttons, in either mode. First Nations keeps its own standard (v13.1), which holds its olive to the pill, current tab, icon tiles, day track and quotation accents, so its buttons stay neutral.
+4. **Filter chips stay on one line.** They scroll sideways with an edge fade and never wrap to
+   leave one chip alone.
+5. **Red means overdue, lapsed or urgent only,** in both modes. Priority and category labels
+   ("High", "Medium") use neutral tags.
+6. **One way back.** If the header shows Back, the page adds no extra "‹ My Day" style link
+   under the band.
+7. **One card per group,** in both modes: items sit as divided rows in one hairline card, with
+   no cards inside cards and no coloured side bars.
+
+**Rejected.** A top search bar or a title band in Clinical mode. The owner asked that the
+Clinical search box keep its bottom position and behaviour, and that Clinical keep its own
+components; a title band would also have moved the tab bar out of the top bar's collapse
+track and changed how it hides on scroll.
+
+**Why.** The two modes read as two different apps (different header, list, card and button
+styles). Sharing one visual language while keeping each mode's own controls balances them
+without retraining the reader.
+
+---
+
+## C9 · The desktop and tablet shell (usefulness and layout audit, 11 October 2026)
+
+**Chose.** Built on the owner's go-ahead for the 11 October usefulness and layout audit:
+
+1. **Tablet rule.** Page content behaves like a phone at 768 px (an upright tablet: one
+   column) and like desktop from 1024 px (a tablet on its side: two columns, a list beside a
+   record). The side rail still replaces the menu button from 768 px (owner pick "Burger and
+   rail", 7 October), so only the content follows the rule.
+2. **One width per kind of page.** Reading pages (lists, forms, settings) keep the 45rem
+   column; wide pages (calendars, boards, tables, a list beside a record, the shared page
+   shell) take 64rem from 1024 px. The band's title and tabs always take the page's width,
+   so the title lines up with the cards. Declared with `data-page-width` (work-mode.css,
+   "page widths"); `src/components/work-frame/work-desktop-layout.tsx` gives area pages
+   `WorkWidePage`, `WorkSplit` (list beside record) and `WorkColumns` (two or three columns).
+3. **Desktop Clinical matches Work.** The Clinical rail shows a name under every icon, in the
+   work rail's style and Clinical blue; the mode pill drops its small "Mode" label at every
+   width; tablets and desktop show the bell in the Clinical header, as on Work pages. Phones,
+   the brand lockup on mode homes and the Clinical search box are unchanged.
+
+**Rejected.** Moving the side rail to 1024 px: it was the owner's own 7 October pick, and an
+upright tablet reads well with it.
 
 ---
 

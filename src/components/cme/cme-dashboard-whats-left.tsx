@@ -261,7 +261,7 @@ function Row({
           onClick={logHere}
           {...{ [CME_LOG_TRIGGER_ATTRIBUTE]: "" }}
           className="work-button min-h-tap mr-2 shrink-0"
-          data-variant="primary"
+          data-variant="grey"
           aria-label={`Log an activity toward ${row.title}`}
           data-testid="cme-next-log"
         >
@@ -271,6 +271,9 @@ function Row({
     </li>
   );
 }
+
+/** How many open items the Year page lists before "See all in End of year". */
+const WHATS_LEFT_SHOWN = 3;
 
 export function CmeWhatsLeft({
   set,
@@ -295,6 +298,10 @@ export function CmeWhatsLeft({
     .filter((row) => !row.ready)
     .sort((a, b) => Number(b.id === nextStepRowId) - Number(a.id === nextStepRowId));
   const done = rows.filter((row) => row.ready);
+  // The first three only (12 Oct 2026 simplify plan); the done ones still fold under one tick row, and
+  // "See all" closes the card, since End of year lists every item.
+  const shown = left.slice(0, WHATS_LEFT_SHOWN);
+  const hidden = left.length - shown.length;
   const label: ReactNode = left.length > 0 ? `What's left · ${left.length}` : "What's left";
 
   return (
@@ -304,7 +311,7 @@ export function CmeWhatsLeft({
       end={
         // A short word: held to the 48 px tap width, its words kept at the right edge.
         <CmeTextLink href={`/cme/check?year=${set.year}`} testId="cme-year-check-link" className="min-w-12 justify-end">
-          Report
+          End of year
         </CmeTextLink>
       }
     >
@@ -314,7 +321,7 @@ export function CmeWhatsLeft({
             Everything in the year check is done.
           </li>
         ) : null}
-        {left.map((row) => (
+        {shown.map((row) => (
           <Row key={row.id} row={row} isNext={row.id === nextStepRowId} year={set.year} onOpenDetail={onOpenDetail} />
         ))}
         {done.length > 0 ? (
@@ -339,6 +346,24 @@ export function CmeWhatsLeft({
                 ))}
               </ul>
             </details>
+          </li>
+        ) : null}
+        {hidden > 0 ? (
+          <li className="flex min-w-0 items-center">
+            <Link
+              href={`/cme/check?year=${set.year}`}
+              data-testid="cme-whats-left-see-all"
+              className="work-row min-h-tap min-w-0 flex-1"
+            >
+              <span aria-hidden="true" className="work-ic rounded-full" data-tone="neutral">
+                <LayoutGrid aria-hidden="true" strokeWidth={2} />
+              </span>
+              <span className="work-row__text">
+                <span className="work-row__title text-[color:var(--mode-identity)]">{`See all ${left.length} in End of year`}</span>
+                <span className="work-row__sub">{`${hidden} more, plus evidence and handing it in`}</span>
+              </span>
+              <ChevronRight aria-hidden="true" className="work-row__chev" />
+            </Link>
           </li>
         ) : null}
       </CmeFlatList>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildHazardSnapshot,
@@ -128,6 +128,20 @@ describe("reviewExpired", () => {
 });
 
 describe("buildHazardSnapshot against the real repository documents", () => {
+  it("ages review expiry against the current time while keeping generatedAt stable", () => {
+    const generatedAt = buildHazardSnapshot().generatedAt;
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2100-01-01T00:00:00Z"));
+      const current = buildHazardSnapshot();
+      expect(current.generatedAt).toBe(generatedAt);
+      expect(current.registers.every((register) => register.reviewExpired)).toBe(true);
+      expect(current.counts.reviewExpired).toBe(current.counts.hazards);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   // The generator is plain JavaScript, so TypeScript infers a loose shape
   // from it. Asserting it to the loader's own type
   // here is what the page consumes, and doubles as a check that the generator
@@ -169,16 +183,23 @@ describe("the committed snapshot the page renders", () => {
     expect(reviewExpiredAtPerth("2026-11-23", new Date("2026-11-23T16:00:00Z"))).toBe(true);
   });
 
-  it("is in step with the documents, so the page cannot show a stale hazard list", () => {
-    const committed = loadHazardSnapshot();
-    const rebuilt = buildHazardSnapshot(new Date(`${committed.generatedAt}T00:00:00Z`));
+  it.each(["2026-11-23T15:59:59Z", "2100-01-01T00:00:00Z"])(
+    "is in step with the documents, regardless of expiry at %s",
+    (evaluationTime) => {
+      const committed = loadHazardSnapshot();
+      const rebuilt = buildHazardSnapshot(new Date(evaluationTime)) as HazardSnapshot;
 
-    // Compared on the registers alone: `generatedAt` moves with every
-    // regeneration and would make this a test of the clock.
-    expect(committed.registers).toEqual(rebuilt.registers);
-    expect(committed.counts).toEqual(rebuilt.counts);
-    expect(committed.retired).toEqual(rebuilt.retired);
-  });
+      // Compare document-derived fields only. Expiry flags and counts age with
+      // effectiveNow independently of generatedAt; expiry behavior is tested above.
+      const staticFields = (snapshot: HazardSnapshot) =>
+        JSON.parse(
+          JSON.stringify(snapshot, (key, value) =>
+            key === "generatedAt" || key === "reviewExpired" ? undefined : value,
+          ),
+        );
+      expect(staticFields(committed)).toEqual(staticFields(rebuilt));
+    },
+  );
 
   it("surfaces every uncontrolled hazard with the register it came from", () => {
     const snapshot = loadHazardSnapshot();

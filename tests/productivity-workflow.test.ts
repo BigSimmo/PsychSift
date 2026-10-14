@@ -91,6 +91,12 @@ describe("productivity workflow planning", () => {
     expect(plan.proof.join(" ")).toContain("320, 390, 639, 768, 1440, and 1920");
   });
 
+  it("treats the binding instruction continuation as a workflow change rather than docs-only", () => {
+    const plan = buildWorkflowPlan("flightplan", ["PROJECT-INSTRUCTIONS-CONTINUATION.md"]);
+
+    expect(plan.risks).toMatchObject({ workflow: true, docsOnly: false });
+  });
+
   it("treats repository skill instructions as workflow changes rather than docs-only", () => {
     const plan = buildWorkflowPlan("flightplan", [".agents/skills/database-flightplan/SKILL.md"]);
 

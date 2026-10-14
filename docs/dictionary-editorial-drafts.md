@@ -96,16 +96,22 @@ entries.
 
 ## Sources: registered is not ingested
 
-**Eighteen of the 58 sources are admitted to `src/data/source-acquisitions.json` as candidates**,
-up from two: the WHO AUDIT and ASSIST manuals, AIHW's 2025 prisons health report, WA Health MP 0155/21 and its consent article, RANZCP
-PS #74, PS #116 and PPG #16, NICE NG225 and CG103, Australian Prescriber's movement-disorders
-article, and seven Healthdirect articles. They are metadata rows, not indexed documents — see exactly what that does and does not mean below.
+**Twenty-six of the 58 sources are admitted to `src/data/source-acquisitions.json` as candidates**,
+up from 18: the initial 18 published and review-dated sources (the WHO AUDIT and ASSIST manuals,
+AIHW's 2025 prisons health report, WA Health MP 0155/21 and its consent article, RANZCP PS #74,
+PS #116 and PPG #16, NICE NG225 and CG103, Australian Prescriber's movement-disorders article, and
+seven Healthdirect articles), three further published guidelines after publisher/edition verification
+(APA bipolar guideline, NSW ACI spinal cord injury mental health guide, and NSW ACI mental health
+assessment guide), and five continuously maintained pages admitted under the `last_updated` date
+model below (AIHW ambulance attendances, AIHW glossary, WA Mental Health Advocacy Service, WA Mental
+Health Emergency Response Line, and the WA Chief Psychiatrist's Mental Health Act page). They are
+metadata rows, not indexed documents — see exactly what that does and does not mean below.
 
 ### These candidates ARE visible at `/sources`
 
 An earlier draft of this document said they had "no deployed catalogue visibility". **That was
 wrong**, and a review caught it. `acquisitionProvider` feeds every non-rejected ledger row into
-`repositorySourceReferences()`, which `/sources/search` renders with a detail page each. All 18 rows
+`repositorySourceReferences()`, which `/sources/search` renders with a detail page each. All 26 rows
 appear there.
 
 That is the register working as designed — the eight rows already in the ledger before this change
@@ -238,15 +244,17 @@ Prescriber as `Aust Prescr` made the catalogue return `unknown_jurisdiction` and
 registered publisher as unregistered. Use the register's own code (`AUSPRES`) or leave the code null;
 do not invent an abbreviation.
 
-### Why the other 41 are held
+### Why the other 32 are held
 
-| Count | Obstacle                                                                                                                   | Whose call                                          |
-| ----- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 15    | Host absent from `GOVERNED_SOURCE_HOSTS` (the three METEOR records moved to a page read when it was added, 2026-09-28)     | Owner — widening host policy is never a side effect |
-| 17    | Publisher now registered; no publication or review date has been established                                               | Needs a page read                                   |
-| 4     | Publisher page returned HTTP 403 to this session (four AIHW pages; AIHW is registered, so the date is all that is missing) | Needs a browser read                                |
-| 4     | Publisher field is a description, not an agency (see above)                                                                | Needs the actual publisher                          |
-| 6     | Publisher states no date at all, or only an update stamp, or the index conflicts with the recorded publisher               | Mixed                                               |
+The remaining 32 held records in `src/data/dictionary-source-dispositions.json` (`58 total = 26 admitted + 32 held`) partition by primary blocker as follows:
+
+| Count | Primary obstacle                                                                                                                                                                                                                                                                                         | Whose call                                          |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 14    | Host absent from `GOVERNED_SOURCE_HOSTS` (with a registered agency publisher; the three METEOR records moved when `meteor.aihw.gov.au` was added, 2026-09-28)                                                                                                                                            | Owner — widening host policy is never a side effect |
+| 5     | Source is an undated live register (`WA-MHDC-2026`, `WA-MHT`, `WA-OCP-AMHP`, `WA-OCP-FORMS`, `WA-OCP-PMP`)                                                                                                                                                                                               | Needs a register/date model or dated snapshot       |
+| 4     | Publisher field is a description, not an agency (`4AT-OFFICIAL`, `WA-ABORIGINAL-TITLES-2026`, `WA-AHD-2026`, `WA-MHC-FORM-LIST-2022`; two also have host or dead-URL blockers)                                                                                                                           | Needs the actual publisher                          |
+| 3     | Host now governed (`meteor.aihw.gov.au`); needs page read and metadata-register jurisdiction (`AIHW-NOCC-2026`, `AIHW-NOCC-NMDS-2026`, `METEOR-FOC-HISTORIC`)                                                                                                                                            | Needs a page read                                   |
+| 6     | Registered publisher on a governed host, but canonical URL 404s (`health-mental-rights`, `nsw-mse-handbook`) or page is an undated landing/hub or has conflicting currency (`AIHW-AOD-2026`, `AUS-HEALTH-ASSIST-2025`, `health-recovery-framework`, `healthdirect-mental-health`, `who-safety-planning`) | Needs repointing or publisher date verification     |
 
 `publisherCheck.checkedOn: null` means nobody has looked, which is weaker than "the publisher states
 no date". The two lead to different next actions and are kept apart.

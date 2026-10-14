@@ -45,6 +45,10 @@ export function OnCallGroupActionControl({ action }: { readonly action: OnCallGr
  *
  * `headerIcon` is still accepted so callers need not change, but the calm look
  * draws no icon tile beside an eyebrow.
+ *
+ * `inCard` draws the group as one part of a card its caller provides: the eyebrow sits inside the card and
+ * a hairline divides it from the group above, so several short groups read as one list rather than a
+ * stack of small boxes.
  */
 export function OnCallGroupedList({
   eyebrow,
@@ -53,6 +57,7 @@ export function OnCallGroupedList({
   action,
   actionNode,
   surface = "flat",
+  inCard = false,
   id,
   testId,
   className,
@@ -67,6 +72,8 @@ export function OnCallGroupedList({
   readonly actionNode?: ReactNode;
   readonly headerIcon?: LucideIcon;
   readonly surface?: "flat" | "card";
+  /** Part of a card the caller draws, with no card of its own. */
+  readonly inCard?: boolean;
   readonly id?: string;
   readonly testId?: string;
   readonly className?: string;
@@ -77,11 +84,21 @@ export function OnCallGroupedList({
     <section
       id={id}
       aria-labelledby={eyebrow ? headingId : undefined}
-      className={cn("grid min-w-0 gap-1 scroll-mt-32", className)}
+      className={cn(
+        "grid min-w-0 scroll-mt-32",
+        inCard ? "border-t border-[color:var(--work-line)] first:border-t-0" : "gap-1",
+        className,
+      )}
       data-testid={testId}
     >
       {eyebrow ? (
-        <div className="flex min-h-12 min-w-0 flex-wrap items-center justify-between gap-x-3 px-1">
+        <div
+          className={cn(
+            "flex min-w-0 flex-wrap items-center justify-between gap-x-3",
+            // Inside a card a label with nothing to tap needs no 48 px row; one with an action keeps it.
+            inCard ? cn("pl-3 pr-2", action || actionNode ? "min-h-12" : "min-h-9 pt-1") : "min-h-12 px-1",
+          )}
+        >
           <h2 id={headingId} className={eyebrowText}>
             {eyebrow}
             {count !== undefined ? <span className="nums">{` · ${count}`}</span> : null}
@@ -95,7 +112,7 @@ export function OnCallGroupedList({
           redesign, owner request 6 Oct 2026): "flat" is the kit's flat card
           (`work-card`, no lift), "card" keeps the module surface for the one
           module that should stand apart (the emergency route). */}
-      <ul role="list" className={surface === "card" ? modeModuleSurface : "work-card min-w-0"}>
+      <ul role="list" className={inCard ? "min-w-0" : surface === "card" ? modeModuleSurface : "work-card min-w-0"}>
         {children}
       </ul>
     </section>

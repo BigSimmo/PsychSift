@@ -50,19 +50,22 @@ sufficient gate (`npm run verify:pr-local` by default — see
 body. Write it from `.github/pull_request_template.md` in full normal prose, with the exact
 `## Summary` / `## Verification` / `## Risk and rollout` headings, a satisfying `RAG impact:`
 line when a RAG-ranking surface is touched, and — when `classifyPullRequestFiles` reports
-clinical risk — a complete `## Clinical Governance Preflight`. Output-style compression never
-applies to PR titles and bodies.
+clinical risk — a complete `## Clinical Governance Preflight`. (Since 2026-09-17, missing or
+incomplete `## Clinical Governance Preflight` and `RAG impact:` declarations emit **advisory
+warnings** in `pr-policy` rather than hard-blocking merges — see `docs/process-hardening.md` —
+but contributors and agents should still include them on every applicable PR.) Output-style
+compression never applies to PR titles and bodies.
 `npm run pr:areas` prints the `Areas touched:` line from the organisation map and, when a
 ranking-protected file changed, a `RAG impact:` placeholder to replace; include both in the body.
 
 - Complete the Preflight **truthfully**: check only the boxes that are actually true for this
   change. Never tick every box to satisfy the parser.
-- `governanceItemSatisfied` compares with exact string equality, so a checked line must
-  reproduce the template wording and nothing else. Appending a reason (for example `- [x] <item> — because ...`) silently fails to match. Copy the seven lines verbatim and put reasoning in a paragraph
-  beneath them.
+- `governanceItemSatisfied` first checks exact string equality, then falls back to matching
+  legacy evidence, which may still be accepted even with appended reasons. Copy the seven
+  template lines verbatim and put reasoning in a paragraph beneath them.
 - Check a body offline before pushing rather than learning it from CI;
   `evaluatePullRequestPolicy` is the same function the workflow calls. Expect `ok: true` with
-  empty `errors`:
+  empty `errors` (and address any relevant `warnings`):
 
   ```bash
   node -e "import('./scripts/pr-policy.mjs').then(m=>{
@@ -84,7 +87,7 @@ clinical-database deploy; treat that merge as production.
 **Drafts.** Marking a PR ready for review escalates CI to the full heavy set — build and all
 browser shards — even for a diff with no executable file, and undrafting mid-CI cancels the
 in-flight run. Do not undraft a PR merely to obtain an automated review (see
-[Automated review coverage](#automated-review-coverage-owner-decision-2026-08-22)).
+[Automated review coverage](#automated-review-coverage)).
 
 ## Follow CI
 
@@ -186,29 +189,74 @@ findings only from `cursor[bot]` with account type `Bot`.
 - Automatic review is one pass per PR head; a repair commit or base sync does not authorise
   another automatic pass (see [`../codex-review-protocol.md`](../codex-review-protocol.md)).
 
-### Automated review coverage (owner decision, 2026-08-22)
+<a id="automated-review-coverage"></a>
+<a id="automated-review-coverage-owner-decision-2026-08-22"></a>
 
-**The decision (2026-08-22, owner):** leave the CodeRabbit spending cap as it is and accept that
-automated review from that bot is intermittent. Option (c) of three — not a gate, not a cap
-raise. Recorded closed as `#CCZ4HB`, analysis in `docs/decisions/ccz4hb-review-coverage.md`.
+### Automated review coverage and fallback policy
 
-**Correction 2026-09-02 — the premise of that decision no longer holds.** CodeRabbit is not
-reviewing this repository _at all_, and not for budget reasons. Measured across PRs #2522 and
-#2542: it reports _"This repository does not receive automatic reviews because it has fewer than
-10 stars"_ (the repo has 0; `Plan: Team`). That is a categorical eligibility gate, so the cap is
-irrelevant to it and "intermittent" understates the position. The Codex connector does work and
-is currently the only automated reviewer; Cursor Bugbot is the tool actually reporting a spend
-limit. Read the 2026-09-02 correction at the top of the decision doc before acting on the
-analysis beneath it, which diagnoses the wrong constraint. **The owner may want to revisit the
-decision on the corrected facts; until then it stands.**
+**Historical context & owner decision:** On 2026-08-22, the owner decision (`#CCZ4HB`) accepted
+intermittent CodeRabbit review on the explicit condition: _"Re-open only if the Codex connector also
+stops reviewing, or if the owner revisits the billing decision."_ On 2026-09-02, CodeRabbit was
+confirmed completely unavailable due to a categorical under-10-stars repository eligibility gate
+(`Plan: Team`, stargazers: 0), rendering billing caps irrelevant.
 
-- Do not treat a missing CodeRabbit review as a budget symptom, and do not undraft a PR to obtain
-  one — both gates apply and undrafting escalates CI to the full heavy set for nothing.
-- Draft PRs are skipped by CodeRabbit outright; undrafting mid-CI cancels the in-flight run.
-- **Do not weaken, skip, or relax any required check to compensate.** Required gates carry the
-  deterministic safety net and must stay strict.
-- Clinical-risk and RAG-surface diffs still require their PR-body preflight sections in full
-  (`scripts/pr-policy.mjs`).
+**The 2026-09-19 triple-outage trigger (#JQ3KY7):** On 2026-09-19, that re-open condition fired:
+all three external automated reviewers declined reviews simultaneously on the same day:
+
+1. **CodeRabbit**: blocked by the categorical under-10-stars eligibility gate (_"This repository does not
+   receive automatic reviews because it has fewer than 10 stars"_).
+2. **ChatGPT Codex connector**: exhausted its usage quota (_"reached your Codex usage limits for code reviews"_).
+3. **Cursor Bugbot**: reached its spend limit (_"usage limit reached"_).
+
+Three pull requests landed that day with zero automated review (#2901, #2903, #2921). PR #2922
+re-opened the issue and introduced `.github/workflows/claude-review.yml` as redundant in-house review
+automation. Overnight, the Codex quota reset and it resumed reviews on #2922 and #2923. The incident
+proved that reviewer outages coincide transiently rather than permanently, establishing the necessity
+for a multi-layered redundancy architecture rather than reliance on any single tool.
+
+**Multi-layered fallback strategy:**
+
+- **Layer 1 (Primary):** ChatGPT Codex connector for automatic PR reviews when within quota.
+- **Layer 2 (Redundant In-House):** `.github/workflows/claude-review.yml`, authenticated via
+  repository secret `CLAUDE_CODE_OAUTH_TOKEN` against an existing Claude subscription rather than
+  pay-per-use API billing (eliminating per-review spend caps).
+- **Advisory and decoupled from CI:** Automated review is strictly advisory and **deliberately NOT a
+  gate**. It is absent from `pr-required` in `ci.yml`, has no `merge_group` trigger, and never blocks
+  merges or delays the merge queue. In `.github/workflows/claude-review.yml`, `continue-on-error: true`
+  is applied at the review step; if unconfigured or failed, it posts a warning annotation rather than
+  painting a red X on the PR checks panel (preventing red-check fatigue; `#NNAWDT`).
+- **Throttling & lifecycle:** Automated review runs once on `opened` and `ready_for_review`. Draft PRs
+  are skipped by default. Intermediate repair pushes, format commits, and base syncs do not trigger
+  re-review (`synchronize` is deliberately omitted to conserve subscription quota). Re-review requires
+  marking draft and ready again or explicit dispatch.
+
+**Required reply-first, resolve-second protocol:**
+All automated review findings (from Codex connector, Claude review, Cursor Bugbot, or CodeRabbit) and
+human review comments must follow the repository's strict resolution discipline:
+
+- **Reply first:** For every fixed or fully dispositioned thread, start the thread reply with the
+  canonical machine-readable marker:
+  ```
+  <!-- codex-thread-disposition:resolved -->
+  ```
+  Follow this with a concise summary naming the commit SHA on the PR head that repaired the issue.
+- **Resolve second:** Resolve the thread only after the reply is posted. Never resolve silently, never
+  resolve to dismiss valid feedback you disagree with, and never resolve threads on another author's
+  PR when only observing.
+- **Leave open for human:** Ambiguous, product-sensitive, clinical, or design findings must be
+  replied to with the blocker or question and left open for Josh.
+
+**Deterministic CI gate invariance:**
+
+- **Absence of automated review never relaxes deterministic CI gates.** If any or all bot reviewers
+  are unavailable, failing, rate-limited, or unconfigured, no required test, check, lint, build, or
+  security gate may be bypassed, skipped, or weakened. Required gates form the deterministic safety net
+  and remain absolute.
+- Clinical-risk and RAG-surface pull requests are still expected to include their PR-body preflight
+  governance and impact declarations in full (`scripts/pr-policy.mjs` emits advisory warnings since
+  2026-09-17 when omitted rather than hard-blocking merges).
+- Never undraft a PR prematurely merely to obtain automated review; undrafting immediately triggers
+  heavy browser and build shards and cancels in-flight CI runs.
 - Reduce PR churn by bundling low-risk append-only paperwork with product PRs (see
   [Bundling](#bundling)).
 

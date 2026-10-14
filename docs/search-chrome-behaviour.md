@@ -2,6 +2,8 @@
 
 This repo uses one shared search experience across the global shell, dashboard result pages, and document-detail/source routes. Keep the behaviour page-aware but predictable.
 
+Work-area tabs remain in page flow and follow their universal header's hide/reveal state. Their sticky hook batches scroll and geometry notifications into animation frames and rechecks compositor motion on completion rather than polling layout throughout the animation. Focus changes also recheck the sticky position. Work action docks keep their sticky page-flow placement; their focus clearance applies to both the document and `#main-content`, so installed phones receive the same clearance as browser tabs. Assessment browser and installed-layout regression coverage lives in `tests/ui-phone-scroll-assessments.spec.ts`; emulation does not establish physical iPhone acceptance.
+
 ## Page ownership model
 
 | Page state                                                   | Composer placement                                                                                                                                | Reserve owner                                                                               |
@@ -120,6 +122,24 @@ sheet, the actions sheet and the `PhoneHeaderCollapsePortal` wrapper, composing
 the rendered heights, or pass explicit weights when the sections are discrete tab panels
 with no on-screen height to measure. Ownership and reserves for that chrome are the
 “Document section navigation” row above.
+
+**Header standard (owner decision, 13 Oct 2026).** Every header hides on a scroll down and
+comes back on a scroll up; what comes back is the top bar plus the page's tab row, never a
+big title. For `InPageNavHeader` that means:
+
+- **Back is in the top bar.** `back` is drawn by `WorkPageBack` in the top bar's round left
+  button (the 11 Oct "one Back, in the top bar" rule), never in the page's own row.
+- **A tab rail pins in the page.** With `rail`, the header stays in page flow and
+  `useStickyWorkTabs` (the Work band mechanism, not a new scroll-hide owner) pins the rail
+  under the bar; the title row scrolls away. Once the rail is stuck, the header's actions
+  (Save, the ⋯ menu) move to the end of the pinned rail. Under a mode band the band's tabs
+  are the pinned row, so the record's header, rail and actions included, scrolls away (owner
+  decision, 13 Oct 2026, keep as built).
+- **Section navigation without a rail rides the collapse row** through
+  `PhoneHeaderCollapsePortal`, as before: the title disclosure is that page's navigation.
+- **A row with no section navigation scrolls away** in page flow, like a band title.
+
+Psychiatry, Medicines and First Nations bands (`ModeBandHeader`) pin their tabs the same way.
 
 Sections that the reader can jump to carry `inPageAnchor`
 (`src/components/in-page-nav/in-page-nav-classes.ts`), which is
@@ -275,12 +295,10 @@ purpose: `DocumentViewer` (decided above) and the differentials presentations wo
 one item and the track would render one full-width segment. Omit `sections` and
 `InPageNavHeader` drops both and renders the breadcrumb shape instead — same row grammar,
 same single collapse owner, none of the section machinery. `usePageSectionWeights` observes
-nothing for an empty list, so those pages pay no measurement cost. Three optional props
-shape that row:
+nothing for an empty list, so those pages pay no measurement cost. Back is never in this
+row: `WorkPageBack` renders it as the top bar's round left button, with `back.label` as its
+accessible name. The optional props below shape the row:
 
-- `showBackLabel={false}` keeps the arrow alone at every width when the row also carries an
-  action or a mode, so the title owns the space. `back.label` is still the accessible name
-  and becomes the desktop tooltip.
 - `primaryAction` promotes exactly **one** page action. It is **not** the filled `--command`
   slab, because a control pinned to every scroll position should not be the page's heaviest.
   Its label is `sr-only` below `sm` so the accessible name does not change with the
@@ -488,7 +506,7 @@ in-page navigation work defaults to the DocumentViewer template above.
 12. Standalone mode-home detection (`isStandaloneModeHomePath`) is pathname-only. Do not gate hero vs dock on a React `searchMode` that can update before the router pathname lands — that one-frame mismatch animates reserve padding and reads as a choppy screen resize.
 13. Phone `#main-content` / reserve-pad `padding-bottom` transitions apply while `data-reserve-transitioning="true"` (scroll-hide and reveal). Mode and route reserve flips clear that marker immediately and must snap.
 14. Shared shell must reset phone scroll offset and scroll-hide state on `pathname` change so mode homes do not inherit a mid-page offset or collapsed header.
-15. Hero composer portal: keep the default composer mounted until the portal host is actually attached; do not hide on `slotId` alone (mode-home remounts otherwise flash a null gap). Mode-home hero geometry reserves via `data-composer-reserve="pending"` (SSR) or `:not(:empty)` (portal attached); `MasterSearchHeader` must clear the pending marker when the home media query does not match, `searchComposerVisible` is false, or portal adoption falls back — never leave an unconditional empty `min-h` band.
+15. Hero composer portal: keep the default composer mounted until the portal host is actually attached; do not hide on `slotId` alone (mode-home remounts otherwise flash a null gap). Mode-home hero geometry reserves via `data-composer-reserve="pending"` (SSR) or `:not(:empty)` (portal attached); `MasterSearchHeader` must clear the pending marker when the home media query does not match, `searchComposerVisible` is false, or portal adoption falls back — never leave an unconditional empty `min-h` band. All reserve mutations wait for the page slot's `data-composer-slot-ready` hydration signal, including phone and suppressed-composer clears; observers apply pending clears as soon as the segment is ready, preserving matching SSR attributes during streaming.
 16. Leaving the dashboard shell for a namespaced mode (`selectSearchMode` / `crossModeSearch`) must navigate without rewriting dashboard chrome first.
 17. Do not wrap mode-home `{children}` in `ClientHydrationBoundary` — that blanks RSC HTML until JS mounts. Keep hydration guards on the specific leaf that mismatches. Do not call `useSearchParams()` in an ancestor Suspense that also renders route `{children}`: that nests the page segment inside the shell’s incomplete streaming boundary and can leave a persistent hidden `S:` clone (duplicate page-root `data-testid`s). Gate always-standalone pathnames with `isAlwaysStandaloneShellPath`, and bridge search params beside the shell body via `ShellSearchParamsBridge`.
 18. Standalone mode-home `loading.tsx` files must render `ModeHomeRouteLoading` (phone top-aligned). Do not reuse unrelated results/medication skeletons.
@@ -912,17 +930,38 @@ Rules:
   claim and the render have to agree, in both directions.
 - **Keep an addon exactly one row tall.** The clearance is a static token, so a
   dock that grows covers page content by exactly its own growth. Anything that
-  needs more room opens a bottom `Sheet` instead of a taller bar; that is why
-  the compare tray's expanded state is a sheet and the Patient details panel is
-  one too.
-- **Gate the portal at 639px**, matching `.phone-footer-layer`'s `sm:fixed`. The two
-  Compare bars gate at 1023px, which between 640–1023px portals into a slot on a
-  form that is not fixed. Do not copy that.
+  needs more room opens a bottom `Sheet` instead of a taller bar, as the Patient
+  details panel does.
+- **Gate the portal at 639px**, matching `.phone-footer-layer`'s `sm:fixed`.
+- **One Compare tray (October 2026).** Therapy, Differentials (the diagnoses list
+  and submitted search) and DSM search all use `SharedCompareTray`
+  (`src/components/compare/shared-compare-tray.tsx`): "N selected, Clear, Compare",
+  rendered only once something is ticked. On a phone it portals into the route's
+  dock addon slot when the shell claims one (Therapy, Differentials), otherwise it
+  is a page-owned `phone-footer-layer` (`.shared-compare-tray-layer`) fixed above the
+  dock with its own in-flow spacer (DSM). From 640px it is a floating pill with an
+  in-flow spacer under the list. Differentials' clearance dropped from 12.5rem to
+  the one-row 9rem to match. The Differentials claim is gated on a tick, like
+  Therapy's: the list publishes its ticked count
+  (`src/components/differentials/compare-presence.ts`) and both the shell and the
+  dashboard mode surface claim the slot only while it is above zero, so an empty
+  tray never reserves a band.
+- **Filters highlight, never hide (October 2026, owner-approved).** On the
+  Differentials stream (urgency and chapter filters), DSM search (category and
+  support filters) and Therapy search (topics, reviewed, handout), a filter no
+  longer removes rows. Matching rows come first in their usual order; every other
+  row stays below under "Not emergent" (one urgency filter) or "Not matching", its
+  title muted by `--text-muted`, never by opacity. A polite live note reads
+  "N of M highlighted, all rows stay" with Clear
+  (`src/components/clinical-dashboard/filter-highlight.tsx`). Search scope and the
+  Differentials family view still define the set itself. The band count is the
+  whole set.
 
 Coverage: `tests/phone-dock-addon-contract.test.ts` (registry, exclusivity, CSS/TS
 value parity, therapy route/claim gating), `tests/patient-details-dock-action.dom.test.tsx`
-(portal target, breakpoint, sheet wiring), `tests/therapy-compare-tray.dom.test.tsx`
-(portal target, breakpoint, empty-set silence, sheet wiring),
+(portal target, breakpoint, sheet wiring), `tests/therapy-compare-tray.dom.test.tsx` and
+`tests/shared-compare-tray.dom.test.tsx` (portal target, breakpoint, empty-set silence,
+announcements),
 `tests/ui-therapy-nav-scroll.spec.ts` (the tray hides with the composer and
 releases its reserve to `0rem`).
 

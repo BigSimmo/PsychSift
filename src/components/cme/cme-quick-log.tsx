@@ -303,7 +303,7 @@ export function CmeQuickLog({
         <div className="flex flex-col gap-4 pb-2">
           {demoMode ? (
             <InlineNotice tone="neutral">
-              Demo mode lets you try the form. Saving is available only in your signed-in private record.
+              This is an example, so you can try the form. Saving is available only in your signed-in private record.
             </InlineNotice>
           ) : null}
           {choices.length > 0 ? (

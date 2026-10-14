@@ -436,10 +436,9 @@ Run:
 
 ```text
 node scripts/run-vitest.mjs run tests/ocr-evidence-contract.test.ts tests/pdf-extractor.test.ts tests/pdf-extraction-budget.test.ts tests/index-quality.test.ts tests/worker-shadow-extraction.test.ts tests/docling-lab-contract.test.ts
-npm run check:docling-lab
 ```
 
-Expected: focused tests and the offline Docling contract gate pass. The full benchmark is `bash eval/docling/run-lab.sh`; it requires the repository container/runtime and model assets, so run it only when that benchmark is intentionally authorized and report it as environment-gated otherwise.
+Expected: focused tests and the offline Docling contract gate (`tests/docling-lab-contract.test.ts`) pass. The full benchmark is `bash eval/docling/run-lab.sh`; it requires the repository container/runtime and model assets, so run it only when that benchmark is intentionally authorized and report it as environment-gated otherwise.
 
 ---
 

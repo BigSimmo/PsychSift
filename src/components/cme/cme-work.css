@@ -130,11 +130,13 @@ html.dark[data-mode-identity="cme"] {
 .cpd-mini {
   display: block;
   width: calc(var(--spacing) * 12);
-  height: calc(var(--spacing) * 1.25);
+  height: calc(var(--spacing) * 1.5);
   overflow: hidden;
   flex: none;
   border-radius: var(--radius-pill);
-  background: var(--work-wash);
+  /* The mode's own soft tint, so the empty part of the track reads on white (12 Oct 2026 polish: the
+     page-wash track all but vanished beside the filled part). */
+  background: var(--mode-identity-soft);
 }
 
 .cpd-mini > i {

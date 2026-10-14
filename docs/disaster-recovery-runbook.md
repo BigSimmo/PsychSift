@@ -60,8 +60,9 @@ trap - EXIT
 ```
 
 On a hosted target, prefer the migration chain (`supabase db push` /
-`supabase db reset --linked` semantics); measured chain replay: **48 s** for
-102 migrations into the same container. Note the chain has known fidelity gaps
+`supabase db reset --linked` semantics); measured chain replay: **48 s** into the same container
+(measured 2026-07-07 against the migration chain as it stood on that date; the chain has grown
+since, so re-measure before relying on this figure). Note the chain has known fidelity gaps
 vs schema.sql (buckets, two triggers, a handful of indexes — item 10 in
 [database-drift-detection.md](database-drift-detection.md#reconciliation-backlog)).
 
@@ -140,22 +141,23 @@ Rollback is a no-update operation: before it starts there must be no candidate r
 A schema restore is not operationally complete until all five environment-owned controls have been re-created and verified (`#326`, `docs/operator-backlog.md`). Follow this operational checklist after any schema restore or disaster recovery drill:
 
 1. **`pg_cron` schedules & retention jobs:**
-   - Re-create scheduled jobs for ingestion workers and telemetry retention (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`).
-   - Sanity check: Run `SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobid;` and confirm all 4 retention jobs + ingestion jobs are active (`active = true`).
+   - Re-create the `invoke_indexing_v3_agent` schedule (do this inside the approved change window for the restore and record the copied definition in the drill log; the schedule row is live-only, so copy its `jobname`, `schedule` and `command` from the source project with `SELECT jobname, schedule, command, active FROM cron.job WHERE jobname = 'invoke_indexing_v3_agent';` and re-create it with `SELECT cron.schedule(<jobname>, <schedule>, <command>);`; on a non-production target immediately run `SELECT cron.alter_job(<jobid>, active := false);` and activate it with `active := true` only after step 3 confirms its endpoint GUC) and the telemetry retention jobs (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`). Do **not** re-create `invoke_ingestion_worker`: it was retired by `20260926041000` and the container worker owns ingestion.
+   - Sanity check: Run `SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobid;` and confirm all 4 retention jobs are active (`active = true`), that `invoke_indexing_v3_agent` exists (active on production; still inactive on a non-production target until step 3 passes, then activate it and re-run this query), and that no `invoke_ingestion_worker` job exists.
 2. **Supabase Vault secrets:**
    - Re-add required secrets (`cron_ingestion_jwt`, `indexing_v3_agent_secret`) via Supabase Vault.
    - Sanity check: Run `SELECT name, description, created_at FROM vault.decrypted_secrets ORDER BY name;` (names only; never log decrypted secret values).
 3. **Custom database GUCs:**
-   - Re-set custom parameters (e.g. `app.indexing_agent_url`) via `ALTER DATABASE postgres SET ...`.
-   - Sanity check: Run `SELECT name, setting, source FROM pg_settings WHERE name LIKE 'app.%';`.
+   - Re-set custom parameters (e.g. `app.indexing_v3_agent_base_url`) by running `ALTER DATABASE postgres SET ...` as the project owner (`postgres`) in an operator session; the `schema.sql` statement skips with a notice when its role lacks the privilege, so do not rely on it. If the value is left unset, `invoke_indexing_v3_agent` falls back to the hardcoded production host (`supabase/schema.sql`, `invoke_indexing_v3_agent`) and would send the Vault secret there, so confirm the value with the check below before activating that job (step 1).
+   - Sanity check: Confirm the stored database-level value with `SELECT unnest(setconfig) FROM pg_db_role_setting WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = 'postgres') AND setrole = 0;` (or `pg_settings` from a new connection): `ALTER DATABASE ... SET` does not change the current session, so `pg_settings` in the same session can show a stale value.
 4. **Supabase Edge Functions:**
    - Redeploy required functions (`indexing-v3-agent`, `site-content-sync`) with the Deno v2.x toolchain in an approved change window:
      ```bash
      supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
+     supabase functions deploy site-content-sync --project-ref <PROJECT_REF>
      ```
-   - Sanity check: Verify function list via `supabase functions list` and run non-mutating health probes.
+   - Sanity check: Verify function list via `supabase functions list`, and confirm `OPENAI_API_KEY` appears in `supabase secrets list --project-ref <PROJECT_REF>` (names and digests only); restore it through the approved secret-management procedure if missing. Do not `POST` to `site-content-sync` as a probe: it has no read-only endpoint and a `POST` claims queued outbox events, so invoking it needs separate approval.
 5. **Dashboard-owned configuration:**
-   - Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating secrets), connection-pool caps (auth pool pinned at 10 connections), per-project API keys (`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), and `E2E_USER_*` test credentials.
+   - Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating secrets), connection-pool settings (percentage-mode pool setting at `20–25%` of compute-managed `max_connections` rather than pinning at 10 connections; see `docs/auth-connection-cap-runbook.md`), per-project API keys (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — note that `Dockerfile` bakes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` into the client bundle at image build time, so rotating it requires a Railway image rebuild, not just a restart), and `E2E_USER_*` test credentials.
    - Sanity check: Run `npm run check:env-parity` and names-only checks to verify all consuming environments have valid references without logging secrets.
 6. **System health verification:**
    - Run `SELECT (public.search_schema_health())->>'ok';` (must return `true` with `missing: []`).

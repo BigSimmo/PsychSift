@@ -720,12 +720,16 @@ async function observePublishedTextRows(args: {
   try {
     if (args.accessScope.includePublic) {
       const documentIds = [...new Set(needed.map(({ row }) => row.document_id))];
-      const documentQuery = args.supabase.from("documents")
+      const documentQuery = args.supabase
+        .from("documents")
         .select("id,owner_id,status,metadata")
-        .in("id", documentIds).eq("status", "indexed").is("owner_id", null).limit(documentIds.length);
-      const { data: documents, error: documentError } = await (
-        args.signal ? documentQuery.abortSignal(args.signal) : documentQuery
-      );
+        .in("id", documentIds)
+        .eq("status", "indexed")
+        .is("owner_id", null)
+        .limit(documentIds.length);
+      const { data: documents, error: documentError } = await (args.signal
+        ? documentQuery.abortSignal(args.signal)
+        : documentQuery);
       throwIfAborted(args.signal);
       if (!documentError && documents) {
         const publicDocuments = new Map<string, string | null>();
@@ -740,27 +744,45 @@ async function observePublishedTextRows(args: {
         if (eligible.length) {
           const chunkIds = [...new Set(eligible.map(({ row }) => row.id))];
           const eligibleDocumentIds = [...new Set(eligible.map(({ row }) => row.document_id))];
-          const chunkQuery = args.supabase.from("document_chunks")
+          const chunkQuery = args.supabase
+            .from("document_chunks")
             .select("id,document_id,index_generation_id,content,section_path")
-            .in("id", chunkIds).in("document_id", eligibleDocumentIds).limit(chunkIds.length);
-          const { data: chunks, error: chunkError } = await (
-            args.signal ? chunkQuery.abortSignal(args.signal) : chunkQuery
-          );
+            .in("id", chunkIds)
+            .in("document_id", eligibleDocumentIds)
+            .limit(chunkIds.length);
+          const { data: chunks, error: chunkError } = await (args.signal
+            ? chunkQuery.abortSignal(args.signal)
+            : chunkQuery);
           throwIfAborted(args.signal);
           if (!chunkError && chunks) {
             const expected = new Map(eligible.map((item) => [rowKey(item.row), item]));
             for (const chunk of chunks) {
-              const key = rowKey(chunk), match = expected.get(key);
+              const key = rowKey(chunk),
+                match = expected.get(key);
               if (!match) continue;
-              if (pathFacts.has(key)) { pathFacts.set(key, null); continue; }
+              if (pathFacts.has(key)) {
+                pathFacts.set(key, null);
+                continue;
+              }
               if (
-                chunk.index_generation_id !== match.generation || chunk.content !== match.row.content ||
-                !Array.isArray(chunk.section_path) || !chunk.section_path.every((part) => typeof part === "string")
-              ) { pathFacts.set(key, null); continue; }
-              pathFacts.set(key, Object.freeze({
-                id: chunk.id, document_id: chunk.document_id, index_generation_id: chunk.index_generation_id,
-                content: chunk.content, section_path: Object.freeze([...chunk.section_path]),
-              }));
+                chunk.index_generation_id !== match.generation ||
+                chunk.content !== match.row.content ||
+                !Array.isArray(chunk.section_path) ||
+                !chunk.section_path.every((part) => typeof part === "string")
+              ) {
+                pathFacts.set(key, null);
+                continue;
+              }
+              pathFacts.set(
+                key,
+                Object.freeze({
+                  id: chunk.id,
+                  document_id: chunk.document_id,
+                  index_generation_id: chunk.index_generation_id,
+                  content: chunk.content,
+                  section_path: Object.freeze([...chunk.section_path]),
+                }),
+              );
             }
           }
         }
@@ -808,7 +830,10 @@ export async function searchTextChunkCandidates(args: {
     assertRetrievalRows(data, "match_document_chunks_text");
     if (args.observeRawPublishedRow) {
       await observePublishedTextRows({
-        supabase: args.supabase, rows: data, accessScope, signal: args.signal,
+        supabase: args.supabase,
+        rows: data,
+        accessScope,
+        signal: args.signal,
         observeRawPublishedRow: args.observeRawPublishedRow,
       });
     }

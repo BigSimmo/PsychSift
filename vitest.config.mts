@@ -106,6 +106,8 @@ const config = {
           environment: "node",
           include: liveProviderTests ? ["tests/**/*.live.test.ts"] : ["tests/**/*.test.ts"],
           exclude: liveProviderTests ? [] : ["tests/**/*.live.test.ts"],
+          // Restores spies and unstubs globals after every test (TS-01).
+          setupFiles: ["tests/setup/node.setup.ts"],
         },
       },
       ...(!liveProviderTests

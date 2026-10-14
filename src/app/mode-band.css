@@ -96,16 +96,6 @@
   white-space: nowrap;
 }
 
-.mode-band__date {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-sm, 0.875rem);
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
 .mode-band__customise {
   flex: none;
   display: inline-flex;
@@ -126,9 +116,13 @@
   cursor: pointer;
 }
 
+/* A long one-word title ("Psychiatry") never cuts off at 320 px with large text:
+   it scales with the band's width, which only bites when the text is enlarged,
+   then breaks inside the word as a last resort. */
 .mode-band__title {
   margin: 0;
-  font-size: var(--text-3xl, 1.875rem);
+  font-size: min(var(--text-3xl, 1.875rem), 12cqi);
+  overflow-wrap: break-word;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: var(--mode-band-title-leading);
@@ -432,4 +426,86 @@ html[data-mode-band] [data-testid="chrome-safe-area-top"] {
 :is(div, header):has(> [data-under-band]:only-child),
 :is(div, header):has(> div:only-child > [data-under-band]:only-child) {
   display: contents;
+}
+
+/* The clinical band (owner design review, 11 Oct 2026). Every Clinical page
+   but the shared home tints its top bar with the mode's soft colour, and a
+   mode with its own pages (Dictionary, Differentials, Sources and the rest)
+   tints its tab bar to match, with the band's hairline under it, so the two
+   read as one band the way a work page's top bar and band do. The tab bar
+   stays in the top bar's collapse track, so it still hides and reveals with
+   the top bar exactly as before. The round header buttons are already white
+   circles, which the tint now shows. The header marks the page in its server
+   HTML (`data-clinical-band`), so the tint is there from the first paint. A
+   page under a mode band (Medicines, Psychiatry) keeps the band's own colour. */
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) {
+  --clinical-band-bg: var(--mode-identity-soft);
+  --clinical-band-line: var(--mode-identity-border);
+}
+
+html.dark:not([data-mode-band]):has(.universal-header[data-clinical-band]) {
+  --clinical-band-bg: color-mix(in srgb, var(--mode-identity) 11%, var(--background));
+  --clinical-band-line: color-mix(in srgb, var(--mode-identity) 26%, var(--background));
+}
+
+html:not([data-mode-band]) .universal-header[data-clinical-band],
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) [data-testid="chrome-safe-area-top"],
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) #phone-header-collapse-addon-slot .mode-nav-rail {
+  background: var(--clinical-band-bg);
+}
+
+html:not([data-mode-band]):has(.universal-header[data-clinical-band]) #phone-header-collapse-addon-slot .mode-nav-rail {
+  border-bottom-color: var(--clinical-band-line);
+}
+
+/* A tinted top bar with no tab bar under it ends on the band's hairline. */
+html:not([data-mode-band])
+  .universal-header[data-clinical-band]:not(:has(~ #phone-header-collapse-addon-slot .mode-nav-rail)) {
+  box-shadow: inset 0 -1px 0 var(--clinical-band-line);
+}
+
+/* Pinned tabs on Clinical pages (header standard, 13 Oct 2026). Psychiatry,
+   Medicines and First Nations bands, and record pages with a tab rail, behave
+   as a Work band does: once the title has scrolled under the top bar, only the
+   tab row stays, pinned just below the bar, and it slides away and back with
+   the bar. use-sticky-work-tabs.ts measures the offsets; the rules mirror
+   `.work-band` in work-mode.css, which also sets `--work-chrome-h` for Work
+   pages. Every other page takes it from here. */
+html {
+  --work-chrome-h: calc(var(--safe-area-top, 0px) + var(--work-bar-h, var(--shell-header-h)));
+}
+
+@media (max-width: 639px) {
+  html {
+    --work-chrome-h: var(--phone-overlay-chrome-h);
+  }
+}
+
+/* A jump to a section, a find or a focused field lands below the pinned row,
+   not under it, as on Work pages (work-mode.css). */
+html:has(:is(.mode-band, .inpage-nav-header)[data-pinned]),
+html:has(:is(.mode-band, .inpage-nav-header)[data-pinned]) #main-content {
+  scroll-padding-top: calc(var(--work-chrome-h) + var(--work-tabs-h, 0px));
+}
+
+:is(.mode-band, .inpage-nav-header)[data-pinned] {
+  position: sticky;
+  top: calc(var(--work-chrome-h) - var(--work-band-tabs-top, 0px));
+  z-index: calc(var(--z-raised, 10) + 1);
+}
+
+:is(.mode-band, .inpage-nav-header)[data-stuck] {
+  clip-path: inset(var(--work-band-tabs-top, 0px) 0 0 0);
+}
+
+.mode-band[data-stuck] .mode-band__mark {
+  opacity: 0;
+}
+
+:is(.mode-band, .inpage-nav-header)[data-pinned][data-bar-hidden]:not(:focus-within) {
+  top: calc(-1 * (var(--work-band-tabs-top, 0px) + var(--work-tabs-h, 0px)));
+}
+
+:is(.mode-band, .inpage-nav-header)[data-stuck][data-bar-hidden]:not(:focus-within) {
+  pointer-events: none;
 }

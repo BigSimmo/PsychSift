@@ -146,36 +146,42 @@ export async function POST(request: Request) {
     const singleDocumentScope = Boolean(
       answerBody.documentId && !answerBody.documentIds?.length && scope.activeFilterCount === 0,
     );
-    const answer = await runAnswerWithPilotBudget({
-      ownerId: access.ownerId,
-      documentId: answerBody.documentId ?? (answerBody.documentIds?.length === 1 ? answerBody.documentIds[0] : undefined),
-      query: answerBody.query,
-      queryMode: answerBody.queryMode,
-      summaryMode: answerBody.summaryMode,
-      activeFilterCount: scope.activeFilterCount,
-      resolvedDocumentIds: scope.documentIds,
-    }, () => answerQuestionWithScope({
-      ...registeredPublicAnswerOptions({
-        requesterId: access.ownerId,
-        accessScope,
-        explicitDocumentIds: answerBody.documentIds ?? (answerBody.documentId ? [answerBody.documentId] : undefined),
+    const answer = await runAnswerWithPilotBudget(
+      {
+        ownerId: access.ownerId,
+        documentId:
+          answerBody.documentId ?? (answerBody.documentIds?.length === 1 ? answerBody.documentIds[0] : undefined),
+        query: answerBody.query,
+        queryMode: answerBody.queryMode,
+        summaryMode: answerBody.summaryMode,
+        activeFilterCount: scope.activeFilterCount,
         resolvedDocumentIds: scope.documentIds,
-        signal: request.signal,
-      }),
-      query: answerBody.query,
-      documentId: singleDocumentScope ? answerBody.documentId : undefined,
-      documentIds: singleDocumentScope
-        ? undefined
-        : (scope.documentIds ??
-          answerBody.documentIds ??
-          (answerBody.documentId ? [answerBody.documentId] : undefined)),
-      ownerId: access.ownerId,
-      accessScope,
-      allowGlobalSearch: !access.ownerId,
-      queryMode: answerBody.queryMode,
-      observationContext,
-      signal: request.signal,
-    }));
+      },
+      () =>
+        answerQuestionWithScope({
+          ...registeredPublicAnswerOptions({
+            requesterId: access.ownerId,
+            accessScope,
+            explicitDocumentIds:
+              answerBody.documentIds ?? (answerBody.documentId ? [answerBody.documentId] : undefined),
+            resolvedDocumentIds: scope.documentIds,
+            signal: request.signal,
+          }),
+          query: answerBody.query,
+          documentId: singleDocumentScope ? answerBody.documentId : undefined,
+          documentIds: singleDocumentScope
+            ? undefined
+            : (scope.documentIds ??
+              answerBody.documentIds ??
+              (answerBody.documentId ? [answerBody.documentId] : undefined)),
+          ownerId: access.ownerId,
+          accessScope,
+          allowGlobalSearch: !access.ownerId,
+          queryMode: answerBody.queryMode,
+          observationContext,
+          signal: request.signal,
+        }),
+    );
     const governedResponse = buildGovernedAnswerClientResponse(answer);
     await persistAnswerDiagnostics({
       supabase,

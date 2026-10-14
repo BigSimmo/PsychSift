@@ -11,10 +11,11 @@ import { cn } from "@/components/ui-primitives";
 import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows";
 import { OnCallDialRow } from "@/components/on-call/kit/dial-row";
 import { OnCallGroupedList } from "@/components/on-call/kit/grouped-list";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
-import { OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { ON_CALL_SERVICE_HANDBOOK_ACTION, OnCallStateLabel } from "@/components/on-call/kit/state-label";
+import { WorkEmptyLine } from "@/components/mode-kit/work-empty-line";
 import { allocateOnCallGroupSlug, onCallGroupAnchorId } from "@/components/on-call/on-call-page-anchors";
 import { onCallWhosOnSections } from "@/components/on-call/on-call-page-sections";
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
@@ -114,7 +115,7 @@ export function OnCallWhosOnPage({ now: pinned }: { now?: Date } = {}) {
           <ChevronRight aria-hidden="true" className="size-icon-sm shrink-0 text-[color:var(--text-muted)]" />
         </Link>
       </NewWorkModeOnly>
-      {ready ? null : <OnCallCrisisLines />}
+      {ready ? null : <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} />}
       {ready ? (
         <>
           {!items.length ? (
@@ -136,7 +137,9 @@ export function OnCallWhosOnPage({ now: pinned }: { now?: Date } = {}) {
           {myTeamMissing ? (
             <OnCallGroupedList eyebrow={myTeam ?? undefined} headerIcon={Users} testId="on-call-whos-on-my-team-empty">
               <li className="flex min-h-12 items-center px-3">
-                <OnCallStateLabel state={{ kind: "not-set-up" }} />
+                <WorkEmptyLine className="w-full" action={ON_CALL_SERVICE_HANDBOOK_ACTION}>
+                  <OnCallStateLabel state={{ kind: "not-set-up" }} />
+                </WorkEmptyLine>
               </li>
             </OnCallGroupedList>
           ) : null}

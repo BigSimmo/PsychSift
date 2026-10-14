@@ -15,12 +15,13 @@ import {
 } from "@/lib/mode-secondary-navigation";
 import { ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
 
-/** Nine modes intentionally register no destinations at all — see `emptyRegistryModes`. */
+/** Eight modes intentionally register no destinations at all — see `emptyRegistryModes`. */
 const expectedLabels: Record<AppModeId, string[]> = {
   answer: [],
   documents: [],
   services: [],
-  forms: [],
+  // Owner audit item 7 (Oct 2026): the forms list, the MHA clock and the Act, one tap apart.
+  forms: ["Forms", "Clock", "Act"],
   favourites: [],
   differentials: ["Search", "Diagnoses", "Presentations", "Compare"],
   dsm: ["Search", "Compare"],
@@ -54,7 +55,7 @@ const expectedLabels: Record<AppModeId, string[]> = {
   // work-mode redesign, owner request 6 Oct 2026: CPD, Teaching, Admin and My Day list the frame's three pinned tabs.
   cme: ["Summary", "Log", "Learning"],
   teaching: ["Today", "Week", "Logbook"],
-  psychiatry: ["Ask", "Tools", "Saved"],
+  psychiatry: ["Home", "Saved"],
   medicines: [],
   "my-work": ["Today", "Renewals", "New job"],
   roster: ["Shifts", "Swaps & leave", "Team", "Settings", "Today"],
@@ -124,7 +125,6 @@ const emptyRegistryModes = [
   "answer",
   "documents",
   "services",
-  "forms",
   "favourites",
   "prescribing",
   "tools",
@@ -133,6 +133,12 @@ const emptyRegistryModes = [
 ] as const satisfies readonly AppModeId[];
 
 describe("mode secondary navigation registry", () => {
+  // Psychiatry is the one sanctioned exception to "no Home item": the owner's
+  // design review of 12 Oct 2026 folded its Ask and Tools pages into a single
+  // page the mockup names Home, beside Saved. Every other mode leaves Home to the
+  // global switch.
+  const homeTabModes: readonly AppModeId[] = ["psychiatry"];
+
   it("covers all 26 modes with the approved destinations and no Home item", () => {
     expect(Object.keys(modeSecondaryNavigationRegistry).sort()).toEqual([...appModeIds].sort());
     expect(appModeIds).toHaveLength(26);
@@ -140,7 +146,9 @@ describe("mode secondary navigation registry", () => {
     for (const modeId of appModeIds) {
       const labels = modeSecondaryNavigationRegistry[modeId].map((item) => item.label);
       expect(labels).toEqual(expectedLabels[modeId]);
-      expect(labels.map((label) => label.toLowerCase())).not.toContain("home");
+      if (!homeTabModes.includes(modeId)) {
+        expect(labels.map((label) => label.toLowerCase())).not.toContain("home");
+      }
     }
   });
 
@@ -184,11 +192,68 @@ describe("mode secondary navigation registry", () => {
     }
   });
 
-  it("registers Psychiatry's Ask, Tools and Saved as the band's tabs, Ask current on the hub", () => {
-    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, href }) => [id, href])).toEqual([
-      ["psychiatry-ask", "/psychiatry"],
-      ["psychiatry-tools", "/psychiatry?page=tools"],
-      ["psychiatry-saved", "/psychiatry?page=saved"],
+  it("gives Clinical Forms three tabs, Forms, Clock and Act, current on their own pages only", () => {
+    expect(modeSecondaryNavigationRegistry.forms.map(({ id, label, href }) => [id, label, href])).toEqual([
+      ["forms-list", "Forms", "/forms/search"],
+      ["forms-clock", "Clock", "/forms/clock"],
+      ["forms-act", "Act", "/forms/act"],
+    ]);
+    for (const [pathname, tab] of [
+      ["/forms/search", "forms-list"],
+      ["/forms/clock", "forms-clock"],
+      ["/forms/act", "forms-act"],
+      // A form record is not one of the tabs, and the bare home redirects.
+      ["/forms/transport-crisis-form", null],
+      ["/forms", null],
+    ] as const) {
+      expect(activeModeSecondaryNavigationId("forms", pathname), pathname).toBe(tab);
+    }
+    // The shell draws the bar on the list; Clock and Act are information pages that mount it themselves.
+    expect(
+      isModeSecondaryNavigationRoute({ modeId: "forms", pathname: "/forms/search", hasSubmittedSearch: false }),
+    ).toBe(true);
+    expect(isInformationPage("/forms/clock")).toBe(true);
+    expect(isInformationPage("/forms/act")).toBe(true);
+    expect(isInformationPage("/forms/search")).toBe(false);
+    // The list tab keeps a submitted query, so tapping the tab you are on never clears it.
+    expect(
+      modeSecondaryNavigationHref({
+        modeId: "forms",
+        itemId: "forms-list",
+        href: "/forms/search",
+        currentSearchParams: new URLSearchParams("q=3A&run=1"),
+      }),
+    ).toBe("/forms/search?q=3A&run=1");
+    // ...and its category, risk and availability filters, which Clock and Act do not read.
+    const filtered = new URLSearchParams("q=3A&run=1&category=Detention&risk=high,low&availability=downloadable");
+    expect(
+      modeSecondaryNavigationHref({
+        modeId: "forms",
+        itemId: "forms-list",
+        href: "/forms/search",
+        currentSearchParams: filtered,
+      }),
+    ).toBe("/forms/search?q=3A&run=1&category=Detention&risk=high%2Clow&availability=downloadable");
+    for (const [itemId, href] of [
+      ["forms-clock", "/forms/clock"],
+      ["forms-act", "/forms/act"],
+    ] as const) {
+      expect(modeSecondaryNavigationHref({ modeId: "forms", itemId, href, currentSearchParams: filtered })).toBe(href);
+    }
+    expect(
+      modeSecondaryNavigationHref({
+        modeId: "forms",
+        itemId: "forms-clock",
+        href: "/forms/clock",
+        currentSearchParams: new URLSearchParams("q=3A&run=1"),
+      }),
+    ).toBe("/forms/clock");
+  });
+
+  it("registers Psychiatry's Home and Saved as the band's tabs, Home current on the hub", () => {
+    expect(modeSecondaryNavigationRegistry.psychiatry.map(({ id, label, href }) => [id, label, href])).toEqual([
+      ["psychiatry-ask", "Home", "/psychiatry"],
+      ["psychiatry-saved", "Saved", "/psychiatry?page=saved"],
     ]);
     expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry")).toBe("psychiatry-ask");
     expect(activeModeSecondaryNavigationId("psychiatry", "/psychiatry/mha-clock")).toBeNull();
@@ -350,7 +415,8 @@ describe("mode secondary navigation registry", () => {
     ).toBe("/differentials/presentations?q=confusion&ids=delirium%2Cdementia");
 
     // Search restores the last query and re-opens results even when the prior
-    // tab URL did not carry run=1 (e.g. Diagnoses / Presentations browse).
+    // tab URL did not carry run=1 (e.g. Diagnoses / Presentations browse). It
+    // names the results route itself rather than a home that redirects there.
     expect(
       modeSecondaryNavigationHref({
         modeId: "differentials",
@@ -358,7 +424,7 @@ describe("mode secondary navigation registry", () => {
         href: "/differentials?focus=1",
         currentSearchParams: new URLSearchParams("q=confusion&ids=delirium"),
       }),
-    ).toBe("/differentials?focus=1&q=confusion&run=1&ids=delirium");
+    ).toBe("/differentials/search?q=confusion&focus=1&run=1&ids=delirium");
 
     // Search is the CURRENT tab on /factsheets/search, so its own link must not
     // reset what you are looking at. `run` is carried with the query because
@@ -497,6 +563,7 @@ describe("mode secondary navigation registry", () => {
       "differentials",
       "dsm",
       "factsheets",
+      "forms",
       "formulation",
       "sources",
       "specifiers",
@@ -548,10 +615,11 @@ describe("mode secondary navigation registry", () => {
     ]);
   });
 
-  it("leaves every other mode ungrouped", () => {
+  it("leaves every other mode ungrouped, except Therapy's Review queue kept off the tabs", () => {
     for (const modeId of appModeIds.filter((id) => id !== "on-call")) {
       const { tools, more } = groupModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId));
-      expect([...tools, ...more], modeId).toEqual([]);
+      const grouped = [...tools, ...more].map((entry) => entry.id);
+      expect(grouped, modeId).toEqual(modeId === "therapy-compass" ? ["review"] : []);
     }
   });
 
@@ -564,12 +632,23 @@ describe("mode secondary navigation registry", () => {
     expect(editor).toContain("whoson");
     expect(reader).not.toContain("service");
     expect(editor).toContain("service");
-    // Every other mode is untouched by the filter.
+    // Every other mode is untouched by the editor filter (the site administrator sees every entry).
     for (const modeId of appModeIds.filter((id) => id !== "on-call")) {
       expect(
-        visibleModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId), { isEditor: false }),
+        visibleModeSecondaryNavigationEntries(modeSecondaryNavigationEntries(modeId), {
+          isEditor: false,
+          isAdministrator: true,
+        }),
       ).toEqual(modeSecondaryNavigationEntries(modeId));
     }
+  });
+
+  it("lists Therapy's sign-off queue for site administrators only", () => {
+    const entries = modeSecondaryNavigationEntries("therapy-compass");
+    const ids = (isAdministrator: boolean) =>
+      visibleModeSecondaryNavigationEntries(entries, { isEditor: true, isAdministrator }).map((entry) => entry.id);
+    expect(ids(false)).not.toContain("review");
+    expect(ids(true)).toContain("review");
   });
 
   it("names the right On Call page in the pill, including the two editors and the picker", () => {

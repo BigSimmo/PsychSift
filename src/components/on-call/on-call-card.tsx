@@ -6,7 +6,7 @@ import { Phone } from "lucide-react";
 
 import { InformationPageShell } from "@/components/information-page-shell";
 import { OnCallCardNavHeader } from "@/components/on-call/on-call-nav-header";
-import { ON_CALL_SECTION_TITLES } from "@/components/on-call/on-call-section-identity";
+import { ON_CALL_VIEW_TITLES } from "@/components/on-call/on-call-section-identity";
 import { onCallViewForEntry } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallSignedOut } from "@/components/on-call/on-call-signed-out";
@@ -136,7 +136,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
   // third view added without a matching exclusion fails the same safe way.
   const groups = ON_CALL_SECTIONS.map((section) => ({
     section,
-    entries: sortCardEntries(cardEntries.filter((entry) => onCallViewForEntry(entry) === section)),
+    entries: sortCardEntries(cardEntries.filter((entry) => (entry.view ?? onCallViewForEntry(entry)) === section)),
   })).filter((group) => group.entries.length > 0);
 
   return (
@@ -211,7 +211,7 @@ export function OnCallCard({ now: nowProp }: { now?: Date } = {}) {
                   className="break-inside-avoid border-b border-[color:var(--border)] pb-4 last:border-b-0"
                 >
                   <h2 className="text-xs font-semibold uppercase tracking-kicker text-[color:var(--text-muted)]">
-                    {ON_CALL_SECTION_TITLES[group.section]}
+                    {ON_CALL_VIEW_TITLES[group.section]}
                   </h2>
                   <ul className="mt-2 grid gap-3">
                     {group.entries.map((entry) => {

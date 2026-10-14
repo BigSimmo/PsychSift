@@ -1,28 +1,22 @@
 "use client";
 
 import {
-  Activity,
-  Ban,
   TriangleAlert,
-  BadgeCheck,
   BookOpen,
-  CalendarDays,
   ChevronDown,
   ChevronRight,
   FileSearch,
   ClipboardList,
-  FlaskConical,
   History,
-  Lock,
   Pill,
   ShieldAlert,
-  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { BadgeCluster } from "@/components/clinical-dashboard/clinical-badge";
+import { formatTallMan } from "@/lib/medications/tall-man";
 import {
   MedicationConsiderations,
   MedicationInteractionCallout,
@@ -53,6 +47,7 @@ import {
   type MedicationRecord,
   type MedicationSection,
 } from "@/lib/medications";
+import { RecordBody, RecordCautions, RecordIntro, RecordSection } from "@/components/clinical-record-panels";
 import { cn, EmptyState, LoadingPanel } from "@/components/ui-primitives";
 import { InformationPageFooter, InformationPageShell } from "@/components/information-page-shell";
 import { RouteNotFoundPanel } from "@/components/route-not-found-panel";
@@ -64,31 +59,6 @@ import { MedicationWhereItStands } from "@/components/clinical-dashboard/medicat
 import { Button } from "@/components/ui/button";
 import { ExternalTextLink } from "@/components/ui/link";
 import { Sheet } from "@/components/ui/sheet";
-
-const sectionIcons: Record<string, LucideIcon> = {
-  dose: CalendarDays,
-  risk: TriangleAlert,
-  contra: Ban,
-  safe: ShieldCheck,
-  mon: Activity,
-  inter: FlaskConical,
-  src: BadgeCheck,
-};
-
-// Per-section toned icon tiles. Semantic tones stay reserved (red = contra/safety,
-// amber = risk/caution, green = safe/verified); other sections use the neutral
-// categorical --type-* hues so the list reads with colour without misusing meaning.
-const sectionToneClass: Record<string, string> = {
-  contra: "border-[color:var(--danger)]/25 bg-[color:var(--danger-soft)] text-[color:var(--danger)]",
-  risk: "border-[color:var(--warning)]/30 bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
-  safe: "border-[color:var(--success)]/25 bg-[color:var(--success-soft)] text-[color:var(--success)]",
-  src: "border-[color:var(--success)]/25 bg-[color:var(--success-soft)] text-[color:var(--success)]",
-  mon: "border-[color:var(--info-border)] bg-[color:var(--info-soft)] text-[color:var(--info)]",
-  dose: "border-[color:var(--type-document-border)] bg-[color:var(--type-document-soft)] text-[color:var(--type-document)]",
-  inter: "border-[color:var(--type-source-border)] bg-[color:var(--type-source-soft)] text-[color:var(--type-source)]",
-};
-const defaultSectionTone =
-  "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]";
 
 // Decorative per-medication identity accent (record.accent is keyed to drug
 // class). Exposed as CSS custom properties and softened with color-mix so it
@@ -173,40 +143,31 @@ function DetailTile({ metric }: { metric: MedicationHeroMetric }) {
 }
 
 function SectionCard({ section }: { section: MedicationSection }) {
-  const Icon = sectionIcons[section.type] || ClipboardList;
-  const toneClass = sectionToneClass[section.type] || defaultSectionTone;
-
   return (
     <details
-      className="group scroll-mt-16 border-b border-[color:var(--border)] last:border-b-0"
+      className="group scroll-mt-16"
       // The category switcher already limits how much content is on screen.
       // Open every card on arrival so switching category reveals its complete
       // reference at once; native details still lets readers fold a card back.
       open
     >
-      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-left [&::-webkit-details-marker]:hidden">
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg border", toneClass)}>
-            <Icon className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <span className="truncate text-sm-minus font-semibold text-[color:var(--text-heading)]">{section.title}</span>
-        </span>
+      <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-left [&::-webkit-details-marker]:hidden">
+        <h2 className="m-0 min-w-0 break-words text-lg font-bold tracking-tight text-[color:var(--text-heading)]">
+          {section.title}
+        </h2>
         <ChevronDown
           className="h-4 w-4 shrink-0 text-[color:var(--decoration-soft)] transition group-open:rotate-180"
           aria-hidden="true"
         />
       </summary>
-      <div className="space-y-2 px-3 pb-3">
+      <div className="divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
         {section.rows.map((row) => {
           const rowBadges = medicationRowBadges(row, section.type);
           return (
-            <div
-              key={`${section.title}-${row.key}`}
-              className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-2.5"
-            >
-              <p className="text-xs font-semibold text-[color:var(--text-heading)]">{row.key}</p>
+            <div key={`${section.title}-${row.key}`} className="py-3">
+              <p className="text-sm font-bold text-[color:var(--text-heading)]">{row.key}</p>
               <BadgeCluster items={rowBadges} compact limit={section.type === "contra" ? 4 : 3} className="mt-2" />
-              <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-[color:var(--text-muted)]">
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-[color:var(--text-muted)]">
                 {row.val.replace(/\*\*/g, "")}
               </p>
             </div>
@@ -214,18 +175,6 @@ function SectionCard({ section }: { section: MedicationSection }) {
         })}
       </div>
     </details>
-  );
-}
-
-function SidebarCard({ title, icon: Icon, children }: { title: string; icon: LucideIcon; children: React.ReactNode }) {
-  return (
-    <section className="overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] shadow-[var(--shadow-inset)]">
-      <div className="flex items-center gap-2 border-b border-[color:var(--border)] px-3 py-2">
-        <Icon className="h-4 w-4 text-[color:var(--clinical-accent)]" aria-hidden="true" />
-        <h4 className="text-sm-minus font-semibold text-[color:var(--text-heading)]">{title}</h4>
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -243,7 +192,7 @@ function QuickRefRow({ row }: { row: MedicationQuickRow }) {
 
   if (value.length <= 110) {
     return (
-      <div className="px-3 py-2.5">
+      <div className="py-2.5">
         {label}
         <p className="mt-1 text-xs leading-5 text-[color:var(--text-heading)]">{value}</p>
       </div>
@@ -252,7 +201,7 @@ function QuickRefRow({ row }: { row: MedicationQuickRow }) {
 
   return (
     <details className="group">
-      <summary className="flex cursor-pointer list-none flex-col px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-12 cursor-pointer list-none flex-col py-2.5 [&::-webkit-details-marker]:hidden">
         <span className="flex items-center justify-between gap-2">
           {label}
           <ChevronDown
@@ -274,8 +223,8 @@ function MedicationAccessPanel({ record }: { record: MedicationRecord }) {
   if (!badges.length && !fields.length) return null;
 
   return (
-    <SidebarCard title="Access" icon={Lock}>
-      <div className="p-3">
+    <RecordSection title="Access">
+      <div>
         <BadgeCluster items={badges} compact limit={3} className="mb-2.5" />
         {fields.length ? (
           <dl className="grid gap-2 text-sm-minus">
@@ -287,14 +236,16 @@ function MedicationAccessPanel({ record }: { record: MedicationRecord }) {
                   index < fields.length - 1 && "border-b border-[color:var(--border)] pb-2",
                 )}
               >
-                <dt className="font-semibold text-[color:var(--text-muted)]">{field.label}</dt>
-                <dd className="text-right font-medium text-[color:var(--text-heading)]">{field.value}</dd>
+                <dt className="shrink-0 font-semibold text-[color:var(--text-muted)]">{field.label}</dt>
+                <dd className="m-0 min-w-0 break-words text-right font-medium text-[color:var(--text-heading)]">
+                  {field.value}
+                </dd>
               </div>
             ))}
           </dl>
         ) : null}
       </div>
-    </SidebarCard>
+    </RecordSection>
   );
 }
 
@@ -306,7 +257,7 @@ function MedicationAccessPanel({ record }: { record: MedicationRecord }) {
 function MedicationSourceLinks({ links }: { links: readonly MedicationSourceLink[] }) {
   if (!links.length) return null;
   return (
-    <div className="border-t border-[color:var(--border)] px-3 py-3" data-testid="medication-source-links">
+    <div className="border-t border-[color:var(--border)] py-3" data-testid="medication-source-links">
       <h3 className="text-sm-minus font-semibold text-[color:var(--text-heading)]">Sources</h3>
       <ul className="mt-2 space-y-1.5">
         {links.map((link) => (
@@ -319,6 +270,9 @@ function MedicationSourceLinks({ links }: { links: readonly MedicationSourceLink
     </div>
   );
 }
+
+/** Quick-reference rows that are the record's cautions ("Avoid / cautions", "Contraindications"). */
+const QUICK_CAUTION_LABEL = /\b(?:avoid|cautions?|contraindicat\w*)\b/i;
 
 function MedicationRecordDetail({
   record,
@@ -359,63 +313,83 @@ function MedicationRecordDetail({
   }, [metrics, record]);
   const activeSections = sectionsByTab[activeTab];
   const activeTabLabel = medicationNavSections.find((section) => section.id === activeTab)?.label ?? "Medication";
+  const cautionRows = record.quick.filter((row) => QUICK_CAUTION_LABEL.test(row.label));
+  const referenceRows = record.quick.filter((row) => !QUICK_CAUTION_LABEL.test(row.label));
 
   return (
-    <div className="space-y-3 py-1 sm:py-2" style={medicationAccentStyle(record.accent)}>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
-        <div className="space-y-3.5">
-          <section className="scroll-mt-16 py-1" data-testid="medication-record-block">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <span className="grid size-12 shrink-0 place-items-center rounded-xl border border-[color:var(--border)] text-[color:var(--text-muted)] forced-colors:border sm:size-14">
-                <Pill className="h-[46%] w-[46%]" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h1 className="break-words text-lg font-semibold leading-tight tracking-normal text-balance text-[color:var(--text-heading)] sm:text-xl">
-                  {record.name}
-                </h1>
-                <p className="mt-1 text-sm-minus font-medium leading-5 text-[color:var(--text-muted)] sm:text-sm">
-                  {record.subclass || record.class}
-                  {record.category ? (
-                    <>
-                      <span className="mx-1.5 text-[color:var(--decoration-soft)]">·</span>
-                      {record.category}
-                    </>
-                  ) : null}
-                </p>
-                {indication ? (
-                  <p className="mt-1 line-clamp-1 text-sm-minus leading-5 text-[color:var(--text-muted)]">
-                    {indication}
-                  </p>
+    <div className="py-1 sm:py-2" style={medicationAccentStyle(record.accent)}>
+      <div className="grid grid-cols-1 gap-7 lg:grid-cols-[minmax(0,1fr)_21rem] lg:items-start">
+        <RecordBody>
+          <RecordIntro
+            testId="medication-record-block"
+            eyebrow={
+              <>
+                {record.subclass || record.class}
+                {record.category ? (
+                  <>
+                    <span className="mx-1.5 text-[color:var(--decoration-soft)]">·</span>
+                    {record.category}
+                  </>
                 ) : null}
-                <BadgeCluster items={badges} limit={5} showOverflowCount className="mt-2" />
-                {sourceLinks.length === 0 ? (
-                  <p
-                    className="mt-2 text-sm-minus leading-5 text-[color:var(--text-muted)]"
-                    data-testid="medication-no-source"
-                  >
-                    {/* Three records carry no written source notes, so Additional is named only when it has them. */}
-                    {record.sections.some((section) => section.type === "src")
-                      ? "No source link confirmed for this record yet. Its own source notes are under Additional."
-                      : "No source link confirmed for this record yet, and no source notes are recorded for it."}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          </section>
+              </>
+            }
+            title={formatTallMan(record.name)}
+            line={indication || undefined}
+            tags={<BadgeCluster items={badges} limit={5} showOverflowCount />}
+          >
+            {sourceLinks.length === 0 ? (
+              <p
+                className="m-0 text-sm-minus leading-5 text-[color:var(--text-muted)]"
+                data-testid="medication-no-source"
+              >
+                {/* Three records carry no written source notes, so Additional is named only when it has them. */}
+                {record.sections.some((section) => section.type === "src")
+                  ? "No source link confirmed for this record yet. Its own source notes are under Additional."
+                  : "No source link confirmed for this record yet, and no source notes are recorded for it."}
+              </p>
+            ) : null}
+          </RecordIntro>
 
-          {/* Hairlines without stray edges at any count: every tile draws its
-              right and bottom rule, the grid is pulled 1px past the clip so the
-              outer column's and last row's rules fall outside it, and the
-              section draws the top and bottom lines. */}
-          <section aria-label="Key figures" className="overflow-hidden border-y border-[color:var(--border)]">
-            <div className={cn("-mr-px -mb-px grid grid-cols-2", figureColumns[Math.min(metrics.length, 4)])}>
-              {metrics.map((metric, index) => (
-                // Some records repeat a stat label (e.g. adrenaline has two "Route"
-                // stats), so the label alone is not a unique key — include the index.
-                <DetailTile key={`${metric.label}-${index}`} metric={metric} />
-              ))}
-            </div>
-          </section>
+          {/* The key figures as the shared "At a glance" card. Each figure keeps
+              its own flag: a curator's `hi` figure stays red and spoken ("High
+              risk"), amber is neutral with a warning icon and a spoken "Caution".
+              Hairlines without stray edges at any count: every tile draws its
+              right and bottom rule and the grid is pulled 1px past the clip. */}
+          {metrics.length ? (
+            <section
+              aria-label="Key figures"
+              className="overflow-hidden rounded-2xl border border-[color:var(--clinical-accent-border)] bg-[color:color-mix(in_srgb,var(--clinical-accent-soft)_55%,var(--surface))]"
+            >
+              <h2 className="m-0 px-3 pt-4 pb-1 text-xs font-bold text-[color:var(--clinical-accent)]">At a glance</h2>
+              <div
+                className={cn(
+                  "-mr-px -mb-px grid grid-cols-2 border-t border-[color:var(--border)]",
+                  figureColumns[Math.min(metrics.length, 4)],
+                )}
+              >
+                {metrics.map((metric, index) => (
+                  // Some records repeat a stat label (e.g. adrenaline has two "Route"
+                  // stats), so the label alone is not a unique key — include the index.
+                  <DetailTile key={`${metric.label}-${index}`} metric={metric} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {/* Cautions straight after, in full: the record's own avoid/caution
+              quick-reference rows, lifted out of the clamped list below. */}
+          {cautionRows.length ? (
+            <RecordCautions testId="medication-cautions">
+              <div className="grid gap-3">
+                {cautionRows.map((row) => (
+                  <div key={row.label}>
+                    <p className="m-0 text-xs font-bold text-[color:var(--warning-text)]">{row.label}</p>
+                    <p className="m-0 mt-0.5 whitespace-pre-wrap">{row.value.replace(/\*\*/g, "")}</p>
+                  </div>
+                ))}
+              </div>
+            </RecordCautions>
+          ) : null}
 
           <MedicationWhereItStands medicineName={record.name} />
 
@@ -430,44 +404,47 @@ function MedicationRecordDetail({
               than a tablist, so claiming the role would name a `tab` that no
               longer exists. The id stays per-tab — it is the rendered evidence
               that a declared section resolves to a real panel, which is what
-              `tests/in-page-nav-route-sections.dom.test.tsx` asserts. */}
+              `tests/in-page-nav-route-sections.dom.test.tsx` asserts. Plain
+              sections on the page, no coloured side bar. */}
           <section
             id={`medication-panel-${activeTab}`}
             aria-label={`${activeTabLabel} sections`}
-            className="overflow-hidden rounded-lg border border-[color:var(--border)] border-l-[3px] border-l-[color:var(--med-accent)] bg-[color:var(--surface-raised)] shadow-[var(--e2)]"
+            className="flex min-w-0 flex-col gap-7"
           >
             {activeSections.length ? (
               activeSections.map((section) => (
                 <SectionCard key={`${section.type}-${section.title}`} section={section} />
               ))
             ) : (
-              <div className="p-3">
-                <EmptyState
-                  icon={ClipboardList}
-                  title="Nothing in this view"
-                  body="Switch tabs to see dosing, safety, or more detail for this medication."
-                  live="polite"
-                />
-              </div>
+              <EmptyState
+                icon={ClipboardList}
+                title="Nothing in this view"
+                body="Switch tabs to see dosing, safety, or more detail for this medication."
+                live="polite"
+              />
             )}
             {/* The record's provenance ("src") sections live on this tab, so its confirmed source links do too. */}
             {activeTab === "more" ? <MedicationSourceLinks links={sourceLinks} /> : null}
           </section>
+        </RecordBody>
 
-          <MedicationFromThisPage medicineName={record.name} />
-        </div>
-
-        <aside className="space-y-3 lg:sticky lg:top-20 lg:self-start">
-          <SidebarCard title="Quick reference" icon={BookOpen}>
-            <div className="divide-y divide-[color:var(--border)]">
-              {record.quick.map((row) => (
-                <QuickRefRow key={row.label} row={row} />
-              ))}
-            </div>
-          </SidebarCard>
+        <aside className="flex min-w-0 flex-col gap-7 lg:sticky lg:top-20">
+          {referenceRows.length ? (
+            <RecordSection title="Quick reference">
+              <div className="divide-y divide-[color:var(--border)] border-y border-[color:var(--border)]">
+                {referenceRows.map((row) => (
+                  <QuickRefRow key={row.label} row={row} />
+                ))}
+              </div>
+            </RecordSection>
+          ) : null}
 
           <MedicationAccessPanel record={record} />
         </aside>
+
+        <div className="lg:col-span-2">
+          <MedicationFromThisPage medicineName={record.name} />
+        </div>
       </div>
     </div>
   );

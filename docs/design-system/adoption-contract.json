@@ -119,6 +119,8 @@
       "disposition": "owned",
       "routes": [
         "src/app/(display)/teaching/display/[token]/page.tsx",
+        "src/app/(search-app)/admin/applications/cv/page.tsx",
+        "src/app/(search-app)/admin/applications/page.tsx",
         "src/app/(search-app)/admin/compliance/export/page.tsx",
         "src/app/(search-app)/admin/compliance/page.tsx",
         "src/app/(search-app)/admin/contract/page.tsx",
@@ -177,6 +179,7 @@
         "src/app/(search-app)/first-nations/talking/page.tsx",
         "src/app/(search-app)/forms/[slug]/page.tsx",
         "src/app/(search-app)/forms/act/page.tsx",
+        "src/app/(search-app)/forms/clock/page.tsx",
         "src/app/(search-app)/forms/page.tsx",
         "src/app/(search-app)/forms/search/page.tsx",
         "src/app/(search-app)/medications/[slug]/page.tsx",
@@ -665,7 +668,7 @@
         "src/app/auth/reset-password/page.tsx",
         "src/app/privacy/page.tsx",
         "src/app/reference/colour-coding/page.tsx",
-        "src/app/safety-plan/page.tsx"
+        "src/app/(search-app)/safety-plan/page.tsx"
       ],
       "routeRoots": true,
       "roots": [],
@@ -817,6 +820,43 @@
       },
       "sanctionedSpecialPatterns": ["SourcePreviewPopover"],
       "documentedDisposition": "Source preview is a shell-owned overlay launched from answer and search surfaces, not a page route."
+    },
+    {
+      "id": "admin-source-pilot",
+      "disposition": "owned",
+      "routes": ["src/app/admin/pilot/page.tsx"],
+      "routeRoots": true,
+      "roots": ["src/app/admin/pilot/pilot-client.tsx"],
+      "permittedComponentFamilies": ["controls", "feedback", "layout"],
+      "expectedShellState": "v2",
+      "proof": {
+        "dark": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "forcedColours": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "compact320": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "print": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "browser": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        }
+      },
+      "baseline": {
+        "status": "not-committed",
+        "files": []
+      },
+      "sanctionedSpecialPatterns": [],
+      "documentedDisposition": "Restricted administrator MFA and exact approved-source admission interface; worker activation and publication require separate operator decisions."
     }
   ],
   "componentFamilies": {

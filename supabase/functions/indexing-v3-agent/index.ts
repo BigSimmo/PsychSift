@@ -53,6 +53,8 @@ import {
   type MissingArtifactPlan,
 } from "./behavior.ts";
 
+import { authorizeIndexingAgentRequest } from "./auth.ts";
+
 type ClaimedJob = {
   job_kind: "indexing_v3";
   locked_by: string;
@@ -117,41 +119,6 @@ type SectionIndexSource = {
   chunk_metadata: Record<string, unknown> | null;
 };
 
-type GeneratedLabelCandidate = {
-  label: string;
-  label_type:
-    | "site"
-    | "topic"
-    | "document_type"
-    | "medication"
-    | "risk"
-    | "setting"
-    | "workflow"
-    | "population"
-    | "service"
-    | "custom";
-  confidence: number;
-  metadata: Record<string, unknown>;
-};
-
-type SectionLabelSource = {
-  section_id: string;
-  heading: string;
-  heading_path: string[] | null;
-  summary: string;
-  tags: string[] | null;
-  source_chunk_id: string | null;
-  anchor_id: string | null;
-  chunk_index: number | null;
-};
-
-type MemoryCardLabelSource = {
-  card_id: string;
-  card_type: string;
-  title: string;
-  content: string;
-};
-
 type MemoryCardSectionSource = {
   section_id: string;
   heading: string;
@@ -209,10 +176,6 @@ const OPENAI_EMBEDDING_BATCH_SIZE = Math.max(
 const INDEXING_V3_MAX_DEFERRALS = Math.max(1, Number(Deno.env.get("INDEXING_V3_MAX_DEFERRALS") ?? "6"));
 const INDEXING_V3_RETRY_DELAY_MS = Math.max(30_000, Number(Deno.env.get("INDEXING_V3_RETRY_DELAY_MS") ?? "120000"));
 
-const VISUAL_FIELD_TYPES = ["image_caption", "clinical_action", "threshold_fact"];
-
-const VISUAL_UNIT_TYPES = ["clinical_fact", "workflow_step", "threshold", "medication_monitoring", "askable_question"];
-
 const TYPE_BUDGET: Record<string, number> = {
   clinical_table: 10,
   flowchart_algorithm: 8,
@@ -225,40 +188,9 @@ const TYPE_BUDGET: Record<string, number> = {
   unclear: 4,
 };
 
-// Audit L20: constant-time secret comparison. The platform gateway checks the
-// login token (verify_jwt=true) and this shared secret is the second gate; a plain !==
-// short-circuits on the first mismatching character and leaks match length
-// via response timing. Hashing both sides to fixed-length digests and
-// XOR-comparing removes the content-dependent timing signal.
-async function timingSafeSecretEqual(candidate: string, expected: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const [candidateDigest, expectedDigest] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(candidate)),
-    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
-  ]);
-  const candidateBytes = new Uint8Array(candidateDigest);
-  const expectedBytes = new Uint8Array(expectedDigest);
-  let difference = 0;
-  for (let index = 0; index < candidateBytes.length; index += 1) {
-    difference |= candidateBytes[index] ^ expectedBytes[index];
-  }
-  return difference === 0;
-}
-
+// Dual-gated authentication: requires BOTH a valid JWT and the internal service secret (Task #P6BSQ3).
 async function authorizeRequest(req: Request): Promise<Response | null> {
-  if (!AGENT_SECRET) {
-    return Response.json({ ok: false, error: "INDEXING_V3_AGENT_SECRET is required" }, { status: 500 });
-  }
-
-  const authorization = req.headers.get("authorization") ?? "";
-  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  const headerSecret = req.headers.get("x-indexing-agent-secret") ?? req.headers.get("x-cron-secret") ?? bearer ?? "";
-
-  if (!(await timingSafeSecretEqual(headerSecret, AGENT_SECRET))) {
-    return Response.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  return null;
+  return authorizeIndexingAgentRequest(req, AGENT_SECRET);
 }
 
 function assertEmbeddingDim(vec: unknown, context: string): asserts vec is number[] {

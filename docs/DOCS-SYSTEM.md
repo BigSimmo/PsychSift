@@ -2,7 +2,15 @@
 
 How Documentation keeps project docs accurate, logged, and non-stale across Joshua’s repos. **Process doc — no product DDL.**
 
-_Owned by Documentation. Updated 2026-10-08 — clarified checkpoint, memory and communication authority; Documentation owns._
+_Owned by Documentation. Updated 2026-10-14 — added automated documentation and file-organisation maintenance pipeline (`npm run docs:maintain`, `npm run docs:maintain:check`, `node scripts/maintain-docs-system.mjs --classify <path>`); Documentation owns._
+
+## Automated Maintenance Pipeline
+
+All documentation edits and new files in `BigSimmo/PsychSift` are governed by the deterministic documentation and file-organisation pipeline (`scripts/maintain-docs-system.mjs` and `docs/organisation/`):
+
+- `npm run docs:maintain` (`node scripts/maintain-docs-system.mjs`) — checks organisation, auto-places untracked or unplaced files into the matching `docs/organisation/systems/<area>.json` manifest, updates the docs inventory, sitemap, repository-awareness snapshot, outstanding-issues snapshot, hazard snapshot, and branch-review index, then runs the read-only checks. Existing review pins are preserved; this command does not claim documents were reviewed.
+- `npm run docs:maintain:check` (`node scripts/maintain-docs-system.mjs --check`) — read-only verification of organisation placement (without writing reports), codebase index coverage, script references, links, inventory, sitemap, repository-awareness, the outstanding-issues snapshot checker, hazard snapshot and controls, instructions, decisions, database skills, and the advisory branch-review index check.
+- `node scripts/maintain-docs-system.mjs --classify <path...>` — deterministically classifies one or more repository-relative paths into their target `docs/organisation/systems/<area>.json` manifest and prints the JSON classification without modifying files.
 
 ## Principles
 

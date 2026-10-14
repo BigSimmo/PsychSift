@@ -1,5 +1,7 @@
 # Database remediation playbook — multi-session execution guide
 
+> **Programme complete (Phases 0–6 COMPLETE; D4 auto-deploy on `main` is ON).** Phases 0–6 of the database remediation programme are complete and D4 post-merge migration auto-deploy on `main` is ON. Read [`docs/database-remediation-coordination.md`](database-remediation-coordination.md) for the final closeout state and [`docs/supabase-remediation-closeout-notes.md`](supabase-remediation-closeout-notes.md) for deferred non-DDL notes. Do not re-run the historical phase prompts below.
+
 Companion to [`database-remediation-plan.md`](database-remediation-plan.md) (the plan of record —
 read it first in every session). This playbook exists so the work can be executed across **many
 separate chat sessions**: each phase below carries the full context a fresh session needs and a
@@ -10,7 +12,7 @@ before updating it; never assume an ID.
 
 ---
 
-## Context briefing (paste-adjacent background every session can rely on)
+## Context briefing (historical background from the 2026-08 execution cycle)
 
 **What happened.** Ledger `#248` remains open. Current evidence shows that migration
 `20260705180000_reconcile_search_health_indexes.sql` is recorded as applied on the live Supabase
@@ -20,8 +22,7 @@ migrations show that history advanced, but neither point distinguishes skipped D
 history from indexes that were created and later dropped. The Phase 1 read-only history and audit
 check must establish that cause before the row is closed or remediation is attributed to it.
 
-**Current live state** (from `live-drift.yml` Actions run `31813064485`, 2026-08-14 — this
-supersedes the 2026-08-09 run `31330856982` the plan was originally written against):
+**Historical live state at 2026-08-14** (from `live-drift.yml` Actions run `31813064485`, 2026-08-14 — superseded by the completed Phases 0–6 closeout in [`docs/database-remediation-coordination.md`](database-remediation-coordination.md)):
 
 - 20 `missing_live` indexes across many migrations — tables: `audit_logs` (2), `api_rate_limits`,
   `document_chunks`, `document_images` (3), `document_index_quality`, `document_index_units`,
@@ -32,15 +33,12 @@ supersedes the 2026-08-09 run `31330856982` the plan was originally written agai
   both were restored in the 2026-08-14 incident window and re-verified `indisvalid`/`indisready`.
 - 2 `unexpected_live` indexes: `document_table_facts_document_id_idx`,
   `storage_cleanup_jobs_owner_id_idx`.
-- `def_hash` mismatches on 10 `match_*` retrieval RPCs — **unchanged, and entirely outstanding**
-  (protected RAG surface; live bodies vs repo — direction unknown until diffed). This is now the
-  highest-stakes remaining unknown and the reason Phase 1.2 comes next.
+- `def_hash` mismatches on 10 `match_*` retrieval RPCs — **unchanged at 2026-08-14, since resolved in Phase 3**
+  (protected RAG surface; attribute-only `SET work_mem` differences reconciled without body divergence).
 - Drift-failure routing is **live**: a failed run creates or updates the pinned issue
   "Live drift check failing" (currently **#1963**) and a green run closes it.
 
-**Phase status** (2026-08-18). The live board is
-[`database-remediation-coordination.md`](database-remediation-coordination.md); update that first —
-this is a pointer, not a second source of truth.
+**Phase status (final closeout — see [`docs/database-remediation-coordination.md`](database-remediation-coordination.md)).** Phases 0–6 are **COMPLETE** and D4 auto-deploy on `main` is **ON**. The snapshot below reflects the historical mid-programme state as of 2026-08-18:
 
 Phase 0 complete. **Phase 1 complete** — 1.1 (`20260705180000` was not mark-applied; the dashboard
 audit-history pairing is still owner action, so `#248` stays open), 1.2 (PR #2087: all ten
@@ -49,14 +47,11 @@ UNCLASSIFIED), 1.3 whole-schema done with the remaining index sizing folded into
 **Phase 2 complete** — PR #2093: staging at full migration parity, and `check:drift` against staging
 **red with 19 items**, which is the finding the phase existed to produce rather than a failure of it;
 a re-measure is owed once staging carries `20260818090000`. **Phase 6 repo-side complete** — its
-migration deploy is still owed. Phase 4 partial (2 restored, 20 missing, 2 unexpected
-undispositioned). Phase 5 partial. Phase 7 not started.
+migration deploy was subsequently completed (see `database-remediation-coordination.md`). Phases 3, 4, and 5 also completed across subsequent waves, and D4 auto-deploy on `main` is ON.
 
-**Phase 3 is next, and it has been reframed.** Because 1.2 found zero repo-ahead bodies it is now
+**Historical note on Phase 3 (completed).** Because 1.2 found zero repo-ahead bodies it became
 repo-side work needing **no eval canary** — materially different from the prompt further down this
-file, which still assumes per-RPC canary approvals. Read the reframing and the outstanding owner
-decisions in [`database-remediation-coordination.md`](database-remediation-coordination.md) before
-dispatching it; do not execute the Phase 3 prompt below as written.
+file, which still assumed per-RPC canary approvals. See [`database-remediation-coordination.md`](database-remediation-coordination.md) for the completed Phase 3–6 closeout record.
 
 **Before starting any phase, check the open-PR list for the surface** (`#292`). Phase 0 was built
 twice independently on 2026-08-14; a duplicate in Phase 3 or 4 wastes an approved production window

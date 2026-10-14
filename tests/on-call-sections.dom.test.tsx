@@ -10,6 +10,8 @@ import { OnCallOrientationSection } from "@/components/on-call/on-call-orientati
 import type { OnCallLinkedDocument } from "@/components/on-call/on-call-playbook-section";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import { OnCallReferralsSection } from "@/components/on-call/on-call-referrals-section";
+import { DEMO_ON_CALL_ENTRIES } from "@/lib/on-call/demo-entries";
+import { ON_CALL_DEMO_PLAYBOOK_TRIGGER } from "@/lib/on-call/demo-playbook";
 import type { OnCallEntry, OnCallSection } from "@/lib/on-call/entry-model";
 
 afterEach(cleanup);
@@ -118,6 +120,13 @@ function renderedText(root: HTMLElement): string {
 }
 
 describe("OnCallPlaybookSection", () => {
+  it("says the demo's shared trigger line once at the top, not on every card (design audit D24)", () => {
+    const demo = DEMO_ON_CALL_ENTRIES.filter((entry) => entry.section === "playbook");
+    render(<OnCallPlaybookSection entries={demo} now={NOW} />);
+    expect(screen.getAllByText(ON_CALL_DEMO_PLAYBOOK_TRIGGER)).toHaveLength(1);
+    expect(screen.getByTestId("on-call-playbook-demo-note")).toHaveTextContent(ON_CALL_DEMO_PLAYBOOK_TRIGGER);
+  });
+
   it("renders escalation steps as an ordered list of who, when, and a tap-to-call number", () => {
     render(<OnCallPlaybookSection entries={[ACUTE_AGITATION]} now={NOW} />);
     const card = screen.getByTestId("on-call-playbook-card-acute-agitation");
@@ -206,6 +215,32 @@ describe("OnCallPlaybookSection", () => {
     render(<OnCallPlaybookSection entries={[]} now={NOW} />);
     expect(screen.getByTestId("on-call-playbook-empty")).toBeInTheDocument();
     expect(screen.queryByRole("article")).toBeNull();
+  });
+
+  it("brings a hospital ladder into view when it renders after the page, and ignores a damaged hash", async () => {
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    try {
+      window.history.replaceState(null, "", "#%E0");
+      expect(() => render(<OnCallPlaybookSection entries={[]} now={NOW} />)).not.toThrow();
+      cleanup();
+
+      window.history.replaceState(null, "", "#hospital-ladder-late");
+      render(<OnCallPlaybookSection entries={[]} now={NOW} />);
+      expect(scrolled).toEqual([]);
+      const ladder = document.createElement("section");
+      ladder.id = "hospital-ladder-late";
+      document.body.append(ladder);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(scrolled).toEqual(["hospital-ladder-late"]);
+      ladder.remove();
+    } finally {
+      Element.prototype.scrollIntoView = original;
+      window.history.replaceState(null, "", "#");
+    }
   });
 });
 

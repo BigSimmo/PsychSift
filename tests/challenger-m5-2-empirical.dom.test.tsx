@@ -45,35 +45,37 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
    * 2. Phone Chrome: DSM Mobile Compare Strip Portalling & Scroll Hide
    * ======================================================================== */
   describe("2. DSM Mobile Compare Strip Portalling & Scroll Hide", () => {
+    const traySource = readFileSync(join(process.cwd(), "src/components/compare/shared-compare-tray.tsx"), "utf8");
     const dsmSearchSource = readFileSync(join(process.cwd(), "src/components/dsm/dsm-search-page.tsx"), "utf8");
     const globalsCssSource = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
 
     it("verifies DSM compare strip wraps in PhoneFooterLayerPortal with client mount guard", () => {
-      expect(dsmSearchSource).toContain("<PhoneFooterLayerPortal>");
-      expect(dsmSearchSource).toContain("usePhoneFooterLayerScrollHidden()");
-      expect(dsmSearchSource).toMatch(/if\s*\(!selected\.length\s*\|\|\s*!mounted\)\s*return\s*null;/);
+      expect(traySource).toContain("<PhoneFooterLayerPortal>");
+      expect(traySource).toContain("usePhoneFooterLayerScrollHidden()");
+      expect(traySource).toContain("shared-compare-tray-layer");
     });
 
     it("verifies DSM compare strip sets data-scroll-hidden attribute", () => {
-      expect(dsmSearchSource).toMatch(/data-scroll-hidden=\{phoneChromeHidden\s*\?\s*"true"\s*:\s*undefined\}/);
+      expect(traySource).toMatch(/data-scroll-hidden=\{footerHidden\s*\?\s*"true"\s*:\s*undefined\}/);
     });
 
     it("verifies DSM page container has zero mobile double-reserve padding", () => {
       // Should use sm:max-lg:pb-16 instead of max-lg:pb-[calc(4rem+var(--safe-area-bottom))]
       expect(dsmSearchSource).not.toContain("max-lg:pb-[calc(4rem+var(--safe-area-bottom))]");
-      expect(dsmSearchSource).toContain('selected.length > 0 && "sm:max-lg:pb-16"');
+      expect(dsmSearchSource).not.toContain("sm:max-lg:pb-16");
+      expect(dsmSearchSource).not.toContain("dsm-mobile-compare-strip");
     });
 
     it("verifies CSS rules translate compare strip offscreen and disable pointer events when hidden", () => {
-      expect(globalsCssSource).toContain('.dsm-mobile-compare-strip[data-scroll-hidden="true"]');
+      expect(globalsCssSource).toContain('.shared-compare-tray-layer[data-scroll-hidden="true"]');
       expect(globalsCssSource).toMatch(
-        /\.dsm-mobile-compare-strip\[data-scroll-hidden="true"\]\s*\{[\s\S]*?transform:\s*translateY\(calc\(100% \+ 5\.5rem \+ var\(--safe-area-bottom, 0px\) \+ var\(--keyboard-height, 0px\) \+ 0\.5rem\)\);/,
+        /\.shared-compare-tray-layer\[data-scroll-hidden="true"\]\s*\{[\s\S]*?transform:\s*translateY\(calc\(100% \+ 5\.5rem \+ var\(--safe-area-bottom, 0px\) \+ var\(--keyboard-height, 0px\) \+ 0\.5rem\)\);/,
       );
       expect(globalsCssSource).toMatch(
-        /\.dsm-mobile-compare-strip\[data-scroll-hidden="true"\]\s*\{[\s\S]*?opacity:\s*0;/,
+        /\.shared-compare-tray-layer\[data-scroll-hidden="true"\]\s*\{[\s\S]*?opacity:\s*0;/,
       );
       expect(globalsCssSource).toMatch(
-        /\.dsm-mobile-compare-strip\[data-scroll-hidden="true"\]\s*\*\s*\{[\s\S]*?pointer-events:\s*none;/,
+        /\.shared-compare-tray-layer\[data-scroll-hidden="true"\]\s*\*\s*\{[\s\S]*?pointer-events:\s*none;/,
       );
     });
   });
@@ -163,12 +165,12 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
       ).toBeUndefined();
     });
 
-    it("verifies disabledOpacityUses ceiling is tightened to 31", () => {
-      expect(baseline.metrics.disabledOpacityUses).toBe(31);
+    it("verifies disabledOpacityUses ceiling is tightened to 30", () => {
+      expect(baseline.metrics.disabledOpacityUses).toBe(30);
     });
 
-    it("verifies visibleLiveRegions ceiling is tightened to 20", () => {
-      expect(baseline.metrics.visibleLiveRegions).toBe(20);
+    it("verifies visibleLiveRegions ceiling is tightened to 17", () => {
+      expect(baseline.metrics.visibleLiveRegions).toBe(17);
     });
 
     it("verifies patient-safety-plan shadow alias exception has been removed from baseline", () => {

@@ -1,0 +1,37 @@
+/*
+ * The offline line looks the same in Work and Clinical (site recommendations,
+ * 12 Oct 2026, item 10). Work used to squeeze this card onto one row, which
+ * broke awkwardly once the line named the saved time. `revert-layer` hands
+ * each property back to the card's own utility classes, so Work draws exactly
+ * the card Clinical draws; Work's glass card ground (globals.css) is kept. The
+ * card's padding is not a utility, so it is restated: the lifecycle card's.
+ */
+html[data-work-frame] .pwa-notice-stack .pwa-offline-card {
+  padding: var(--pwa-inset-xl);
+}
+
+html[data-work-frame] .pwa-notice-stack .pwa-offline-card .pwa-notice-row {
+  align-items: revert-layer;
+}
+
+html[data-work-frame] .pwa-notice-stack .pwa-offline-card .pwa-notice-body {
+  display: revert-layer;
+  flex: revert-layer;
+  flex-wrap: revert-layer;
+  align-items: revert-layer;
+  justify-content: revert-layer;
+  column-gap: revert-layer;
+}
+
+html[data-work-frame] .pwa-notice-stack .pwa-offline-card .pwa-notice-copy {
+  display: revert-layer;
+}
+
+html[data-work-frame] .pwa-notice-stack .pwa-offline-card .pwa-notice-retry {
+  margin-top: revert-layer;
+}
+
+html[data-work-frame] .pwa-notice-stack .pwa-offline-card .pwa-notice-dismiss {
+  top: revert-layer;
+  translate: revert-layer;
+}

@@ -52,8 +52,12 @@ export type AdminSourceRuntimeSuppliers = Readonly<{
   /** Undefined revokes permission for this exact current job/source/purpose. */
   loadApprovedSource: (job: JobRow, purpose: "embedding") => Promise<ApprovedAdminSource | undefined>;
   loadScannerConfiguration: () => Promise<AdminTextScannerConfiguration>;
-  loadManagedAdminPdfCompletionEvidence?: (input: ManagedPreparedSupplierInput) => Promise<ManagedAdminPdfCompletionEvidence | undefined>;
-  loadManagedNativePdfSourceRoles?: (input: ManagedPreparedSupplierInput) => Promise<NonNullable<ManagedPreparedSupplierInput["independentSourceRoles"]>>;
+  loadManagedAdminPdfCompletionEvidence?: (
+    input: ManagedPreparedSupplierInput,
+  ) => Promise<ManagedAdminPdfCompletionEvidence | undefined>;
+  loadManagedNativePdfSourceRoles?: (
+    input: ManagedPreparedSupplierInput,
+  ) => Promise<NonNullable<ManagedPreparedSupplierInput["independentSourceRoles"]>>;
 }>;
 
 export type AdminSourceInitializationContext = {
@@ -137,8 +141,10 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
   const binding = workerProviderSourceBinding(job, job.documents);
   const policy = source.policyObservations;
   if (
-    !((source.sourceFamily === "native_pdf" && job.documents.file_type === "application/pdf") ||
-      (source.sourceFamily !== "native_pdf" && job.documents.file_type === "text/plain")) ||
+    !(
+      (source.sourceFamily === "native_pdf" && job.documents.file_type === "application/pdf") ||
+      (source.sourceFamily !== "native_pdf" && job.documents.file_type === "text/plain")
+    ) ||
     !job.documents.owner_id ||
     source.ownerId !== job.documents.owner_id ||
     source.documentId !== job.document_id ||
@@ -196,7 +202,11 @@ export function createAdminSourceRuntimeOptions(
   bucket: string,
 ): Pick<
   WorkerRuntimeOptions,
-  "loadObservationsForJob" | "loadManagedAdminTextSectionLayout" | "loadManagedNativePdfSourceRoles" | "loadManagedAdminPdfCompletionEvidence" | "initializeManagedAdminTextGeneration"
+  | "loadObservationsForJob"
+  | "loadManagedAdminTextSectionLayout"
+  | "loadManagedNativePdfSourceRoles"
+  | "loadManagedAdminPdfCompletionEvidence"
+  | "initializeManagedAdminTextGeneration"
 > {
   async function current(job: JobRow, attempt?: IngestionAttempt) {
     attempt?.check();
@@ -233,7 +243,9 @@ export function createAdminSourceRuntimeOptions(
       return createAdminTextInspectionLoader({
         attempt,
         ownerId: job.documents.owner_id ?? "",
-        ...(job.documents.file_type === "application/pdf" && batchContext !== undefined ? { nativePdfBatch: batchContext } : {}),
+        ...(job.documents.file_type === "application/pdf" && batchContext !== undefined
+          ? { nativePdfBatch: batchContext }
+          : {}),
         async loadCurrent(request, binding) {
           if (request.purpose !== "embedding") return refuse();
           const source = await current(job, attempt);
@@ -279,12 +291,20 @@ export function createAdminSourceRuntimeOptions(
       ? {
           async loadManagedNativePdfSourceRoles(input: ManagedPreparedSupplierInput) {
             const source = await current(input.job);
-            if (source?.sourceFamily !== "native_pdf" || source.sourceSha256 !== input.retentionPacket.registration.sourceSha256)
+            if (
+              source?.sourceFamily !== "native_pdf" ||
+              source.sourceSha256 !== input.retentionPacket.registration.sourceSha256
+            )
               return refuse();
             const roles = await suppliers.loadManagedNativePdfSourceRoles!(input);
             const latest = await current(input.job);
-            if (!latest || latest.sourceFamily !== "native_pdf" || !same(latest.sourceExpectation, source.sourceExpectation) ||
-                !latest.sourceExpectationWitnessBytes.equals(source.sourceExpectationWitnessBytes)) return refuse();
+            if (
+              !latest ||
+              latest.sourceFamily !== "native_pdf" ||
+              !same(latest.sourceExpectation, source.sourceExpectation) ||
+              !latest.sourceExpectationWitnessBytes.equals(source.sourceExpectationWitnessBytes)
+            )
+              return refuse();
             return roles;
           },
         }
@@ -293,24 +313,34 @@ export function createAdminSourceRuntimeOptions(
       ? {
           async loadManagedAdminPdfCompletionEvidence(input: ManagedPreparedSupplierInput) {
             const source = await current(input.job);
-            if (!source || source.sourceFamily !== "native_pdf" ||
-                source.sourceSha256 !== input.retentionPacket.registration.sourceSha256 ||
-                !source.sourceBytes.equals(input.originalBytes) ||
-                !source.sourceExpectationWitnessBytes.equals(input.witnessBytes))
+            if (
+              !source ||
+              source.sourceFamily !== "native_pdf" ||
+              source.sourceSha256 !== input.retentionPacket.registration.sourceSha256 ||
+              !source.sourceBytes.equals(input.originalBytes) ||
+              !source.sourceExpectationWitnessBytes.equals(input.witnessBytes)
+            )
               return refuse();
             const evidence = await suppliers.loadManagedAdminPdfCompletionEvidence!(input);
             const latest = await current(input.job);
-            if (!latest || latest.sourceFamily !== "native_pdf" ||
-                !latest.sourceBytes.equals(source.sourceBytes) ||
-                !same(latest.policyObservations, source.policyObservations) ||
-                !same(latest.authority, source.authority) ||
-                !same(latest.sourceExpectation, source.sourceExpectation) ||
-                !latest.sourceExpectationWitnessBytes.equals(source.sourceExpectationWitnessBytes))
+            if (
+              !latest ||
+              latest.sourceFamily !== "native_pdf" ||
+              !latest.sourceBytes.equals(source.sourceBytes) ||
+              !same(latest.policyObservations, source.policyObservations) ||
+              !same(latest.authority, source.authority) ||
+              !same(latest.sourceExpectation, source.sourceExpectation) ||
+              !latest.sourceExpectationWitnessBytes.equals(source.sourceExpectationWitnessBytes)
+            )
               return refuse();
-            if (evidence && (evidence.admission.documentId !== input.issued.documentId ||
+            if (
+              evidence &&
+              (evidence.admission.documentId !== input.issued.documentId ||
                 evidence.admission.ownerId !== source.ownerId ||
                 evidence.admission.generationId !== input.issued.generationId ||
-                evidence.admission.sourceSha256 !== source.sourceSha256)) return refuse();
+                evidence.admission.sourceSha256 !== source.sourceSha256)
+            )
+              return refuse();
             return evidence;
           },
         }
@@ -400,11 +430,13 @@ export async function loadAdminSourceRuntimeOptions(
   const moduleBytes = await readFile(modulePath);
   const mountedModule = await import(pathToFileURL(modulePath).href);
   if (!(await readFile(modulePath)).equals(moduleBytes)) return refuse();
-  const suppliers: AdminSourceRuntimeSuppliers = typeof mountedModule.createAdminSourceRuntimeSuppliers === "function"
-    ? await mountedModule.createAdminSourceRuntimeSuppliers({
-        rpc: client.rpc.bind(client), prepareManagedPrivateSupplier,
-      })
-    : mountedModule;
+  const suppliers: AdminSourceRuntimeSuppliers =
+    typeof mountedModule.createAdminSourceRuntimeSuppliers === "function"
+      ? await mountedModule.createAdminSourceRuntimeSuppliers({
+          rpc: client.rpc.bind(client),
+          prepareManagedPrivateSupplier,
+        })
+      : mountedModule;
   if (!(await readFile(modulePath)).equals(moduleBytes)) return refuse();
   if (typeof suppliers.loadApprovedSource !== "function" || typeof suppliers.loadScannerConfiguration !== "function")
     return refuse();

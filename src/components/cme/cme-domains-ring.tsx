@@ -78,31 +78,30 @@ export function CmeDomainsRing({
       end={source}
     >
       <div className="flex items-center gap-4">
-        <svg aria-hidden="true" viewBox="0 0 40 40" className="size-18 shrink-0">
-          {rows.map((row, index) => (
-            <path
-              key={row.bucket}
-              data-filled={row.filled ? "true" : "false"}
-              d={arcPath(index * step + GAP_DEGREES / 2, (index + 1) * step - GAP_DEGREES / 2)}
-              fill="none"
-              strokeWidth={4.5}
-              strokeLinecap="round"
-              className={cn(
-                row.filled
-                  ? "stroke-[color:var(--clinical-accent)] forced-colors:stroke-[CanvasText]"
-                  : "stroke-[color:var(--border-strong)] forced-colors:stroke-[GrayText]",
-              )}
-            />
-          ))}
-          <text
-            x="20"
-            y="22.8"
-            textAnchor="middle"
-            className="nums fill-[color:var(--text-heading)] text-[length:8px] font-normal"
-          >
+        {/* The count is page text over the ring, not SVG text: in the 40-unit drawing it was an 8px font
+            (design audit D25, 12px minimum). */}
+        <span aria-hidden="true" className="relative grid size-18 shrink-0 place-items-center">
+          <svg viewBox="0 0 40 40" className="absolute inset-0 size-full">
+            {rows.map((row, index) => (
+              <path
+                key={row.bucket}
+                data-filled={row.filled ? "true" : "false"}
+                d={arcPath(index * step + GAP_DEGREES / 2, (index + 1) * step - GAP_DEGREES / 2)}
+                fill="none"
+                strokeWidth={4.5}
+                strokeLinecap="round"
+                className={cn(
+                  row.filled
+                    ? "stroke-[color:var(--clinical-accent)] forced-colors:stroke-[CanvasText]"
+                    : "stroke-[color:var(--border-strong)] forced-colors:stroke-[GrayText]",
+                )}
+              />
+            ))}
+          </svg>
+          <span className="nums relative text-sm font-normal text-[color:var(--text-heading)]">
             {`${filledCount}/${buckets.length}`}
-          </text>
-        </svg>
+          </span>
+        </span>
         <ul role="list" className="grid min-w-0 flex-1">
           {rows.map((row) => (
             <li

@@ -8,8 +8,8 @@ import type { ChunkInput, DocumentChunk } from "@/lib/types";
 // re-index can tell which chunker produced a row, and so bumping the strategy deliberately
 // invalidates stale chunks. Bump this when chunk boundaries change (e.g. when cross-page
 // document-mode chunking is enabled by default).
-export const CHUNKER_VERSION = "1.0.0-page";
-export const DOCUMENT_CHUNKER_VERSION = "1.0.0-document";
+export const CHUNKER_VERSION = "1.2.0-page";
+export const DOCUMENT_CHUNKER_VERSION = "1.2.0-document";
 
 const sentenceBoundary = /(?<=[.!?])\s+/;
 const paragraphBoundary = /\n{2,}/;
@@ -325,7 +325,9 @@ export function chunkTextWithOverlap(text: string, chunkSize = env.CHUNK_SIZE, o
         chunks.push(current.trim());
         const flushed = current.trim();
         const tail = readableOverlapTail(flushed, overlap);
-        current = tail ? `${tail}\n\n${paragraph}` : paragraph;
+        const successor = tail ? `${tail}\n\n${paragraph}` : paragraph;
+        // The full tail is already retained above; omit only redundant overlap if it cannot fit.
+        current = successor.length <= chunkSize * 1.35 ? successor : paragraph;
       } else {
         current = candidate;
       }
@@ -377,6 +379,10 @@ function chunkTableBlock(block: string, chunkSize: number) {
   return chunks.length > 0 ? chunks : [block.trim()];
 }
 
+const clinicalProhibitionPattern =
+  /\b(?:contraindicat(?:e|ed|ion|ions)|do not|does not|must not|should not|shall not|cannot|can't|never|avoid|withhold|cease|black box warning)\b/i;
+const sentenceEndPattern = /(?<=[.!?])(?:\s+|$)/;
+
 function readableOverlapStart(clean: string, end: number, overlap: number) {
   if (overlap <= 0) return end;
   let start = Math.max(0, end - overlap);
@@ -388,28 +394,47 @@ function readableOverlapStart(clean: string, end: number, overlap: number) {
     start += 1;
   }
 
+  // Keep the subject, condition and negation with the governing sentence, not just its keyword.
+  let sentenceStart = start;
+  while (
+    sentenceStart > 0 &&
+    !(/[.!?]/.test(clean[sentenceStart - 1] ?? "") && /\s/.test(clean[sentenceStart] ?? ""))
+  ) {
+    sentenceStart -= 1;
+  }
+  while (sentenceStart < end && /\s/.test(clean[sentenceStart] ?? "")) sentenceStart += 1;
+  const sentenceWindow = clean.slice(sentenceStart, end);
+  const boundary = sentenceEndPattern.exec(sentenceWindow);
+  const governingSentence = sentenceWindow.slice(0, boundary?.index ?? sentenceWindow.length);
+  if (clinicalProhibitionPattern.test(governingSentence)) start = sentenceStart;
+
   return start < end ? start : Math.max(0, end - overlap);
 }
 
 function chunkTextBySentence(clean: string, chunkSize: number, overlap: number) {
   const chunks: string[] = [];
+  // Record actual offsets once; never scan the remaining document for every chunk.
+  const sentenceEnds = Array.from(clean.matchAll(new RegExp(sentenceBoundary.source, "g")), (match) => match.index);
+  if (sentenceEnds.at(-1) !== clean.length) sentenceEnds.push(clean.length);
+  let boundaryIndex = 0;
   let start = 0;
 
   while (start < clean.length) {
-    let end = Math.min(start + chunkSize, clean.length);
-    const window = clean.slice(start, end);
-    const sentences = window.split(sentenceBoundary);
-
-    if (end < clean.length && sentences.length > 1) {
-      const rebuilt = sentences.slice(0, -1).join(" ");
-      if (rebuilt.length > chunkSize * 0.55) {
-        end = start + rebuilt.length;
-      }
-    }
+    const nominalEnd = Math.min(start + chunkSize, clean.length);
+    while (sentenceEnds[boundaryIndex] < nominalEnd) boundaryIndex += 1;
+    const completingEnd = sentenceEnds[boundaryIndex];
+    const precedingEnd = boundaryIndex > 0 ? sentenceEnds[boundaryIndex - 1] : 0;
+    // Ordinary chunks retain the 35% elongation budget. An indivisible longer sentence is
+    // one atomic chunk: splitting or dropping it could change a clinical assertion's scope.
+    const end = completingEnd <= start + chunkSize * 1.35 || precedingEnd <= start ? completingEnd : precedingEnd;
 
     const chunk = clean.slice(start, end).trim();
     if (chunk) chunks.push(chunk);
     if (end >= clean.length) break;
+    if (end - start > chunkSize * 1.35) {
+      start = end;
+      continue;
+    }
     // Audit M17: when overlap >= chunkSize, readableOverlapStart can return a
     // position at or before the current start and the loop never advances,
     // hanging the ingestion worker on that document. Force strict forward
@@ -528,6 +553,152 @@ type ChunkImages = NonNullable<ChunkInput["images"]>;
 type ChunkProfile = ReturnType<typeof adaptiveChunkProfile>;
 type SpanPage = { pageNumber: number | null; pageText: string };
 
+function nativeTableBlock(image: ChunkImages[number]) {
+  const columns = image.tableColumns;
+  const rows = image.tableRows;
+  if (!Array.isArray(columns) || columns.length < 2 || !Array.isArray(rows)) return null;
+  const normalizeCell = (cell: unknown) =>
+    typeof cell === "string" && !/[\r\n|\\]/.test(cell) ? cell.replace(/\s+/g, " ").trim() : null;
+  const normalizedColumns = columns.map(normalizeCell);
+  if (normalizedColumns.some((cell) => !cell)) return null;
+  const dataRows: string[][] = [];
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length !== columns.length) return null;
+    const cells = row.map(normalizeCell);
+    if (cells.some((cell) => cell === null)) return null;
+    if (cells.every((cell) => cell === "")) continue;
+    if (cells.some((cell) => !cell)) return null;
+    const checked = cells as string[];
+    if (checked.every((cell, index) => cell === normalizedColumns[index])) continue;
+    if (checked.every((cell) => /^:?-{3,}:?$/.test(cell))) continue;
+    dataRows.push(checked);
+  }
+  if (!dataRows.length) return null;
+  return { columns: normalizedColumns as string[], rows: dataRows };
+}
+
+function narrativeTableBlocks(text: string) {
+  let openMarker: string | null = null;
+  for (const marker of text.matchAll(
+    /\[\[(IMAGE_DATA_START|IMAGE_DATA_END|IMAGE_DATA_OMITTED|\/IMAGE_DATA_OMITTED)\]\]/g,
+  )) {
+    if (marker[1] === "IMAGE_DATA_START" || marker[1] === "IMAGE_DATA_OMITTED") {
+      if (openMarker) return null;
+      openMarker = marker[1];
+    } else {
+      const expected = marker[1] === "IMAGE_DATA_END" ? "IMAGE_DATA_START" : "IMAGE_DATA_OMITTED";
+      if (openMarker !== expected) return null;
+      openMarker = null;
+    }
+  }
+  if (openMarker) return null;
+  const narrative = text.replace(imageDataTagPattern, " ");
+  if (/\[\[\/?IMAGE_DATA|\bIMAGE_DATA_/.test(narrative)) return null;
+  const lines = narrative.split(/\r?\n/).map((line) => line.trim());
+  const blocks: Array<{ columns: string[]; rows: string[][] }> = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].startsWith("|")) continue;
+    const rows: string[][] = [];
+    while (index < lines.length && lines[index].startsWith("|")) {
+      const line = lines[index];
+      if (!line.endsWith("|") || line.includes("\\")) return null;
+      rows.push(
+        line
+          .slice(1, -1)
+          .split("|")
+          .map((cell) => cell.replace(/\s+/g, " ").trim()),
+      );
+      index += 1;
+    }
+    index -= 1;
+    const [columns, ...remaining] = rows;
+    if (columns.some((cell) => !cell)) return null;
+    if (remaining[0]?.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+      if (remaining[0].length !== columns.length) return null;
+      remaining.shift();
+    }
+    if (remaining.some((row) => row.length !== columns.length || row.some((cell) => !cell))) return null;
+    if (remaining.some((row) => row.every((cell) => /^:?-{3,}:?$/.test(cell)))) return null;
+    if (remaining.length) blocks.push({ columns, rows: remaining });
+  }
+  return blocks;
+}
+
+// Native association is deliberately page-local and exact. Injected image context,
+// partial tables and ambiguous crops cannot supply their own linkage evidence.
+function matchesNativeTableBlock(
+  image: ChunkImages[number],
+  args: {
+    content: string;
+    pageNumber: number | null;
+    pageStart: number | null;
+    pageEnd: number | null;
+    images: ChunkImages;
+    spanPages: SpanPage[];
+    chunkerVersion: string;
+  },
+  imageIndex: number,
+) {
+  if (
+    args.chunkerVersion !== CHUNKER_VERSION ||
+    !Number.isInteger(image.pageNumber) ||
+    (image.pageNumber ?? 0) <= 0 ||
+    args.spanPages.length !== 1 ||
+    args.spanPages[0].pageNumber !== image.pageNumber ||
+    args.pageNumber !== image.pageNumber ||
+    args.pageStart !== image.pageNumber ||
+    args.pageEnd !== image.pageNumber
+  )
+    return false;
+  const table = nativeTableBlock(image);
+  if (!table) return false;
+  const units =
+    /^(?:mg|mcg|µg|μg|ug|g|kg|ng|pg|ml|l|dl|h|hr|hrs|hour|hours|min|s|sec|second|seconds|day|days|wk|week|weeks|mmol|mol|meq|iu|u|unit|units|mmhg|cm|bpm|x)$/i;
+  const hasRowIdentifier = table.rows.some((row) => {
+    // First slice supports explicit labels, not a semantic classifier for plain words/units.
+    if (!/^[A-Z0-9]+(?:[-_][A-Z0-9]+)+$/.test(row[0]) || !/[A-Z]/.test(row[0])) return false;
+    const withoutNumbers = row[0].replace(/[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)(?:e[+-]?\d+)?/gi, " ");
+    return withoutNumbers.split(/[^\p{L}]+/u).some((word) => word && !units.test(word));
+  });
+  if (!hasRowIdentifier) return false;
+  const rowSignatures = new Set(table.rows.map((row) => JSON.stringify(row)));
+  const signature = JSON.stringify(table);
+  const uniqueNarrativeMatch = (text: string) => {
+    const blocks = narrativeTableBlocks(text);
+    if (!blocks || blocks.filter((block) => JSON.stringify(block) === signature).length !== 1) return false;
+    return !blocks.some(
+      (block) =>
+        JSON.stringify(block) !== signature && block.rows.some((row) => rowSignatures.has(JSON.stringify(row))),
+    );
+  };
+  if (!uniqueNarrativeMatch(args.content) || !uniqueNarrativeMatch(args.spanPages[0].pageText)) return false;
+  const descriptor = (peer: ChunkImages[number]) =>
+    JSON.stringify([
+      nativeTableBlock(peer),
+      peer.pageNumber,
+      peer.sourceKind,
+      peer.caption,
+      peer.tableLabel ?? null,
+      peer.tableTitle ?? null,
+      peer.tableRole ?? null,
+      peer.imageType ?? null,
+      peer.tableTextSnippet ?? null,
+      peer.accessibleTableMarkdown ?? null,
+      peer.tableColumns ?? null,
+      peer.tableRows ?? null,
+      peer.labels ?? null,
+    ]);
+  for (const peer of args.images) {
+    if (peer.id === image.id && descriptor(peer) !== descriptor(image)) return false;
+    if (peer.sourceKind !== "table_crop" || peer.pageNumber !== image.pageNumber) continue;
+    const peerTable = nativeTableBlock(peer);
+    if (!peerTable) return false;
+    if (peer.id !== image.id && peerTable.rows.some((row) => rowSignatures.has(JSON.stringify(row)))) return false;
+  }
+  // Only consistent duplicates may collapse, after checking every descriptor/peer.
+  return args.images.findIndex((peer) => peer.id === image.id) === imageIndex;
+}
+
 function pageLocalExcerptForChunk(chunkExcerpt: string, pageText: string) {
   const compactPage = pageText.replace(/\s+/g, " ").trim();
   if (!compactPage) return chunkExcerpt;
@@ -585,7 +756,15 @@ function emitChunk(args: {
   const level = headingLevel(heading, sectionContext);
   const parentHeading = sectionContext.length > 1 ? sectionContext[sectionContext.length - 2] : null;
   const referencedImageIds = args.images
-    .filter((image) => {
+    .filter((image, imageIndex) => {
+      if (
+        image.sourceKind === "table_crop" &&
+        !image.caption.trim() &&
+        !(image.tableLabel ?? "").trim() &&
+        !(image.tableTitle ?? "").trim()
+      ) {
+        return matchesNativeTableBlock(image, args, imageIndex);
+      }
       const label = normalizeLookupText(image.tableLabel ?? "");
       const title = normalizeLookupText(image.tableTitle ?? "");
       const caption = normalizeLookupText(image.caption);

@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, CircleHelp, CircleX, Info, TriangleAlert } from "lucide-react";
+import { ChevronRight, CircleHelp, CircleX, Info, TriangleAlert } from "lucide-react";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -17,7 +18,10 @@ import {
 import type { RosterCheck } from "@/lib/open-shifts/roster-check";
 import { MONTHS, WEEKDAYS, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { zonedDateOf } from "@/lib/work-time/format";
+
+import { UrgentDot } from "./urgent-dot";
 import { currentWorkTimeZone } from "@/lib/work-time/current-zone";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /*
  * The pieces every Open shifts page shares, so the last screen is drawn from
@@ -180,12 +184,7 @@ export function ShiftRow({
   status?: ReactNode;
 }) {
   const hours = hoursBetween(listing.startsAt, listing.endsAt);
-  const meta = [
-    endsNextDay(listing.startsAt, listing.endsAt) ? "Ends next day" : null,
-    listing.urgent ? "Urgent" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = endsNextDay(listing.startsAt, listing.endsAt) ? "Ends next day" : null;
   return (
     <li className={modeInsetHairline}>
       <Link
@@ -204,7 +203,13 @@ export function ShiftRow({
             {shiftTitle(listing)}
           </span>
           <span className="text-2xs text-[color:var(--text-muted)]">{shiftPlace(listing)}</span>
-          {meta ? <span className="text-2xs text-[color:var(--text-muted)]">{meta}</span> : null}
+          {meta || listing.urgent ? (
+            <span className="inline-flex items-center gap-1 text-2xs text-[color:var(--text-muted)]">
+              {listing.urgent ? <UrgentDot>Urgent</UrgentDot> : null}
+              {meta && listing.urgent ? " · " : null}
+              {meta}
+            </span>
+          ) : null}
           {status ?? (check ? <span className="mt-1.5">{<CheckLine check={check} />}</span> : null)}
         </span>
         <ChevronRight
@@ -265,14 +270,9 @@ export function SubHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-14 items-center gap-1 px-1">
-      <Link
-        href={backHref}
-        aria-label={`Back to ${backLabel}`}
-        className="work-glass-button inline-flex min-h-12 min-w-12 items-center justify-center rounded-full text-[color:var(--text-heading)] focus-visible:outline-2 focus-visible:outline-[color:var(--mode-identity)]"
-      >
-        <ChevronLeft aria-hidden="true" strokeWidth={1.6} className="size-icon-lg" />
-      </Link>
+    <div className="flex min-h-14 items-center gap-1 px-3">
+      {/* One way back: the top bar's round left button, never a second one here. */}
+      <WorkPageBack href={backHref} label={backLabel} testId="open-shifts-sub-back" history={false} />
       <h1 className="min-w-0 flex-1 text-lg font-bold tracking-tight text-[color:var(--text-heading)]">{title}</h1>
       {action}
     </div>

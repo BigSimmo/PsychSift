@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(window.location.search),
   usePathname: () => "/on-call/call",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), prefetch: vi.fn() }),
 }));
@@ -24,7 +25,8 @@ vi.mock("@/lib/on-call/entry-store", () => ({
 
 import OnCallCallRoute from "@/app/(search-app)/on-call/call/page";
 import OnCallFindRoute from "@/app/(search-app)/on-call/find/page";
-import OnCallReferRoute from "@/app/(search-app)/on-call/refer/page";
+import { OnCallReferPage } from "@/components/on-call/refer/refer-page";
+
 import OnCallWhosOnRoute from "@/app/(search-app)/on-call/whos-on/page";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import {
@@ -33,6 +35,9 @@ import {
   type OnCallHubPage,
 } from "@/components/on-call/on-call-section-identity";
 import { modeSecondaryNavigationRegistry } from "@/lib/mode-secondary-navigation";
+
+// The route redirects to Contacts in the current work mode; the classic page it keeps is the component.
+const OnCallReferRoute = () => <OnCallReferPage />;
 
 const routes: { page: Exclude<OnCallHubPage, "now">; Route: () => ReactElement }[] = [
   { page: "whos-on", Route: OnCallWhosOnRoute },
@@ -89,11 +94,10 @@ describe("On Call hub routes", () => {
 });
 
 describe("Playbook", () => {
-  it("opens with the Who do I call now? link, as a raised card and never the command fill", () => {
+  // Usefulness audit, 11 Oct 2026: the Playbook is the one home for "who do I call", so it no longer
+  // links out to a separate page; each problem is a row that opens to its steps.
+  it("has no link out to a separate Who do I call now page", () => {
     render(<OnCallPlaybookSection entries={[]} />);
-    const link = screen.getByTestId("on-call-playbook-who-do-i-call");
-    expect(link).toHaveAttribute("href", "/on-call/now");
-    expect(link).toHaveTextContent("Who do I call now?");
-    expect(link.className).not.toMatch(/--command/);
+    expect(screen.queryByTestId("on-call-playbook-who-do-i-call")).toBeNull();
   });
 });

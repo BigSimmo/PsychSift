@@ -1,5 +1,7 @@
 # Complete Code Review Summary
 
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
+
 ## Overview
 
 Comprehensive review of your Next.js/TypeScript clinical knowledge base completed. **6 bugs fixed** + **strategic recommendations** for 18 additional improvements.

@@ -18,7 +18,7 @@ import {
 import { useFavouritesShelf } from "@/components/favourites/use-favourites-shelf";
 import { useNumberSheets } from "@/components/favourites/use-number-sheets";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeBandAction, PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import {
   WorkBody,
   WorkButton,
@@ -266,35 +266,22 @@ export function MyDayFavouritesPage() {
         <PageTitleUnderBand className="m-0 text-2xl font-bold text-[color:var(--work-ink)]">
           Favourites
         </PageTitleUnderBand>
-        <ModeBandAction>
-          {(underBand) =>
-            underBand ? (
-              <button
-                type="button"
-                onClick={openAdd}
-                aria-label="Add a work page"
-                className="work-glass-button work-band__action"
-                data-testid="my-day-favourites-band-add"
-              >
-                <Plus aria-hidden="true" className="size-icon-md" strokeWidth={2} />
-              </button>
-            ) : visible.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                <WorkButton variant="secondary" icon={Plus} onClick={openAdd} testId="my-day-favourites-page-add">
-                  Add a work page
-                </WorkButton>
-                <WorkButton
-                  variant="secondary"
-                  icon={Phone}
-                  onClick={numberSheets.addNumber}
-                  testId="my-day-favourites-page-add-number"
-                >
-                  Add a number
-                </WorkButton>
-              </div>
-            ) : null
-          }
-        </ModeBandAction>
+        {/* In the page, not the band's corner, which is for Favourite only (audit D18). */}
+        {visible.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            <WorkButton variant="secondary" icon={Plus} onClick={openAdd} testId="my-day-favourites-page-add">
+              Add a work page
+            </WorkButton>
+            <WorkButton
+              variant="secondary"
+              icon={Phone}
+              onClick={numberSheets.addNumber}
+              testId="my-day-favourites-page-add-number"
+            >
+              Add a number
+            </WorkButton>
+          </div>
+        ) : null}
 
         {!online ? (
           <p

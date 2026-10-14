@@ -33,8 +33,11 @@ import { useRosterShifts } from "./use-roster-shifts";
 import { RosterPageHeader } from "./roster-ui";
 
 /**
- * Roster Settings: the calendar switch, the evening-before reminder,
- * workplaces, calendar links, and Delete my data.
+ * Roster Settings: one Calendar section (your calendar link, and the calendar
+ * links Roster reads shifts from), the evening-before reminder, workplaces, and
+ * Delete my data. The reminder is an alarm written into the calendar link's
+ * feed (`feed-repository.ts` adds shifts only when `calendarShifts` is on), so
+ * it stays off until that link is on, with a button to turn it on.
  *
  * Delete asks no "Are you sure?". Everything is hidden at once and Undo shows
  * for 30 seconds; the delete request is sent only when those 30 seconds end
@@ -265,75 +268,10 @@ export function RosterSettingsPage() {
                   ? "Your shifts for the next 60 days go on your private calendar link as shift type and time only, never the workplace. Anyone with the link can see them, so keep it to yourself."
                   : "Off: your shifts are not on your calendar link."}
               </RosterFootnote>
-            </section>
-            {calendarShifts ? <CalendarSubscribe testId="roster-settings-subscribe" /> : null}
-
-            <RosterAlertsSection
-              reminder={
-                <RosterRow
-                  lead={<RosterIconLead icon={Moon} />}
-                  title="Remind me the evening before"
-                  sub={
-                    calendarShifts
-                      ? "At 20:00 in your calendar · shift type and time only"
-                      : "Turn on Calendar link first"
-                  }
-                  action={
-                    <ToggleSwitch
-                      enabled={calendarShifts && reminderOn}
-                      onToggle={toggleReminder}
-                      aria-label="Remind me the evening before"
-                      disabled={!calendarShifts}
-                    />
-                  }
-                />
-              }
-            />
-
-            <section aria-labelledby="roster-settings-workplaces-title" className="grid gap-3">
-              <RosterSectionHead id="roster-settings-workplaces-title" title="Workplaces" />
-              {shifts.status === "error" ? (
-                <div className="grid gap-3" data-testid="roster-settings-error">
-                  <RosterNote icon={TriangleAlert} tone="warning" role="alert">
-                    Your shifts could not be loaded.
-                  </RosterNote>
-                  <button
-                    type="button"
-                    className={cn(rosterFilledButton, "justify-self-start")}
-                    onClick={() => void shifts.reload()}
-                  >
-                    <RefreshCw aria-hidden="true" className="size-icon-md" />
-                    Try again
-                  </button>
-                </div>
-              ) : (
-                <RosterList label="Workplaces" testId="roster-settings-workplaces">
-                  {workplaces.length === 0 ? (
-                    <RosterRow lead={<RosterIconLead icon={MapPin} />} title="None yet" />
-                  ) : (
-                    workplaces.map((name) => (
-                      <RosterRow
-                        key={name}
-                        lead={<RosterIconLead icon={MapPin} />}
-                        title={<span className="line-clamp-2">{name}</span>}
-                        sub={workplaceSub(name)}
-                        action={
-                          <ModeActionButton
-                            icon={Trash2}
-                            label={`Remove ${name}`}
-                            onClick={() => setConfirm({ kind: "workplace", name })}
-                            disabled={shifts.demoMode}
-                          />
-                        }
-                      />
-                    ))
-                  )}
-                </RosterList>
-              )}
-            </section>
-
-            <section aria-labelledby="roster-settings-links-title" className="grid gap-3">
-              <RosterSectionHead id="roster-settings-links-title" title="Roster calendar links" />
+              {calendarShifts ? <CalendarSubscribe testId="roster-settings-subscribe" /> : null}
+              <p className="m-0 pt-1 text-xs font-semibold text-[color:var(--text-muted)]">
+                Calendars Roster reads your shifts from
+              </p>
               {links.status === "error" ? (
                 <div className="grid gap-3" data-testid="roster-settings-links-error">
                   <RosterNote icon={TriangleAlert} tone="warning" role="alert">
@@ -372,6 +310,85 @@ export function RosterSettingsPage() {
                               onClick={() => setConfirm({ kind: "link", id: link.id, host: link.hostPreview })}
                             />
                           </span>
+                        }
+                      />
+                    ))
+                  )}
+                </RosterList>
+              )}
+            </section>
+
+            <RosterAlertsSection
+              reminder={
+                <>
+                  <RosterRow
+                    lead={<RosterIconLead icon={Moon} />}
+                    title="Remind me the evening before"
+                    sub={
+                      calendarShifts
+                        ? "At 20:00 in your calendar · shift type and time only"
+                        : "This reminder is an alarm on your calendar link, so it needs that link turned on."
+                    }
+                    action={
+                      <ToggleSwitch
+                        enabled={calendarShifts && reminderOn}
+                        onToggle={toggleReminder}
+                        aria-label="Remind me the evening before"
+                        disabled={!calendarShifts}
+                      />
+                    }
+                  />
+                  {calendarShifts ? null : (
+                    <li className="px-3 pb-3">
+                      <button
+                        type="button"
+                        className={rosterOutlineButton}
+                        onClick={() => void toggleCalendarShifts()}
+                        disabled={settings.status !== "ready"}
+                      >
+                        <Link2 aria-hidden="true" className="size-icon-md" />
+                        Turn on calendar link
+                      </button>
+                    </li>
+                  )}
+                </>
+              }
+            />
+
+            <section aria-labelledby="roster-settings-workplaces-title" className="grid gap-3">
+              <RosterSectionHead id="roster-settings-workplaces-title" title="Workplaces" />
+              {shifts.status === "error" ? (
+                <div className="grid gap-3" data-testid="roster-settings-error">
+                  <RosterNote icon={TriangleAlert} tone="warning" role="alert">
+                    Your shifts could not be loaded.
+                  </RosterNote>
+                  <button
+                    type="button"
+                    className={cn(rosterFilledButton, "justify-self-start")}
+                    onClick={() => void shifts.reload()}
+                  >
+                    <RefreshCw aria-hidden="true" className="size-icon-md" />
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                <RosterList label="Workplaces" testId="roster-settings-workplaces">
+                  {workplaces.length === 0 ? (
+                    <RosterRow lead={<RosterIconLead icon={MapPin} />} title="None yet" />
+                  ) : (
+                    workplaces.map((name) => (
+                      <RosterRow
+                        key={name}
+                        lead={<RosterIconLead icon={MapPin} />}
+                        title={<span className="line-clamp-2">{name}</span>}
+                        sub={workplaceSub(name)}
+                        action={
+                          <ModeActionButton
+                            icon={Trash2}
+                            label={`Remove ${name}`}
+                            onClick={() => setConfirm({ kind: "workplace", name })}
+                            disabled={shifts.demoMode}
+                          />
                         }
                       />
                     ))

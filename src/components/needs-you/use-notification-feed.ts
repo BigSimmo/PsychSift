@@ -142,7 +142,7 @@ function useExampleMyDayItems(active: boolean, readAt: Date, zone: string): read
     if (!active) return undefined;
     let cancelled = false;
     void import("@/components/my-day/my-day-sample").then((module) => {
-      if (!cancelled) setLoaded(module.buildMyDaySample(workToday(readAt, zone), readAt).items);
+      if (!cancelled) setLoaded(module.buildMyDaySample(workToday(readAt, zone), readAt, zone).items);
     });
     return () => {
       cancelled = true;

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "63a6c7d2-68fb-4446-b459-9265e8256e43",
+  "createdOn": "2026-10-12",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Unconfirmed claim: 808 D-band sources lack publisher, version and jurisdiction metadata; the cited debt acceptance expired 2026-08-31",
+    "detail": "The 2026-10-09 audit cites docs/release-source-metadata-debt-2026-06-30.json for 808 sources, but that number is not in the file. The file records an acceptance with expires_at 2026-08-31 and observed 0 sources missing the required metadata keys in early July. Unknown whether the expiry is enforced or the 808 comes from a different count. Next action: take a fresh count (npm run backfill:source-metadata is provider-backed and needs explicit approval first), then either record a new bounded acceptance or close.",
+    "source": "Review of five Antigravity reports against main, 2026-10-12",
+    "issueUlid": "01M4R2MAJY49Q5FBC16DPHA4A8"
+  }
+}

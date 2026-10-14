@@ -24,16 +24,17 @@ const phoneChromeBrowserSpecPattern =
  * A helper-only change is `playwrightHelper` scope, which selects the focused
  * ownership journeys — four grepped cases in ONE of these files. That leaves a
  * regression in a shared function (`readGeometry`, `installFlipCounter`,
- * `dragScrollBy`) passing the phone-chrome gate while two of the helper's three
- * consumers never run. So a change to the helper runs all of its consumers in
+ * `dragScrollBy`) passing the phone-chrome gate while other helper consumers
+ * never run. So a change to the helper runs all of its consumers in
  * full, exactly as if each spec had been edited directly.
  *
  * `tests/verify-phone-chrome.test.ts` pins this list against the specs that
- * actually import the helper, so a fourth sibling cannot be added without
+ * actually import the helper, so another sibling cannot be added without
  * either joining this list or failing that test.
  */
 const sharedPhoneScrollHelper = "tests/helpers/phone-scroll.ts";
 const phoneScrollConsumerSpecs = [
+  "tests/ui-phone-scroll-assessments.spec.ts",
   "tests/ui-phone-scroll.spec.ts",
   "tests/ui-phone-scroll-page-owned.spec.ts",
   "tests/ui-phone-scroll-routes.spec.ts",
@@ -41,7 +42,7 @@ const phoneScrollConsumerSpecs = [
 ];
 
 const patterns = {
-  docs: [/^docs\//, /^AGENTS\.md$/],
+  docs: [/^docs\//, /^AGENTS\.md$/, /^PROJECT-INSTRUCTIONS-CONTINUATION\.md$/],
   infrastructure: [
     /^package(?:-lock)?\.json$/,
     /^scripts\/(?:check-installed-lock-parity|phone-chrome-plan|playwright-browser-preflight|run-playwright|verify-phone-chrome)\.mjs$/,

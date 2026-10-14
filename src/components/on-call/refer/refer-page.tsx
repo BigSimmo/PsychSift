@@ -11,7 +11,7 @@ import { OnCallCrisisLines } from "@/components/on-call/call/external-line-rows"
 import { handbookFirstLine, OnCallHandbookItemRow } from "@/components/on-call/find/handbook-item-row";
 import { onCallActionLink, onCallLeadingIcon } from "@/components/on-call/kit/calm";
 import { OnCallGroupedList, OnCallRow } from "@/components/on-call/kit/grouped-list";
-import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
+import { onCallCrisisLinesCompact, OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
 import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
 import { OnCallHubPageFrame } from "@/components/on-call/kit/hub-page-frame";
 import { modeSecondaryText } from "@/components/mode-kit/type";
@@ -21,7 +21,7 @@ import { OnCallRouteFreshnessLine } from "@/components/on-call/refer/route-fresh
 import { useHospitalHandbook } from "@/components/on-call/use-hospital-handbook";
 import { SearchField } from "@/components/ui/text-field";
 import { cn } from "@/components/ui-primitives";
-import { onCallEntryIsEditable } from "@/lib/on-call/entry-model";
+import { onCallEntryIsEditable, type OnCallEntry } from "@/lib/on-call/entry-model";
 import { useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { HandbookItem } from "@/lib/on-call/handbook-items";
 import { searchHandbookItems } from "@/lib/on-call/handbook-search";
@@ -33,6 +33,36 @@ function matchesNote(entry: { title: string; subtitle?: string | null }, query: 
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const haystack = `${entry.title} ${entry.subtitle ?? ""}`.toLowerCase();
   return terms.every((term) => haystack.includes(term));
+}
+
+/**
+ * How many referral rows a search shows: the hospital's referral routes plus the reader's own referral
+ * notes. Contacts counts these too, so a referral-only match never reads as "no results" there.
+ */
+export function onCallReferralMatchCount({
+  items,
+  entries,
+  query,
+  signedOut,
+}: {
+  readonly items: readonly HandbookItem[];
+  readonly entries: readonly OnCallEntry[];
+  readonly query: string;
+  readonly signedOut: boolean;
+}): number {
+  if (!query.trim()) return 0;
+  const routes = searchHandbookItems(
+    items.filter((item) => item.section === "referrals"),
+    query,
+  ).length;
+  if (signedOut) return routes;
+  return (
+    routes +
+    entries.filter(
+      (entry) =>
+        (entry.view ?? entry.section) === "referrals" && onCallEntryIsEditable(entry) && matchesNote(entry, query),
+    ).length
+  );
 }
 
 /**
@@ -57,10 +87,48 @@ function matchesNote(entry: { title: string; subtitle?: string | null }, query: 
 export function OnCallReferPage() {
   const handbook = useHospitalHandbook();
   const entries = useOnCallEntries();
+  const [query, setQuery] = useState("");
+  const ready = handbook.status === "ready";
+  const signedOut = entries.signedOut || handbook.status === "signed-out";
+
+  return (
+    <OnCallHubPageFrame
+      page="refer"
+      // The group eyebrow names the hospital; the line stays only to offer "Change".
+      lead={handbook.hospitals.length > 1 ? <OnCallHospitalLine handbook={handbook} /> : null}
+    >
+      <OnCallHandbookState handbook={handbook} page="refer" />
+      {ready ? null : <OnCallCrisisLines compact={onCallCrisisLinesCompact(handbook.status)} />}
+
+      {ready || !signedOut ? (
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)]" data-testid="on-call-refer-search">
+          <SearchField
+            label="Search referrals and services"
+            placeholder="Search referrals and services"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onClear={() => setQuery("")}
+            clearLabel="Clear the referral search"
+            autoComplete="off"
+          />
+        </div>
+      ) : null}
+      <OnCallReferSections query={query} />
+    </OnCallHubPageFrame>
+  );
+}
+
+/**
+ * Refer's lists without its frame or search box: the hospital's routes, the Services directory link
+ * and the reader's own notes, filtered by `query`. Contacts shows them as its Refer tab (Work mode
+ * simplify plan, owner approval 12 Oct 2026), so one search box covers numbers and referrals.
+ */
+export function OnCallReferSections({ query }: { readonly query: string }) {
+  const handbook = useHospitalHandbook();
+  const entries = useOnCallEntries();
   const hospitalPhone = useOnCallHospitalPhone();
   const [team, setTeam] = useState(ALL_TEAMS);
   const [teamsOpen, setTeamsOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
   const ready = handbook.status === "ready";
   const hospitalName = handbook.siteName ?? handbook.serviceName;
@@ -78,12 +146,14 @@ export function OnCallReferPage() {
   );
   const chosen = teams.includes(team) ? team : ALL_TEAMS;
   const byTeam = chosen === ALL_TEAMS ? referrals : referrals.filter((item) => item.parsed.team === chosen);
-  const shown = searching ? searchHandbookItems(byTeam, query) : byTeam;
+  // A search covers every team, so it matches what Contacts counts; the team filter is for browsing.
+  const shown = searching ? searchHandbookItems(referrals, query) : byTeam;
   const hasDeskOnly = referrals.some((item) => item.dial.kind === "extension");
 
   const signedOut = entries.signedOut || handbook.status === "signed-out";
   const mine = useMemo(
-    () => entries.entries.filter((entry) => entry.section === "referrals" && onCallEntryIsEditable(entry)),
+    () =>
+      entries.entries.filter((entry) => (entry.view ?? entry.section) === "referrals" && onCallEntryIsEditable(entry)),
     [entries.entries],
   );
   const mineShown = searching ? mine.filter((entry) => matchesNote(entry, query)) : mine;
@@ -94,36 +164,16 @@ export function OnCallReferPage() {
   const resultCount = shown.length + (signedOut ? 0 : mineShown.length);
 
   return (
-    <OnCallHubPageFrame
-      page="refer"
-      // The group eyebrow names the hospital; the line stays only to offer "Change".
-      lead={handbook.hospitals.length > 1 ? <OnCallHospitalLine handbook={handbook} /> : null}
-    >
-      <OnCallHandbookState handbook={handbook} page="refer" />
-      {ready ? null : <OnCallCrisisLines />}
-
-      {ready || !signedOut ? (
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)]" data-testid="on-call-refer-search">
-          <SearchField
-            label="Search referrals and services"
-            placeholder="Search referrals and services"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onClear={() => setQuery("")}
-            clearLabel="Clear the referral search"
-            autoComplete="off"
-          />
-          <p role="status" aria-live="polite" className="sr-only">
-            {searching ? `${resultCount} ${resultCount === 1 ? "result" : "results"} here` : ""}
-          </p>
-        </div>
-      ) : null}
+    <div className="grid min-w-0 gap-5" data-testid="on-call-refer-sections">
+      <p role="status" aria-live="polite" className="sr-only">
+        {searching ? `${resultCount} ${resultCount === 1 ? "referral" : "referrals"} here` : ""}
+      </p>
 
       {ready && (shown.length > 0 || !searching) && referrals.length > 0 ? (
         <OnCallGroupedList
           eyebrow={hospitalName ? `At ${hospitalName}` : "At this hospital"}
           action={
-            teams.length >= 2
+            teams.length >= 2 && !searching
               ? {
                   label: chosen,
                   onClick: () => setTeamsOpen((open) => !open),
@@ -135,7 +185,7 @@ export function OnCallReferPage() {
           id={onCallGroupAnchorId("hospital")}
           testId="on-call-refer-hospital"
         >
-          {teams.length >= 2 && (teamsOpen || chosen !== ALL_TEAMS) ? (
+          {teams.length >= 2 && !searching && (teamsOpen || chosen !== ALL_TEAMS) ? (
             <li className="min-w-0 px-1 pb-1">
               <OnCallFilterChips
                 options={[ALL_TEAMS, ...teams]}
@@ -255,6 +305,6 @@ export function OnCallReferPage() {
           </>
         )}
       </OnCallGroupedList>
-    </OnCallHubPageFrame>
+    </div>
   );
 }

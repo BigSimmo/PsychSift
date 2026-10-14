@@ -145,10 +145,11 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
         href={href}
         aria-label={`View ${summary.label} sources`}
         className={cn(
-          "group grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 rounded-lg",
-          "border border-[color:var(--border)] bg-[color:var(--surface)] p-3.5 shadow-[var(--e2)] transition",
-          "hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-raised)]",
-          "hover:shadow-[var(--e3)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+          // A row of its section's one card: no border, shadow or lift of its
+          // own. The list draws the box and divides rows with a hairline.
+          "group grid min-h-12 grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-3.5 py-3.5 transition-colors",
+          "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
         )}
       >
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
@@ -221,7 +222,11 @@ function BrowseRow({ kind, summary, href }: { kind: SourcesBrowseKind; summary: 
   );
 }
 
-const rowGrid = "grid gap-2.5 md:grid-cols-2 xl:grid-cols-3";
+// One hairline card per group, rows divided by a hairline, one column at every
+// width. The three-column grid of separate cards made a heading's sources read
+// as unrelated tiles rather than as one list.
+const rowGrid =
+  "divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]";
 
 type FacetKey = "jurisdiction" | "band" | "usedBy";
 
@@ -506,7 +511,7 @@ export function SourcesBrowseClient({
               {/* A compact label row, not the `text-xl` block this replaced. The
                   heading is the page's outline; it is not the page's furniture,
                   and on a phone it was costing a publisher of screen each time. */}
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-b border-[color:var(--border)] pb-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-0.5">
                 <h2 id={`publisher-scope-${section.scope}`} className={eyebrowText}>
                   {jurisdictionLabels[section.scope]}
                 </h2>

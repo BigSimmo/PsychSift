@@ -46,8 +46,8 @@ export const teachTopic: WorkHelpTopic = {
     {
       id: "other-services",
       q: "Can I go to teaching at another service?",
-      a: "What's on lists sessions other services have opened to you. Tap the plus on one to add it to your own week.",
-      link: { label: "What's on", href: "/teaching/whats-on" },
+      a: "Week's Other services filter lists sessions other services have opened to you. Tap the plus on one to add it to your own week.",
+      link: { label: "Other services", href: "/teaching/week?view=other" },
     },
   ],
   setUp: [

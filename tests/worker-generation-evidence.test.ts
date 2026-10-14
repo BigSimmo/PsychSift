@@ -9,6 +9,7 @@ import {
 } from "../worker/generation-evidence";
 import { generationEvidenceDigest, generationEvidenceSlots } from "@/lib/ingestion-generation-evidence";
 import { buildDocumentPageRowsForPersistence, serializeDocumentPageRowsForCommit } from "../worker/behavior";
+import { sourceSegment } from "./helpers/source-contract";
 
 const id = "00000000-0000-4000-8000-000000000001";
 const generation = "00000000-0000-4000-8000-000000000002";
@@ -486,36 +487,57 @@ describe("actual source to retained prerequisite packet", () => {
     expect(branch).toContain("currentInventory: evidenceInventory.inventory");
     expect(branch).toContain("mutation: (name, payload) => mutation(attempt, name, payload)");
     expect(branch).toContain("check: () => attempt.check()");
-    expect(branch.indexOf("await runManagedPrivateSupplier(")).toBeLessThan(branch.indexOf("throw new Error("));
-    expect(branch.indexOf("await runManagedPrivateSupplier(")).toBeLessThan(
-      branch.indexOf("await produceManagedVectorFinalPacket("),
+    const supplier = branch.indexOf("await runManagedPrivateSupplier(");
+    const vectorProduction = branch.indexOf("await produceManagedVectorFinalPacket(");
+    const vectorStage = branch.indexOf("await stageManagedVectorFinal(");
+    const nativeProduction = branch.indexOf("await produceManagedNativeParentClosurePacket(");
+    const nativeStage = branch.indexOf("await stageManagedNativeParentClosure(");
+    const refusal = branch.search(
+      /throw new Error\(\s*"technical_supplier_not_implemented: private candidate rows retained; independent completeness and required fidelity unavailable",?\s*\);/,
     );
-    expect(branch.indexOf("await produceManagedVectorFinalPacket(")).toBeLessThan(
-      branch.indexOf("await stageManagedVectorFinal("),
-    );
-    expect(branch.indexOf("await stageManagedVectorFinal(")).toBeLessThan(branch.indexOf("throw new Error("));
+    for (const position of [supplier, vectorProduction, vectorStage, nativeProduction, nativeStage, refusal]) {
+      expect(position).toBeGreaterThan(-1);
+    }
+    expect(supplier).toBeLessThan(refusal);
+    expect(supplier).toBeLessThan(vectorProduction);
+    expect(vectorProduction).toBeLessThan(vectorStage);
+    expect(vectorStage).toBeLessThan(refusal);
     expect(branch).toMatch(
       /const hasPreparedImages = plan\.producerManifests\.some\([\s\S]*?manifest\.group\.family === "images"[\s\S]*?manifest\.group\.groupKey === "worker_core"[\s\S]*?manifest\.state === "prepared"[\s\S]*?manifest\.units\.length > 0/,
     );
-    expect(branch).toMatch(
-      /if \(hasPreparedImages\) \{\s*const nativePacket = await produceManagedNativeParentClosurePacket\(vectorInput\);\s*await stageManagedNativeParentClosure\(\{ \.\.\.stageInput, packet: nativePacket \}\);\s*\} else \{\s*const vectorPacket = await produceManagedVectorFinalPacket\(vectorInput\);\s*await stageManagedVectorFinal\(\{ \.\.\.stageInput, packet: vectorPacket \}\);/,
+    const nativeBranch = sourceSegment(
+      branch,
+      "if (hasPreparedImages) {",
+      "const vectorPacket = await produceManagedVectorFinalPacket(vectorInput);",
+      { label: "managed native branch" },
+    );
+    const vectorBranch = sourceSegment(
+      branch,
+      "const vectorPacket = await produceManagedVectorFinalPacket(vectorInput);",
+      "// Prepared bodies and private candidate rows",
+      { label: "managed vector branch" },
+    );
+    expect(nativeBranch).toMatch(
+      /^if \(hasPreparedImages\) \{\s*const nativePacket = await produceManagedNativeParentClosurePacket\(vectorInput\);\s*const nativeReadback = await stageManagedNativeParentClosure\(\{ \.\.\.stageInput, packet: nativePacket \}\);/,
+    );
+    expect(nativeBranch).toMatch(/\}\s*else\s*\{\s*$/);
+    expect(vectorBranch).toMatch(
+      /^const vectorPacket = await produceManagedVectorFinalPacket\(vectorInput\);\s*await stageManagedVectorFinal\(\{ \.\.\.stageInput, packet: vectorPacket \}\);\s*\}\s*$/,
     );
     expect(branch).toMatch(
-      /const vectorInput = \{\s*input: supplierInput,\s*expectedPlanDigest: plan\.digest,\s*issued: issuedControlSnapshot,\s*batchSize: env\.WORKER_BATCH_SIZE,\s*embed: \(texts: string\[\]\) => workerEmbedTexts\(job, texts\),\s*assertEmbedding: assertEmbeddingDim,\s*check: \(\) => attempt\.check\(\),/,
+      /const vectorInput = \{\s*input: supplierInput,\s*expectedPlanDigest: plan\.digest,\s*issued: issuedControlSnapshot,\s*batchSize: env\.WORKER_BATCH_SIZE,\s*embed: \(texts: string\[\], batchContext: ManagedProviderEmbeddingBatchContext\) =>\s*workerEmbedTexts\(job, texts, batchContext, plan\.digest\),\s*assertEmbedding: assertEmbeddingDim,\s*check: \(\) => attempt\.check\(\),/,
     );
     expect(branch).toMatch(
       /const stageInput = \{\s*input: supplierInput,\s*expectedPlanDigest: plan\.digest,\s*issued: issuedControlSnapshot,\s*fence: attempt\.fence,[\s\S]*?readRpc,\s*check: \(\) => attempt\.check\(\),/,
     );
-    expect(branch.indexOf("await runManagedPrivateSupplier(")).toBeLessThan(
-      branch.indexOf("await produceManagedNativeParentClosurePacket("),
-    );
-    expect(branch.indexOf("await produceManagedNativeParentClosurePacket(")).toBeLessThan(
-      branch.indexOf("await stageManagedNativeParentClosure("),
-    );
-    expect(branch.indexOf("await stageManagedNativeParentClosure(")).toBeLessThan(branch.indexOf("throw new Error("));
+    expect(supplier).toBeLessThan(nativeProduction);
+    expect(nativeProduction).toBeLessThan(nativeStage);
+    expect(nativeStage).toBeLessThan(refusal);
     const readStart = branch.indexOf("const readRpc = (name: string, payload: Record<string, unknown>)");
     expect(readStart).toBeGreaterThan(-1);
-    const reader = branch.slice(readStart, branch.indexOf("const vectorInput =", readStart));
+    const readEnd = branch.indexOf("const vectorInput =", readStart);
+    expect(readEnd).toBeGreaterThan(readStart);
+    const reader = branch.slice(readStart, readEnd);
     expect(reader).toContain("runIngestionPreparedWork(");
     expect(reader).toContain("ingestionRpcClient.rpc(name, payload)");
     expect(reader).toContain('mutation(attempt, "heartbeat_ingestion_job")');

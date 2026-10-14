@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   Check,
   ChevronLeft,
+  CircleDashed,
   Cloud,
   CloudOff,
   FileText,
@@ -205,14 +206,16 @@ function SignedOutBody() {
             title={row.title}
             subtitle={row.subtitle}
             trailing={
-              row.label === "Ready" ? (
-                <span className="inline-flex items-center gap-1 text-[color:var(--text-muted)]">
+              // Every status is an icon then its words, on one line, so "1 not recorded" lines up with the
+              // "Ready" ticks instead of sitting loose beside them.
+              <span className="inline-flex items-center gap-1 whitespace-nowrap text-[color:var(--text-muted)]">
+                {row.label === "Ready" ? (
                   <Check aria-hidden="true" className="size-icon-sm" />
-                  {row.label}
-                </span>
-              ) : (
-                <span className="text-[color:var(--text-muted)]">{row.label}</span>
-              )
+                ) : (
+                  <CircleDashed aria-hidden="true" className="size-icon-sm" />
+                )}
+                {row.label}
+              </span>
             }
           />
         ))}
@@ -453,7 +456,7 @@ export function WorkProfileFrame({ children }: { readonly children: ReactNode })
   return (
     <BandLineContext.Provider value={setLine}>
       <InformationPageShell testId="work-profile-main" width="bleed" className="bg-[color:var(--work-wash)]">
-        <div className={PAGE_WIDTH}>
+        <div className={PAGE_WIDTH} data-page-width="wide" data-page-padded="">
           <header className={bandShown ? "sr-only" : "grid gap-1"} data-testid="work-profile-header">
             {bandShown ? null : (
               <ContextualBackLink

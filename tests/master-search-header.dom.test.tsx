@@ -1,12 +1,16 @@
 /** @vitest-environment jsdom */
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MasterSearchHeader } from "@/components/clinical-dashboard/master-search-header";
 import { factsheetsTopicsHref } from "@/lib/app-modes";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 import {
+  desktopComposerSlotReadyAttr,
+  desktopComposerSlotReadyValue,
+  desktopPageComposerSlotId,
   modeHomeComposerReserveAttr,
   modeHomeComposerReservePendingValue,
   modeHomeDesktopComposerSlotId,
@@ -203,6 +207,24 @@ describe("MasterSearchHeader DOM", () => {
     expect(router.push).toHaveBeenCalledWith(factsheetsTopicsHref);
   });
 
+  it("asks a page with unsaved work before a shell option routes away", async () => {
+    // The safety plan registers a guard like this while it holds entries.
+    const guard = vi.fn(() => false);
+    const unregister = registerNavigationGuard(guard);
+    try {
+      const user = userEvent.setup();
+      render(<MasterSearchHeader {...defaultHeaderProps()} searchMode="factsheets" />);
+
+      await user.click(screen.getByRole("button", { name: "Open factsheets options" }));
+      await user.click(screen.getByRole("button", { name: "Browse all sheets" }));
+
+      expect(guard).toHaveBeenCalledTimes(1);
+      expect(router.push).not.toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
   describe("#WJDQ0X - privacy notice landmark / role=group wrapping", () => {
     it("wraps the composer privacy notice in role='group' with aria-label='Search privacy notice'", () => {
       render(<MasterSearchHeader {...defaultHeaderProps()} />);
@@ -278,6 +300,7 @@ describe("MasterSearchHeader DOM", () => {
     // next test resolves to it instead of that test's own slot.
     afterEach(() => {
       document.getElementById(modeHomeDesktopComposerSlotId)?.remove();
+      document.getElementById(desktopPageComposerSlotId)?.remove();
     });
 
     function mountSlot() {
@@ -327,7 +350,29 @@ describe("MasterSearchHeader DOM", () => {
       expect(removals).toEqual([]);
     });
 
-    it("still clears the reserve marker when the composer is suppressed (invariant 15)", async () => {
+    it.each(["home", "page"] as const)(
+      "preserves the %s slot's SSR attributes on a phone until hydration",
+      async (kind) => {
+        installMatchMediaStub(false);
+        const slot = mountSlot();
+        if (kind === "page") slot.id = desktopPageComposerSlotId;
+        const props = {
+          ...defaultHeaderProps(),
+          ...(kind === "home"
+            ? { desktopHomeComposerSlotId: modeHomeDesktopComposerSlotId }
+            : { desktopPageComposerSlotId }),
+        };
+        render(<MasterSearchHeader {...props} heroComposerBreakpoint="sm-up" />);
+        await Promise.resolve();
+        expect(slot.getAttribute(modeHomeComposerReserveAttr)).toBe(modeHomeComposerReservePendingValue);
+
+        slot.setAttribute(desktopComposerSlotReadyAttr, desktopComposerSlotReadyValue);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(slot.hasAttribute(modeHomeComposerReserveAttr)).toBe(false);
+      },
+    );
+
+    it("waits for hydration before clearing a suppressed composer's reserve (invariant 15)", async () => {
       installMatchMediaStub(true);
       const slot = mountSlot();
 
@@ -340,23 +385,73 @@ describe("MasterSearchHeader DOM", () => {
       // The suppression path clears in a queued microtask.
       await new Promise((resolve) => setTimeout(resolve, 0));
 
+      expect(slot.getAttribute(modeHomeComposerReserveAttr)).toBe(modeHomeComposerReservePendingValue);
+      slot.setAttribute(desktopComposerSlotReadyAttr, desktopComposerSlotReadyValue);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       expect(slot.hasAttribute(modeHomeComposerReserveAttr)).toBe(false);
     });
   });
 
   describe("client-side PHI detection warning", () => {
-    it("renders role=alert PHI warning when query contains identifier shapes", () => {
+    // The Answer-mode patient check loads on first use; let it arrive before asserting.
+    async function settlePatientCheck() {
+      await act(async () => {
+        await import("@/lib/clinical-question-patient-check");
+      });
+    }
+
+    it("renders role=alert PHI warning when query contains identifier shapes", async () => {
       render(
         <MasterSearchHeader {...defaultHeaderProps()} query="Patient Jane Citizen MRN: 12345678 DOB: 01/01/1980" />,
       );
+      await settlePatientCheck();
 
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent("Remove identifiable patient details before searching.");
+      // Answer mode names the kind of detail and holds the question back (audit S2).
+      expect(alert).toHaveTextContent(/^This question looks like it holds a patient detail/);
+      expect(alert).toHaveTextContent("Remove it and ask again");
       expect(alert).toHaveAttribute("id", "composer-phi-warning");
     });
 
-    it("does not render PHI warning for generic clinical queries", () => {
+    it("keeps the advisory wording outside Answer mode", async () => {
+      render(
+        <MasterSearchHeader
+          {...defaultHeaderProps()}
+          searchMode="documents"
+          query="Patient Jane Citizen MRN: 12345678 DOB: 01/01/1980"
+        />,
+      );
+      await settlePatientCheck();
+
+      expect(screen.getByRole("alert")).toHaveTextContent("Remove identifiable patient details before searching.");
+    });
+
+    it("does not send an Answer question that looks like it holds a patient detail", async () => {
+      const props = { ...defaultHeaderProps(), query: "Mr Smith lithium level 1.4" };
+      const { container } = render(<MasterSearchHeader {...props} />);
+      await settlePatientCheck();
+
+      const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+      expect(submit).not.toBeNull();
+      expect(submit).toBeDisabled();
+      fireEvent.submit(submit!.closest("form")!);
+      expect(props.onAsk).not.toHaveBeenCalled();
+      expect(screen.getByRole("alert")).toHaveTextContent("(a name)");
+      expect(screen.getByRole("alert")).not.toHaveTextContent("Smith");
+    });
+
+    it("does not render PHI warning for generic clinical queries", async () => {
       render(<MasterSearchHeader {...defaultHeaderProps()} query="clozapine neutropenia monitoring guidelines" />);
+      await settlePatientCheck();
+
+      expect(screen.queryByTestId("composer-phi-warning")).toBeNull();
+    });
+
+    it("lets an ordinary question with an age through in Answer mode", async () => {
+      const props = { ...defaultHeaderProps(), query: "lithium dose for 70 year old" };
+      render(<MasterSearchHeader {...props} />);
+      await settlePatientCheck();
 
       expect(screen.queryByTestId("composer-phi-warning")).toBeNull();
     });

@@ -21,17 +21,21 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { canNavigateBack } from "@/components/contextual-back-link";
 import { NavigationBackButton } from "@/components/navigation-back-button";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 import {
   cn,
   clinicalDivider,
   eyebrowText,
   fieldLabel,
   fieldControlPlain,
+  ignoreUnavailableActivation,
   metadataPill,
   panelSubtle,
   primaryControl,
@@ -63,6 +67,63 @@ function crisisContact(id: (typeof WA_CRISIS_CONTACTS)[number]["id"]) {
   if (!contact) throw new Error(`missing crisis contact ${id}`);
   return contact;
 }
+const LEAVE_PLAN_PROMPT = "Leave this safety plan? Your entries are only in this browser tab and will be lost.";
+
+/** Marks the extra history entry that holds Back on this page while the plan has entries. */
+const PLAN_SENTINEL_KEY = "__psychsiftSafetyPlanGuard";
+// A sentinel is valid only within the document that created it. This prevents a
+// browser reload or restored tab from treating a leftover marker as a Back traversal.
+const PLAN_DOCUMENT_ID = Math.random().toString(36).slice(2);
+
+function hasPlanSentinel(): boolean {
+  const state: unknown = window.history.state;
+  return typeof state === "object" && state !== null && PLAN_SENTINEL_KEY in state;
+}
+
+function onPlanSentinel(): boolean {
+  if (!hasPlanSentinel()) return false;
+  const marker: unknown = (window.history.state as Record<string, unknown>)[PLAN_SENTINEL_KEY];
+  return (
+    typeof marker === "object" && marker !== null && "documentId" in marker && marker.documentId === PLAN_DOCUMENT_ID
+  );
+}
+
+/**
+ * Push the sentinel with the current entry's state, so Next's App Router keeps its own
+ * history state (`__NA` and the tree) and, with no URL given, never navigates.
+ */
+function pushPlanSentinel(hadHistoryBefore: boolean) {
+  const state: unknown = window.history.state;
+  const base = typeof state === "object" && state !== null ? state : {};
+  window.history.pushState({ ...base, [PLAN_SENTINEL_KEY]: { documentId: PLAN_DOCUMENT_ID, hadHistoryBefore } }, "");
+}
+
+/**
+ * Whether there was a page before the plan's own entry, as recorded when the sentinel was
+ * pushed. Checking history again from the sentinel would always say yes, because the plan's
+ * own entry sits behind it. Null when this is not a sentinel.
+ */
+function sentinelHadHistoryBefore(): boolean | null {
+  if (!hasPlanSentinel()) return null;
+  const marker: unknown = (window.history.state as Record<string, unknown>)[PLAN_SENTINEL_KEY];
+  return typeof marker === "object" && marker !== null && "hadHistoryBefore" in marker
+    ? marker.hadHistoryBefore === true
+    : true;
+}
+
+/**
+ * Step back off a leftover sentinel, once, so the next Back reaches the page before this one
+ * instead of re-showing this page. The marker is taken off first, so a second call before the
+ * traversal lands (React's development double effects) does nothing.
+ */
+function dropPlanSentinel() {
+  if (!onPlanSentinel()) return;
+  const rest = { ...(window.history.state as Record<string, unknown>) };
+  delete rest[PLAN_SENTINEL_KEY];
+  window.history.replaceState(rest, "");
+  window.history.back();
+}
+
 const EMERGENCY_CONTACT = crisisContact("SYN-CRISIS-CONTACT-001");
 const MHERL_METRO_CONTACT = crisisContact("SYN-CRISIS-CONTACT-002");
 const MHERL_PEEL_CONTACT = crisisContact("SYN-CRISIS-CONTACT-003");
@@ -498,6 +559,7 @@ function PreviewStep({ def, entries }: { def: StepDef; entries: Entry[] }) {
 /* ---------- root ---------- */
 
 export function PatientSafetyPlan() {
+  const router = useRouter();
   const [entries, setEntries] = useState<Record<StepKey, Entry[]>>(EMPTY_ENTRIES);
   const [reasons, setReasons] = useState<Entry[]>([]);
   const [planDate, setPlanDate] = useState("");
@@ -553,6 +615,11 @@ export function PatientSafetyPlan() {
   const exampleActive = planContainsSeedEntries(entries, reasons);
   const stepsComplete = filledSteps === STEPS.length;
   const ready = stepsComplete && !exampleActive;
+  // Name the real blocker: the example text fills all six steps, so a step
+  // count alone would read "6 of 6 complete" beside a button that is still off.
+  const finaliseUnavailableReason = exampleActive
+    ? "Replace the example text with the real plan to finalise it."
+    : `Complete all ${STEPS.length} steps to finalise plan (${filledSteps} of ${STEPS.length} complete).`;
   // Working plan content is browser-tab only and never persisted. Treat any
   // entered step/reason/date as dirty so the header back control cannot discard
   // an in-progress plan without an explicit confirmation.
@@ -576,6 +643,128 @@ export function PatientSafetyPlan() {
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
+  // Record this before the dirty-plan guard can add a sentinel. history.length also counts
+  // forward entries, so it cannot reliably answer this question later.
+  const hadHistoryBeforeRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    hadHistoryBeforeRef.current = sentinelHadHistoryBefore() ?? canNavigateBack();
+  }, []);
+
+  // The header back control's own leave step while the plan is dirty; set by the guard below.
+  const leaveByBackRef = useRef<(() => "stay" | "handled" | "fallback") | null>(null);
+
+  // Arriving on a sentinel left behind when an in-app link or shell control left a dirty
+  // plan: skip both the sentinel and the original plan entry, so Back reaches the page before.
+  // This runs before the dirty guard below, so a newly pushed sentinel is not mistaken for a
+  // returning one on the initial mount.
+  useEffect(() => {
+    // A marker survives a reload or a restored tab, but the reloaded plan starts empty and
+    // has nothing to guard. Step back off it to the plan's own entry, so the next Back
+    // reaches the page before; typing again pushes a fresh sentinel from there.
+    if (!hasPlanSentinel()) return;
+    if (!onPlanSentinel()) {
+      const rest = { ...(window.history.state as Record<string, unknown>) };
+      delete rest[PLAN_SENTINEL_KEY];
+      window.history.replaceState(rest, "");
+      window.history.back();
+      return;
+    }
+    const rest = { ...(window.history.state as Record<string, unknown>) };
+    delete rest[PLAN_SENTINEL_KEY];
+    window.history.replaceState(rest, "");
+    if (hadHistoryBeforeRef.current) {
+      window.history.go(-2);
+    } else {
+      router.replace(appModeHomeHref("psychiatry"));
+    }
+  }, [router]);
+
+  // Inside the app shell, the header, side menu and mode links are client-side
+  // navigations, which never fire beforeunload, and Back / back-swipe is a client-side
+  // history traversal. Ask before any of them leaves this page with entries on it, with
+  // the same words as the back control. One action asks once: an in-app link that also
+  // calls a shell navigation (the mode menu) is approved by the first prompt.
+  useEffect(() => {
+    if (!isDirty) return;
+    let approvedThisTick = false;
+    let detached = false;
+    const confirmLeave = () => {
+      if (approvedThisTick) return true;
+      if (!window.confirm(LEAVE_PLAN_PROMPT)) return false;
+      approvedThisTick = true;
+      window.setTimeout(() => {
+        approvedThisTick = false;
+      }, 0);
+      return true;
+    };
+    const unregister = registerNavigationGuard(confirmLeave);
+
+    const guardLinks = (event: globalThis.MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest?.("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin) return;
+      if (destination.pathname === window.location.pathname) return;
+      if (confirmLeave()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    document.addEventListener("click", guardLinks, true);
+
+    // popstate cannot be cancelled, so Back first lands on a sentinel copy of this entry:
+    // same URL, and Next's own router state copied across, so the router re-shows this
+    // page and nothing visibly moves. Declining pushes the sentinel back; confirming
+    // steps back once more, past the real entry, to the page before.
+    const planHref = window.location.href;
+    const hadHistoryBefore = hadHistoryBeforeRef.current ?? canNavigateBack();
+    if (!onPlanSentinel()) pushPlanSentinel(hadHistoryBefore);
+    const detach = () => {
+      detached = true;
+      window.removeEventListener("popstate", guardHistory);
+    };
+    function guardHistory() {
+      // Moving forward onto the sentinel, or Back already jumped past this page: nothing to guard.
+      if (onPlanSentinel() || detached) return;
+      if (window.location.href !== planHref) {
+        detach();
+        return;
+      }
+      if (confirmLeave()) {
+        detach();
+        window.history.back();
+        return;
+      }
+      pushPlanSentinel(hadHistoryBefore);
+    }
+    window.addEventListener("popstate", guardHistory);
+
+    leaveByBackRef.current = () => {
+      if (!confirmLeave()) return "stay";
+      detach();
+      if (!onPlanSentinel()) return "fallback";
+      if (hadHistoryBefore) {
+        // Skip the sentinel and this page's own entry together.
+        window.history.go(-2);
+        return "handled";
+      }
+      return "fallback";
+    };
+
+    return () => {
+      unregister();
+      leaveByBackRef.current = null;
+      document.removeEventListener("click", guardLinks, true);
+      if (!detached) detach();
+      // Still on this page (the plan was cleared): drop the sentinel, so Back never does
+      // nothing. When the page is being left, the new page's entry is already current.
+      dropPlanSentinel();
+    };
   }, [isDirty]);
 
   const planText = useMemo(() => {
@@ -662,21 +851,17 @@ export function PatientSafetyPlan() {
 
   return (
     <main
-      id="main-content"
-      tabIndex={-1}
-      className={cn(
-        "safety-plan-tool min-w-0 bg-[color:var(--background)] text-[color:var(--text)]",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--focus)]",
-      )}
+      data-testid="safety-plan-tool"
+      className="safety-plan-tool min-w-0 bg-[color:var(--background)] text-[color:var(--text)]"
     >
       {/*
-        Safety plan sits outside the search shell, so this header owns the OS top
-        inset via max(safe-area-top) — same contract as /privacy and colour-coding.
-        Avoid axis py-* here so it cannot fight the side-specific pt-* pad.
+        Safety plan renders inside the shared search shell, which owns the app
+        header, the OS top inset and the #main-content skip target, so this page
+        header only pads its own content.
       */}
       <header
         data-testid="safety-plan-tool-header"
-        className="border-b border-[color:var(--border)] bg-[color:var(--surface)] pt-[max(0.75rem,var(--safe-area-top))] sm:pt-[max(1.25rem,var(--safe-area-top))]"
+        className="border-b border-[color:var(--border)] bg-[color:var(--surface)] pt-3 sm:pt-5"
       >
         <div className="mx-auto grid max-w-7xl gap-4 px-4 pb-4 pt-3 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:px-8">
           {/*
@@ -687,12 +872,16 @@ export function PatientSafetyPlan() {
             <div className="flex min-h-tap items-center lg:contents">
               <NavigationBackButton
                 className="size-tap"
-                fallbackHref={appModeHomeHref("tools")}
+                fallbackHref={appModeHomeHref("psychiatry")}
                 onBeforeNavigate={() => {
-                  if (!isDirty) return true;
-                  return window.confirm(
-                    "Leave this safety plan? Your entries are only in this browser tab and will be lost.",
-                  );
+                  const leaveByBack = leaveByBackRef.current;
+                  if (!isDirty || !leaveByBack) return true;
+                  const outcome = leaveByBack();
+                  if (outcome === "fallback") {
+                    // No page before this one in the tab: replace the sentinel with the fallback.
+                    router.replace(appModeHomeHref("psychiatry"));
+                  }
+                  return false;
                 }}
               />
             </div>
@@ -745,16 +934,14 @@ export function PatientSafetyPlan() {
               </div>
             </div>
 
+            {/* aria-disabled, not disabled: a native disabled button leaves the tab order, so keyboard and
+                screen-reader users would never reach the reason it is unavailable. */}
             <button
               type="button"
-              onClick={() => setFinalised(true)}
-              disabled={!ready}
+              onClick={ready ? () => setFinalised(true) : ignoreUnavailableActivation}
+              aria-disabled={!ready ? true : undefined}
               aria-describedby={!ready ? finaliseUnavailableId : undefined}
-              title={
-                !ready
-                  ? `Complete all ${STEPS.length} steps to finalise plan (${filledSteps}/${STEPS.length} complete)`
-                  : undefined
-              }
+              title={!ready ? finaliseUnavailableReason : undefined}
               className={cn(primaryControl, "min-h-tap")}
             >
               {finalised ? (
@@ -766,7 +953,7 @@ export function PatientSafetyPlan() {
             </button>
             {!ready ? (
               <span id={finaliseUnavailableId} className="sr-only">
-                Complete all {STEPS.length} steps to finalise plan ({filledSteps} of {STEPS.length} steps complete).
+                {finaliseUnavailableReason}
               </span>
             ) : null}
           </div>
@@ -818,7 +1005,7 @@ export function PatientSafetyPlan() {
             <h2 className="whitespace-nowrap text-sm font-extrabold uppercase tracking-label text-[color:var(--text-muted)]">
               Build the plan
             </h2>
-            <div className="flex items-center gap-2 whitespace-nowrap">
+            <div className="flex flex-wrap items-center gap-2 whitespace-nowrap">
               <button type="button" onClick={loadExample} className={softButton}>
                 <Sparkles className="size-icon-sm" aria-hidden="true" />
                 Load example
@@ -937,6 +1124,9 @@ export function PatientSafetyPlan() {
         <div
           id="spg-panel-preview"
           data-safety-plan-copy
+          // Print isolation: inside the search shell, the shared print-output rule
+          // hides the app chrome so only the patient copy reaches the page.
+          data-print-output
           role="tabpanel"
           aria-labelledby="spg-tab-preview"
           className={cn(

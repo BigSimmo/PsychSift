@@ -1,50 +1,66 @@
 import Link from "next/link";
-import { ArrowRight, Check, GitCompareArrows, Layers3 } from "lucide-react";
+import { ArrowRight, BookOpenText, CaseUpper, Check, GitCompareArrows, Layers3 } from "lucide-react";
 
 import { stretchedRowLinkClass } from "@/components/card-recipes";
 import { cn } from "@/components/ui-primitives";
 import { dictionaryCompareHref, dictionaryKindLabel, type DictionarySearchHit } from "@/lib/dictionary";
 
-const tone = {
-  entry: {
-    spine: "bg-[color:var(--clinical-accent)]",
-    badge:
-      "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]",
-  },
-  abbreviation: {
-    spine: "bg-[color:var(--tone-purple)]",
-    badge:
-      "border-[color:var(--tone-purple-border)] bg-[color:var(--tone-purple-soft)] text-[color:var(--tone-purple)]",
-  },
-  topic: {
-    spine: "bg-[color:var(--info)]",
-    badge: "border-[color:var(--info-border)] bg-[color:var(--info-bg)] text-[color:var(--info)]",
-  },
-} as const;
+// One group, one card: the rows sit inside a hairline card the page draws, so
+// a row carries no card of its own and no coloured side bar. Colour is spent
+// once per row, on the category tag, and only in the current area's tint, so
+// it marks what kind of thing the row is without competing with the title.
+const categoryTag =
+  "rounded-md border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-1.5 py-0.5 text-3xs font-extrabold text-[color:var(--clinical-accent)]";
+const neutralTag =
+  "rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-1.5 py-0.5 text-3xs font-bold text-[color:var(--text-muted)]";
 
-export function DictionaryResultRow({ hit, compareWith }: { hit: DictionarySearchHit; compareWith?: string }) {
+// Rows are divided by a hairline, never boxed. 48 px is the floor for a row
+// that is itself a link target. `relative` is added at each row, where the
+// stretched-link contract test can see it.
+// `content-visibility: auto` lets the browser skip rows that are off screen
+// when the page's styles change. Every scroll up or down changes them (the
+// search box at the bottom slides), and with hundreds of rows that redraw held
+// the header back for over half a second on a phone (measured 13 Oct 2026).
+const rowShell =
+  "flex min-h-12 min-w-0 items-start gap-3 border-b border-[color:var(--border)] px-3 py-3.5 last:border-b-0 sm:px-4 sm:py-4 [content-visibility:auto] [contain-intrinsic-size:auto_6rem]";
+
+// The small area-tinted mark at the left of each row. Hidden at
+// phone widths, where its 44 px is better spent on the definition and on
+// keeping "Source linked" and "Add to compare" on one line.
+const rowIcon =
+  "mt-0.5 hidden size-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] sm:grid";
+
+type TitleTag = "h2" | "h3";
+
+/** The reason `src/lib/dictionary.ts` gives every row when nothing is typed. */
+const BROWSE_REASON = "Browse result";
+
+export function DictionaryResultRow({
+  hit,
+  compareWith,
+  titleAs: Title = "h2",
+}: {
+  hit: DictionarySearchHit;
+  compareWith?: string;
+  /** `h3` when the row sits under a group heading (a letter or a kind). */
+  titleAs?: TitleTag;
+}) {
   if (hit.type === "abbreviation") {
     const primary = hit.senses[0];
     return (
-      <article className="relative grid min-w-0 grid-cols-[0.1875rem_minmax(0,1fr)] border-b border-[color:var(--border)] bg-[color:var(--surface)] last:border-b-0">
-        <span className={tone.abbreviation.spine} aria-hidden="true" />
-        <div className="min-w-0 px-3 py-3.5 sm:px-4 sm:py-4">
+      <article className={cn("relative", rowShell)}>
+        <span className={rowIcon} aria-hidden="true">
+          <CaseUpper className="size-icon-sm" aria-hidden="true" />
+        </span>
+        <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-extrabold leading-5 text-[color:var(--text-heading)] sm:text-lg">
+                <Title className="text-base font-extrabold leading-5 text-[color:var(--text-heading)] sm:text-lg">
                   {hit.abbreviation}
-                </h2>
-                <span
-                  className={cn("rounded-md border px-1.5 py-0.5 text-3xs font-extrabold", tone.abbreviation.badge)}
-                >
-                  Abbreviation
-                </span>
-                {hit.senses.length > 1 ? (
-                  <span className="rounded-md border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-1.5 py-0.5 text-3xs font-bold text-[color:var(--warning)]">
-                    {hit.senses.length} meanings
-                  </span>
-                ) : null}
+                </Title>
+                <span className={categoryTag}>Abbreviation</span>
+                {hit.senses.length > 1 ? <span className={neutralTag}>{hit.senses.length} meanings</span> : null}
               </div>
               <p className="mt-1 text-sm font-semibold text-[color:var(--text)]">
                 {hit.senses.map((entry) => entry.term).join(" · ")}
@@ -99,17 +115,17 @@ export function DictionaryResultRow({ hit, compareWith }: { hit: DictionarySearc
 
   if (hit.type === "topic") {
     return (
-      <article className="relative grid min-w-0 grid-cols-[0.1875rem_minmax(0,1fr)] border-b border-[color:var(--border)] bg-[color:var(--surface)] last:border-b-0">
-        <span className={tone.topic.spine} aria-hidden="true" />
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-3.5 sm:px-4 sm:py-4">
+      <article className={cn("relative", rowShell, "items-center")}>
+        <span className={cn(rowIcon, "mt-0")} aria-hidden="true">
+          <Layers3 className="size-icon-sm" aria-hidden="true" />
+        </span>
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-extrabold leading-5 text-[color:var(--text-heading)] sm:text-lg">
+              <Title className="text-base font-extrabold leading-5 text-[color:var(--text-heading)] sm:text-lg">
                 {hit.topic.title}
-              </h2>
-              <span className={cn("rounded-md border px-1.5 py-0.5 text-3xs font-extrabold", tone.topic.badge)}>
-                Topic
-              </span>
+              </Title>
+              <span className={categoryTag}>Topic</span>
             </div>
             <p className="mt-1 text-sm leading-5 text-[color:var(--text-muted)]">{hit.topic.description}</p>
             <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--text-muted)]">
@@ -134,18 +150,18 @@ export function DictionaryResultRow({ hit, compareWith }: { hit: DictionarySearc
 
   const { entry } = hit;
   return (
-    <article className="relative grid min-w-0 grid-cols-[0.1875rem_minmax(0,1fr)] border-b border-[color:var(--border)] bg-[color:var(--surface)] last:border-b-0">
-      <span className={tone.entry.spine} aria-hidden="true" />
-      <div className="min-w-0 px-3 py-3.5 sm:px-4 sm:py-4">
+    <article className={cn("relative", rowShell)}>
+      <span className={rowIcon} aria-hidden="true">
+        <BookOpenText className="size-icon-sm" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-extrabold leading-5 text-[color:var(--text-heading)] sm:text-lg">
+              <Title className="text-base font-extrabold leading-5 text-[color:var(--text-heading)] sm:text-lg">
                 {entry.term}
-              </h2>
-              <span className={cn("rounded-md border px-1.5 py-0.5 text-3xs font-extrabold", tone.entry.badge)}>
-                {dictionaryKindLabel(entry.kind)}
-              </span>
+              </Title>
+              <span className={categoryTag}>{dictionaryKindLabel(entry.kind)}</span>
             </div>
             {entry.aliases.length ? (
               <p className="mt-1 text-xs font-semibold text-[color:var(--text-muted)]">
@@ -182,14 +198,25 @@ export function DictionaryResultRow({ hit, compareWith }: { hit: DictionarySearc
   );
 }
 
+/**
+ * A small source tick, then the match reason only when a search produced one
+ * (Clinical audit, 13 Oct 2026, item 14). While browsing every row said
+ * "Source linked · Browse result", which was unclear and the same on all 96
+ * rows; the tick keeps the "Source linked" meaning as its accessible name.
+ */
 function SourceLine({ label }: { label: string }) {
+  const reason = label === BROWSE_REASON ? null : label;
   return (
     <span className="inline-flex items-center gap-1.5 text-2xs font-semibold text-[color:var(--text-muted)]">
-      <span className="grid h-4 w-4 place-items-center rounded-full border border-[color:var(--success)] text-[color:var(--success)]">
+      <span
+        role="img"
+        aria-label="Source linked"
+        title="Source linked"
+        className="grid h-4 w-4 place-items-center rounded-full border border-[color:var(--success)] text-[color:var(--success)]"
+      >
         <Check className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden="true" />
       </span>
-      Source linked<span aria-hidden="true">·</span>
-      {label}
+      {reason}
     </span>
   );
 }

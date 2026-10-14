@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { withSentryConfig } from "@sentry/nextjs/config";
 import { buildSecurityHeaders, resolveRuntimeFlags } from "./src/lib/security-headers";
-import { resolveSentryRelease } from "./src/lib/observability/sentry-release";
+import { resolveDeploymentCommitSha, resolveSentryRelease } from "./src/lib/observability/sentry-release";
 import { expectedSupabaseProject } from "./src/lib/supabase/project";
 import { THERAPY_CATALOGUE_ASSETS } from "./src/data/therapy-catalogue-assets";
 
@@ -28,6 +28,7 @@ const skipIsolatedCiTypecheck =
 // Static (non-CSP) headers for every route. The nonce'd CSP is emitted per
 // request from src/proxy.ts; both derive their runtime flags from the same helper.
 const securityHeaders = buildSecurityHeaders(resolveRuntimeFlags());
+const deploymentId = process.env.NEXT_DEPLOYMENT_ID?.trim() || resolveDeploymentCommitSha();
 
 // Opt-in bundle analysis (npm run build:analyze). The analyzer is a devDependency
 // loaded lazily so production runtimes (pruned node_modules) never import it.
@@ -38,6 +39,10 @@ async function withOptionalBundleAnalyzer(config: NextConfig): Promise<NextConfi
 }
 
 const nextConfig: NextConfig = {
+  // An installed app may still run the previous release when a tab is opened.
+  // Next detects a different server release and loads the requested URL afresh,
+  // rather than applying its route tree to the old client and leaving loading.tsx on screen.
+  ...(deploymentId ? { deploymentId } : {}),
   productionBrowserSourceMaps: shouldEnableSentrySourceMapUpload(),
   distDir: requestedDistDir || ".next",
   ...(requestedTsConfigPath
@@ -211,6 +216,9 @@ const nextConfig: NextConfig = {
       // clinician arriving at /about actually wants to know: what this is and what it does with
       // what they type.
       { source: "/about", destination: "/privacy", permanent: true },
+      // Developer-gated tools relocated from /mockups to /admin (Task #0QXGAN).
+      { source: "/mockups/development", destination: "/admin/developer-hub", permanent: true },
+      { source: "/mockups/development/:path*", destination: "/admin/developer-hub/:path*", permanent: true },
     ];
   },
 

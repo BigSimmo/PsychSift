@@ -8,7 +8,6 @@ import { focusRing } from "@/components/card-recipes";
 import {
   ActionDock,
   CpdFeaturePage,
-  type CpdFeatureBack,
   flatCard,
   flatRow,
   IconCircle,
@@ -49,8 +48,7 @@ import {
 import { perthCalendarDate } from "@/lib/cme/cpd-year";
 import { useApplicationsStore } from "@/lib/cme/device-record";
 
-/** The page's parent, where its link lives. */
-const APPLICATIONS_BACK: CpdFeatureBack = { href: "/cme/summary", label: "CPD summary" };
+// No page-level back link: the band's Admin tabs are this page's parent, so a second way back would repeat it.
 
 type DateSheetState = { open: false } | { open: true; stage: ApplicationStageId | null };
 type RefereeSheetState = { open: false } | { open: true; id: string | null };
@@ -76,12 +74,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
 
   if (!state) {
     return (
-      <CpdFeaturePage
-        back={APPLICATIONS_BACK}
-        eyebrow="Your own plan"
-        title="Job applications"
-        testId="applications-page"
-      >
+      <CpdFeaturePage identity="my-work" eyebrow="Your own plan" title="Job applications" testId="applications-page">
         <div aria-hidden="true" className={cn(flatCard, "h-64 motion-safe:animate-pulse")} />
         <span role="status" className="sr-only">
           Loading your applications
@@ -193,7 +186,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
 
   return (
     <CpdFeaturePage
-      back={APPLICATIONS_BACK}
+      identity="my-work"
       eyebrow={year === null ? "Season · add a start date" : `Season ${year} · your own plan`}
       title="Job applications"
       testId="applications-page"
@@ -308,7 +301,7 @@ export function ApplicationsPage({ demoMode, now }: { readonly demoMode: boolean
         <ul role="list" className={flatCard}>
           <li className={cn(flatRow, "p-0")}>
             <Link
-              href="/cme/applications/cv"
+              href="/admin/applications/cv"
               data-testid="applications-cv-link"
               className={cn(focusRing, "flex min-h-13 w-full items-center gap-3 px-3 py-2 no-underline")}
             >

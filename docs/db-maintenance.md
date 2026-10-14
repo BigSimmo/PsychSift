@@ -75,12 +75,12 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 1. `pg_cron` schedules & retention jobs
 
-- **Procedure:** Re-create scheduled jobs for ingestion workers and telemetry retention (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`).
+- **Procedure:** Re-create the `invoke_indexing_v3_agent` schedule and the telemetry retention jobs (`purge-expired-rag-queries`, `purge-rag-retrieval-logs`, `purge-rag-query-misses`, `purge-rag-response-cache`). Do **not** re-create `invoke_ingestion_worker`: it was retired by `20260926041000` and the container worker owns ingestion. The step-by-step cron re-creation (copy the definition from the source project, keep it inactive on non-production until the endpoint check passes) is in `docs/disaster-recovery-runbook.md` step 1.
 - **Sanity check:** Verify with a read-only query:
   ```sql
   SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobid;
   ```
-  Confirm all four retention jobs and any active ingestion cron rows report `active = true`.
+  Confirm all four retention jobs report `active = true`, that `invoke_indexing_v3_agent` exists (active on production; inactive on a non-production target until the GUC check below passes), and that no `invoke_ingestion_worker` job exists.
 
 ### 2. Supabase Vault secrets
 
@@ -93,24 +93,26 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 3. Custom database GUCs
 
-- **Procedure:** Re-set required custom parameters (e.g. `app.indexing_agent_url`) using `ALTER DATABASE postgres SET ...`.
-- **Sanity check:** Verify settings with a read-only query:
+- **Procedure:** Re-set required custom parameters (e.g. `app.indexing_v3_agent_base_url`) by running `ALTER DATABASE postgres SET ...` as the project owner (`postgres`) in an operator session. The migration/`schema.sql` statement skips with a notice when its role lacks the privilege, so it cannot be relied on. If the value is unset, `invoke_indexing_v3_agent` falls back to the hardcoded production host; on a non-production restore, keep the `invoke_indexing_v3_agent` cron job inactive until the sanity check below shows the right value.
+- **Sanity check:** Verify the stored database-level value with a read-only query (`ALTER DATABASE ... SET` does not change the current session, so `pg_settings` in the same session can be stale; use this or a new connection):
   ```sql
-  SELECT name, setting, source FROM pg_settings WHERE name LIKE 'app.%';
+  SELECT unnest(setconfig) FROM pg_db_role_setting
+  WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = 'postgres') AND setrole = 0;
   ```
   Confirm configured values match the target environment.
 
 ### 4. Supabase Edge Functions
 
-- **Procedure:** Redeploy required edge functions (`indexing-v3-agent`, ingestion worker) with the Deno v2.x toolchain in an explicitly approved change window:
+- **Procedure:** Redeploy both required edge functions (`indexing-v3-agent` and `site-content-sync`, which consumes the `site_content_sync_events` outbox; the ingestion-worker function is retired and must not be redeployed) with the Deno v2.x toolchain in an explicitly approved change window:
   ```bash
   supabase functions deploy indexing-v3-agent --project-ref <PROJECT_REF>
+  supabase functions deploy site-content-sync --project-ref <PROJECT_REF>
   ```
-- **Sanity check:** Verify function presence and status via `supabase functions list` and run health probes without mutating data.
+- **Sanity check:** Verify both `indexing-v3-agent` and `site-content-sync` are present and active via `supabase functions list`. Run `supabase secrets list --project-ref <PROJECT_REF>` (it prints names and digests only, never values) and confirm `OPENAI_API_KEY` is present; `site-content-sync` needs it to embed new or changed content and otherwise records `provider_failure`. If it is missing, restore it through the approved secret-management procedure without printing its value. `site-content-sync` has no read-only health endpoint: it accepts only `POST`, and a `POST` records an invocation and claims queued outbox events, so invoking it is an operational action that needs separate approval, not a health probe.
 
 ### 5. Dashboard-owned configuration
 
-- **Procedure:** Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating keys), connection pool limits (e.g. auth pool pinned at 10 connections), per-project API keys (`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), and `E2E_USER_*` test credentials.
+- **Procedure:** Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating keys), connection pool limits (percentage-mode pool setting at `20–25%` of compute-managed `max_connections` rather than pinning at 10 connections; see `docs/auth-connection-cap-runbook.md`), per-project API keys (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — note that `Dockerfile` bakes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` into the client bundle at image build time, so rotating it requires a Railway image rebuild, not just a restart), and `E2E_USER_*` test credentials.
 - **Sanity check:** Run `npm run check:env-parity` and names-only checks to verify all consuming environments have valid, non-empty references without logging secret material.
 
 ### 6. Post-restore system health verification

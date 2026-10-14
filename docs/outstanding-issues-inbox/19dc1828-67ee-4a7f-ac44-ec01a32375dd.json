@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "19dc1828-67ee-4a7f-ac44-ec01a32375dd",
+  "createdOn": "2026-10-13",
+  "action": "cancel",
+  "payload": {
+    "requestId": "632a2b64-acf5-435d-b5f5-9338e527ea9f",
+    "reason": "Resolved 2026-10-13: Replaced 23 chat-import occurrences across the 6 records in src/data/therapies-source.json with clean clinical descriptions; regenerated index via build-therapies-index.mjs; verified with check:therapy-data-index and 134 therapy tests."
+  }
+}

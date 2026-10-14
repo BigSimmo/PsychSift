@@ -58,17 +58,10 @@ import {
   DocumentBadge,
   documentActionClass,
 } from "@/components/clinical-dashboard/document-ui";
+import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import { useBatchSignedImageUrls } from "@/components/clinical-dashboard/use-batch-signed-urls";
 import { useSignedImageUrl } from "@/components/clinical-dashboard/use-signed-image-url";
-import {
-  cn,
-  floatingControl,
-  LoadingPanel,
-  metadataPillDensity,
-  Skeleton,
-  sourceCard,
-  textMuted,
-} from "@/components/ui-primitives";
+import { cn, floatingControl, metadataPillDensity, Skeleton, sourceCard, textMuted } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { compactBestUseTitle } from "@/lib/compact-best-use-title";
 import { withCatalogueDegradedNotice } from "@/lib/site-content/catalogue-degraded-notice";
@@ -127,8 +120,8 @@ type DocumentFilterDraft = {
 };
 
 /** Initial DOM budget for document result cards; further rows reveal on demand. */
-const DOCUMENT_RESULTS_INITIAL_WINDOW = 25;
-const DOCUMENT_RESULTS_PAGE_SIZE = 25;
+const DOCUMENT_RESULTS_INITIAL_WINDOW = 30;
+const DOCUMENT_RESULTS_PAGE_SIZE = 30;
 export type SearchFacets = {
   status?: SearchFacet[];
   validation?: SearchFacet[];
@@ -632,9 +625,17 @@ function SearchRecordResults({
    *  not include the most recent publication, and the heading says so. */
   degraded?: boolean;
 }) {
+  const [prevSearchKey, setPrevSearchKey] = useState(`${mode}:${query}`);
+  const [visibleCount, setVisibleCount] = useState(30);
+  const currentSearchKey = `${mode}:${query}`;
+  if (prevSearchKey !== currentSearchKey) {
+    setPrevSearchKey(currentSearchKey);
+    setVisibleCount(30);
+  }
   if (matches.length === 0) return null;
   const copy = searchRecordConfig[mode];
   const recordRoute = (slug: string) => `${copy.routePrefix}/${slug}`;
+  const renderedMatches = matches.length > 30 ? matches.slice(0, visibleCount) : matches;
   return (
     <section
       data-testid={`${copy.testIdPrefix}-results`}
@@ -661,7 +662,7 @@ function SearchRecordResults({
       </div>
 
       <div className="grid gap-3">
-        {matches.map(({ service, reasons }, index) => {
+        {renderedMatches.map(({ service, reasons }, index) => {
           const summaryCards = service.summaryCards?.slice(0, 3) ?? [];
           const chips = [
             ...(service.statusChips ?? []).map((chip) => chip.label).filter(Boolean),
@@ -755,6 +756,16 @@ function SearchRecordResults({
           );
         })}
       </div>
+      {matches.length > visibleCount ? (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((prev) => prev + 30)}
+          className={cn(floatingControl, "min-h-tap w-full justify-center rounded-xl px-4 text-sm font-semibold")}
+          data-testid={`${copy.testIdPrefix}-show-more`}
+        >
+          Show more ({matches.length - visibleCount} remaining)
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -825,6 +836,8 @@ function DocumentSearchResultsPanelImpl({
   showHome = false,
   desktopComposerSlotId,
   searchFailed = false,
+  searchFailureReason = null,
+  onRetrySearch,
 }: {
   matches: ClientDocumentMatch[];
   recordMatches?: SearchRecordMatch[];
@@ -844,6 +857,10 @@ function DocumentSearchResultsPanelImpl({
   setupWarning: string | null;
   /** The last documents search request failed, so an empty list is not a real "no matches". */
   searchFailed?: boolean;
+  /** The failure message for that request, kept as the reason line in the one degraded message. */
+  searchFailureReason?: string | null;
+  /** Re-runs the failed documents search (the dashboard's own search runner). */
+  onRetrySearch?: () => void | Promise<void>;
   facets?: SearchFacets | null;
   searchScope?: SearchScopeSummary | null;
   onScopeDocument: (documentId: string) => void;
@@ -1545,7 +1562,8 @@ function DocumentSearchResultsPanelImpl({
       ) : null}
 
       {loading ? (
-        <LoadingPanel label="Finding matching documents" />
+        // Rows shaped like the document results on their way, not a spinner over an empty page.
+        <ResultRowsPlaceholder label="Finding matching documents" rows={4} testId="document-results-placeholder" />
       ) : matches.length === 0 ? (
         // A services or forms search that matched records but no documents.
         // This branch used to render `null`, which stranded the reader: moving
@@ -1577,6 +1595,8 @@ function DocumentSearchResultsPanelImpl({
             onClearFilters={activeFilterCount > 0 ? clearAllFilters : undefined}
             // A retrieval layer errored, so this zero is not evidence of absence.
             degraded={retrievalDegraded}
+            degradedReason={searchFailed ? searchFailureReason : null}
+            onRetry={retrievalDegraded ? onRetrySearch : undefined}
             onBrowseAll={onOpenLibrary}
             browseAllLabel={
               documentCount > 0 ? `Browse all ${documentCount.toLocaleString()} sources` : "Browse all sources"

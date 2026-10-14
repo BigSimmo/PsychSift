@@ -128,14 +128,29 @@ Before implementing any changes to RAG ranking, retrieval, synthesis, or evaluat
 
 ### 2. Protected Surface Identification
 
-- Verify whether the changed files touch protected RAG ranking surfaces (`scripts/pr-policy.mjs` `ragRankingPatterns`):
+- Verify whether the changed files touch protected RAG ranking surfaces matched by
+  `ragRankingPatterns` in `scripts/pr-policy.mjs`:
   - `src/lib/rag/**` (retrieval pipeline, candidate sources, composition, routing, synthesis)
   - `src/lib/clinical-search.ts`, `src/lib/retrieval-selection.ts`, `src/lib/released-search-order.ts`, `src/lib/ranking-config.ts`, `src/lib/evidence.ts`, `src/lib/result-sort.ts`, `src/lib/answer-ranking.ts`, `src/lib/evidence-relevance.ts`, `src/lib/semantic-rerank.ts`, `src/lib/eval-document-matching.ts`
+  - `src/lib/source-authority-registry.ts`, `src/lib/australian-source-priority.ts` (source authority and Australian clinical context ordering)
+  - `src/lib/chunking.ts`, `src/lib/extractors/**`, `worker/python/extract_pdf_assets.py` (ingestion and PDF extraction producers)
+  - `src/lib/document-index-units.ts`, `src/lib/model-index-extraction.ts`, `src/lib/deep-memory.ts` (index-unit and memory-card producers/boosts)
+  - `src/lib/retrieval-rpc-rollout.ts`, `src/lib/clinical-evidence-haystack.ts`, `src/lib/cross-document-synthesis.ts`, `src/lib/corpus-grounding.ts`, `src/lib/keyword-query.ts`
+  - `src/lib/document-enrichment.ts`, `src/lib/visual-intelligence.ts`, `src/lib/image-filtering.ts`
+  - `worker/embedding-fields.ts`, `worker/table-facts.ts`, `worker/assertion-tagging.ts`
   - `scripts/eval-retrieval.ts`, `scripts/build-ranking-snapshot.ts`, `scripts/tune-search-weights.ts`
   - `scripts/lib/clinical-aliases.ts`, `scripts/lib/ranking-tuning.ts`, `scripts/lib/ranking-snapshot-builder.ts`
   - `scripts/fixtures/rag-retrieval-golden.json`, `scripts/fixtures/rag-ranking-candidate-snapshot.v1.json`
   - Contract test pins: `tests/rag-fast-path-ordering.test.ts`, `tests/ranking-tuning.test.ts`, `tests/retrieval-selection.test.ts`, `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`, `tests/rag-imputation-contract.test.ts`
-  - Database schema & retrieval RPCs in `supabase/schema.sql` and `supabase/migrations/`
+
+- Manually review database schema and retrieval RPC changes in `supabase/schema.sql` and
+  `supabase/migrations/` for RAG impact; these paths are not matched by `ragRankingPatterns`.
+
+- Separately check authored clinical datasets matched by `clinicalRiskPatterns` for clinical
+  governance requirements: `src/lib/dictionary-data.ts`, `src/lib/factsheets-data.ts`,
+  `src/lib/specifiers.ts`, `src/lib/differential*.ts`, `src/lib/registry-records.ts`, and
+  `tests/calculator-mockup-clinical-safety.test.ts`. Dataset edits are clinical-risk changes;
+  they are not automatically RAG ranking changes.
 
 ### 3. Refuted Approaches Review
 
@@ -157,7 +172,7 @@ Execute the local offline verification ladder before opening a PR:
 
 ### 5. PR Impact Declaration
 
-- Every PR touching protected RAG surfaces must declare its impact under `## Risk and rollout` in the PR body. `scripts/pr-policy.mjs` enforces this as a hard-blocking check:
+- Contributors and agents opening a PR touching protected RAG surfaces should declare its impact under `## Risk and rollout` (alongside `## Clinical Governance Preflight` on clinical-risk diffs) in the PR body. Since 2026-09-17 (`docs/process-hardening.md`), missing `## Clinical Governance Preflight` and `RAG impact:` declarations no longer block a PR merge — `scripts/pr-policy.mjs` emits **advisory warnings** (`warnings.push`) while the eval canary and source-pin contract tests remain the fail-closed gates:
   - `RAG impact: no retrieval behaviour change — <reason>` (for refactors, tests, docs, or tooling)
   - `RAG impact: behaviour change — canary pair <baseline run> -> <post run>` (for intentional ranking/retrieval changes)
   - Non-RAG PRs may specify `RAG impact: none` or omit the line.

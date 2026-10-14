@@ -409,11 +409,11 @@ thresholds map directly onto these fields.
 
 ## 5. Operational alert delivery and drill
 
-`scripts/lib/operational-alerts.mjs` is the provider-neutral policy owner for the §2 answer SLOs. The hourly digest emits stable alert codes with owner, escalation owner and this runbook, and publishes `alerting`, highest `severity`, and a compact JSON summary to the workflow. Missing SLO telemetry and a zero-query denominator are `unknown`, never healthy. Each authorised deep probe returns only safe internal hybrid-RPC identifiers and counts. The workflow stores the last three identity-only hourly observations in the GitHub Actions cache, then pages `OPS_HYBRID_RPC_ERROR_RATE_PAGE` only when the same RPC has a nonzero count in all three contiguous UTC-hour buckets. A missing, evicted, malformed, incomplete, or non-contiguous history is never promoted to a page. Degraded answers page independently and immediately only above the documented 50% hourly threshold.
+`scripts/lib/operational-alerts.mjs` is the provider-neutral policy owner for the §2 answer SLOs. The daily (`0 22 * * *`, 22:00 UTC) digest emits stable alert codes with owner, escalation owner and this runbook, and publishes `alerting`, highest `severity`, and a compact JSON summary to the workflow. Missing SLO telemetry and a zero-query denominator are `unknown`, never healthy. Each authorised deep probe returns only safe internal hybrid-RPC identifiers and counts. The workflow stores the last three identity-only 60-minute observations in the GitHub Actions cache, then pages `OPS_HYBRID_RPC_ERROR_RATE_PAGE` only when the same RPC has a nonzero count in all three contiguous UTC-hour buckets. The digest runs once daily at `0 22 * * *` (`.github/workflows/ops-digest.yml`), so each scheduled run measures a single 60-minute window and consecutive scheduled windows are a day apart: this three-contiguous-hour condition needs one successful run in each of three consecutive UTC-hour buckets; scheduled and manual runs both count, so in practice manual dispatches supply at least two of them (a second run in the same bucket replaces that hour's observation rather than adding one); the daily schedule alone can never page it, because at least two of the three buckets must come from manual dispatches. A missing, evicted, malformed, incomplete, or non-contiguous history is never promoted to a page. Degraded answers page independently and immediately only above the documented 50% 60-minute threshold.
 
 The digest's **Service readiness** headline describes the service checks, not answer quality. An exactly 60-minute snapshot with zero answered queries displays **No answered queries observed—answer quality not assessed**, with answer-SLO rates shown as **N/A**. The underlying counters and machine-readable `OPS_ANSWER_SLO_UNKNOWN` alert remain unchanged: this is an unassessed window, not a measured degraded-answer incident or proof of healthy answers. A missing SLO block or invalid window must not be labelled as no answer activity.
 
-Delivery remains configurable without changing policy: the checked-in workflow updates the rolling GitHub issue each hour, but an attention comment requires the `publish_alert_comment` boolean on a manual operator-confirmed dispatch. An operator may route the same summary to a host-native or incident channel. Repository wiring is not proof that provider delivery works.
+Delivery remains configurable without changing policy: the checked-in workflow runs once daily (`0 22 * * *`) and updates the rolling GitHub issue body silently on scheduled runs without posting subscriber-notifying comments; posting an attention comment requires the `publish_alert_comment` boolean on a manual operator-confirmed `workflow_dispatch` run. An operator may route the same summary to a host-native or incident channel. Repository wiring is not proof that provider delivery works.
 
 The rolling issue is the provider-neutral queue. For every alert, the on-duty operator comments `ACK <alert-code> owner=<role> at=<ISO-8601>` before diagnosis and `RECOVERED <alert-code> at=<ISO-8601> evidence=<run-or-dashboard-reference>` only after the recovery condition below is observed. If the owner cannot acknowledge inside 30 minutes, route to the named escalation role using the organisation's configured incident channel; repository roles are routing identities, not GitHub usernames, so automatic issue assignment remains provider-gated.
 
@@ -428,22 +428,22 @@ The rolling issue is the provider-neutral queue. For every alert, the on-duty op
 
 - **Diagnose:** confirm `hybridRpcErrorRate` is present, finite, in `0..1`, and derived from the same positive 60-minute denominator shown in the digest.
 - **Acknowledge:** Platform operations records the malformed/missing field and the health run reference.
-- **Recover:** require one subsequent valid hourly snapshot; do not substitute an ad-hoc lifetime aggregate.
+- **Recover:** require one subsequent valid 60-minute snapshot; do not substitute an ad-hoc lifetime aggregate.
 - **Escalate:** Clinical safety owner after 30 minutes or immediately if hybrid retrieval failures are visible to users.
 
 ### `OPS_DEGRADED_ANSWER_RATE_UNKNOWN`
 
-- **Diagnose:** confirm `degradedRate` is present, finite, in `0..1`, and derived from the displayed positive hourly denominator; inspect source-only/provider-timeout counters without reading query text.
+- **Diagnose:** confirm `degradedRate` is present, finite, in `0..1`, and derived from the displayed positive 60-minute denominator; inspect source-only/provider-timeout counters without reading query text.
 - **Acknowledge:** AI platform owner records the missing/malformed field and route-level impact.
-- **Recover:** require one subsequent valid hourly snapshot.
+- **Recover:** require one subsequent valid 60-minute snapshot.
 - **Escalate:** Clinical safety owner after 30 minutes or immediately if answer degradation cannot be bounded.
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_WARNING`
 
-- **Diagnose:** inspect the hourly hybrid-RPC error count, database function availability, latency, and recent deployment/migration events. Do not infer a three-hour condition from this snapshot.
-- **Acknowledge:** Platform operations records the measured rate and start of the affected hourly window.
-- **Recover:** require the next valid hourly snapshot at or below `0.5%`.
-- **Escalate:** Clinical safety owner if user-visible retrieval is affected or the warning persists into a second hourly window.
+- **Diagnose:** inspect the 60-minute hybrid-RPC error count, database function availability, latency, and recent deployment/migration events. Do not infer a three-hour condition from a single daily (`0 22 * * *`) snapshot.
+- **Acknowledge:** Platform operations records the measured rate and start of the affected 60-minute snapshot window.
+- **Recover:** require the next valid 60-minute snapshot (from a manual dispatch or the next daily digest) at or below `0.5%`.
+- **Escalate:** Clinical safety owner if user-visible retrieval is affected or the warning persists into a second 60-minute snapshot window.
 
 ### `OPS_HYBRID_RPC_ERROR_RATE_PAGE`
 

@@ -38,6 +38,7 @@ import type {
   SourceUsage,
 } from "@/lib/sources/catalogue-types";
 import { hasInvalidStructuredSourceDate, strictSourceDate } from "@/lib/sources/source-date-policy";
+import { isLaterAddedNiceReference } from "@/lib/therapy-source-governance";
 
 export type ClinicalSourceProvider = {
   id:
@@ -301,8 +302,9 @@ const therapyProvider: ClinicalSourceProvider = {
   sourcePaths: ["src/data/therapies-source.json"],
   references: () =>
     (therapiesSource as TherapySourceRecord[]).flatMap((therapy) =>
-      therapy.sources.map((source) =>
-        reference(
+      therapy.sources.map((source) => {
+        const isLaterNice = isLaterAddedNiceReference(source.reference);
+        return reference(
           { modeId: "therapy-compass", recordId: therapy.slug, recordLabel: therapy.name, field: "sources" },
           {
             title: source.title,
@@ -311,10 +313,10 @@ const therapyProvider: ClinicalSourceProvider = {
               therapy.reviewStatus === "needs_review" || therapy.reviewChecklist?.sourceChecked === false
                 ? "unverified"
                 : "unknown",
-            referenceText: source.reference,
+            referenceText: isLaterNice ? null : source.reference,
           },
-        ),
-      ),
+        );
+      }),
     ),
 };
 

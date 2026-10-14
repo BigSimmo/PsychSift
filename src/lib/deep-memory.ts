@@ -1,4 +1,10 @@
-import { parseIngestionFence, runIngestionPersistence, IngestionAttemptError, IngestionPersistenceError, type IngestionFence } from "../../supabase/functions/_shared/ingestion-attempt";
+import {
+  parseIngestionFence,
+  runIngestionPersistence,
+  IngestionAttemptError,
+  IngestionPersistenceError,
+  type IngestionFence,
+} from "../../supabase/functions/_shared/ingestion-attempt";
 import { ProviderEgressDeniedError } from "@/lib/document-ingress-safety";
 import { assertIngestionProviderEgress, type IngestionProviderEgressContext } from "@/lib/ingestion-provider-egress";
 import type { SupabaseClient } from "@supabase/supabase-js";

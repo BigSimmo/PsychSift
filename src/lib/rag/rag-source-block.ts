@@ -181,10 +181,15 @@ export function createPublishedOriginalReceiptCapture() {
       if (sectionPathFact !== undefined) {
         const fact = layoutRecord(sectionPathFact);
         if (
-          pathPresent || fact.id !== row.id || fact.document_id !== row.document_id ||
-          fact.index_generation_id !== metadata.index_generation_id || fact.content !== row.content ||
-          !Array.isArray(fact.section_path) || !fact.section_path.every((part) => typeof part === "string")
-        ) return layoutFailure();
+          pathPresent ||
+          fact.id !== row.id ||
+          fact.document_id !== row.document_id ||
+          fact.index_generation_id !== metadata.index_generation_id ||
+          fact.content !== row.content ||
+          !Array.isArray(fact.section_path) ||
+          !fact.section_path.every((part) => typeof part === "string")
+        )
+          return layoutFailure();
         storedPath = Object.freeze([...(fact.section_path as string[])]);
       }
       const receipt = Object.freeze({ geometry: geometry(row), pathPresent, storedPath, metadata });
@@ -204,9 +209,12 @@ export function createPublishedOriginalReceiptCapture() {
     return rows.map((row) => {
       const receipt = receipts.get(key(row));
       if (
-        !receipt || receipt.geometry !== geometry(row) || receipt.pathPresent !== Object.hasOwn(row, "section_path") ||
+        !receipt ||
+        receipt.geometry !== geometry(row) ||
+        receipt.pathPresent !== Object.hasOwn(row, "section_path") ||
         (!receipt.pathPresent && receipt.storedPath === undefined)
-      ) return layoutFailure();
+      )
+        return layoutFailure();
       for (const [field, value] of Object.entries(receipt.metadata)) {
         const current = (row.source_metadata as Record<string, unknown> | null | undefined)?.[field];
         if (current != null && current !== value) return layoutFailure();
@@ -224,7 +232,9 @@ export function createPublishedOriginalReceiptCapture() {
       return {
         ...row,
         section_path: receipt.pathPresent
-          ? (row.section_path ? [...row.section_path] : row.section_path)
+          ? row.section_path
+            ? [...row.section_path]
+            : row.section_path
           : [...receipt.storedPath!],
         source_metadata: { ...row.source_metadata, ...receipt.metadata } as SearchResult["source_metadata"],
       };

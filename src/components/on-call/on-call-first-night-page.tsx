@@ -8,7 +8,7 @@ import { cardSurface } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { OnCallChecklist } from "@/components/on-call/on-call-checklist";
 import { onCallEntryHref } from "@/components/on-call/on-call-entry-view";
-import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
+import { OnCallStartingHereChips } from "@/components/on-call/starting-here-chips";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { cn, eyebrowText, textMuted } from "@/components/ui-primitives";
 import { onCallDetailsSchemaFor, type OnCallEntry } from "@/lib/on-call/entry-model";
@@ -43,11 +43,11 @@ const STAGE_EXTRAS: Record<OnCallFirstNightStage["id"], Pick<Stage, "icon" | "li
   night: {
     icon: Moon,
     links: [
-      { href: "/on-call/now", label: "Who to call now", icon: Phone },
+      { href: "/on-call/playbook", label: "Playbook", icon: Phone },
       { href: "/on-call/contacts", label: "Contacts", icon: Phone },
     ],
   },
-  wrong: { icon: ShieldAlert, links: [{ href: "/on-call/now", label: "Escalation steps", icon: Phone }] },
+  wrong: { icon: ShieldAlert, links: [{ href: "/on-call/playbook", label: "Escalation steps", icon: Phone }] },
 };
 
 const STAGES: readonly Stage[] = ON_CALL_FIRST_NIGHT_STAGES.map((stage) => ({
@@ -61,17 +61,12 @@ const STAGES: readonly Stage[] = ON_CALL_FIRST_NIGHT_STAGES.map((stage) => ({
 /** Induction manuals from the owner's Orientation section, in their own order. */
 function inductionEntries(entries: readonly OnCallEntry[]): OnCallEntry[] {
   return entries
-    .filter((entry) => entry.section === "orientation")
+    .filter((entry) => (entry.view ?? entry.section) === "orientation")
     .filter((entry) => {
       const parsed = onCallDetailsSchemaFor("orientation").safeParse(entry.details);
       return parsed.success && (parsed.data as { category?: string }).category?.toLowerCase() === "induction";
     })
     .sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
-}
-
-function checklistOf(entry: OnCallEntry): readonly { text: string; note?: string }[] {
-  const parsed = onCallDetailsSchemaFor("orientation").safeParse(entry.details);
-  return parsed.success ? ((parsed.data as { checklist?: { text: string; note?: string }[] }).checklist ?? []) : [];
 }
 
 export function OnCallFirstNightPage() {
@@ -80,11 +75,12 @@ export function OnCallFirstNightPage() {
 
   return (
     <>
-      <OnCallToolNavHeader title="First night" testIdPrefix="on-call-first-night" />
+      {/* Part of Starting here since 11 Oct 2026, so the frame's band names it like its two neighbours. */}
       <InformationPageShell testId="on-call-first-night-main" width="narrow">
         <h1 className="sr-only">First night</h1>
+        <OnCallStartingHereChips />
         {isOffline && cachedAt ? <OnCallOfflineBanner savedAt={cachedAt} reason={loadError} /> : null}
-        <p className={cn(textMuted, "text-sm")}>
+        <p className={cn(textMuted, "mt-3 text-sm")}>
           A short path for your first on-call shifts. Tick things off as you go. Ticks stay on this device only.
         </p>
 
@@ -94,6 +90,8 @@ export function OnCallFirstNightPage() {
               <StageCard stage={stage} step={index + 1}>
                 {stage.id === "before" && induction.length > 0 ? (
                   <div className="mt-3 border-t border-[color:var(--border)] pt-3">
+                    {/* Titles only: their checklists are ticked in the Hospital pack, so they are not repeated
+                        here word for word (usefulness audit, 11 Oct 2026). Ticks are kept per entry either way. */}
                     <p className={eyebrowText}>From your service&rsquo;s induction</p>
                     <ul className="mt-1 flex flex-col gap-2">
                       {induction.map((entry) => (
@@ -105,12 +103,6 @@ export function OnCallFirstNightPage() {
                             {entry.title}
                             <ChevronRight aria-hidden="true" className={cn("size-icon-sm", textMuted)} />
                           </Link>
-                          <OnCallChecklist
-                            entryId={entry.id}
-                            slug={entry.slug}
-                            items={checklistOf(entry)}
-                            label={`${entry.title} checklist`}
-                          />
                         </li>
                       ))}
                     </ul>

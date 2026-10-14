@@ -30,7 +30,6 @@ import {
   eyebrowText,
   ignoreUnavailableActivation,
   pageContainer,
-  panelSubtle,
   searchFocusRing,
   searchPageCanvas,
   searchResultsSection,
@@ -63,19 +62,12 @@ function resultCode(match: FormSearchMatch, index: number) {
   return formCatalogDetails(match.service)?.form ?? String(index + 1);
 }
 
-function tagToneClass(label: string) {
-  const normalized = label.toLowerCase();
-  if (normalized.includes("crisis") || normalized.includes("risk") || normalized.includes("safety")) {
-    return "bg-[color:var(--danger-soft)] text-[color:var(--danger)]";
-  }
-  if (normalized.includes("transport") || normalized.includes("transfer") || normalized.includes("handover")) {
-    return "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]";
-  }
-  if (normalized.includes("legal") || normalized.includes("detention") || normalized.includes("capacity")) {
-    return "bg-[color:var(--info-soft)] text-[color:var(--info)]";
-  }
-  return "bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]";
-}
+// Category chips are labels, not alerts, so they all wear the same quiet
+// neutral tag. Red is kept for overdue, lapsed or urgent states only (design
+// pass, October 2026); a red "crisis" chip on a register row competed with
+// real warnings elsewhere on screen.
+const categoryTagClass =
+  "border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]";
 
 /**
  * With no query the page is the register itself, not a search. Every form is
@@ -142,12 +134,15 @@ function compactMatchReason(match: FormSearchMatch, query: string) {
   return "Content match in the forms catalogue";
 }
 
-// Risk is the only badge a phone result card carries, so it must never out-rank
-// itself: high is solid danger, medium is a bordered wash, low stays neutral.
+// Risk is the only badge a phone result card carries. It is a recorded
+// priority, not an alert, so it is a neutral tag whose weight carries the
+// level: high is body-coloured on a faint wash with a hairline, medium is muted
+// text, low is muted and lighter. Red on most of the register trained the eye
+// to ignore it; red now means overdue, lapsed or urgent only.
 const riskBadgeToneClass: Record<FormRiskFilter, string> = {
-  high: "bg-[color:var(--danger-solid)] text-[color:var(--danger-solid-contrast)]",
-  medium: "border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] text-[color:var(--warning)]",
-  low: "border border-[color:var(--border)] bg-[color:var(--surface-subtle)] text-[color:var(--text-muted)]",
+  high: "border border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)] text-[color:var(--text)]",
+  medium: "text-[color:var(--text-muted)]",
+  low: "font-semibold text-[color:var(--text-muted)]",
 };
 
 // The catalogue generates a `purpose` for every form, but most are boilerplate
@@ -244,11 +239,12 @@ function ResultsTable({
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 p-5 pb-3">
         <h2 className="text-lg font-extrabold text-[color:var(--text-heading)]">
-          {listingRegister ? "All forms" : "Best matches"}
+          {listingRegister ? "Forms" : "Best matches"}
         </h2>
+        {/* The count is stated once, in the band above; this line only says how
+            the list is ordered. */}
         <span className="text-sm font-semibold text-[color:var(--text-muted)]">
-          {matches.length} {matches.length === 1 ? "form" : "forms"} ·{" "}
-          {sortValue === "alpha" ? "sorted A–Z" : listingRegister ? "by form code" : "ranked by relevance"}
+          {sortValue === "alpha" ? "Sorted A–Z" : listingRegister ? "A to Z by form code" : "Ranked by relevance"}
         </span>
       </div>
       <div
@@ -272,7 +268,6 @@ function ResultsTable({
               data-testid={`form-search-result-${form.slug}`}
               className={cn(
                 "group relative grid gap-4 border-b border-[color:var(--border)] px-5 py-4 transition-colors last:border-b-0 hover:bg-[color:var(--surface-subtle)]/60 md:items-center",
-                "before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-[color:var(--clinical-accent)] before:opacity-0 before:transition-opacity before:content-[''] hover:before:opacity-100",
                 resultsGridColumns,
               )}
             >
@@ -286,10 +281,7 @@ function ResultsTable({
                   return (
                     <span
                       key={`${chipLabel}-${chipIndex}`}
-                      className={cn(
-                        "rounded-full px-2 py-1 text-2xs font-extrabold uppercase",
-                        tagToneClass(chipLabel),
-                      )}
+                      className={cn("rounded-md px-2 py-1 text-2xs font-bold", categoryTagClass)}
                     >
                       {chipLabel}
                     </span>
@@ -442,7 +434,7 @@ function VerifiedFooter() {
   );
 }
 
-const metaChipClass = "rounded-md px-2 py-1 text-3xs font-extrabold uppercase leading-none";
+const metaChipClass = "rounded-md px-2 py-1 text-2xs font-bold capitalize leading-none";
 
 /**
  * When the query IS a form code there is one answer, not N ranked candidates.
@@ -536,10 +528,13 @@ function MobileResultCard({ match, code }: CodedFormMatch) {
       href={`/forms/${form.slug}`}
       data-testid={`form-search-mobile-result-${form.slug}`}
       className={cn(
-        // The whole card is the target, so no per-card Open button.
-        "flex items-center gap-3 p-3 transition hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--clinical-accent-soft)]",
-        panelSubtle,
-        searchFocusRing,
+        // The whole row is the target, so no per-row Open button. Rows are
+        // divided lines inside their group's one hairline card, not cards of
+        // their own (one card per group, never cards inside cards).
+        "flex min-h-tap items-center gap-3 px-3 py-2.5 transition hover:bg-[color:var(--clinical-accent-soft)]",
+        // Inset ring: the group card clips its corners, so an outset ring
+        // would be cut off.
+        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
       )}
     >
       <FormCodeBadge code={code} variant="sm" />
@@ -557,7 +552,7 @@ function MobileResultCard({ match, code }: CodedFormMatch) {
       {risk ? (
         <span
           className={cn(
-            "shrink-0 rounded-md px-2 py-1 text-3xs font-extrabold uppercase leading-none",
+            "shrink-0 rounded-md px-2 py-1 text-2xs font-bold capitalize leading-none",
             riskBadgeToneClass[risk],
           )}
         >
@@ -595,11 +590,15 @@ function MobileCards({
         <>
           <div className="flex items-baseline justify-between gap-2 px-1">
             <h2 className="text-base font-extrabold text-[color:var(--text-heading)]">
-              {exactMatch ? `Also references ${exactMatch.code}` : listingRegister ? "All forms" : "Best matches"}
+              {exactMatch ? `Also references ${exactMatch.code}` : listingRegister ? "Forms" : "Best matches"}
             </h2>
-            <span className="text-xs font-bold text-[color:var(--text-muted)]">
-              {remaining.length} {remaining.length === 1 ? "form" : "forms"}
-            </span>
+            {/* The band above already states the total. A count is shown here
+                only beside an exact code match, where the remainder differs. */}
+            {exactMatch ? (
+              <span className="text-xs font-bold text-[color:var(--text-muted)]">
+                {remaining.length} {remaining.length === 1 ? "form" : "forms"}
+              </span>
+            ) : null}
           </div>
           {groups.map((group) => (
             <section key={group.category} aria-label={group.category} className="grid gap-2">
@@ -608,9 +607,11 @@ function MobileCards({
                 <span aria-hidden className="h-px flex-1 bg-[color:var(--border)]" />
                 <span className="text-2xs font-bold text-[color:var(--text-muted)]">{group.items.length}</span>
               </div>
-              {group.items.map((item) => (
-                <MobileResultCard key={item.match.service.slug} match={item.match} code={item.code} />
-              ))}
+              <div className="divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)]">
+                {group.items.map((item) => (
+                  <MobileResultCard key={item.match.service.slug} match={item.match} code={item.code} />
+                ))}
+              </div>
             </section>
           ))}
         </>
@@ -842,6 +843,7 @@ function FormsSearchResultsPageContent({ query }: FormsSearchResultsPageProps) {
           modeId="forms"
           headingLevel={1}
           query={query}
+          emptyQuerySubject="Forms"
           matchCount={displayedMatches.length}
           status={
             registry.status === "unauthorized"

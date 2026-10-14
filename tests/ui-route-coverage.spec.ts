@@ -277,6 +277,19 @@ test.describe("previously uncovered production routes", () => {
       // 36156676861). A same-origin request cannot fail an access-control check, so only
       // this app's own host is excused; anything cross-origin still fails.
       if (browserName === "webkit" && sameOriginLoadAbortedByNavigation(error.message, appHost)) return;
+      // WebKit keeps a `contain-intrinsic-size: auto` row's last size with its own
+      // resize observer, and reports that observer's deferred notifications as a page
+      // error (run 38371739748, Differentials). The spec calls this a notice, not a
+      // failure, and no app code throws it, so only this exact WebKit message is excused,
+      // and only on the two routes whose rows use it (Differentials and Dictionary).
+      if (
+        browserName === "webkit" &&
+        error.message === "ResizeObserver loop completed with undelivered notifications." &&
+        /^\/(?:dictionary|differentials|dsm\/diagnoses\/[^/]+\/differentials)(?:\/|$)/.test(
+          new URL(page.url()).pathname,
+        )
+      )
+        return;
       problems.push(`pageerror ${error.message}`);
     });
     await blockExternalRequests(page, problems, baseURL);
@@ -321,6 +334,14 @@ test.describe("previously uncovered production routes", () => {
         // [data-therapy-root]), so read the canvas colour from the workspace root
         // still in the page, and prove the bar is anchored under the collapsing top bar.
         const nav = currentPage.getByRole("navigation", { name: "Therapy pages" });
+        await expect
+          .poll(
+            () => nav.evaluate((element) => Boolean(element.closest('[data-testid="universal-header-collapse"]'))),
+            {
+              message: "Therapy navigation must settle into the shared header after hydration",
+            },
+          )
+          .toBe(true);
         const layout = await nav.evaluate((element) => {
           const bar = element.querySelector<HTMLElement>(".mode-nav__bar");
           const root = document.querySelector("[data-therapy-root]");
@@ -342,7 +363,9 @@ test.describe("previously uncovered production routes", () => {
     );
   });
 
-  test("Therapy result cards use the full phone width with a symmetric action row", async ({ page }, testInfo) => {
+  test("Therapy result rows are compact, show the full Avoid warning and keep 48px controls", async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoApp(page, "/therapy-compass/search?q=CBT&run=1");
 
@@ -351,64 +374,44 @@ test.describe("previously uncovered production routes", () => {
     await expect(card).toHaveAttribute("data-therapy-result-featured", "");
     await expect(card.getByText("Best match", { exact: true })).toBeVisible();
     await expect(page.locator("[data-therapy-result-highlight]")).toHaveCount(1);
+    // "Best used for" and the evidence block moved into the record.
+    await expect(card.getByText("Best used for", { exact: false })).toHaveCount(0);
 
     for (const width of [320, 390, 639, 768, 1440, 1920]) {
       await page.setViewportSize({ width, height: width < 768 ? 844 : 900 });
       await expectNoHorizontalOverflow(page);
 
       const layout = await card.evaluate((element) => {
-        const bounds = element.getBoundingClientRect();
-        const borderLeft = Number.parseFloat(getComputedStyle(element).borderLeftWidth);
-        const copy = element.querySelector<HTMLElement>("[data-therapy-result-copy]")!.getBoundingClientRect();
-        const evidence = element.querySelector<HTMLElement>("[data-therapy-result-evidence]")!.getBoundingClientRect();
+        const avoid = element.querySelector<HTMLElement>("[data-therapy-result-avoid]")!;
+        const text = avoid.lastElementChild as HTMLElement;
         const actions = element.querySelector<HTMLElement>("[data-therapy-result-actions]")!;
         const buttons = [...actions.querySelectorAll<HTMLElement>("button, a")].map((button) => {
-          const buttonBounds = button.getBoundingClientRect();
-          return {
-            left: buttonBounds.left,
-            right: buttonBounds.right,
-            top: buttonBounds.top,
-            width: buttonBounds.width,
-            height: buttonBounds.height,
-          };
+          const bounds = button.getBoundingClientRect();
+          return { top: bounds.top, width: bounds.width, height: bounds.height };
         });
         return {
-          card: { left: bounds.left, right: bounds.right },
-          borderLeft,
-          copyLeft: copy.left,
-          evidence: { left: evidence.left, right: evidence.right },
+          // The owner decision: the warning is never clamped or ellipsised.
+          avoidClipped: avoid.scrollHeight - avoid.clientHeight,
+          avoidOverflow: getComputedStyle(text).textOverflow,
+          avoidClamp: getComputedStyle(text).webkitLineClamp,
           buttons,
         };
       });
 
-      if (width < 640) {
-        // Featured cards carry the intentional 3px best-match accent edge.
-        // The evidence panel remains full-bleed inside that border.
-        expect(
-          Math.abs(layout.evidence.left - (layout.card.left + layout.borderLeft)),
-          `${width}px evidence left edge`,
-        ).toBeLessThanOrEqual(1);
-        expect(
-          Math.abs(layout.card.right - layout.evidence.right),
-          `${width}px evidence right edge`,
-        ).toBeLessThanOrEqual(1);
-        expect(layout.copyLeft - layout.card.left, `${width}px copy inset`).toBeGreaterThanOrEqual(15);
-        expect(new Set(layout.buttons.map((button) => Math.round(button.top))).size, `${width}px button row`).toBe(1);
-        expect(
-          Math.max(...layout.buttons.map((button) => button.width)) -
-            Math.min(...layout.buttons.map((button) => button.width)),
-          `${width}px equal action widths`,
-        ).toBeLessThanOrEqual(1);
-        for (const button of layout.buttons) {
-          expect(button.height, `${width}px action target`).toBeGreaterThanOrEqual(48);
-        }
+      expect(layout.avoidClipped, `${width}px avoid warning clipped`).toBeLessThanOrEqual(1);
+      expect(layout.avoidOverflow, `${width}px avoid warning ellipsis`).not.toBe("ellipsis");
+      expect(["none", ""], `${width}px avoid warning line clamp`).toContain(layout.avoidClamp);
+      expect(new Set(layout.buttons.map((button) => Math.round(button.top))).size, `${width}px button row`).toBe(1);
+      for (const button of layout.buttons) {
+        expect(button.height, `${width}px action target height`).toBeGreaterThanOrEqual(48);
+        expect(button.width, `${width}px action target width`).toBeGreaterThanOrEqual(48);
       }
     }
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    const compare = card.locator("[data-therapy-result-actions] > a, [data-therapy-result-actions] > button").nth(1);
-    await expect(compare).toHaveAccessibleName("Add to compare");
+    const compare = card.getByTestId("therapy-result-compare");
+    await expect(compare).toHaveAccessibleName(/^Add .+ to compare$/);
     await compare.focus();
     const focusStyle = await compare.evaluate((element) => {
       const style = getComputedStyle(element);
@@ -424,25 +427,26 @@ test.describe("previously uncovered production routes", () => {
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
     await expectNoHorizontalOverflow(page);
     await expect(card.locator("[data-therapy-result-actions] button, [data-therapy-result-actions] a")).toHaveCount(3);
+    // The shared Compare tray exists only once something is ticked.
+    await expect(page.getByTestId("therapy-compare-tray")).toHaveCount(0);
 
     // Adding deliberately keeps the reader where they are. The set moves into
     // the URL (so it is still shareable and survives a reload) and into the tray
     // above the composer; the page does not change.
     await compare.focus();
     await page.keyboard.press("Space");
-    await expect(compare).toHaveAccessibleName("In compare tray");
+    await expect(compare).toHaveAccessibleName(/^Remove .+ from compare$/);
+    await expect(compare).toHaveAttribute("aria-pressed", "true");
     await expect(page).toHaveURL(/\/therapy-compass\/search/);
     // The set commits to component state first and reaches the URL through a
     // `router.replace` soft navigation, so the accessible name flips before
-    // `page.url()` carries `ids`. Reading the URL straight after that name
-    // assertion is a race — it lost once under full-suite load on 2026-09-01
-    // (`ids` read as null) and passes in isolation. Wait for the parameter
-    // itself rather than for the route it was already on.
+    // `page.url()` carries `ids`. Wait for the parameter itself.
     await expect(page).toHaveURL(/[?&]ids=/);
     const stayedPut = new URL(page.url());
     expect(stayedPut.searchParams.get("q")).toBe("CBT");
     expect(stayedPut.searchParams.get("ids")).toBeTruthy();
     await expect(page.getByTestId("therapy-compare-tray")).toBeVisible();
+    await expect(page.getByTestId("therapy-compare-tray-count")).toHaveText(/^1 of \d+ selected$/);
     await expect(page.getByRole("heading", { name: "Therapy Comparison", level: 1 })).toHaveCount(0);
   });
 
@@ -492,14 +496,17 @@ test.describe("previously uncovered production routes", () => {
         });
         await expect(remove).toBeEnabled();
         await waitForReactEventHandler(remove);
-        // Slot clear commits through `router.push` with compacted ids. Wait for
-        // the URL only — same-route `?ids=` soft-nav may not fire a document load.
-        await Promise.all([
-          currentPage.waitForURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, {
-            timeout: 30_000,
-          }),
-          remove.click(),
-        ]);
+        // Slot clear commits through `router.push` with compacted ids. Click first, then poll
+        // the URL: a same-route `?ids=` soft navigation fires no document load, which
+        // `waitForURL` waits for, and inside `Promise.all` its timeout also hid whether the
+        // click itself ever landed (WebKit, 12 Oct 2026).
+        // iPad WebKit on main dropped this click once on 13 Oct 2026 (URL unchanged for 30 s), so a
+        // click that leaves no trace is repeated while the button is still there. Removal must still
+        // land on exactly the remaining id.
+        await expect(async () => {
+          if (await remove.isVisible()) await remove.click({ timeout: 5_000 });
+          await expect(currentPage).toHaveURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, { timeout: 10_000 });
+        }).toPass({ timeout: 40_000, intervals: [1_000, 2_000, 4_000] });
         // Empty dashed panel is suppressed in favour of the compact slot rail
         // and inline starter chips when fewer than two diagnoses remain.
         await expect(currentPage.getByTestId("compare-slot-tile-compact").first()).toBeVisible();
@@ -671,7 +678,8 @@ test.describe("previously uncovered production routes", () => {
     await expect(page.getByRole("radiogroup", { name: "Clinical urgency" })).toBeVisible();
     await page.getByTestId("differentials-stream-filter-panel-done").click();
     await expect(page.getByText("High-priority presentation pathways")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Open pathway/ }).first()).toBeVisible();
+    // The title is the link; its name ends ", open pathway" for presentations.
+    await expect(page.getByRole("link", { name: /open pathway$/ }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Show family" })).toHaveCount(0);
 
     await gotoApp(page, "/differentials/presentations?q=agitation");
@@ -706,6 +714,10 @@ test.describe("previously uncovered production routes", () => {
     await expect(page.getByRole("button", { name: "Remove Priority: Emergent filter" })).toBeVisible();
     const visiblePresentationCards = page.locator('[data-testid^="differential-stream-card-"]:visible');
     await expect(visiblePresentationCards.first()).toHaveAttribute("data-status", "emergent");
+    // Filters highlight, never hide: a spoken note says how many are highlighted.
+    await expect(visibleByTestId(page, "differentials-stream-highlight-note")).toContainText(
+      /\d+ of \d+ highlighted, all rows stay/,
+    );
     await expect.poll(async () => visiblePresentationCards.count()).toBeGreaterThan(0);
 
     await page.emulateMedia({ reducedMotion: "reduce" });

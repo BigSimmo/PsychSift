@@ -69,7 +69,8 @@ export function deriveManagedProviderEmbeddingRequestContext(args: {
   if (producer.planDigest !== expectedPlanDigest) refuse("embedding_plan_digest_mismatch");
   if (!Number.isSafeInteger(batchSize) || batchSize < 1) refuse("embedding_batch_size_invalid");
   if (request.purpose !== "embedding") refuse("embedding_request_purpose_mismatch");
-  const payloadBytes = typeof request.payload === "string" ? Buffer.from(request.payload, "utf8") : Buffer.from(request.payload);
+  const payloadBytes =
+    typeof request.payload === "string" ? Buffer.from(request.payload, "utf8") : Buffer.from(request.payload);
   const payloadText = payloadBytes.toString("utf8");
   if (Buffer.from(payloadText, "utf8").compare(payloadBytes) !== 0) refuse("embedding_request_format_mismatch");
   let body: unknown;

@@ -49,7 +49,7 @@ describe("favourites demo-data boundary", () => {
     expect(universalSearchSource).toContain("...(demoMode ? favouriteItems : [])");
     expect(universalSearchSource).not.toContain("[...favouriteItems, ...savedRegistryFavourites]");
     expect(universalSearchSource).toContain("if (includePrototypeSets)");
-    expect(universalSearchSource).toContain("rankLocalFavourites(allFavouriteItems, trimmedQuery, demoMode)");
+    expect(universalSearchSource).toContain("rankLocalFavourites(allFavouriteItems, deferredTrimmedQuery, demoMode)");
   });
 
   it("fails closed in production while preserving explicit and non-production demo modes", () => {

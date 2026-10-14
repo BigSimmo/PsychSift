@@ -17,12 +17,14 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FactsheetListRow } from "@/components/factsheets/factsheet-list-row";
 import {
   categoryTheme,
+  FACTSHEET_DEMO_NOTICE,
   factsheetCategories,
   factsheetDetailHref,
   filterFactsheets,
   type Factsheet,
 } from "@/components/factsheets/factsheets-data";
 import { factsheetGlyph } from "@/components/factsheets/factsheets-icons";
+import { pageHeadingEyebrowClass, pageHeadingTitleClass } from "@/components/ui/page-header";
 import { cn } from "@/components/ui-primitives";
 
 type ViewMode = "list" | "cards";
@@ -101,10 +103,13 @@ export function FactsheetsSearchPage({
       data-testid="factsheets-search-page"
       className="mx-auto w-full max-w-reading px-4 py-6 pb-4 sm:px-6 sm:py-8 lg:px-8"
     >
-      <p className="text-2xs font-bold uppercase tracking-label text-[color:var(--clinical-accent)]">Find a sheet</p>
-      <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-[color:var(--text-heading)]">
-        Search patient information
-      </h1>
+      <p className={pageHeadingEyebrowClass}>Find a sheet</p>
+      <h1 className={cn("mt-1.5", pageHeadingTitleClass)}>Search patient information</h1>
+      {/* The detail and print pages carry this notice; the list must too, or browsing
+          reads as an approved library until a sheet is opened. */}
+      <p role="note" className="mt-2 text-xs font-bold text-[color:var(--warning)]">
+        {FACTSHEET_DEMO_NOTICE}
+      </p>
 
       <SearchResultsHeaderBand
         modeId="factsheets"

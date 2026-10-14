@@ -139,15 +139,13 @@ function OrientationCard({
             </Link>
           ))}
         </div>
-      ) : (
+      ) : entry.linkedDocumentIds.length ? (
         <p className={cn("text-sm", textMuted)}>
-          {entry.linkedDocumentIds.length
-            ? documentsLoading
-              ? "Loading the linked document…"
-              : "Linked document unavailable. It may be offline, removed, or unavailable to your account."
-            : "No document linked yet."}
+          {documentsLoading
+            ? "Loading the linked document…"
+            : "Linked document unavailable. It may be offline, removed, or unavailable to your account."}
         </p>
-      )}
+      ) : null}
     </article>
   );
 }
@@ -168,7 +166,7 @@ export function OnCallOrientationSection({
   onEditEntry,
   onVerified,
 }: OnCallOrientationSectionProps) {
-  const allOrientation = entries.filter((entry) => entry.section === "orientation");
+  const allOrientation = entries.filter((entry) => (entry.view ?? entry.section) === "orientation");
 
   if (allOrientation.length === 0) {
     return (
@@ -207,8 +205,19 @@ export function OnCallOrientationSection({
     />
   );
 
+  // One line for every item with nothing linked, rather than the same sentence under each card
+  // (usefulness audit, 11 Oct 2026).
+  const unlinked = sorted.filter((entry) => entry.linkedDocumentIds.length === 0).length;
+
   return (
     <div data-testid={testId} className="grid grid-cols-[minmax(0,1fr)] gap-3">
+      {unlinked > 0 ? (
+        <p className={cn("text-sm", textMuted)} data-testid="on-call-orientation-unlinked">
+          {unlinked === sorted.length
+            ? "No documents linked yet."
+            : `${unlinked} of ${sorted.length} items have no document linked yet.`}
+        </p>
+      ) : null}
       {groups.length === 0
         ? sorted.map(cardFor)
         : groups.map((group) => (

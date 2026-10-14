@@ -480,13 +480,104 @@ const executeVariablePattern = /\bexecute\s+[a-z_]\w*\s*;/i;
  * one of these functions in a comment is not flagged. Missing contents yield no paths: the nudge
  * is advisory, so it degrades to the path patterns rather than failing closed.
  */
+export const POSTGRES_TOKEN_PATTERN =
+  /('(?:''|\\.|[^'\\])*')|("(?:""|\\.|[^"\\])*")|(\$([A-Za-z_][A-Za-z0-9_]*)?\$[\s\S]*?\$\4\$)|(\/\*[\s\S]*?\*\/)|(--[^\r\n]*)/g;
+
+/**
+ * Splits SQL into PostgreSQL lexical tokens: code, single-quoted strings, double-quoted
+ * identifiers, dollar-quoted bodies and comments. Unlike a single regex, block comments nest
+ * (`/* outer /* inner *\/ still comment *\/`) the way PostgreSQL tokenizes them.
+ */
+export function scanPostgresTokens(sql) {
+  const text = String(sql ?? "");
+  const tokens = [];
+  let code = "";
+  let i = 0;
+  const push = (kind, value, extra = {}) => {
+    if (code) tokens.push({ kind: "code", text: code });
+    code = "";
+    tokens.push({ kind, text: value, ...extra });
+  };
+  // Backslash escapes exist only in E'...' strings. Standard-conforming strings and
+  // double-quoted identifiers treat a backslash as an ordinary character.
+  const quoted = (quote) => {
+    const escapes = quote === "'" && /[Ee]/.test(text[i - 1] ?? "") && !/[A-Za-z0-9_$]/.test(text[i - 2] ?? "");
+    let j = i + 1;
+    while (j < text.length) {
+      if (escapes && text[j] === "\\") j += 2;
+      else if (text[j] === quote && text[j + 1] === quote) j += 2;
+      else if (text[j] === quote) return j + 1;
+      else j += 1;
+    }
+    return text.length;
+  };
+  while (i < text.length) {
+    const c = text[i];
+    const next = text[i + 1];
+    if (c === "'" || c === '"') {
+      const end = quoted(c);
+      push(c === "'" ? "single" : "double", text.slice(i, end));
+      i = end;
+      continue;
+    }
+    if (c === "$" && !/[A-Za-z0-9_$]/.test(text[i - 1] ?? "")) {
+      const open = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(text.slice(i))?.[0];
+      if (open) {
+        const close = text.indexOf(open, i + open.length);
+        const end = close === -1 ? text.length : close + open.length;
+        const bodyEnd = close === -1 ? text.length : close;
+        push("dollar", text.slice(i, end), { tag: open, body: text.slice(i + open.length, bodyEnd) });
+        i = end;
+        continue;
+      }
+    }
+    if (c === "/" && next === "*") {
+      let depth = 1;
+      let j = i + 2;
+      while (j < text.length && depth > 0) {
+        if (text[j] === "/" && text[j + 1] === "*") {
+          depth += 1;
+          j += 2;
+        } else if (text[j] === "*" && text[j + 1] === "/") {
+          depth -= 1;
+          j += 2;
+        } else j += 1;
+      }
+      push("comment", text.slice(i, j));
+      i = j;
+      continue;
+    }
+    if (c === "-" && next === "-") {
+      let j = i;
+      while (j < text.length && text[j] !== "\n" && text[j] !== "\r") j += 1;
+      push("comment", text.slice(i, j));
+      i = j;
+      continue;
+    }
+    code += c;
+    i += 1;
+  }
+  if (code) tokens.push({ kind: "code", text: code });
+  return tokens;
+}
+
+export function stripSqlComments(sql, options = {}) {
+  const replacement = options.commentReplacement ?? " ";
+  const stripped = scanPostgresTokens(sql)
+    .map((token) => (token.kind === "comment" ? replacement : token.text))
+    .join("");
+
+  if (options.collapseWhitespace) {
+    return stripped.replace(/\s+/g, " ").trim();
+  }
+  return stripped;
+}
+
 export function retrievalFunctionMigrationPaths(addedMigrationContents) {
   if (!addedMigrationContents || typeof addedMigrationContents !== "object") return [];
   return Object.entries(addedMigrationContents)
     .filter(([, sql]) => {
-      const executable = String(sql ?? "")
-        .replace(/\/\*[\s\S]*?\*\//g, " ")
-        .replace(/--[^\n]*/g, " ");
+      const executable = stripSqlComments(String(sql ?? ""));
       return (
         retrievalFunctionStatementPattern.test(executable) ||
         (retrievalFunctionDefinitionReadPattern.test(executable) && executeVariablePattern.test(executable))
@@ -699,12 +790,25 @@ function migrationVersionTime(version) {
   return Date.UTC(year, month - 1, day, hour, minute, second);
 }
 
-/** Strip SQL comments and single-quoted literals so CREATE INDEX inside pin strings is ignored. */
+/**
+ * Strip SQL comments and single-quoted literals so CREATE INDEX inside pin strings is ignored.
+ * Dollar-quoted bodies (DO blocks, EXECUTE text) run as code, so their contents are stripped
+ * recursively rather than skipped: comments and string pins inside them are ignored, real DDL
+ * inside them is still seen.
+ */
+function stripSqlCommentsAndStringsRaw(sql) {
+  return scanPostgresTokens(sql)
+    .map((token) => {
+      if (token.kind === "single") return "''";
+      if (token.kind === "comment") return " ";
+      if (token.kind === "dollar") return ` ${token.tag} ${stripSqlCommentsAndStringsRaw(token.body)} ${token.tag} `;
+      return token.text;
+    })
+    .join("");
+}
+
 function stripSqlCommentsAndStrings(sql) {
-  return String(sql ?? "")
-    .replace(/\/\*[\s\S]*?\*\//g, " ")
-    .replace(/--[^\n]*/g, " ")
-    .replace(/'(?:[^']|'')*'/g, "''");
+  return stripSqlCommentsAndStringsRaw(sql).replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -952,10 +1056,12 @@ export function evaluatePullRequestPolicy({
   enforceMigrationHistory = false,
   now = new Date(),
 }) {
-  // Three conditions block the PR (hard failure): a clinical-risk diff without a
-  // complete Clinical Governance Preflight, a RAG-ranking-surface diff without an
-  // explicit `RAG impact:` declaration, and a Supabase-migration diff whose metadata
-  // claims a deferred deploy that merging does not honour. Intermittent automated
+  // Hard-blocking conditions (`errors`): a lingering `PR_POLICY_BODY.md` transport file,
+  // a Supabase-migration diff whose metadata claims a deferred deploy that merging does
+  // not honour, and immutable applied-migration history / workflow-trigger violations.
+  // Missing or incomplete `## Clinical Governance Preflight` and `RAG impact:` declarations
+  // are advisory warnings since 2026-09-17 (owner decision; no longer hard-blocking merges;
+  // see docs/process-hardening.md:813-818). Intermittent automated
   // review (usage limits / eligibility) is explicitly not a gate (owner decision
   // 2026-08-22 / #CCZ4HB; correction 2026-09-02 — decision stands until revisited).
   // Every other metadata expectation (title, summary, verification, UI, risk and
@@ -1017,9 +1123,10 @@ export function evaluatePullRequestPolicy({
     );
   }
 
-  // Blocking gate: a PR touching RAG-ranking protected surfaces must declare its impact
-  // explicitly (docs/rag-behaviour/safeguards.md — layer 1). Ordering behaviour is
-  // live-validated; the declaration forces every session/task to consciously state either
+  // Advisory warning since 2026-09-17 (no longer a blocking gate): a PR touching
+  // RAG-ranking protected surfaces is nudged to declare its impact explicitly
+  // (docs/rag-behaviour/safeguards.md — layer 1). Ordering behaviour is
+  // live-validated; the declaration prompts every session/task to consciously state either
   // "no behaviour change" (with a reason) or the canary pair covering the change.
   if (classification.ragRanking) {
     const ragImpact = ragImpactDeclared(body);

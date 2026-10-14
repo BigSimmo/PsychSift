@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight, Scale, Waypoints } from "lucide-react";
 
-import { cardSurface } from "@/components/card-recipes";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/components/ui-primitives";
 
@@ -37,12 +36,15 @@ function StepCard({
   const roleLabel = step.label ?? "STEP";
 
   if (layout === "mobile") {
+    // A divided row of the pathway card, not a card of its own. The pathway
+    // card is the one box; steps are separated by a hairline, and the numbered
+    // timeline still runs from each step down to the next.
     return (
-      <article className={cn(cardSurface, "relative flex flex-col gap-3 p-4")}>
+      <article className="relative flex flex-col gap-1.5 py-4">
         {!last ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-[-10px] left-[calc(1rem+14px)] top-[calc(1rem+1.75rem)] w-px bg-[color:var(--border)]"
+            className="pointer-events-none absolute bottom-[-1rem] left-[14px] top-[calc(1rem+1.75rem)] w-px bg-[color:var(--border)]"
           />
         ) : null}
         <div className="flex items-start gap-3">
@@ -72,7 +74,15 @@ function StepCard({
           </div>
         </div>
         {therapy ? (
-          <Button variant="secondary" size="sm" className="w-full min-h-tap" onClick={() => onOpenRecord(therapy.slug)}>
+          // A quiet text action under the step's prose. The full-width bordered
+          // button it replaces was a third box inside the step and the card.
+          <Button
+            variant="ghost"
+            size="sm"
+            trailingIcon={ChevronRight}
+            className="ml-8 min-h-tap self-start px-2 text-[color:var(--clinical-accent)] hover:text-[color:var(--clinical-accent)]"
+            onClick={() => onOpenRecord(therapy.slug)}
+          >
             Open record
           </Button>
         ) : (
@@ -90,6 +100,9 @@ function StepCard({
   return (
     <div className="relative flex items-stretch gap-4">
       <div className="flex w-[26px] flex-none flex-col items-center">
+        {/* The timeline's top stub. Rows now sit flush, so the line has to
+            carry on from the step above rather than stop at a gap. */}
+        <span aria-hidden="true" className={cn("mb-1 h-3 w-px flex-none", index > 0 && "bg-[color:var(--border)]")} />
         <span
           className={cn(
             "inline-flex size-[26px] flex-none items-center justify-center rounded-full text-xs font-semibold",
@@ -102,13 +115,14 @@ function StepCard({
         </span>
         {!last ? <span aria-hidden="true" className="mt-1 w-px flex-1 bg-[color:var(--border)]" /> : null}
       </div>
+      {/* A row divided by a hairline, not a card inside the pathway card. */}
       <div
         className={cn(
-          cardSurface,
-          "flex min-w-0 flex-1 items-center gap-3.5 px-4 py-3.5 transition-colors duration-[var(--duration-instant)] hover:bg-[color:var(--surface-subtle)]",
+          "flex min-w-0 flex-1 items-center gap-3.5 px-2 py-3.5 transition-colors duration-[var(--duration-instant)] hover:bg-[color:var(--surface-subtle)]",
+          !last && "border-b border-[color:var(--border)]",
         )}
       >
-        <span className="inline-flex size-[34px] flex-none items-center justify-center rounded-md bg-[color:var(--surface-inset)] text-[color:var(--text-muted)]">
+        <span className="inline-flex size-[34px] flex-none items-center justify-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
           <Scale aria-hidden="true" size={17} strokeWidth={1.6} />
         </span>
         <div className="min-w-0 flex-1">
@@ -141,7 +155,11 @@ function StepCard({
 export function PathwayStepStack({ steps, bySlug, onOpenRecord }: PathwayStepStackProps) {
   return (
     <>
-      <div data-testid="therapy-pathway-steps" className="flex flex-col gap-2.5 sm:hidden" aria-label="Pathway steps">
+      <div
+        data-testid="therapy-pathway-steps"
+        className="flex flex-col divide-y divide-[color:var(--border)] sm:hidden"
+        aria-label="Pathway steps"
+      >
         {steps.map((step, index) => {
           const therapy = step.therapySlug ? bySlug.get(step.therapySlug) : undefined;
           return (
@@ -157,11 +175,7 @@ export function PathwayStepStack({ steps, bySlug, onOpenRecord }: PathwayStepSta
           );
         })}
       </div>
-      <div
-        data-testid="therapy-pathway-steps-desktop"
-        className="hidden flex-col gap-2.5 sm:flex"
-        aria-label="Pathway steps"
-      >
+      <div data-testid="therapy-pathway-steps-desktop" className="hidden flex-col sm:flex" aria-label="Pathway steps">
         {steps.map((step, index) => {
           const therapy = step.therapySlug ? bySlug.get(step.therapySlug) : undefined;
           return (

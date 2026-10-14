@@ -19,19 +19,31 @@ const mocks = vi.hoisted(() => ({
   release: vi.fn(),
   storageBucket: vi.fn(),
   rpc: vi.fn(),
+  clientTimeout: vi.fn(),
+  uploadClientTimeout: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({
-    from: mocks.from,
-    rpc: mocks.rpc,
-    storage: {
-      from: (bucket: string) => {
-        mocks.storageBucket(bucket);
-        return { upload: mocks.upload, remove: mocks.remove, createSignedUrl: mocks.signed };
+  createAdminClient: (options?: { timeoutMs?: number | null }) => {
+    mocks.clientTimeout(options?.timeoutMs);
+    return {
+      from: mocks.from,
+      rpc: mocks.rpc,
+      storage: {
+        from: (bucket: string) => {
+          mocks.storageBucket(bucket);
+          return {
+            upload: (...args: unknown[]) => {
+              mocks.uploadClientTimeout(options?.timeoutMs);
+              return mocks.upload(...args);
+            },
+            remove: mocks.remove,
+            createSignedUrl: mocks.signed,
+          };
+        },
       },
-    },
-  }),
+    };
+  },
 }));
 vi.mock("@/lib/supabase/auth", () => ({
   requireAuthenticatedUser: mocks.auth,
@@ -168,6 +180,8 @@ describe("private CME evidence API", () => {
     expect(body.evidence[0]).not.toHaveProperty("storagePath");
     expect(body.evidence[0]).not.toHaveProperty("ownerId");
     assertOwnerScope();
+    // An ordinary read keeps the default service-role deadline.
+    expect(mocks.clientTimeout.mock.calls.every(([timeoutMs]) => timeoutMs === undefined)).toBe(true);
     expect(queries[1].eq).toHaveBeenCalledWith("entry_id", entryId);
   });
   it.each(["previewConfirmed", "redactionConfirmed"])(
@@ -212,6 +226,9 @@ describe("private CME evidence API", () => {
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(mocks.upload.mock.calls[0][0]).toMatch(new RegExp(`^${ownerId}/${entryId}/[a-f0-9-]+$`));
     expect(mocks.upload.mock.calls[0][2]).toMatchObject({ upsert: false, contentType: "application/pdf" });
+    // Only the Storage transfer is unbounded; auth, rate limiting and record writes keep the deadline.
+    expect(mocks.uploadClientTimeout).toHaveBeenCalledWith(null);
+    expect(mocks.clientTimeout.mock.calls.filter(([timeoutMs]) => timeoutMs === null)).toHaveLength(1);
     expect(queries[4].insert).toHaveBeenCalledWith(
       expect.objectContaining({
         owner_id: ownerId,

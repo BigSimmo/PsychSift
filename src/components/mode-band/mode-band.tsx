@@ -11,6 +11,7 @@ import {
   useState,
   useLayoutEffect,
   useMemo,
+  useRef,
   useSyncExternalStore,
   Suspense,
   type CSSProperties,
@@ -43,6 +44,7 @@ import {
 } from "@/lib/work-frame/areas";
 import { ExampleDataBanner } from "@/components/example-data/example-data-banner";
 import { WorkFrameHeader } from "@/components/work-frame/work-frame-header";
+import { useStickyWorkTabs } from "@/components/work-frame/use-sticky-work-tabs";
 import { useWorkFrameAction } from "@/components/work-frame/work-frame-store";
 import { WorkHelpHost } from "@/components/work-help/work-help-host";
 import { openWorkHelp } from "@/components/work-help/work-help-store";
@@ -67,14 +69,21 @@ const IDENTITY_MODES: ReadonlySet<AppModeId> = new Set([
   "first-nations",
 ]);
 
+/**
+ * Work areas whose band keeps today's date above the title, because the day is
+ * what their pages are about (owner, 13 Oct 2026: "just please remove the date
+ * on most pages as it is not necessary"). Elsewhere the line is left for the
+ * page's own state (`useModeBandHeading`), or stays empty.
+ */
+const DATE_AREAS: ReadonlySet<WorkArea["id"]> = new Set(["day", "rost", "open", "teach", "call"]);
+
 /** Where the band's status line is drawn; `ModeBandStatus` portals into it. */
 export const modeBandStatusSlotId = "mode-band-status";
-const modeBandActionSlotId = "mode-band-action";
 
 export type ModeBandLead =
   /** A child of another page: a small back link in the mode colour. */
   | { kind: "back"; href: string; label: string }
-  /** A top-level page: today's date, in Perth. */
+  /** A top-level page: no back link (the date line went, 13 Oct 2026). */
   | { kind: "date" };
 
 export type ModeBandProps = {
@@ -206,20 +215,6 @@ function isHidden(pathname: string, hiddenOn: readonly string[] | undefined): bo
 }
 
 /**
- * Today's date, rendered after hydration so a server in another timezone, or a
- * page cached across midnight, can never show yesterday, and checked each
- * minute so a page left open moves on at midnight. The row keeps its height
- * either way.
- */
-function TodayDate() {
-  const time = useClientTime({ updateInterval: 60_000 });
-  const { zone } = useWorkTimeZone();
-  if (!time) return <span className="mode-band__date" />;
-  const now = new Date(time);
-  return <span className="mode-band__date">{dateLong(now, zone)}</span>;
-}
-
-/**
  * The faint mode icon, drawn as a mask on an empty box rather than as an
  * inline svg. The design crops the icon at the band's right edge; an svg
  * cropped that way still reports its paths' boxes past the screen edge, which
@@ -262,16 +257,13 @@ function usePublishBandSurface(band: HTMLElement | null, modeId: AppModeId, work
       root.style.setProperty("--mode-band-surface", getComputedStyle(band).backgroundColor);
       root.dataset.modeBand = modeId;
       if (workArea) {
-        // The work frame repaints the top bar above it (round glass buttons, the
-        // glass pill, the band's dot texture), and lines the band's dots up
-        // with the top bar's so the two read as one surface.
+        // The work frame repaints the top bar above it (round glass buttons and
+        // the glass pill), so the bar and the band read as one surface.
         root.dataset.workFrame = workArea;
         // Sheets, toasts and the work search portal out of the page, so the
         // area's palette also rides on <body> while the frame is up (not on
         // <html>, where `.dark [data-mode-identity]` could not match it).
         if (identity) document.body.dataset.modeIdentity = identity;
-        const top = band.getBoundingClientRect().top + window.scrollY;
-        band.style.setProperty("--work-band-offset", `${-Math.round(top)}px`);
       }
     };
     publish();
@@ -508,7 +500,7 @@ function WorkModeBandHeader({
       current={current}
       currentIsOwnPage={currentIsOwnPage}
       bandRef={setBand}
-      eyebrow={heading?.eyebrow ?? <TodayDateText />}
+      eyebrow={heading?.eyebrow ?? (DATE_AREAS.has(area.id) ? <TodayDateText /> : undefined)}
       title={heading?.title ?? baseTitle}
       counts={counts}
       status={
@@ -531,16 +523,19 @@ function WorkModeBandHeader({
           <Link href={customiseHref} className="work-glass-button work-band__action" aria-label="Customise">
             <SlidersHorizontal aria-hidden="true" className="size-icon-md" strokeWidth={2} />
           </Link>
-        ) : (
-          // A page's own action (My Day's Edit) takes the glass action's place.
-          <span id={modeBandActionSlotId} className="work-band__action-slot" />
-        )
+        ) : // The band's corner is the page's Favourite heart alone (audit D18, 13 Oct 2026):
+        // a page's own tools sit in the page or in More.
+        null
       }
     />
   );
 }
 
-/** Today's date as plain text, settled after hydration (see TodayDate). */
+/**
+ * Today's date, rendered after hydration so a server in another timezone, or a
+ * page cached across midnight, can never show yesterday, and checked each
+ * minute so a page left open moves on at midnight.
+ */
 function TodayDateText() {
   const time = useClientTime({ updateInterval: 60_000 });
   const { zone } = useWorkTimeZone();
@@ -579,6 +574,12 @@ function ModeBandHeader({
   }, [tabs, modeId, teachingRoles, rosterHasTeam, openShiftsPoster]);
 
   usePublishBandSurface(band, modeId);
+  // The tab row pins under the top bar and slides away and back with it, the
+  // same mechanism as a Work band (header standard, 13 Oct 2026).
+  const bandTabsRef = useRef<HTMLElement>(null);
+  // The row only renders with two or more tabs; keying the hook on that lets it
+  // start (or clean up) when the count crosses the line on the same band.
+  useStickyWorkTabs(tabEntries.length > 1 ? band : null, bandTabsRef);
   const tabRow = useCurrentTabInView(activeId, tabEntries.map((entry) => entry.id).join(" "));
 
   const Icon = appModeIcons[modeId];
@@ -595,6 +596,8 @@ function ModeBandHeader({
       aria-label={modeName}
       className="mode-band"
       data-testid="mode-band"
+      // Lets a mode's band take its page's column (clinical-mode.css).
+      data-mode={modeId}
       data-mode-identity={IDENTITY_MODES.has(modeId) ? modeId : undefined}
     >
       <ModeMark Icon={Icon} />
@@ -605,9 +608,7 @@ function ModeBandHeader({
               <ChevronLeft aria-hidden="true" className="size-icon-lg shrink-0" strokeWidth={2.25} />
               {lead.label}
             </Link>
-          ) : (
-            <TodayDate />
-          )}
+          ) : null}
           {customiseHref ? (
             <Link href={customiseHref} className="mode-band__customise" aria-label="Customise">
               <Settings2 aria-hidden="true" className="size-icon-lg shrink-0" strokeWidth={2} />
@@ -615,10 +616,7 @@ function ModeBandHeader({
                 Customise
               </span>
             </Link>
-          ) : (
-            // A page's own action (My Day's Edit) takes Customise's place.
-            <span id={modeBandActionSlotId} className="contents" />
-          )}
+          ) : null}
         </div>
         {/* Not a heading: each page keeps its own h1 naming the page, which the
             top bar's pill also names; this is the mode's name. */}
@@ -640,7 +638,12 @@ function ModeBandHeader({
         ) : null}
       </div>
       {tabEntries.length > 1 ? (
-        <nav aria-label={`${modeName} pages`} className="mode-band__tabs" data-testid="mode-band-tabs">
+        <nav
+          ref={bandTabsRef}
+          aria-label={`${modeName} pages`}
+          className="mode-band__tabs"
+          data-testid="mode-band-tabs"
+        >
           <div ref={tabRow} className="mode-band__tab-row">
             {tabEntries.map((entry) => {
               const count = counts?.[entry.id] ?? 0;
@@ -826,18 +829,6 @@ export function PageTitleUnderBand({ className, children }: { className?: string
       {children}
     </h1>
   );
-}
-
-/**
- * A page's one header action, drawn opposite the date in its mode band (where
- * Customise sits on other modes) and styled like Customise there. With no
- * band it is drawn where it is placed, with the page's own look.
- */
-export function ModeBandAction({ children }: { children: (underBand: boolean) => ReactNode }) {
-  const shown = useModeBandShown();
-  const host = useModeBandHost(modeBandActionSlotId);
-  if (!shown) return <>{children(false)}</>;
-  return host ? createPortal(children(true), host) : null;
 }
 
 /** Draws its children only on a page with no mode band above it. */

@@ -33,11 +33,12 @@ describe("where an inner area goes back to", () => {
     expect(trail.origins.notify).toEqual(page("rost", "/roster"));
   });
 
-  it("remembers Manage team, or the side menu's page, for Open shifts", () => {
-    expect(walk([page("manage", "/roster/manage"), page("open", "/open-shifts")]).origins.open).toEqual(
+  // Open shifts became a Roster tab (12 Oct 2026), so Notifications is the inner area these walk through.
+  it("remembers Manage team, or the side menu's page, for Notifications", () => {
+    expect(walk([page("manage", "/roster/manage"), page("notify", "/my-day/notifications")]).origins.notify).toEqual(
       page("manage", "/roster/manage"),
     );
-    expect(walk([page("teach", "/teaching"), page("open", "/open-shifts")]).origins.open).toEqual(
+    expect(walk([page("teach", "/teaching"), page("notify", "/my-day/notifications")]).origins.notify).toEqual(
       page("teach", "/teaching"),
     );
   });
@@ -47,20 +48,24 @@ describe("where an inner area goes back to", () => {
   });
 
   it("keeps it while the reader moves between the inner area's own pages", () => {
-    const trail = walk([page("teach", "/teaching"), page("open", "/open-shifts"), page("open", "/open-shifts/mine")]);
-    expect(trail.origins.open).toEqual(page("teach", "/teaching"));
+    const trail = walk([
+      page("teach", "/teaching"),
+      page("notify", "/my-day/notifications"),
+      page("notify", "/my-day/notifications/earlier"),
+    ]);
+    expect(trail.origins.notify).toEqual(page("teach", "/teaching"));
   });
 
   it("never sends the reader back and forth between two inner areas", () => {
     const trail = walk([
       page("rost", "/roster"),
       page("manage", "/roster/manage"),
-      page("open", "/open-shifts"),
-      // Open shifts' back arrow returns to Manage team, which keeps Roster as its way back.
+      page("notify", "/my-day/notifications"),
+      // Notifications' back arrow returns to Manage team, which keeps Roster as its way back.
       { ...page("manage", "/roster/manage"), back: true },
     ]);
     expect(trail.origins.manage).toEqual(page("rost", "/roster"));
-    expect(trail.origins.open).toEqual(page("manage", "/roster/manage"));
+    expect(trail.origins.notify).toEqual(page("manage", "/roster/manage"));
   });
 
   it("takes a fresh way back when the reader opens it again from somewhere else", () => {

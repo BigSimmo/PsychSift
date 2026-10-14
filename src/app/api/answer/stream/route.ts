@@ -237,37 +237,41 @@ function streamAnswer(
             sendProgress({ stage: "analyzing", message: "Reading the committed document sections." });
             sendProgress({ stage: "generating", message: "Building the governed clinical summary." });
           }
-          const answer = await runAnswerWithPilotBudget({
-            ownerId,
-            documentId: body.documentId ?? (body.documentIds?.length === 1 ? body.documentIds[0] : undefined),
-            query: body.query,
-            queryMode: body.queryMode,
-            summaryMode: body.summaryMode,
-            activeFilterCount: scope?.activeFilterCount,
-            resolvedDocumentIds: scope?.documentIds,
-          }, () => body.summaryMode && body.documentId
-            ? summarizeDocument(body.documentId, ownerId, { signal, observationContext })
-            : answerQuestionWithScope({
-                  ...registeredPublicAnswerOptions({
-                    requesterId: ownerId,
+          const answer = await runAnswerWithPilotBudget(
+            {
+              ownerId,
+              documentId: body.documentId ?? (body.documentIds?.length === 1 ? body.documentIds[0] : undefined),
+              query: body.query,
+              queryMode: body.queryMode,
+              summaryMode: body.summaryMode,
+              activeFilterCount: scope?.activeFilterCount,
+              resolvedDocumentIds: scope?.documentIds,
+            },
+            () =>
+              body.summaryMode && body.documentId
+                ? summarizeDocument(body.documentId, ownerId, { signal, observationContext })
+                : answerQuestionWithScope({
+                    ...registeredPublicAnswerOptions({
+                      requesterId: ownerId,
+                      accessScope,
+                      explicitDocumentIds: body.documentIds ?? (body.documentId ? [body.documentId] : undefined),
+                      resolvedDocumentIds: scope?.documentIds,
+                      signal,
+                    }),
+                    query: body.query,
+                    documentId: singleDocumentScope ? body.documentId : undefined,
+                    documentIds: singleDocumentScope
+                      ? undefined
+                      : (scope?.documentIds ?? body.documentIds ?? (body.documentId ? [body.documentId] : undefined)),
+                    ownerId,
                     accessScope,
-                    explicitDocumentIds: body.documentIds ?? (body.documentId ? [body.documentId] : undefined),
-                    resolvedDocumentIds: scope?.documentIds,
+                    allowGlobalSearch: !ownerId,
+                    queryMode: body.queryMode,
+                    observationContext,
+                    onProgress,
                     signal,
                   }),
-                  query: body.query,
-                  documentId: singleDocumentScope ? body.documentId : undefined,
-                  documentIds: singleDocumentScope
-                    ? undefined
-                    : (scope?.documentIds ?? body.documentIds ?? (body.documentId ? [body.documentId] : undefined)),
-                  ownerId,
-                  accessScope,
-                  allowGlobalSearch: !ownerId,
-                  queryMode: body.queryMode,
-                  observationContext,
-                  onProgress,
-                  signal,
-                }));
+          );
           const governedResponse = buildGovernedAnswerClientResponse(answer);
 
           await persistAnswerDiagnostics({
@@ -287,9 +291,8 @@ function streamAnswer(
           // Parity with /api/answer (PR #315): outside production, a misconfigured
           // Supabase API key degrades to a visible demo answer instead of a stream
           // error — the UI's answer search uses this route, not /api/answer.
-          const fallbackReason = error instanceof AnswerPilotBudgetError
-            ? null
-            : nonProductionSupabaseDemoFallbackReason(error);
+          const fallbackReason =
+            error instanceof AnswerPilotBudgetError ? null : nonProductionSupabaseDemoFallbackReason(error);
           if (fallbackReason) {
             sendFinal({ ...buildDemoStreamAnswer(body, fallbackReason), interactionId });
             return;

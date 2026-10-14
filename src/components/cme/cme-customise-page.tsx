@@ -46,7 +46,7 @@ export function CmeCustomisePage() {
         testIdPrefix="cme-customise"
       />
       <main data-mode-identity="cme" data-testid="cme-customise" className="w-full">
-        <WorkBody>
+        <WorkBody testId="cme-customise-body">
           <h1 className="sr-only">Customise your Year page</h1>
 
           <section aria-labelledby="cme-module-top-heading" className="grid gap-1.5">

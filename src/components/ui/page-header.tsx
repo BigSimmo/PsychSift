@@ -16,7 +16,7 @@ import { ChevronRight, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ContextualBackLink } from "@/components/contextual-back-link";
-import { cn, eyebrowText, iconTilePremium, textMuted } from "@/components/ui-primitives";
+import { cn, iconTilePremium } from "@/components/ui-primitives";
 
 export type Crumb = {
   label: string;
@@ -111,6 +111,20 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
   );
 }
 
+/*
+ * One heading voice for every page title block. Exported so the few pages that
+ * hand-roll their own header (they own layout the shared component cannot)
+ * can borrow the same type instead of drifting: eyebrow 11px muted caps, title
+ * 24px (26px from sm) bold with tight tracking, description 14px muted capped
+ * at a comfortable line length. Spacing is 6px between each tier.
+ */
+export const pageHeadingEyebrowClass =
+  "text-2xs font-semibold uppercase leading-4 tracking-eyebrow text-[color:var(--text-muted)]";
+export const pageHeadingTitleClass =
+  "text-balance text-2xl font-bold leading-tight tracking-display text-[color:var(--text-heading)] sm:text-3xl-minus";
+export const pageHeadingDescriptionClass =
+  "max-w-[60ch] text-pretty text-sm font-normal leading-6 text-[color:var(--text-muted)]";
+
 export type PageHeaderProps = {
   title: string;
   /** Short kicker above the title — section, mode, or record kind. */
@@ -150,9 +164,8 @@ export type PageHeaderProps = {
  * I", so it wraps; the title column is `minmax(0, 1fr)` and the actions wrap onto
  * their own row rather than eating into it.
  *
- * The title also takes the display scale the hand-rolled product headers already
- * shipped (`text-2xl`/`sm:text-3xl`, extrabold), so converging onto this
- * component is not a demotion for the pages that converge.
+ * The title takes one shared scale (24px, 26px from sm, bold) so every page
+ * heading reads the same; see the exported `pageHeading*Class` strings.
  */
 export function PageHeader({
   title,
@@ -203,22 +216,16 @@ export function PageHeader({
             </span>
           ) : null}
           <div className="min-w-0">
-            {eyebrow ? <p className={eyebrowText}>{eyebrow}</p> : null}
+            {eyebrow ? <p className={pageHeadingEyebrowClass}>{eyebrow}</p> : null}
             {/* `items-baseline` would drop a bordered chip below the cap line of a
                 28px heading; `items-center` keeps the chip optically centred on
                 the title's first line, and `flex-wrap` sends it under the title
                 on a narrow screen rather than squeezing the heading. */}
             <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1.5", eyebrow && "mt-1.5")}>
-              <h1 className="text-balance text-2xl font-extrabold leading-tight tracking-tight text-[color:var(--text-heading)] sm:text-3xl">
-                {title}
-              </h1>
+              <h1 className={pageHeadingTitleClass}>{title}</h1>
               {inlineMeta}
             </div>
-            {description ? (
-              <p className={cn("mt-1.5 max-w-[68ch] text-pretty text-sm font-medium leading-6", textMuted)}>
-                {description}
-              </p>
-            ) : null}
+            {description ? <p className={cn("mt-1.5", pageHeadingDescriptionClass)}>{description}</p> : null}
           </div>
         </div>
         {actions ? <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div> : null}

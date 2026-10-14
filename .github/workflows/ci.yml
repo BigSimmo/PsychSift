@@ -115,7 +115,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: ".nvmrc"
           # No npm ci in this job: do not let setup-node save an empty ~/.npm (see setup-node-cached).
@@ -733,13 +733,19 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check "PyMuPDF==1.28.0"
 
       - name: Unit tests with partial coverage
+        # A partition takes 5-9 minutes. On PR #3450 (run 38102156845) partition 1 printed its last
+        # result after 6.5 minutes, went silent, and held the run until the 20-minute job cap. Every
+        # test already has a 30-second timeout, so a freeze outside a test body (a file import or a
+        # worker that never exits) is what this catches: the step now fails at 13 minutes instead,
+        # 7 minutes sooner, with the same red result. Nothing is skipped or retried.
+        timeout-minutes: 13
         run: >-
           node scripts/run-vitest.mjs run --config=vitest.coverage-shard.config.mts
           --coverage --shard=${{ matrix.shard }}/2 --reporter=default --reporter=blob
           --outputFile.blob=.vitest-ci/coverage-${{ matrix.shard }}.json
 
       - name: Preserve test and coverage results
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: unit-coverage-${{ github.run_id }}-${{ matrix.shard }}
           overwrite: true
@@ -779,7 +785,7 @@ jobs:
         uses: ./.github/actions/setup-node-cached
 
       - name: Download both coverage partitions from this run
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: unit-coverage-${{ github.run_id }}-*
           path: .vitest-ci
@@ -966,7 +972,7 @@ jobs:
         run: node scripts/run-playwright.mjs --project=chromium
 
       - name: Upload Playwright Next build
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-next-build-${{ github.run_id }}
           overwrite: true
@@ -1007,7 +1013,7 @@ jobs:
         uses: ./.github/actions/setup-ui-e2e
 
       - name: Download shared Playwright Next build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: playwright-next-build-${{ github.run_id }}
           path: .next-playwright/ci-${{ github.run_id }}
@@ -1024,7 +1030,7 @@ jobs:
 
       - name: Upload critical UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-ui-critical-diagnostics-${{ github.run_id }}-attempt${{ github.run_attempt }}
           path: |
@@ -1091,7 +1097,7 @@ jobs:
         uses: ./.github/actions/setup-ui-e2e
 
       - name: Download shared Playwright Next build
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: playwright-next-build-${{ github.run_id }}
           path: .next-playwright/ci-${{ github.run_id }}
@@ -1115,7 +1121,7 @@ jobs:
 
       - name: Upload UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Shard-scoped: upload-artifact v7 runs with `overwrite: false`, so a
           # shared name would make the second failing shard fail on upload.
@@ -1127,7 +1133,7 @@ jobs:
 
       - name: Preserve production shard timings
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: production-ui-timings-${{ github.run_id }}-${{ matrix.shard }}-attempt${{ github.run_attempt }}
           path: test-results/playwright-results.json
@@ -1171,7 +1177,7 @@ jobs:
 
       - name: Upload advisory UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: advisory-ui-diagnostics-${{ github.run_id }}-attempt${{ github.run_attempt }}
           path: |
@@ -1256,7 +1262,7 @@ jobs:
       # to commit as the baseline; on a later run they are the evidence of what moved.
       - name: Upload visual diffs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: visual-baseline-${{ github.run_id }}
           overwrite: true
@@ -1356,7 +1362,7 @@ jobs:
       # compile for itself (tests/check-lighthouse-budget.test.ts pins the parity).
       - name: Download shared Playwright Next build
         if: needs.ui-playwright-build.result == 'success'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: playwright-next-build-${{ github.run_id }}
           path: .next-playwright/ci-${{ github.run_id }}
@@ -1368,7 +1374,7 @@ jobs:
 
       - name: Upload Lighthouse reports
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-budget-${{ github.run_id }}
           overwrite: true
@@ -1429,7 +1435,7 @@ jobs:
 
       - name: Upload the refreshed baseline
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: lighthouse-baseline-refresh-${{ github.run_id }}
           overwrite: true
@@ -1572,7 +1578,7 @@ jobs:
 
       - name: Upload regenerated drift manifest
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: drift-manifest-${{ github.run_id }}
           overwrite: true
@@ -1923,9 +1929,15 @@ jobs:
       needs.changes.result == 'success' &&
       needs.static-pr.result == 'success' &&
       (needs.build.result == 'success' || needs.build.result == 'skipped') &&
-      (needs.ui-playwright-build.result == 'success' || needs.ui-playwright-build.result == 'skipped') &&
-      (needs.ui-critical.result == 'success' || needs.ui-critical.result == 'skipped')
-    needs: [changes, static-pr, build, ui-playwright-build, ui-critical]
+      (needs.ui-playwright-build.result == 'success' || needs.ui-playwright-build.result == 'skipped')
+    # Starts as soon as the shared Playwright build is ready, ALONGSIDE Production UI rather than
+    # after it. Waiting for Production UI bought nothing: these legs only read the shared build,
+    # and the run still fails on a red Production UI (it is required in its own right). Measured
+    # 2026-10-13: main run 38352161182 had the build ready at minute 4.1, but every leg waited until
+    # minute 15.2 for the three Chromium shards and the run ended at 34.1; dispatch runs
+    # 38369056741 and 38370421833 had one red Chromium shard, so the whole Firefox/WebKit matrix
+    # was skipped and its verdict deferred to another full round after the fix.
+    needs: [changes, static-pr, build, ui-playwright-build]
     runs-on: ubuntu-24.04
     # Per ENGINE, not for the whole matrix. Before 2026-09-07 one job ran
     # chromium-mockups + firefox + webkit sequentially under `workers: 1` /
@@ -1979,13 +1991,28 @@ jobs:
         # Before iPhone legs were five, two and three both timed out (runs
         # 36156676861, 36210366372, 36214387379); refresh the table from the
         # release-ui-timings artifacts before changing any count.
+        #
+        # 2026-10-11: tablet ran whole on one leg and never finished. Main run
+        # 38053471704 hit the 30-minute global timeout with 345 tablet tests not
+        # run, and that one leg held Railway's "Wait for CI" for ~35 min on every
+        # merge (main runs took 36-40 min). Tablet now splits four ways (~12 min
+        # each by its new timing table) and webkit three ways (19.5 -> 13 min by
+        # its existing table), so every tablet test runs and main finishes sooner.
+        #
+        # 2026-10-13: with the matrix no longer queued behind Production UI, desktop WebKit and
+        # Firefox were the slowest legs (main run 38352161182: webkit 17.2/13.0/14.2 min of tests,
+        # firefox 13.4/9.0/8.7). Both now split four ways, which brings them under the iPhone legs
+        # (their slowest single file, ui-smoke, is ~11 min and sets the floor).
         include:
           - { engine: chromium, project: chromium-mockups, shard: 1, total: 1 }
-          - { engine: firefox, project: firefox, shard: 1, total: 3 }
-          - { engine: firefox, project: firefox, shard: 2, total: 3 }
-          - { engine: firefox, project: firefox, shard: 3, total: 3 }
-          - { engine: webkit, project: webkit, shard: 1, total: 2 }
-          - { engine: webkit, project: webkit, shard: 2, total: 2 }
+          - { engine: firefox, project: firefox, shard: 1, total: 4 }
+          - { engine: firefox, project: firefox, shard: 2, total: 4 }
+          - { engine: firefox, project: firefox, shard: 3, total: 4 }
+          - { engine: firefox, project: firefox, shard: 4, total: 4 }
+          - { engine: webkit, project: webkit, shard: 1, total: 4 }
+          - { engine: webkit, project: webkit, shard: 2, total: 4 }
+          - { engine: webkit, project: webkit, shard: 3, total: 4 }
+          - { engine: webkit, project: webkit, shard: 4, total: 4 }
           - { engine: webkit, project: mobile-webkit, shard: 1, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 2, total: 5 }
           - { engine: webkit, project: mobile-webkit, shard: 3, total: 5 }
@@ -1996,7 +2023,10 @@ jobs:
           - { engine: webkit, project: mobile-pwa-standalone, shard: 3, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 4, total: 5 }
           - { engine: webkit, project: mobile-pwa-standalone, shard: 5, total: 5 }
-          - { engine: webkit, project: tablet, shard: 1, total: 1 }
+          - { engine: webkit, project: tablet, shard: 1, total: 4 }
+          - { engine: webkit, project: tablet, shard: 2, total: 4 }
+          - { engine: webkit, project: tablet, shard: 3, total: 4 }
+          - { engine: webkit, project: tablet, shard: 4, total: 4 }
 
     steps:
       - name: Checkout
@@ -2023,7 +2053,7 @@ jobs:
           BROWSER_ENGINE: ${{ matrix.engine }}
         run: |
           if command -v sudo >/dev/null 2>&1; then
-            sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+            sudo sed -i 's/azure\.archive\.ubuntu\.com/archive.ubuntu.com/g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list /etc/apt/apt-mirrors.txt 2>/dev/null || true
             sudo mkdir -p /etc/apt/apt.conf.d
             sudo tee /etc/apt/apt.conf.d/99flaky-mirror-resilience >/dev/null << 'EOF'
           Acquire::Retries "3";
@@ -2031,26 +2061,46 @@ jobs:
           Acquire::https::Timeout "30";
           EOF
           fi
+          # The runner's apt sources resolve through the mirror list in apt-mirrors.txt, so
+          # rewriting only the sources files left apt waiting on the azure mirror until the
+          # attempt timed out.
+          # `set -e`: without it a failed `install-deps` on a cache hit was masked by the
+          # browser download that followed, so the attempt "passed" with apt libraries
+          # missing and every WebKit test died at launch (libevent-2.1.so.7, main run
+          # 38228339791). The launch probe proves the engine actually starts on this
+          # runner, so a missing library fails here and retries instead of in each test.
           install_browsers() {
+            set -e
             if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
               npx playwright install-deps "$BROWSER_ENGINE"
               npx playwright install "$BROWSER_ENGINE"
             else
               npx playwright install --with-deps "$BROWSER_ENGINE"
             fi
+            node -e 'require("playwright")[process.env.BROWSER_ENGINE].launch().then((browser) => browser.close())'
           }
           for attempt in 1 2 3; do
             if timeout 180 bash -c "$(declare -f install_browsers); install_browsers"; then
               exit 0
             fi
             echo "Playwright browsers install attempt $attempt timed out or failed, retrying..." >&2
+            # `timeout` kills the attempt's shell but not the root apt-get it started, which
+            # then holds the apt lock and fails every retry (dispatch run 38234519037). Stop
+            # it (and any dpkg it started), then finish half-configured packages, bounded so a stalled
+            # recovery cannot hold the loop, before the next attempt.
+            if command -v sudo >/dev/null 2>&1; then
+              sudo pkill -x apt-get || true
+              sudo pkill -x dpkg || true
+              sleep 2
+              sudo timeout 120 dpkg --configure -a || true
+            fi
             sleep 5
           done
           exit 1
 
       - name: Download matching production browser build
         if: matrix.engine != 'chromium' && needs.ui-playwright-build.result == 'success'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: playwright-next-build-${{ github.run_id }}
           path: .next-playwright/ci-${{ github.run_id }}
@@ -2067,9 +2117,11 @@ jobs:
           # includes mockups, whose public flag is baked in, so it builds its own.
           # If the producer was out of scope, the wrapper also builds normally.
           PLAYWRIGHT_REUSE_BUILD: ${{ matrix.engine != 'chromium' && needs.ui-playwright-build.result == 'success' }}
-          # "true" only when this main push skipped Production UI because the identical tree already
-          # passed it on the merged PR (Main tree proof) — the same proof the primary path relies on.
-          UI_PROVEN_BY_PR: ${{ needs.changes.outputs.tree_proven_ui }}
+          # When UI changed, production Chromium is proven either by Production UI in this same run
+          # (it runs whenever UI changed and no proof exists, and the run fails if it fails) or, on a
+          # main push, by the merged PR's identical tree (Main tree proof). Either way this matrix
+          # need not repeat it.
+          UI_CHANGED: ${{ needs.changes.outputs.ui_changed }}
         run: |
           # Both paths below are exhaustive across playwright.config.ts projects
           # for their own path, and disjoint between engines. The fail-safe union
@@ -2077,9 +2129,9 @@ jobs:
           # vanish from CI silently, so
           # `tests/ci-browser-matrix-coverage.test.ts` re-derives both unions from
           # this file plus playwright.config.ts and fails closed on any drift.
-          if [ "${{ needs.changes.outputs.ui_changed }}" = "true" ] && { [ "${{ needs.ui-critical.result }}" = "success" ] || [ "$UI_PROVEN_BY_PR" = "true" ]; }; then
-            # Production Chromium already passed — in this run, or on the merged PR's
-            # byte-identical tree. Keep mockup Chromium plus the cross-browser
+          if [ "$UI_CHANGED" = "true" ]; then
+            # Production Chromium is proven by Production UI in this run, or on the merged
+            # PR's byte-identical tree. Keep mockup Chromium plus the cross-browser
             # backstop without repeating it.
             case "$ENGINE" in
               chromium) PROJECTS="--project=chromium-mockups" ;;
@@ -2110,7 +2162,7 @@ jobs:
 
       - name: Upload UI diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Per project/partition: a shared name makes another failing job fail on
           # upload, the same trap already documented on the Production UI shards.
@@ -2122,7 +2174,7 @@ jobs:
 
       - name: Preserve browser partition timings
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-ui-timings-${{ github.run_id }}-${{ matrix.project }}-${{ matrix.shard }}-attempt${{ github.run_attempt }}
           path: test-results/playwright-results.json
@@ -2166,6 +2218,11 @@ jobs:
     if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # No job-level `concurrency` group on purpose. A concurrency group keeps only ONE pending job and
+    # replaces it with whichever job became ready last, which follows run-finish order, not commit
+    # order: a newer red run's routing could be cancelled by an older green run, leaving the issue
+    # closed while main is red (and cancelling that newer run's whole CI result). Ordering is
+    # instead enforced by the routed-sha stamp, and re-checked immediately before each write.
     permissions:
       contents: read
       issues: write
@@ -2268,12 +2325,97 @@ jobs:
               }
             }
 
-            const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
+            // A run older than the one that last routed must not undo it. Runs finish out of order: on
+            // 2026-10-13 the tip's green run closed the issue at 17:27Z and an older commit's run,
+            // finishing at 17:33Z, reopened it for a failure main no longer had. Every body this job
+            // writes carries the commit it last routed, and a run whose commit is BEHIND that one
+            // stands down. Ordering by what was last routed (not by "is this main's tip") means a busy
+            // merge streak cannot suppress every alert: an older red run still speaks when nothing
+            // newer has. Fails open: an unreadable ordering routes rather than loses an alert.
+            const ROUTED_PATTERN = /<!-- routed-sha:([0-9a-f]{7,40}) -->/;
+            const withRoutedStamp = (text) => {
+              const base = String(text ?? "").replace(ROUTED_PATTERN, "").trimEnd();
+              return headSha ? `${base}\n<!-- routed-sha:${headSha} -->` : base;
+            };
+            async function isSuperseded(issue) {
+              const routedSha = ROUTED_PATTERN.exec(String(issue?.body ?? ""))?.[1];
+              if (!headSha || !routedSha || routedSha === headSha) return false;
+              try {
+                const { data: comparison } = await github.rest.repos.compareCommits({
+                  owner,
+                  repo,
+                  base: routedSha,
+                  head: headSha,
+                });
+                return comparison?.status === "behind";
+              } catch (error) {
+                core.warning(`Could not order this run against ${routedSha.slice(0, 12)}, routing it anyway: ${error.message}`);
+                return false;
+              }
+            }
+
             const owned = (issue) => String(issue.body ?? "").includes(MARKER) || issue.title === title;
-            const existing = open.find(owned) ?? null;
+
+            // The most recent issue this job closed, matched by marker only so it never reopens an
+            // issue a person wrote. It is the ordering reference when nothing is open, and the issue a
+            // new red spell reopens.
+            async function latestClosedOwned() {
+              const { data: closed } = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: "closed",
+                labels: label,
+                sort: "updated",
+                direction: "desc",
+                per_page: 20,
+              });
+              return closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
+            }
+
+            // `existing` is our open issue; `previous` is the latest closed one, read only when nothing
+            // is open. Every write below acts on these two, so the re-check rebuilds both together.
+            async function readIssueState() {
+              const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
+              const openOwned = open.find(owned) ?? null;
+              return { existing: openOwned, previous: openOwned ? null : await latestClosedOwned() };
+            }
+            let { existing, previous } = await readIssueState();
+
+            // Re-read the issue state right before writing, so a run that routed while this one was
+            // reading is honoured, and the writes below act on the fresh open/closed issue rather than
+            // the stale one. This replaces serialisation: the window is a few API calls, not a whole
+            // job. Fails open like the ordering lookup: an unreadable re-check routes on the state
+            // already read rather than aborting and losing the alert.
+            async function supersededNow() {
+              try {
+                ({ existing, previous } = await readIssueState());
+              } catch (error) {
+                core.warning(`Could not re-read the pinned issue before writing, routing on the state already read: ${error.message}`);
+                return false;
+              }
+              return isSuperseded(existing ?? previous);
+            }
+
+            if (await isSuperseded(existing ?? previous)) {
+              core.info(
+                `Run for ${headSha.slice(0, 12)} is older than the commit already routed; ` +
+                  `leaving the pinned issue alone (this run was ${red ? "red" : "green"}).`,
+              );
+              return;
+            }
+
+            if (await supersededNow()) {
+              core.info(`Run for ${headSha.slice(0, 12)} was superseded while reading; leaving the pinned issue alone.`);
+              return;
+            }
 
             if (!red) {
               if (!existing) {
+                // Record this green run on the closed issue, so a still-older red run that finishes
+                // after it cannot reopen the issue for a failure main no longer has.
+                if (previous && withRoutedStamp(previous.body) !== String(previous.body ?? "")) {
+                  await github.rest.issues.update({ owner, repo, issue_number: previous.number, body: withRoutedStamp(previous.body) });
+                }
                 core.info("CI on main is green and no failure issue of ours is open.");
                 return;
               }
@@ -2293,7 +2435,14 @@ jobs:
                   MARKER,
                 ].join("\n"),
               });
-              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: "closed", state_reason: "completed" });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: "closed",
+                state_reason: "completed",
+                body: withRoutedStamp(existing.body),
+              });
               core.info(`Closed #${existing.number} after a green main run.`);
               return;
             }
@@ -2324,9 +2473,10 @@ jobs:
               "is a standing defect rather than a regression this push introduced.",
               MARKER,
             ].join("\n");
+            const stampedBody = withRoutedStamp(body);
 
             if (existing) {
-              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body: stampedBody });
               await github.rest.issues.createComment({
                 owner,
                 repo,
@@ -2339,18 +2489,8 @@ jobs:
               // Reopen the most recent issue this job closed rather than opening a new one per red
               // spell (owner decision, 2026-09-26: main flips red and green often, and 25 issues in a
               // day was noise). Marker-only match, so it never reopens an issue a person wrote.
-              const { data: closed } = await github.rest.issues.listForRepo({
-                owner,
-                repo,
-                state: "closed",
-                labels: label,
-                sort: "updated",
-                direction: "desc",
-                per_page: 20,
-              });
-              const previous = closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
               if (previous) {
-                await github.rest.issues.update({ owner, repo, issue_number: previous.number, state: "open", title, body });
+                await github.rest.issues.update({ owner, repo, issue_number: previous.number, state: "open", title, body: stampedBody });
                 await github.rest.issues.createComment({
                   owner,
                   repo,
@@ -2360,7 +2500,7 @@ jobs:
                 await assignAlert(previous.number);
                 core.warning(`CI on main is failing; reopened #${previous.number}.`);
               } else {
-                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: stampedBody });
                 await assignAlert(created.data.number);
                 core.warning(`CI on main is failing; opened #${created.data.number}.`);
               }

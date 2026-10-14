@@ -194,10 +194,9 @@ export async function GET(request: Request) {
           degraded: canonical.degraded,
           governance: Object.fromEntries(canonical.records.map((entry) => [entry.workflow.id, entry.governance])),
         },
-        // Not widened to `canonical.degraded`: `fixture` lengthens public cacheability, which is
-        // right for an uninitialised corpus and wrong for a degraded read that may heal in the
-        // thirty-second cooldown. Same reasoning as the registry list route.
-        { request, fixture: observed.source === "seed_uninitialized" },
+        // `fixture` lengthens public cacheability for canonical public responses, but is withheld
+        // when `canonical.degraded` is true to avoid pinning a temporary seed fallback.
+        { request, fixture: !canonical.degraded },
       );
     }
     const differentialSeeds = differentialRecords.map((record) => ({
@@ -239,7 +238,7 @@ export async function GET(request: Request) {
         degraded: canonical.degraded,
         governance: Object.fromEntries(canonical.records.map((entry) => [entry.record.slug, entry.governance])),
       },
-      { request, fixture: observed.source === "seed_uninitialized" },
+      { request, fixture: !canonical.degraded },
     );
   } catch (error) {
     // A cancelled request is not a fault: answer 499, exactly as the catch in /api/search does.

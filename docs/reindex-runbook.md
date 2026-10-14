@@ -37,11 +37,11 @@ npm run reindex -- --yes --max-rounds 5
 
 ## Manual safe sequence
 
-If you prefer to run each step by hand (or need to apply a migration in between):
+If you prefer to run each step by hand (or need to reconcile a migration in between):
 
 1. Confirm the target project is `sjrfecxgysukkwxsowpy`.
 2. Run `npm run supabase:recovery-status`.
-3. Apply any pending local migration only after the probe succeeds.
+3. Confirm migration alignment (merging `supabase/migrations/*.sql` to `main` triggers the Supabase GitHub integration auto-deploy in ~34s to production `sjrfecxgysukkwxsowpy`; manual apply is only for recovery/reconciliation when auto-deploy fails, and only with explicit operator approval after the health probe succeeds).
 4. Run `npm run reindex:health`.
 5. If stale or failed jobs exist, run `npm run recover:ingestion` and confirm the prompt.
 6. Run `npm run worker:once` with the conservative defaults from `.env.example`.
@@ -55,6 +55,7 @@ If the response includes `safety.safeToRun: false`, do not retry repeatedly. Use
 
 - `supabase_unavailable`: pause reindexing and rerun `npm run supabase:recovery-status`.
 - `active_jobs`: wait for pending or processing jobs to finish before retrying.
+- `active_agent_enrichment`: an agent-enrichment pass is running on one or more selected documents; wait for it to finish before reindexing.
 - `stale_processing_jobs`: run `npm run recover:ingestion -- --apply --limit 20`, then rerun `npm run reindex:health`.
 - `queued` documents with no open job (upload crash between document insert and job insert): dry-run `npm run recover:ingestion -- --include-stranded-queued`, then re-run with `--apply` after reviewing the candidate list. Optional `--owner-id` and `--stranded-min-age-minutes` keep the sweep bounded. The six-hour ingestion-autopilot probe detects aged owner-scoped rows and opens/updates the operator alert issue; it never applies this recovery unless the guarded manual apply dispatch is used.
 

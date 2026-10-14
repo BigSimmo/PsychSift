@@ -95,7 +95,11 @@ import {
 import { decodeRetainedOriginalWitness } from "./original-witness-readback";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { runManagedPrivateSupplier, type ManagedPreparedSupplierInput } from "./managed-prepared-supplier";
-import { evaluateManagedAdminPdfCompletion, completeManagedAdminPdfAttempt, type ManagedAdminPdfCompletionEvidence } from "./managed-admin-pdf-terminal";
+import {
+  evaluateManagedAdminPdfCompletion,
+  completeManagedAdminPdfAttempt,
+  type ManagedAdminPdfCompletionEvidence,
+} from "./managed-admin-pdf-terminal";
 import {
   assertManagedProviderEmbeddingBatch,
   deriveManagedProviderEmbeddingRequestContext,
@@ -198,12 +202,14 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   const attempts = new Map<string, IngestionAttempt>();
   const documentAttempts = new Map<string, IngestionAttempt>();
   const providerContexts = new WeakMap<JobRow, IngestionProviderEgressContext>();
-  const managedEmbeddingScope = new AsyncLocalStorage<Readonly<{
-    job: JobRow;
-    attempt: IngestionAttempt;
-    producer: ManagedProviderEmbeddingBatchContext;
-    expectedPlanDigest: string;
-  }>>();
+  const managedEmbeddingScope = new AsyncLocalStorage<
+    Readonly<{
+      job: JobRow;
+      attempt: IngestionAttempt;
+      producer: ManagedProviderEmbeddingBatchContext;
+      expectedPlanDigest: string;
+    }>
+  >();
   function providerContextForJob(job: JobRow) {
     const context = providerContexts.get(job);
     if (!context) throw new ProviderEgressDeniedError("provider_egress_permit_invalid");
@@ -1591,7 +1597,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       Math.min(60_000, jobLeaseHeartbeatMs),
     );
     let extracted: ExtractedDocument | null = null;
-    let preparedPdf: { sourceSha256: string; extracted: ExtractedDocument; capturedImages: Awaited<ReturnType<typeof captureGenerationImages>> } | undefined;
+    let preparedPdf:
+      | {
+          sourceSha256: string;
+          extracted: ExtractedDocument;
+          capturedImages: Awaited<ReturnType<typeof captureGenerationImages>>;
+        }
+      | undefined;
     const atomicReindex = isAtomicReindexCandidate(job.documents);
     try {
       const ordinaryObservations = options.loadObservationsForJob?.(job, attempt);
@@ -1646,15 +1658,16 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
           });
           attempt.check();
           const pages = buildDocumentPageRows(job.document_id, original);
-          const originalCapturedImages = source.sourceFamily === "native_pdf"
-            ? await captureGenerationImages({
-                extracted: original,
-                trustedTemporaryRoots: "temporaryPaths" in original ? original.temporaryPaths ?? [] : [],
-                fileName: job.documents.file_name,
-                mimeType: job.documents.file_type,
-                check: () => attempt.check(),
-              })
-            : [];
+          const originalCapturedImages =
+            source.sourceFamily === "native_pdf"
+              ? await captureGenerationImages({
+                  extracted: original,
+                  trustedTemporaryRoots: "temporaryPaths" in original ? (original.temporaryPaths ?? []) : [],
+                  fileName: job.documents.file_name,
+                  mimeType: job.documents.file_type,
+                  check: () => attempt.check(),
+                })
+              : [];
           attempt.check();
           const packet = buildGenerationRetentionPacket({
             documentId: job.document_id,
@@ -1670,15 +1683,21 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             capturedImages: originalCapturedImages,
             deferOptionalProducerDeclarations: true,
           });
-          if (source.sourceFamily !== "native_pdf") buildManagedAdminTextChunks({
-            documentId: job.document_id,
-            packet,
-            originalBytes: bytes,
-            witnessBytes: source.sourceExpectationWitnessBytes,
-            extracted: original,
-            sourceSectionLayout: source.sourceSectionLayout,
-          });
-          if (source.sourceFamily === "native_pdf") preparedPdf = { sourceSha256: source.sourceSha256, extracted: original, capturedImages: originalCapturedImages };
+          if (source.sourceFamily !== "native_pdf")
+            buildManagedAdminTextChunks({
+              documentId: job.document_id,
+              packet,
+              originalBytes: bytes,
+              witnessBytes: source.sourceExpectationWitnessBytes,
+              extracted: original,
+              sourceSectionLayout: source.sourceSectionLayout,
+            });
+          if (source.sourceFamily === "native_pdf")
+            preparedPdf = {
+              sourceSha256: source.sourceSha256,
+              extracted: original,
+              capturedImages: originalCapturedImages,
+            };
           return packet;
         },
       });
@@ -1701,22 +1720,25 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const legacyExtractionStartedAt = Date.now();
       if (preparedPdf && `sha256:${createHash("sha256").update(buffer).digest("hex")}` !== preparedPdf.sourceSha256)
         throw new Error("managed_native_pdf_source_changed_after_registration");
-      extracted = preparedPdf?.extracted ?? await extractDocument({
-        buffer,
-        fileName: job.documents.file_name,
-        mimeType: job.documents.file_type,
-      });
+      extracted =
+        preparedPdf?.extracted ??
+        (await extractDocument({
+          buffer,
+          fileName: job.documents.file_name,
+          mimeType: job.documents.file_type,
+        }));
       attempt.check();
       const legacyExtractionWallMs = Date.now() - legacyExtractionStartedAt;
       const capturedImages =
         evidenceInventory.managed === true
-          ? preparedPdf?.capturedImages ?? await captureGenerationImages({
+          ? (preparedPdf?.capturedImages ??
+            (await captureGenerationImages({
               extracted,
               trustedTemporaryRoots: extracted.temporaryPaths ?? [],
               fileName: job.documents.file_name,
               mimeType: job.documents.file_type,
               check: () => attempt.check(),
-            })
+            })))
           : [];
 
       await updateJobProgress(job.id, { stage: "saving pages", progress: 32 });
@@ -1843,9 +1865,10 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             includeLocalMemory: true,
           };
           if (job.documents.file_type === "application/pdf") {
-
-            if (packet.registration.sourceSha256 !== PRIVATE_FIXTURE_SOURCE_SHA256 &&
-                !options.loadManagedAdminPdfCompletionEvidence)
+            if (
+              packet.registration.sourceSha256 !== PRIVATE_FIXTURE_SOURCE_SHA256 &&
+              !options.loadManagedAdminPdfCompletionEvidence
+            )
               throw new Error("managed_admin_pdf_registered_completion_evidence_required");
             const roles = await options.loadManagedNativePdfSourceRoles?.(supplierInput);
             attempt.check();
@@ -1941,7 +1964,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
               });
               attempt.check();
               await completeManagedAdminPdfAttempt({
-                attempt, packet: evaluated.packet,
+                attempt,
+                packet: evaluated.packet,
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
               });

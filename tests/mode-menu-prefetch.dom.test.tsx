@@ -11,6 +11,7 @@ import { LAST_APP_MODE_STORAGE_KEY } from "@/components/clinical-dashboard/use-l
 import { appModeSelectionHref, visibleAppModeDefinitionsForSession, type AppModeId } from "@/lib/app-modes";
 import { modeMenuSideForMode, orderModesForSide } from "@/lib/phone-mode-groups";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
+import { registerNavigationGuard } from "@/lib/navigation-guards";
 
 /**
  * The destination URL the mode picker itself will open for `modeId`.
@@ -187,24 +188,45 @@ describe("mode menu destination prefetch", () => {
     expect(prefetched.size).toBeLessThan(guestModeHomes().length);
   });
 
-  it("prefetches and opens the canonical all-tools directory from the mode menu", async () => {
+  it("prefetches and opens the Psychiatry dashboard from the mode menu, with Tools no longer listed", async () => {
+    // Tools left the mode menu (audit item 8, 11 Oct 2026); `/tools` still opens
+    // for old links. Psychiatry, a standalone dashboard like it, takes the case.
     const user = userEvent.setup();
     const onSearchModeChange = vi.fn();
 
     render(<MasterSearchHeader {...headerProps()} onSearchModeChange={onSearchModeChange} />);
     await user.click(screen.getByRole("button", { name: /Mode Answer/i }));
-    const toolsOption = within(await screen.findByRole("menu", { name: "Choose app mode" })).getByRole(
-      "menuitemradio",
-      { name: /^Tools\b/i },
-    );
+    const menu = within(await screen.findByRole("menu", { name: "Choose app mode" }));
+    expect(menu.queryByRole("menuitemradio", { name: /^Tools\b/i })).toBeNull();
+    const psychiatryOption = menu.getByRole("menuitemradio", { name: /^Psychiatry\b/i });
 
-    await user.hover(toolsOption);
-    expect(router.prefetch.mock.calls.some(([href]) => href === "/tools")).toBe(true);
+    await user.hover(psychiatryOption);
+    expect(router.prefetch.mock.calls.some(([href]) => href === "/psychiatry")).toBe(true);
 
-    await user.click(toolsOption);
-    expect(router.push).toHaveBeenCalledWith("/tools");
+    await user.click(psychiatryOption);
+    expect(router.push).toHaveBeenCalledWith("/psychiatry");
     expect(onSearchModeChange).not.toHaveBeenCalled();
-    expect(window.localStorage.getItem(LAST_APP_MODE_STORAGE_KEY)).toBe("tools");
+    expect(window.localStorage.getItem(LAST_APP_MODE_STORAGE_KEY)).toBe("psychiatry");
+  });
+
+  it("keeps the mode menu open when a page with unsaved work says stay", async () => {
+    // The safety plan registers a guard like this while it holds entries.
+    const guard = vi.fn(() => false);
+    const unregister = registerNavigationGuard(guard);
+    try {
+      const user = userEvent.setup();
+      render(<MasterSearchHeader {...headerProps()} />);
+      await user.click(screen.getByRole("button", { name: /Mode Answer/i }));
+      const menu = within(await screen.findByRole("menu", { name: "Choose app mode" }));
+      await user.click(menu.getByRole("menuitemradio", { name: /^Psychiatry\b/i }));
+
+      expect(guard).toHaveBeenCalledTimes(1);
+      expect(router.push).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem(LAST_APP_MODE_STORAGE_KEY)).toBeNull();
+      expect(screen.getByRole("menu", { name: "Choose app mode" })).toBeInTheDocument();
+    } finally {
+      unregister();
+    }
   });
 
   it("warms a mode again after Next invalidates its cached payload", async () => {
@@ -267,20 +289,25 @@ describe("mode menu destination prefetch", () => {
     });
   });
 
-  it("restores mode-trigger focus when re-opening the active Tools directory", async () => {
+  it("restores mode-trigger focus when re-opening the active First Nations home", async () => {
+    // A standalone home in the Clinical list, in place of the Tools directory
+    // that left the mode menu (audit item 8, 11 Oct 2026).
     const user = userEvent.setup();
     const onSearchModeChange = vi.fn();
-    render(<MasterSearchHeader {...headerProps()} searchMode="tools" onSearchModeChange={onSearchModeChange} />);
-
-    const trigger = screen.getByRole("button", { name: /Mode Tools/i });
-    await user.click(trigger);
-    const toolsOption = within(await screen.findByRole("menu", { name: "Choose app mode" })).getByRole(
-      "menuitemradio",
-      { name: /^Tools\b/i },
+    render(
+      <MasterSearchHeader {...headerProps()} searchMode="first-nations" onSearchModeChange={onSearchModeChange} />,
     );
-    await user.click(toolsOption);
 
-    expect(router.push).toHaveBeenCalledWith("/tools");
+    const trigger = screen.getByRole("button", { name: /Mode First Nations/i });
+    await user.click(trigger);
+    // The pill opens on First Nations' own pages; step back to the mode list.
+    await user.click(await screen.findByRole("button", { name: "Back to all modes" }));
+    const homeOption = within(await screen.findByRole("menu", { name: "Choose app mode" })).getByRole("menuitemradio", {
+      name: /^First Nations\b/i,
+    });
+    await user.click(homeOption);
+
+    expect(router.push).toHaveBeenCalledWith("/first-nations");
     expect(onSearchModeChange).not.toHaveBeenCalled();
     await vi.waitFor(() => {
       expect(trigger).toHaveFocus();
@@ -327,7 +354,7 @@ describe("mode menu destination prefetch", () => {
     expect(within(dialog).queryByRole("textbox", { name: "Find a mode" })).toBeNull();
     expect(within(dialog).queryByRole("menuitemradio", { name: /^On Call\b/i })).toBeNull();
     expect(within(dialog).getByRole("menuitemradio", { name: /^Answer\b/i })).toBeTruthy();
-    expect(within(dialog).getByRole("status")).toHaveTextContent("18 in Clinical");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("17 in Clinical");
 
     await user.click(within(dialog).getByRole("radio", { name: "Work" }));
     expect(within(dialog).getByRole("menuitemradio", { name: /^On Call\b/i })).toBeTruthy();

@@ -34,7 +34,7 @@ import {
   RosterSectionHead,
 } from "@/components/roster/roster-list";
 import { useRosterRead, useRosterTeams } from "@/components/roster/use-roster-team";
-import { useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
 import { WEEKDAYS, addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterLeave } from "@/lib/roster/leave";
 import { isRosterLeaveKind, ROSTER_LEAVE_KIND_LABEL, type RosterLeaveKind } from "@/lib/roster/leave-kinds";
@@ -148,11 +148,12 @@ function TryAgainNote({ children, onRetry }: { children: ReactNode; onRetry: () 
   return <WorkStateNotice kind="error" title={children} onRetry={onRetry} />;
 }
 
-/** Dates I can't work, leave and shifts I can't make. Swaps and open shifts live on the Swaps page. */
+/** Sick for tomorrow, dates I can't work, leave and shifts I can't make. Swaps and open shifts live on the Swaps tab. */
 export function RosterRequestsPage() {
   const now = useRosterNow();
   // The band's words (mockup `rost_requests`); the page heading "Requests" stays under it.
   useModeBandHeading({ eyebrow: "Leave, dates and shift changes", title: "Leave and requests" });
+  const bandShown = useModeBandShown();
   const newButtonClearance = useRosterNewButtonClearance();
   const search = useSyncExternalStore(subscribeSearch, searchSnapshot, serverSearchSnapshot);
   const [consumedSearch, setConsumedSearch] = useState<string | null>(null);
@@ -347,7 +348,12 @@ export function RosterRequestsPage() {
           />
         }
       />
-      <div className="grid min-w-0 gap-3" data-mode-identity="roster">
+      {/* Under the band the page header draws nothing, but the shell still puts its gap after it, so the
+          first card would sit an empty gap below the tabs. Pull the content up by that gap. */}
+      <div
+        className={bandShown ? "-mt-5 grid min-w-0 gap-3 sm:-mt-6" : "grid min-w-0 gap-3"}
+        data-mode-identity="roster"
+      >
         {enabled.length > 1 ? (
           <label className="grid max-w-sm gap-1 text-sm text-[color:var(--text-muted)]">
             Team
@@ -404,14 +410,17 @@ export function RosterRequestsPage() {
           </RosterNote>
         ) : null}
         <RosterSentBar receipt={sent} clear={clearSent} />
-        <RosterList>
-          <RosterRow
-            href="/roster/swaps"
-            lead={<RosterIconLead icon={ArrowLeftRight} />}
-            title="Swaps and open shifts"
-            sub="Answer a swap, follow one you sent, or take an open shift"
-          />
-        </RosterList>
+        {/* Swaps have their own tab, so the first row here is the one urgent request: sick for tomorrow. */}
+        <NewWorkModeOnly>
+          <RosterList>
+            <RosterRow
+              href="/roster/sick"
+              lead={<RosterIconLead icon={Thermometer} />}
+              title="Sick for tomorrow"
+              sub="Tell your team you can't come in. No reason needed."
+            />
+          </RosterList>
+        </NewWorkModeOnly>
 
         <section aria-labelledby="roster-requests-leave" className="grid min-w-0 gap-3">
           <RosterSectionHead

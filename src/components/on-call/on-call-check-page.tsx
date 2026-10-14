@@ -4,7 +4,6 @@ import { CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { cardSurface } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { onCallEntryHref, onCallViewForEntry } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
@@ -136,37 +135,48 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
                   <h2 id={`on-call-check-${group.id}`} className={cn(eyebrowText, "mb-2")}>
                     {group.title} · {group.items.length}
                   </h2>
-                  <ul className="flex flex-col gap-2" data-testid={`on-call-check-group-${group.id}`}>
-                    {group.items.map(({ entry, dueAt }) => (
-                      <li key={entry.id} className={cn(cardSurface, "flex flex-col gap-2 p-3")}>
-                        <div className="min-w-0">
-                          <p className={eyebrowText}>{ON_CALL_VIEW_TITLES[onCallViewForEntry(entry)]}</p>
-                          <p className="text-sm font-semibold text-[color:var(--text)]">{entry.title}</p>
-                          <p className={cn(textMuted, "text-xs")}>
-                            {entry.lastVerifiedAt
-                              ? `Checked ${formatClinicalDate(entry.lastVerifiedAt)}${
-                                  dueAt ? ` · due ${formatClinicalDate(dueAt.toISOString())}` : ""
-                                }`
-                              : "Never checked"}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
+                  {/* One card of rows rather than a card per entry (Work mode simplify plan, 12 Oct 2026):
+                      the row opens the entry to fix it, and Still correct sits at its right. Demo entries
+                      cannot be confirmed, so their rows carry no greyed-out button. */}
+                  <ul className="work-card min-w-0" data-testid={`on-call-check-group-${group.id}`}>
+                    {group.items.map(({ entry, dueAt }, index) => (
+                      <li
+                        key={entry.id}
+                        className={cn(
+                          "flex min-w-0 items-center gap-2 py-1 pl-3 pr-2",
+                          index > 0 && "border-t border-[color:var(--border)]",
+                        )}
+                      >
+                        <Link
+                          href={onCallEntryHref(entry)}
+                          aria-label={`${entry.title}. Open to edit`}
+                          className="grid min-h-tap min-w-0 flex-1 content-center py-1.5 no-underline"
+                        >
+                          <span className="break-words text-sm font-semibold text-[color:var(--text)]">
+                            {entry.title}
+                          </span>
+                          <span className={cn(textMuted, "break-words text-xs")}>
+                            {[
+                              ON_CALL_VIEW_TITLES[entry.view ?? onCallViewForEntry(entry)],
+                              entry.lastVerifiedAt
+                                ? `Checked ${formatClinicalDate(entry.lastVerifiedAt)}${
+                                    dueAt ? `, due ${formatClinicalDate(dueAt.toISOString())}` : ""
+                                  }`
+                                : "Never checked",
+                            ].join(" · ")}
+                          </span>
+                        </Link>
+                        {demoMode ? null : (
                           <button
                             type="button"
-                            className={floatingControl}
-                            disabled={demoMode || pending !== null}
+                            className={cn(floatingControl, "shrink-0")}
+                            disabled={pending !== null}
                             onClick={() => void confirm(entry)}
                             data-testid={`on-call-check-confirm-${entry.slug}`}
                           >
                             {pending === entry.id ? "Saving…" : "Still correct"}
                           </button>
-                          <Link
-                            href={onCallEntryHref(entry)}
-                            className="inline-flex min-h-tap items-center px-2 text-sm font-semibold text-[color:var(--clinical-accent)]"
-                          >
-                            Open to edit
-                          </Link>
-                        </div>
+                        )}
                       </li>
                     ))}
                   </ul>

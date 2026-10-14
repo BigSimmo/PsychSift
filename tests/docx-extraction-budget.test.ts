@@ -51,7 +51,8 @@ async function buildDocx(
 async function captureExtractionError(promise: ReturnType<typeof extractDocument>) {
   return promise.then(
     async (result) => {
-      const temporaryPaths = "temporaryPaths" in result ? result.temporaryPaths : [];
+      const temporaryPaths = result.temporaryPaths;
+      if (temporaryPaths === undefined) throw new Error("DOCX extraction must return temporary paths for cleanup");
       await Promise.all(temporaryPaths.map((target) => rm(target, { recursive: true, force: true })));
       return null;
     },

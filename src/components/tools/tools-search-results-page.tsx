@@ -16,8 +16,9 @@ import { CategoryIconTile } from "@/components/category-icon-tile";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
 import { modeHomeComposerReservePendingValue } from "@/lib/mode-home-composer";
 import { cn, controlBase, floatingControl } from "@/components/ui-primitives";
+import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
 import { Sheet } from "@/components/ui/sheet";
-import { TOOL_AREA_ACCENT, toolIdentity } from "@/lib/category-identity";
+import { toolIdentity } from "@/lib/category-identity";
 import { isLocalNoAuthMode, resolveClientDemoMode } from "@/lib/client-env";
 import { interpretSmartSearch, smartSearchExpansions } from "@/lib/smart-search-intent";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -137,14 +138,8 @@ function ToolGroupSection({
   const headingId = `tools-group-${group.id}`;
   return (
     <section aria-labelledby={headingId} data-testid={`tools-group-${group.id}`} className="grid gap-2">
-      <h2 id={headingId} className="flex items-center gap-2 px-1 text-base font-bold text-[color:var(--text-heading)]">
-        {group.accentArea ? (
-          <span
-            aria-hidden="true"
-            data-category-accent={TOOL_AREA_ACCENT[group.accentArea]}
-            className="h-2.5 w-2.5 rounded-sm bg-[color:var(--cat-accent)] forced-colors:bg-[CanvasText]"
-          />
-        ) : null}
+      {/* Plain heading, no coloured group dot (Clinical audit, 13 Oct 2026, item 15). */}
+      <h2 id={headingId} className="px-1 text-base font-bold text-[color:var(--text-heading)]">
         {group.label}
       </h2>
       <ul
@@ -161,28 +156,30 @@ function ToolGroupSection({
   );
 }
 
+/**
+ * Safety still leads the list, ahead of the task groups, but as a flat hairline
+ * group like the others (Clinical audit, 13 Oct 2026, item 15): the amber card
+ * around amber-edged rows was a card inside a card. The shield stays as the
+ * group's one mark.
+ */
 function SafetySection({ tools, onAbout }: { tools: ToolCatalogRecord[]; onAbout: AboutTool }) {
   return (
-    <section
-      aria-labelledby="tools-group-safety"
-      data-testid="tools-group-safety"
-      className="grid gap-2 rounded-2xl border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] p-2 sm:p-4"
-    >
+    <section aria-labelledby="tools-group-safety" data-testid="tools-group-safety" className="grid gap-2">
       <h2
         id="tools-group-safety"
-        className="flex items-center gap-2 px-1.5 pt-1 text-base font-bold text-[color:var(--warning-text)]"
+        className="flex items-center gap-2 px-1 text-base font-bold text-[color:var(--text-heading)]"
       >
-        <ShieldCheck className="size-icon-md" aria-hidden="true" />
+        <ShieldCheck className="size-icon-md text-[color:var(--text-muted)]" aria-hidden="true" />
         Safety
       </h2>
       <ul
         className={cn(
           toolListClass,
-          "divide-[color:var(--warning-border)] border-[color:var(--warning-border)] bg-[color:var(--surface-raised)] lg:grid-cols-2",
+          "divide-[color:var(--border)] border-[color:var(--border)] bg-[color:var(--surface-raised)] lg:grid-cols-2",
         )}
       >
         {tools.map((tool) => (
-          <ToolRow key={tool.id} tool={tool} onAbout={onAbout} tone="safety" />
+          <ToolRow key={tool.id} tool={tool} onAbout={onAbout} />
         ))}
       </ul>
     </section>
@@ -429,11 +426,11 @@ export function ToolsSearchResultsPage({
       ) : null}
       <div className="mx-auto grid max-w-6xl gap-6">
         {searching ? null : (
-          <header className="grid gap-1 px-1">
-            <h1 className="text-2xl font-bold tracking-tight text-[color:var(--text-heading)] sm:text-3xl">Tools</h1>
-            <p className="text-sm text-[color:var(--text-muted)]">
-              Grouped by the job you are doing. Tap a tool to open it.
-            </p>
+          <header className="grid gap-1.5 px-1">
+            {/* The plain list of every tool, linked once from Psychiatry and once
+                from Medicines (Clinical audit, 13 Oct 2026, item 15). */}
+            <h1 className={pageHeadingTitleClass}>All tools</h1>
+            <p className={pageHeadingDescriptionClass}>Grouped by the job you are doing. Tap a tool to open it.</p>
           </header>
         )}
         <ToolLocalSearch value={query} onChange={setLocalQuery} onSubmit={submitLocalSearch} className="w-full" />

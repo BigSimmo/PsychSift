@@ -5,7 +5,7 @@
 // step bringing its area back, the step position counting only visible steps,
 // the done step, and the signed-out welcome asking the doctor to sign in.
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const nav = vi.hoisted(() => ({
@@ -276,7 +276,7 @@ describe("done", () => {
   });
 });
 
-describe("My Day's Set up Work card", () => {
+describe("My Day's Get set up card", () => {
   it("offers Start to a signed-in doctor who has not begun", () => {
     render(<WorkSetupPromptCard />);
     expect(screen.getByTestId("work-setup-prompt")).toHaveTextContent("Stage, areas, time zone, roster and alerts");
@@ -311,5 +311,52 @@ describe("My Day's Set up Work card", () => {
     auth.status = "signed_out";
     render(<WorkSetupPromptCard />);
     expect(screen.queryByTestId("work-setup-prompt")).not.toBeInTheDocument();
+  });
+});
+
+// Design audit 13 Oct 2026, D11: the per-area "Finish setting up" rows are
+// gone; My Day's card is the one setup prompt and lists every step.
+/** A link's accessible name starts with its step's short label. */
+function stepName(step: keyof typeof WORK_SETUP_STEP_COPY): RegExp {
+  const label = WORK_SETUP_STEP_COPY[step].short.replace(/[.*+?^$()|[\]\\{}]/gu, (c) => `\\${c}`);
+  return new RegExp(`^${label}`, "u");
+}
+
+describe("My Day's Get set up checklist", () => {
+  it("lists each step this doctor sees, with a link straight to it", () => {
+    render(<WorkSetupPromptCard />);
+    const list = screen.getByRole("list", { name: "Setup steps" });
+    const steps = ["stage", "areas", "time-zone", "roster", "rotation", "other-areas", "alerts"] as const;
+    expect(within(list).getAllByRole("link")).toHaveLength(steps.length);
+    for (const step of steps) {
+      // Found by role and accessible name, so a reader can identify each link, not only its test id.
+      const link = within(list).getByRole("link", { name: stepName(step) });
+      expect(link).toHaveAttribute("href", workSetupStepHref(step));
+      expect(link).toBe(screen.getByTestId(`work-setup-prompt-step-${step}`));
+    }
+  });
+
+  it("ticks a finished step, tags a skipped one and marks the rest to do", () => {
+    seed({ step: "roster", completed: ["stage", "areas"], skipped: ["time-zone"] });
+    render(<WorkSetupPromptCard />);
+    const list = within(screen.getByRole("list", { name: "Setup steps" }));
+    expect(list.getByRole("link", { name: stepName("stage") })).toHaveTextContent("Done");
+    expect(list.getByRole("link", { name: stepName("areas") })).toHaveTextContent("Done");
+    expect(list.getByRole("link", { name: stepName("time-zone") })).toHaveTextContent("Skipped");
+    expect(list.getByRole("link", { name: stepName("roster") })).toHaveTextContent("To do");
+  });
+
+  it("lists only the steps for the areas this doctor uses", () => {
+    seed({ areas: ["teach"] });
+    render(<WorkSetupPromptCard />);
+    expect(screen.queryByTestId("work-setup-prompt-step-roster")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("work-setup-prompt-step-other-areas")).not.toBeInTheDocument();
+    expect(screen.getByTestId("work-setup-prompt-step-rotation")).toBeInTheDocument();
+  });
+
+  it('is headed "Get set up"', () => {
+    render(<WorkSetupPromptCard />);
+    expect(screen.getByRole("heading", { name: "Get set up" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Get set up" })).toBeInTheDocument();
   });
 });

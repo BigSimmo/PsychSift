@@ -992,13 +992,12 @@ rg -n "document_chunks|embedding|rag_queries|patient|storage_path|owner_id" src/
 
 Expected: the first command prints nothing. The second may find only explicit privacy assertions/tests or server-side scoping; it must find no browser projection of prohibited fields.
 
-- [ ] **Step 6: Consult the gate arbiter and buy one broad local verdict at most**
+- [ ] **Step 6: Check gate receipts and buy one broad local verdict at most**
 
-Run: `npm run arbiter -- verify:pr-local`
+Run: `npm run receipts` (the former gate-arbiter helper was retired on 2026-09-17), then `npm run verify:pr-local`
 
-- If the verdict is `RUN`, execute `npm run verify:pr-local` once and record the decisive output.
-- If the verdict is `DEFER`, report `deferred to CI` with the arbiter's evidence; do not call it passed.
-- If the verdict is `PROVEN`, report the exact reused receipt/SHA; do not rerun it.
+- If no matching receipt is present, execute `npm run verify:pr-local` once and record the decisive output.
+- If a content-addressed receipt is reused, report the exact reused receipt/SHA and timestamp; do not rerun it.
 
 Do not run live RAG evaluations: this change does not alter retrieval or answers. Do not run `npm run check:production-readiness`, `npm run audit:source-governance`, any live Supabase audit or provider command unless the user separately authorizes that exact connected check.
 

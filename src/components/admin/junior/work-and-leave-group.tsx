@@ -6,6 +6,9 @@ import { StarterPackEntryLink } from "@/components/admin/starter/starter-pack-en
 /**
  * "Work and leave" on Admin Today: the way into Contract end, the Leave wallet and the starter pack, until
  * the main build adds the same group to Admin More. Each row is its own literal link.
+ *
+ * Not rendered since 12 Oct 2026 (Work mode simplify plan: Today is about dates; the same links live in
+ * Admin's More). Kept under the 30 day rule; delete from 11 Nov 2026 if nothing has brought it back.
  */
 export function AdminWorkAndLeaveGroup() {
   return (

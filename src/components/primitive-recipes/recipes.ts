@@ -124,7 +124,10 @@ export const toneNeutral =
 // `mx-auto max-w-7xl` literals. Width only — call sites keep their own padding and
 // vertical rhythm via cn(). Intentionally-wider surfaces (the document viewer's
 // 1440px viewer+rail, the differentials tables) keep their bespoke widths.
-export const pageContainer = "mx-auto w-full max-w-7xl";
+// From 1024px the column narrows to Work's 64rem (`--clinical-col`,
+// clinical-mode.css) so the page lines up with the title and tabs above it; the
+// extra 4rem is the `lg:px-8` gutter the call sites draw inside it.
+export const pageContainer = "mx-auto w-full max-w-7xl lg:max-w-[calc(var(--clinical-col)+4rem)]";
 
 export type SemanticChipTone = "danger" | "info" | "warning" | "success" | "neutral";
 

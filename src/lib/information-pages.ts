@@ -96,9 +96,6 @@ export function isInformationPage(pathname: string): boolean {
   if (isSlugDetail(pathname, "/cme")) return true;
   if (pathname === "/cme") return true;
   if (pathname.startsWith("/cme/log/") && !pathname.slice("/cme/log/".length).includes("/")) return true;
-  // The CV under Job applications is two segments deep too. Wearing a composer there put the phone search
-  // bar over the page's own Copy and Save as PDF dock, which no other CPD page has.
-  if (pathname === "/cme/applications/cv") return true;
   // The Psychiatry dashboard and its own pages (the MHA clock), for On Call's
   // reason: the mode declares no search surface, so none of them may wear a
   // composer. The sections it links to keep their own routes and their own
@@ -106,7 +103,8 @@ export function isInformationPage(pathname: string): boolean {
   if (pathname === "/psychiatry" || pathname.startsWith("/psychiatry/")) return true;
   // The Medicines & tools dashboard, Psychiatry's twin, on the same reasoning.
   if (pathname === "/medicines") return true;
-  // Every Admin page owns its in-page navigation and has no search composer.
+  // Every Admin page owns its in-page navigation and has no search composer. That includes Job applications
+  // and its CV (moved from CPD), whose Copy and Save as PDF dock a phone search bar would cover.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   // Every Roster route, the mode home included, for On Call's reason exactly:
   // the mode declares no search surface, so it has no composer on any page.

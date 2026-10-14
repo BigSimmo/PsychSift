@@ -41,6 +41,10 @@ hold a session open for. Neither writes into the repository or `node_modules` �
 `~/.cache/ms-playwright` and the OCR venv in `~/.cache/clinical-kb-claude-cloud` — so they cannot race
 a build or test the model starts meanwhile.
 
+> **Network egress requirement for `browsers` tier**: Provisioning Playwright browsers and downloading
+> retained CI trace artifacts requires container network access to Playwright CDNs and Azure Blob storage.
+> If egress is blocked, browser downloads fail with HTTP 403. See [What still needs a human §5](#what-still-needs-a-human).
+
 **A background tier is not proof.** Before trusting any browser or worker result in a fresh container,
 confirm the tier finished:
 
@@ -189,6 +193,38 @@ the pinned set of PR-review operations is served. Use REST via gh api repos/{own
    install does not happen, and it also runs `npm install` inside each plugin, which the installer
    itself does not do — a plugin with runtime dependencies otherwise unpacks clean and fails at first
    use. A tier-installed plugin only takes effect in the _next_ session.
+5. **Network egress allowlist for Playwright browsers and CI traces.** In Claude Code on the web
+   (`CLAUDE_CODE_REMOTE=true`), container egress is mediated by Anthropic's network proxy (`/root/.ccr/`).
+   The default egress policy blocks the mirrors needed for Playwright browser installation and GitHub
+   Actions trace artifact downloads.
+
+   **The three blocked hostnames (verified by request, not inferred):**
+   - `cdn.playwright.dev` (returns `HTTP 403 request blocked`): Primary mirror in `playwright-core@1.63.0`'s
+     `PLAYWRIGHT_CDN_MIRRORS`. Without access, `scripts/setup-claude-cloud.sh browsers` fails to download
+     Chromium, Firefox, and WebKit binaries.
+   - `playwright.download.prss.microsoft.com` (returns `HTTP 403 request blocked`): Secondary ESRP CDN
+     mirror in `playwright-core@1.63.0`. The legacy `*.azureedge.net` endpoints were removed in this version,
+     so allowlisting those achieves nothing.
+   - `*.blob.core.windows.net` (returns `CONNECT tunnel failed 403`): GitHub Actions artifact downloads
+     redirect to Azure Blob storage. When blocked, retained Playwright trace artifacts (`playwright-traces-*`)
+     cannot be fetched for failure triage (e.g. debugging Firefox click state failures in #33346A).
+
+   **Why system packages are not a substitute:**
+   Stock Debian/Ubuntu apt packages or tarballs for Firefox cannot substitute for Playwright's browser:
+   Playwright launches Firefox with `-juggler-pipe` and waits for `Juggler listening to the pipe`, which
+   only its custom-patched build emits. The repo's `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` override is custom
+   and Chromium-only (pointing to `/opt/pw-browsers/chromium` in fallback containers), but that fallback is
+   Chromium 141, which lacks modern V8 runtime features (such as `Map.prototype.getOrInsertComputed` required
+   by `pdfjs-dist@6.3.289`, causing document-viewer failures in `tests/ui-smoke.spec.ts`).
+
+   **Remediation (Operator environment configuration):**
+   Add the following hostnames to the Claude Cloud environment egress allowlist in container network settings:
+   - `cdn.playwright.dev`
+   - `playwright.download.prss.microsoft.com`
+   - `*.blob.core.windows.net`
+
+   This is an operator configuration in the Claude Cloud environment settings (tracked under task `#PM71Z1`);
+   no repository code change is required.
 
 ## What cannot be replicated
 

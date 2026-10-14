@@ -247,6 +247,35 @@ describe("therapy-compass search filter contract adoption", () => {
     expect(within(cards[1] as HTMLElement).queryByText("Best match")).not.toBeInTheDocument();
   });
 
+  it("keeps therapies outside the active filters listed under Not matching", async () => {
+    const user = userEvent.setup();
+    bindingsState.query = "anxiety";
+    bindingsState.tags = ["Mood"];
+    const mood = therapy({ slug: "mood", name: "Mood therapy" });
+    const other = therapy({ slug: "other", name: "Other therapy", tags: ["Psychosis"] });
+    bindingsState.queryMatches = [other, mood];
+    bindingsState.searchResults = [mood];
+
+    render(<SearchScreen />);
+
+    // Filters highlight, never hide: the filtered-out therapy is still a row.
+    const cards = [...document.querySelectorAll<HTMLElement>("[data-therapy-result-card]")];
+    expect(cards).toHaveLength(2);
+    expect(cards[0]).toHaveTextContent("Mood therapy");
+    expect(cards[0]).not.toHaveAttribute("data-outside-filter");
+    expect(cards[1]).toHaveTextContent("Other therapy");
+    expect(cards[1]).toHaveAttribute("data-outside-filter", "true");
+    expect(within(cards[1]!).getByRole("link", { name: "Other therapy" })).toHaveAttribute("href");
+
+    const note = screen.getByTestId("therapy-highlight-note");
+    expect(note).toHaveTextContent("1 of 2 highlighted, all rows stay");
+    expect(within(note).queryByRole("status")).toBeNull();
+    expect(screen.getByTestId("therapy-outside-heading")).toHaveTextContent("Not matching · 1");
+    await user.click(within(note).getByRole("button", { name: "Clear" }));
+    expect(clearSearchFilters).toHaveBeenCalledTimes(1);
+    expect(clearSearch).not.toHaveBeenCalled();
+  });
+
   it("does not imply a best match when the unqueried catalogue is alphabetical", () => {
     bindingsState.searchResults = [therapy({ slug: "first" })];
 

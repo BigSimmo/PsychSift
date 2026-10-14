@@ -4,6 +4,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z, type ZodType } from "zod";
 import { env, requireOpenAIEnv } from "@/lib/env";
 import { currentAnswerPilotBudget, isAnswerPilotBudgetActive } from "@/lib/answer-pilot-budget";
+import { readBoundedLruEntry, writeBoundedLruEntry } from "@/lib/bounded-ttl-cache";
 import { instrumentOpenAIClientForAgentMonitoring } from "@/lib/observability/agent-monitoring";
 import { assessClinicalImageUse } from "@/lib/image-filtering";
 import { PublicApiError } from "@/lib/http";
@@ -171,28 +172,14 @@ function queryEmbeddingCacheKey(text: string) {
 
 function getCachedQueryEmbedding(text: string) {
   if (env.OPENAI_QUERY_CACHE_SIZE === 0) return null;
-
   const key = queryEmbeddingCacheKey(text);
-  const cached = queryEmbeddingCache.get(key);
-  if (!cached) return null;
-
-  queryEmbeddingCache.delete(key);
-  queryEmbeddingCache.set(key, cached);
-  return cached;
+  return readBoundedLruEntry(queryEmbeddingCache, key);
 }
 
 function setCachedQueryEmbeddingByKey(key: string, embedding: number[]) {
   const limit = env.OPENAI_QUERY_CACHE_SIZE;
   if (limit === 0) return;
-
-  if (queryEmbeddingCache.has(key)) queryEmbeddingCache.delete(key);
-  queryEmbeddingCache.set(key, embedding);
-
-  while (queryEmbeddingCache.size > limit) {
-    const oldestKey = queryEmbeddingCache.keys().next().value;
-    if (!oldestKey) break;
-    queryEmbeddingCache.delete(oldestKey);
-  }
+  writeBoundedLruEntry(queryEmbeddingCache, key, embedding, limit);
 }
 
 function resolveTextGenerationOptions(
@@ -868,9 +855,10 @@ export async function embedTextWithTelemetry(text: string, options?: IngestionOp
     // Never join an older unguarded in-flight request or consume a cached vector in
     // this finite cost-attribution pilot. The scoped SDK client reserves each attempt.
     const embeddings = await embedTexts([text], options);
-    if (!embeddings[0]) throw new PublicApiError("OpenAI returned no embedding for the query.", 502, {
-      code: "openai_empty_embedding",
-    });
+    if (!embeddings[0])
+      throw new PublicApiError("OpenAI returned no embedding for the query.", 502, {
+        code: "openai_empty_embedding",
+      });
     return { embedding: embeddings[0], cacheHit: false };
   }
   if (options?.ingestionEgress) {

@@ -119,13 +119,13 @@ async function collectHeaderOverlaps(page: Page): Promise<OverlapReport> {
   });
 }
 
-// The settled mode-home stack is 160px for a mouse or trackpad. On a touch screen the prompt chips
+// The settled mode-home stack is 128px for a mouse or trackpad. On a touch screen the prompt chips
 // meet the 48px tap floor instead of 32px (`@media (pointer: coarse)` on `.answer-suggestion-chip`
 // in globals.css), so the same one-row stack is 16px taller. The iPhone projects run these wide
-// viewports with a touch pointer, which is why they measured 176 and failed against a bare 160.
+// viewports with a touch pointer, which is why they measure 144 rather than 128.
 async function expectedModeHomeStackHeight(page: Page) {
   const coarsePointer = await page.evaluate(() => window.matchMedia("(pointer: coarse)").matches);
-  return coarsePointer ? 176 : 160;
+  return coarsePointer ? 144 : 128;
 }
 
 test.describe("Header element overlap coverage", () => {
@@ -152,12 +152,7 @@ test.describe("Header element overlap coverage", () => {
 
       if (width >= 768) {
         await expect(page.getByRole("button", { name: "Start a new chat" })).toHaveCount(0);
-      }
-      if (width >= 1024) {
         await expect(page.getByRole("button", { name: "New chat", exact: true })).toBeVisible();
-      } else if (width >= 768) {
-        // The two-pane side menu's strip stands in for the clinical icon rail on tablets.
-        await expect(page.getByTestId("two-pane-rail")).toBeVisible();
       }
     });
   }
@@ -272,46 +267,33 @@ test.describe("Header element overlap coverage", () => {
     });
   }
 
-  test("desktop dormant search keeps the example ticker and prompts around the composer without a Smart promise", async ({
+  test("desktop dormant search keeps its prompts under the composer, with no repeated Try line or Smart promise", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await mockDemoDashboard(page);
     await gotoHome(page);
 
-    // Every mode home shares the same stack: "Try …" ticker line above the
-    // pill, prompt rail below. Answer is a dormant mode, so the ticker must
-    // read as an ordinary example search with no Smart wording.
-    const ticker = page.getByTestId("search-example-ticker");
+    // The desktop "Try ..." line above the pill repeated the prompts below it,
+    // so it went in the owner design review of 12 Oct 2026; the prompt rail
+    // carries the examples alone. Answer is a dormant mode, so nothing may
+    // promise Smart search.
     const promptRow = page.getByTestId("smart-search-prompt-row");
-    await expect(ticker).toBeVisible();
-    await expect(ticker).toContainText("in Answer.");
-    await expect(ticker).not.toContainText("Smart");
+    await expect(page.getByTestId("search-example-ticker")).toHaveCount(0);
     await expect(page.getByTestId("smart-search-intent-cue")).toHaveCount(0);
     await expect(promptRow).toBeVisible();
+    await expect(promptRow).not.toContainText("Smart");
     await expect(promptRow.getByRole("button", { name: "lithium level timing" })).toBeVisible();
     await expect(promptRow.getByRole("button", { name: "clozapine ANC monitoring" })).toBeVisible();
 
     const geometry = await page.evaluate(() => {
-      const ticker = document.querySelector('[data-testid="search-example-ticker"]');
       const prompt = document.querySelector('[data-testid="smart-search-prompt-row"]');
       const pill = document.querySelector(".answer-footer-search-pill");
-      if (!ticker || !prompt || !pill) return null;
-      const tickerRect = ticker.getBoundingClientRect();
-      const promptRect = prompt.getBoundingClientRect();
-      const pillRect = pill.getBoundingClientRect();
-      return {
-        tickerBottom: tickerRect.bottom,
-        pillTop: pillRect.top,
-        pillBottom: pillRect.bottom,
-        promptTop: promptRect.top,
-      };
+      if (!prompt || !pill) return null;
+      return { pillBottom: pill.getBoundingClientRect().bottom, promptTop: prompt.getBoundingClientRect().top };
     });
 
-    expect(geometry, "composer, ticker, and prompt row must render").not.toBeNull();
-    expect(geometry!.tickerBottom, "the ticker should sit above the search bar").toBeLessThanOrEqual(
-      geometry!.pillTop + 1,
-    );
+    expect(geometry, "composer and prompt row must render").not.toBeNull();
     expect(geometry!.promptTop, "prompts should sit below the search bar").toBeGreaterThanOrEqual(
       geometry!.pillBottom - 1,
     );
@@ -357,9 +339,10 @@ test.describe("Header element overlap coverage", () => {
         expect(geometry, `${label}: home composer and prompt rail must render`).not.toBeNull();
         expect(geometry!.chipCount, `${label}: the rail must carry prompts to be worth measuring`).toBeGreaterThan(1);
         expect(geometry!.chipRows, `${label}: prompt chips must share one row`).toBe(1);
-        // 160px is the settled stack every mode home shares: 24px ticker line,
-        // the pill, gaps, the one-line rail and the privacy line.
-        expect(geometry!.composerHeight, `${label}: home composer must be the shared 160px stack`).toBe(
+        // 128px is the settled stack every mode home shares: the pill, gaps,
+        // the one-line rail and the privacy line (the 24px "Try …" line left
+        // on 12 Oct 2026).
+        expect(geometry!.composerHeight, `${label}: home composer must be the shared 128px stack`).toBe(
           await expectedModeHomeStackHeight(page),
         );
       }
@@ -565,7 +548,9 @@ test.describe("Header element overlap coverage", () => {
     const ticker = page.getByTestId("smart-search-phone-ticker");
     await expect(ticker).toBeVisible();
     await expect(ticker).toContainText("Try this");
-    await expect(ticker).toContainText("Tap to search");
+    // "Tap to search" left the visible line on 12 Oct 2026 so the suggestion
+    // fits a 320px phone; the accessible name below still ends with it.
+    await expect(ticker).not.toContainText("Tap to search");
 
     const tickerBox = await ticker.boundingBox();
     expect(tickerBox, "phone suggestion ticker must render").not.toBeNull();
@@ -577,8 +562,8 @@ test.describe("Header element overlap coverage", () => {
     // this journey flaky.
     await ticker.hover();
     const ariaLabel = (await ticker.getAttribute("aria-label")) ?? "";
-    // Label-in-Name (WCAG 2.5.3): visible "Try this" / suggestion / "Tap to search"
-    // must appear in the accessible name.
+    // Label-in-Name (WCAG 2.5.3): the visible "Try this" and suggestion must
+    // start the accessible name, which still says how to use it.
     expect(ariaLabel).toMatch(/^Try this .+\. Tap to search$/);
     const suggestion = ariaLabel.replace(/^Try this /, "").replace(/\. Tap to search$/, "");
     expect(suggestion).toBeTruthy();
@@ -719,7 +704,7 @@ test.describe("Tablet usability regressions", () => {
     await expect(promptRow.getByTestId("answer-suggestion-scroll-back")).toBeVisible();
 
     // The contract the affordance had to be designed around: one row of chips,
-    // and a composer still the settled 160px with the control rendered.
+    // and a composer still the settled 128px with the control rendered.
     const chipGeometry = await rail.evaluate((chips) => ({
       chipRows: new Set([...chips.children].map((chip) => Math.round(chip.getBoundingClientRect().top))).size,
       chipCount: chips.children.length,
@@ -732,7 +717,7 @@ test.describe("Tablet usability regressions", () => {
     expect(geometry, "home composer and prompt rail must render").not.toBeNull();
     expect(geometry!.chipCount, "the rail must carry prompts to be worth measuring").toBeGreaterThan(1);
     expect(geometry!.chipRows, "prompt chips must still share one row").toBe(1);
-    expect(geometry!.composerHeight, "the control must not grow the shared 160px stack").toBe(
+    expect(geometry!.composerHeight, "the control must not grow the shared 128px stack").toBe(
       await expectedModeHomeStackHeight(page),
     );
   });
@@ -744,10 +729,17 @@ test.describe("Tablet usability regressions", () => {
     await page.goto("/services/search?q=crisis&run=1", { waitUntil: "domcontentloaded" });
     await expect(async () => {
       await expect(page.locator("header#search")).toHaveCount(1);
-      await expect(page.getByRole("link", { name: /^Review referral for / }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: /^More actions for / }).first()).toBeVisible();
     }).toPass({ timeout: 30_000 });
+    await page
+      .getByRole("button", { name: /^More actions for / })
+      .first()
+      .click();
 
     const controls = [
+      // The compact phone button (Clinical audit, 13 Oct 2026, item 8), named "Call <service>".
+      page.locator('[data-testid^="service-call-"]').first(),
+      page.getByRole("button", { name: /^More actions for / }).first(),
       page.getByRole("link", { name: /^Review referral for / }).first(),
       page.getByRole("button", { name: /^Add .+ to shortlist$/ }).first(),
       page.getByRole("button", { name: /^(Save|Remove) .+ (to|from) favourites$/ }).first(),

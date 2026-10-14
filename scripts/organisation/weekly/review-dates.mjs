@@ -11,7 +11,8 @@
 // Usage: node scripts/organisation/weekly/review-dates.mjs [--now YYYY-MM-DD]
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isDirectEntrypoint } from "../../lib/is-entrypoint.mjs";
 
 export const DUE_WITHIN_DAYS = 14;
 const HAZARD_REGISTER = "docs/clinical-hazard-controls.json";
@@ -232,7 +233,7 @@ async function main(argv) {
   process.stdout.write(`## ${title}\n\n${markdown}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isDirectEntrypoint(import.meta.url)) {
   main(process.argv.slice(2)).catch((error) => {
     console.error(`review-dates: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(2);

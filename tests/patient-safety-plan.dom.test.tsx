@@ -6,17 +6,20 @@ import { describe, expect, it, vi } from "vitest";
 
 import { PatientSafetyPlan } from "@/components/patient-safety-plan";
 import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 
 // The tool header renders a NavigationBackButton that reads the router/pathname.
+// One router for every render, as the App Router gives, so effects keyed on it run once.
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  prefetch: vi.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  refresh: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    prefetch: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-  }),
+  useRouter: () => router,
   usePathname: () => "/safety-plan",
 }));
 
@@ -26,17 +29,19 @@ const exampleExportPattern =
   /\*\*\* EXAMPLE — SAMPLE SAFETY PLAN WITH NON-WORKING NUMBERS, NOT FOR PATIENT HANDOVER \*\*\*/;
 
 describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
-  it("owns the OS top inset outside the search shell", () => {
-    // /safety-plan is a standalone tool route (no chrome-safe-area-top host),
-    // so the tool header must bake max(safe-area-top) into its top pad.
+  it("sits inside the search shell, which owns the top inset and the skip target", () => {
+    // /safety-plan renders inside the (search-app) shell, so the shell header owns the
+    // OS top inset and #main-content. The tool must not duplicate either.
     const { container } = render(<PatientSafetyPlan />);
     const header = container.querySelector('[data-testid="safety-plan-tool-header"]');
     expect(header).toBeTruthy();
     const className = header?.getAttribute("class") ?? "";
-    expect(className).toContain("pt-[max(0.75rem,var(--safe-area-top))]");
-    expect(className).toContain("sm:pt-[max(1.25rem,var(--safe-area-top))]");
+    expect(className).not.toContain("safe-area-top");
     expect(className).not.toMatch(/(?:^|\s)py-\S+/);
     expect(className).not.toMatch(/(?:^|\s)sm:py-\S+/);
+    expect(container.querySelector("#main-content")).toBeNull();
+    // The patient copy is the print output, so the shell chrome never prints.
+    expect(container.querySelector("[data-safety-plan-copy]")?.hasAttribute("data-print-output")).toBe(true);
     expect(screen.getByRole("heading", { name: /Safety plan generator/i })).toBeTruthy();
   });
 
@@ -45,7 +50,7 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
 
     // Blank plan — the patient copy is clearly marked a draft.
     expect(screen.getByText(draftPattern)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("keeps Load example non-shareable so fake crisis numbers cannot look print-ready", async () => {
@@ -65,14 +70,14 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     expect(screen.getByText(examplePattern)).toBeTruthy();
     expect(screen.queryByText(/^Ready to share$/)).toBeNull();
     expect(screen.getByText(/Example — not for handover/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getAllByText(/0400 000 000/).length).toBeGreaterThan(0);
 
     // Date-only edits must not clear the example guard while seeded contacts remain.
     await user.type(screen.getByLabelText(/Plan date/i), "12 Aug 2026");
     expect(screen.getByText(examplePattern)).toBeTruthy();
     expect(screen.queryByText(/^Ready to share$/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
 
     await user.click(screen.getByRole("button", { name: /^Copy$/ }));
     const copied = String(writeText.mock.calls[0]?.[0] ?? "");
@@ -98,7 +103,7 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     await user.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
 
     expect(screen.getByText(examplePattern)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("marks an incomplete contact plan as a draft once every seeded row is gone", async () => {
@@ -113,7 +118,46 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     await user.click(within(supportStep).getByRole("button", { name: /^Add$/ }));
 
     expect(screen.getByText(draftPattern)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Finalise plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Finalise plan/i })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps Finalise plan reachable by keyboard while unavailable, and explains why", async () => {
+    const user = userEvent.setup();
+    render(<PatientSafetyPlan />);
+
+    const finalise = screen.getByRole("button", { name: /Finalise plan/i });
+    // aria-disabled keeps the tab stop; a native disabled button would drop it and hide the reason.
+    expect(finalise).not.toBeDisabled();
+    expect(finalise).toHaveAttribute("aria-disabled", "true");
+    const reasonId = finalise.getAttribute("aria-describedby");
+    expect(reasonId).toBeTruthy();
+    expect(document.getElementById(reasonId as string)?.textContent).toMatch(/Complete all 6 steps.*0 of 6 complete/);
+
+    finalise.focus();
+    expect(document.activeElement).toBe(finalise);
+
+    // Activating it does nothing: the plan is not finalised.
+    await user.keyboard("{Enter}");
+    await user.click(finalise);
+    expect(screen.queryByText(/^Plan finalised$/)).toBeNull();
+  });
+
+  it("names the example text, not the step count, as the blocker while the example is loaded", async () => {
+    const user = userEvent.setup();
+    render(<PatientSafetyPlan />);
+
+    await user.click(screen.getByRole("button", { name: /Load example/ }));
+
+    // The example fills all six steps, so a step count would read "6 of 6 complete" beside an off button.
+    const finalise = screen.getByRole("button", { name: /Finalise plan/i });
+    expect(finalise).toHaveAttribute("aria-disabled", "true");
+    const reason = document.getElementById(finalise.getAttribute("aria-describedby") as string)?.textContent ?? "";
+    expect(reason).toMatch(/Replace the example text/i);
+    expect(reason).not.toMatch(/6 of 6/);
+    expect(finalise.getAttribute("title")).toMatch(/Replace the example text/i);
+
+    await user.click(finalise);
+    expect(screen.queryByText(/^Plan finalised$/)).toBeNull();
   });
 
   it("marks copied text as a draft when the plan is incomplete", async () => {
@@ -267,5 +311,196 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
         `${contact.name}'s caveat is not on the line immediately after its number in the copied plan`,
       ).toBe(contact.caveat);
     }
+  });
+});
+
+describe("PatientSafetyPlan — in-app links inside the shell", () => {
+  function renderWithShellLink() {
+    render(
+      <>
+        <a href="/psychiatry">Shell link</a>
+        <PatientSafetyPlan />
+      </>,
+    );
+    return screen.getByRole("link", { name: "Shell link" });
+  }
+
+  it("lets a shell link leave freely while the plan is empty", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const link = renderWithShellLink();
+    expect(fireEvent.click(link)).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it("asks before a shell link discards entries, and stays when the doctor says no", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const link = renderWithShellLink();
+    // fireEvent rather than userEvent: an earlier case in this file uses fake timers.
+    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
+
+    // fireEvent.click returns false when the click's default (the navigation) was prevented.
+    expect(fireEvent.click(link)).toBe(false);
+    expect(confirm).toHaveBeenCalledWith(
+      "Leave this safety plan? Your entries are only in this browser tab and will be lost.",
+    );
+
+    confirm.mockReturnValue(true);
+    expect(fireEvent.click(link)).toBe(true);
+    confirm.mockRestore();
+  });
+});
+
+describe("PatientSafetyPlan — browser Back and shell controls", () => {
+  const prompt = "Leave this safety plan? Your entries are only in this browser tab and will be lost.";
+  const SENTINEL = "__psychsiftSafetyPlanGuard";
+  const onSentinel = () => Boolean((window.history.state as Record<string, unknown> | null)?.[SENTINEL]);
+
+  /** What the browser does on Back from the sentinel: the real entry, without the marker, is current. */
+  function pressBack() {
+    const rest = { ...((window.history.state ?? {}) as Record<string, unknown>) };
+    delete rest[SENTINEL];
+    window.history.replaceState(rest, "");
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate", { state: rest }));
+    });
+  }
+
+  function renderDirtyPlan() {
+    window.history.replaceState({ __NA: true, keep: "router state" }, "");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    const view = render(<PatientSafetyPlan />);
+    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
+    return { back, view };
+  }
+
+  it("holds Back with one sentinel entry that keeps the router's own history state", () => {
+    const { back, view } = renderDirtyPlan();
+    expect(onSentinel()).toBe(true);
+    expect(window.history.state).toMatchObject({ __NA: true, keep: "router state" });
+    view.unmount();
+    // Leaving or unmounting while still on the sentinel steps off it, so Back never does nothing.
+    expect(back).toHaveBeenCalledTimes(1);
+    back.mockRestore();
+  });
+
+  it("stays on the plan when the doctor cancels Back, and holds Back again", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { back, view } = renderDirtyPlan();
+    pressBack();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(confirm).toHaveBeenCalledWith(prompt);
+    expect(back).not.toHaveBeenCalled();
+    expect(onSentinel()).toBe(true);
+    expect(screen.getByRole("button", { name: /Load example/i })).toBeTruthy();
+    // A second Back asks again.
+    pressBack();
+    expect(confirm).toHaveBeenCalledTimes(2);
+    view.unmount();
+    confirm.mockRestore();
+    back.mockRestore();
+  });
+
+  it("leaves when the doctor confirms Back, and asks only once", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { back, view } = renderDirtyPlan();
+    pressBack();
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(onSentinel()).toBe(false);
+    // The real Back that follows is not guarded again.
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
+    });
+    expect(confirm).toHaveBeenCalledTimes(1);
+    view.unmount();
+    confirm.mockRestore();
+    back.mockRestore();
+  });
+
+  /** Leave a dirty plan by an in-app link: its sentinel, from this page load, stays behind. */
+  function leaveSentinelBehind(hadHistoryBefore: boolean) {
+    const { back, view } = renderDirtyPlan();
+    const marker = (window.history.state as Record<string, Record<string, unknown>>)[SENTINEL];
+    view.unmount();
+    back.mockRestore();
+    window.history.replaceState({ __NA: true, [SENTINEL]: { ...marker, hadHistoryBefore } }, "");
+  }
+
+  it("returning to a left-behind sentinel skips both plan entries when there was a page before", () => {
+    leaveSentinelBehind(true);
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
+    router.replace.mockClear();
+    const view = render(<PatientSafetyPlan />);
+    expect(go).toHaveBeenCalledWith(-2);
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(onSentinel()).toBe(false);
+    view.unmount();
+    go.mockRestore();
+  });
+
+  it("returning to a left-behind sentinel opens Psychiatry when the plan was the first page", () => {
+    // Checking history from the sentinel would always find the plan's own entry behind it, so
+    // the answer recorded when the sentinel was pushed is the one used.
+    leaveSentinelBehind(false);
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
+    router.replace.mockClear();
+    const view = render(<PatientSafetyPlan />);
+    expect(go).not.toHaveBeenCalled();
+    expect(router.replace).toHaveBeenCalledWith(expect.stringMatching(/^\/psychiatry/));
+    view.unmount();
+    go.mockRestore();
+  });
+
+  it("reloading on a sentinel steps back to the plan's own entry", () => {
+    // Browsers keep history state across a reload, so the sentinel is still there, but it
+    // came from an earlier page load and the reloaded plan is empty. One step back lands on
+    // the plan's own entry, so the next Back reaches the page before.
+    window.history.replaceState(
+      { __NA: true, [SENTINEL]: { hadHistoryBefore: true, documentId: "an earlier page load" } },
+      "",
+    );
+    const go = vi.spyOn(window.history, "go").mockImplementation(() => undefined);
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    router.replace.mockClear();
+    const view = render(<PatientSafetyPlan />);
+    expect(back).toHaveBeenCalledTimes(1);
+    expect(go).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(window.history.state).toEqual({ __NA: true });
+    view.unmount();
+    back.mockRestore();
+    go.mockRestore();
+  });
+
+  it("asks before a shell control navigates, and a link that also calls the shell asks once", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    window.history.replaceState(null, "");
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => undefined);
+    expect(confirmShellNavigation()).toBe(true);
+    render(
+      <>
+        <a
+          href="/psychiatry"
+          onClick={(event) => {
+            event.preventDefault();
+            confirmShellNavigation();
+          }}
+        >
+          Mode link
+        </a>
+        <PatientSafetyPlan />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Load example/i }));
+    expect(confirmShellNavigation()).toBe(false);
+    expect(confirm).toHaveBeenCalledTimes(1);
+
+    confirm.mockClear();
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("link", { name: "Mode link" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    confirm.mockRestore();
+    back.mockRestore();
   });
 });

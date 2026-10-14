@@ -8,7 +8,7 @@ When the user types exactly `bug-hunter` as the entire task message, after trimm
 
 Execution rules:
 
-- Invoke the `bug-hunter` skill first.
+- Invoke the `audit` skill (`.agents/skills/audit/SKILL.md`) first.
 - Prioritize reproducible defects over code style, naming, or formatting feedback.
 - Trace realistic failure paths: invalid input, empty states, retries, race/concurrency issues, stale state/cache, network/auth failures, permissions, and boundary values.
 - For each finding, include trigger, expected behavior, actual risk, and the smallest proof (or targeted test/check) that would catch it.

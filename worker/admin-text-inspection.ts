@@ -74,8 +74,7 @@ function copyBytes(value: Uint8Array, maximum = ADMIN_TEXT_INSPECTION_MAX_BYTES)
   const buffer = Reflect.apply(bufferGetter, value, []) as ArrayBuffer;
   const offset = Reflect.apply(offsetGetter, value, []) as number;
   const length = Reflect.apply(lengthGetter, value, []) as number;
-  if (types.isSharedArrayBuffer(buffer) || length < 1 || length > maximum)
-    return refuse("source_size_invalid");
+  if (types.isSharedArrayBuffer(buffer) || length < 1 || length > maximum) return refuse("source_size_invalid");
   return new Uint8Array(new Uint8Array(buffer, offset, length));
 }
 function utf8(bytes: Uint8Array): string {
@@ -249,8 +248,10 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
   const loadScannerConfiguration = options.loadScannerConfiguration;
   const timeoutMs = options.timeoutMs ?? 300000;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 100 || timeoutMs > 300000) refuse("timeout_invalid");
-  const nativeBatch = options.nativePdfBatch === undefined ? undefined
-    : JSON.parse(JSON.stringify(options.nativePdfBatch)) as ManagedProviderEmbeddingRequestContext;
+  const nativeBatch =
+    options.nativePdfBatch === undefined
+      ? undefined
+      : (JSON.parse(JSON.stringify(options.nativePdfBatch)) as ManagedProviderEmbeddingRequestContext);
   let failed = false;
   return async (originalRequest: IngestionProviderEgressRequest, originalBinding: Readonly<ProviderEgressBinding>) => {
     const binding = Object.freeze({ ...originalBinding });
@@ -341,22 +342,34 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         if (nativePdf) {
           const review = value.nativePdf;
           const record = review?.record;
-          if (!nativeBatch || !review || !record ||
-              facts.sourceByteLength !== 2211561 ||
-              binding.contentSha256 !== "sha256:abbc8107a09582e18f36bf4905c75f1fc78af70cd516851b89bff8919ca5bece" ||
-              record.version !== "nhmrc-four-page-native-pdf-source-inspection-v1" ||
-              record.scope !== "exact_four_page_native_pdf_source_and_text_embedding_only" ||
-              record.activeContent !== "absent" || record.identifiers !== "runtime_check_required" || record.hiddenText !== "consistent" ||
-              typeof record.expiresAt !== "string" || !Number.isFinite(Date.parse(record.expiresAt)) || Date.parse(record.expiresAt) <= Date.now() ||
-              !sameBinding(record.binding as ProviderEgressBinding, binding) ||
-              !/^sha256:[0-9a-f]{64}$/.test(review.recordSha256) ||
-              review.pageTexts.length !== 4 || review.pageTexts.some(text => typeof text !== "string" || !text) ||
-              !/^sha256:[0-9a-f]{64}$/.test(nativeBatch.planDigest) ||
-              nativeBatch.inputs.length !== body.input.length ||
-              nativeBatch.inputs.some((item,index) => item.providerInputText !== body.input[index] ||
-                !item.sourceUnitIds.length || item.sourceUnitIds.some(unit => unit.family !== "chunks" ||
-                  !/^[0-9a-f-]{36}$/i.test(unit.key))) ||
-              JSON.stringify(nativeBatch) !== JSON.stringify(options.nativePdfBatch))
+          if (
+            !nativeBatch ||
+            !review ||
+            !record ||
+            facts.sourceByteLength !== 2211561 ||
+            binding.contentSha256 !== "sha256:abbc8107a09582e18f36bf4905c75f1fc78af70cd516851b89bff8919ca5bece" ||
+            record.version !== "nhmrc-four-page-native-pdf-source-inspection-v1" ||
+            record.scope !== "exact_four_page_native_pdf_source_and_text_embedding_only" ||
+            record.activeContent !== "absent" ||
+            record.identifiers !== "runtime_check_required" ||
+            record.hiddenText !== "consistent" ||
+            typeof record.expiresAt !== "string" ||
+            !Number.isFinite(Date.parse(record.expiresAt)) ||
+            Date.parse(record.expiresAt) <= Date.now() ||
+            !sameBinding(record.binding as ProviderEgressBinding, binding) ||
+            !/^sha256:[0-9a-f]{64}$/.test(review.recordSha256) ||
+            review.pageTexts.length !== 4 ||
+            review.pageTexts.some((text) => typeof text !== "string" || !text) ||
+            !/^sha256:[0-9a-f]{64}$/.test(nativeBatch.planDigest) ||
+            nativeBatch.inputs.length !== body.input.length ||
+            nativeBatch.inputs.some(
+              (item, index) =>
+                item.providerInputText !== body.input[index] ||
+                !item.sourceUnitIds.length ||
+                item.sourceUnitIds.some((unit) => unit.family !== "chunks" || !/^[0-9a-f-]{36}$/i.test(unit.key)),
+            ) ||
+            JSON.stringify(nativeBatch) !== JSON.stringify(options.nativePdfBatch)
+          )
             refuse("current_native_pdf_inspection_unavailable");
         } else if (facts.mimeType !== "text/plain" || nativeBatch !== undefined) {
           refuse("source_format_unsupported");
@@ -450,7 +463,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
         if (facts.sourceByteLength !== bytes.length || hash(bytes) !== binding.contentSha256)
           refuse("source_binding_mismatch");
         const texts = nativePdf ? [...value.nativePdf!.pageTexts] : [utf8(bytes)];
-        if (nativePdf && !Buffer.from(bytes.subarray(0,5)).equals(Buffer.from("%PDF-")))
+        if (nativePdf && !Buffer.from(bytes.subarray(0, 5)).equals(Buffer.from("%PDF-")))
           refuse("source_format_unsupported");
         for (const text of texts) {
           assertInertText(text);
@@ -462,7 +475,7 @@ export function createAdminTextInspectionLoader(options: AdminTextInspectionOpti
           inspectIdentifiers(joined, bibliographicIdentifierAssessment(joined));
         }
         const assessedInputs = body.input.map((input) => {
-          const text = texts.find(text => nativePdf ? text === input : text.includes(input));
+          const text = texts.find((text) => (nativePdf ? text === input : text.includes(input)));
           if (text === undefined) {
             inspectIdentifiers(input);
             return refuse("payload_not_source_derived");

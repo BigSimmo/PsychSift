@@ -1,5 +1,5 @@
 import type { AppModeId } from "@/lib/app-modes";
-import { ON_CALL_ADMIN_ROWS_HREF, ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
+import { ON_CALL_WHOS_ON_ENABLED } from "@/lib/on-call/feature-flags";
 
 /**
  * The work-mode frame's own navigation table (work-mode redesign, owner
@@ -103,8 +103,8 @@ export type WorkFrameGate =
   | "signed-in"
   /**
    * Hospital-side roles: the site administrator, Medical Workforce or the DCT, from
-   * `useWorkRoles`. Also open while example data is switched on or the reader is signed
-   * out, so the example hospital can be looked around. The page checks again on the server.
+   * `useWorkRoles`. Also open while example data is switched on, so the example hospital can
+   * be looked around. Signed out it stays hidden. The page checks again on the server.
    */
   | "hospital-role"
   /** The Hospital screen: everyone "hospital-role" lets in, plus supervisors and roster managers. */
@@ -188,6 +188,9 @@ const myDay: WorkArea = {
   id: "day",
   name: "My Day",
   identity: "my-day",
+  // Usefulness audit (11 Oct 2026): Calendar is the one month view, so it is a tab; Hours is
+  // checked now and then, so it sits in More with a line on Week; the setup pages that apply
+  // to all of Work mode are reached from the side menu (Work profile, Help) and Help (Set up Work).
   tabs: [
     { id: "my-day-today", label: "Today", sub: "Your day", icon: "sun", href: "/my-day", title: "Today" },
     {
@@ -198,7 +201,13 @@ const myDay: WorkArea = {
       href: "/my-day/week",
       title: "This week",
     },
-    { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
+    {
+      id: "my-day-calendar",
+      label: "Calendar",
+      sub: "Everything dated",
+      icon: "calendar",
+      href: "/my-day/calendar",
+    },
   ],
   groups: [
     {
@@ -215,13 +224,7 @@ const myDay: WorkArea = {
           // The new work mode reads this list in Notifications (the address redirects there).
           gate: "classic-work-mode",
         },
-        {
-          id: "my-day-calendar",
-          label: "Calendar",
-          sub: "Everything dated",
-          icon: "calendar",
-          href: "/my-day/calendar",
-        },
+        { id: "my-day-hours", label: "Hours", sub: "Rostered, not pay", icon: "clock", href: "/my-day/hours" },
         {
           id: "my-day-favourites",
           label: "Favourites",
@@ -267,16 +270,16 @@ const myDay: WorkArea = {
       ],
     },
     {
-      label: "Set up",
+      label: "Settings",
       items: [
         {
-          id: "my-day-setup",
-          label: "Set up Work",
-          sub: "Walkthrough",
-          icon: "compass",
-          href: "/my-day/setup",
-          // The walkthrough and the help centre draw their own Back in the top bar.
-          band: false,
+          // Its Privacy tab is part of the same page, so one entry covers both.
+          id: "my-day-profile",
+          label: "Work profile",
+          short: "Profile",
+          sub: "Stage, workplaces, privacy",
+          icon: "user",
+          href: "/my-day/profile",
         },
         {
           id: "my-day-help",
@@ -284,15 +287,8 @@ const myDay: WorkArea = {
           sub: "How each area works",
           icon: "help",
           href: "/my-day/help",
+          // The help centre draws its own Back in the top bar.
           band: false,
-        },
-        {
-          id: "my-day-profile",
-          label: "Work profile",
-          short: "Profile",
-          sub: "Stage, workplaces",
-          icon: "user",
-          href: "/my-day/profile",
         },
         {
           id: "my-day-alerts",
@@ -302,15 +298,6 @@ const myDay: WorkArea = {
           href: "/my-day/alerts",
           // The new work mode keeps these settings under Notifications (the address redirects there).
           gate: "classic-work-mode",
-        },
-        {
-          id: "my-day-privacy",
-          label: "Privacy",
-          sub: "What is kept where",
-          icon: "shield",
-          href: "/my-day/profile?tab=privacy",
-          paths: ["/my-day/profile"],
-          query: { tab: "privacy" },
         },
         {
           id: "my-day-customise",
@@ -371,14 +358,27 @@ const roster: WorkArea = {
   identity: "roster",
   tabs: [
     { id: "month", label: "Month", sub: "Your calendar", icon: "calendar", href: "/roster", title: "Roster" },
-    { id: "team", label: "Team", sub: "Who is on", icon: "users", href: "/roster/team" },
+    // Open shifts folded into Roster (Work mode simplify plan, owner yes 12 Oct 2026): one page with
+    // your requests and hours at the top, so Requests and Alerts are no longer tabs of their own.
+    {
+      id: "open-shifts",
+      label: "Open shifts",
+      sub: "Extra shifts on offer",
+      icon: "hand",
+      href: "/open-shifts",
+      paths: ["/open-shifts", "/open-shifts/shift/", "/open-shifts/mine", "/open-shifts/alerts"],
+      title: "Open shifts",
+    },
     { id: "swaps", label: "Swaps", sub: "Ask and answer", icon: "swap", href: "/roster/swaps" },
   ],
   groups: [
     {
       label: "My roster",
       items: [
-        { id: "today", label: "Today", sub: "Your shift today", icon: "sun", href: "/roster/today" },
+        // Team left the tabs for Open shifts (12 Oct 2026): Month's top card opens "Who is on" too.
+        { id: "team", label: "Team", sub: "Who is on", icon: "users", href: "/roster/team" },
+        // Today folded into Month (owner decision, 11 Oct 2026): its Who is on and Phone numbers buttons
+        // sit on Month's top card, and /roster/today opens Month in this work mode.
         { id: "shifts", label: "My shifts", sub: "Week by week", icon: "layers", href: "/roster/shifts" },
         {
           id: "requests",
@@ -386,9 +386,35 @@ const roster: WorkArea = {
           sub: "Leave and requests",
           icon: "flag",
           href: "/roster/requests",
+          // Team staffing is reached from Leave's "Plan with the team in view", so it keeps the
+          // Roster band with Leave current instead of dropping the frame.
+          paths: ["/roster/requests", "/roster/staffing"],
           // The page is Leave and requests (swaps, dates and shift changes too), so the band
           // names it that from the first paint, not only once the page sets its heading.
           title: "Leave and requests",
+        },
+        // Where an unwell doctor looks (usability audit, 11 Oct 2026): Roster's More and the Leave page,
+        // not only My Day's card. The page keeps its own header, so the band stays off it.
+        {
+          id: "sick",
+          // "Sick for tomorrow" cut off at 390 px in More, so the tile says what it does.
+          label: "Report sick",
+          short: "Sick",
+          sub: "For tomorrow",
+          title: "Sick for tomorrow",
+          icon: "heart",
+          href: "/roster/sick",
+          band: false,
+        },
+        // Moved from Open shifts (audit, 11 Oct 2026): it adds a shift to your own roster, not one on offer.
+        {
+          id: "log-shift",
+          label: "Log a shift",
+          short: "Log",
+          sub: "Add one by hand",
+          icon: "calendar-plus",
+          href: "/open-shifts/log",
+          band: false,
         },
         {
           id: "hours",
@@ -413,17 +439,32 @@ const roster: WorkArea = {
       ],
     },
     {
-      label: "Inside Roster",
+      label: "Open shifts",
       items: [
         {
-          id: "open-shifts",
-          label: "Open shifts",
-          sub: "Browse, requests, alerts",
-          icon: "search",
-          href: "/open-shifts",
-          paths: [],
-          opens: "open",
+          id: "open-shifts-post",
+          label: "Post a shift",
+          short: "Post",
+          sub: "Managers",
+          icon: "plus",
+          href: "/open-shifts/post",
+          paths: ["/open-shifts/post", "/open-shifts/post/"],
+          gate: "open-shifts-poster",
         },
+        {
+          id: "open-shifts-board",
+          label: "Week board",
+          sub: "Managers",
+          icon: "grid",
+          href: "/open-shifts/board",
+          gate: "open-shifts-poster",
+          band: false,
+        },
+      ],
+    },
+    {
+      label: "Inside Roster",
+      items: [
         {
           id: "manage",
           label: "Manage team",
@@ -440,15 +481,9 @@ const roster: WorkArea = {
     {
       label: "Set up",
       items: [
-        {
-          id: "calendar",
-          label: "Teaching and expiries",
-          sub: "Add to your calendar",
-          icon: "link",
-          href: "/roster/calendar",
-          band: false,
-        },
-        { id: "join", label: "Join a team", sub: "Invite code", icon: "qr", href: "/roster/join", band: false },
+        // "Teaching and expiries" (On Call's calendar page) left Roster: it holds no shifts, and On Call's
+        // menu still opens it. "Join a team" left More too: Month, Team, Swaps and My shifts offer it
+        // wherever there is no team yet (audit, 11 Oct 2026).
         { id: "settings", label: "Settings", sub: "Alerts and data", icon: "settings", href: "/roster/settings" },
         { id: "rost-help", label: "Help", sub: "How Roster works", icon: "help", action: "work-help" },
       ],
@@ -456,12 +491,16 @@ const roster: WorkArea = {
   ],
 };
 
-/** Open shifts, inside Roster: the shifts on offer, your requests and alerts. */
+/**
+ * Open shifts' own pages. Since 12 Oct 2026 the frame draws them as Roster's
+ * "Open shifts" tab (`workAreaFor` returns Roster for the `open-shifts` mode),
+ * so this area is no longer an inner area with tabs of its own. It stays so the
+ * `open` id still names these pages for help, example data and AI Search.
+ */
 const openShifts: WorkArea = {
   id: "open",
   name: "Open shifts",
   identity: "roster",
-  parent: "rost",
   tabs: [
     {
       id: "open-shifts-browse",
@@ -510,14 +549,6 @@ const openShifts: WorkArea = {
           gate: "open-shifts-poster",
           band: false,
         },
-        {
-          id: "open-shifts-log",
-          label: "Log a shift",
-          sub: "Offered to you",
-          icon: "pen",
-          href: "/open-shifts/log",
-          band: false,
-        },
         { id: "open-shifts-help", label: "Help", sub: "How it works", icon: "help", action: "work-help" },
       ],
     },
@@ -531,6 +562,8 @@ const openShifts: WorkArea = {
 const manageTeam: WorkArea = {
   id: "manage",
   name: "Manage team",
+  // A sub-area keeps its parent's pill (audit D21), as Open shifts does; the band names the page.
+  pillName: "Roster",
   identity: "roster",
   parent: "rost",
   tabs: [
@@ -643,7 +676,7 @@ const teaching: WorkArea = {
       label: "Sessions",
       items: [
         { id: "teach", label: "Presenting", sub: "Your next talk", icon: "board", href: "/teaching/teach" },
-        { id: "whats-on", label: "What's on", sub: "Other services", icon: "grid", href: "/teaching/whats-on" },
+        // What's on became Week's "Other services" filter (owner decision, 11 Oct 2026).
         { id: "term", label: "Term", sub: "Dates and goals", icon: "layers", href: "/teaching/term" },
         {
           id: "resources",
@@ -651,6 +684,16 @@ const teaching: WorkArea = {
           sub: "Slides, papers",
           icon: "folder",
           href: "/teaching/resources",
+        },
+        // On Call's calendar page, moved here from Roster's More (audit, 11 Oct 2026): it holds teaching
+        // sessions and expiry dates, no shifts. The page keeps its own header.
+        {
+          id: "calendar",
+          label: "Add to calendar",
+          sub: "Sync to your phone",
+          icon: "link",
+          href: "/roster/calendar",
+          band: false,
         },
       ],
     },
@@ -660,15 +703,7 @@ const teaching: WorkArea = {
         { id: "feedback", label: "Feedback", sub: "Rate a session", icon: "star", href: "/teaching/feedback" },
         { id: "review", label: "Log to CPD", sub: "Weekly review", icon: "award", href: "/teaching/review" },
         { id: "exam-prep", label: "Exam prep", sub: "Your plan", icon: "pen", href: "/teaching/exam-prep" },
-        {
-          id: "term-folder",
-          label: "Evidence folder",
-          // CPD has its own "Evidence" page, so the short name says which one this is.
-          short: "Term folder",
-          sub: "Your term in one place",
-          icon: "folder",
-          href: "/teaching/term/folder",
-        },
+        // Evidence folder merged into Term (owner decision, 11 Oct 2026); /teaching/term/folder redirects there.
       ],
     },
     {
@@ -731,6 +766,8 @@ const teaching: WorkArea = {
 const assessments: WorkArea = {
   id: "assess",
   name: "Assessments",
+  // A sub-area keeps its parent's pill (audit D21); the band names the page.
+  pillName: "Teaching",
   identity: "teaching",
   parent: "teach",
   tabs: [
@@ -955,25 +992,26 @@ const cpd: WorkArea = {
     {
       label: "Your year",
       items: [
-        { id: "setup", label: "Report", sub: "Year check", icon: "check-list", href: "/cme/check" },
+        // One End of year page with three steps (11 Oct 2026 audit). Evidence, Export and AMA CPD Home are the
+        // detail pages its steps open, so they leave the menu and keep End of year current.
+        {
+          id: "setup",
+          label: "End of year",
+          sub: "Hand it in",
+          icon: "check-list",
+          href: "/cme/check",
+          paths: ["/cme/check", "/cme/evidence", "/cme/export", "/cme/cpd-home"],
+        },
         { id: "plan", label: "Plan", sub: "Your goals", icon: "target", href: "/cme/plan" },
         {
           id: "targets",
           label: "Targets",
-          sub: "Your confirmed numbers",
+          sub: "Your numbers",
           icon: "flag",
           href: "/cme/setup",
           paths: ["/cme/setup", "/cme/programme"],
         },
         { id: "training", label: "Training", sub: "Registrar record", icon: "layers", href: "/cme/training" },
-        {
-          id: "applications",
-          label: "Jobs",
-          sub: "Season dates, referees, CV",
-          icon: "flag",
-          href: "/cme/applications",
-          paths: ["/cme/applications", "/cme/applications/cv"],
-        },
       ],
     },
     {
@@ -996,45 +1034,13 @@ const cpd: WorkArea = {
           href: "/cme/routines",
           paths: [],
         },
-        { id: "cpd-evidence", label: "Evidence", sub: "Certificates to add", icon: "file", href: "/cme/evidence" },
-        {
-          id: "cpd-export",
-          label: "Export",
-          sub: "CSV and printable",
-          icon: "download",
-          href: "/cme/export",
-        },
-        {
-          id: "cpd-home",
-          label: "AMA CPD Home",
-          short: "CPD Home",
-          sub: "Send your year",
-          icon: "send",
-          href: "/cme/cpd-home",
-          paths: ["/cme/cpd-home"],
-        },
       ],
     },
     {
-      label: "Settings",
+      label: "Help",
       items: [
-        {
-          id: "customise",
-          label: "Customise",
-          sub: "Summary sections",
-          icon: "sliders",
-          href: "/cme/customise",
-          band: false,
-        },
-        {
-          id: "setup-edit",
-          label: "Set up",
-          sub: "Home and total",
-          icon: "settings",
-          href: "/cme/setup?edit=1",
-          paths: ["/cme/setup"],
-          query: { edit: "1" },
-        },
+        // Customise is reached from Summary's own button, and Set up is the same page as Targets, so neither
+        // is listed here (11 Oct 2026 audit).
         { id: "cpd-help", label: "Help", sub: "How CPD works", icon: "help", action: "work-help" },
       ],
     },
@@ -1061,14 +1067,7 @@ const admin: WorkArea = {
     {
       label: "Paperwork",
       items: [
-        {
-          id: "admin-compliance",
-          label: "Compliance",
-          sub: "Every requirement",
-          icon: "shield",
-          href: "/admin/compliance",
-        },
-        { id: "admin-export", label: "Export", sub: "Spreadsheet", icon: "download", href: "/admin/compliance/export" },
+        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
         {
           id: "admin-bookings",
           label: "Bookings",
@@ -1085,8 +1084,6 @@ const admin: WorkArea = {
           href: "/admin/courses",
           gate: "course-organiser",
         },
-        { id: "admin-requests", label: "Requests", sub: "Asks you send", icon: "inbox", href: "/admin/requests" },
-        { id: "admin-sharing", label: "Sharing", sub: "Not live yet", icon: "send", href: "/admin/sharing" },
         {
           id: "admin-documents",
           label: "Documents",
@@ -1124,6 +1121,16 @@ const admin: WorkArea = {
           sub: "New to WA hospitals",
           icon: "compass",
           href: "/admin/new-job/starter",
+        },
+        // Career admin, beside New job and Contract (moved from CPD, 11 Oct 2026 audit).
+        {
+          id: "applications",
+          label: "Job applications",
+          short: "Jobs",
+          sub: "Season dates, referees, CV",
+          icon: "flag",
+          href: "/admin/applications",
+          paths: ["/admin/applications", "/admin/applications/cv"],
         },
         {
           id: "admin-ready",
@@ -1176,14 +1183,6 @@ const admin: WorkArea = {
           href: "/admin/people",
           gate: "hospital-role",
         },
-        {
-          id: "admin-workforce",
-          label: "Workforce",
-          sub: "Their view, sample",
-          icon: "layers",
-          href: "/admin/workforce",
-          band: false,
-        },
       ],
     },
   ],
@@ -1193,61 +1192,54 @@ const onCall: WorkArea = {
   id: "call",
   name: "On Call",
   identity: "on-call",
+  // Four jobs, one place each (Work mode simplify plan, owner approval 12 Oct 2026): Now for the shift,
+  // Contacts for who and where (People, Refer and Who's on together), Playbook for what to do, and the
+  // Handbook (first in More, so it joins the tab row whenever there is room) for how the hospital works.
   tabs: [
     { id: "now", label: "Now", sub: "Your shift", icon: "pulse", href: "/on-call", title: "On Call" },
     {
       id: "call",
-      label: "People",
-      sub: "Who to ring",
+      label: "Contacts",
+      sub: "Numbers and referrals",
       icon: "phone",
       href: "/on-call/call",
-      paths: ["/on-call/call", "/on-call/contacts"],
+      paths: ["/on-call/call", "/on-call/contacts", "/on-call/refer", "/on-call/referrals"],
     },
-    {
-      id: "refer",
-      label: "Refer",
-      sub: "Who takes it",
-      icon: "refer",
-      href: "/on-call/refer",
-      paths: ["/on-call/refer", "/on-call/referrals"],
-    },
+    { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
   ],
   groups: [
     {
       label: "Reference",
       items: [
-        { id: "find", label: "Handbook", sub: "Wards, systems", icon: "book", href: "/on-call/find" },
-        { id: "playbook", label: "Playbook", sub: "What to do", icon: "clipboard", href: "/on-call/playbook" },
-        { id: "whoswho", label: "Who's who", sub: "Roles and teams", icon: "users", href: "/on-call/who-is-who" },
         {
-          id: "orientation",
-          label: "Orientation",
-          sub: "Checklists",
-          icon: "check-list",
-          href: "/on-call/orientation",
+          id: "find",
+          label: "Handbook",
+          sub: "Wards, systems, pocket card",
+          icon: "book",
+          href: "/on-call/find",
+          // Who's who and the Pocket card are reached from the Handbook's own page.
+          paths: ["/on-call/find", "/on-call/who-is-who", "/on-call/card"],
         },
         {
-          id: "first-week",
-          label: "First week",
-          sub: "Starting out",
+          id: "starting-here",
+          label: "Starting here",
+          short: "Starting",
+          sub: "Before you start, first night",
           icon: "flag",
           href: "/on-call/first-week",
+          paths: ["/on-call/first-week", "/on-call/first-night", "/on-call/orientation"],
         },
-        { id: "card", label: "Pocket card", sub: "To print", icon: "card", href: "/on-call/card" },
-        // The area's last group (Service) is for editors only, so Help sits with the reference pages.
-        { id: "call-help", label: "Help", sub: "How On Call works", icon: "help", action: "work-help" },
       ],
     },
     {
-      label: "Tonight tools",
+      label: "Tonight",
       items: [
         {
-          id: "call-now",
-          label: "Who to call now",
-          short: "Call now",
-          sub: "Pick a problem",
-          icon: "phone",
-          href: "/on-call/now",
+          id: "handover",
+          label: "Handover",
+          sub: "Kept on this phone",
+          icon: "send",
+          href: "/on-call/handover",
         },
         ...(ON_CALL_WHOS_ON_ENABLED
           ? [
@@ -1257,86 +1249,31 @@ const onCall: WorkArea = {
                 sub: "Tonight's team",
                 icon: "users",
                 href: "/on-call/whos-on",
+                paths: ["/on-call/whos-on", "/on-call/whos-on/roster"],
               } as const,
             ]
-          : []),
-        {
-          id: "whoson-roster",
-          label: "From the roster",
-          short: "Roster",
-          sub: "Your team's roster",
-          icon: "calendar",
-          href: "/on-call/whos-on/roster",
-        },
-        {
-          id: "pulse",
-          label: "Shift pulse",
-          sub: "How it is going",
-          icon: "pulse",
-          href: "/on-call/pulse",
-          band: false,
-        },
+          : [
+              {
+                id: "whoson-roster",
+                label: "Who's on",
+                sub: "From your team's roster",
+                icon: "calendar",
+                href: "/on-call/whos-on/roster",
+              } as const,
+            ]),
+        { id: "call-help", label: "Help", sub: "How On Call works", icon: "help", action: "work-help" },
+      ],
+    },
+    {
+      label: "Keeping it right",
+      items: [
         {
           id: "check",
           label: "Check these",
-          sub: "Before you leave",
+          sub: "Numbers due a check",
           icon: "check-list",
           href: "/on-call/check",
-          band: false,
         },
-        {
-          id: "first-night",
-          label: "First night",
-          sub: "New to this site",
-          icon: "star",
-          href: "/on-call/first-night",
-          band: false,
-        },
-        {
-          id: "handover",
-          label: "Handover",
-          sub: "Kept on this phone",
-          icon: "send",
-          href: "/on-call/handover",
-          band: false,
-        },
-      ],
-    },
-    {
-      label: "Other areas",
-      items: [
-        {
-          id: "teaching",
-          label: "Teaching",
-          sub: "This week",
-          icon: "board",
-          href: "/teaching",
-          paths: [],
-          leadsTo: "teaching",
-        },
-        {
-          id: "logistics",
-          label: "Numbers",
-          sub: "Crisis lines first",
-          icon: "phone",
-          href: ON_CALL_ADMIN_ROWS_HREF,
-          paths: [],
-          leadsTo: "my-work",
-        },
-        {
-          id: "compliance",
-          label: "Renewals",
-          sub: "Dates to act on",
-          icon: "repeat",
-          href: "/admin/renewals",
-          paths: [],
-          leadsTo: "my-work",
-        },
-      ],
-    },
-    {
-      label: "Service",
-      items: [
         {
           id: "service",
           label: "Manage service",
@@ -1381,9 +1318,9 @@ export function workAreaFor(modeId: AppModeId, pathname: string): WorkArea | nul
     case "roster":
       return pathname === "/roster/manage" || pathname.startsWith("/roster/manage/") ? manageTeam : roster;
     case "open-shifts":
-      // Open shifts is an inner area of Roster, with Roster's colours. The mode
-      // id stays `open-shifts` for search and the registry.
-      return openShifts;
+      // Open shifts is a Roster tab (12 Oct 2026). The mode id stays `open-shifts`
+      // for search and the registry.
+      return roster;
     case "teaching":
       return ASSESSMENT_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
         ? assessments

@@ -41,11 +41,109 @@ import {
 } from "./whole-original-supplier";
 import type { JobRow } from "./types";
 
-
 const FOUR_PAGE_SOURCE = "sha256:abbc8107a09582e18f36bf4905c75f1fc78af70cd516851b89bff8919ca5bece";
 const FOUR_PAGE_EXPECTATION = "sha256:2a5c6ae064ef159f15042105c85edc9da4af6bd231ae1268e703baf0c447e0da";
-const FOUR_PAGE_PAGES = [{"pageNumber":1,"text":"Summary of the guidelines\n\nGuideline 1: Adults\n\nTo reduce the risk of harm from alcohol-related disease or injury, healthy\nmen and women should drink no more than 10 standard drinks a week and\nno more than 4 standard drinks on any one day.\nThe less you drink, the lower your risk of harm from alcohol.\n\nThis guideline applies to healthy men and women aged 18 years and over. The guideline\ndoes not represent a ‘safe’ or ‘no-risk’ drinking level, nor does it set an absolute upper\nlimit of intake. It identifies a level of drinking at which, based on the current scientific\nevidence, the risk of alcohol-related harm remains low over a lifetime, in terms of both\nrisk of death from alcohol-related disease and death from alcohol-related injury.\n\nKey messages\n•  This guideline provides recommendations to reduce the risk of harm from alcohol, but\n  these recommendations do not completely eliminate all risk from drinking alcohol.\n\n• For both men and women, the risk of dying from alcohol-related disease and injury\n  remains below 1 in 100 if no more than 10 standard drinks are consumed each week\n  and no more than 4 standard drinks are consumed on any one day.\n\n• Every drink above this level increases the lifetime risk of alcohol-related disease and\n   injury. This includes the risk of dying from alcohol-related disease or injury.\n\n• Drinking alcohol increases the risk of many cancers. The level of risk increases as more\n  alcohol is consumed.\n\n• Drinking less frequently, and drinking less on each day or drinking occasion, further\n  reduces the lifetime risk of harm from alcohol.\n\n• Not drinking at all is the best way to reduce the risk of harm from alcohol.\n\n•  This guideline applies to most healthy adults; however, there are some people who\n  are at greater risk of alcohol-related harm. Those at greater risk include young adults\n  aged 18–25 years, people aged over 60 years, people with mental or physical health\n   conditions, people with a family history of alcohol dependence, and people who use\n    illicit drugs or take medications that interact with alcohol.\n\n•  This guideline does not apply to children and young people under the age of 18 years\n  (who are covered in Guideline 2), or to women who are planning a pregnancy, or are\n  pregnant or breastfeeding (who are covered in Guideline 3).\n\n\n\n\n\n                                 Australian Guidelines to Reduce Health Risks from Drinking Alcohol      4"},{"pageNumber":2,"text":"Guideline 2: Children and people under\n18 years of age\n\nTo reduce the risk of injury and other harms to health, children and people\nunder 18 years of age should not drink alcohol.\n\nKey messages\nThere is no clear ‘safe’ level of alcohol consumption for children and people under\n18 years of age. This is because of the increased risks of harm from alcohol for young\npeople, including from injury and potential adverse effects on brain development.\n\nBeginning alcohol use at an early age may also put young people at greater risk of longer\nterm alcohol-related harms, including alcohol use disorders that tend to appear in early\nadulthood.\n\nTo minimise these risks, children and people under 18 years of age should not drink alcohol.\n\nGuideline 3: Women who are pregnant\nor breastfeeding\n\nA. To prevent harm from alcohol to their unborn child, women who are\n   pregnant or planning a pregnancy should not drink alcohol.\n\nB. For women who are breastfeeding, not drinking alcohol is safest for\n    their baby.\n\nKey messages\nThis guideline is based on evidence of the harms for the developing fetus and for young\nbabies when mothers drink alcohol while pregnant or breastfeeding. It is relevant to\nwomen who are pregnant, breastfeeding or may become pregnant in the near future.\n\nThe evidence does not indicate a safe amount of alcohol that pregnant women and\nbreastfeeding mothers can drink.\n\n• As there is a risk of harm to the fetus, this guideline takes a precautionary approach\n  and recommends not drinking alcohol when pregnant.\n\n•  Similarly, as there is a risk of harm to the baby, this guideline takes a precautionary\n  approach and recommends not drinking alcohol when breastfeeding.\n\nDuring pregnancy\n• Alcohol is a teratogen — that is, a substance that can cause permanent harm to a\n  developing fetus. If a woman drinks alcohol during pregnancy, the alcohol passes\n   freely from the mother to the fetus via the placenta, so the blood alcohol levels of the\n  mother and fetus are similar.\n\n• The central nervous system starts developing very early in the pregnancy, and the\n   brain is sensitive to harms from alcohol throughout pregnancy.\n\n• No safe level of alcohol consumption during pregnancy has been identified.\n\n• The risk of harm to the fetus increases the more the mother drinks and the more\n   frequently she drinks.\n\n\n\n\n                                 Australian Guidelines to Reduce Health Risks from Drinking Alcohol      5"},{"pageNumber":3,"text":"• Maternal and fetal factors affect the risks from drinking alcohol while pregnant\n   (e.g. genetic differences, metabolic rates, and biochemical and inflammatory responses\n  to alcohol). These factors make it difficult to predict the level of risk in each individual\n  pregnancy.\n\n• Not drinking alcohol during pregnancy, or when planning a pregnancy, prevents the\n   risk of alcohol-related harm to the developing fetus.\n\nWhen breastfeeding\n• For women who are breastfeeding, not drinking alcohol is safest for their baby.\n\n•  If a breastfeeding mother drinks alcohol, that alcohol crosses into the breastmilk.\n  Only time reduces the amount of alcohol in the milk.\n\n• Maternal alcohol consumption may adversely affect the feeding behaviour and sleep\n  patterns of the breastfed baby.\n\n• A baby’s brain keeps developing after it is born. A growing infant brain is more\n   sensitive to damage from alcohol than an adult brain.\n\n\n\n\n\n                                 Australian Guidelines to Reduce Health Risks from Drinking Alcohol      6"},{"pageNumber":4,"text":"Appendix 2: Guideline 1 \nmodelling results\nThe lifetime risk threshold selected for this guideline was a 1 in 100 (1%) chance of dying from an \nalcohol-related condition (see the Rationale for Guideline 1). Table A2.1 presents consumption \nlevels corresponding to this risk threshold, and provides a comparison of consumption levels \nwith alternative risk thresholds of 0.1% (1 in 1000), 0.2% (1 in 500) and 2.0% (1 in 50). This table \nis not intended to be used for individual interpretation of risk levels given individual drinking \npatterns. Rather, the information is intended to support population-level advice, as explained \nbelow.\nConsidering that the average drinking frequency in Australia is 3 days per week (see Appendix 1), \nthe number of standard drinks corresponding to the 1% risk threshold is 12.5 standard drinks per \nweek for men and 10.5 standard drinks per week for women (Table A2.1).\nTable A2.1 Number of standard drinks per week associated with alternative lifetime mortality \nrisk thresholds, depending on number of days alcohol is consumed per week\n| Drinking frequency | Risk level |  |  |  |\n| --- | --- | --- | --- | --- |\n|  | 0.1% (1 in 1000) | 0.2% (1 in 500) | 1% (1 in 100) | 2% (1 in 50) |\n| Men | Standard drinks (per week) |  |  |  |\n| Daily | 18.5 | 18.7 | 20.2 | 21.9 |\n| 6 days/week | 17.1 | 17.2 | 18.6 | 20.2 |\n| 5 days/week | 15.5 | 15.7 | 16.9 | 18.5 |\n| 4 days/week | 13.6 | 13.7 | 14.9 | 16.4 |\n| 3 days/week | 11.3 | 11.4 | 12.5 | 13.8 |\n| 2 days/week | 8 | 8.1 | 9 | 10.1 |\n| 1 day/week | 3.4 | 3.4 | 4.1 | 4.9 |\n| Women | Standard drinks (per week) |  |  |  |\n| Daily | 14 | 14.1 | 15.3 | 16.7 |\n| 6 days/week | 13.3 | 13.4 | 14.5 | 15.8 |\n| 5 days/week | 12.3 | 12.5 | 13.5 | 14.8 |\n| 4 days/week | 11.1 | 11.2 | 12.1 | 13.3 |\n| 3 days/week | 9.5 | 9.6 | 10.5 | 11.6 |\n| 2 days/week | 7 | 7.1 | 7.8 | 8.8 |\n| 1 day/week | 4.1 | 4.1 | 4.7 | 5.4 |\nIn any public health guideline, it is important that advice is consistent, clear and cautious, \nerring on the side of protecting health. To check that the recommendations are robust \nwhen different types of evidence are considered, and to determine what might happen \nif that evidence varied, alternative scenarios were considered. The impact of the different \nconsiderations and scenarios on the weekly drinking amounts corresponding to risk levels are \noutlined in Tables A2.1 and A2.2.\nThis guideline and the previous (2009) alcohol guidelines [4] both applied a 1% lifetime risk \nthreshold; however, some international guidelines consider a 0.1% (1 in 1000) risk to be more \nappropriate. For a lifetime risk threshold of 0.1%, corresponding total weekly alcohol use \nis about 10% lower than that indicated for a 1% threshold; that is, 11.3 standard drinks per \nweek for men and 9.5 standard drinks per week for women for an average of 3 drinking days \nper week.\nAustralian Guidelines to Reduce Health Risks from Drinking Alcohol \n57"}];
-const FOUR_PAGE_DESCRIPTORS = [{"bbox":[68,315.77,526.71,599.3],"height":868,"metadata":{"accessible_table_markdown":"| Drinking frequency | Risk level |  |  |  |\n| --- | --- | --- | --- | --- |\n|  | 0.1% (1 in 1000) | 0.2% (1 in 500) | 1% (1 in 100) | 2% (1 in 50) |\n| Men | Standard drinks (per week) |  |  |  |\n| Daily | 18.5 | 18.7 | 20.2 | 21.9 |\n| 6 days/week | 17.1 | 17.2 | 18.6 | 20.2 |\n| 5 days/week | 15.5 | 15.7 | 16.9 | 18.5 |\n| 4 days/week | 13.6 | 13.7 | 14.9 | 16.4 |\n| 3 days/week | 11.3 | 11.4 | 12.5 | 13.8 |\n| 2 days/week | 8 | 8.1 | 9 | 10.1 |\n| 1 day/week | 3.4 | 3.4 | 4.1 | 4.9 |\n| Women | Standard drinks (per week) |  |  |  |\n| Daily | 14 | 14.1 | 15.3 | 16.7 |\n| 6 days/week | 13.3 | 13.4 | 14.5 | 15.8 |\n| 5 days/week | 12.3 | 12.5 | 13.5 | 14.8 |\n| 4 days/week | 11.1 | 11.2 | 12.1 | 13.3 |\n| 3 days/week | 9.5 | 9.6 | 10.5 | 11.6 |\n| 2 days/week | 7 | 7.1 | 7.8 | 8.8 |\n| 1 day/week | 4.1 | 4.1 | 4.7 | 5.4 |","bbox":[68,315.77,526.71,599.3],"candidate_type":"table","clip_bbox":[68,315.77,526.71,599.3],"column_count":5,"crop_completeness":1,"crop_touches_page_edge":false,"extraction_method":"pymupdf_find_tables","heading_text":"Table A2.1 Number of standard drinks per week associated with alternative lifetime mortality risk thresholds, depending on number of days alcohol is consumed per week","pageNumber":4,"page_height":841.89,"page_rotation":0,"page_width":595.28,"render_dpi":220,"render_scale":3.056,"row_count":18,"rows_truncated":false,"source_kind":"table_crop","source_regions":[{"bbox":[68,315.77,526.71,599.3],"page_number":4,"source_kind":"table_crop"}],"table_columns":["Drinking frequency","Risk level","","",""],"table_confidence":0.99,"table_index":1,"table_label":"Table A2.1","table_role":"clinical","table_rows":[["Drinking frequency","Risk level","","",""],["","0.1% (1 in 1000)","0.2% (1 in 500)","1% (1 in 100)","2% (1 in 50)"],["Men","Standard drinks (per week)","","",""],["Daily","18.5","18.7","20.2","21.9"],["6 days/week","17.1","17.2","18.6","20.2"],["5 days/week","15.5","15.7","16.9","18.5"],["4 days/week","13.6","13.7","14.9","16.4"],["3 days/week","11.3","11.4","12.5","13.8"],["2 days/week","8","8.1","9","10.1"],["1 day/week","3.4","3.4","4.1","4.9"],["Women","Standard drinks (per week)","","",""],["Daily","14","14.1","15.3","16.7"],["6 days/week","13.3","13.4","14.5","15.8"],["5 days/week","12.3","12.5","13.5","14.8"],["4 days/week","11.1","11.2","12.1","13.3"],["3 days/week","9.5","9.6","10.5","11.6"],["2 days/week","7","7.1","7.8","8.8"],["1 day/week","4.1","4.1","4.7","5.4"]],"table_text":"| Drinking frequency | Risk level |  |  |  |\n| --- | --- | --- | --- | --- |\n|  | 0.1% (1 in 1000) | 0.2% (1 in 500) | 1% (1 in 100) | 2% (1 in 50) |\n| Men | Standard drinks (per week) |  |  |  |\n| Daily | 18.5 | 18.7 | 20.2 | 21.9 |\n| 6 days/week | 17.1 | 17.2 | 18.6 | 20.2 |\n| 5 days/week | 15.5 | 15.7 | 16.9 | 18.5 |\n| 4 days/week | 13.6 | 13.7 | 14.9 | 16.4 |\n| 3 days/week | 11.3 | 11.4 | 12.5 | 13.8 |\n| 2 days/week | 8 | 8.1 | 9 | 10.1 |\n| 1 day/week | 3.4 | 3.4 | 4.1 | 4.9 |\n| Women | Standard drinks (per week) |  |  |  |\n| Daily | 14 | 14.1 | 15.3 | 16.7 |\n| 6 days/week | 13.3 | 13.4 | 14.5 | 15.8 |\n| 5 days/week | 12.3 | 12.5 | 13.5 | 14.8 |\n| 4 days/week | 11.1 | 11.2 | 12.1 | 13.3 |\n| 3 days/week | 9.5 | 9.6 | 10.5 | 11.6 |\n| 2 days/week | 7 | 7.1 | 7.8 | 8.8 |\n| 1 day/week | 4.1 | 4.1 | 4.7 | 5.4 |","table_title":"Number of standard drinks per week associated with alternative lifetime mortality risk thresholds, depending on number of days alcohol is consumed per week"},"mimeType":"image/png","pageNumber":4,"sourceKind":"table_crop","width":1403},{"bbox":[0,0,595.28,841.89],"height":679,"metadata":{"bbox":[0,0,595.28,841.89],"candidate_type":"document_cover","clinical_use_class":"decorative_or_empty","pageNumber":1,"page_height":841.89,"page_rotation":0,"page_width":595.28,"render_dpi":58,"render_scale":0.806,"source_kind":"cover_page","source_regions":[{"bbox":[0,0,595.28,841.89],"page_number":1,"source_kind":"cover_page"}]},"mimeType":"image/png","pageNumber":1,"sourceKind":"cover_page","width":480}];
+const FOUR_PAGE_PAGES = [
+  {
+    pageNumber: 1,
+    text: "Summary of the guidelines\n\nGuideline 1: Adults\n\nTo reduce the risk of harm from alcohol-related disease or injury, healthy\nmen and women should drink no more than 10 standard drinks a week and\nno more than 4 standard drinks on any one day.\nThe less you drink, the lower your risk of harm from alcohol.\n\nThis guideline applies to healthy men and women aged 18 years and over. The guideline\ndoes not represent a ‘safe’ or ‘no-risk’ drinking level, nor does it set an absolute upper\nlimit of intake. It identifies a level of drinking at which, based on the current scientific\nevidence, the risk of alcohol-related harm remains low over a lifetime, in terms of both\nrisk of death from alcohol-related disease and death from alcohol-related injury.\n\nKey messages\n•  This guideline provides recommendations to reduce the risk of harm from alcohol, but\n  these recommendations do not completely eliminate all risk from drinking alcohol.\n\n• For both men and women, the risk of dying from alcohol-related disease and injury\n  remains below 1 in 100 if no more than 10 standard drinks are consumed each week\n  and no more than 4 standard drinks are consumed on any one day.\n\n• Every drink above this level increases the lifetime risk of alcohol-related disease and\n   injury. This includes the risk of dying from alcohol-related disease or injury.\n\n• Drinking alcohol increases the risk of many cancers. The level of risk increases as more\n  alcohol is consumed.\n\n• Drinking less frequently, and drinking less on each day or drinking occasion, further\n  reduces the lifetime risk of harm from alcohol.\n\n• Not drinking at all is the best way to reduce the risk of harm from alcohol.\n\n•  This guideline applies to most healthy adults; however, there are some people who\n  are at greater risk of alcohol-related harm. Those at greater risk include young adults\n  aged 18–25 years, people aged over 60 years, people with mental or physical health\n   conditions, people with a family history of alcohol dependence, and people who use\n    illicit drugs or take medications that interact with alcohol.\n\n•  This guideline does not apply to children and young people under the age of 18 years\n  (who are covered in Guideline 2), or to women who are planning a pregnancy, or are\n  pregnant or breastfeeding (who are covered in Guideline 3).\n\n\n\n\n\n                                 Australian Guidelines to Reduce Health Risks from Drinking Alcohol      4",
+  },
+  {
+    pageNumber: 2,
+    text: "Guideline 2: Children and people under\n18 years of age\n\nTo reduce the risk of injury and other harms to health, children and people\nunder 18 years of age should not drink alcohol.\n\nKey messages\nThere is no clear ‘safe’ level of alcohol consumption for children and people under\n18 years of age. This is because of the increased risks of harm from alcohol for young\npeople, including from injury and potential adverse effects on brain development.\n\nBeginning alcohol use at an early age may also put young people at greater risk of longer\nterm alcohol-related harms, including alcohol use disorders that tend to appear in early\nadulthood.\n\nTo minimise these risks, children and people under 18 years of age should not drink alcohol.\n\nGuideline 3: Women who are pregnant\nor breastfeeding\n\nA. To prevent harm from alcohol to their unborn child, women who are\n   pregnant or planning a pregnancy should not drink alcohol.\n\nB. For women who are breastfeeding, not drinking alcohol is safest for\n    their baby.\n\nKey messages\nThis guideline is based on evidence of the harms for the developing fetus and for young\nbabies when mothers drink alcohol while pregnant or breastfeeding. It is relevant to\nwomen who are pregnant, breastfeeding or may become pregnant in the near future.\n\nThe evidence does not indicate a safe amount of alcohol that pregnant women and\nbreastfeeding mothers can drink.\n\n• As there is a risk of harm to the fetus, this guideline takes a precautionary approach\n  and recommends not drinking alcohol when pregnant.\n\n•  Similarly, as there is a risk of harm to the baby, this guideline takes a precautionary\n  approach and recommends not drinking alcohol when breastfeeding.\n\nDuring pregnancy\n• Alcohol is a teratogen — that is, a substance that can cause permanent harm to a\n  developing fetus. If a woman drinks alcohol during pregnancy, the alcohol passes\n   freely from the mother to the fetus via the placenta, so the blood alcohol levels of the\n  mother and fetus are similar.\n\n• The central nervous system starts developing very early in the pregnancy, and the\n   brain is sensitive to harms from alcohol throughout pregnancy.\n\n• No safe level of alcohol consumption during pregnancy has been identified.\n\n• The risk of harm to the fetus increases the more the mother drinks and the more\n   frequently she drinks.\n\n\n\n\n                                 Australian Guidelines to Reduce Health Risks from Drinking Alcohol      5",
+  },
+  {
+    pageNumber: 3,
+    text: "• Maternal and fetal factors affect the risks from drinking alcohol while pregnant\n   (e.g. genetic differences, metabolic rates, and biochemical and inflammatory responses\n  to alcohol). These factors make it difficult to predict the level of risk in each individual\n  pregnancy.\n\n• Not drinking alcohol during pregnancy, or when planning a pregnancy, prevents the\n   risk of alcohol-related harm to the developing fetus.\n\nWhen breastfeeding\n• For women who are breastfeeding, not drinking alcohol is safest for their baby.\n\n•  If a breastfeeding mother drinks alcohol, that alcohol crosses into the breastmilk.\n  Only time reduces the amount of alcohol in the milk.\n\n• Maternal alcohol consumption may adversely affect the feeding behaviour and sleep\n  patterns of the breastfed baby.\n\n• A baby’s brain keeps developing after it is born. A growing infant brain is more\n   sensitive to damage from alcohol than an adult brain.\n\n\n\n\n\n                                 Australian Guidelines to Reduce Health Risks from Drinking Alcohol      6",
+  },
+  {
+    pageNumber: 4,
+    text: "Appendix 2: Guideline 1 \nmodelling results\nThe lifetime risk threshold selected for this guideline was a 1 in 100 (1%) chance of dying from an \nalcohol-related condition (see the Rationale for Guideline 1). Table A2.1 presents consumption \nlevels corresponding to this risk threshold, and provides a comparison of consumption levels \nwith alternative risk thresholds of 0.1% (1 in 1000), 0.2% (1 in 500) and 2.0% (1 in 50). This table \nis not intended to be used for individual interpretation of risk levels given individual drinking \npatterns. Rather, the information is intended to support population-level advice, as explained \nbelow.\nConsidering that the average drinking frequency in Australia is 3 days per week (see Appendix 1), \nthe number of standard drinks corresponding to the 1% risk threshold is 12.5 standard drinks per \nweek for men and 10.5 standard drinks per week for women (Table A2.1).\nTable A2.1 Number of standard drinks per week associated with alternative lifetime mortality \nrisk thresholds, depending on number of days alcohol is consumed per week\n| Drinking frequency | Risk level |  |  |  |\n| --- | --- | --- | --- | --- |\n|  | 0.1% (1 in 1000) | 0.2% (1 in 500) | 1% (1 in 100) | 2% (1 in 50) |\n| Men | Standard drinks (per week) |  |  |  |\n| Daily | 18.5 | 18.7 | 20.2 | 21.9 |\n| 6 days/week | 17.1 | 17.2 | 18.6 | 20.2 |\n| 5 days/week | 15.5 | 15.7 | 16.9 | 18.5 |\n| 4 days/week | 13.6 | 13.7 | 14.9 | 16.4 |\n| 3 days/week | 11.3 | 11.4 | 12.5 | 13.8 |\n| 2 days/week | 8 | 8.1 | 9 | 10.1 |\n| 1 day/week | 3.4 | 3.4 | 4.1 | 4.9 |\n| Women | Standard drinks (per week) |  |  |  |\n| Daily | 14 | 14.1 | 15.3 | 16.7 |\n| 6 days/week | 13.3 | 13.4 | 14.5 | 15.8 |\n| 5 days/week | 12.3 | 12.5 | 13.5 | 14.8 |\n| 4 days/week | 11.1 | 11.2 | 12.1 | 13.3 |\n| 3 days/week | 9.5 | 9.6 | 10.5 | 11.6 |\n| 2 days/week | 7 | 7.1 | 7.8 | 8.8 |\n| 1 day/week | 4.1 | 4.1 | 4.7 | 5.4 |\nIn any public health guideline, it is important that advice is consistent, clear and cautious, \nerring on the side of protecting health. To check that the recommendations are robust \nwhen different types of evidence are considered, and to determine what might happen \nif that evidence varied, alternative scenarios were considered. The impact of the different \nconsiderations and scenarios on the weekly drinking amounts corresponding to risk levels are \noutlined in Tables A2.1 and A2.2.\nThis guideline and the previous (2009) alcohol guidelines [4] both applied a 1% lifetime risk \nthreshold; however, some international guidelines consider a 0.1% (1 in 1000) risk to be more \nappropriate. For a lifetime risk threshold of 0.1%, corresponding total weekly alcohol use \nis about 10% lower than that indicated for a 1% threshold; that is, 11.3 standard drinks per \nweek for men and 9.5 standard drinks per week for women for an average of 3 drinking days \nper week.\nAustralian Guidelines to Reduce Health Risks from Drinking Alcohol \n57",
+  },
+];
+const FOUR_PAGE_DESCRIPTORS = [
+  {
+    bbox: [68, 315.77, 526.71, 599.3],
+    height: 868,
+    metadata: {
+      accessible_table_markdown:
+        "| Drinking frequency | Risk level |  |  |  |\n| --- | --- | --- | --- | --- |\n|  | 0.1% (1 in 1000) | 0.2% (1 in 500) | 1% (1 in 100) | 2% (1 in 50) |\n| Men | Standard drinks (per week) |  |  |  |\n| Daily | 18.5 | 18.7 | 20.2 | 21.9 |\n| 6 days/week | 17.1 | 17.2 | 18.6 | 20.2 |\n| 5 days/week | 15.5 | 15.7 | 16.9 | 18.5 |\n| 4 days/week | 13.6 | 13.7 | 14.9 | 16.4 |\n| 3 days/week | 11.3 | 11.4 | 12.5 | 13.8 |\n| 2 days/week | 8 | 8.1 | 9 | 10.1 |\n| 1 day/week | 3.4 | 3.4 | 4.1 | 4.9 |\n| Women | Standard drinks (per week) |  |  |  |\n| Daily | 14 | 14.1 | 15.3 | 16.7 |\n| 6 days/week | 13.3 | 13.4 | 14.5 | 15.8 |\n| 5 days/week | 12.3 | 12.5 | 13.5 | 14.8 |\n| 4 days/week | 11.1 | 11.2 | 12.1 | 13.3 |\n| 3 days/week | 9.5 | 9.6 | 10.5 | 11.6 |\n| 2 days/week | 7 | 7.1 | 7.8 | 8.8 |\n| 1 day/week | 4.1 | 4.1 | 4.7 | 5.4 |",
+      bbox: [68, 315.77, 526.71, 599.3],
+      candidate_type: "table",
+      clip_bbox: [68, 315.77, 526.71, 599.3],
+      column_count: 5,
+      crop_completeness: 1,
+      crop_touches_page_edge: false,
+      extraction_method: "pymupdf_find_tables",
+      heading_text:
+        "Table A2.1 Number of standard drinks per week associated with alternative lifetime mortality risk thresholds, depending on number of days alcohol is consumed per week",
+      pageNumber: 4,
+      page_height: 841.89,
+      page_rotation: 0,
+      page_width: 595.28,
+      render_dpi: 220,
+      render_scale: 3.056,
+      row_count: 18,
+      rows_truncated: false,
+      source_kind: "table_crop",
+      source_regions: [{ bbox: [68, 315.77, 526.71, 599.3], page_number: 4, source_kind: "table_crop" }],
+      table_columns: ["Drinking frequency", "Risk level", "", "", ""],
+      table_confidence: 0.99,
+      table_index: 1,
+      table_label: "Table A2.1",
+      table_role: "clinical",
+      table_rows: [
+        ["Drinking frequency", "Risk level", "", "", ""],
+        ["", "0.1% (1 in 1000)", "0.2% (1 in 500)", "1% (1 in 100)", "2% (1 in 50)"],
+        ["Men", "Standard drinks (per week)", "", "", ""],
+        ["Daily", "18.5", "18.7", "20.2", "21.9"],
+        ["6 days/week", "17.1", "17.2", "18.6", "20.2"],
+        ["5 days/week", "15.5", "15.7", "16.9", "18.5"],
+        ["4 days/week", "13.6", "13.7", "14.9", "16.4"],
+        ["3 days/week", "11.3", "11.4", "12.5", "13.8"],
+        ["2 days/week", "8", "8.1", "9", "10.1"],
+        ["1 day/week", "3.4", "3.4", "4.1", "4.9"],
+        ["Women", "Standard drinks (per week)", "", "", ""],
+        ["Daily", "14", "14.1", "15.3", "16.7"],
+        ["6 days/week", "13.3", "13.4", "14.5", "15.8"],
+        ["5 days/week", "12.3", "12.5", "13.5", "14.8"],
+        ["4 days/week", "11.1", "11.2", "12.1", "13.3"],
+        ["3 days/week", "9.5", "9.6", "10.5", "11.6"],
+        ["2 days/week", "7", "7.1", "7.8", "8.8"],
+        ["1 day/week", "4.1", "4.1", "4.7", "5.4"],
+      ],
+      table_text:
+        "| Drinking frequency | Risk level |  |  |  |\n| --- | --- | --- | --- | --- |\n|  | 0.1% (1 in 1000) | 0.2% (1 in 500) | 1% (1 in 100) | 2% (1 in 50) |\n| Men | Standard drinks (per week) |  |  |  |\n| Daily | 18.5 | 18.7 | 20.2 | 21.9 |\n| 6 days/week | 17.1 | 17.2 | 18.6 | 20.2 |\n| 5 days/week | 15.5 | 15.7 | 16.9 | 18.5 |\n| 4 days/week | 13.6 | 13.7 | 14.9 | 16.4 |\n| 3 days/week | 11.3 | 11.4 | 12.5 | 13.8 |\n| 2 days/week | 8 | 8.1 | 9 | 10.1 |\n| 1 day/week | 3.4 | 3.4 | 4.1 | 4.9 |\n| Women | Standard drinks (per week) |  |  |  |\n| Daily | 14 | 14.1 | 15.3 | 16.7 |\n| 6 days/week | 13.3 | 13.4 | 14.5 | 15.8 |\n| 5 days/week | 12.3 | 12.5 | 13.5 | 14.8 |\n| 4 days/week | 11.1 | 11.2 | 12.1 | 13.3 |\n| 3 days/week | 9.5 | 9.6 | 10.5 | 11.6 |\n| 2 days/week | 7 | 7.1 | 7.8 | 8.8 |\n| 1 day/week | 4.1 | 4.1 | 4.7 | 5.4 |",
+      table_title:
+        "Number of standard drinks per week associated with alternative lifetime mortality risk thresholds, depending on number of days alcohol is consumed per week",
+    },
+    mimeType: "image/png",
+    pageNumber: 4,
+    sourceKind: "table_crop",
+    width: 1403,
+  },
+  {
+    bbox: [0, 0, 595.28, 841.89],
+    height: 679,
+    metadata: {
+      bbox: [0, 0, 595.28, 841.89],
+      candidate_type: "document_cover",
+      clinical_use_class: "decorative_or_empty",
+      pageNumber: 1,
+      page_height: 841.89,
+      page_rotation: 0,
+      page_width: 595.28,
+      render_dpi: 58,
+      render_scale: 0.806,
+      source_kind: "cover_page",
+      source_regions: [{ bbox: [0, 0, 595.28, 841.89], page_number: 1, source_kind: "cover_page" }],
+    },
+    mimeType: "image/png",
+    pageNumber: 1,
+    sourceKind: "cover_page",
+    width: 480,
+  },
+];
 
 type UnitId = GenerationUnitDeclaration["id"];
 export type ManagedPreparedSupplierInput = {
@@ -206,20 +304,29 @@ export function prepareManagedPrivateSupplier(args: ManagedPreparedSupplierInput
   if (!checked.blockers.includes("source_roles_uncovered")) refuse("independent_source_roles_unavailable");
   const captured = retainedCandidateImages(packet);
   const fourPagePilot = packet.registration.sourceSha256 === FOUR_PAGE_SOURCE;
-  if (fourPagePilot && (
-      args.originalBytes.length !== 2211561 ||
+  if (
+    fourPagePilot &&
+    (args.originalBytes.length !== 2211561 ||
       `sha256:${createHash("sha256").update(args.originalBytes).digest("hex")}` !== FOUR_PAGE_SOURCE ||
       packet.registration.sourceExpectationSha256 !== FOUR_PAGE_EXPECTATION ||
-      extracted.pages.length !== 4 || extracted.pages.some((page, index) =>
-        page.pageNumber !== FOUR_PAGE_PAGES[index].pageNumber || page.ocrUsed === true ||
-        page.text !== FOUR_PAGE_PAGES[index].text) ||
-      captured.length !== FOUR_PAGE_DESCRIPTORS.length || captured.some((capture, index) =>
-        generationEvidenceDigest(capture.descriptor) !== generationEvidenceDigest(FOUR_PAGE_DESCRIPTORS[index])) ||
+      extracted.pages.length !== 4 ||
+      extracted.pages.some(
+        (page, index) =>
+          page.pageNumber !== FOUR_PAGE_PAGES[index].pageNumber ||
+          page.ocrUsed === true ||
+          page.text !== FOUR_PAGE_PAGES[index].text,
+      ) ||
+      captured.length !== FOUR_PAGE_DESCRIPTORS.length ||
+      captured.some(
+        (capture, index) =>
+          generationEvidenceDigest(capture.descriptor) !== generationEvidenceDigest(FOUR_PAGE_DESCRIPTORS[index]),
+      ) ||
       captured[0].descriptor.sourceKind !== "table_crop" ||
       captured[0].binary.sha256 !== "sha256:fd7a4d16b41d1856e64759540ce37cf55bc90b247f50424643cdc3c01fc3a14f" ||
       captured[0].binary.byteLength !== 104496 ||
       captured[1].binary.sha256 !== "sha256:d87d4f2ee4298465e7c91416fa764bd4b34f960c8967fbfcf256f6117dd9530d" ||
-      captured[1].binary.byteLength !== 62808))
+      captured[1].binary.byteLength !== 62808)
+  )
     refuse("four_page_native_profile_mismatch");
   if (
     captured.length !== extracted.images.length ||
@@ -344,23 +451,41 @@ export function prepareManagedPrivateSupplier(args: ManagedPreparedSupplierInput
     cleanString,
     sanitizeJsonbRecord,
   });
-  const chunkRows = fourPagePilot ? extracted.pages.map((page, index) => preparedRowSchema.parse({
-    id: candidateChunkId(issued.documentId, issued.generationId, index),
-    document_id: issued.documentId, index_generation_id: issued.generationId,
-    page_number: page.pageNumber, chunk_index: index,
-    section_heading: null, section_path: [], heading_level: null, parent_heading: null, anchor_id: null,
-    content: page.text, retrieval_synopsis: null,
-    token_estimate: Math.ceil(Buffer.byteLength(page.text, "utf8") / 3),
-    image_ids: imageRows.filter(image => image.page_number === page.pageNumber && image.source_kind !== "cover_page").map(image => image.id),
-    content_hash: createHash("sha256").update(page.text, "utf8").digest("hex"),
-    metadata: {
-      source_path: job.documents.source_path ?? null, content_hash: job.documents.content_hash ?? null,
-      index_generation_id: issued.generationId, embedding_model: data.embeddingModel,
-      extractor: "literal-four-page-native-pdf-v1", rag_indexing_version: data.indexingVersion,
-      rag_memory_version: data.indexingVersion, ocr_used: false,
-      parent_physical_page: [9, 10, 11, 62][index], parent_printed_page: ["4", "5", "6", "57"][index],
-    },
-  })) : ordinaryChunkRows;
+  const chunkRows = fourPagePilot
+    ? extracted.pages.map((page, index) =>
+        preparedRowSchema.parse({
+          id: candidateChunkId(issued.documentId, issued.generationId, index),
+          document_id: issued.documentId,
+          index_generation_id: issued.generationId,
+          page_number: page.pageNumber,
+          chunk_index: index,
+          section_heading: null,
+          section_path: [],
+          heading_level: null,
+          parent_heading: null,
+          anchor_id: null,
+          content: page.text,
+          retrieval_synopsis: null,
+          token_estimate: Math.ceil(Buffer.byteLength(page.text, "utf8") / 3),
+          image_ids: imageRows
+            .filter((image) => image.page_number === page.pageNumber && image.source_kind !== "cover_page")
+            .map((image) => image.id),
+          content_hash: createHash("sha256").update(page.text, "utf8").digest("hex"),
+          metadata: {
+            source_path: job.documents.source_path ?? null,
+            content_hash: job.documents.content_hash ?? null,
+            index_generation_id: issued.generationId,
+            embedding_model: data.embeddingModel,
+            extractor: "literal-four-page-native-pdf-v1",
+            rag_indexing_version: data.indexingVersion,
+            rag_memory_version: data.indexingVersion,
+            ocr_used: false,
+            parent_physical_page: [9, 10, 11, 62][index],
+            parent_printed_page: ["4", "5", "6", "57"][index],
+          },
+        }),
+      )
+    : ordinaryChunkRows;
   // Empty optional output is intentional for this adapter, not evidence of original table absence.
   const tableFacts = fourPagePilot ? [] : buildTableFactRows({ job, chunkRows, insertedImages: imageInputs });
   const tableFactRows = tableFacts.map((fact, ordinal) => {
@@ -415,12 +540,14 @@ export function prepareManagedPrivateSupplier(args: ManagedPreparedSupplierInput
     title: job.documents.title,
     file_name: job.documents.file_name,
   };
-  const visualUnits = fourPagePilot ? [] : buildVisualDocumentIndexUnitInputs({
-    document,
-    chunks: chunkRows,
-    images: imageInputs,
-    tableFacts: tableFactRows,
-  });
+  const visualUnits = fourPagePilot
+    ? []
+    : buildVisualDocumentIndexUnitInputs({
+        document,
+        chunks: chunkRows,
+        images: imageInputs,
+        tableFacts: tableFactRows,
+      });
   const deterministicUnits = fourPagePilot ? [] : buildDocumentIndexUnitInputs({ document, chunks: chunkRows });
   const fingerprints = chunks.map((chunk) => createHash("sha256").update(chunk.content).digest("hex"));
   const qualityHint = {
@@ -429,13 +556,15 @@ export function prepareManagedPrivateSupplier(args: ManagedPreparedSupplierInput
       (chunks.length ? chunks.filter((chunk) => chunk.section_heading).length / chunks.length : 0).toFixed(3),
     ),
   };
-  const fields = fourPagePilot ? [] : buildAdditionalEmbeddingFieldInputs({
-    job,
-    chunkRows,
-    insertedImages: imageInputs,
-    tableFacts: tableFactRows,
-    qualityHint,
-  });
+  const fields = fourPagePilot
+    ? []
+    : buildAdditionalEmbeddingFieldInputs({
+        job,
+        chunkRows,
+        insertedImages: imageInputs,
+        tableFacts: tableFactRows,
+        qualityHint,
+      });
   const links = (body: Record<string, unknown>): UnitId[] => {
     const refs: UnitId[] = [];
     const metadata = body.metadata as Record<string, unknown> | undefined;
@@ -550,9 +679,10 @@ export function prepareManagedPrivateSupplier(args: ManagedPreparedSupplierInput
             expectedUnits: units.map((unit) => unit.declaration.id),
             basis: [
               {
-                reference: fourPagePilot && ["table_facts", "index_units", "embedding_fields"].includes(family)
-                  ? "four-page native adapter emitted empty optional population; further enrichment not implemented"
-                  : "actual invoked local prepared output population only",
+                reference:
+                  fourPagePilot && ["table_facts", "index_units", "embedding_fields"].includes(family)
+                    ? "four-page native adapter emitted empty optional population; further enrichment not implemented"
+                    : "actual invoked local prepared output population only",
                 sha256: generationEvidenceDigest(bodies),
               },
             ],

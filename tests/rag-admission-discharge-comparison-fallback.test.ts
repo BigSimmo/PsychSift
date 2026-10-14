@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { withAdmissionDischargeSideEvidence } from "../src/lib/rag/rag-admission-discharge-side-evidence";
 import { buildAdmissionDischargeComparisonAnswer } from "../src/lib/rag/rag-extractive-answer";
 import type { SearchResult } from "../src/lib/types";
 
@@ -104,5 +105,178 @@ describe("#019 admission/discharge comparison fallback — conservative contract
     expect(
       buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: [sameDocAdmission, sameDocDischarge] }),
     ).toBeNull();
+  });
+});
+
+describe("admission/discharge fallback keeps both sides in its evidence", () => {
+  const dischargeOnly = [
+    dischargeBound,
+    result({
+      id: "discharge-2",
+      document_id: "discharge-2-doc",
+      title: "Patient Discharge Policy",
+      content: DISCHARGE_BOUND,
+    }),
+  ];
+
+  it("adds the missing admission side from the eligible evidence so both sides can be cited", () => {
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: dischargeOnly,
+      candidates: [...dischargeOnly, admissionBound],
+    });
+
+    expect(selected.map((item) => item.id)).toEqual(["discharge-chunk", "discharge-2", "admission-chunk"]);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })?.citationChunkIds).toEqual([
+      "admission-chunk",
+      "discharge-chunk",
+    ]);
+  });
+
+  it("leaves the selection unchanged when both sides are present or the query is not this comparison", () => {
+    const both = [admissionBound, dischargeBound];
+    expect(
+      withAdmissionDischargeSideEvidence({ query: QUERY, queryClass: "comparison", selected: both, candidates: both }),
+    ).toBe(both);
+    expect(
+      withAdmissionDischargeSideEvidence({
+        query: "Compare lithium and valproate",
+        queryClass: "comparison",
+        selected: dischargeOnly,
+        candidates: [admissionBound],
+      }),
+    ).toBe(dischargeOnly);
+  });
+
+  it("does not count an admission source without a bound requirement as the admission side", () => {
+    const admissionUnbound = result({
+      id: "admission-unbound",
+      document_id: "admission-unbound-doc",
+      title: "Admission of Community Patients",
+      file_name: ADMISSION_FILE,
+      content: ADMISSION_UNBOUND,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [admissionUnbound, dischargeBound],
+      candidates: [admissionUnbound, dischargeBound, admissionBound],
+    });
+    expect(selected.map((item) => item.id)).toEqual(["admission-unbound", "discharge-chunk", "admission-chunk"]);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
+  });
+
+  it("adds a chunk with several bound requirements only once", () => {
+    const multiFact = {
+      ...admissionBound,
+      content: `${ADMISSION_BOUND} ${ADMISSION_BOUND.replace("Medical", "Risk")}`,
+    };
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: dischargeOnly,
+      candidates: [...dischargeOnly, multiFact],
+    });
+    expect(selected.map((item) => item.id)).toEqual(["discharge-chunk", "discharge-2", "admission-chunk"]);
+  });
+
+  it("does not count a dual-title policy as the admission side", () => {
+    const dual = result({
+      id: "dual-chunk",
+      document_id: "dual-doc",
+      title: "Referral, Admission and Discharge Policy",
+      content: DISCHARGE_BOUND,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [dual, dischargeBound],
+      candidates: [dual, dischargeBound, admissionBound],
+    });
+    expect(selected.map((item) => item.id)).toContain("admission-chunk");
+  });
+
+  it("adds a second document when one selected document supplies both sides", () => {
+    const combined = result({
+      id: "combined-chunk",
+      document_id: "combined-doc",
+      title: "Referral, Admission and Discharge Policy",
+      content: `${ADMISSION_BOUND} ${DISCHARGE_BOUND}`,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [combined],
+      candidates: [combined, admissionBound, dischargeBound],
+    });
+    expect(selected.length).toBeGreaterThan(1);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
+  });
+
+  it("pairs another document's admission with the selected document's discharge chunk", () => {
+    const admissionA = result({
+      id: "adm-a",
+      document_id: "doc-a",
+      title: "Admission of Community Patients",
+      file_name: ADMISSION_FILE,
+      content: ADMISSION_BOUND,
+    });
+    const dischargeA = result({
+      id: "dis-a",
+      document_id: "doc-a",
+      title: "Patient Discharge Policy",
+      content: DISCHARGE_BOUND,
+    });
+    const admissionB = result({
+      id: "adm-b",
+      document_id: "doc-b",
+      title: "Admission of Community Patients",
+      file_name: ADMISSION_FILE,
+      content: ADMISSION_BOUND,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [admissionA],
+      candidates: [admissionA, dischargeA, admissionB],
+    });
+    expect(selected.map((item) => item.id).sort()).toEqual(["adm-a", "adm-b", "dis-a"]);
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
+  });
+
+  it("finds a later document's fact when one document's chunks come first on both sides", () => {
+    const fromA = [1, 2, 3].flatMap((n) => [
+      result({
+        id: `adm-a-${n}`,
+        document_id: "doc-a",
+        title: "Admission of Community Patients",
+        file_name: ADMISSION_FILE,
+        content: ADMISSION_BOUND,
+      }),
+      result({ id: `dis-a-${n}`, document_id: "doc-a", title: "Patient Discharge Policy", content: DISCHARGE_BOUND }),
+    ]);
+    const admissionB = result({
+      id: "adm-b",
+      document_id: "doc-b",
+      title: "Admission of Community Patients",
+      file_name: ADMISSION_FILE,
+      content: ADMISSION_BOUND,
+    });
+    const unbound = result({
+      id: "unbound",
+      document_id: "doc-c",
+      title: "Admission of Community Patients",
+      file_name: ADMISSION_FILE,
+      content: ADMISSION_UNBOUND,
+    });
+    const selected = withAdmissionDischargeSideEvidence({
+      query: QUERY,
+      queryClass: "comparison",
+      selected: [unbound],
+      candidates: [unbound, ...fromA, admissionB],
+    });
+    expect(new Set(selected.map((item) => item.document_id))).toEqual(new Set(["doc-a", "doc-b", "doc-c"]));
+    expect(buildAdmissionDischargeComparisonAnswer({ query: QUERY, results: selected })).not.toBeNull();
   });
 });

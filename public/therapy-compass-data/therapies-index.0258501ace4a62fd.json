@@ -1,0 +1,4275 @@
+[
+  {
+    "slug": "acceptance-and-commitment-therapy-act",
+    "name": "Acceptance and Commitment Therapy (ACT)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Most defensible routine psychiatric uses are depression, anxiety-spectrum distress, and broader transdiagnostic emotional disorders when avoidance and fusion are prominent.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "ACT"
+    ]
+  },
+  {
+    "slug": "adherence-focused-brief-work-adherence-therapy",
+    "name": "Adherence-Focused Brief Work / Adherence Therapy",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Most defensible and specific use is in schizophrenia-spectrum disorders and other long-term psychiatric illnesses where medication non-adherence is clearly driving relapse, symptom persistence, or repeated admission.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "adolescent-cbt",
+    "name": "Adolescent CBT",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best-supported for adolescent depression and anxiety presentations where CBT mechanisms fit.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "adolescent-focused-psychotherapy-for-anorexia-nervosa",
+    "name": "Adolescent-focused psychotherapy for anorexia nervosa",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "advocacy-informed-therapeutic-work",
+    "name": "Advocacy-informed therapeutic work",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "app-supported-therapy",
+    "name": "App-supported therapy",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as an adjunct to therapy or as part of structured low-intensity guided digital CBT.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "applied-relaxation-relaxation-based-therapy",
+    "name": "Applied Relaxation / Relaxation-Based Therapy",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "arts-therapies-for-psychosis",
+    "name": "Arts Therapies for Psychosis",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "NICE says to consider offering arts therapies to all people with psychosis or schizophrenia, particularly for the alleviation of negative symptoms.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Personality/interpersonal",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "behaviour-therapy",
+    "name": "Behaviour Therapy",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Strongest use is when the main maintaining factor is behavioural rather than primarily interpersonal or insight-based.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "behavioural-activation-ba",
+    "name": "Behavioural Activation (BA)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Grief/loss",
+      "Behavioural activation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "BA"
+    ]
+  },
+  {
+    "slug": "behavioural-couples-therapy-bct",
+    "name": "Behavioural Couples Therapy (BCT)",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Strongest psychiatric guideline use is depression when relationship problems may be contributing to the depression or involving the partner may help treatment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "BCT"
+    ]
+  },
+  {
+    "slug": "behavioural-couples-therapy-for-substance-use-disorders-bct-sud",
+    "name": "Behavioural Couples Therapy for Substance Use Disorders (BCT-SUD)",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best used when the patient is in a committed relationship and the partner is willing to participate.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "BCT-SUD"
+    ]
+  },
+  {
+    "slug": "behavioural-parent-training",
+    "name": "Behavioural parent training",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for oppositional defiant disorder, conduct disorder, disruptive behaviour, and children at high risk of conduct disorder.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "brief-low-intensity-cbt",
+    "name": "Brief low-intensity CBT",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as an early-intervention or stepped-care treatment for mild or emerging common mental health problems.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "brief-supportive-psychotherapy",
+    "name": "Brief supportive psychotherapy",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Best as a pragmatic short-term intervention in inpatient psychiatry, CL psychiatry, ED/crisis recovery, early engagement, post-discharge follow-up, adjustment to diagnosis, medical illness, grief/stress reactions, and bridging while waiting for more specific therapy.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "bright-light-therapy",
+    "name": "Bright-light therapy",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best as an adjunctive treatment for depressive disorders when a low-burden somatic option is attractive, especially where circadian disruption or preference for non-drug augmentation is relevant.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Sleep",
+      "Substance use",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "carer-groups",
+    "name": "Carer groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Strongest guideline-backed use is in psychosis and schizophrenia, where carer-focused education and support programmes are explicitly recommended.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "carer-interventions",
+    "name": "Carer Interventions",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best established in psychosis / schizophrenia, where NICE states that carers of adults with psychosis or schizophrenia should be offered carer-focused education and support programmes, and parents/carers of newly diagnosed children and young people with bipolar disorder, psychosis, or schizophrenia should be given information about carer-focused education and support.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "carer-focused-education-and-support-carer-psychoeducation-in-psychosis",
+    "name": "Carer-Focused Education and Support / Carer Psychoeducation in Psychosis",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best supported for carers of adults with psychosis or schizophrenia.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "carer-supported-meal-based-interventions",
+    "name": "Carer-supported meal-based interventions",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Strongest in young people with anorexia nervosa or restrictive eating disorders, especially where family/carer support can be mobilised.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cbt-informed-psychological-intervention-for-self-harm",
+    "name": "CBT-informed psychological intervention for self-harm",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Best for adults who self-harm and are receiving continuing support after an episode or repeated episodes.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "child-cbt",
+    "name": "Child CBT",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for child anxiety disorders and selected depressive presentations when adapted to age and formulation.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "circadian-rhythm-based-interventions",
+    "name": "Circadian / rhythm-based interventions",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best-supported psychiatric uses are 2 main groups.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "client-directed-feedback-informed-brief-work",
+    "name": "Client-Directed / Feedback-Informed Brief Work",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Most useful as an adjunct across many therapies rather than a stand-alone primary treatment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cognitive-analytic-therapy-cat",
+    "name": "Cognitive Analytic Therapy (CAT)",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Most defensible use is personality disorder and other complex, chronic presentations where repeated maladaptive relational patterns are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": [
+      "CAT"
+    ]
+  },
+  {
+    "slug": "cognitive-behavioural-therapy-cbt",
+    "name": "Cognitive Behavioural Therapy (CBT)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Strongest broad evidence-backed uses are depression and anxiety disorders.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "CBT"
+    ]
+  },
+  {
+    "slug": "cognitive-behavioural-therapy-for-bipolar-depression-bipolar-relapse-prevention",
+    "name": "Cognitive Behavioural Therapy for Bipolar Depression / Bipolar Relapse Prevention",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best used as an adjunctive psychotherapy in bipolar disorder, especially for bipolar depression, residual symptoms, and relapse prevention in people who are not acutely manic.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cognitive-behavioural-therapy-for-insomnia",
+    "name": "Cognitive behavioural therapy for insomnia",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best first-line psychological treatment for chronic insomnia, including insomnia with comorbid mental or physical health problems.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cognitive-behavioural-therapy-for-insomnia-cbt-i",
+    "name": "Cognitive Behavioural Therapy for Insomnia (CBT-I)",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best used for chronic insomnia disorder in adults of any age, including people with comorbid conditions.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Sleep",
+      "Substance use",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "CBT-I"
+    ]
+  },
+  {
+    "slug": "cognitive-behavioural-therapy-for-psychosis-cbtp",
+    "name": "Cognitive Behavioural Therapy for Psychosis (CBTp)",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best supported for psychosis and schizophrenia, including people at increased risk of psychosis, first and subsequent acute episodes, and the recovery phase when positive or negative symptoms continue to affect distress or function.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "CBTp"
+    ]
+  },
+  {
+    "slug": "cognitive-processing-therapy-cpt",
+    "name": "Cognitive Processing Therapy (CPT)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Strongest use is PTSD.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "CPT"
+    ]
+  },
+  {
+    "slug": "cognitive-remediation-therapy-crt",
+    "name": "Cognitive Remediation Therapy (CRT)",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best supported in rehabilitation for adults with complex psychosis, particularly when cognitive impairment is contributing to poor everyday function, educational difficulty, or problems engaging in vocational recovery.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "CRT"
+    ]
+  },
+  {
+    "slug": "cognitive-stimulation-therapy",
+    "name": "Cognitive stimulation therapy",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best for mild to moderate dementia.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "5-minute intervention"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cognitive-therapy",
+    "name": "Cognitive Therapy",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Classic strongest uses are depression and anxiety disorders, especially where maladaptive appraisals, rumination, or catastrophic thinking are central.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cognitive-therapy-for-ptsd-ct-ptsd",
+    "name": "Cognitive Therapy for PTSD (CT-PTSD)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Strongest use is PTSD in adults.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Distress tolerance",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "CT-PTSD"
+    ]
+  },
+  {
+    "slug": "community-reinforcement-and-family-training-craft",
+    "name": "Community Reinforcement and Family Training (CRAFT)",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best used when the person with substance use disorder is refusing or avoiding treatment, but a partner, parent, or other close support person is seeking help.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": [
+      "CRAFT"
+    ]
+  },
+  {
+    "slug": "community-reinforcement-approach",
+    "name": "Community reinforcement approach",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best for alcohol and other drug use disorders where lifestyle, reinforcement, social context, and recovery capital are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "Behavioural activation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "community-based-psychosocial-intervention",
+    "name": "Community-based psychosocial intervention",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in severe mental illness, complex psychosis, long-term community care, step-down pathways, and cases where repeated acute treatment has not translated into stable community functioning.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "compassion-focused-therapy",
+    "name": "Compassion-focused therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best when shame and self-criticism are prominent, including some depression, eating-disorder, trauma-related, and transdiagnostic distress presentations.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "constructivist-therapies",
+    "name": "Constructivist therapies",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best for identity, grief, adjustment, self-meaning, and broader distress where a meaning-construction model fits better than a symptom-protocol model.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "contingency-management-cm",
+    "name": "Contingency Management (CM)",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best used for stimulant use disorder, for illicit drug use in methadone maintenance, and for engagement / abstinence targets in drug services.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Substance use",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "CM"
+    ]
+  },
+  {
+    "slug": "coping-skills-interventions",
+    "name": "Coping-Skills Interventions",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Best used as a low-intensity or adjunctive intervention for common mental health problems, subthreshold or mixed distress states, adjustment-related difficulty, stress-related functional decline, and as a bridge while waiting for or building toward more specific treatment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "couples-therapy",
+    "name": "Couples Therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "The clearest current psychiatric guideline-backed use is behavioural couples therapy for depression when relationship problems may be contributing to depression, or when involving the partner may help treatment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "craving-management-interventions",
+    "name": "Craving-management interventions",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best for alcohol, cannabis, stimulant, opioid, sedative, and polysubstance use where craving is a clear relapse driver.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "crisis-intervention-crisis-oriented-brief-therapy",
+    "name": "Crisis intervention / crisis-oriented brief therapy",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Best for acute crisis presentations where the person needs immediate containment and a short practical intervention.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "cue-exposure-therapy-cet-for-substance-use-disorders",
+    "name": "Cue Exposure Therapy (CET) for Substance Use Disorders",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best viewed as a selective or emerging adjunctive treatment, not a default first-line SUD psychotherapy.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "CET"
+    ]
+  },
+  {
+    "slug": "dbt-skills-groups",
+    "name": "DBT skills groups",
+    "category": "Group CBT",
+    "bestUsedFor": "Strongest psychiatric use is within a comprehensive DBT programme for borderline personality disorder or closely related chronic emotion-dysregulation presentations, especially where recurrent self-harm or severe affective instability is a major treatment target.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "dbt-informed-adjunctive-emotion-regulation-work-for-eating-disorders",
+    "name": "DBT-Informed Adjunctive Emotion-Regulation Work for Eating Disorders",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Most defensible for bulimia nervosa, binge eating disorder, and some complex eating-disorder presentations where emotion dysregulation is clearly central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Anxiety",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "developmental-social-skills-interventions",
+    "name": "Developmental social-skills interventions",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for autistic children/young people and other developmental presentations where social communication is a clear functional target.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "developmentally-adapted-dbt",
+    "name": "Developmentally adapted DBT",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for adolescents with recurrent self-harm, suicidal ideation, severe emotion dysregulation, emerging borderline traits, or repeated crisis presentations where a structured skills-plus-risk model is needed.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "developmentally-adapted-erp",
+    "name": "Developmentally adapted ERP",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for paediatric OCD and BDD.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "dialectical-behaviour-therapy-dbt",
+    "name": "Dialectical Behaviour Therapy (DBT)",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best supported for borderline personality disorder / borderline personality symptoms, especially when recurrent self-harm is a major treatment priority.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "DBT"
+    ]
+  },
+  {
+    "slug": "dignity-therapy",
+    "name": "Dignity therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best in palliative care, psycho-oncology, advanced illness, neurodegenerative disease, and CL psychiatry where existential distress, dignity, meaning, and legacy are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "dyadic-therapy",
+    "name": "Dyadic Therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "The strongest and clearest uses are parent–infant / mother–infant work, especially when maternal mental health and the infant relationship are both clinically relevant.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "dynamic-interpersonal-therapy",
+    "name": "Dynamic interpersonal therapy",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best-supported use is major depressive disorder, especially when interpersonal patterns, attachment insecurity, relationship loss, or relational conflict are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "eating-disorder-focused-cognitive-behavioural-therapy-cbt-ed-cbt-e",
+    "name": "Eating-Disorder-Focused Cognitive Behavioural Therapy (CBT-ED / CBT-E)",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Strongest current guideline-backed use is in adults with bulimia nervosa, adults with binge eating disorder, and as one of the main options for adults with anorexia nervosa.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "CBT-ED / CBT-E"
+    ]
+  },
+  {
+    "slug": "eating-disorder-focused-focal-psychodynamic-therapy-fpt-for-adult-anorexia-nervosa",
+    "name": "Eating-Disorder-Focused Focal Psychodynamic Therapy (FPT) for Adult Anorexia Nervosa",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best used in adults with anorexia nervosa when one of the three main adult psychotherapies already recommended by NICE — CBT-ED, MANTRA, or SSCM — has been unacceptable, contraindicated, or ineffective.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Personality/interpersonal",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "FPT"
+    ]
+  },
+  {
+    "slug": "ect",
+    "name": "ECT",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Strongest use is severe depressive disorder, especially where rapid response is needed, previous ECT response has been good, or other treatments have not provided adequate benefit.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "emotion-focused-therapy",
+    "name": "Emotion-focused therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best for emotionally driven distress where maladaptive emotion processing is central, and especially for couple distress in the couples form.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "empowerment-focused-practice",
+    "name": "Empowerment-focused practice",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best as a cross-cutting psychiatric practice approach in recovery-oriented care, community psychiatry, rehabilitation, trauma-informed practice, and long-term mental healthcare.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "existential-psychotherapy",
+    "name": "Existential psychotherapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best for patients whose suffering is strongly shaped by meaning, mortality, identity, or existential conflict, including some depressive, anxiety, adjustment, and serious-illness contexts.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "experiential-therapies",
+    "name": "Experiential therapies",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best when emotional processing difficulty is central, especially in mood, anxiety, personality, and somatic symptom presentations.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "exposure-and-response-prevention-erp",
+    "name": "Exposure and Response Prevention (ERP)",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Obsessive-compulsive disorder (OCD) is the clearest and strongest use.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "ERP"
+    ]
+  },
+  {
+    "slug": "exposure-and-response-prevention-for-tics-erp-for-tics",
+    "name": "Exposure and Response Prevention for Tics (ERP for Tics)",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Best used for Tourette syndrome and persistent motor or vocal tic disorder when tics are distressing, impairing, painful, socially disruptive, or functionally limiting.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "ERP for Tics"
+    ]
+  },
+  {
+    "slug": "exposure-therapy",
+    "name": "Exposure therapy",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Best for anxiety disorders where avoidance maintains symptoms, including specific phobia, panic/agoraphobia, social anxiety, OCD when paired with response prevention, and PTSD when delivered as trauma-focused exposure such as prolonged exposure.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "exposure-based-cbt-exposure-therapy",
+    "name": "Exposure-Based CBT / Exposure Therapy",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Strongest uses are phobic disorders, panic disorder, social anxiety disorder, and exposure-based elements within broader CBT.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "eye-movement-desensitisation-and-reprocessing-emdr",
+    "name": "Eye Movement Desensitisation and Reprocessing (EMDR)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "For adults with PTSD, Phoenix Australia gives EMDR a strong recommendation.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "EMDR"
+    ]
+  },
+  {
+    "slug": "family-intervention-for-psychosis",
+    "name": "Family Intervention for Psychosis",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best supported for adults with psychosis or schizophrenia who live with or are in close contact with family members or carers.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "family-problem-solving-interventions",
+    "name": "Family problem-solving interventions",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Strongest guideline-backed use is psychosis and schizophrenia, where NICE recommends family intervention for families who live with or are in close contact with the patient.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "family-psychoeducation-for-psychosis",
+    "name": "Family Psychoeducation for Psychosis",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Most useful for schizophrenia-spectrum and other psychotic disorders when family members or carers are closely involved and need a clearer illness model, relapse plan, and coping framework.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "family-therapy",
+    "name": "Family Therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best used when the family system is clearly relevant to outcome.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "family-based-treatment-for-adolescent-anorexia-nervosa-ft-an",
+    "name": "Family-Based Treatment for Adolescent Anorexia Nervosa (FT-AN)",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best used for children and young people with anorexia nervosa.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "FT-AN"
+    ]
+  },
+  {
+    "slug": "family-based-treatment-for-bulimia-nervosa-ft-bn",
+    "name": "Family-Based Treatment for Bulimia Nervosa (FT-BN)",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best used for children and young people with bulimia nervosa.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "FT-BN"
+    ]
+  },
+  {
+    "slug": "family-focused-psychoeducation-for-bipolar-disorder",
+    "name": "Family-Focused Psychoeducation for Bipolar Disorder",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best used for relapse prevention in bipolar disorder, especially when relatives/carers are closely involved in day-to-day life or episode detection.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "family-focused-therapy-for-bipolar-disorder-fft-bd",
+    "name": "Family-Focused Therapy for Bipolar Disorder (FFT-BD)",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Most defensible use is bipolar disorder as an adjunctive longer-term psychosocial treatment, especially after an acute mood episode and when family members or caregivers are closely involved.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "FFT-BD"
+    ]
+  },
+  {
+    "slug": "functional-family-therapy-fft",
+    "name": "Functional Family Therapy (FFT)",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Most defensible use is adolescents with behaviour / antisocial problems and young people with alcohol misuse plus significant comorbidities or limited social support.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "FFT"
+    ]
+  },
+  {
+    "slug": "gestalt-therapy",
+    "name": "Gestalt therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best as an experiential psychotherapy for people with depression, anxiety, interpersonal distress, self-esteem problems, or broader psychological distress when an experiential present-focused model fits the case.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "good-psychiatric-management",
+    "name": "Good psychiatric management",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best for borderline personality disorder or clinically significant borderline traits, especially in general psychiatric, community, outpatient, ED follow-up, CL, and public-sector settings where full DBT, MBT, schema therapy, or TFP is unavailable or not required.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "DBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "graded-exposure",
+    "name": "Graded Exposure",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Most useful for phobic avoidance, panic disorder with avoidance, social anxiety disorder, and broader anxiety presentations where the main perpetuating factor is avoidance of feared situations rather than compulsions or trauma re-experiencing.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Anxiety",
+      "Trauma",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "group-exposure-programmes",
+    "name": "Group exposure programmes",
+    "category": "Group IPT",
+    "bestUsedFor": "Strongest use is anxiety disorders where exposure is first-line, especially social anxiety disorder, panic disorder with agoraphobia, and specific phobias (though individual exposure is often preferred for highly specific phobias).",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "group-psychoeducation",
+    "name": "Group psychoeducation",
+    "category": "Group CBT",
+    "bestUsedFor": "Strongest use is as an adjunct in bipolar disorder, especially maintenance-phase care and relapse prevention.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "group-psychoeducation-for-bipolar-disorder",
+    "name": "Group Psychoeducation for Bipolar Disorder",
+    "category": "Group CBT",
+    "bestUsedFor": "Best used for maintenance / relapse prevention in bipolar disorder, especially when the patient is not in an acute episode and can engage in a structured group format.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "group-relapse-prevention-programmes",
+    "name": "Group relapse-prevention programmes",
+    "category": "Group CBT",
+    "bestUsedFor": "Strongest guideline support is for adults with depression at higher risk of relapse, where NICE recommends relapse-prevention interventions including group CBT or MBCT.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Sleep",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "group-social-skills-training",
+    "name": "Group social-skills training",
+    "category": "Group IPT",
+    "bestUsedFor": "Best as a rehabilitation or developmental intervention, especially in psychosis rehabilitation, autism social-learning programmes, and functional recovery settings.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "guided-self-help",
+    "name": "Guided self-help",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as an initial low-intensity or stepped-care treatment for milder depression and anxiety presentations, especially when symptoms are not highly complex and the patient can work independently with support.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "guided-self-help-for-binge-eating-disorder",
+    "name": "Guided Self-Help for Binge Eating Disorder",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best used for adults with binge eating disorder as the initial psychological treatment step.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "guided-self-help-for-bulimia-nervosa",
+    "name": "Guided Self-Help for Bulimia-Nervosa",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best used for adults with bulimia nervosa as the first psychological treatment step to consider.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "habit-reversal-training-cbit",
+    "name": "Habit reversal training / CBIT",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
+    "name": "Habit Reversal Training for Trichotillomania and Excoriation Disorder",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Best used for trichotillomania (hair-pulling disorder) and excoriation disorder (skin-picking disorder) when symptoms cause distress, impairment, visible damage, infection/scarring risk, or major shame/avoidance.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "harm-reduction-counselling",
+    "name": "Harm-reduction counselling",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best for patients who are not ready for abstinence, are ambivalent, have limited contact with services, or are at high risk of preventable harm.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "health-anxiety-focused-cbt",
+    "name": "Health-anxiety-focused CBT",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best for persistent health anxiety where adequate medical assessment has not found an explanatory serious disease and the main maintaining mechanism is anxiety-driven misinterpretation and reassurance-seeking.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "humanistic-psychotherapy",
+    "name": "Humanistic psychotherapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best for depression and broader psychological distress where an exploratory, emotionally focused, relationship-based psychotherapy is appropriate.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "illness-management-and-recovery-style-interventions-imr-style-interventions",
+    "name": "Illness-Management-and-Recovery Style Interventions (IMR-Style Interventions)",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Most useful in severe mental illness, especially schizophrenia-spectrum disorders and other long-term psychotic illnesses, when the clinical task is ongoing recovery and self-management rather than acute symptom containment alone.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "IMR-Style Interventions"
+    ]
+  },
+  {
+    "slug": "imagery-rehearsal-therapy-irt-for-nightmare-disorder",
+    "name": "Imagery Rehearsal Therapy (IRT) for Nightmare Disorder",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best used for nightmare disorder in adults and for persistent distressing nightmares in broader psychiatric populations.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Sleep",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "IRT"
+    ]
+  },
+  {
+    "slug": "imagery-rescripting",
+    "name": "Imagery rescripting",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Best as a targeted technique within broader therapy for PTSD/complex trauma, social anxiety disorder with negative self-imagery, nightmares, shame-based depression, and some personality/schema presentations.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "inference-based-cbt-for-ocd",
+    "name": "Inference-based CBT for OCD",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Best as a selective OCD treatment when ERP is refused, poorly tolerated, or the clinical formulation is dominated by obsessional doubt, poor insight, or “imagined possibility” reasoning.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "integrated-cbt-for-ptsd-and-substance-use-disorders",
+    "name": "Integrated CBT for PTSD and Substance Use Disorders",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Best used for co-occurring PTSD and SUD when the patient is stable enough for structured treatment and is willing to address trauma directly.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "integrated-dual-diagnosis-psychotherapy",
+    "name": "Integrated dual-diagnosis psychotherapy",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best for psychosis plus cannabis/stimulant use, mood disorder plus alcohol/drug use, PTSD plus substance use, personality/emotion dysregulation plus substance use, and recurrent admissions where separate mental health and AOD care keeps failing.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "intensive-psychodynamic-psychotherapy",
+    "name": "Intensive Psychodynamic Psychotherapy",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Most defensible for complex mental disorders where there is a combination of syndromal illness and severe personality / vulnerability features, including some borderline personality disorder and treatment-resistant depression presentations.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "internet-delivered-cbt",
+    "name": "Internet-delivered CBT",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best for mild to moderate common mental health problems, especially depression and anxiety, when access, distance, mobility, or wait times are barriers.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "interoceptive-exposure",
+    "name": "Interoceptive Exposure",
+    "category": "OCD & Exposure Therapies",
+    "bestUsedFor": "Strongest use is panic disorder, with or without agoraphobic avoidance, especially when the patient fears bodily sensations such as dizziness, tachycardia, breathlessness, chest tightness, depersonalisation, or feeling faint.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Anxiety",
+      "Trauma",
+      "Substance use",
+      "Eating/body image",
+      "Pain/somatic",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "interpersonal-and-social-rhythm-therapy-ipsrt",
+    "name": "Interpersonal and Social Rhythm Therapy (IPSRT)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best used as an adjunctive psychotherapy for bipolar disorder, especially in patients whose episodes are clearly linked to sleep/routine disruption or interpersonal stress.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "IPSRT"
+    ]
+  },
+  {
+    "slug": "interpersonal-psychotherapy-ipt",
+    "name": "Interpersonal Psychotherapy (IPT)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Strongest routine use is depression, especially when symptoms are closely linked to bereavement, changing roles, interpersonal conflict, or isolation.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "IPT"
+    ]
+  },
+  {
+    "slug": "life-review-therapy-reminiscence-therapy",
+    "name": "Life-review therapy / reminiscence therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best for older adults with depression/loneliness, dementia-care settings, aged care, palliative/CL psychiatry, and patients needing meaning, identity, continuity or life-story work.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "low-intensity-relapse-prevention-programmes",
+    "name": "Low-intensity relapse-prevention programmes",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Strongest guideline-backed use is recurrent depression or depression in partial/full remission where relapse risk is higher.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "matrix-model",
+    "name": "Matrix Model",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best used for stimulant use disorder, particularly methamphetamine and cocaine use in outpatient settings.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "maudsley-anorexia-nervosa-treatment-for-adults-mantra",
+    "name": "Maudsley Anorexia Nervosa Treatment for Adults (MANTRA)",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best supported for adults with anorexia nervosa.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "MANTRA"
+    ]
+  },
+  {
+    "slug": "meaning-centred-psychotherapy",
+    "name": "Meaning-centred psychotherapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best-supported use is advanced cancer, serious illness, and palliative care, where RCTs and reviews suggest benefit for meaning, spiritual well-being, and existential distress.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "mentalisation-based-therapy-mbt",
+    "name": "Mentalisation-Based Therapy (MBT)",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best supported for borderline personality disorder and related severe personality dysfunction where attachment stress and relational misinterpretation are central.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "MBT"
+    ]
+  },
+  {
+    "slug": "metacognitive-therapy-mct",
+    "name": "Metacognitive Therapy (MCT)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "The strongest current evidence is in anxiety disorders and depression.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "MCT"
+    ]
+  },
+  {
+    "slug": "mindfulness-based-cognitive-therapy-mbct",
+    "name": "Mindfulness-Based Cognitive Therapy (MBCT)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Strongest guideline-backed use is relapse prevention in recurrent depression.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "MBCT"
+    ]
+  },
+  {
+    "slug": "mindfulness-based-relapse-prevention-mbrp",
+    "name": "Mindfulness-Based Relapse Prevention (MBRP)",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best viewed as an adjunctive or selective relapse-prevention treatment for SUDs rather than a clearly dominant stand-alone first-line therapy.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "MBRP"
+    ]
+  },
+  {
+    "slug": "mindfulness-based-stress-reduction",
+    "name": "Mindfulness-based stress reduction",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best as a structured mindfulness intervention for stress, depressive symptoms, and broader distress where mindfulness practice is acceptable and safe.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "Distress tolerance",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "mindfulness-based-therapies-not-primarily-cbt-anchored",
+    "name": "Mindfulness-based therapies not primarily CBT-anchored",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best as a structured adjunct or selected primary intervention for stress, depressive symptoms, relapse vulnerability, and transdiagnostic distress where mindfulness practice is acceptable and safe.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Distress tolerance",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "mindfulness-based-therapy-for-insomnia-mbti",
+    "name": "Mindfulness-Based Therapy for Insomnia (MBTI)",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best viewed as an evidence-supported option for chronic insomnia, especially when arousal, worry, and reactive struggle with sleep are prominent.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "MBTI"
+    ]
+  },
+  {
+    "slug": "mother-infant-therapy-mother-infant-psychotherapy",
+    "name": "Mother-Infant Therapy / Mother-Infant Psychotherapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Most defensible use is perinatal / postpartum mental health, especially where maternal symptoms and the mother–infant relationship are both clinically relevant.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "motivational-enhancement-therapy-met",
+    "name": "Motivational Enhancement Therapy (MET)",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Highest-yield for substance use disorders, harmful alcohol or drug use, treatment engagement problems, and early behaviour-change work when ambivalence is the main barrier.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": [
+      "MET"
+    ]
+  },
+  {
+    "slug": "motivational-interviewing",
+    "name": "Motivational Interviewing",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Highest-yield in substance use disorders, harmful use, medication ambivalence, health-behaviour change, early engagement, and situations where the patient is not yet ready for direct action treatment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "motivational-interviewing-mi-for-substance-use-disorders",
+    "name": "Motivational Interviewing (MI) for Substance Use Disorders",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best used at engagement, assessment, early treatment, and whenever motivation is unstable.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Anxiety",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "MI"
+    ]
+  },
+  {
+    "slug": "multi-family-interventions",
+    "name": "Multi-Family Interventions",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best supported in psychosis / schizophrenia, where NICE states family intervention should take account of family preference for either single-family intervention or multi-family group intervention.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "multidimensional-family-therapy",
+    "name": "Multidimensional family therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best for adolescents with substance use plus conduct/delinquency or complex family/system involvement.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "multisystemic-therapy-mst",
+    "name": "Multisystemic Therapy (MST)",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "NICE recommends offering multimodal interventions, for example MST, to children and young people aged 11 to 17 years for conduct disorder.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "MST"
+    ]
+  },
+  {
+    "slug": "narrative-exposure-therapy-net",
+    "name": "Narrative Exposure Therapy (NET)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "In Australian PTSD guidelines, NET has a conditional recommendation for adults with PTSD where trauma is linked to genocide, civil conflict, torture, political detention, or displacement.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Distress tolerance",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "NET"
+    ]
+  },
+  {
+    "slug": "narrative-therapy",
+    "name": "Narrative therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best when identity, meaning, stigma, trauma-related self-story, family/community narratives, or chronic demoralisation are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "narrative-informed-community-work",
+    "name": "Narrative-informed community work",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in community psychiatry, psychosocial rehabilitation, trauma-informed recovery work, youth or adult community mental health, and severe mental illness where identity, belonging, and social participation are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "neurodevelopmentally-adapted-psychosocial-interventions",
+    "name": "Neurodevelopmentally adapted psychosocial interventions",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best whenever a standard psychosocial therapy is clinically indicated but the person’s neurodevelopmental profile makes usual delivery ineffective or inaccessible.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "panic-focused-cbt",
+    "name": "Panic-focused CBT",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best for panic disorder with or without agoraphobia, especially when recurrent panic attacks, bodily-sensation fear, anticipatory anxiety, and avoidance are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "parent-management-training-pmt",
+    "name": "Parent Management Training (PMT)",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best supported for children with clinical levels of disruptive behaviour, especially oppositional and conduct-type presentations in younger children.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": [
+      "PMT"
+    ]
+  },
+  {
+    "slug": "parent-training",
+    "name": "Parent Training",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best supported for children aged 3 to 11 years who are at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "parent-and-child-training",
+    "name": "Parent-and-Child Training",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best used for children aged 3 to 11 years at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour when their problems are severe and complex.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "parent-child-relational-therapy",
+    "name": "Parent-Child Relational Therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Most defensible use is where the relationship itself is a central treatment target, especially in disruptive behaviour, developmental and attachment-linked difficulty, early childhood mental health, and selected trauma or caregiving contexts.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "parent-child-interaction-therapy-pcit",
+    "name": "Parent–Child Interaction Therapy (PCIT)",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best supported for young children with clinically significant disruptive behaviour problems.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "PCIT"
+    ]
+  },
+  {
+    "slug": "peer-recovery-interventions",
+    "name": "Peer recovery interventions",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best as an adjunct across the SUD care continuum, especially engagement, post-detox or post-discharge transitions, ED/hospital linkage, community recovery, opioid use disorder care, relapse recovery, and treatment retention.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "peer-support",
+    "name": "Peer Support",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Most useful in psychosis rehabilitation, community recovery work, discharge transition, engagement support, group activities, and broader recovery-oriented service delivery.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "peer-led-groups",
+    "name": "Peer-led groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Best as an adjunctive recovery-oriented intervention, especially where connection, empowerment, and lived-experience modelling are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "person-centred-rogerian-therapy",
+    "name": "Person-centred / Rogerian therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best for depression or distress where psychosocial, relationship, or employment problems are contributing and the person would prefer an emotionally exploratory, non-directive therapy.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "phase-oriented-trauma-therapy",
+    "name": "Phase-Oriented Trauma Therapy",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Most defensible for complex trauma / complex PTSD-type presentations where there is marked instability, chronic interpersonal trauma history, and major deficits in regulation or safety.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "play-therapy-play-based-therapies",
+    "name": "Play therapy / play-based therapies",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best as a developmentally appropriate therapy or adjunct for younger children with emotional, behavioural, relational, or adjustment difficulties, especially when verbal CBT-style work is too abstract.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Neurodevelopmental",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "problem-management-plus-pm",
+    "name": "Problem Management Plus / PM+",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best for low-resource, community, humanitarian, primary-care, stepped-care, public-health, and service-bridging settings where specialist psychotherapy access is limited.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "problem-solving-therapy-pst",
+    "name": "Problem-Solving Therapy (PST)",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Most useful for less severe depression, stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": [
+      "PST"
+    ]
+  },
+  {
+    "slug": "process-groups",
+    "name": "Process groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Best for patients whose difficulties are strongly interpersonal or personality-pattern based, especially when they can benefit from observing how they relate to others in the moment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Emotional regulation",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "prolonged-exposure-pe",
+    "name": "Prolonged Exposure (PE)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Strongest use is PTSD in adults.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": [
+      "PE"
+    ]
+  },
+  {
+    "slug": "psychoanalysis",
+    "name": "Psychoanalysis",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Most defensible for selected chronic, complex, and personality-level presentations where the person can use an intensive psychodynamic frame and where briefer therapies have been insufficient or are unlikely to address the depth of the pathology.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "psychodynamic-psychotherapy",
+    "name": "Psychodynamic Psychotherapy",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best supported across common mental disorders, especially depression, some anxiety and panic presentations, somatoform / functional-symptom presentations, substance-related disorders, eating disorders, and personality disorders.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "psychoeducation",
+    "name": "Psychoeducation",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Broadly useful across most psychiatric disorders.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "psychoeducation-for-psychosis",
+    "name": "Psychoeducation for Psychosis",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Broadly useful across first-episode psychosis, established schizophrenia-spectrum illness, relapse prevention, discharge planning, rehabilitation, and self-management work.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "psychoeducational-recovery-groups",
+    "name": "Psychoeducational recovery groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Strongest use is in severe mental illness, especially schizophrenia-spectrum and other long-term psychiatric disorders where self-management and recovery functioning are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "psychosis-specific-self-management-programmes",
+    "name": "Psychosis-specific self-management programmes",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best as part of continuing care for psychosis or schizophrenia, especially in community, early psychosis, rehabilitation, and relapse-prevention settings.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "psychosocial-case-planning",
+    "name": "Psychosocial case planning",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in severe mental illness, rehabilitation, discharge planning, community psychiatry, complex psychosis, repeated admissions, and presentations where functioning, support needs, or service coordination are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "recovery-groups",
+    "name": "Recovery groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Best as an adjunctive intervention in longer-term psychiatric care, community recovery settings, step-down services, psychosocial rehabilitation, and chronic illness pathways where personal recovery, self-management, and community participation matter.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "recovery-planning-for-addiction",
+    "name": "Recovery planning for addiction",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best in alcohol and other drug treatment, dual-diagnosis care, inpatient discharge planning, residential rehab step-down, opioid agonist treatment support, relapse-prevention work, and recovery-oriented case management.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "recovery-oriented-case-management",
+    "name": "Recovery-oriented case management",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosis, long-term support pathways, and step-down care where sustained psychosocial coordination is needed.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "recovery-oriented-psychosocial-interventions",
+    "name": "Recovery-Oriented Psychosocial Interventions",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best supported in rehabilitation for adults with complex psychosis.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "relapse-prevention-therapy-for-substance-use-disorders",
+    "name": "Relapse Prevention Therapy for Substance Use Disorders",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "Best used after initial motivation has improved and the patient is actively trying to reduce, stop, or maintain abstinence, especially in alcohol use disorder and broader substance use disorders.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "relapse-prevention-psychotherapy",
+    "name": "Relapse-Prevention Psychotherapy",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Strongest guideline-backed use is recurrent depression, especially after remission or partial remission in people at higher relapse risk.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "relational-psychodynamic-therapies",
+    "name": "Relational psychodynamic therapies",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best for complex depression, personality vulnerability, chronic relational problems, trauma-linked relational patterns, recurrent interpersonal crises, and presentations where symptoms are embedded in long-standing developmental and relational patterns.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "relational-cultural-therapy",
+    "name": "Relational-cultural therapy",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best when the case formulation is strongly relational, especially in trauma-informed, women’s mental health, identity, marginalisation, or chronic relational-distress presentations.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "relationship-focused-therapy",
+    "name": "Relationship-focused therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best when relationship problems are contributing to symptoms or recovery.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "resource-linkage-coordination-as-therapeutic-intervention",
+    "name": "Resource-linkage / coordination as therapeutic intervention",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in severe mental illness, complex psychosis, recurrent admissions, step-down care, discharge planning, community psychiatry, and presentations where progress depends partly on support packages, service access, and continuity across sectors.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "rtms",
+    "name": "rTMS",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best-supported psychiatric use is major depressive disorder, particularly treatment-resistant or hard-to-treat depressive episodes.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Crisis/risk",
+      "ACT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "schema-therapy",
+    "name": "Schema Therapy",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Strongest and clearest use is personality disorder, especially borderline personality disorder (BPD) and other chronic personality pathology.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "school-refusal-cbt",
+    "name": "School-refusal CBT",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for school refusal where anxiety/avoidance is central and the young person can work toward graded reattendance.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Pain/somatic",
+      "Crisis/risk",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "seeking-safety",
+    "name": "Seeking Safety",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Best viewed as a stabilisation-oriented integrated treatment when the patient needs a present-focused approach, is not ready for trauma processing, or when a service cannot yet deliver trauma-focused integrated treatment.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "self-management-interventions",
+    "name": "Self-Management Interventions",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "Strongest formal guideline support is in psychosis and schizophrenia, where NICE recommends considering a manualised self-management programme as part of treatment and management.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "short-term-psychodynamic-psychotherapy-stpp",
+    "name": "Short-Term Psychodynamic Psychotherapy (STPP)",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "The strongest current evidence is in depressive disorders.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": [
+      "STPP"
+    ]
+  },
+  {
+    "slug": "short-term-psychodynamic-psychotherapy-for-depression-stpp",
+    "name": "Short-Term Psychodynamic Psychotherapy for Depression (STPP)",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best used for adult depression when relational-emotional patterns and developmental difficulties in close relationships are central.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "STPP"
+    ]
+  },
+  {
+    "slug": "skills-training-groups",
+    "name": "Skills-training groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Best when there is a clear, observable skill deficit contributing to ongoing impairment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "sleep-compression-therapy-for-insomnia",
+    "name": "Sleep Compression Therapy for Insomnia",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best used for chronic insomnia disorder when the clinician wants the core logic of sleep restriction but in a more tolerable, gradual format.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Sleep",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "social-cognition-training",
+    "name": "Social Cognition Training",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best used as a selective rehabilitation adjunct in psychosis or schizophrenia when social-cognitive deficits are clearly contributing to poor relationships, poor community functioning, or difficulty using rehabilitation opportunities.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Eating/body image",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "social-skills-training-sst",
+    "name": "Social Skills Training (SST)",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Most defensible as a rehabilitation adjunct when there is clear behavioural social-skill deficit affecting recovery.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "SST"
+    ]
+  },
+  {
+    "slug": "social-anxiety-focused-cbt",
+    "name": "Social-anxiety-focused CBT",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best for social anxiety disorder in adults, and developmentally adapted CBT for children and young people.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "social-communication-parent-mediated-autism-interventions",
+    "name": "Social-Communication / Parent-Mediated Autism Interventions",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best supported for children and young people with autism, especially preschool children where NICE says to consider parent, carer or teacher mediation, and for school-aged children where NICE says to consider peer mediation.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Anxiety",
+      "Sleep",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "social-role-restoration-work",
+    "name": "Social-role restoration work",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in severe mental illness, rehabilitation, longer-term community care, step-down settings, and recovery pathways where the main challenge is not just symptom control but re-establishing a life structure and meaningful contribution.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "solution-focused-brief-therapy",
+    "name": "Solution-focused brief therapy",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best as a brief pragmatic intervention for adjustment-type problems, mild to moderate distress, engagement work, or situations where a focused collaborative change conversation is clinically useful.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "specialist-supportive-clinical-management-sscm",
+    "name": "Specialist Supportive Clinical Management (SSCM)",
+    "category": "Eating Disorder Therapies",
+    "bestUsedFor": "Best supported for adults with anorexia nervosa.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "SSCM"
+    ]
+  },
+  {
+    "slug": "stabilisation-focused-trauma-preparation",
+    "name": "Stabilisation-focused trauma preparation",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Best as a preparatory phase for complex, unstable, unsafe, or high-risk trauma presentations where immediate trauma processing is clinically unsafe or unlikely to be tolerated.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "stair-skills-training-in-affective-and-interpersonal-regulation",
+    "name": "STAIR (Skills Training in Affective and Interpersonal Regulation)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "Skills Training in Affective and Interpersonal Regulation"
+    ]
+  },
+  {
+    "slug": "strengths-based-case-management",
+    "name": "Strengths-based case management",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best in severe mental illness, especially where long-term community follow-up, rehabilitation, and recovery planning are needed.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Substance use",
+      "Crisis/risk",
+      "ACT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "strengths-based-practice",
+    "name": "Strengths-based practice",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best as a cross-cutting recovery-oriented approach in rehabilitation, community psychiatry, long-term care, and complex severe mental illness, especially when functional recovery, self-management, and meaningful life goals are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "ACT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "structured-clinical-management",
+    "name": "Structured clinical management",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "DBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "support-groups",
+    "name": "Support groups",
+    "category": "Group IPT",
+    "bestUsedFor": "Best as an adjunctive intervention for people or carers who benefit from shared experience, practical coping ideas, and community connection.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "supported-digital-cbt",
+    "name": "Supported digital CBT",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as an initial or stepped-care treatment for mild to moderate common mental health problems, especially when access barriers, waiting lists, geography, mobility, or preference for remote care matter.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "supported-digital-trauma-focused-cbt",
+    "name": "Supported digital trauma-focused CBT",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Best as a selective access-expanding option for PTSD when the person is stable enough for trauma-focused work but barriers make face-to-face trauma therapy difficult or delayed.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "Distress tolerance",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "supported-digital-trauma-focused-cbt-self-help-and-digital-therapies",
+    "name": "Supported digital trauma-focused CBT (Self-Help & Digital Therapies)",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as a selective option for PTSD or clinically significant post-traumatic stress symptoms when the patient is appropriate for trauma-focused work but remote or digital delivery is preferable or necessary.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "Supported digital trauma-focused CBT"
+    ]
+  },
+  {
+    "slug": "supported-education",
+    "name": "Supported education",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best for early psychosis, complex psychosis rehabilitation, youth/young adult mental health, and severe mental illness where education is a meaningful recovery goal.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "supported-employment-individual-placement-and-support-ips",
+    "name": "Supported Employment / Individual Placement and Support (IPS)",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best supported for psychosis / schizophrenia and complex psychosis rehabilitation when the person wants mainstream employment.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Eating/body image",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "IPS"
+    ]
+  },
+  {
+    "slug": "supportive-psychotherapy",
+    "name": "Supportive Psychotherapy",
+    "category": "Foundational & Engagement Therapies",
+    "bestUsedFor": "High-yield in ED, inpatient psychiatry, consultation-liaison psychiatry, older-adult psychiatry, severe comorbidity, adjustment reactions, and bridging phases before or between more specific therapies.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "supportive-expressive-psychodynamic-counselling-approaches-for-depression",
+    "name": "Supportive-Expressive / Psychodynamic Counselling Approaches for Depression",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "systemic-family-therapy",
+    "name": "Systemic Family Therapy",
+    "category": "Family & Couple Therapies",
+    "bestUsedFor": "Best used when a systemic formulation is clinically more useful than an individual-only one.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Eating/body image",
+      "ACT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "task-centred-practice",
+    "name": "Task-centred practice",
+    "category": "Community & Casework Support",
+    "bestUsedFor": "Best for circumscribed, practical, time-limited problems where rapid action is more useful than deeper exploratory work, such as housing, benefits, service engagement, daily-structure problems, adherence barriers, or role-function disruption.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "ACT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "telehealth-delivered-psychotherapy",
+    "name": "Telehealth-delivered psychotherapy",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best when an evidence-based psychotherapy is indicated and telehealth is safe and clinically appropriate, especially for rural and remote patients, patients with travel barriers, and situations where continuity would otherwise be disrupted.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Personality/interpersonal",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "Distress tolerance",
+      "ACT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "telephone-delivered-cbt",
+    "name": "Telephone-delivered CBT",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as a lower-intensity or access-expanding CBT format for mild to moderate common mental health presentations, especially where distance, mobility, wait times, or preference for phone-based care are major barriers.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Pain/somatic",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "transference-focused-psychotherapy-tfp",
+    "name": "Transference-Focused Psychotherapy (TFP)",
+    "category": "Personality Disorder Therapies",
+    "bestUsedFor": "Best supported for borderline personality disorder and closely related severe personality organisation.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "DBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "TFP"
+    ]
+  },
+  {
+    "slug": "trauma-focused-cognitive-behavioural-therapy-tf-cbt",
+    "name": "Trauma-Focused Cognitive Behavioural Therapy (TF-CBT)",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Strongest use is PTSD.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "Distress tolerance",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": [
+      "TF-CBT"
+    ]
+  },
+  {
+    "slug": "trauma-informed-skills-work",
+    "name": "Trauma-Informed Skills Work",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Most useful when trauma exposure has left the patient with major emotion-regulation or interpersonal difficulties, especially in complex trauma presentations.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Crisis/risk",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "twelve-step-facilitation-tsf",
+    "name": "Twelve-Step Facilitation (TSF)",
+    "category": "Substance Use Therapies",
+    "bestUsedFor": "The strongest evidence is for alcohol use disorder (AUD).",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": [
+      "TSF"
+    ]
+  },
+  {
+    "slug": "values-based-therapies",
+    "name": "Values-based therapies",
+    "category": "Humanistic & Meaning-Based Therapies",
+    "bestUsedFor": "Best when a values-based mechanism is clearly central, especially in ACT-informed work for transdiagnostic distress, chronic health conditions, and problems maintained by avoidance and overcontrol.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Crisis/risk",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "vocational-rehabilitation",
+    "name": "Vocational Rehabilitation",
+    "category": "Psychosis & Rehabilitation Therapies",
+    "bestUsedFor": "Best used in rehabilitation for complex psychosis and other severe mental illness when the person’s recovery goals include work, study, or structured occupation.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Psychosis",
+      "Substance use",
+      "Grief/loss",
+      "CBT",
+      "Micro skill"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "waitlist-bridging-brief-interventions",
+    "name": "Waitlist-bridging brief interventions",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best when waits are long and the patient has mild to moderate symptoms or is suitable for a low-intensity interim intervention.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": true,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Personality/interpersonal",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Single session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "wake-therapy-sleep-deprivation-chronotherapy",
+    "name": "Wake therapy / sleep-deprivation chronotherapy",
+    "category": "Brain & Body Therapies",
+    "bestUsedFor": "Best as a specialist adjunctive intervention for selected depressive episodes where rapid mood improvement is clinically useful and the service can monitor the patient safely.",
+    "reviewStatus": "needs_review",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Psychosis",
+      "Sleep",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "workbook-based-therapy",
+    "name": "Workbook-based therapy",
+    "category": "Self-Help & Digital Therapies",
+    "bestUsedFor": "Best as guided self-help or low-intensity CBT for milder common mental health presentations, especially when a patient prefers written structure or when digital access is limited.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Eating/body image",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "worry-focused-cbt",
+    "name": "Worry-focused CBT",
+    "category": "Standard Talking Therapies",
+    "bestUsedFor": "Best for GAD or transdiagnostic presentations where worry is the dominant maintaining process rather than panic attacks, compulsions, trauma re-experiencing, or social evaluative fear.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Anxiety",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Behavioural activation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "written-exposure-therapy",
+    "name": "Written exposure therapy",
+    "category": "Trauma Therapies",
+    "bestUsedFor": "Best as a brief trauma-focused PTSD treatment option when a concise, lower-burden exposure-based therapy is needed.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Eating/body image",
+      "Crisis/risk",
+      "Emotional regulation",
+      "CBT",
+      "Group programme"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "youth-ipt-ipt-a",
+    "name": "Youth IPT / IPT-A",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best-supported for adolescent depression, especially when interpersonal stressors are central.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Substance use",
+      "Neurodevelopmental",
+      "Eating/body image",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  },
+  {
+    "slug": "youth-trauma-focused-cbt",
+    "name": "Youth trauma-focused CBT",
+    "category": "Child & Adolescent Therapies",
+    "bestUsedFor": "Best for children and adolescents with PTSD or clinically important PTSD symptoms.",
+    "reviewStatus": "reviewed",
+    "patientSheetAvailable": true,
+    "briefInterventionAvailable": false,
+    "tags": [
+      "Mood",
+      "Trauma",
+      "Psychosis",
+      "Personality/interpersonal",
+      "Sleep",
+      "Substance use",
+      "Neurodevelopmental",
+      "Crisis/risk",
+      "Grief/loss",
+      "Emotional regulation",
+      "Distress tolerance",
+      "CBT",
+      "Multi-session"
+    ],
+    "aliases": []
+  }
+]

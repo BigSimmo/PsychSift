@@ -248,8 +248,12 @@ describe("page-local native table linkage through buildChunks", () => {
   });
 
   it("does not associate a complete native descriptor with chunks containing only table fragments", async () => {
-    const chunks = await build([page(pageText)], "page", "120");
+    const chunks = await build([page(tableText)], "page", "120");
     expect(chunks.length).toBeGreaterThan(1);
+    for (const chunk of chunks) {
+      const sourceText = chunk.content.replace(/\[\[IMAGE_DATA_START\]\][\s\S]*?\[\[IMAGE_DATA_END\]\]/g, "").trim();
+      expect(sourceText).not.toContain(tableText);
+    }
     expect(chunks.flatMap((chunk) => chunk.image_ids)).not.toContain("native-qa-table");
   });
 

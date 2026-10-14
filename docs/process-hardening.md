@@ -346,8 +346,8 @@ Read from the Actions API for PR runs `36110977826`, `36113010077`, `36107996148
 ## Phase 1 - Active now
 
 - `npm run verify:cheap` is the ordinary pre-PR local gate: `check:installed-lock-parity`, then `check:diff-integrity`, lint, typecheck, and the full offline unit suite. Run it freely — it is meant to be cheap enough not to think about. The parity step stays because it is sub-second and, without it, the other three would happily report green against a stale `node_modules`.
-- `npm run verify:full` is the broad offline local gate for cross-module risk: the 41 static/consistency gates (`check:runtime` through `check:instructions`; `npm run check:gate-manifest` lists them and pins the count), then lint, typecheck, and unit tests. It is selected, not automatic for every source/config/test edit.
-  - **Split on 2026-09-17 (owner decision).** `verify:cheap` had grown to 41 chained commands — including `check:pr-mergeability` (an offline self-test and workflow contract; an earlier version of this note wrongly said it calls GitHub) — so the gate advertised as the fast iteration loop was in practice the slowest thing in it, and agents ran it reflexively. The static gates did not stop running: they moved to `verify:full` (38 at the split; live count is whatever `check:gate-manifest` reports against `verify:full:internal`, 41 as of 2026-09-30), and every one of them still runs in CI, which `check:gate-manifest` continues to enforce one-way (CI may run more than the local chain, never less — it now reads `verify:full:internal`, and pointing it back at the cheap chain would silently drop those gates from that invariant while still passing).
+- `npm run verify:full` is the broad offline local gate for cross-module risk: the 42 static/consistency gates (`check:runtime` through `check:offline-pack`; `npm run check:gate-manifest` lists them and pins the count), then lint, typecheck, and unit tests. It is selected, not automatic for every source/config/test edit.
+  - **Split on 2026-09-17 (owner decision).** `verify:cheap` had grown to 41 chained commands — including `check:pr-mergeability` (an offline self-test and workflow contract; an earlier version of this note wrongly said it calls GitHub) — so the gate advertised as the fast iteration loop was in practice the slowest thing in it, and agents ran it reflexively. The static gates did not stop running: they moved to `verify:full` (38 at the split; live count is whatever `check:gate-manifest` reports against `verify:full:internal`, 42 through `check:offline-pack`), and every one of them still runs in CI, which `check:gate-manifest` continues to enforce one-way (CI may run more than the local chain, never less — it now reads `verify:full:internal`, and pointing it back at the cheap chain would silently drop those gates from that invariant while still passing).
 - `npm run verify:pr-local` is the risk-routed local mirror of the normal PR gate: runtime, installed-lock parity, changed-file format, conditional `npm ci --dry-run --ignore-scripts` for package/lockfile edits, then focused docs/workflow contracts or the fail-closed executable plan with lint, typecheck, one full unit run, conditional build, and RAG fixture/manifest validation. Local scope resolves against the repository default base rather than a feature-branch upstream; set `PR_BASE_REF` explicitly for release-targeted PRs.
 - `npm run verify:ui` is the complete required production Chromium gate: `check:runtime` plus all non-quarantined production journeys (`test:e2e:pr`).
 - `npm run verify:release` is the release-confidence gate: `check:runtime`, lint, typecheck, unit tests, build, full Playwright browser matrix, `check:production-readiness`, `governance:release`, and `eval:quality:release` (the last step needs live Supabase and OpenAI keys).
@@ -785,15 +785,17 @@ Machinery added to retire repeated traps and surface live-product signal proacti
 the durable index for the tooling; `docs/operator-backlog.md` tracks the human-only enablement steps.
 
 - **Pre-push guards** (`.githooks/pre-push` → `scripts/guard-push.mjs`, auto-installed by the
-  `postinstall` → `scripts/install-git-hooks.mjs`, which sets `core.hooksPath=.githooks`): five guards.
-  The non-bypassable auto-merge ownership guard warns (but does not block) an ordinary push to a
-  PR branch whose auto-merge is armed; it blocks only when that push force-updates the branch or
-  carries a hosted migration (`autoMergeVerdict` in `scripts/guard-push.mjs`). The other guards
-  retain explicit overrides: format-before-push (closes the `verify:cheap` vs
-  CI `format:check` gap; it reuses only an exact-lock worktree dependency tree and otherwise blocks
-  with `npm ci --include=dev`; `SKIP_FORMAT_GUARD=1`), drift-manifest freshness
-  (`SKIP_DRIFT_GUARD=1`), and static gate (changed-file lint + source-only typecheck through the run
-  coordinator; `SKIP_STATIC_GUARD=1`). `guard:push:self-test` covers the pure logic. Because the SessionStart hook is remote-gated, the
+  `postinstall` → `scripts/install-git-hooks.mjs`, which sets `core.hooksPath=.githooks`): the
+  non-bypassable auto-merge ownership guard (`autoMergeVerdict` in `scripts/guard-push.mjs`) plus five
+  guards with explicit env-var overrides. The auto-merge ownership guard warns (but does not block) an
+  ordinary push to a PR branch whose auto-merge is armed; it blocks only when that push force-updates
+  the branch or carries a hosted migration. The five overrideable guards are: format-before-push (closes
+  the `verify:cheap` vs CI `format:check` gap; reuses only an exact-lock worktree dependency tree and
+  otherwise blocks with `npm ci --include=dev`; `SKIP_FORMAT_GUARD=1`), drift-manifest freshness
+  (`SKIP_DRIFT_GUARD=1`), static gate (changed-file lint + source-only typecheck through the run
+  coordinator; `SKIP_STATIC_GUARD=1`), in-flight CI guard
+  (`SKIP_IN_FLIGHT_CI_GUARD=1`), and ledger-write discipline guard (`SKIP_LEDGER_WRITE_GUARD=1`).
+  `guard:push:self-test` covers the pure logic. Because the SessionStart hook is remote-gated, the
   installer runs from `postinstall` (any new npm lifecycle script must also be COPY'd into the
   Dockerfile npm-ci stages — see the 2026-07-13 docs-infra note).
 - **Stale-base tripwire** (`scripts/check-base-freshness.mjs`, `check:base-freshness`): advisory

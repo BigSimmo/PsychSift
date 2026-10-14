@@ -1,21 +1,9 @@
 "use client";
 
-import {
-  CalendarClock,
-  ChevronLeft,
-  ClipboardCopy,
-  Clock,
-  ExternalLink,
-  History,
-  Info,
-  Thermometer,
-  WifiOff,
-} from "lucide-react";
+import { CalendarClock, ClipboardCopy, Clock, ExternalLink, History, Info, Thermometer, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
-import { focusRing } from "@/components/card-recipes";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { modeModuleSurface } from "@/components/mode-kit/recipes";
@@ -67,6 +55,7 @@ import { SickShiftPicker } from "./sick-shift-picker";
 import { SickTimeline } from "./sick-timeline";
 import { useSickSend, type SickSendHow, type SickSendResult } from "./use-sick-send";
 import { useSickShifts, type SickReportItem } from "./use-sick-shifts";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /**
  * I am sick for tomorrow (feature #5). One tap tells the team's roster
@@ -332,18 +321,7 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
   const today = new Date(now);
   return (
     <InformationPageShell testId="roster-sick-page">
-      <ContextualBackLink
-        fallbackHref="/roster"
-        data-testid="roster-sick-back"
-        data-mode-identity="roster"
-        className={cn(
-          focusRing,
-          "-ml-1 -mb-2 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
-        )}
-      >
-        <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-        Roster
-      </ContextualBackLink>
+      <WorkPageBack href="/roster" label="Roster" testId="roster-sick-back" />
       <RosterPageHeader
         icon={Thermometer}
         eyebrow={formatZonedLongDay(zonedDateOf(today, zone))}
@@ -673,7 +651,6 @@ export function RosterSickPage({ now: pinnedNow }: { readonly now?: Date } = {})
                   target="_blank"
                   rel="noreferrer noopener"
                   className={cn(
-                    focusRing,
                     "-ml-1 inline-flex min-h-12 w-fit max-w-full items-center gap-1 rounded-md px-1 text-sm font-semibold text-[color:var(--mode-identity)] no-underline",
                   )}
                   aria-label="Check your agreement (opens the WA Health AMA agreement PDF)"

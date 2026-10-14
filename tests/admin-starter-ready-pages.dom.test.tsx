@@ -237,7 +237,7 @@ describe("ReadyForDayOnePage", () => {
   it("links to sharing with Medical Workforce", () => {
     entryState.entries = [startRow()];
     render(<ReadyForDayOnePage now={NOW} />);
-    expect(screen.getByTestId("admin-ready-sharing-link")).toHaveAttribute("href", "/admin/sharing");
+    expect(screen.getByTestId("admin-ready-sharing-link")).toHaveAttribute("href", "/admin/new-job");
     expect(screen.getByTestId("admin-ready-workforce-note")).not.toHaveTextContent("not built");
   });
 

@@ -335,10 +335,22 @@ export function WorkMiniRing({ value, fraction, tone, accessibleLabel }: WorkMin
 
 /* ------------------------------------------------------------------- tag */
 
-/** A small-caps status word on a flat tint. Always a word, never colour alone. */
-export function WorkTag({ tone = "mode", children }: { readonly tone?: WorkTone; readonly children: ReactNode }) {
+/**
+ * A small-caps status word on a flat tint. Always a word, never colour alone.
+ * Red, amber and green tags carry a status shape; `plain` keeps a coloured
+ * label (a place, or a tag with its own icon) free of one.
+ */
+export function WorkTag({
+  tone = "mode",
+  plain = false,
+  children,
+}: {
+  readonly tone?: WorkTone;
+  readonly plain?: boolean;
+  readonly children: ReactNode;
+}) {
   return (
-    <span className="work-tag" data-tone={toneAttr(tone)}>
+    <span className="work-tag" data-tone={toneAttr(tone)} data-plain={plain || undefined}>
       {children}
     </span>
   );
@@ -397,7 +409,12 @@ export function WorkChip(props: WorkChipProps) {
   );
 }
 
-/** A row of chips. `scroll` keeps them on one line and lets the row scroll sideways. */
+/**
+ * A row of chips. Every row now stays on one line and scrolls sideways with an
+ * edge fade (work-mode.css `.work-chips`), so a chip is never left alone on a
+ * second line. `scroll` is kept so existing callers still compile; it no longer
+ * changes the layout.
+ */
 export function WorkChips({
   children,
   scroll,

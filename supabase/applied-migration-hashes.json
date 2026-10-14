@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-12T12:49:50.382Z",
+  "sealed_at": "2026-10-14T16:50:15.246Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -303,6 +303,14 @@
     "20261010011100_work_bookings_organiser_role.sql": "e8c284f391bccc4d6327968e076ef15dd8f17d9a4ff40254a01f92ea687cad76",
     "20261010081500_roster_needs_stale_check.sql": "b9db1f643397ab1919d087d8cede955272c22474353b060acdf19a617db1b7d8",
     "20261010120000_evaluate_site_content_release_digest_once_per_health_read.sql": "4d9cf9487e74d3773c0263928fa5546b2d4ed60877c8cfdd179cbf1e16b866c2",
-    "20261012090000_roster_open_withdraw.sql": "35a6591442186ba238d96695d7a407d08aa6a019fa5eb01318c039039fedc8a5"
+    "20261012090000_roster_open_withdraw.sql": "35a6591442186ba238d96695d7a407d08aa6a019fa5eb01318c039039fedc8a5",
+    "20261013140000_enable_always_release_records_immutability.sql": "bb81f7682fd440a84f35fa95ef042986e73f5f506f4edf17541716bb095176b9",
+    "20261013150000_api_rate_limit_subjects_retention.sql": "f4e31507fdbf6fa58bcb8823125345d376853ce59311002fadc33bf3cf05e137",
+    "20261013160000_teaching_assessments_and_milestones.sql": "adb491df9ace7fa9cbf20091d14e8411df216a53935e7b95f7dcd23d1fd5776b",
+    "20261013170000_force_rls_control_plane.sql": "46d746dd78ed0c62489d72244ffc70b38dc08e3adb7d62ef360482dcb7214a85",
+    "20261013075944_administrator_txt_fenced_runtime_cutover.sql": "6a8cf89bdf4a07a52d40627fd1b279bab05d19c7736d669ca90d09cd5fee83d3",
+    "20261013144347_managed_generation_quality_repair_ownership.sql": "bb9ac15d422143273797ffed6b63df2e635dd1e66628e0408a946e3c95472227",
+    "20261013200007_managed_native_pdf_terminal_append.sql": "94ac297bad4a1f9d28fcb13d018237df081aa5b3da328073be8c9e17774bd292",
+    "20261014164220_validate_managed_ingestion_historical_reconciliation.sql": "548b80f429d7c62a113994c66b9b40e9cfe0ddd71c558efb4fd076ae1ea54ea2"
   }
 }

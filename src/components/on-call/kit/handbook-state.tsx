@@ -14,7 +14,7 @@ import type {
   HospitalHandbookStatus,
 } from "@/components/on-call/use-hospital-handbook";
 import { WorkButton } from "@/components/mode-kit/work";
-import { WorkSignInNotice } from "@/components/mode-kit/work-sign-in-notice";
+import { WorkSignInLine } from "@/components/mode-kit/work-sign-in-notice";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
 
@@ -27,9 +27,18 @@ const ON_CALL_SERVICE_HREF = "/on-call/service";
  * (`tests/on-call-hub-wording.test.ts`).
  */
 const SIGN_IN_TITLES: Partial<Record<HospitalHandbookStatus, string>> = {
-  "signed-out": "Hospital numbers are for signed-in members.",
+  "signed-out": "Sign in to see your hospital's numbers",
   expired: "Your session ended. Sign in again to see your hospital's numbers.",
 };
+
+/**
+ * Whether the public crisis lines show in their compact form: before a hospital is set up and when
+ * signed out, where they would otherwise top every page (usefulness audit, 11 Oct 2026). Loading,
+ * offline and failure keep the full block, because then the hospital's own numbers cannot be reached.
+ */
+export function onCallCrisisLinesCompact(status: HospitalHandbookStatus): boolean {
+  return status === "no-service" || status in SIGN_IN_TITLES;
+}
 
 /**
  * What a hub page shows while the hospital handbook is not ready, in words that
@@ -50,7 +59,9 @@ export function OnCallHandbookState({
 }) {
   const testId = `on-call-handbook-state-${handbook.status}`;
   const signIn = SIGN_IN_TITLES[handbook.status];
-  if (signIn) return <WorkSignInNotice icon={ON_CALL_HUB_PAGE_ICONS[page]} title={signIn} testId={testId} />;
+  // One slim line at the top, not a page-sized card (site review 12 Oct 2026, item 2): the
+  // public crisis lines and the page's examples below it stay where they were.
+  if (signIn) return <WorkSignInLine title={signIn} testId={testId} />;
   switch (handbook.status) {
     case "ready":
       return null;

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildExtractiveAnswer,
   completeExtractiveSentence,
   finalizeRagAnswerQuality,
   generatedAnswerQualityFailureReason,
   isLaunderedGuidanceWrapperAnswer,
 } from "../src/lib/rag/rag-extractive-answer";
-import type { Citation, RagAnswer, RagQueryClass } from "../src/lib/types";
+import type { Citation, RagAnswer, RagQueryClass, SearchResult } from "../src/lib/types";
 
 // The two answers the Gate E capture of 2026-08-21 shipped grounded, with five citations, no
 // fallback_reason and degraded_mode.active false — byte-identical across dump-v18 and dump-v19.
@@ -229,5 +230,85 @@ describe("#NPQJKP — reachability of the enforcing gate on the grounded extract
     );
 
     expect(finalized.routingReason).not.toContain("guidance_wrapper_fragment");
+  });
+});
+
+// Canary run 38383361787: the fast answer to "What should discharge documentation include?" failed
+// its quality check, there was no budget left for the strong retry, and the generation fallback led
+// with the heading trail above. Source-prose recovery found no complete sentence to swap in, so the
+// wrapper stayed, the gate (rightly) rejected it and the reader got a review stub. With no prose to
+// recover, the fallback must lead with the next fact that is not a wrapper.
+describe("generation fallback drops a wrapper lead when prose recovery finds nothing", () => {
+  function discharge(id: string, fileName: string, content: string): SearchResult {
+    return {
+      id,
+      document_id: fileName,
+      title: fileName.replace(/\.pdf$/, ""),
+      file_name: fileName,
+      page_number: 1,
+      chunk_index: 0,
+      section_heading: "Discharge documentation",
+      content,
+      image_ids: [],
+      similarity: 0.9,
+      hybrid_score: 0.9,
+      text_rank: 0.11,
+      source_metadata: {
+        source_title: fileName,
+        publisher: "Local service",
+        jurisdiction: "Australia/WA",
+        version: "1",
+        publication_date: null,
+        review_date: null,
+        uploaded_at: null,
+        indexed_at: null,
+        uploaded_by: null,
+        document_status: "current",
+        clinical_validation_status: "approved",
+        extraction_quality: "good",
+      },
+      images: [],
+    };
+  }
+
+  it("answers from the real fact instead of wrapping the trail", () => {
+    const query = "What should discharge documentation include?";
+    // No closing full stop, so source-prose recovery (complete sentences only) cannot use it.
+    const sentence =
+      "Discharge documentation must include the discharge summary, medication list and follow-up appointments with the community team";
+    const results = [
+      discharge("trail", "Admission to Discharge (NMHS).pdf", `Discharge documentation ${DISCHARGE_FRAGMENT}`),
+      discharge(
+        "list",
+        "Admission to Discharge (NMHS).pdf",
+        "Discharge documentation: compliance, monitoring and evaluation",
+      ),
+      discharge("prose", "MHSP.Discharge.pdf", sentence),
+    ];
+    const finalized = finalizeRagAnswerQuality(
+      buildExtractiveAnswer({
+        query,
+        queryClass: DISCHARGE_CLASS,
+        results,
+        quoteCards: [],
+        documentBreakdown: [],
+        evidenceSummary: undefined,
+        sourceCoverage: undefined,
+        conflictsOrGaps: [],
+        visualEvidence: [],
+        bestSource: null,
+        smartPanel: undefined,
+        relatedDocuments: [],
+        routeReason: "strong_routine_retrieval",
+        timings: undefined,
+        allowSourceProseRecovery: true,
+      }),
+      query,
+      DISCHARGE_CLASS,
+    );
+
+    expect(finalized.grounded).toBe(true);
+    expect(finalized.answer).toBe(`${sentence}.`);
+    expect(finalized.routingReason ?? "").not.toContain("final_quality_gate");
   });
 });

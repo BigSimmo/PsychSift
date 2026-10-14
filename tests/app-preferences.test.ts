@@ -31,6 +31,7 @@ describe("app preference normalisation", () => {
       showRecentOnHome: false,
       showProtocolsOnHome: false,
       compactCitations: true,
+      brightLight: true,
       saveRecentSearches: false,
       notifyGuidelineUpdates: false,
       notifyProductNews: true,

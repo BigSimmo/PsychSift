@@ -48,6 +48,8 @@ npm run reindex:health               # note jobs_pending / jobs_processing (need
 
 ## 1. Confirm migration state; apply only unresolved controls 🧑 Supabase
 
+Merging `supabase/migrations/*.sql` to `main` triggers the Supabase GitHub integration auto-deploy (~34s) to production (`sjrfecxgysukkwxsowpy`); manual apply is only for recovery/reconciliation when auto-deploy fails (or for unlinked/staging targets).
+
 The July-8 ingestion/tenancy batch and the retrieval drift-codification work are recorded as applied and
 verified on 2026-07-13. Their detailed procedures remain for staging/disaster recovery; do **not** reapply
 them merely because they appear below. First compare linked migration history and verify the remaining
@@ -60,11 +62,11 @@ PIA-4 retention migrations. **Do not redeploy the worker until `20260708130000` 
 | h     | `20260713201542_consolidate_rag_response_cache_retention`                                                | **Applied and verified live 2026-07-14**            | Job 16 is active and bounded; obsolete duplicate job confirmed absent.                                     |
 | i     | Retrieval RPC forward-codification (`20260713062107`…`20260713062139`)                                   | **Applied and drift/readiness verified 2026-07-13** | Verify only; see [forward-codify-retrieval-rpcs-workorder.md](forward-codify-retrieval-rpcs-workorder.md). |
 
-**⏸ PAUSE:** if and only if linked history shows migration `20260708120000` or `20260713201542` absent,
-apply the reviewed committed migration through the normal guarded workflow. Do not use this status
+**⏸ PAUSE:** if and only if linked history shows migration `20260708120000` or `20260713201542` absent after auto-deploy,
+apply the reviewed committed migration through the guarded recovery/reconciliation workflow. Do not use this status
 reconciliation as authority to replay the verified July-8 or forward-codification groups.
 
-After applying, query `cron.job` and expect exactly these active retention jobs: `purge-rag-query-misses`
+After applying, query `cron.job` and expect at least these active retention jobs: `purge-rag-query-misses`
 at `45 3 * * *` and `purge-rag-response-cache` at `15 * * * *`. The obsolete
 `purge-expired-rag-response-cache` name must be absent.
 
@@ -187,7 +189,7 @@ Following a Supabase database restore or disaster recovery failover, verify all 
 2. **Webhook Endpoint & Signature Verification:** Confirm Railway webhook destinations and Supabase Database Webhook triggers are active and matching HMAC secrets.
 3. **Authentication & Connection Limits:** Validate auth rate limits and connection pool percentage allocation in the Supabase Dashboard.
 4. **Cron Job Schedule Registration:** Verify pg_cron extensions and scheduled maintenance jobs (cache retention, query log sweeps) are active.
-5. **Storage Bucket Policies:** Confirm private document storage buckets (`documents`, `document-images`) have active RLS policies preventing unauthenticated public reads.
+5. **Storage Buckets, Files & Policies:** Include files from `clinical-documents`, `clinical-images`, and `cme-private-evidence` in the storage recovery inventory. `supabase/schema.sql` recreates all three bucket rows, but not their files; restore the files separately. Confirm all three private buckets have active RLS policies preventing unauthenticated public reads.
 
 ## 8. Operational notes & diagnostics (#248, #305, #315, #102, #6SMMB4, #9X40BT)
 

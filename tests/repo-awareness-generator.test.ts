@@ -211,6 +211,17 @@ describe("buildDocumentationSection", () => {
     );
   });
 
+  it("catalogues children of linked directories without matching sibling prefixes", () => {
+    const section = buildDocumentationSection(
+      ["docs/guides/nested/topic.md", "docs/guides-extra/topic.md", "docs/testing.md/child.md"],
+      "[Guides](./guides/) [Tests](testing.md)",
+    );
+    const byPath = new Map(section.documents.map((document) => [document.path, document.catalogued]));
+    expect(byPath.get("docs/guides/nested/topic.md")).toBe(true);
+    expect(byPath.get("docs/guides-extra/topic.md")).toBe(false);
+    expect(byPath.get("docs/testing.md/child.md")).toBe(false);
+  });
+
   it("is not fooled by a repository URL that contains a doc path", () => {
     // Removing the URL strip in `catalogueTargets` makes this red: the bare
     // regex would match `docs/only-external.md` inside the blob URL and mark a

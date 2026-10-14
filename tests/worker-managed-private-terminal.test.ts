@@ -12,6 +12,7 @@ import {
   type ManagedPrivateTerminalPacket,
 } from "../worker/managed-private-terminal";
 import type { ManagedPreparedSupplierInput } from "../worker/managed-prepared-supplier";
+import { sourceSegment } from "./helpers/source-contract";
 vi.mock("../src/lib/openai", () => {
   throw new Error("provider import forbidden");
 });
@@ -172,16 +173,25 @@ describe("private fixture terminal caller", () => {
   });
   it("wires only the exact source private native path to terminal return before ordinary completion or cache mutation", () => {
     const main = readFileSync("worker/main.ts", "utf8");
-    const start = main.indexOf("const nativeReadback = await stageManagedNativeParentClosure");
-    const end = main.indexOf("// Prepared bodies and private candidate rows", start);
-    const hook = main.slice(start, end);
+    const hook = sourceSegment(
+      main,
+      "const nativeReadback = await stageManagedNativeParentClosure",
+      'if (job.documents.file_type === "application/pdf") {',
+      { label: "fixed private fixture terminal branch" },
+    );
     expect(hook).toContain("nativeReadback.identity.sourceSha256 === PRIVATE_FIXTURE_SOURCE_SHA256");
     expect(hook).toContain("nativeReadback.identity.sourceByteLength === 3300");
     expect(hook).toContain("nativePopulationDigest: nativeReadback.sqlPopulationDigest");
     expect(hook).toContain("stopHeartbeat: () => clearInterval(heartbeat)");
     expect(hook).toMatch(/await completeManagedPrivateFixtureAttempt\([\s\S]*?\);\s*return;/);
     expect(hook).not.toMatch(/completeJob\(|invalidateRagCaches|refreshRagTableStats/);
-    expect(main.slice(end, end + 560)).toContain("technical_supplier_not_implemented");
+    const incomplete = sourceSegment(
+      main,
+      "// Prepared bodies and private candidate rows",
+      "await stageGenerationPrerequisite(",
+      { label: "remaining managed completeness refusal" },
+    );
+    expect(incomplete).toContain("technical_supplier_not_implemented");
   });
   it("uses a single tagged write and terminal read after the processing lease ends", async () => {
     const f = fixture();

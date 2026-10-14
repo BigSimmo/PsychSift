@@ -5,8 +5,9 @@ of truth is `adoption-contract.json`; the generated manifest and marked tables i
 must match it exactly.
 
 - **Date:** 12 August 2026
-- **Current state:** 55 visual references are locally registered; all 51 production page routes
-  are owned across 14 surface families, with 59 route/component roots scanned; every declared
+- **Current state:** 55 visual references are locally registered; all 224 production page routes
+  are owned across 14 surface families, with 232 route/component roots scanned (the generated
+  table below is authoritative if these drift); every declared
   root uses the v2 shell and has declared proof with no committed visual baseline.
 - **Phase 1 blockers resolved first, in their own commits:** `#207` ungrounded `AnswerState`,
   `#208` clipboard composition. See [SPEC.md](SPEC.md) §13 PR 6 clinical review, blockers 1–2.
@@ -135,7 +136,7 @@ src/components/DocumentViewer.tsx
 navigation, zoom, fit, rotation, the viewing aid and fullscreen, and `PdfCanvasViewer` renders
 source pixels only. There is exactly one toolbar and one page readout in the viewer, and the
 contract test `tests/document-frame-contract.test.ts` holds that. It is not yet design-sync
-registered among the 54 published visual exports. Do not invent a second frame or add inversion/filters; route document renders through
+registered among the 55 published visual exports. Do not invent a second frame or add inversion/filters; route document renders through
 the existing viewer + frame. Keep every `role="alert"` semantic; route announcements through
 the announcer policy rather than deleting roles, because many `role="status"` sites are
 implicit polite live regions with no `aria-live` attribute and removing the role without an
@@ -244,7 +245,7 @@ clamp, hidden instruction, retrieval change, visual baseline or patient/plain-la
 ## 3 · Registration disposition
 
 The Phase 1 local registration gap is closed. The visual symbols below are now included in the
-54-component source-derived registry; support APIs remain entry-only by design:
+55-component source-derived registry across the 26 app modes in `src/lib/app-modes.ts`; support APIs remain entry-only by design:
 
 | Module                                        | Symbols                                                         | First adopting surface   |
 | --------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
@@ -367,12 +368,12 @@ product exclusions; the only route-only dispositions are the documented legacy-r
 surfaces. Shared shell/component roots carry their own explicit `shared-shell` disposition.
 
 Registered public components: 55
-Declared product roots: 229
+Declared product roots: 234
 Roots with a literal `.ckb-v2` opt-in: 1
-Roots inheriting `.ckb-v2` from the global `<html>`: 228
-Production surfaces observed under v2: 14/14
+Roots inheriting `.ckb-v2` from the global `<html>`: 233
+Production surfaces observed under v2: 15/15
 Dynamic `ckb-v2` constructions: 0
-Declared production page routes: 221/221
+Declared production page routes: 225/225
 
 Source observation and contract declaration are independent. A literal `ckb-v2` on the global `<html>` makes every production surface inherit v2, but it does not approve that adoption.
 The Proof column summarizes each surface's dark, forced-colours, 320px, print and browser declarations; exact statuses and evidence paths live in the manifest.
@@ -381,7 +382,7 @@ Observed v2 under a compatibility declaration fails closed. A declared v2 shell 
 | Surface                            | Disposition     | Routes | Roots | Declared shell | Observed shell (mount)     | Proof          | Baseline       |
 | ---------------------------------- | --------------- | -----: | ----: | -------------- | -------------------------- | -------------- | -------------- |
 | `root-shell-and-settings`          | shared-shell    |      3 |     6 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
-| `catalogues-forms-and-info`        | owned           |    178 |   178 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
+| `catalogues-forms-and-info`        | owned           |    181 |   181 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `differentials`                    | owned           |      7 |     7 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `formulation`                      | owned           |      6 |     6 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `specifiers`                       | owned           |      6 |     6 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
@@ -394,5 +395,6 @@ Observed v2 under a compatibility declaration fails closed. A declared v2 shell 
 | `search-results-shared`            | shared-shell    |      0 |     1 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `answers-shared`                   | shared-shell    |      0 |     2 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 | `source-preview-shared`            | shared-shell    |      0 |     1 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
+| `admin-source-pilot`               | owned           |      1 |     2 | v2             | v2 (inherited-global-root) | passed         | not-committed  |
 
 <!-- adoption-manifest:adoption:end -->

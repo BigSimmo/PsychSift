@@ -164,12 +164,28 @@ function SpecifierResults({ query }: { query: string }) {
   const categoryValues = useMemo(() => new Set(categoryOptions.map((option) => option.value)), [categoryOptions]);
   const selectedCategories = new Set(readResultFilterValues(searchParams, "category", categoryValues));
   const reviewedOnly = searchParams.get("reviewed") === "1";
-  const guideMatches = useMemo(() => searchSpecifiers(query, { family, diagnosis }), [diagnosis, family, query]);
-  const catalogueMatches = allCatalogueMatches.filter(
+  // Nothing typed is browsing, not a search: the list is shown A to Z with no
+  // "Top match", so it never reads as the app having picked something. Sorting
+  // here (display only) leaves the search library's ranking untouched.
+  const browsing = query.length === 0;
+  const guideMatches = useMemo(() => {
+    const matches = searchSpecifiers(query, { family, diagnosis });
+    return browsing
+      ? [...matches].sort((left, right) =>
+          left.record.name.localeCompare(right.record.name, "en", { sensitivity: "base" }),
+        )
+      : matches;
+  }, [browsing, diagnosis, family, query]);
+  const filteredCatalogueMatches = allCatalogueMatches.filter(
     ({ item }) =>
       (selectedCategories.size === 0 || selectedCategories.has(item.categoryId)) &&
       (!reviewedOnly || item.src === "source-verified"),
   );
+  const catalogueMatches = browsing
+    ? [...filteredCatalogueMatches].sort((left, right) =>
+        left.item.label.localeCompare(right.item.label, "en", { sensitivity: "base" }),
+      )
+    : filteredCatalogueMatches;
   const matchingTotal = scope === "guides" ? guideMatches.length : catalogueMatches.length;
   const resultSignature = `${query}|${scope}|${[...selectedCategories].sort().join(",")}|${reviewedOnly}`;
   const [visibleState, setVisibleState] = useState({ signature: resultSignature, count: CATALOGUE_RESULT_LIMIT });
@@ -322,6 +338,7 @@ function SpecifierResults({ query }: { query: string }) {
       <SearchResultsHeaderBand
         modeId="specifiers"
         query={query}
+        emptyQuerySubject="Specifiers"
         matchCount={matchingTotal}
         headingLevel={1}
         filterLabel="Filter specifier results"
@@ -388,9 +405,9 @@ function SpecifierResults({ query }: { query: string }) {
       {matchingTotal === 0 ? (
         <EmptySearchResults query={query} />
       ) : scope === "guides" ? (
-        <section aria-label="Specifier matches" className="grid gap-3">
+        <section aria-label={browsing ? "Specifiers, A to Z" : "Specifier matches"} className="grid gap-3">
           {guideMatches.map(({ record }, index) => (
-            <SpecifierMatchCard key={record.slug} record={record} isTopMatch={index === 0} />
+            <SpecifierMatchCard key={record.slug} record={record} isTopMatch={!browsing && index === 0} />
           ))}
         </section>
       ) : null}

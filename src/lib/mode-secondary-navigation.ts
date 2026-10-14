@@ -21,8 +21,13 @@ export type ModeSecondaryNavigationEntry = {
    * them (On Call only, kit 1.7).
    */
   group?: "tools" | "more";
-  /** "editors": shown in the pages sheet only to a reader who can edit (F24). */
-  audience?: "editors";
+  /**
+   * "editors": shown in the pages sheet only to a reader who can edit (F24).
+   * "administrators": staff-only (the site administrator), such as Therapy's
+   * sign-off queue. Left out of every bar and sheet unless the caller says the
+   * reader is one (audit 11 Oct 2026). The route still answers a direct visit.
+   */
+  audience?: "editors" | "administrators";
   /** Registered and routed, but left out of the pages sheet (a page behind a flag). */
   hidden?: boolean;
 };
@@ -43,8 +48,17 @@ export const modeSecondaryNavigationRegistry = {
   answer: [],
   documents: [],
   services: [],
-  forms: [],
   favourites: [],
+  // Clinical Forms: the forms list, the MHA clock and the Act summaries, one tap
+  // apart (owner audit item 7, Oct 2026). The clock is the same page the
+  // Psychiatry hub links to at /psychiatry/mha-clock; both addresses stay. Act
+  // and Clock are information pages, so the shell never draws this bar on them
+  // and each mounts `FormsModeNav` itself, as the presentation workflow does.
+  forms: [
+    { id: "forms-list", label: "Forms", href: "/forms/search" },
+    { id: "forms-clock", label: "Clock", href: "/forms/clock" },
+    { id: "forms-act", label: "Act", href: "/forms/act" },
+  ],
   differentials: [
     { id: "search", label: "Search", href: appModeHomeHref("differentials", { focus: true }) },
     { id: "diagnoses", label: "Diagnoses", href: "/differentials/diagnoses" },
@@ -79,7 +93,13 @@ export const modeSecondaryNavigationRegistry = {
     { id: "recommend", label: "Recommend", href: "/therapy-compass/recommend" },
     { id: "compare", label: "Compare", href: "/therapy-compass/compare" },
     { id: "pathways", label: "Pathways", href: "/therapy-compass/pathways" },
-    { id: "review", label: "Review", href: "/therapy-compass/review" },
+    // The qualified-clinician sign-off queue, listed for site administrators only (owner decision,
+    // 13 Oct 2026, once the owner's account carried the role). The route still opens for anyone and
+    // the server still refuses a sign-off from anyone else.
+    // `group: "more"` keeps it registered (the route, the pill name, `activeId`) but off the main
+    // tabs, which list only ungrouped entries (owner decision, October 2026). The Therapy search
+    // page links to it, so it stays one tap away.
+    { id: "review", label: "Review", href: "/therapy-compass/review", group: "more", audience: "administrators" },
   ],
   // Two genuinely distinct surfaces: `/factsheets/search` (query + filters +
   // result rows) and `/factsheets/topics` (category browse). Search leads, the
@@ -176,8 +196,9 @@ export const modeSecondaryNavigationRegistry = {
   // controls doing one job.
   //
   // Today leads because the dashboard is the page the mode is judged by.
-  // Year check, Routines, Calendar, Training and Programme are tabs reached
-  // from their parent pages. Customise and the annual summary stay secondary.
+  // Year check, Routines, Calendar and Training are tabs reached from their
+  // parent pages. Customise and the annual summary stay secondary. Programme is
+  // no longer a page: `/cme/programme` is a bookmark that forwards to Set up.
   cme: [
     // The year overview, named Summary as the work-mode mockup names it.
     { id: "year", label: "Summary", href: "/cme" },
@@ -202,12 +223,14 @@ export const modeSecondaryNavigationRegistry = {
     { id: "week", label: "Week", href: "/teaching/week" },
     { id: "logbook", label: "Logbook", href: "/teaching/logbook" },
   ],
-  // Psychiatry's hub has three pages, switched with ?page= (like My Day). The
+  // Psychiatry's hub has two pages, switched with ?page= (like My Day): one
+  // Home page and Saved (owner design review, 12 Oct 2026, which folded the old
+  // Tools page into Home; `/psychiatry?page=tools` still lands on Home). The
   // band draws them as its underline tabs; each section the hub gathers keeps
-  // its own navigation.
+  // its own navigation. The Home id stays `psychiatry-ask` so saved layouts and
+  // the band's current-tab key keep working.
   psychiatry: [
-    { id: "psychiatry-ask", label: "Ask", href: "/psychiatry" },
-    { id: "psychiatry-tools", label: "Tools", href: "/psychiatry?page=tools" },
+    { id: "psychiatry-ask", label: "Home", href: "/psychiatry" },
     { id: "psychiatry-saved", label: "Saved", href: "/psychiatry?page=saved" },
   ],
   medicines: [],
@@ -301,6 +324,7 @@ export type RoutedModeSecondaryNavigationId = Extract<RegistryEntry, { href: str
  */
 export const MODE_NAV_ADOPTED_MODES = [
   "dsm",
+  "forms",
   "specifiers",
   "formulation",
   "differentials",
@@ -374,13 +398,19 @@ export function groupModeSecondaryNavigationEntries<T extends ModeSecondaryNavig
  * `audience: "editors"` entries when `isEditor` is false. On Call passes
  * `readOnCallEditorFlag()`, which is true while the role is still unknown and
  * false only for a known non-editor (review S3); the page does the real gating.
+ * `audience: "administrators"` entries show only when `isAdministrator` is true.
  * The routes stay registered either way, so the pill still names the page.
  */
 export function visibleModeSecondaryNavigationEntries<T extends ModeSecondaryNavigationEntry>(
   entries: readonly T[],
-  { isEditor }: { readonly isEditor: boolean },
+  { isEditor, isAdministrator = false }: { readonly isEditor: boolean; readonly isAdministrator?: boolean },
 ): T[] {
-  return entries.filter((entry) => !entry.hidden && (entry.audience !== "editors" || isEditor));
+  return entries.filter(
+    (entry) =>
+      !entry.hidden &&
+      (entry.audience !== "editors" || isEditor) &&
+      (entry.audience !== "administrators" || isAdministrator),
+  );
 }
 
 /**
@@ -400,6 +430,13 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
       return "compare";
     }
     if (pathname === "/differentials" || pathname.startsWith("/differentials?")) return "search";
+    return null;
+  }
+  if (modeId === "forms") {
+    // Exact paths: `/forms/<slug>` is a form record, never one of these tabs.
+    if (pathname === "/forms/search") return "forms-list";
+    if (pathname === "/forms/clock") return "forms-clock";
+    if (pathname === "/forms/act") return "forms-act";
     return null;
   }
   if (modeId === "dsm") {
@@ -492,8 +529,8 @@ export function activeModeSecondaryNavigationId(modeId: AppModeId, pathname: str
     return null;
   }
   if (modeId === "psychiatry") {
-    // The address carries no ?page= here, so the page itself names Tools or
-    // Saved through useModeBandCurrentTab.
+    // The address carries no ?page= here, so the page itself names Saved
+    // through useModeBandCurrentTab.
     if (pathname === "/psychiatry") return "psychiatry-ask";
     return null;
   }
@@ -553,6 +590,9 @@ export function isModeSecondaryNavigationRoute(params: {
     );
   }
   if (modeId === "dsm") return pathname === "/dsm/search" || pathname === "/dsm/compare";
+  // Only the list is drawn by the shell. Clock and Act are information pages,
+  // which return before this, and mount the bar themselves (`FormsModeNav`).
+  if (modeId === "forms") return pathname === "/forms/search";
   if (modeId === "specifiers") {
     return (
       pathname === "/specifiers/search" ||
@@ -639,11 +679,20 @@ export function modeSecondaryNavigationHref(params: {
   }
 
   if (modeId === "differentials") {
+    // A carried query goes straight to the results route. Linking the shared
+    // home (`/?mode=differentials&q=…&run=1`) only bounced there through a
+    // server redirect, which Safari on a phone could leave unfinished.
+    if (itemId === "search" && query) {
+      const ids = currentSearchParams.get("ids");
+      return navigationHrefWithParams(
+        appModeHomeHref("differentials", { query, focus: true, run: true }),
+        ids ? [["ids", ids]] : [],
+      );
+    }
     const entries: Array<readonly [string, string]> = query ? [["q", query]] : [];
     // Returning to Search with a carried query must reopen the results view
     // (`run=1`), not the empty mode home — even when the previous tab lacked run.
-    if (itemId === "search" && query) entries.push(["run", "1"]);
-    else if (itemId === "search" && currentSearchParams.get("run") === "1") entries.push(["run", "1"]);
+    if (itemId === "search" && currentSearchParams.get("run") === "1") entries.push(["run", "1"]);
     // Compare (and other in-mode tabs) reuse URL-backed selection so ticks on
     // search survive ModeNav handoff without a second client store.
     if (currentSearchParams.get("ids")) {
@@ -755,6 +804,23 @@ export function modeSecondaryNavigationHref(params: {
       ...(query ? ([["q", query]] as const) : []),
       ...selections.map((value) => ["mechanism", value] as const),
       ...templateEntry,
+    ]);
+  }
+
+  if (modeId === "forms") {
+    // The list keeps its query and its category, risk and availability filters
+    // (the params `formFilterSelectionFromParams` reads), as Factsheets' Search
+    // does, so tapping the tab you are on never clears the results. Clock and
+    // Act read none of these params, so their links stay clean.
+    if (itemId !== "forms-list") return href;
+    const filters = (["category", "risk", "availability", "sort"] as const).flatMap((key) => {
+      const value = currentSearchParams.get(key);
+      return value ? [[key, value] as const] : [];
+    });
+    return navigationHrefWithParams(href, [
+      ...(query ? ([["q", query]] as const) : []),
+      ...(query && currentSearchParams.get("run") === "1" ? ([["run", "1"]] as const) : []),
+      ...filters,
     ]);
   }
 

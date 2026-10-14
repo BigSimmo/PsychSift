@@ -263,8 +263,9 @@ Shadow-only ladder `--e0…--e4`; `--ring-hairline` for borderless floating surf
 > A card inside a panel never carries a heavier `--eN` than its parent.
 
 The ladder itself is gated against baked-in hairlines (**[verified:** contract test
-`:171-179`**]**); the per-surface co-occurrence rule and the spread-term check are **planned**
-(GATES §8).
+`:171-179`**]**); the per-surface co-occurrence rule and the spread-term check both ship, ratcheted in
+`check:design-system-contract` as `edgeOwnershipConflicts` and `onePixelShadowSpreads` (GATES §8,
+row 8).
 
 `--shadow-inset` **stays the DS bevel**; `--shadow-well` is the recessed-well role. The
 former v2 `--shadow-inset` overrides became `--shadow-well` in `59e4c3dfc`, with the
@@ -342,11 +343,13 @@ at the **end** of adoption, with its own visual-regression pass (≈663 type cal
 - completion condition — no semantic difference remains between live and v2 roles on adopted
   surfaces
 
-**Current truth.** The target layer is built and the source mounts it literally on the global
-`<html>`, so production surfaces inherit v2. The contract still declares those surfaces as
-compatibility until their required proof and committed Linux visual baselines are approved.
-`adoption-manifest.json` records observed mounting and declared adoption independently; it is not
-an inference from a token file or a remote design-project claim.
+**Current truth.** The target layer is built and the source mounts `.ckb-v2` literally on the global
+`<html>`, so all 14 target clinical surface families inherit v2 and are declared `v2` with `passed`
+proof statuses recorded in `adoption-contract.json` (see [ADOPTION.md](ADOPTION.md)); those are recorded
+declarations, and the browser proofs were Not run for this documentation-only change. `baseline` remains
+`not-committed` pending human-approved Linux visual baselines. `adoption-manifest.json` records
+observed mounting and declared adoption independently; it is not an inference from a token file or
+a remote design-project claim.
 
 ### 4.12 Print is a theme
 
@@ -446,10 +449,13 @@ design-system face of the repo's button-wiring rule.
 generated from the real exported `*Props` types and checked for exact parity (PR 12). Callback
 types keep their event signatures; zero-prop roots are recorded explicitly.
 
-**`className` is not a reliable override.** `cn()` joins strings; it does not resolve
-conflicting Tailwind utilities. **For a clinical system, explicit props beat unrestricted
-class replacement** — expose deliberate size and slot props; adopt `tailwind-merge` only if
-override semantics are genuinely required.
+**`cn()` resolves conflicting utilities via `twMergeClinical`, while explicit props remain preferred.**
+`cn()` in `src/components/ui-primitives.tsx` wraps `twMergeClinical` (`clinicalTwMerge`, built with
+`extendTailwindMerge` in `src/lib/tailwind-merge.ts`) taught this repo's custom `@theme` scales
+(`CLINICAL_TWMERGE_THEME`: custom `text`/font-size, `leading`, `tracking`, `spacing`, `ease`, and
+`animate` groups). Even so,
+**for a clinical system, explicit props beat unrestricted class replacement** — expose deliberate size
+and slot props rather than relying on ad-hoc `className` overrides.
 
 **`testId` is not a quality proxy.** Prefer role and accessible-name queries; `data-slot`
 where styling or integration needs a hook; `data-testid` only where semantics cannot identify
@@ -531,7 +537,7 @@ handling. Policy:
 ## 9 · Accessibility
 
 **9.1 Route focus.** Next's App Router does not move focus on client navigation and nothing
-compensates — this affects every navigation in a 13-mode app. Preserve focus where navigation
+compensates — this affects every navigation in a 26-mode app (`src/lib/app-modes.ts`). Preserve focus where navigation
 is inside an overlay or controlled workflow; otherwise move focus to the new `<h1>` or main
 landmark with `tabIndex={-1}` and announce the title once. Owned by `RouteAnnouncer`
 (COMPONENTS §5).
@@ -817,13 +823,13 @@ close this runtime concern; revisit before adoption puts them on a hot path.
 
 ### Phase 4 — architecture, then adoption
 
-| PR                             | Contents                                                                                                                                                                                                                                 | Status                                                                                                                                         |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| PR 9 · Motion, stacking, edges | Wire `--duration-*`/`--ease-*`/`--z-*` to utilities + lint; `transform` for `Progress`, `LinkAction`, `ToggleSwitch`; edge-rule gate; `Quantity` off the retiring type step; delete `--shadow-focus`, `--shadow-lift`, dead springs      | open                                                                                                                                           |
-| PR 10 · Overlays               | One `OverlayRoot`; mandatory `Sheet` name; portal by default; `Tooltip` composes child handlers; `Toast` splits tone/priority/persistence, pauses on hover and focus                                                                     | **done** — component/publication contract and app-root mount; v2 style activation is unchanged                                                 |
-| PR 11 · Print and documents    | Print as a tokenised theme; `[data-print-hide]`; print primitives; `DocumentFrame`                                                                                                                                                       | open — COMPONENTS §6                                                                                                                           |
-| PR 12 · Design-sync integrity  | Declarations generated from real types; manifest parity; direct tests for every registered component; preview state matrices; `tailwind-merge` or slot props; split `ui-primitives.tsx`                                                  | **publication slice done** — deterministic props, parity, previews and direct contract proof; override policy and module split remain deferred |
-| PR 13 · Register, then adopt   | Register only after Phases 1–3 are green. Adopt one surface at a time behind `.ckb-v2`, visual diff each: isolated form → page header and actions → source-provenance block → **answer surface last**. Type-scale retirement last of all | **registration done locally; adoption remains compatibility-only** — see [ADOPTION.md](ADOPTION.md)                                            |
+| PR                             | Contents                                                                                                                                                                                                                                 | Status                                                                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR 9 · Motion, stacking, edges | Wire `--duration-*`/`--ease-*`/`--z-*` to utilities + lint; `transform` for `Progress`, `LinkAction`, `ToggleSwitch`; edge-rule gate; `Quantity` off the retiring type step; delete `--shadow-focus`, `--shadow-lift`, dead springs      | open                                                                                                                                                        |
+| PR 10 · Overlays               | One `OverlayRoot`; mandatory `Sheet` name; portal by default; `Tooltip` composes child handlers; `Toast` splits tone/priority/persistence, pauses on hover and focus                                                                     | **done** — component/publication contract and app-root mount; v2 style activation is unchanged                                                              |
+| PR 11 · Print and documents    | Print as a tokenised theme; `[data-print-hide]`; print primitives; `DocumentFrame`                                                                                                                                                       | open — COMPONENTS §6                                                                                                                                        |
+| PR 12 · Design-sync integrity  | Declarations generated from real types; manifest parity; direct tests for every registered component; preview state matrices; `tailwind-merge` or slot props; split `ui-primitives.tsx`                                                  | **done** — deterministic props, parity, previews, direct contract proof, and `twMergeClinical` (`src/lib/tailwind-merge.ts`); module split remains deferred |
+| PR 13 · Register, then adopt   | Register only after Phases 1–3 are green. Adopt one surface at a time behind `.ckb-v2`, visual diff each: isolated form → page header and actions → source-provenance block → **answer surface last**. Type-scale retirement last of all | **registration and v2 surface adoption done locally across all 14 clinical surface families** (`baseline: not-committed`) — see [ADOPTION.md](ADOPTION.md)  |
 
 **Adoption invariants.** Every step reversible and diffable per surface · no adoption
 before the cascade port (dark evidence is void until then) · the most-read text ships

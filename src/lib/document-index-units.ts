@@ -367,6 +367,90 @@ function visualSearchableText(image: IndexUnitVisualImage, profile: StructuredVi
     .join(" ");
 }
 
+type NeutralNativeTableRow = { fact: IndexUnitTableFact; columns: string[]; cells: string[]; rowIndex: number };
+
+function neutralNativeTableRows(
+  image: IndexUnitVisualImage,
+  facts: IndexUnitTableFact[],
+  chunks: IndexUnitChunk[],
+  documentId: string,
+): NeutralNativeTableRow[] | null {
+  // This checks the existing Python descriptor/host adapter shape, not authenticated
+  // producer identity. Supplied profiles and other extraction methods keep their path.
+  const metadata = image.metadata;
+  const columns = image.tableColumns;
+  const rows = image.tableRows;
+  if (
+    image.structuredVisualProfile ||
+    image.sourceKind !== "table_crop" ||
+    metadata?.source_kind !== "table_crop" ||
+    metadata.candidate_type !== "table" ||
+    metadata.extraction_method !== "pymupdf_find_tables" ||
+    !Number.isInteger(image.pageNumber) ||
+    (image.pageNumber ?? 0) < 1 ||
+    Boolean(image.caption?.trim() || image.tableTitle?.trim() || image.tableLabel?.trim() || image.imageType) ||
+    ![undefined, null, "unclear"].includes(image.tableRole) ||
+    ![undefined, null, "unclear"].includes(metadata.table_role as string | null | undefined) ||
+    metadata.pageNumber !== image.pageNumber ||
+    metadata.rows_truncated !== false ||
+    !Number.isInteger(metadata.table_index) ||
+    Number(metadata.table_index) < 1 ||
+    !Array.isArray(columns) ||
+    !columns.length ||
+    !columns.every((column) => typeof column === "string" && column.trim().length > 0) ||
+    !Array.isArray(rows) ||
+    rows.length < 2 ||
+    !rows.every((row) => Array.isArray(row) && row.every((cell) => typeof cell === "string")) ||
+    metadata.column_count !== columns.length ||
+    metadata.row_count !== rows.length ||
+    JSON.stringify(metadata.table_columns) !== JSON.stringify(columns) ||
+    JSON.stringify(metadata.table_rows) !== JSON.stringify(rows) ||
+    JSON.stringify(rows[0]) !== JSON.stringify(columns) ||
+    facts.length !== rows.length - 1
+  )
+    return null;
+  // This first neutral representation accepts only the independently declared
+  // column schema. Unknown or explicit clinical schemas keep their existing path;
+  // absence from a blacklist cannot establish neutral clinical meaning.
+  const neutralColumns = ["Scenario", "Concentration", "Amount", "Volume", "Interval"];
+  if (JSON.stringify(columns) !== JSON.stringify(neutralColumns)) return null;
+  const sourceChunk = sourceChunkForImage(image, chunks);
+  if (
+    !sourceChunk ||
+    sourceChunk.document_id !== documentId ||
+    sourceChunk.page_number !== image.pageNumber ||
+    !(sourceChunk as IndexUnitChunk & { image_ids?: string[] }).image_ids?.includes(image.id)
+  )
+    return null;
+  const result: NeutralNativeTableRow[] = [];
+  for (const [index, cells] of rows.slice(1).entries()) {
+    const fact = facts[index];
+    const roles = fact.metadata?.table_column_roles;
+    if (
+      cells.length !== columns.length ||
+      !cells.every((cell) => typeof cell === "string") ||
+      fact.source_image_id !== image.id ||
+      fact.source_chunk_id !== sourceChunk.id ||
+      fact.page_number !== image.pageNumber ||
+      fact.threshold_value !== null ||
+      fact.action !== null ||
+      fact.row_label !== cells[0] ||
+      fact.clinical_parameter !== cells[0] ||
+      (fact.table_title ?? null) !== (image.tableTitle ?? image.tableLabel ?? null) ||
+      fact.metadata?.row_index !== index + 1 ||
+      JSON.stringify(fact.metadata?.columns) !== JSON.stringify(columns) ||
+      JSON.stringify(fact.metadata?.cells) !== JSON.stringify(cells) ||
+      ![undefined, null, "unclear"].includes(fact.metadata?.table_role as string | null | undefined) ||
+      (roles !== null &&
+        roles !== undefined &&
+        (typeof roles !== "object" || Array.isArray(roles) || Object.keys(roles).length !== 0))
+    )
+      return null;
+    result.push({ fact, columns, cells, rowIndex: index + 1 });
+  }
+  return result;
+}
+
 function fallbackVisualUnitType(
   image: IndexUnitVisualImage,
   profile: StructuredVisualProfile,
@@ -470,6 +554,8 @@ export function buildVisualDocumentIndexUnitInputs(args: {
   }
 
   for (const image of representativeVisualImages(args.images)) {
+    const linkedFacts = factsByImage.get(image.id) ?? [];
+    const neutralRows = neutralNativeTableRows(image, linkedFacts, args.chunks, args.document.id);
     const profile = visualProfileForImage(image);
     const title = visualTitle(image);
     const summaryContent = [
@@ -541,7 +627,7 @@ export function buildVisualDocumentIndexUnitInputs(args: {
       }
     }
 
-    for (const threshold of profile.thresholds) {
+    for (const threshold of neutralRows ? [] : profile.thresholds) {
       add(
         visualUnit({
           document: args.document,
@@ -559,7 +645,34 @@ export function buildVisualDocumentIndexUnitInputs(args: {
       );
     }
 
-    for (const fact of factsByImage.get(image.id) ?? []) {
+    for (const fact of linkedFacts) {
+      const neutralRow = neutralRows?.find((row) => row.fact === fact);
+      if (neutralRow) {
+        add(
+          visualUnit({
+            document: args.document,
+            image,
+            chunks: args.chunks,
+            unit_type: "table_fact",
+            title: fact.row_label || fact.clinical_parameter || fact.table_title || title,
+            content: neutralRow.columns.map((column, index) => `${column}: ${neutralRow.cells[index]}`).join(" | "),
+            profile,
+            metadata: {
+              visual_item_type: "table_fact",
+              table_fact_metadata: fact.metadata,
+              columns: neutralRow.columns,
+              cells: neutralRow.cells,
+              row_index: neutralRow.rowIndex,
+              named_cells: neutralRow.columns.map((column, index) => ({ column, cell: neutralRow.cells[index] })),
+              threshold_value: null,
+              action: null,
+              native_table_descriptor: image.metadata,
+              source_qualification: "derived_unverified",
+            },
+          }),
+        );
+        continue;
+      }
       const factText = [fact.table_title, fact.row_label, fact.clinical_parameter, fact.threshold_value, fact.action]
         .filter(Boolean)
         .join(" | ");

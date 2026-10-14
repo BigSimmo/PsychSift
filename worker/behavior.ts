@@ -48,9 +48,7 @@ export function ingestionFailureDecision(args: {
 
   if (error instanceof ProviderEgressDeniedError) {
     const refusal =
-      error instanceof IngestionProviderEgressRefusal
-        ? error
-        : new IngestionProviderEgressRefusal(error.code);
+      error instanceof IngestionProviderEgressRefusal ? error : new IngestionProviderEgressRefusal(error.code);
     const details = `; reasons=${refusal.codes.join(",")}; actions=${refusal.actions.join(",")}`;
     return {
       retry: false,

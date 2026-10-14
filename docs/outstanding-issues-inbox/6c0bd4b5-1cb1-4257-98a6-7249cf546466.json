@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "6c0bd4b5-1cb1-4257-98a6-7249cf546466",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#XD5BHM",
+    "outcome": "Resolved: scripts/lib/signoff-kinds/standards-and-cultural-notes.mjs registers standard and cultural-note kinds with content pins and tests (tests/signoff-standards-and-cultural-notes.test.ts 43/43 passing).",
+    "baseRowFingerprint": "37f9098cbd1bd0a0bf7437a78a0c3e2c0674c4c26dac0dc636e5220d7cf2e9b1"
+  }
+}

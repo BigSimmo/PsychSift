@@ -1,6 +1,17 @@
 "use client";
 
-import { Bookmark, CircleAlert, CircleMinus, Funnel, LayoutList, LoaderCircle, Search, Table2, X } from "lucide-react";
+import {
+  Bookmark,
+  CircleAlert,
+  CircleMinus,
+  Funnel,
+  LayoutList,
+  LoaderCircle,
+  RefreshCw,
+  Search,
+  Table2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { searchCommandSurfaceConfig } from "@/lib/search-command-surface";
@@ -150,6 +161,7 @@ export function SearchResultsHeaderBand({
   resultNoun: resultNounOverride,
   hideEmptyQuery = false,
   emptyQueryLabel,
+  emptyQuerySubject,
   catalogueDegraded = false,
   className,
 }: {
@@ -229,6 +241,12 @@ export function SearchResultsHeaderBand({
   /** Accessible region name used when `hideEmptyQuery` omits the subject. */
   emptyQueryLabel?: string;
   /**
+   * The section name shown as the heading when nothing has been typed, in place
+   * of "All". A browse list is the whole section in A to Z order, not a search
+   * that picked something, so it is titled by what it is ("DSM diagnoses").
+   */
+  emptyQuerySubject?: string;
+  /**
    * What this count counted, when the mode registry's noun is not specific
    * enough to be true.
    *
@@ -244,9 +262,19 @@ export function SearchResultsHeaderBand({
   className?: string;
 }) {
   const trimmedQuery = query.trim();
-  const displayQuery = trimmedQuery || "All";
-  const showQuerySubject = Boolean(trimmedQuery) || !hideEmptyQuery;
-  const regionLabel = showQuerySubject ? `Search results for ${displayQuery}` : (emptyQueryLabel ?? "Catalogue");
+  const browseSubject = trimmedQuery ? undefined : emptyQuerySubject?.trim() || undefined;
+  const displayQuery = trimmedQuery || browseSubject || "All";
+  const showQuerySubject = Boolean(trimmedQuery) || Boolean(browseSubject) || !hideEmptyQuery;
+  // Only a typed query is drawn after the count (owner design review, 12 Oct
+  // 2026: "146 DSM diagnoses", not "146 DSM diagnoses | DSM diagnoses"). A browse
+  // subject or "All" says nothing the count's own noun does not, so it stays in
+  // the DOM as the region's heading for assistive technology and is not drawn.
+  const querySubjectDrawn = Boolean(trimmedQuery);
+  const regionLabel = browseSubject
+    ? `Browse ${browseSubject}`
+    : showQuerySubject
+      ? `Search results for ${displayQuery}`
+      : (emptyQueryLabel ?? "Catalogue");
   // `status` wins when both are passed; `loading` is the deprecated shim.
   const resolvedStatus: SearchResultsBandStatus = status ?? (loading ? "loading" : "ready");
   // The clinical invariant, expressed once: a search that failed has no count to
@@ -326,10 +354,13 @@ export function SearchResultsHeaderBand({
       data-status={resolvedStatus}
       data-testid="search-query-ribbon"
       className={cn(
-        // `search-band` no longer paints the accent — the lead rule does. The
-        // class stays because the forced-colors fault signal hangs off it, and
-        // because the style-contract registry names it.
-        "search-band relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] shadow-[var(--shadow-inset)]",
+        // One plain line, not a boxed strip (owner design review, 12 Oct 2026):
+        // the count reads like a Work section header, with Filter beside it. The
+        // border stays, transparent, so forced colours still draw the band's
+        // edge and its doubled top edge when a search faults. The class stays
+        // because the forced-colors fault signal hangs off it, and because the
+        // style-contract registry names it.
+        "search-band relative overflow-hidden rounded-xl border border-transparent",
         className,
       )}
     >
@@ -340,7 +371,7 @@ export function SearchResultsHeaderBand({
           truncating query now that Sort and full-width selects are wide-only. */}
       <div
         className={cn(
-          "flex min-w-0 items-center gap-x-2 px-3 sm:min-h-[3.75rem] sm:flex-nowrap sm:gap-x-2.5 sm:px-4",
+          "flex min-w-0 items-center gap-x-2 px-1 sm:min-h-[3.75rem] sm:flex-nowrap sm:gap-x-2.5",
           inlineControls ? "min-h-[3.625rem] flex-nowrap" : "flex-wrap py-2 sm:py-0",
         )}
       >
@@ -349,15 +380,12 @@ export function SearchResultsHeaderBand({
             only absorb what is left after flexible lengths resolve — so the wide
             layout is unchanged and no breakpoint had to move. */}
         <div className={cn("mr-auto flex min-w-0 items-center gap-2 sm:gap-2.5", inlineControls ? null : "py-1")}>
-          {/* The lead rule, replacing the full-width accent border. Rendered in
-              flow rather than absolutely positioned: an absolute bar inside this
-              `overflow-hidden` 12px-radius card had its ends sliced by the corner
-              arc, which is what the border-top was adopted to fix. */}
-          <span
-            className="search-band-lead shrink-0"
-            data-tone={faulted || partial ? "warning" : "accent"}
-            aria-hidden
-          />
+          {/* The fault mark. A healthy search draws no mark at all: the plain
+              line carries no accent (owner design review, 12 Oct 2026). A failed
+              or partial one keeps a double stroke before the count, so state is
+              never carried by colour alone. Rendered in flow rather than
+              absolutely positioned, so the band's corner can never clip it. */}
+          {faulted || partial ? <span className="search-band-lead shrink-0" data-tone="warning" aria-hidden /> : null}
           {/* Count first, query second. The count is the answer to the search; the
               query is what you already typed, and the composer above still shows it.
               Leading with the query spent the band's only heading slot on
@@ -472,7 +500,7 @@ export function SearchResultsHeaderBand({
               always rendered rather than appearing on scroll — conditional chrome
               is what this band spent its last redesign removing — and it is the
               part that truncates when the line runs out, never the number. */}
-          {showQuerySubject ? (
+          {querySubjectDrawn ? (
             <>
               <span className="search-band-rule mx-0.5 h-[1.125rem] w-px shrink-0" aria-hidden />
               <QueryHeading
@@ -485,7 +513,10 @@ export function SearchResultsHeaderBand({
               </QueryHeading>
             </>
           ) : (
-            <span className="min-w-0 flex-1" aria-hidden="true" />
+            <>
+              {showQuerySubject ? <QueryHeading className="sr-only">{displayQuery}</QueryHeading> : null}
+              <span className="min-w-0 flex-1" aria-hidden="true" />
+            </>
           )}
         </div>
 
@@ -644,10 +675,7 @@ export function SearchResultsHeaderBand({
           data-testid="search-query-ribbon-filters"
           role="group"
           aria-label={filterLabel}
-          className={cn(
-            "min-w-0 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-2 sm:px-3",
-            Boolean(pageMobileControls) && "hidden sm:block",
-          )}
+          className={cn("min-w-0 px-1 pb-1", Boolean(pageMobileControls) && "hidden sm:block")}
         >
           {pageControls}
         </div>
@@ -665,7 +693,7 @@ export function SearchResultsHeaderBand({
           data-testid="search-query-ribbon-shelf"
           role="group"
           aria-label="Applied filters"
-          className="flex min-w-0 items-center gap-1.5 border-t border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-2 sm:gap-2 sm:px-3"
+          className="flex min-w-0 items-center gap-1.5 rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-2 sm:gap-2 sm:px-3"
         >
           {/* A funnel on a phone, the wordmark from `sm`. A prefixed chip costs
               roughly 215px of a 350px bar, so every character the label spends is
@@ -752,7 +780,7 @@ export function SearchResultsHeaderBand({
         <div
           role="alert"
           data-testid="search-query-ribbon-fault"
-          className="search-band-fault-panel border-t border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-3 text-center sm:px-4"
+          className="search-band-fault-panel rounded-xl border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] px-3 py-3 text-center sm:px-4"
         >
           <p className="search-band-fault text-[color:var(--warning)]">{resolvedFaultTitle}</p>
           <p className="search-band-count-word mt-0.5 text-[color:var(--warning)]">{resolvedFaultBody}</p>
@@ -878,6 +906,8 @@ export function SearchResultsEmptyState({
   onBrowseAll,
   browseAllLabel = "Browse all sources",
   degraded = false,
+  degradedReason,
+  onRetry,
 }: {
   modeId: AppModeId;
   query: string;
@@ -918,6 +948,11 @@ export function SearchResultsEmptyState({
    * be available when the search never actually ran.
    */
   degraded?: boolean;
+  /** Degraded only: the specific failure the page was given ("Search setup not ready."),
+      shown quietly under the fixed copy so the one message keeps the actual reason. */
+  degradedReason?: string | null;
+  /** Degraded only: re-run the same search. Offered first, ahead of browsing. */
+  onRetry?: () => void | Promise<void>;
 }) {
   const config = searchCommandSurfaceConfig(modeId);
   const crossModes = (config?.crossModes ?? []).filter((target) => canAccessFavourites || target !== "favourites");
@@ -981,7 +1016,33 @@ export function SearchResultsEmptyState({
     const frame = requestAnimationFrame(() => setLiveMessage(`${emptyTitle}. ${emptyBody}`));
     return () => cancelAnimationFrame(frame);
   }, [filtered, emptyTitle, emptyBody]);
+  const [retrying, setRetrying] = useState(false);
+  const retry = async () => {
+    if (!onRetry) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } catch {
+      // This degraded state stays the failure surface; a rejected retry must not escape.
+    } finally {
+      setRetrying(false);
+    }
+  };
   const secondary = [
+    degraded && onRetry ? (
+      <AsyncButton
+        key="retry"
+        type="button"
+        busy={retrying}
+        busyLabel="Retrying…"
+        onClick={retry}
+        data-testid="search-results-empty-retry"
+        idleIcon={<RefreshCw className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+        className={cn(emptyStateAction, focusRing)}
+      >
+        Retry
+      </AsyncButton>
+    ) : null,
     config?.examples[0] && onTryExample ? (
       <button
         key="example"
@@ -1038,18 +1099,21 @@ export function SearchResultsEmptyState({
           + `w-0` makes the border the entire width. Exactly one width class per
           branch: two would both emit `border-left-width` and the winner would be
           stylesheet order rather than the branch. */}
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-0 left-0 box-content w-0",
-          degraded
-            ? "border-l-[6px] border-double border-l-[color:var(--warning)]"
-            : filtered
+      {/* No side mark on the degraded state (no coloured side bars, 11 Oct): it is one calm
+          message, told apart from a real zero by its heading, glyph and copy, all of which
+          survive forced colours. */}
+      {degraded ? null : (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-0 left-0 box-content w-0",
+            filtered
               ? "border-l-[3px] border-solid border-l-[color:var(--clinical-accent)]"
               : "border-l-[3px] border-solid border-l-[color:var(--border-strong)]",
-          "forced-colors:border-l-[color:CanvasText]",
-        )}
-      />
+            "forced-colors:border-l-[color:CanvasText]",
+          )}
+        />
+      )}
       {/* Visible copy is never inside the live region: a region that mounts
           already populated is silent in most screen readers, and wrapping the
           visible tree would flash empty for a frame. The sr-only live region
@@ -1082,6 +1146,9 @@ export function SearchResultsEmptyState({
         <div className="min-w-0">
           <Title className="text-sm font-semibold text-[color:var(--text-heading)]">{emptyTitle}</Title>
           <p className="mt-1 text-xs font-medium text-[color:var(--text-muted)]">{emptyBody}</p>
+          {degraded && degradedReason?.trim() ? (
+            <p className="mt-1 text-xs text-[color:var(--text-muted)]">Reason: {degradedReason.trim()}</p>
+          ) : null}
         </div>
       </div>
       {!filtered ? (

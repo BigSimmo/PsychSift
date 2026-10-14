@@ -11,6 +11,7 @@ import {
   type WorkItem,
   type WorkSearchArea,
 } from "@/lib/work-search/model";
+import { parseMyWorkAssessmentGrammar, type AssessmentGrammarMatch } from "@/lib/search/my-work-grammar";
 
 /**
  * Built-in answers to the common plain questions, worked out in the browser from
@@ -827,9 +828,99 @@ function formatHours(hours: number): string {
 /** Words that mean the question is about something other than shifts, even with "next" or "day" in it. */
 const NOT_ABOUT_SHIFTS = /\b(teaching|session|meeting|form|cpd|cme|talk|presenting|renewal|course|exam|journal)\b/;
 
+function assessmentAnswer(input: WorkAnswerInput, match: AssessmentGrammarMatch): WorkAnswer {
+  const gap = notReady(input, ["teaching"]);
+  if (gap) return unavailableAnswer("teaching", "due", match.understood, gap);
+
+  const catLabel =
+    match.category === "epa"
+      ? "EPA milestone"
+      : match.category === "wba"
+        ? "Workplace-Based Assessment"
+        : match.category === "term_assessment"
+          ? "term assessment"
+          : match.category === "supervisor_review"
+            ? "supervisor review"
+            : match.category === "alert"
+              ? "assessment alert"
+              : "assessment";
+
+  const targetHref = match.targetArea === "alerts" ? "/my-day/alerts" : "/teaching/assessments";
+  const actionLabel = match.targetArea === "alerts" ? "Open alerts" : "Open Teaching";
+
+  const range = match.timeframe ? parseDateRange(match.timeframe, input.today) : null;
+  const wantsAhead = match.intent === "next" || match.intent === "due";
+  const isOverdue = match.timeframe === "overdue";
+
+  const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const termPatterns = match.matchedTerms.map((t) => new RegExp(`\\b${escapeRegex(t)}s?\\b`, "i"));
+  const matchingItems = input.items
+    .filter((item) => item.area === "teaching" && termPatterns.some((pattern) => pattern.test(item.title)))
+    .filter((item) => {
+      if (isOverdue) return item.date !== null && item.date < input.today;
+      if (range) return item.date !== null && item.date >= range.from && item.date <= range.to;
+      if (wantsAhead) return item.date !== null && item.date >= input.today;
+      return true;
+    })
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+
+  const single = matchingItems.length === 1;
+  const first = matchingItems[0];
+  const showFirstInHero = (match.intent === "next" || single) && Boolean(first);
+
+  const headline =
+    showFirstInHero && first
+      ? first.title
+      : matchingItems.length === 0
+        ? isOverdue
+          ? `No overdue ${catLabel.toLowerCase()}s found`
+          : wantsAhead
+            ? `No upcoming ${catLabel.toLowerCase()}s scheduled`
+            : `No ${catLabel.toLowerCase()}s found`
+        : match.understood;
+
+  const sub =
+    showFirstInHero && first
+      ? (first.detail ?? (first.date ? `${longDay(first.date)} · ${inDays(input.today, first.date)}` : null))
+      : match.timeframe
+        ? `Timeframe: ${match.timeframe}`
+        : "Teaching assessments, EPAs and supervisor milestones.";
+
+  return {
+    area: "teaching",
+    icon: "due",
+    label: catLabel,
+    headline,
+    sub,
+    meta: [match.category.toUpperCase().replace(/_/g, " "), match.intent],
+    items: matchingItems,
+    understood: match.understood,
+    source: "From your Teaching and assessment portfolio",
+    action:
+      first?.href && showFirstInHero
+        ? { label: `Open ${catLabel}`, href: first.href }
+        : { label: actionLabel, href: targetHref },
+    ...(first?.date ? { date: first.date } : {}),
+  };
+}
+
 function route(text: string, input: WorkAnswerInput): WorkAnswer | null {
   const asksWhen = /\b(next|when|upcoming)\b/.test(text);
   if (/\b(presenting|my talks?|am i presenting|my presentations?)\b/.test(text)) return presenting(input);
+  if (asksWhen && /\b(leave|holidays?|annual leave|vacation|al|a\/l|pdl|study leave|time off)\b/.test(text)) {
+    return nextLeave(input);
+  }
+
+  // Preserve established shift questions when explicitly asking for roster shifts/counts
+  const asksPrimaryShift =
+    /\b(?:how many|count|number of)\s+(?:more\s+)?(?:shifts?|nights?)\b/i.test(text) ||
+    /\b(?:next|when am i next|when is my next)\s+(?:shift|night|working)\b/i.test(text);
+
+  if (!asksPrimaryShift) {
+    const assessment = parseMyWorkAssessmentGrammar(text);
+    if (assessment) return assessmentAnswer(input, assessment);
+  }
+
   if (/\b(due|renewals?|renew|expir\w*|overdue)\b/.test(text)) return due(input, text);
   if (
     (/\b(cpd|cme|pd|points)\b/.test(text) &&

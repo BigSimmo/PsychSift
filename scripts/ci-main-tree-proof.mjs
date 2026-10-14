@@ -34,9 +34,12 @@
  * Only jobs whose result depends solely on the tree are eligible: unit coverage, the Chromium
  * production UI suite and the Lighthouse budget. Everything with main-only behaviour keeps
  * running on every push: static checks, safety, Build (its deployment boot smoke uses
- * production secrets and runs only on main), the Playwright build, visual baselines, the
- * Firefox/WebKit release-browser-matrix (it never runs on a PR, so nothing proved it) and
+ * production secrets and runs only on main), the Playwright build, visual baselines and
  * main-failure routing. The weekly scheduled run and every dispatch never take this path.
+ *
+ * The Firefox/WebKit release-browser-matrix never runs on a pull_request event, so nothing can
+ * prove it: every main push that changes UI, perf inputs or the lockfile runs it, whatever this
+ * script finds, and no dispatch-run lookup is made for it.
  *
  * Outputs (GITHUB_OUTPUT): coverage, ui, lighthouse ("true"/"false"), proof_run_url, reason.
  * Uses only the job's GITHUB_TOKEN (actions: read, pull-requests: read) — about four REST
@@ -104,7 +107,19 @@ export const PROOF_GROUPS = {
   lighthouse: [/^Lighthouse budget$/],
 };
 
-const NONE = Object.freeze({ coverage: false, ui: false, lighthouse: false });
+/** The release matrix legs a full-suite dispatch run must have run green; see the docblock. */
+export const MATRIX_PROOF_PATTERNS = Object.freeze([/^release-browser-matrix \(.+\)$/]);
+
+const NONE = Object.freeze({ coverage: false, ui: false, lighthouse: false, matrix: false });
+
+/** True only when every matrix-leg pattern matches at least one job and all of them succeeded. Pure. */
+export function classifyMatrixProof(jobs) {
+  const list = Array.isArray(jobs) ? jobs : [];
+  return MATRIX_PROOF_PATTERNS.every((pattern) => {
+    const legs = list.filter((job) => pattern.test(String(job?.name ?? "")));
+    return legs.length > 0 && legs.every((job) => job?.status === "completed" && job?.conclusion === "success");
+  });
+}
 
 /** Which proof groups a PR run's job list establishes. Pure. */
 export function classifyProof(jobs) {
@@ -142,13 +157,16 @@ export function pickMergedPull(pulls, sha) {
   return matches.length === 1 ? matches[0] : null;
 }
 
-/** The newest successful, fresh pull_request run of ci.yml for `headSha`, or null. Pure. */
-export function selectProvingRun(runs, { headSha, now = new Date(), maxAgeHours = DEFAULT_MAX_PROOF_AGE_HOURS }) {
+/** The newest successful, fresh `event` run (pull_request by default) of ci.yml for `headSha`, or null. Pure. */
+export function selectProvingRun(
+  runs,
+  { headSha, now = new Date(), maxAgeHours = DEFAULT_MAX_PROOF_AGE_HOURS, event = "pull_request" },
+) {
   const maxAgeMs = maxAgeHours * 3_600_000;
   const candidates = (Array.isArray(runs) ? runs : [])
     .filter(
       (run) =>
-        run?.event === "pull_request" &&
+        run?.event === event &&
         run?.head_sha === headSha &&
         run?.path === CI_WORKFLOW_PATH &&
         run?.status === "completed" &&
@@ -235,34 +253,47 @@ export async function evaluate({
 
   const maxAgeHours = Number(env.MAX_PROOF_AGE_HOURS || DEFAULT_MAX_PROOF_AGE_HOURS);
   if (!Number.isFinite(maxAgeHours) || maxAgeHours <= 0) return { proof: NONE, reason: "invalid MAX_PROOF_AGE_HOURS" };
+  const prOutcome = await provenRun({ request, repo, head, mainTree, now, maxAgeHours, event: "pull_request" });
+  const proof = {
+    ...(prOutcome.jobs ? classifyProof(prOutcome.jobs) : { coverage: false, ui: false, lighthouse: false }),
+    // ci.yml always runs the release matrix on qualifying main pushes, so it is never looked up or proved.
+    matrix: false,
+  };
+  return {
+    proof,
+    reason: `PR #${pull.number}: ${prOutcome.reason}`,
+    runUrl: prOutcome.runUrl || "",
+  };
+}
+
+/**
+ * Checks 5-6 for one event kind: the newest fresh green `event` run of ci.yml for `head` whose own
+ * Change scope recorded testing exactly `mainTree`. Returns its job list, or `jobs: null` and why.
+ */
+async function provenRun({ request, repo, head, mainTree, now, maxAgeHours, event }) {
   const runs = await request(
-    `/repos/${repo}/actions/workflows/ci.yml/runs?event=pull_request&head_sha=${head}&status=completed&per_page=30`,
+    `/repos/${repo}/actions/workflows/ci.yml/runs?event=${event}&head_sha=${head}&status=completed&per_page=30`,
   );
-  const run = selectProvingRun(runs?.workflow_runs, { headSha: head, now, maxAgeHours });
-  if (!run) {
-    return {
-      proof: NONE,
-      reason: `no successful pull_request CI run for PR #${pull.number} head within ${maxAgeHours}h`,
-    };
-  }
+  const run = selectProvingRun(runs?.workflow_runs, { headSha: head, now, maxAgeHours, event });
+  if (!run) return { jobs: null, reason: `no successful ${event} CI run for the head within ${maxAgeHours}h` };
   const jobs = await request(`/repos/${repo}/actions/runs/${run.id}/jobs?filter=latest&per_page=100`);
   if (!Array.isArray(jobs?.jobs) || jobs.total_count > jobs.jobs.length) {
-    return { proof: NONE, reason: "could not read the proving run's complete job list" };
+    return { jobs: null, reason: `could not read run ${run.id}'s complete job list` };
   }
   const scopeJobs = jobs.jobs.filter((job) => job?.name === "Change scope");
   if (scopeJobs.length !== 1 || scopeJobs[0].conclusion !== "success") {
-    return { proof: NONE, reason: "the proving run has no single successful Change scope job" };
+    return { jobs: null, reason: `run ${run.id} has no single successful Change scope job` };
   }
   const tested = parseTestedTree(await request(`/repos/${repo}/check-runs/${scopeJobs[0].id}/annotations?per_page=50`));
-  if (!tested || tested.event !== "pull_request") {
-    return { proof: NONE, reason: `run ${run.id} did not record the tree it tested` };
+  if (!tested || tested.event !== event) {
+    return { jobs: null, reason: `run ${run.id} did not record the tree it tested` };
   }
   if (tested.tree !== mainTree) {
-    return { proof: NONE, reason: `run ${run.id} tested tree ${tested.tree.slice(0, 12)}, not this main tree` };
+    return { jobs: null, reason: `run ${run.id} tested tree ${tested.tree.slice(0, 12)}, not this main tree` };
   }
   return {
-    proof: classifyProof(jobs.jobs),
-    reason: `run ${run.id} (PR #${pull.number}) recorded testing ${tested.sha.slice(0, 12)} whose tree equals this main tree`,
+    jobs: jobs.jobs,
+    reason: `run ${run.id} recorded testing ${tested.sha.slice(0, 12)} whose tree equals this main tree`,
     runUrl: run.html_url ?? "",
   };
 }
@@ -351,7 +382,7 @@ export async function evaluatePullRequestUpdate({
     `/repos/${repo}/actions/workflows/ci.yml/runs?event=pull_request&branch=${encodeURIComponent(headRef)}&status=success&per_page=30`,
   );
   const candidates = selectPullRequestCandidates(runs?.workflow_runs, { prNumber, now, maxAgeHours });
-  const proof = { coverage: false, ui: false, lighthouse: false };
+  const proof = { coverage: false, ui: false, lighthouse: false, matrix: false };
   const notes = [];
   let runUrl = "";
   for (const run of candidates) {
@@ -395,7 +426,7 @@ export async function evaluatePullRequestUpdate({
     }
     const changed = runGit(["diff", "--name-only", "--no-renames", oldTree, newTree]).split("\n").filter(Boolean);
     if (changed.length === 0) {
-      for (const group of Object.keys(proof)) proof[group] ||= legs[group];
+      for (const group of Object.keys(legs)) proof[group] ||= legs[group];
       notes.push(`run ${run.id}: identical tested tree`);
     } else if (changed.every(isUnrelatedInput)) {
       proof.ui ||= legs.ui;
@@ -417,6 +448,11 @@ export async function evaluatePullRequestUpdate({
   };
 }
 
+/** Groups this push actually skips. The release matrix is never one: ci.yml has no gate for it. Pure. */
+export function skippedGroups(proof) {
+  return ["coverage", "ui", "lighthouse"].filter((group) => proof?.[group] === true);
+}
+
 function writeOutputs({ proof, reason, runUrl = "" }) {
   const lines = [
     `coverage=${proof.coverage === true}`,
@@ -428,9 +464,7 @@ function writeOutputs({ proof, reason, runUrl = "" }) {
   console.log(lines.join("\n"));
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${lines.join("\n")}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) {
-    const skipped = Object.entries(proof)
-      .filter(([, value]) => value === true)
-      .map(([group]) => group);
+    const skipped = skippedGroups(proof);
     appendFileSync(
       process.env.GITHUB_STEP_SUMMARY,
       [
@@ -450,6 +484,7 @@ function assert(condition, message) {
 }
 
 async function selfTest() {
+  if (process.env.CI_TREE_PROOF_SELF_TEST_FORCE_FAIL === "1") assert(false, "forced failure (test hook)");
   const ok = (name, extra = {}) => ({ name, status: "completed", conclusion: "success", ...extra });
   const full = [
     { ...ok("Change scope"), id: 501 },
@@ -634,6 +669,26 @@ async function selfTest() {
   result = await evaluate({ ...base, request: request([{ ...run, conclusion: "cancelled" }]) });
   assert(!result.proof.ui, "a cancelled run proves nothing");
   assert(parseTestedTree(testedRecord)?.tree === tree, "a well-formed record parses");
+  assert(result.proof.matrix === false, "a pull_request run never proves the release matrix");
+
+  // The release matrix is never proved or reported as skipped.
+  assert(classifyMatrixProof([ok("release-browser-matrix (webkit, webkit, 1, 4)")]), "legs still classify");
+  assert(
+    skippedGroups({ coverage: true, ui: false, lighthouse: true, matrix: true }).join(",") === "coverage,lighthouse",
+    "the summary never lists the release matrix as skipped",
+  );
+  const paths = [];
+  result = await evaluate({
+    ...base,
+    request: async (path) => {
+      paths.push(path);
+      return request()(path);
+    },
+  });
+  assert(
+    result.proof.ui && !paths.some((path) => path.includes("event=workflow_dispatch")),
+    "no dispatch-run lookup is made, so a failing one cannot clear the PR proof",
+  );
   const recorded = [];
   const originalLog = console.log;
   console.log = (line) => recorded.push(line);
@@ -668,7 +723,17 @@ function recordTestedTree({ env = process.env, runGit = git } = {}) {
 }
 
 async function main() {
-  if (process.argv.includes("--self-test")) return selfTest();
+  if (process.argv.includes("--self-test")) {
+    // A self-test failure must fail the process. The fail-open handler below exists for the CI
+    // proof path only; applied here it would print a warning and exit 0, hiding broken guards.
+    try {
+      await selfTest();
+    } catch (error) {
+      console.error(`ci-main-tree-proof self-test FAILED: ${String(error?.stack ?? error)}`);
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (process.argv.includes("--record-tested-tree")) {
     try {
       recordTestedTree();

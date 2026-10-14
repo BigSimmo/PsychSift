@@ -4,14 +4,12 @@ import { useRouter } from "next/navigation";
 import {
   TriangleAlert,
   BadgeCheck,
-  BadgeDollarSign,
   Bookmark,
   BookmarkCheck,
   CircleCheck,
   Clipboard,
   DollarSign,
   Globe2,
-  HeartHandshake,
   Info,
   LayoutGrid,
   Mail,
@@ -23,7 +21,6 @@ import {
   Users,
   X,
   CircleX,
-  type LucideIcon,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
@@ -37,6 +34,7 @@ import {
   toneSuccess,
   toneWarning,
 } from "@/components/ui-primitives";
+import { RecordGlance, RecordIntro, RecordSection, type RecordGlanceFact } from "@/components/clinical-record-panels";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { InPageNavHeader } from "@/components/in-page-nav/in-page-nav-header";
 import { inPageActionRowClass, inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
@@ -45,6 +43,8 @@ import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-sectio
 import { ServiceReferralFlow } from "@/components/services/service-referral-flow";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { compactCatalogField } from "@/lib/compact-best-use-title";
+import { extractFirstDialablePhone } from "@/lib/service-call";
+import { serviceTagDisplayLabel } from "@/lib/service-facets";
 import { serviceCoreGroupIds, serviceCoreGroups } from "@/lib/service-core-groups";
 import {
   serviceNavigatorQuery,
@@ -121,15 +121,6 @@ function confidenceToneClass(confidence: ServiceVerification["confidence"]) {
   return toneNeutral;
 }
 
-function renderSummaryIcon(card: ServiceSummaryCard) {
-  const className = "h-4 w-4";
-  if (card.id === "route") return <Navigation className={className} aria-hidden />;
-  if (card.id === "eligibility") return <Users className={className} aria-hidden />;
-  if (card.id === "cost") return <BadgeDollarSign className={className} aria-hidden />;
-  if (card.id === "confidence" || card.id === "best-use") return <ShieldCheck className={className} aria-hidden />;
-  return <Info className={className} aria-hidden />;
-}
-
 function renderRowIcon(label: string) {
   const normalized = label.toLowerCase();
   const className = "h-4 w-4 shrink-0 text-[color:var(--clinical-accent)]";
@@ -168,16 +159,6 @@ function criterionPill(tone: ServiceCriterion["tone"]) {
   if (tone === "meet") return { label: "Meets", className: toneSuccess };
   if (tone === "reject") return { label: "Reject", className: toneDanger };
   return { label: "Caution", className: toneWarning };
-}
-
-function extractFirstDialablePhone(value: string): string | undefined {
-  const sanitized = value.replace(/\b24\/7\b/gi, "").replace(/\((?:option|ext|line|menu)\s*\d+\)/gi, "");
-  const parts = sanitized.split(/[;\n/]|\s+or\s+/i).map((p) => p.trim());
-  for (const part of parts) {
-    const compact = part.replace(/[^\d+]/g, "");
-    if (compact.length >= 3) return compact;
-  }
-  return undefined;
 }
 
 function contactHref(contact: ServiceContact | null | undefined) {
@@ -285,6 +266,19 @@ function normalizeTagForList(tag: string) {
   return tag.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+/**
+ * Identity for "is this the same value shown again". A phone number compares by its
+ * digits so "13 92 76" and "139276" count as one; anything else compares as trimmed,
+ * case-folded text. Only exact repeats match: a row holding two numbers, or a number
+ * plus words, stays distinct.
+ */
+function repeatedValueKey(value: string | null | undefined) {
+  const text = value?.trim();
+  if (!text) return undefined;
+  if (/^[\d\s()+\-.]+$/.test(text) && /\d/.test(text)) return `tel:${text.replace(/\D/g, "")}`;
+  return `text:${normalizeTagForList(text)}`;
+}
+
 function dedupeTagItems(items: string[]) {
   const seen = new Set<string>();
   return items
@@ -313,81 +307,41 @@ export const serviceNavSections: readonly PageSection[] = [
 
 function Section({
   id,
-  icon: Icon,
   title,
   description,
   action,
   children,
 }: {
   id?: string;
-  icon: LucideIcon;
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section
-      id={id}
-      className={cn(
-        inPageAnchor,
-        "rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] shadow-[var(--shadow-inset)]",
-      )}
-    >
-      <div className="border-b border-[color:var(--border)] px-3 py-2.5 sm:px-4 sm:py-3">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]">
-            <Icon className="h-4 w-4" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold text-[color:var(--text-heading)]">{title}</h2>
-            {description ? <p className={cn("mt-0.5 text-sm leading-6", textMuted)}>{description}</p> : null}
-          </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
-        </div>
-      </div>
-      <div className="p-2.5 sm:p-3">{children}</div>
-    </section>
+    <RecordSection id={id} title={title} action={action}>
+      {description ? <p className={cn("m-0 mb-2 text-sm leading-6", textMuted)}>{description}</p> : null}
+      {children}
+    </RecordSection>
   );
 }
 
-function SummaryCard({ card }: { card: ServiceSummaryCard }) {
-  const isCost = card.id === "cost";
-
-  return (
-    // The cards sit in one stretched grid row, so the card with the most to say sets
-    // the height for all of them, and a short card printed its text hard against the
-    // top of a tall box. The block is centred in whatever height the tallest sibling
-    // imposes instead. Title and detail stay together: unlike the form priority-fact
-    // cards there is no separate footnote zone here, so there is nothing to pin to
-    // the bottom.
-    <article
-      className={cn(
-        "flex min-h-[7.25rem] flex-col justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-inset)] sm:min-h-[7.75rem]",
-        isCost && "border-[color:var(--success-border)] bg-[color:var(--success-soft)]/25",
-      )}
-    >
-      <div className="flex items-start gap-2.5">
-        <span
-          className={cn(
-            "grid h-8 w-8 shrink-0 place-items-center rounded-md bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]",
-            isCost && "bg-[color:var(--success-soft)] text-[color:var(--success)]",
-          )}
-        >
-          {renderSummaryIcon(card)}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-2xs font-bold uppercase tracking-wide text-[color:var(--text-muted)]">
-            {displayText(card.label, "Detail")}
-          </p>
-          <h3 className="mt-1 text-sm font-semibold leading-5 text-[color:var(--text-heading)] sm:text-base-minus">
-            {displayText(card.title)}
-          </h3>
-        </div>
-      </div>
-      {hasText(card.detail) ? <p className={cn("mt-2 text-xs leading-5", textMuted)}>{card.detail.trim()}</p> : null}
-    </article>
-  );
+/** A priority-fact card as one At a glance pair: the title, then its supporting line. */
+function summaryCardFact(card: ServiceSummaryCard): RecordGlanceFact {
+  const title = displayText(card.title);
+  return {
+    key: card.id,
+    label: displayText(card.label, "Detail"),
+    wide: title.length > 40 || (hasText(card.detail) && card.detail.trim().length > 40),
+    value: (
+      <>
+        <span className="block">{title}</span>
+        {hasText(card.detail) ? (
+          <span className={cn("mt-0.5 block text-xs font-medium leading-5", textMuted)}>{card.detail.trim()}</span>
+        ) : null}
+      </>
+    ),
+  };
 }
 
 function renderPhoneLines(value: string) {
@@ -418,7 +372,7 @@ function renderPhoneLines(value: string) {
 }
 
 /** Compact scan-first referral facts. Direct actions live in the referral band above. */
-function ReferralTable({ rows }: { rows: ServiceInfoRow[] }) {
+function ReferralTable({ rows, firstIsPrimary = true }: { rows: ServiceInfoRow[]; firstIsPrimary?: boolean }) {
   if (!rows.length) {
     return (
       <div className="rounded-lg border border-dashed border-[color:var(--border-strong)] bg-[color:var(--surface-inset)] p-4 text-sm">
@@ -431,7 +385,7 @@ function ReferralTable({ rows }: { rows: ServiceInfoRow[] }) {
   return (
     <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
       {rows.map((row, index) => {
-        const isPrimary = index === 0;
+        const isPrimary = firstIsPrimary && index === 0;
         const isCost = row.label.toLowerCase().includes("cost");
 
         return (
@@ -562,9 +516,31 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const primaryContact = hasText(service.primaryContact?.value)
     ? service.primaryContact
     : (service.contacts?.find((contact) => hasText(contact.value)) ?? null);
-  const summaryCards = summaryCardsFor(service);
-  const referralRows = referralRowsFor(service, primaryContact);
   const callHref = contactHref(primaryContact);
+  const bandRouteValue = hasText(service.referral) ? service.referral : hasText(service.route) ? service.route : "";
+  const contactLabel = contactDisplayValue(primaryContact);
+  // The referral band shows the route and, for a phone contact, the number on its Call
+  // button. The same number then reappeared as the "Contact" line, the Route fact card and
+  // the Primary route and Phone rows. Exact repeats of a value the band already shows are
+  // dropped below; every distinct value stays.
+  const bandValueKeys = new Set(
+    [
+      repeatedValueKey(bandRouteValue),
+      callHref && primaryContact?.kind === "phone" ? repeatedValueKey(contactLabel) : undefined,
+    ].filter((key): key is string => Boolean(key)),
+  );
+  const repeatsBand = (value: string | null | undefined) => {
+    const key = repeatedValueKey(value);
+    return Boolean(key && bandValueKeys.has(key));
+  };
+  const summaryCards = summaryCardsFor(service);
+  const allReferralRows = referralRowsFor(service, primaryContact);
+  const referralRows = allReferralRows.filter(
+    (row) => !(/route|phone|contact/i.test(row.label) && repeatsBand(row.value)),
+  );
+  // The first row is styled and announced as the primary access route; once that row is
+  // dropped as a repeat of the band above, the next row is not a route and must not inherit it.
+  const firstReferralRowIsPrimary = referralRows.length > 0 && referralRows[0] === allReferralRows[0];
   const actionableContact = Boolean(
     primaryContact && ["phone", "email", "web"].includes(primaryContact.kind) && callHref,
   );
@@ -573,7 +549,6 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const ContactActionIcon = primaryContact?.kind === "email" ? Mail : primaryContact?.kind === "web" ? Globe2 : Phone;
   const contactActionLabel =
     primaryContact?.kind === "email" ? "Email" : primaryContact?.kind === "web" ? "Open website" : "Call";
-  const contactLabel = contactDisplayValue(primaryContact);
   const verified = service.verification?.locallyVerified === true;
   const readinessActionHref = callHref ?? sourceHref;
   const readinessActionLabel = callHref
@@ -582,6 +557,12 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
       : contactActionLabel
     : "Confirm at source";
   const ReadinessActionIcon = callHref ? ContactActionIcon : Globe2;
+  // "Contact: 13 92 76" under a "13 92 76" heading, above a "Call 13 92 76" button.
+  const contactLineRepeats = Boolean(
+    actionableContact &&
+    contactLabel &&
+    (repeatsBand(contactLabel) || (primaryContact?.kind === "phone" && readinessActionLabel.includes(contactLabel))),
+  );
   const ReadinessStatusIcon = verified ? BadgeCheck : TriangleAlert;
   const showSourceAction = Boolean(
     sourceHref && actionDestinationIdentity(sourceHref) !== actionDestinationIdentity(callHref),
@@ -597,9 +578,16 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
   const visibleSummaryCards = dedupeSummaryCardDetails([
     ...compactSummaryCards,
     ...leftoverCards.filter(summaryCardIsRenderable),
-  ]);
+  ]).filter(
+    (card) => !(card.id === "route" && repeatsBand(card.title) && (!hasText(card.detail) || repeatsBand(card.detail))),
+  );
   const compactedSubtitle = hasText(service.subtitle) ? compactCatalogField(service.subtitle, 160) : "";
-  const tagItems = dedupeTagItems([...(service.catchments ?? []), ...(service.tags ?? [])]);
+  // Raw catalogue tokens ("digital_phone", "crisis_high") are shown in plain words only where
+  // the existing facet label map already names them; any other machine token is hidden.
+  const tagItems = dedupeTagItems([
+    ...(service.catchments ?? []),
+    ...(service.tags ?? []).map(serviceTagDisplayLabel).filter((tag): tag is string => Boolean(tag)),
+  ]);
   const criteria = service.criteria ?? [];
   const showReferralSection = referralRows.length > 0;
   const showCriteriaSection = criteria.length > 0;
@@ -727,64 +715,55 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
         ) : null}
 
         <div className="mt-3">
-          <div className="min-w-0 space-y-4">
-            <section
-              id="service-overview"
-              className={cn(
-                inPageAnchor,
-                "rounded-lg border border-[color:var(--border-lux)] border-l-4 border-l-[color:var(--clinical-accent)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-inset)] sm:p-5",
-              )}
-            >
-              <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-4">
-                <span className="grid size-tap place-items-center rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)] sm:h-[4.5rem] sm:w-[4.5rem] sm:rounded-xl">
-                  <HeartHandshake className="h-5 w-5 sm:h-8 sm:w-8" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <h1 className="max-w-4xl text-2xl font-extrabold leading-display text-[color:var(--text-heading)] sm:text-4xl">
-                    {service.title}
-                  </h1>
-                  {compactedSubtitle ? (
-                    <p className="mt-1.5 max-w-4xl text-sm font-medium leading-5 text-[color:var(--text-muted)] sm:mt-3 sm:text-base sm:leading-6">
-                      {compactedSubtitle}
-                    </p>
-                  ) : null}
-                  {service.statusChips?.length ? (
-                    <div className="mt-2.5 flex flex-wrap gap-1.5 sm:mt-3">
-                      {service.statusChips.map((chip, index) => (
-                        <span
-                          key={chip.label ?? `status-chip-${index}`}
-                          className={cn(
-                            "inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2 py-0.5 text-2xs font-bold sm:px-2.5",
-                            chipToneClass(chip.tone),
-                          )}
-                        >
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden />
-                          {displayText(chip.label, "Status")}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Service groups">
-                    {recordGroups.map((groupId) => {
-                      const group = serviceCoreGroups.find((item) => item.id === groupId);
-                      return group ? (
-                        <span
-                          key={group.id}
-                          className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-2xs font-semibold text-[color:var(--text-muted)]"
-                        >
-                          {group.label}
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              </div>
+          <div className="flex min-w-0 flex-col gap-7">
+            <section id="service-overview" className={inPageAnchor}>
+              <RecordIntro
+                title={service.title}
+                line={compactedSubtitle || undefined}
+                tags={
+                  <>
+                    {service.statusChips?.map((chip, index) => (
+                      <span
+                        key={chip.label ?? `status-chip-${index}`}
+                        className={cn(
+                          "inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-2xs font-bold",
+                          chipToneClass(chip.tone),
+                        )}
+                      >
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+                        {displayText(chip.label, "Status")}
+                      </span>
+                    ))}
+                    <span className="contents" aria-label="Service groups">
+                      {recordGroups.map((groupId) => {
+                        const group = serviceCoreGroups.find((item) => item.id === groupId);
+                        return group ? (
+                          <span
+                            key={group.id}
+                            className="rounded-full border border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-2.5 py-1 text-2xs font-semibold text-[color:var(--text-muted)]"
+                          >
+                            {group.label}
+                          </span>
+                        ) : null;
+                      })}
+                    </span>
+                  </>
+                }
+              />
             </section>
+
+            {showPriorityFacts ? (
+              <RecordGlance
+                id="service-priority-facts"
+                ariaLabel="Priority facts"
+                facts={visibleSummaryCards.map(summaryCardFact)}
+              />
+            ) : null}
 
             <section
               id="service-referral-readiness"
               aria-label="Referral readiness"
-              className="grid gap-3 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]/20 p-3 shadow-[var(--shadow-inset)] sm:p-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.85fr)_minmax(0,0.7fr)]"
+              className="grid gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.85fr)_minmax(0,0.7fr)]"
             >
               <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
                 <div className="flex min-w-0 flex-1 gap-3">
@@ -800,13 +779,15 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
                         ? compactCatalogField(hasText(service.referral) ? service.referral : (service.route ?? ""), 150)
                         : "Confirm referral route"}
                     </h2>
-                    <p className={cn("mt-1 text-xs leading-5", textMuted)}>
-                      {actionableContact && contactLabel
-                        ? `${primaryContact?.label ?? "Contact"}: ${contactLabel}`
-                        : sourceHref
-                          ? "Confirm the current contact at the source."
-                          : "Service-specific contact details require local confirmation."}
-                    </p>
+                    {contactLineRepeats ? null : (
+                      <p className={cn("mt-1 text-xs leading-5", textMuted)}>
+                        {actionableContact && contactLabel
+                          ? `${primaryContact?.label ?? "Contact"}: ${contactLabel}`
+                          : sourceHref
+                            ? "Confirm the current contact at the source."
+                            : "Service-specific contact details require local confirmation."}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {readinessActionHref ? (
@@ -855,44 +836,26 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
               </div>
             </section>
 
-            {showPriorityFacts ? (
-              <section
-                id="service-priority-facts"
-                aria-label="Priority facts"
-                className={cn(inPageAnchor, "space-y-2.5")}
-              >
-                <h2 className="text-base-minus font-semibold leading-5 text-[color:var(--text-heading)] sm:text-base">
-                  Priority facts
-                </h2>
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-                  {visibleSummaryCards.map((card) => (
-                    <SummaryCard key={card.id} card={card} />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
             <ServiceReferralFlow active="refer" />
 
             <div
               className={cn(
-                "grid gap-4",
+                "grid gap-7",
                 showReferralSection && showCriteriaSection
                   ? "xl:grid-cols-[minmax(28rem,0.86fr)_minmax(0,1fr)]"
                   : undefined,
               )}
             >
               {showReferralSection ? (
-                <Section id="service-referral" icon={Clipboard} title="Referral information">
-                  <ReferralTable rows={referralRows} />
+                <Section id="service-referral" title="Referral information">
+                  <ReferralTable rows={referralRows} firstIsPrimary={firstReferralRowIsPrimary} />
                 </Section>
               ) : null}
 
-              <div className="min-w-0 space-y-3">
+              <div className="flex min-w-0 flex-col gap-7">
                 {showCriteriaSection ? (
                   <Section
                     id="service-criteria"
-                    icon={ShieldCheck}
                     title="Referral criteria"
                     action={
                       <div className="flex flex-wrap gap-2">
@@ -913,7 +876,7 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
                   id="service-verification"
                   className={cn(
                     inPageAnchor,
-                    "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-inset)]",
+                    "rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4",
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-3">
@@ -962,7 +925,7 @@ export function ServiceDetailPage({ service }: { service: ServiceRecord }) {
                 </section>
 
                 {showTagsSection ? (
-                  <section className="rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-inset)]">
+                  <section className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4">
                     <div className="flex flex-wrap items-center gap-3">
                       <span className="grid h-9 w-9 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]">
                         <Tag className="h-5 w-5" aria-hidden />

@@ -4,6 +4,7 @@ import { TriangleAlert, Clock, CornerDownLeft, Heart, Loader2, Search, Sparkles 
 import { useRouter } from "next/navigation";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useId,
   useMemo,
@@ -201,16 +202,15 @@ function OptionShell({ active, children, hint }: { active: boolean; children: Re
 
 function ExampleTicker({
   examples,
-  modeLabel,
-  showLine,
   showPhoneTicker,
   onPickExample,
 }: {
   examples: string[];
-  modeLabel: string;
-  /** Tablet/desktop rotating "Try …" line above the pill. Mode-home hero only. */
-  showLine: boolean;
-  /** Compact tappable ticker below an in-flow phone home composer. */
+  /**
+   * Compact tappable ticker below an in-flow phone home composer. Tablets and
+   * desktops show no "Try …" line: the Prompts chips under the composer already
+   * offer the same examples (owner design review, 12 Oct 2026).
+   */
   showPhoneTicker: boolean;
   onPickExample: (example: string) => void;
 }) {
@@ -219,7 +219,7 @@ function ExampleTicker({
   const [isTickerHeld, setIsTickerHeld] = useState(false);
   const activeExample = examples[activeExampleIndex % examples.length];
 
-  const visible = showLine || showPhoneTicker;
+  const visible = showPhoneTicker;
 
   useEffect(() => {
     if (!visible) return;
@@ -247,16 +247,6 @@ function ExampleTicker({
 
   return (
     <>
-      {showLine ? (
-        // One wording for every mode. It carries no "Smart" promise, so the
-        // dormant modes (Documents, Answer, Favourites) can share the exact
-        // same home composer as the catalogue modes.
-        <div data-testid="search-example-ticker" className="search-example-ticker">
-          <span>
-            Try <span className="search-example-ticker-query">&ldquo;{activeExample}&rdquo;</span> in {modeLabel}.
-          </span>
-        </div>
-      ) : null}
       {showPhoneTicker ? (
         <button
           type="button"
@@ -276,14 +266,12 @@ function ExampleTicker({
           onTouchCancel={releaseTicker}
           aria-label={`Try this ${resolvedTickerExample}. Tap to search`}
         >
-          <span className="smart-search-phone-ticker-kicker">
-            <Sparkles aria-hidden="true" className="size-icon-sm" />
-            Try this
-          </span>
+          {/* "Try this" and the example only (owner design review, 12 Oct 2026):
+              the trailing "Tap to search" squeezed the example to a few letters
+              on a 320-390px phone. The whole line is the button, and its name
+              still says what a tap does. */}
+          <span className="smart-search-phone-ticker-kicker">Try this</span>
           <span className="smart-search-phone-ticker-query">{resolvedTickerExample}</span>
-          <span className="smart-search-phone-ticker-action" aria-hidden="true">
-            Tap to search
-          </span>
         </button>
       ) : null}
     </>
@@ -588,9 +576,10 @@ export function UniversalSearchCommandSurface({
     ],
     [demoMode, savedRegistryFavourites],
   );
+  const deferredTrimmedQuery = useDeferredValue(trimmedQuery);
   const favouriteMatches = useMemo(
-    () => rankLocalFavourites(allFavouriteItems, trimmedQuery, demoMode),
-    [allFavouriteItems, demoMode, trimmedQuery],
+    () => rankLocalFavourites(allFavouriteItems, deferredTrimmedQuery, demoMode),
+    [allFavouriteItems, demoMode, deferredTrimmedQuery],
   );
   const savedHrefs = useMemo(() => new Set(allFavouriteItems.map((item) => item.href)), [allFavouriteItems]);
   // `savedHrefs` still includes demo fixtures for de-duplication; only these are
@@ -1201,13 +1190,10 @@ export function UniversalSearchCommandSurface({
     >
       <SmartIntentCue active={smartNaturalSearch} modeLabel={mode.label} />
       {smartNaturalSearch ? null : (
-        // The phone ticker and the tablet/desktop line both demonstrate an
-        // ordinary example search. Neither depends on Clinical Ask or a
-        // provider flag, and both are home-only.
+        // The phone ticker demonstrates an ordinary example search. It does
+        // not depend on Clinical Ask or a provider flag, and it is home-only.
         <ExampleTicker
           examples={config.examples}
-          modeLabel={mode.label}
-          showLine={showHomeSuggestions}
           showPhoneTicker={showPhoneSuggestionTicker}
           onPickExample={(example) => {
             onQueryChange(example);

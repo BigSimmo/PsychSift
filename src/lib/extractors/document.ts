@@ -1,13 +1,30 @@
-import { docxPageSourceProvenanceSchema } from "@/lib/extractors/docx-source-provenance";
-import { pdfPageSourceProvenanceSchema, PdfSourceProvenanceError, validatePdfSourcePages } from "@/lib/extractors/pdf-source-provenance";
-import { buildTextSourceProvenance, textPageSourceProvenanceSchema, TextSourceProvenanceError, validateTextSourcePages } from "@/lib/extractors/text-source-provenance";
-import { xlsxPageSourceProvenanceSchema, validateXlsxSourcePages, XlsxSourceProvenanceError } from "@/lib/extractors/xlsx-source-provenance";
+import {
+  buildDocxSourceProvenance,
+  docxPageSourceProvenanceSchema,
+  extractedTextSha256,
+} from "@/lib/extractors/docx-source-provenance";
+import {
+  pdfPageSourceProvenanceSchema,
+  PdfSourceProvenanceError,
+  validatePdfSourcePages,
+} from "@/lib/extractors/pdf-source-provenance";
+import {
+  buildTextSourceProvenance,
+  textPageSourceProvenanceSchema,
+  TextSourceProvenanceError,
+  validateTextSourcePages,
+} from "@/lib/extractors/text-source-provenance";
+import {
+  extractOriginalXlsxDocument,
+  xlsxPageSourceProvenanceSchema,
+  validateXlsxSourcePages,
+  XlsxSourceProvenanceError,
+} from "@/lib/extractors/xlsx-source-provenance";
 import { spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import { PDFParse } from "pdf-parse";
 import JSZip from "jszip";
@@ -29,7 +46,6 @@ import {
   PdfUnreadableError,
   type PdfExtractionBudget,
 } from "@/lib/extractors/pdf-extraction-budget";
-import { XlsxExtractionBudgetTracker } from "@/lib/extractors/xlsx-extraction-budget";
 import { resolvePythonBin } from "@/lib/python-bin";
 
 const extractedPageSchema = z.object({
@@ -215,6 +231,8 @@ export async function runPythonPdfExtractor(
   scriptPathOverride?: string,
 ) {
   const scriptPath = scriptPathOverride ?? path.join(process.cwd(), "worker", "python", "extract_pdf_assets.py");
+  const scriptSha256 = extractedTextSha256(await readFile(scriptPath));
+  const sourceSha256 = extractedTextSha256(await readFile(filePath));
   const outputJsonPath = path.join(outputDir, "extract.json");
   const budgetPath = path.join(path.dirname(outputDir), "pdf-extraction-budget.json");
   await writeFile(budgetPath, JSON.stringify(limits), "utf8");
@@ -321,11 +339,25 @@ export async function runPythonPdfExtractor(
           );
         }
         const jsonPayload = outputMetadata ? await readFile(outputJsonPath, "utf8") : extractJsonFromStdout(stdout);
+        const rawPayload = JSON.parse(jsonPayload);
+        if (!Array.isArray(rawPayload?.pages)) throw new PdfSourceProvenanceError("PDF_SOURCE_PROVENANCE_INVALID");
+        validatePdfSourcePages(rawPayload.pages, { sourceSha256, scriptSha256, requireEveryPage: !scriptPathOverride });
+        if (
+          extractedTextSha256(await readFile(scriptPath)) !== scriptSha256 ||
+          extractedTextSha256(await readFile(filePath)) !== sourceSha256
+        )
+          throw new PdfSourceProvenanceError("PDF_SOURCE_PROVENANCE_IDENTITY_MISMATCH");
         const extracted = parseExtractedDocumentPayload(jsonPayload);
         await assertExtractedPdfBudget(extracted, jsonPayload, limits);
         finish(() => resolve(extracted));
       } catch (error) {
-        finish(() => reject(error));
+        finish(() =>
+          reject(
+            !scriptPathOverride && !(error instanceof PdfSourceProvenanceError) && !isPdfExtractionResourceError(error)
+              ? new PdfSourceProvenanceError("PDF_SOURCE_PROVENANCE_INVALID")
+              : error,
+          ),
+        );
       }
     });
   });
@@ -391,12 +423,22 @@ export async function extractPdf(
 
   try {
     const extracted = await runPythonPdfExtractor(pdfPath, imageDir, limits, options.scriptPathOverride);
+    validatePdfSourcePages(extracted.pages, {
+      sourceSha256: extractedTextSha256(buffer),
+      scriptSha256: extractedTextSha256(
+        await readFile(
+          options.scriptPathOverride ?? path.join(process.cwd(), "worker", "python", "extract_pdf_assets.py"),
+        ),
+      ),
+      requireEveryPage: !options.scriptPathOverride,
+    });
     return { ...extracted, temporaryPaths: [tempRoot] };
   } catch (error) {
     if (
       isPdfExtractionResourceError(error) ||
       isPdfUnreadableError(error) ||
-      error instanceof PdfExtractorProcessError
+      error instanceof PdfExtractorProcessError ||
+      error instanceof PdfSourceProvenanceError
     ) {
       await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
       throw error;
@@ -534,7 +576,12 @@ async function extractDocx(buffer: Buffer) {
     .filter((entry) => !entry[1].dir);
   assertDeclaredDocxMediaBudget(media.map((entry) => entry[1]));
 
+  // Validate bounded namespace-aware source XML before the existing text reader.
+  const provenance = await buildDocxSourceProvenance({ zip, buffer, originalText: "" });
   const raw = await mammoth.extractRawText({ buffer });
+  const textHash = extractedTextSha256(raw.value || "");
+  provenance.textIdentity.originalExtractedTextSha256 = textHash;
+  provenance.textIdentity.persistedTextSha256 = textHash;
   budget.assertText(raw.value || "");
 
   const tempRoot = await mkdtemp(path.join(tmpdir(), "clinical-kb-docx-"));
@@ -578,7 +625,7 @@ async function extractDocx(buffer: Buffer) {
     }
 
     return {
-      pages: [{ pageNumber: 1, text: raw.value || "", ocrUsed: false }],
+      pages: [{ pageNumber: 1, text: raw.value || "", ocrUsed: false, metadata: { source_provenance: provenance } }],
       images,
       temporaryPaths: [tempRoot],
     } satisfies ExtractedDocument;
@@ -586,41 +633,6 @@ async function extractDocx(buffer: Buffer) {
     await rm(tempRoot, { recursive: true, force: true }).catch(() => undefined);
     throw error;
   }
-}
-
-async function extractXlsx(buffer: Buffer) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
-  const budget = new XlsxExtractionBudgetTracker();
-  budget.assertSheetCount(workbook.worksheets.length);
-  const pages: ExtractedPage[] = [];
-
-  for (const [index, sheet] of workbook.worksheets.entries()) {
-    const heading = `Sheet: ${sheet.name}`;
-    const textParts = [heading, "\n"];
-    budget.addText(heading);
-    budget.addText("\n");
-    let rowIndex = 0;
-    sheet.eachRow({ includeEmpty: false }, (row) => {
-      budget.addRow(row.cellCount);
-      const values = Array.isArray(row.values) ? row.values.slice(1) : [];
-      const rowText = values.map((value) => String(value ?? "")).join(",");
-      if (rowIndex > 0) {
-        budget.addText("\n");
-        textParts.push("\n");
-      }
-      budget.addText(rowText);
-      textParts.push(rowText);
-      rowIndex += 1;
-    });
-    pages.push({
-      pageNumber: index + 1,
-      text: textParts.join(""),
-      ocrUsed: false,
-    });
-  }
-
-  return { pages, images: [] } satisfies ExtractedDocument;
 }
 
 export async function assertOoxmlArchiveBudget(buffer: Buffer) {
@@ -647,7 +659,11 @@ function extractTxt(buffer: Buffer, knownText = false) {
   } satisfies ExtractedDocument;
 }
 
-export async function extractDocument(args: { buffer: Buffer; fileName: string; mimeType: string }) {
+export async function extractDocument(args: {
+  buffer: Buffer;
+  fileName: string;
+  mimeType: string;
+}): Promise<ExtractedDocument> {
   if (args.mimeType === "application/pdf" || args.fileName.toLowerCase().endsWith(".pdf")) {
     return extractPdf(args.buffer);
   }
@@ -664,8 +680,7 @@ export async function extractDocument(args: { buffer: Buffer; fileName: string; 
     args.mimeType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
     args.fileName.toLowerCase().endsWith(".xlsx")
   ) {
-    await assertOoxmlArchiveBudget(args.buffer);
-    return extractXlsx(args.buffer);
+    return extractOriginalXlsxDocument(args.buffer);
   }
 
   return extractTxt(args.buffer, args.mimeType === "text/plain" || args.fileName.toLowerCase().endsWith(".txt"));

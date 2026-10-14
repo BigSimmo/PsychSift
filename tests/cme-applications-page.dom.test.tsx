@@ -14,7 +14,7 @@ import * as clipboard from "@/lib/copy-to-clipboard";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
-  usePathname: () => "/cme/applications",
+  usePathname: () => "/admin/applications",
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -248,9 +248,9 @@ describe("Job applications season", () => {
     expect(localStorage.getItem(CPD_APPLICATIONS_STORAGE_KEY)).toBeNull();
   });
 
-  it("goes back to the CPD summary, where its link lives", () => {
+  it("leaves the way back to the band's Summary tab, with no second link on the page", () => {
     renderPage();
-    expect(screen.getByTestId("cpd-feature-back").getAttribute("href")).toBe("/cme/summary");
+    expect(screen.queryByTestId("cpd-feature-back")).toBeNull();
   });
 
   it("shows the made-up sample in the demo build and keeps nothing", () => {
@@ -287,7 +287,7 @@ describe("Job applications season", () => {
 
   it("links to the CV and to support, and every control has a 48px tap target", () => {
     const { container } = renderPage();
-    expect(screen.getByTestId("applications-cv-link").getAttribute("href")).toBe("/cme/applications/cv");
+    expect(screen.getByTestId("applications-cv-link").getAttribute("href")).toBe("/admin/applications/cv");
     expect(screen.getByTestId("applications-support-link").getAttribute("href")).toBe("/admin/help");
     const short = [...container.querySelectorAll<HTMLElement>("button, a[href]")].filter(
       (node) => !TAP.test(node.className),
@@ -312,7 +312,7 @@ describe("Job applications season", () => {
         <ApplicationsTodayCard today="2026-10-06" />
       </>,
     );
-    expect(screen.getByTestId("applications-entry-link").getAttribute("href")).toBe("/cme/applications");
+    expect(screen.getByTestId("applications-entry-link").getAttribute("href")).toBe("/admin/applications");
     expect(screen.getByTestId("applications-today-card").textContent).toContain("3 days to applications close");
   });
 });

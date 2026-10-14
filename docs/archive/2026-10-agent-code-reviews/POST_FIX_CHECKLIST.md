@@ -1,5 +1,7 @@
 # Post-Bug-Fix Checklist
 
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
+
 ## Immediate Actions (Next 24 Hours)
 
 ### Verification

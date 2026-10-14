@@ -82,6 +82,65 @@ function boundedTypoDistance(left: string, right: string, limit: number) {
   return previous[right.length];
 }
 
+const textWordBoundaryCache = new Map<string, string[]>();
+function getCachedWordBoundaryWords(text: string): string[] {
+  let words = textWordBoundaryCache.get(text);
+  if (!words) {
+    if (textWordBoundaryCache.size > 2000) textWordBoundaryCache.clear();
+    words = wordBoundaryWords(text);
+    textWordBoundaryCache.set(text, words);
+  }
+  return words;
+}
+
+const textUniqueWordsCache = new Map<string, string[]>();
+function getCachedUniqueWords(text: string): string[] {
+  let words = textUniqueWordsCache.get(text);
+  if (!words) {
+    if (textUniqueWordsCache.size > 2000) textUniqueWordsCache.clear();
+    words = Array.from(new Set(normalizeSearchText(text).split(/\s+/).filter(Boolean)));
+    textUniqueWordsCache.set(text, words);
+  }
+  return words;
+}
+
+const compactTextCache = new Map<string, string>();
+function getCachedCompactText(text: string): string {
+  let compact = compactTextCache.get(text);
+  if (!compact) {
+    if (compactTextCache.size > 2000) compactTextCache.clear();
+    compact = compactSearchText(text);
+    compactTextCache.set(text, compact);
+  }
+  return compact;
+}
+
+function fuzzyTokensAgainstWords(
+  queryTokens: readonly string[],
+  words: readonly string[],
+  typoCache?: Map<string, boolean>,
+) {
+  if (queryTokens.length === 0 || words.length === 0) return [];
+  return queryTokens.filter((term) => {
+    if (words.some((word) => word.includes(term))) return false;
+    const limit = typoDistanceLimit(term);
+    if (limit <= 0) return false;
+    return words.some((word) => {
+      if (Math.abs(term.length - word.length) > limit) return false;
+      if (typoCache) {
+        const key = `${term}:${word}`;
+        let match = typoCache.get(key);
+        if (match === undefined) {
+          match = boundedTypoDistance(term, word, limit) <= limit;
+          typoCache.set(key, match);
+        }
+        return match;
+      }
+      return boundedTypoDistance(term, word, limit) <= limit;
+    });
+  });
+}
+
 /** The query half of a fuzzy comparison, which is constant for a whole ranking run. */
 function fuzzyQueryTokens(query: string) {
   return normalizeSearchText(query).split(/\s+/).filter(Boolean);
@@ -95,13 +154,9 @@ function fuzzyQueryTokens(query: string) {
  * while ranking, and re-normalizing it for every haystack was the single largest
  * cost in a catalogue search profile.
  */
-function fuzzyTokensAgainstText(queryTokens: readonly string[], text: string) {
-  const words = Array.from(new Set(normalizeSearchText(text).split(/\s+/).filter(Boolean)));
-  return queryTokens.filter((term) => {
-    if (words.some((word) => word.includes(term))) return false;
-    const limit = typoDistanceLimit(term);
-    return limit > 0 && words.some((word) => boundedTypoDistance(term, word, limit) <= limit);
-  });
+function fuzzyTokensAgainstText(queryTokens: readonly string[], text: string, typoCache?: Map<string, boolean>) {
+  const words = getCachedUniqueWords(text);
+  return fuzzyTokensAgainstWords(queryTokens, words, typoCache);
 }
 
 /** Number of query tokens with a conservative near-word match in normalized text. */
@@ -208,28 +263,63 @@ export function rankCatalogRecords<T>(
   const expandedTerms = terms.filter((term) => !baseTermSet.has(term));
   const broad = Boolean(options.broadTerms?.length && terms.some((term) => options.broadTerms!.includes(term)));
 
+  const recordFullTextCache = new WeakMap<object, string>();
+  function getRecordFullText<T>(record: T, fullTextFn: (r: T) => string): string {
+    if (record && typeof record === "object") {
+      let cached = recordFullTextCache.get(record);
+      if (!cached) {
+        cached = fullTextFn(record);
+        recordFullTextCache.set(record, cached);
+      }
+      return cached;
+    }
+    return fullTextFn(record);
+  }
+
+  const recordFieldTextCache = new WeakMap<object, Map<string, string>>();
+  function getRecordFieldText<T>(record: T, fieldId: string, textFn: (r: T) => string): string {
+    if (record && typeof record === "object") {
+      let map = recordFieldTextCache.get(record);
+      if (!map) {
+        map = new Map();
+        recordFieldTextCache.set(record, map);
+      }
+      let text = map.get(fieldId);
+      if (text === undefined) {
+        text = textFn(record);
+        map.set(fieldId, text);
+      }
+      return text;
+    }
+    return textFn(record);
+  }
+
+  const typoCache = new Map<string, boolean>();
+
   const ranked = records
     .map((record, index) => {
-      const text = options.fullText(record);
+      const text = getRecordFullText(record, options.fullText);
       const fields: Record<string, number> = {};
       let score = 0;
       let fuzzy = 0;
       const compact =
         compactBonus > 0 &&
         compactQuery.length >= compactMinLength &&
-        (compactSearchText(text).includes(compactQuery) ||
+        (getCachedCompactText(text).includes(compactQuery) ||
           (options.compactExtraText
-            ? compactSearchText(options.compactExtraText(record)).includes(compactQuery)
+            ? getCachedCompactText(getRecordFieldText(record, "__compact_extra__", options.compactExtraText)).includes(
+                compactQuery,
+              )
             : false));
 
       for (const field of options.fields) {
-        const haystack = field.text(record);
+        const haystack = getRecordFieldText(record, field.id, field.text);
         if (!haystack) continue;
         // Fields are the high-weight name/title/tag signals, so a term must
         // align with a word boundary — substring hits ("renal" inside
         // "adrenaline") stay confined to the low-weight content haystack.
         // Split the field haystack once, then test every term against it.
-        const haystackWords = wordBoundaryWords(haystack);
+        const haystackWords = getCachedWordBoundaryWords(haystack);
         const matched = terms.filter((term) => matchesTermInWords(haystackWords, term)).length;
         if (matched) {
           fields[field.id] = matched;
@@ -239,7 +329,7 @@ export function rankCatalogRecords<T>(
         // A typo in a title/name/code field must retain that field's weight.
         // Otherwise an intended record ties incidental full-text mentions and
         // a limited universal-search result can omit the best match entirely.
-        const fuzzyFieldMatches = compact ? 0 : fuzzyTokensAgainstText(fuzzyTokens, haystack).length;
+        const fuzzyFieldMatches = compact ? 0 : fuzzyTokensAgainstText(fuzzyTokens, haystack, typoCache).length;
         if (fuzzyFieldMatches) {
           fields[field.id] = (fields[field.id] ?? 0) + fuzzyFieldMatches;
         }
@@ -253,7 +343,8 @@ export function rankCatalogRecords<T>(
       const expanded = expandedTerms.filter((term) => text.includes(term)).length;
       const expandedPhrases = expandedTerms.filter((term) => term.includes(" ") && text.includes(term)).length;
       score += expandedPhrases * expandedPhraseBonus;
-      const fuzzyContentFallback = !compact && fuzzy === 0 ? fuzzyTokensAgainstText(fuzzyTokens, text).length : 0;
+      const fuzzyContentFallback =
+        !compact && fuzzy === 0 ? fuzzyTokensAgainstText(fuzzyTokens, text, typoCache).length : 0;
       fuzzy += fuzzyContentFallback;
       // Broad full-text fuzzy evidence is only a fallback and stays weaker than
       // literal content or a weighted field match.

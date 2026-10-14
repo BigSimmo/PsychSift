@@ -8,7 +8,7 @@ The authoritative schema and proof registrations are declared in [`docs/design-s
 
 ## 1. Scope and Surface Coverage
 
-CME encompasses 14 distinct production routes providing hours logging, category distributions, annual RANZCP compliance validation, calendar views, routine schedules, and annual print/export summaries:
+CME encompasses 19 distinct production routes (one `page.tsx` each under `src/app/(search-app)/cme/`) providing hours logging, category distributions, annual RANZCP compliance validation, CPD home and evidence portfolios, planning, calendar views, routine schedules, and annual print/export summaries:
 
 - `/cme` — Dashboard, category distribution bar, pace projection, and quick logging sheet
 - `/cme/log` and `/cme/log/[id]` — Activity logs and detail inspectors
@@ -18,7 +18,8 @@ CME encompasses 14 distinct production routes providing hours logging, category 
 - `/cme/routines` — Recurring activities and peer review groups
 - `/cme/calendar` — Month-by-month activity visualizer
 - `/cme/summary` — Annual print-optimised statement and CSV download
-- `/cme/programme`, `/cme/learning`, `/cme/customise`, `/cme/plan`, `/cme/training` — Specialised support views
+- `/cme/plan` — Professional development plan view
+- `/cme/programme`, `/cme/learning`, `/cme/customise`, `/cme/training` — Specialised support and training views (alongside `/cme/cpd-home`, `/cme/evidence`, `/cme/export`, `/cme/applications`, and `/cme/applications/cv`)
 
 All CME routes adhere to the design system v2 tokens, 48px interactive touch target floors (`min-h-tap`), and responsive phone layouts (320px–430px) without horizontal scroll overflows.
 

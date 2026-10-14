@@ -95,7 +95,7 @@ const gotoTherapySearch = (page: Page) => gotoTherapy(page);
  * offline rather than leaving a mode uncovered.
  */
 const MODES = [
-  { modeId: "therapy-compass", route: "/therapy-compass/search?q=CBT&run=1", items: 5, profile: "extended" },
+  { modeId: "therapy-compass", route: "/therapy-compass/search?q=CBT&run=1", items: 4, profile: "extended" },
   { modeId: "dsm", route: "/dsm/compare", items: 2, profile: "two-item" },
   { modeId: "specifiers", route: "/specifiers/compare", items: 4, profile: "compact-four" },
   { modeId: "sources", route: "/sources/search?q=RANZCP", items: 5, profile: "balanced-four" },
@@ -103,6 +103,7 @@ const MODES = [
   { modeId: "differentials", route: "/differentials/diagnoses", items: 4, profile: "balanced-four" },
   { modeId: "factsheets", route: "/factsheets/search", items: 2, profile: "two-item" },
   { modeId: "dictionary", route: "/dictionary/search?q=MSE", items: 4, profile: "balanced-four" },
+  { modeId: "forms", route: "/forms/search?q=detention&run=1", items: 3, profile: "compact-four" },
 ] as const;
 
 function densityPoints(profile: DensityProfile) {
@@ -226,10 +227,12 @@ test.describe("ModeNav density", () => {
    * move these.
    */
   for (const [width, labels] of [
-    [375, ["Search", "Recommend", "Compare", "More"]],
-    [390, ["Search", "Recommend", "Compare", "More"]],
-    [430, ["Search", "Recommend", "Compare", "More"]],
-    [768, ["Search", "Recommend", "Compare", "Pathways", "Review"]],
+    // Review (the sign-off queue) left the bar in October 2026; it is reached
+    // from the Therapy search page, so four destinations fit without More.
+    [375, ["Search", "Recommend", "Compare", "Pathways"]],
+    [390, ["Search", "Recommend", "Compare", "Pathways"]],
+    [430, ["Search", "Recommend", "Compare", "Pathways"]],
+    [768, ["Search", "Recommend", "Compare", "Pathways"]],
   ] as const) {
     test(`uses available Therapy phone space at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 });
@@ -242,9 +245,10 @@ test.describe("ModeNav density", () => {
     });
   }
 
-  test("drops the Therapy slot icon while short, and restores it once it fits", async ({ page }) => {
-    // A container query, so it can only be proved in a browser: jsdom loads no
-    // stylesheet and would report the icon present at every width.
+  test("draws the top bar's tabs as plain words at every width", async ({ page }) => {
+    // The tabs are plain text since 12 Oct 2026 (clinical-mode.css), so the
+    // density profiles' icon restore band no longer reaches the top bar. CSS, so
+    // it can only be proved in a browser: jsdom loads no stylesheet.
     const iconDisplay = async () =>
       page.evaluate((selector) => {
         const icon = document.querySelector(`${selector} .mode-nav__bar li:not(.hidden) .mode-nav__icon`);
@@ -257,8 +261,9 @@ test.describe("ModeNav density", () => {
     expect(await iconDisplay()).toBe("none");
 
     await page.setViewportSize({ width: 1024, height: 900 });
-    await expect.poll(iconDisplay, { timeout: 10_000 }).toBe("block");
-    expectNoClippedLabels(await readNav(page), "therapy at 1024px with icons");
+    await expect.poll(async () => (await readNav(page)).state, { timeout: 10_000 }).toBe("bar");
+    expect(await iconDisplay()).toBe("none");
+    expectNoClippedLabels(await readNav(page), "therapy at 1024px");
   });
 
   test("preserves Specifiers overflow focus with reduced motion and forced colors", async ({ page }) => {
@@ -347,7 +352,8 @@ test.describe("ModeNav density", () => {
         ["/therapy-compass/compare", "Compare"],
         ["/therapy-compass/recommend", "Recommend"],
         ["/therapy-compass/pathways", "Pathways"],
-        ["/therapy-compass/review", "Review"],
+        // `/therapy-compass/review` is off the bar (group "more"), so it has no
+        // tab to mark; its link lives on the Therapy search page.
       ] as const) {
         await gotoTherapy(page, route);
         await expect.poll(async () => (await readNav(page)).state, { timeout: 10_000 }).toBe("bar");
@@ -382,11 +388,11 @@ test.describe("ModeNav density", () => {
     });
   }
 
-  test("puts the first tab's ink on the header's content edge from tablet up", async ({ page }) => {
-    // The bar is full-bleed so its rule spans the viewport, but its slots ride
-    // the same centred max-w-7xl column as the header row. Without that the
-    // first tab sits at the viewport edge while the mode pill above it is
-    // centred — the desktop defect this pairing fixes.
+  test("puts the first tab's ink under the title, on a centred column, from tablet up", async ({ page }) => {
+    // The bar is full-bleed so its rule spans the viewport, but its title and
+    // slots ride a centred column: from 1024px Work's 64rem column, which the
+    // page below shares (clinical-mode.css). Without that the first tab sits at
+    // the viewport edge while the mode pill above it is centred.
     for (const width of [1024, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await gotoTherapySearch(page);
@@ -396,18 +402,29 @@ test.describe("ModeNav density", () => {
       const offsets = await page.evaluate((selector) => {
         // The SlotInk wrapper, not the label span: the ink starts at the icon.
         const ink = document.querySelector(`${selector} .mode-nav__bar li:not(.hidden) > a > span`);
-        // The header's own centred row, whose left content edge the ink meets.
-        const headerRow = document.querySelector("#search .max-w-7xl");
-        if (!(ink instanceof HTMLElement) || !(headerRow instanceof HTMLElement)) return null;
-        return { ink: ink.getBoundingClientRect().left, header: headerRow.getBoundingClientRect().left };
+        // The section title above the tabs, whose text starts where the ink does.
+        const title = document.querySelector(`${selector} .mode-nav__heading`);
+        const column = document.querySelector(`${selector} .mode-nav`);
+        if (!(ink instanceof HTMLElement) || !(title instanceof HTMLElement) || !(column instanceof HTMLElement)) {
+          return null;
+        }
+        const titleStart = title.getBoundingClientRect().left + Number.parseFloat(getComputedStyle(title).paddingLeft);
+        const box = column.getBoundingClientRect();
+        const rail = column.parentElement!.getBoundingClientRect();
+        return {
+          ink: ink.getBoundingClientRect().left,
+          title: titleStart,
+          leftGap: box.left - rail.left,
+          rightGap: rail.right - box.right,
+        };
       }, anchoredNav);
 
       expect(offsets, `${width}px: could not resolve both edges`).not.toBeNull();
       // 1px of slack for sub-pixel centring of an odd-width column.
-      expect(
-        Math.abs(offsets!.ink - offsets!.header),
-        `${width}px: tab ink vs header content edge`,
-      ).toBeLessThanOrEqual(1);
+      expect(Math.abs(offsets!.ink - offsets!.title), `${width}px: tab ink vs title`).toBeLessThanOrEqual(1);
+      expect(Math.abs(offsets!.leftGap - offsets!.rightGap), `${width}px: the column is centred`).toBeLessThanOrEqual(
+        1,
+      );
 
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),

@@ -60,11 +60,26 @@ describe("Open shifts, signed-out preview", () => {
     const list = screen.getByRole("list", { name: /Open shifts on/ });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     expect(within(list).getByText(/No flags on your PsychSift roster/)).toBeTruthy();
-    expect(screen.getByText(/1 hidden/).textContent).toBe("1 hidden: 1 overlaps your roster");
+    expect(screen.getByText(/^1 hidden:/).textContent).toBe("1 hidden: 1 overlaps your roster");
+    // The day-by-day list offers the same hidden shift, so a computer (which has no chosen-day panel) can show it.
+    expect(screen.getAllByText("1 hidden by your settings").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "No clashes" }));
     expect(
       within(screen.getByRole("list", { name: /Open shifts on/ })).getByText("Overlaps your rostered shift"),
     ).toBeTruthy();
+  });
+
+  it("marks urgent rows and the calendar key with the shared dot", () => {
+    render(<OpenShiftsBrowsePage />);
+
+    const legend = screen.getByRole("list", { name: "Calendar key" });
+    expect(legend.querySelector('[data-mark="dot"]')).not.toBeNull();
+    expect(legend.querySelector("svg.lucide-triangle-alert")).toBeNull();
+
+    const urgentRow = screen.getAllByRole("listitem").find((row) => row.textContent?.includes("Urgent"));
+    expect(urgentRow).toBeDefined();
+    expect(urgentRow?.querySelector('[data-mark="dot"]')).not.toBeNull();
+    expect(urgentRow?.querySelector("svg.lucide-triangle-alert")).toBeNull();
   });
 
   it("marks the days the example roster has the doctor working", () => {
@@ -87,10 +102,29 @@ describe("Open shifts, signed-out preview", () => {
     expect(Number(matches()?.[1])).toBeGreaterThan(before);
   });
 
-  it("offers a way back to My Day and says how fresh the example is", () => {
+  it("says how fresh the example is, leaving the way back to the header's Back", () => {
     render(<OpenShiftsBrowsePage />);
     const context = screen.getByTestId("open-shifts-sample-context");
-    expect(within(context).getByRole("link", { name: "Back to My Day" }).getAttribute("href")).toBe("/my-day");
-    expect(context.textContent).toContain("example roster as of Mon 5 Oct");
+    // One way back: the header shows Back, so the page adds no second "My Day" link.
+    expect(screen.queryByRole("link", { name: "Back to My Day" })).toBeNull();
+    expect(context.textContent).toContain("roster as of Mon 5 Oct");
+    expect(context.textContent).not.toMatch(/example/i);
+  });
+});
+
+describe("Open shifts, nothing matching", () => {
+  it("still offers each day's hidden shifts under the none-match message", () => {
+    // Only today's evening shift, which clashes with the example doctor's on call from 17:00 Perth.
+    hook.state = {
+      ...sampleState(),
+      listings: sampleListings(NOW).filter(
+        (listing) =>
+          Date.parse(listing.startsAt) >= Date.parse("2026-10-05T08:00:00.000Z") &&
+          Date.parse(listing.startsAt) < Date.parse("2026-10-05T16:00:00.000Z"),
+      ),
+    };
+    render(<OpenShiftsBrowsePage />);
+    expect(screen.getByText(/^None match\. 1 is hidden/)).toBeTruthy();
+    expect(screen.getAllByText("1 hidden by your settings").length).toBeGreaterThan(0);
   });
 });

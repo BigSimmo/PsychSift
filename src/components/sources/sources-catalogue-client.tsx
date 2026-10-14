@@ -132,17 +132,28 @@ function SourceTile({ entry }: { entry: ClinicalSourceClientEntry }) {
       href={`/sources/${entry.id}`}
       aria-label={`View source details: ${entry.title}`}
       className={cn(
-        "group grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-[color:var(--border)]",
-        "bg-[color:var(--surface)] p-4 shadow-[var(--e2)] transition",
-        "hover:-translate-y-0.5 hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-raised)]",
-        "hover:shadow-[var(--e3)] motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        // A row of the one catalogue card, not a card of its own: the list
+        // draws the box and a hairline divides each source from the next.
+        "group grid min-h-12 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-4 py-3.5 transition-colors",
+        "hover:bg-[color:var(--surface-subtle)] motion-reduce:transition-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]",
       )}
     >
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-1.5">
-          <Chip size="compact" appearance={{ kind: "status", tone: SOURCE_BAND_TONES[entry.rating.band] }} dot>
-            {SOURCE_BAND_LABELS[entry.rating.band]}
-          </Chip>
+          {/* Colour only where a row differs (Clinical audit, 13 Oct 2026, item 8):
+              A, B and C are quiet grey text with the grade letter, so the green
+              pill no longer repeats on almost every row. D and Excluded keep
+              their coloured tag because they are the exception. */}
+          {entry.rating.band === "D" || entry.rating.band === "excluded" ? (
+            <Chip size="compact" appearance={{ kind: "status", tone: SOURCE_BAND_TONES[entry.rating.band] }} dot>
+              {SOURCE_BAND_LABELS[entry.rating.band]}
+            </Chip>
+          ) : (
+            <span data-source-band={entry.rating.band} className="text-xs font-semibold text-[color:var(--text-muted)]">
+              {SOURCE_BAND_LABELS[entry.rating.band]}
+            </span>
+          )}
           {flags.map((flag) => (
             <Chip key={flag.label} size="compact" appearance={{ kind: "status", tone: flag.tone }}>
               {flag.label}
@@ -432,11 +443,16 @@ export function SourcesCatalogueClient({
     >
       {entries.length ? (
         <>
-          <div className="grid gap-3 md:grid-cols-2">
+          {/* One hairline card for the page of sources, rows divided by a
+              hairline. One column at every width: two columns of rows inside
+              one card read as a table with no header. */}
+          <ul className="divide-y divide-[color:var(--border)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]">
             {entries.map((entry) => (
-              <SourceTile key={entry.id} entry={entry} />
+              <li key={entry.id}>
+                <SourceTile entry={entry} />
+              </li>
             ))}
-          </div>
+          </ul>
           <Pagination
             className="pt-4"
             page={page}

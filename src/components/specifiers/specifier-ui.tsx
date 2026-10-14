@@ -145,9 +145,11 @@ export function SpecifierMatchCard({ record, isTopMatch }: { record: SpecifierRe
               </div>
             </div>
 
+            {/* A tinted well rather than a bordered card: the result is
+                already the card, and a box inside it was a card in a card. */}
             <div
               data-specifier-card-signal
-              className="rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)]/55 p-3.5 sm:mt-0.5"
+              className="rounded-lg bg-[color:var(--clinical-accent-soft)] p-3.5 sm:mt-0.5"
             >
               <p className={eyebrowText}>Deciding signal</p>
               <p className="mt-1.5 text-sm font-semibold leading-5 text-[color:var(--text-heading)]">
@@ -324,10 +326,12 @@ const sourceStatusMeta: Record<
   SpecifierSourceStatus,
   { label: string; icon: ComponentType<{ className?: string }>; className: string }
 > = {
+  // Grey, not green: this status says the SOURCE was checked, never that a named clinician
+  // signed the entry off, so it must not look like a sign-off (audit S6, 13 Oct 2026).
   "source-verified": {
-    label: "Source reviewed",
-    icon: CheckCircle2,
-    className: "border-[color:var(--success-border)] bg-[color:var(--success-soft)] text-[color:var(--success)]",
+    label: "Source checked, not signed off",
+    icon: Info,
+    className: "border-[color:var(--border)] bg-[color:var(--surface-inset)] text-[color:var(--text-muted)]",
   },
   "source-needs-formal-review": {
     label: "Review due",

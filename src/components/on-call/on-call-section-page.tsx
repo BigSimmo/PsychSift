@@ -16,6 +16,7 @@ import { OnCallEducationSection } from "@/components/on-call/on-call-education-s
 import { OnCallLogisticsSection } from "@/components/on-call/on-call-logistics-section";
 import { OnCallOrientationSection } from "@/components/on-call/on-call-orientation-section";
 import { HospitalLadders } from "@/components/on-call/hospital-ladders";
+import { OnCallStartingHereChips } from "@/components/on-call/starting-here-chips";
 import { OnCallPlaybookSection } from "@/components/on-call/on-call-playbook-section";
 import { OnCallReferralsSection } from "@/components/on-call/on-call-referrals-section";
 import { OnCallWhoIsWhoSection } from "@/components/on-call/on-call-who-is-who-section";
@@ -24,7 +25,7 @@ import {
   ON_CALL_VIEW_TITLES,
   type OnCallPageView,
 } from "@/components/on-call/on-call-section-identity";
-import { onCallViewStorageSection } from "@/components/on-call/on-call-entry-view";
+import { onCallViewForEntry, onCallViewStorageSection } from "@/components/on-call/on-call-entry-view";
 import { OnCallLoadFailed } from "@/components/on-call/on-call-load-failed";
 import { OnCallOfflineBanner } from "@/components/on-call/on-call-offline-banner";
 import { OnCallPageMenu } from "@/components/on-call/on-call-page-menu";
@@ -40,8 +41,6 @@ import { useOnCallLinkedDocumentsState } from "@/lib/on-call/linked-documents";
 import { onCallEntryFreshness, type OnCallEntry, onCallEntryIsEditable } from "@/lib/on-call/entry-model";
 import { recordOnCallRecent } from "@/lib/on-call/recent-storage";
 import { selectUpcomingTeachingSessions } from "@/lib/on-call/teaching-schedule";
-import { partitionLogisticsEntries } from "@/lib/on-call/compliance";
-import { partitionContactsEntries } from "@/lib/on-call/who-is-who";
 import { isAdminWorkforceExplainer } from "@/lib/admin/placement";
 import { zonedToday } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
@@ -104,20 +103,7 @@ const ON_CALL_VIEW_DESCRIPTIONS: Record<OnCallPageView, string> = {
  * defers to them rather than re-deriving either rule.
  */
 function onCallVisibleEntries(view: OnCallPageView, entries: readonly OnCallEntry[]): OnCallEntry[] {
-  switch (view) {
-    case "contacts":
-      return partitionContactsEntries(entries).contacts;
-    case "who-is-who":
-      return partitionContactsEntries(entries).roleExplainers;
-    case "logistics":
-      return partitionLogisticsEntries(entries).admin;
-    case "compliance":
-      return partitionLogisticsEntries(entries).compliance;
-    // Playbook, Referrals, Orientation and Teaching each own a whole section,
-    // so for them the view id IS the section id.
-    default:
-      return entries.filter((entry) => entry.section === view);
-  }
+  return entries.filter((entry) => (entry.view ?? onCallViewForEntry(entry)) === view);
 }
 
 /** What one entry in each view is called, for the add control's label. */
@@ -228,7 +214,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
   }, [view, entries]);
   const sourceIds =
     view === "playbook" || view === "orientation"
-      ? entries.filter((entry) => entry.section === view).flatMap((entry) => entry.linkedDocumentIds)
+      ? entries.filter((entry) => (entry.view ?? entry.section) === view).flatMap((entry) => entry.linkedDocumentIds)
       : [];
   const { documents: linkedDocuments, loading: linkedDocumentsLoading } = useOnCallLinkedDocumentsState(sourceIds);
   // The page's own groups, for the header's jump list. Declared from the same
@@ -447,6 +433,7 @@ export function OnCallSectionPage({ view }: { view: OnCallPageView }) {
             The `<h1>` stays for the document outline and for a screen reader;
             it simply is not painted. */}
         <h1 className="sr-only">{title}</h1>
+        {view === "orientation" ? <OnCallStartingHereChips /> : null}
         {view === "playbook" ? <HospitalLadders /> : null}
 
         {upcomingTeaching.length > 0 ? (

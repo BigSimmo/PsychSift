@@ -19,6 +19,14 @@ vi.mock("@/components/account-data-provider", () => ({
 
 // Adoption evidence: these form assertions exercise DisclosureGroup.items[].extendDescription.
 describe("Form information disclosures", () => {
+  it("says plainly that the app does not fill in, sign or submit the form", () => {
+    const form = getFormRecord("form-1a");
+    expect(form).toBeTruthy();
+    if (!form) return;
+    render(<FormDetailPage form={form} />);
+    expect(screen.getByTestId("form-product-boundary")).toHaveTextContent(/does not fill in, sign or submit this form/);
+  });
+
   it("expands a tick row to reveal the full information content", async () => {
     const user = userEvent.setup();
     const form = getFormRecord("form-1a");

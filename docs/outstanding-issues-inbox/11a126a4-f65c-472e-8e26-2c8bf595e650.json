@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "11a126a4-f65c-472e-8e26-2c8bf595e650",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#GQG3NV",
+    "outcome": "Added pre-flight test file existence validation in scripts/run-vitest.mjs to fail-fast with exit code 1 when target test files do not exist",
+    "baseRowFingerprint": "826f7b2dfa0ce443c85aa7ae90719c0a90f1752cca63ccb4a91c0210296da1f3"
+  }
+}

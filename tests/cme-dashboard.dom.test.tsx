@@ -203,10 +203,11 @@ describe("the dashboard", () => {
     expect(log).toHaveAttribute("href", "/cme/new?year=2026");
     expect(log).toHaveAttribute("data-cme-log-trigger");
     // work-mode redesign, owner request 6 Oct 2026: filled buttons are the kit's primary
-    // variant. The dock carries Log an activity; the only other is the next
-    // step's own Log, as the mock-up draws it. No floating + Log.
+    // variant. The dock carries Log an activity and is the only one: the next
+    // step's own Log is a grey row pill (design audit D08, 13 Oct 2026). No floating + Log.
     const filled = [...container.querySelectorAll('a[data-variant="primary"], button[data-variant="primary"]')];
-    expect(filled.map((node) => node.textContent)).toEqual(["Log", "Log an activity"]);
+    expect(filled.map((node) => node.textContent)).toEqual(["Log an activity"]);
+    expect(screen.getByTestId("cme-next-log")).toHaveAttribute("data-variant", "grey");
     expect(log.closest(".work-dock")).not.toBeNull();
   });
 
@@ -271,6 +272,11 @@ describe("the dashboard", () => {
     );
     const summary = screen.getByTestId("cme-year-summary");
     expect(within(summary).getByTestId("cme-total-hours")).toHaveTextContent("32.5 hlogged");
+    // The relocated year dates (12 Oct 2026) stay in this variant too.
+    expect(within(summary).getByTestId("cme-year-label")).toHaveTextContent("2026 · about 15 weeks left");
+    // Today's hours sit beside the label, so the label stays exact.
+    expect(within(summary).getByTestId("cme-year-label")).toHaveTextContent(/^2026 · about 15 weeks left$/);
+    expect(within(summary).getByTestId("cme-audited-today")).toHaveTextContent(/^· [\d.]+ h today$/);
     expect(summary).toHaveTextContent("You have not confirmed a yearly target, so nothing is measured against one.");
     expect(within(summary).getByRole("link", { name: "Set up your year" })).toHaveAttribute(
       "href",

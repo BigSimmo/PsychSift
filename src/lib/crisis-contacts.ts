@@ -121,3 +121,23 @@ export const WA_CRISIS_CONTACTS = [
     verifiedOn: "2026-09-27",
   },
 ] satisfies readonly PublicCrisisContact[];
+
+/**
+ * Poisons Information Centre — shown beside the crisis lines where overdose or poisoning is in
+ * view (the Clinical answer crisis card on overdose wording, Admin Help, the offline page). Kept
+ * OUT of `WA_CRISIS_CONTACTS` on purpose: that list prints on the patient's own safety plan, and
+ * adding a line there is a separate clinical decision. Checked 2026-10-13 against the WA Poisons
+ * Information Centre page at Sir Charles Gairdner Hospital ("Tel: 13 11 26", "Hours: 24/7").
+ */
+export const POISONS_INFORMATION_CONTACT = {
+  id: "SYN-CRISIS-CONTACT-008",
+  name: "Poisons Information Centre",
+  telephoneDisplay: "13 11 26",
+  telephoneUri: "131126",
+  coverage: "Australia-wide",
+  availability: "24 hours, every day",
+  isEmergencyService: false,
+  caveat: "For overdose or poisoning advice. Call 000 if the person has collapsed or is not breathing.",
+  sourceUrl: "https://scgh.health.wa.gov.au/Our-Services/Service-directory/Poisons",
+  verifiedOn: "2026-10-13",
+} satisfies PublicCrisisContact;

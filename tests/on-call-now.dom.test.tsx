@@ -89,7 +89,7 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Now: the safety order", () => {
-  it("leads with the hospital, then its emergency route, then Right now, your usual, your team and the footer", () => {
+  it("leads with the hospital, then its emergency route, then your usual, Right now, your team and the shift tools", () => {
     handbook.state = readyHandbook(
       handbookItems([
         { id: "em", title: "Emergency: Synthetic emergency code", phone: "55", kind: "clinical" },
@@ -100,10 +100,11 @@ describe("Now: the safety order", () => {
     order([
       "on-call-now-hospital",
       "on-call-now-emergency",
-      "on-call-now-right-now",
+      // Your own numbers first, straight under the header (usefulness audit, 11 Oct 2026).
       "on-call-home-recent",
+      "on-call-now-right-now",
       "on-call-now-team",
-      "on-call-now-footer",
+      "on-call-now-shift-tools",
     ]);
     expect(screen.getByTestId("on-call-now-hospital")).toHaveTextContent("Synthetic Hospital");
   });
@@ -185,7 +186,7 @@ describe("Now: the safety order", () => {
       "on-call-now-hospital",
       "on-call-now-emergency-not-set-up",
       "on-call-now-right-now",
-      "on-call-now-footer",
+      "on-call-now-shift-tools",
       "on-call-now-crisis",
     ]);
   });
@@ -475,6 +476,36 @@ describe("Now: the footer group", () => {
     expect(readOnCallShiftPick()?.period).toBe("night");
   });
 
+  it("says the service has no shift lists only once the handbook has loaded", async () => {
+    handbook.state = readyHandbook([], { status: "loading" });
+    const { unmount } = render(<OnCallHome now={IN_HOURS} />);
+    // The row itself must not claim "Not set up" while the handbook is still loading.
+    expect(screen.getByTestId("on-call-now-checklists")).not.toHaveTextContent("Not set up for this hospital");
+    expect(screen.getByTestId("on-call-now-checklists-pending")).toHaveTextContent("Not available right now");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Shift lists are not available right now.",
+    );
+    unmount();
+    handbook.state = readyHandbook([]);
+    render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Not set up for this hospital");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Your service has not added shift lists for this hospital yet.",
+    );
+  });
+
+  it("treats a reader with no service as not set up, with the handbook action, not as an outage", async () => {
+    handbook.state = readyHandbook([], { status: "no-service" });
+    render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Not set up for this hospital");
+    await userEvent.click(screen.getByTestId("on-call-now-checklists"));
+    expect(screen.getByTestId("on-call-now-checklists-empty")).toHaveTextContent(
+      "Your service has not added shift lists for this hospital yet.",
+    );
+  });
+
   it("keeps no ticks: a tick lives on the page only", async () => {
     handbook.state = readyHandbook(
       handbookItems([{ id: "o1", title: "Collect the pager", section: "orientation", phase: "first_shift" }]),
@@ -488,23 +519,25 @@ describe("Now: the footer group", () => {
     expect(screen.getByTestId("on-call-now-checklists")).toHaveTextContent("Start of shift · 1 of 1");
   });
 
-  it("puts Who do I call now above More for this shift, which ends with Systems down, First night and On site", () => {
+  it("puts Who do I call now above the shift tools, and keeps no link list on Now", () => {
     render(<OnCallHome now={IN_HOURS} />);
     const who = screen.getByTestId("on-call-now-who");
     expect(within(who).getByRole("heading", { name: "Who do I call now?" })).toBeInTheDocument();
-    expect(within(who).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/now");
-    order(["on-call-now-who", "on-call-now-footer"]);
-    const footer = screen.getByTestId("on-call-now-footer");
-    expect(within(footer).getByRole("heading", { name: "More for this shift" })).toBeInTheDocument();
-    expect(within(footer).getByTestId("on-call-now-systems-down")).toHaveAttribute(
-      "href",
-      "/on-call/find#on-call-group-downtime",
-    );
-    expect(within(footer).getByTestId("on-call-home-first-night")).toHaveAttribute("href", "/on-call/first-night");
-    expect(within(footer).getByTestId("on-call-now-on-site")).toHaveAttribute("href", "/admin/help");
-    expect(screen.getByTestId("on-call-now-on-site")).toHaveTextContent("On site");
-    expect(screen.getByTestId("on-call-now-on-site")).toHaveTextContent("Parking, food, access · in Admin");
-    order(["on-call-now-checklists", "on-call-now-systems-down", "on-call-home-first-night", "on-call-now-on-site"]);
+    // The Playbook is the one home for "who do I call" (usefulness audit, 11 Oct 2026).
+    expect(within(who).getByTestId("on-call-home-call-now")).toHaveAttribute("href", "/on-call/playbook");
+    order(["on-call-now-who", "on-call-now-team", "on-call-now-shift-tools"]);
+    // On a computer, who to call sits in the left column with the numbers and the tools on the
+    // right, so the two columns balance (Work mode simplify plan, 12 Oct 2026).
+    expect(who.closest('[data-today-column="act"]')).not.toBeNull();
+    expect(screen.getByTestId("on-call-now-shift-tools").closest('[data-today-column="ahead"]')).not.toBeNull();
+    // The shift lists share the tools' card with Log a call and Handover.
+    const tools = screen.getByTestId("on-call-now-shift-tools");
+    expect(within(tools).getByTestId("on-call-now-checklists")).toBeInTheDocument();
+    expect(within(tools).getByTestId("on-call-now-log-a-call")).toBeInTheDocument();
+    // "More for this shift" is gone (Work mode simplify plan, owner approval 12 Oct 2026): Systems down
+    // and On site are in the Handbook, First night in Starting here, My shifts and Calendar in Roster.
+    expect(screen.queryByTestId("on-call-now-footer")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "More for this shift" })).toBeNull();
   });
 });
 
@@ -536,7 +569,7 @@ describe("Now: what is not on it", () => {
 describe("Who do I call now: the pinned reminder", () => {
   it("reads the pinned reminder as plain words, not a chip that looks like a choice", () => {
     // Work-mode redesign, owner request 6 Oct 2026 (phone check): the pinned Playbook
-    // reminder is a statement, so it is a line of text and only real situations are chips.
+    // reminder is a statement, so it is a line of text and only real situations are rows.
     render(
       <NowWhoToCall
         reminder="You are expected to wake the consultant."
@@ -547,9 +580,6 @@ describe("Who do I call now: the pinned reminder", () => {
     expect(reminder.tagName).toBe("P");
     expect(reminder).toHaveTextContent("You are expected to wake the consultant.");
     expect(reminder.closest("a, button, li")).toBeNull();
-    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual([
-      "Escalation ladder",
-      "Systems unavailable",
-    ]);
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(["Playbook", "Systems unavailable"]);
   });
 });

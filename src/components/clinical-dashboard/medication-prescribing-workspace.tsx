@@ -4,7 +4,6 @@ import {
   Activity,
   Ban,
   CalendarDays,
-  CircleCheck,
   ChevronRight,
   FileSearch,
   Lock,
@@ -18,12 +17,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { sharedHomePresentation } from "@/lib/ui-copy";
+import { formatTallMan } from "@/lib/medications/tall-man";
 import { RetainedSnapshotNotice } from "@/components/clinical-dashboard/dashboard-notices";
 import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-results-header-band";
 import {
@@ -33,6 +33,7 @@ import {
   resultFilterGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
+import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import {
   medicationVerdictRingClass,
   PatientVerdictSignal,
@@ -50,12 +51,7 @@ import {
   type MedicationVerdict,
 } from "@/lib/medication-interactions";
 import { evaluatePatientAlerts } from "@/lib/medication-patient-alerts";
-import {
-  BadgeCluster,
-  ClinicalBadge,
-  type ClinicalBadgeItem,
-  type ClinicalBadgeTone,
-} from "@/components/clinical-dashboard/clinical-badge";
+import { BadgeCluster, type ClinicalBadgeItem } from "@/components/clinical-dashboard/clinical-badge";
 import { medicationIdentityBadges, type MedicationRecord } from "@/lib/medications";
 import {
   medicationMatchValues,
@@ -475,14 +471,15 @@ function ResultToneIcon({ result, accent }: { result: MedicationResult; accent?:
   return <IconTile icon={Pill} tone={tone} className="h-9 w-9" />;
 }
 
-const matchBadgeTone: Record<MedicationResult["tone"], ClinicalBadgeTone> = {
-  teal: "clinical",
-  blue: "info",
-  slate: "neutral",
-};
-
+// The match label is quiet grey text, not a coloured pill (Clinical audit, 13 Oct
+// 2026, item 8): it describes how the search matched, not a clinical status.
+// The words come from src/lib/medications.ts unchanged.
 function ResultMatchBadge({ result }: { result: MedicationResult }) {
-  return <ClinicalBadge label={result.match} tone={matchBadgeTone[result.tone]} icon={CircleCheck} />;
+  return (
+    <span data-medication-match={result.tone} className="text-xs font-semibold text-[color:var(--text-muted)]">
+      {result.match}
+    </span>
+  );
 }
 
 // Small leading icon for the prescribing-action text: contraindication content is
@@ -536,6 +533,35 @@ function MaximumDose({ value }: { value: string }) {
   );
 }
 
+const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
+
+function subscribeDesktopViewport(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const media = typeof window.matchMedia === "function" ? window.matchMedia(DESKTOP_MEDIA_QUERY) : null;
+  media?.addEventListener("change", callback);
+  window.addEventListener("resize", callback);
+  return () => {
+    media?.removeEventListener("change", callback);
+    window.removeEventListener("resize", callback);
+  };
+}
+
+function getDesktopViewportSnapshot(): boolean {
+  if (typeof window === "undefined") return true;
+  if (typeof window.matchMedia === "function") {
+    const media = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    if (media.matches) return true;
+  }
+  if (typeof window.innerWidth === "number") {
+    return window.innerWidth >= 1024;
+  }
+  return true;
+}
+
+function useDesktopViewport(): boolean {
+  return useSyncExternalStore(subscribeDesktopViewport, getDesktopViewportSnapshot, () => true);
+}
+
 function MedicationResults({
   query,
   realDataReady,
@@ -551,6 +577,7 @@ function MedicationResults({
   // alerts need sections/stats/quick that `fields=index` strips. Cross-mode
   // identity consumers still use `fields=index`.
   const catalog = useMedicationCatalog(query);
+  const isDesktop = useDesktopViewport();
   const { profile, isEmpty: profileEmpty } = usePatientProfile();
   const searchParams = useSearchParams();
   const filterPanelId = useId();
@@ -880,11 +907,11 @@ function MedicationResults({
       <PatientDetailsDockAction />
 
       {/* The error branch moved into the band's fault panel, which carries the
-          same message and announces it once. Loading copy stays here. */}
+          same message and announces it once. While the first response is on its way the
+          list shows rows shaped like the results it is waiting for, not a line of text
+          over an empty page. */}
       {initialCatalogLoading ? (
-        <div className="medication-results-inset">
-          <p className="text-sm text-[color:var(--text-muted)]">Loading medication catalogue…</p>
-        </div>
+        <ResultRowsPlaceholder label="Loading medication results" rows={4} testId="medication-results-placeholder" />
       ) : null}
 
       {!initialCatalogLoading && !catalog.error && resultCount === 0 ? (
@@ -927,7 +954,7 @@ function MedicationResults({
         )
       ) : null}
 
-      {!initialCatalogLoading && !catalog.error && resultCount > 0 ? (
+      {!initialCatalogLoading && !catalog.error && resultCount > 0 && isDesktop ? (
         <div className="hidden overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-raised)] shadow-[var(--e2)] lg:block">
           <div className="grid grid-cols-[minmax(12rem,1.12fr)_minmax(5.5rem,0.46fr)_minmax(7rem,0.66fr)_minmax(12rem,1.15fr)_1.5rem] gap-3 border-b border-[color:var(--border)] bg-[color:var(--surface-subtle)] px-4 py-2.5 text-2xs font-semibold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
             <span>Medication</span>
@@ -962,7 +989,10 @@ function MedicationResults({
                     <ResultToneIcon result={result} accent={row.accent} />
                     <div className="min-w-0">
                       <span className="block break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
-                        <HighlightedName text={result.name} term={query} />
+                        <span className="sr-only">{result.name}</span>
+                        <span aria-hidden="true">
+                          <HighlightedName text={formatTallMan(result.name)} term={query} />
+                        </span>
                       </span>
                       <span className="mt-0.5 line-clamp-1 break-words text-xs font-medium leading-4 text-[color:var(--text-muted)]">
                         {result.indication}
@@ -1033,91 +1063,103 @@ function MedicationResults({
         </div>
       ) : null}
 
-      <div className="medication-mobile-results grid gap-2 lg:hidden">
-        {rows.map((row, index) => {
-          const result = row.result;
-          const selected = index === 0 && Boolean(query.trim());
-          const cardClassName = cn(
-            "medication-mobile-result min-w-0 w-full rounded-lg border bg-[color:var(--surface-raised)] p-2 text-left shadow-[var(--shadow-inset)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
-            selected
-              ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]/35"
-              : result.href
-                ? "border-[color:var(--border)] hover:border-[color:var(--border-strong)]"
-                : "border-[color:var(--border)] opacity-80",
-          );
-          const cardContent = (
-            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-2.5">
-              <ResultToneIcon result={result} accent={row.accent} />
-              <div className="min-w-0 space-y-1.5">
-                <div className="min-w-0">
-                  <p className="line-clamp-2 break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
-                    <HighlightedName text={result.name} term={query} />
-                  </p>
-                  <p className="line-clamp-1 break-words text-xs font-medium text-[color:var(--text-muted)]">
-                    {result.indication}
-                  </p>
-                </div>
-                {row.verdict ? <PatientVerdictSignal verdict={row.verdict} /> : null}
-                {showMatchBadge || result.match !== "Exact clinical fit" || row.badges.length > 0 ? (
-                  <div className="flex max-w-full flex-wrap items-center gap-1.5">
-                    {showMatchBadge || result.match !== "Exact clinical fit" ? (
-                      <ResultMatchBadge result={result} />
-                    ) : null}
-                    <BadgeCluster items={row.badges} compact limit={2} showOverflowCount />
+      {!initialCatalogLoading && !catalog.error && resultCount > 0 && !isDesktop ? (
+        <div className="medication-mobile-results grid gap-2 lg:hidden">
+          {rows.map((row, index) => {
+            const result = row.result;
+            const selected = index === 0 && Boolean(query.trim());
+            const cardClassName = cn(
+              "medication-mobile-result min-w-0 w-full rounded-lg border bg-[color:var(--surface-raised)] p-2 text-left shadow-[var(--shadow-inset)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
+              selected
+                ? "border-[color:var(--clinical-accent)] bg-[color:var(--clinical-accent-soft)]/35"
+                : result.href
+                  ? "border-[color:var(--border)] hover:border-[color:var(--border-strong)]"
+                  : "border-[color:var(--border)] opacity-80",
+            );
+            const cardContent = (
+              <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-2.5">
+                <ResultToneIcon result={result} accent={row.accent} />
+                <div className="min-w-0 space-y-1.5">
+                  <div className="min-w-0">
+                    <p className="line-clamp-2 break-words text-base-minus font-semibold leading-5 text-[color:var(--text-heading)]">
+                      <span className="sr-only">{result.name}</span>
+                      <span aria-hidden="true">
+                        <HighlightedName text={formatTallMan(result.name)} term={query} />
+                      </span>
+                    </p>
+                    <p className="line-clamp-1 break-words text-xs font-medium text-[color:var(--text-muted)]">
+                      {result.indication}
+                    </p>
                   </div>
-                ) : null}
-                <div className="flex max-w-full flex-wrap items-center gap-1.5 text-sm-minus font-semibold text-[color:var(--text-heading)]">
-                  <span className="nums line-clamp-2 break-words">{result.dose}</span>
-                  <MaximumDose value={result.ceiling} />
+                  {row.verdict ? <PatientVerdictSignal verdict={row.verdict} /> : null}
+                  {showMatchBadge || result.match !== "Exact clinical fit" || row.badges.length > 0 ? (
+                    <div className="flex max-w-full flex-wrap items-center gap-1.5">
+                      {showMatchBadge || result.match !== "Exact clinical fit" ? (
+                        <ResultMatchBadge result={result} />
+                      ) : null}
+                      <BadgeCluster items={row.badges} compact limit={2} showOverflowCount />
+                    </div>
+                  ) : null}
+                  <div className="flex max-w-full flex-wrap items-center gap-1.5 text-sm-minus font-semibold text-[color:var(--text-heading)]">
+                    <span className="nums line-clamp-2 break-words">{result.dose}</span>
+                    <MaximumDose value={result.ceiling} />
+                  </div>
+                  <p className="line-clamp-2 break-words text-pretty text-xs leading-normal text-[color:var(--text-muted)]">
+                    <ActionToneIcon
+                      tone={result.actionTone}
+                      className="mr-1 inline-block h-3.5 w-3.5 align-[-0.15em]"
+                    />
+                    {result.action}
+                  </p>
                 </div>
-                <p className="line-clamp-2 break-words text-pretty text-xs leading-normal text-[color:var(--text-muted)]">
-                  <ActionToneIcon tone={result.actionTone} className="mr-1 inline-block h-3.5 w-3.5 align-[-0.15em]" />
-                  {result.action}
-                </p>
+                {result.href ? (
+                  <ChevronRight
+                    className="mt-1 h-4 w-4 shrink-0 text-[color:var(--decoration-soft)]"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span className="mt-1 shrink-0 rounded-md bg-[color:var(--surface-subtle)] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
+                    Soon
+                  </span>
+                )}
               </div>
-              {result.href ? (
-                <ChevronRight
-                  className="mt-1 h-4 w-4 shrink-0 text-[color:var(--decoration-soft)]"
-                  aria-hidden="true"
-                />
-              ) : (
-                <span className="mt-1 shrink-0 rounded-md bg-[color:var(--surface-subtle)] px-1.5 py-0.5 text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                  Soon
-                </span>
-              )}
-            </div>
-          );
+            );
 
-          if (result.href) {
+            if (result.href) {
+              return (
+                <Link
+                  key={result.id}
+                  href={result.href}
+                  data-testid={`medication-result-${result.id}-phone`}
+                  data-selected={selected ? "true" : "false"}
+                  data-verdict={row.verdict?.tone}
+                  className={cardClassName}
+                >
+                  {cardContent}
+                </Link>
+              );
+            }
+
             return (
-              <Link
+              <article
                 key={result.id}
-                href={result.href}
                 data-testid={`medication-result-${result.id}-phone`}
                 data-selected={selected ? "true" : "false"}
                 data-verdict={row.verdict?.tone}
                 className={cardClassName}
               >
                 {cardContent}
-              </Link>
+              </article>
             );
-          }
+          })}
+        </div>
+      ) : null}
 
-          return (
-            <article
-              key={result.id}
-              data-testid={`medication-result-${result.id}-phone`}
-              data-selected={selected ? "true" : "false"}
-              data-verdict={row.verdict?.tone}
-              className={cardClassName}
-            >
-              {cardContent}
-            </article>
-          );
-        })}
+      {/* Mounted (so its lookup runs in parallel) but kept out of view until the medication
+          list itself has arrived: it fills in underneath the results, never ahead of them. */}
+      <div hidden={initialCatalogLoading}>
+        <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
       </div>
-
-      <UniversalSearchAlsoMatches modeId="prescribing" query={query} />
 
       <StatusNotice
         realDataReady={realDataReady}

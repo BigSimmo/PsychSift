@@ -9,21 +9,17 @@ import { AdminLoadAlert, AdminPage, AdminRow, AdminSkeleton, adminStyles } from 
 import { AdminQuickAddSheet } from "@/components/admin/admin-quick-add-sheet";
 import { AdminSetupSheet } from "@/components/admin/admin-setup-sheet";
 import { ADMIN_PAGE_HREFS } from "@/components/admin/admin-page-sections";
-import { AdminWorkAndLeaveGroup } from "@/components/admin/junior/work-and-leave-group";
-import { TodayAtAGlance } from "@/components/admin/today/today-at-a-glance";
 import { TodayComingUpModule } from "@/components/admin/today/today-coming-up-module";
 import { TodayNeedsYouModule } from "@/components/admin/today/today-needs-you-module";
 import { TodayNewJobModule } from "@/components/admin/today/today-new-job-module";
 import { TodayRenewNextCard } from "@/components/admin/today/today-renew-next-card";
-import { TodayOvertimeRow, TodayRequirementsModule } from "@/components/admin/today/today-requirements-module";
+import { TodayRequirementsModule } from "@/components/admin/today/today-requirements-module";
 import { TodayStarred } from "@/components/admin/today/today-starred";
 import { PageTitleUnderBand, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
-import { ModeNotice } from "@/components/mode-kit/notice";
 import { todayStateCopy } from "@/components/mode-kit/today/today-copy";
 import { WorkButton, WorkCard, WorkDock, WorkIconCircle } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { cn } from "@/components/ui-primitives";
-import { NewWorkModeOnly } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { adminLoadState, selectAdminOwnEntries, selectAdminSharedEntries } from "@/lib/admin/own-entries";
 import { buildAdminHelpItems } from "@/lib/admin/help-items";
 import { renewalsShowCounts } from "@/lib/admin/renewals-filters";
@@ -35,11 +31,10 @@ import {
   selectRenewNext,
   selectRequirementsSummary,
 } from "@/lib/admin/today-selectors";
-import { useExampleData } from "@/lib/example-data/store";
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
-import { formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
+import { formatZonedLongDay, zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
@@ -51,7 +46,8 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *
  * Phone is one column in that order. From a laptop width it splits into what
  * to act on (left) and what is ahead (right); left then right IS the phone
- * order. The band names the page with the greeting and the date.
+ * order. The band names the page "Admin" (audit D15, 13 Oct 2026): no greeting,
+ * and no date line, which the owner asked to drop from Admin.
  *
  * Fail-closed: while loading, signed out or after a failed load nothing from
  * the reader's records is drawn, never a saved copy (the device cache holds
@@ -72,25 +68,16 @@ function TodayLoadingSkeleton() {
           <AdminSkeleton className="h-3 w-24" />
           <AdminSkeleton className="h-28" />
         </div>
-        <div className="grid grid-cols-3 gap-2" data-testid="admin-today-loading-at-a-glance">
-          {[0, 1, 2].map((index) => (
-            <AdminSkeleton key={index} className="h-17" />
-          ))}
-        </div>
       </div>
       <div className={adminStyles.column} aria-hidden="true">
+        {/* Coming up carries the three counts at its top (12 Oct 2026), so they load here too. */}
         <div className="grid gap-2" data-testid="admin-today-loading-coming-up">
           <AdminSkeleton className="h-3 w-24" />
-          <AdminSkeleton className="h-52" />
+          <AdminSkeleton className="h-64" />
         </div>
       </div>
     </div>
   );
-}
-
-function greetingFor(now: Date, zone: string): string {
-  const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
-  return hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
 }
 
 /** Open to everyone, signed in or not: the crisis lines live on Help. */
@@ -111,8 +98,6 @@ function HelpRow() {
 export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const { zone } = useWorkTimeZone();
   const state = useOnCallEntries();
-  // The example data banner already says these are example records; this notice is for the demo build.
-  const examplesBanner = useExampleData("admin").active;
   const { isAuthenticated } = useAccountData();
   const [tick, setTick] = useState(() => new Date());
   const now = nowProp ?? tick;
@@ -124,9 +109,8 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const today = zonedDateOf(now, zone);
   const load = adminLoadState(state);
   const bandShown = useModeBandShown();
-  const greeting = greetingFor(now, zone);
   const dateEcho = formatZonedLongDay(today);
-  useModeBandHeading({ eyebrow: dateEcho, title: greeting });
+  useModeBandHeading({ title: "Admin" });
 
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const shared = useMemo(() => selectAdminSharedEntries(state), [state]);
@@ -160,18 +144,13 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <AdminPage testId="admin-today-main" wide>
-      {/* The band shows the greeting and date; this stays for screen readers and band-less views. */}
+      {/* The band names the page; this stays for screen readers, and band-less views keep the date. */}
       <header data-testid="admin-today-greeting" className={cn("grid gap-0.5", bandShown && "sr-only")}>
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
-          {greeting}
+          Admin
         </PageTitleUnderBand>
-        <p className="text-sm text-[color:var(--text-muted)]">{dateEcho}</p>
+        {bandShown ? null : <p className="text-sm text-[color:var(--text-muted)]">{dateEcho}</p>}
       </header>
-      {state.demoMode && load === "ready" && !examplesBanner ? (
-        <ModeNotice testId="admin-today-demo-notice">
-          Example records. These dates are made up, and nothing here is your own.
-        </ModeNotice>
-      ) : null}
 
       {load === "loading" ? (
         <TodayLoadingSkeleton />
@@ -199,20 +178,16 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
       ) : (
         <div className={cn(adminStyles.columns, "lg:grid-cols-2")} data-testid="admin-today-ready">
           <div className={adminStyles.column} data-today-column="act">
-            {renewNext ? <TodayRenewNextCard item={renewNext} ownEntries={own} today={today} /> : null}
+            {renewNext ? (
+              <TodayRenewNextCard item={renewNext} ownEntries={own} today={today} counts={showCounts} />
+            ) : null}
             {needsYou ? <TodayNeedsYouModule needsYou={needsYou} today={today} /> : null}
-            <TodayAtAGlance counts={showCounts} />
           </div>
           <div className={adminStyles.column} data-today-column="ahead">
-            <TodayComingUpModule comingUp={comingUp} today={today} />
+            <TodayComingUpModule comingUp={comingUp} today={today} counts={showCounts} />
             {newJobProgress ? <TodayNewJobModule progress={newJobProgress} today={today} /> : null}
             <TodayStarred items={helpItems} testId="admin-today-pinned" />
             <TodayRequirementsModule summary={requirementsSummary} />
-            {/* Every row in it leads to a new work mode screen, so the classic work mode keeps none of it. */}
-            <NewWorkModeOnly>
-              <AdminWorkAndLeaveGroup />
-            </NewWorkModeOnly>
-            <TodayOvertimeRow />
           </div>
         </div>
       )}

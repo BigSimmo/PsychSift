@@ -77,15 +77,14 @@ When you meet a pre-token hardcode (mockups being promoted, old branches), map i
 Named steps live in the `@theme` block of `globals.css` and are **size-only** (no baked
 line-height/tracking — set `leading-*`/`tracking-*` at the call site):
 
-`text-3xs` 10px (floor) · `text-2xs` 11px · (`text-xs` 12 / `text-base` 16 from Tailwind) ·
+`text-3xs` 12px (`0.75rem`, legacy alias of `text-xs`) · `text-2xs` 12px (`0.75rem`, legacy alias of `text-xs`) · (`text-xs` 12px clinical legibility floor / `text-base` 16 from Tailwind) ·
 `text-sm` / `text-sm-minus` 13px (v2 `--text-sm` equals `@theme --text-sm-minus` at
 `0.8125rem`; Tailwind's default `text-sm` 14px is overridden app-wide because `ckb-v2` is
 mounted on `<html>`. Pinned in `tests/ckb-v2-token-contract.test.ts`; do not restore 14px
 and do not alias the two files at each other) · `text-base-minus` 15px · (`text-lg` 18 /
 `text-xl` 20 / `text-2xl` 24 from Tailwind) · `text-lg-minus` 17px · `text-2xl-minus` 22px.
 
-- **10px is the floor.** An 8px `text-4xs` step existed and is retired — indefensible at any
-  density in a clinical product. Do not reintroduce a sub-10px step.
+- **12px (`0.75rem`) is the clinical legibility floor** (owner decision 12 Oct 2026 in `src/app/globals.css`). `text-3xs` and `text-2xs` resolve to `0.75rem` (`12px`, matching `text-xs`) so legacy call sites meet the 12px floor, and an earlier 8px `text-4xs` step is retired. Do not reintroduce any sub-12px step.
 - **Leading** uses Tailwind's own steps plus two named additions for the cases they cannot
   express: `leading-display` (1.05) for large display headings and `leading-prose` (1.6) for
   the `max-w-[68ch]` body measure. Arbitrary `leading-[…]` is at zero in production and
@@ -212,19 +211,19 @@ image"}` — never a possibly-empty variable alone.
 
 ## 8. Do / Don't
 
-| Don't                                                         | Do                                                     |
-| ------------------------------------------------------------- | ------------------------------------------------------ |
-| `border-red-200 bg-red-50 text-red-700`                       | `toneDanger` recipe, or the `--danger*` triad          |
-| `border-cyan-200 bg-cyan-50 text-cyan-700` for identity chips | a categorical `--type-*` triad                         |
-| hand-rolled `role="dialog"` + Escape listener                 | `<Sheet open onClose title …>`                         |
-| `<button>` with a chevron and no `onClick`                    | wire the disclosure or render a static row             |
-| `text-[11px]`                                                 | `text-2xs`                                             |
-| `text-[12px]` (no leading set)                                | `text-xs leading-normal` (pin the leading)             |
-| `rounded-[var(--radius-md)]`                                  | `rounded-md`                                           |
-| `Number(query.page ?? 1)`                                     | `parseInt` + `Number.isFinite` + `>= 1` clamp          |
-| `alt={caption}`                                               | `alt={caption?.trim() \|\| "Clinical document image"}` |
-| new `z-[73]` for a popover                                    | an existing ladder rung, or `Sheet`                    |
-| `shadow-[0_5px_12px_rgba(0,122,120,0.16)]`                    | `shadow-[var(--e1)]`                                   |
+| Don't                                                         | Do                                                              |
+| ------------------------------------------------------------- | --------------------------------------------------------------- |
+| `border-red-200 bg-red-50 text-red-700`                       | `toneDanger` recipe, or the `--danger*` triad                   |
+| `border-cyan-200 bg-cyan-50 text-cyan-700` for identity chips | a categorical `--type-*` triad                                  |
+| hand-rolled `role="dialog"` + Escape listener                 | `<Sheet open onClose title …>`                                  |
+| `<button>` with a chevron and no `onClick`                    | wire the disclosure or render a static row                      |
+| `text-[11px]` (below the 12px clinical legibility floor)      | `text-xs` (or legacy alias `text-2xs`, both `12px` / `0.75rem`) |
+| `text-[12px]` (no leading set)                                | `text-xs leading-normal` (pin the leading)                      |
+| `rounded-[var(--radius-md)]`                                  | `rounded-md`                                                    |
+| `Number(query.page ?? 1)`                                     | `parseInt` + `Number.isFinite` + `>= 1` clamp                   |
+| `alt={caption}`                                               | `alt={caption?.trim() \|\| "Clinical document image"}`          |
+| new `z-[73]` for a popover                                    | an existing ladder rung, or `Sheet`                             |
+| `shadow-[0_5px_12px_rgba(0,122,120,0.16)]`                    | `shadow-[var(--e1)]`                                            |
 
 ## 9. Verification gates — Definition of Done for UI PRs
 
@@ -248,6 +247,8 @@ image"}` — never a possibly-empty variable alone.
 - New component files are **kebab-case** (`master-search-header.tsx`). The 11 existing
   PascalCase files (`ClinicalDashboard.tsx`, `DocumentViewer.tsx`, …) are grandfathered —
   do not rename them; the churn outweighs the benefit.
+- All 26 app modes (`src/lib/app-modes.ts`, `APP_MODES`) share these token, typography, and
+  chrome conventions across their mode homes and result surfaces.
 - Mockups live under `/mockups/*` routes and `*-mockups.tsx` components. They are shipped,
   noindexed (robots.ts + layout metadata), and exempt from token/type-scale rules — but
   **promoting a mockup to production means bringing it onto the token system first** (see the

@@ -19,6 +19,7 @@ import { appModeIcons } from "@/lib/app-mode-icons";
 import { BRAND_NAME } from "@/lib/brand";
 import type { ModeMenuSideId } from "@/lib/phone-mode-groups";
 import { WORK_AREAS, type WorkAreaId } from "@/lib/work-frame/areas";
+import { confirmShellNavigation } from "@/lib/navigation-guards";
 import {
   WORK_SIDE_AREAS,
   WORK_SIDE_NOTIFICATIONS_HREF,
@@ -83,9 +84,11 @@ export function WorkSideMenu({
   const close = () => onOpenChange(false);
 
   const openReminders = () => {
-    close();
     // Only a page that offers Reminders can open it; anywhere else goes to My Day first.
-    if (!workFrameActionHandler("my-day-reminders")) router.push("/my-day");
+    const handled = workFrameActionHandler("my-day-reminders");
+    if (!handled && !confirmShellNavigation()) return;
+    close();
+    if (!handled) router.push("/my-day");
     requestWorkFrameAction("my-day-reminders");
   };
 

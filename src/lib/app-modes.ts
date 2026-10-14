@@ -140,7 +140,7 @@ export const appModeDefinitions = [
     href: "/documents",
     search: {
       kind: "documents",
-      placeholder: "Search source documents...",
+      placeholder: "Search documents...",
       inputAriaLabel: "Search indexed source documents",
       submitIdleLabel: "Docs",
       submitBusyLabel: "Docs",
@@ -234,7 +234,7 @@ export const appModeDefinitions = [
     href: "/differentials",
     search: {
       kind: "differentials",
-      placeholder: "Ask or search a presentation...",
+      placeholder: "Search a presentation...",
       inputAriaLabel: "Search differential presentations, symptoms, and scenarios",
       submitIdleLabel: "Diffs",
       submitBusyLabel: "Diffs",
@@ -258,7 +258,7 @@ export const appModeDefinitions = [
     href: "/dsm",
     search: {
       kind: "dsm",
-      placeholder: "Search DSM diagnoses or criteria...",
+      placeholder: "Search diagnoses...",
       inputAriaLabel: "Search DSM diagnoses, ICD codes, criteria, and categories",
       submitIdleLabel: "DSM",
       submitBusyLabel: "DSM",
@@ -281,7 +281,7 @@ export const appModeDefinitions = [
     href: "/specifiers",
     search: {
       kind: "specifiers",
-      placeholder: "Describe the presentation or search a specifier...",
+      placeholder: "Search specifiers...",
       inputAriaLabel: "Search psychiatric specifiers by presentation or diagnosis",
       submitIdleLabel: "Find",
       submitBusyLabel: "Find",
@@ -304,7 +304,7 @@ export const appModeDefinitions = [
     href: "/formulation",
     search: {
       kind: "formulation",
-      placeholder: "Describe a pattern or clinical clue...",
+      placeholder: "Describe a pattern...",
       inputAriaLabel: "Search formulation mechanisms by pattern or patient language",
       submitIdleLabel: "Find",
       submitBusyLabel: "Find",
@@ -336,7 +336,7 @@ export const appModeDefinitions = [
       // document corpus for dosing/threshold guidance (defaultQueryMode dose_threshold_lookup).
       // The medication registry joins cross-entity search via /api/search/universal instead.
       kind: "documents",
-      placeholder: "Search medication dosing or safety...",
+      placeholder: "Search medications...",
       inputAriaLabel: "Search medication dosing, safety, and monitoring guidance",
       submitIdleLabel: "Meds",
       submitBusyLabel: "Meds",
@@ -385,7 +385,7 @@ export const appModeDefinitions = [
     href: "/calculators",
     search: {
       kind: "calculators",
-      placeholder: "Search calculators by scale, symptom, or indication...",
+      placeholder: "Search calculators...",
       inputAriaLabel: "Search clinical calculators by scale, symptom, or indication",
       submitIdleLabel: "Calculate",
       submitBusyLabel: "Calculate",
@@ -444,7 +444,7 @@ export const appModeDefinitions = [
       // library (not the document corpus), so it borrows the benign "tools" search
       // kind — like Therapy Compass — while keeping the shared composer visible.
       kind: "tools",
-      placeholder: "Search a medicine, condition, therapy or test...",
+      placeholder: "Search factsheets...",
       inputAriaLabel: "Search patient information factsheets",
       submitIdleLabel: "Sheets",
       submitBusyLabel: "Sheets",
@@ -469,7 +469,7 @@ export const appModeDefinitions = [
       // Dictionary owns a local static catalogue. The shared composer uses the
       // benign tools command kind, then appModeHomeHref routes into its results.
       kind: "tools",
-      placeholder: "Search a term or abbreviation...",
+      placeholder: "Term or abbreviation...",
       inputAriaLabel: "Search clinical terms, abbreviations, and topics",
       submitIdleLabel: "Terms",
       submitBusyLabel: "Terms",
@@ -492,7 +492,7 @@ export const appModeDefinitions = [
     href: "/sources",
     search: {
       kind: "tools",
-      placeholder: "Search sources, publishers, or topics...",
+      placeholder: "Search sources...",
       inputAriaLabel: "Search sources, publishers, or topics",
       submitIdleLabel: "Sources",
       submitBusyLabel: "Sources",
@@ -602,18 +602,19 @@ export const appModeDefinitions = [
   {
     id: "psychiatry",
     label: "Psychiatry",
-    description: "Diagnosis, specifiers, formulation, therapy and Mental Health Act forms in one place",
+    description: "Diagnosis, specifiers, formulation, therapy, forms, rating scales and the dictionary in one place",
     href: "/psychiatry",
     search: {
       // Psychiatry is a landing page that gathers existing modes; it has no
       // catalogue of its own, so it borrows the benign "tools" command kind,
       // as On Call and CME do.
       kind: "tools",
-      placeholder: "Open a psychiatry section...",
-      inputAriaLabel: "Open a psychiatry section",
-      submitIdleLabel: "Psychiatry",
-      submitBusyLabel: "Psychiatry",
-      submitAriaLabel: "Open a psychiatry section",
+      // Its box asks a question in Answer (owner request, 13 Oct 2026).
+      placeholder: "Ask a psychiatry question",
+      inputAriaLabel: "Ask a psychiatry question",
+      submitIdleLabel: "Ask",
+      submitBusyLabel: "Asking",
+      submitAriaLabel: "Ask a psychiatry question",
       emptyTitle: "Choose a psychiatry section",
       readyTitle: "Diagnosis, formulation, therapy and forms",
       progressLabel: "Opening the section.",
@@ -629,23 +630,23 @@ export const appModeDefinitions = [
   },
   {
     id: "medicines",
-    label: "Medicines & tools",
-    description: "Medication, calculators, clinical tools, factsheets and the dictionary in one place",
+    label: "Medicines",
+    description: "Medication, factsheets, statewide charts and outside references in one place",
     href: "/medicines",
     search: {
       // Like Psychiatry, a landing page that gathers existing modes, each of
       // which keeps its own search; it borrows the benign "tools" kind.
       kind: "tools",
-      placeholder: "Open a medicines or tools section...",
+      placeholder: "Open a section...",
       inputAriaLabel: "Open a medicines or tools section",
       submitIdleLabel: "Medicines",
       submitBusyLabel: "Medicines",
       submitAriaLabel: "Open a medicines or tools section",
       emptyTitle: "Choose a section",
-      readyTitle: "Medication, calculators, tools and reference",
+      readyTitle: "Medication, factsheets and references",
       progressLabel: "Opening the section.",
       resultKind: "tools",
-      resultHeading: "Medicines & tools",
+      resultHeading: "Medicines",
       // No results page. `/medicines` is a dashboard of links to the sections
       // it gathers, as `/psychiatry` is.
       resultsSurface: "none",

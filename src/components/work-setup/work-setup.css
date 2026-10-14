@@ -315,7 +315,7 @@
   }
 }
 
-/* My Day's "Set up Work" card. */
+/* My Day's "Get set up" checklist: header, one row per step, then the actions. */
 .work-setup-prompt {
   display: flex;
   align-items: center;
@@ -341,8 +341,9 @@
   color: var(--work-ink-muted);
 }
 
-.work-setup-prompt__bar {
-  margin-top: calc(var(--spacing) * 3);
+.work-setup-prompt__list {
+  border-top: 1px solid var(--work-line);
+  border-bottom: 1px solid var(--work-line);
 }
 
 .work-setup-prompt__actions {
@@ -350,7 +351,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: calc(var(--spacing) * 2);
-  margin-top: calc(var(--spacing) * 3);
 }
 
 /* The dock: the quiet choice ("Skip for now", "Not now") sits first at its own

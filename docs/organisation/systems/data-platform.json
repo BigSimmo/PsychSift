@@ -130,6 +130,7 @@
     "tests/bounded-json-body.test.ts",
     "tests/cache-metrics.test.ts",
     "tests/chain-mirror-parity.test.ts",
+    "tests/challenger-m2-empirical-stress.test.ts",
     "tests/client-secret-surface.test.ts",
     "tests/clinical-ask-rate-limit.test.ts",
     "tests/clinical-quality-triage-schema.test.ts",
@@ -138,6 +139,7 @@
     "tests/document-corpus-access-mode.test.ts",
     "tests/documents-is-public.test.ts",
     "tests/drift-*",
+    "tests/edge-function-auth.test.ts",
     "tests/env-*",
     "tests/env.test.ts",
     "tests/error-*",
@@ -171,6 +173,7 @@
     "tests/proxy.test.ts",
     "tests/public-*",
     "tests/recovery-readiness-evidence.test.ts",
+    "tests/restore-edge-function-docs.test.ts",
     "tests/retrieval-access-scope.test.ts",
     "tests/retrieval-owner-filter-guard.test.ts",
     "tests/safe-buffer.test.ts",
@@ -191,7 +194,11 @@
     "tests/supabase-*",
     "tests/upload-size-contract.test.ts",
     "tests/webhooks-*",
+    "tests/work-bookings-organiser-access-contract.test.ts",
+    "tests/work-bookings-retention-contract.test.ts",
     "tests/work-mode-launch*.test.ts",
-    "tests/work-page-favourite-visibility.dom.test.tsx"
+    "tests/work-page-favourite-visibility.dom.test.tsx",
+    "tests/work-roles-hospital-short-staffed.test.ts",
+    "tests/work-roles-people-changes.test.ts"
   ]
 }

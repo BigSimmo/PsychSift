@@ -114,7 +114,9 @@ describe("Empirical Challenger M1-1: Stress-Testing Phone Chrome & Layout Stabil
     });
   });
 
-  describe("2. DSM Compare Strip: Multi-Item Selection & FIFO Lifecycle (0, 1, 2, 3, 4+ items)", () => {
+  // The DSM phone strip is now the shared Compare tray in its "footer-layer"
+  // placement: the same portal host, scroll-hide and safe-area contract.
+  describe("2. DSM Compare tray: Multi-Item Selection & FIFO Lifecycle (0, 1, 2, 3, 4+ items)", () => {
     it("renders null and leaves portal host completely empty when 0 items selected", () => {
       render(
         <PhoneFooterLayerFrame className="phone-viewport-frame">
@@ -122,7 +124,7 @@ describe("Empirical Challenger M1-1: Stress-Testing Phone Chrome & Layout Stabil
         </PhoneFooterLayerFrame>,
       );
 
-      expect(screen.queryByTestId("dsm-search-compare-mobile")).toBeNull();
+      expect(screen.queryByTestId("dsm-compare-tray")).toBeNull();
       const host = screen.getByTestId("phone-footer-layer-host");
       expect(host).toBeEmptyDOMElement();
     });
@@ -135,82 +137,80 @@ describe("Empirical Challenger M1-1: Stress-Testing Phone Chrome & Layout Stabil
         </PhoneFooterLayerFrame>,
       );
 
-      expect(screen.queryByTestId("dsm-search-compare-mobile")).toBeNull();
+      expect(screen.queryByTestId("dsm-compare-tray")).toBeNull();
 
       const compareButtons = screen.getAllByRole("button", { name: /Add .* to comparison/i });
       expect(compareButtons).toHaveLength(4);
 
-      // Select item 1
+      // Select item 1: the tray appears; Compare waits for a second record.
       await user.click(compareButtons[0]);
-      let mobileCompare = screen.getByTestId("dsm-search-compare-mobile");
-      expect(mobileCompare).toBeVisible();
-      expect(mobileCompare).toHaveTextContent("Compare1");
-      expect(mobileCompare).toHaveAttribute("href", "/dsm/compare?ids=diag-1");
+      const tray = screen.getByTestId("dsm-compare-tray");
+      expect(tray).toBeVisible();
+      expect(screen.getByTestId("dsm-compare-tray-count")).toHaveTextContent("1 of 3 selected");
+      expect(screen.getByTestId("dsm-compare-tray-compare")).toHaveAttribute("aria-disabled", "true");
 
       // Verify it is mounted inside phone-footer-layer-host
       const host = screen.getByTestId("phone-footer-layer-host");
-      expect(host).toContainElement(mobileCompare);
+      expect(host).toContainElement(tray);
 
       // Select item 2
       await user.click(compareButtons[1]);
-      mobileCompare = screen.getByTestId("dsm-search-compare-mobile");
-      expect(mobileCompare).toHaveTextContent("Compare2");
-      expect(mobileCompare).toHaveAttribute("href", "/dsm/compare?ids=diag-1%2Cdiag-2");
+      expect(screen.getByTestId("dsm-compare-tray-count")).toHaveTextContent("2 of 3 selected");
+      expect(screen.getByTestId("dsm-compare-tray-compare")).toHaveAttribute(
+        "href",
+        "/dsm/compare?ids=diag-1%2Cdiag-2",
+      );
 
       // Select item 3
       await user.click(compareButtons[2]);
-      mobileCompare = screen.getByTestId("dsm-search-compare-mobile");
-      expect(mobileCompare).toHaveTextContent("Compare3");
-      expect(mobileCompare).toHaveAttribute("href", "/dsm/compare?ids=diag-1%2Cdiag-2%2Cdiag-3");
+      expect(screen.getByTestId("dsm-compare-tray-count")).toHaveTextContent("3 of 3 selected");
+      expect(screen.getByTestId("dsm-compare-tray-compare")).toHaveAttribute(
+        "href",
+        "/dsm/compare?ids=diag-1%2Cdiag-2%2Cdiag-3",
+      );
 
       // Select item 4: FIFO rotation (diag-1 removed, diag-4 added)
       await user.click(compareButtons[3]);
-      mobileCompare = screen.getByTestId("dsm-search-compare-mobile");
-      expect(mobileCompare).toHaveTextContent("Compare3");
-      expect(mobileCompare).toHaveAttribute("href", "/dsm/compare?ids=diag-2%2Cdiag-3%2Cdiag-4");
+      expect(screen.getByTestId("dsm-compare-tray-count")).toHaveTextContent("3 of 3 selected");
+      expect(screen.getByTestId("dsm-compare-tray-compare")).toHaveAttribute(
+        "href",
+        "/dsm/compare?ids=diag-2%2Cdiag-3%2Cdiag-4",
+      );
 
       // Deselect item 2 -> 2 left
-      const removeBtn2 = screen.getByRole("button", { name: /Remove Bipolar I Disorder from comparison/i });
-      await user.click(removeBtn2);
-      mobileCompare = screen.getByTestId("dsm-search-compare-mobile");
-      expect(mobileCompare).toHaveTextContent("Compare2");
+      await user.click(screen.getByRole("button", { name: /Remove Bipolar I Disorder from comparison/i }));
+      expect(screen.getByTestId("dsm-compare-tray-count")).toHaveTextContent("2 of 3 selected");
 
       // Deselect item 3 -> 1 left
-      const removeBtn3 = screen.getByRole("button", { name: /Remove Generalized Anxiety Disorder from comparison/i });
-      await user.click(removeBtn3);
-      mobileCompare = screen.getByTestId("dsm-search-compare-mobile");
-      expect(mobileCompare).toHaveTextContent("Compare1");
+      await user.click(screen.getByRole("button", { name: /Remove Generalized Anxiety Disorder from comparison/i }));
+      expect(screen.getByTestId("dsm-compare-tray-count")).toHaveTextContent("1 of 3 selected");
 
       // Deselect item 4 -> 0 left
-      const removeBtn4 = screen.getByRole("button", { name: /Remove Panic Disorder from comparison/i });
-      await user.click(removeBtn4);
-      expect(screen.queryByTestId("dsm-search-compare-mobile")).toBeNull();
+      await user.click(screen.getByRole("button", { name: /Remove Panic Disorder from comparison/i }));
+      expect(screen.queryByTestId("dsm-compare-tray")).toBeNull();
       expect(host).toBeEmptyDOMElement();
     });
   });
 
-  describe("3. DSM Compare Strip: Portalling, Breakpoints & Positioning Contracts", () => {
-    it("ensures DsmMobileCompareStrip carries the .phone-footer-layer and responsive classes", () => {
+  describe("3. DSM Compare tray: Portalling, Breakpoints & Positioning Contracts", () => {
+    it("ensures the footer-layer tray carries the .phone-footer-layer and safe-area classes", () => {
+      const traySource = readFileSync("src/components/compare/shared-compare-tray.tsx", "utf8");
       const dsmPageSource = readFileSync("src/components/dsm/dsm-search-page.tsx", "utf8");
 
-      expect(dsmPageSource).toContain("<PhoneFooterLayerPortal>");
-      expect(dsmPageSource).toContain("</PhoneFooterLayerPortal>");
+      expect(dsmPageSource).toContain('phonePlacement="footer-layer"');
+      expect(traySource).toContain("<PhoneFooterLayerPortal>");
+      expect(traySource).toContain("</PhoneFooterLayerPortal>");
 
-      const stripLine = dsmPageSource.split("\n").find((line) => line.includes("dsm-mobile-compare-strip")) ?? "";
-      expect(stripLine).toContain("phone-footer-layer");
-      expect(stripLine).toContain("dsm-mobile-compare-strip");
-      expect(stripLine).toContain("pointer-events-none");
-      expect(stripLine).toContain("inset-x-0");
-      expect(stripLine).toContain("z-[var(--z-chrome)]");
-      expect(stripLine).toContain("pl-[max(1rem,env(safe-area-inset-left))]");
-      expect(stripLine).toContain("pr-[max(1rem,env(safe-area-inset-right))]");
-      expect(stripLine).toContain("sm:fixed");
-      expect(stripLine).toContain("lg:hidden");
-
-      expect(dsmPageSource).toContain('className="pointer-events-auto inline-flex min-h-tap w-full');
+      const layerLine = traySource.split("\n").find((line) => line.includes("shared-compare-tray-layer")) ?? "";
+      expect(layerLine).toContain("phone-footer-layer");
+      expect(layerLine).toContain("pointer-events-none");
+      expect(layerLine).toContain("inset-x-0");
+      expect(layerLine).toContain("z-[var(--z-chrome)]");
+      expect(layerLine).toContain("pl-[max(1rem,env(safe-area-inset-left))]");
+      expect(layerLine).toContain("pr-[max(1rem,env(safe-area-inset-right))]");
     });
 
-    it("verifies portalling on phone (<640px) vs inline rendering on tablet/desktop (>=640px)", () => {
+    it("verifies portalling on phone (<640px) vs a floating pill on tablet/desktop (>=640px)", () => {
       // 1) On phone (<640px):
       setupMatchMedia(true);
       const { unmount } = render(
@@ -220,8 +220,7 @@ describe("Empirical Challenger M1-1: Stress-Testing Phone Chrome & Layout Stabil
       );
 
       const phoneHost = screen.getByTestId("phone-footer-layer-host");
-      const comparePhone = screen.getByTestId("dsm-search-compare-mobile");
-      expect(phoneHost).toContainElement(comparePhone);
+      expect(phoneHost).toContainElement(screen.getByTestId("dsm-compare-tray"));
       unmount();
 
       // 2) On tablet/desktop (>=640px):
@@ -233,15 +232,15 @@ describe("Empirical Challenger M1-1: Stress-Testing Phone Chrome & Layout Stabil
       );
 
       const tabletHost = screen.getByTestId("phone-footer-layer-host");
-      const compareTablet = screen.getByTestId("dsm-search-compare-mobile");
-      // Must NOT be in the phone-footer-layer-host; must render inline!
-      expect(tabletHost).not.toContainElement(compareTablet);
+      // Must NOT be in the phone-footer-layer-host: wider screens get the floating pill.
+      expect(tabletHost).not.toContainElement(screen.getByTestId("dsm-compare-tray"));
     });
 
-    it("verifies container clearance replaces max-lg double padding with sm:max-lg:pb-16", () => {
+    it("keeps the last row clear with the tray's own spacer instead of page padding", () => {
       const dsmPageSource = readFileSync("src/components/dsm/dsm-search-page.tsx", "utf8");
-      expect(dsmPageSource).toContain('selected.length > 0 && "sm:max-lg:pb-16"');
+      expect(dsmPageSource).not.toContain("sm:max-lg:pb-16");
       expect(dsmPageSource).not.toContain("max-lg:pb-[calc(4rem+var(--safe-area-bottom))]");
+      expect(readFileSync("src/components/compare/shared-compare-tray.tsx", "utf8")).toContain("-spacer");
     });
   });
 
@@ -267,10 +266,10 @@ describe("Empirical Challenger M1-1: Stress-Testing Phone Chrome & Layout Stabil
 
     it("verifies reduced-motion overrides are present for both media query and data-motion attribute", () => {
       expect(globalsCss).toContain("@media (prefers-reduced-motion: reduce)");
-      expect(globalsCss).toContain('.dsm-mobile-compare-strip[data-scroll-hidden="true"]');
+      expect(globalsCss).toContain('.shared-compare-tray-layer[data-scroll-hidden="true"]');
 
-      expect(globalsCss).toContain('html[data-motion="reduced"] .dsm-mobile-compare-strip');
-      expect(globalsCss).toContain('html[data-motion="reduced"] .dsm-mobile-compare-strip[data-scroll-hidden="true"]');
+      expect(globalsCss).toContain('html[data-motion="reduced"] .shared-compare-tray-layer');
+      expect(globalsCss).toContain('html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"]');
     });
   });
 

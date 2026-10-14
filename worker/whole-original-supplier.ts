@@ -1276,8 +1276,12 @@ function assertFourPageStageTransport(
 ) {
   const issued = plan.issued;
   const fence = {
-    job_kind: "node", job_id: issued.jobId, document_id: issued.documentId, worker_id: issued.workerId,
-    lease_token: issued.firstLeaseToken, expected_generation_id: issued.predecessorGenerationId,
+    job_kind: "node",
+    job_id: issued.jobId,
+    document_id: issued.documentId,
+    worker_id: issued.workerId,
+    lease_token: issued.firstLeaseToken,
+    expected_generation_id: issued.predecessorGenerationId,
     authority_digest: issued.authorityDigest,
   };
   // PostgreSQL jsonb adds separator spaces and expands exponent-form numeric tokens.
@@ -1304,28 +1308,44 @@ function assertFourPageStageTransport(
     return size;
   };
   for (const [, payload] of calls)
-    if (sqlJsonUpperBytes({ p_fence: fence, p_generation: issued.generationId, ...payload }) > PREPARED_SUPPLIER_READBACK_MAX_BYTES)
+    if (
+      sqlJsonUpperBytes({ p_fence: fence, p_generation: issued.generationId, ...payload }) >
+      PREPARED_SUPPLIER_READBACK_MAX_BYTES
+    )
       refuse("stage_transport_limit_exceeded");
   if (artifacts.reduce((sum, artifact) => sum + artifact.byteLength * 2, 0) > PREPARED_SUPPLIER_READBACK_MAX_BYTES)
     refuse("stage_transport_limit_exceeded");
   const identity = {
-    documentId: issued.documentId, ownerId: "00000000-0000-4000-8000-000000000000", generationId: issued.generationId,
-    jobId: issued.jobId, firstLeaseToken: issued.firstLeaseToken, authorityDigest: issued.authorityDigest,
-    sourceSha256: plan.source.sha256, sourceByteLength: plan.source.byteLength,
+    documentId: issued.documentId,
+    ownerId: "00000000-0000-4000-8000-000000000000",
+    generationId: issued.generationId,
+    jobId: issued.jobId,
+    firstLeaseToken: issued.firstLeaseToken,
+    authorityDigest: issued.authorityDigest,
+    sourceSha256: plan.source.sha256,
+    sourceByteLength: plan.source.byteLength,
     sourceExpectationDigest: plan.retentionPacket.registration.sourceExpectationSha256,
   };
   const inventory = {
-    version: 1, documentId: issued.documentId, generationId: issued.generationId, jobId: issued.jobId,
-    firstLeaseToken: issued.firstLeaseToken, authorityDigest: issued.authorityDigest,
-    predecessorGenerationId: issued.predecessorGenerationId, sourceSha256: plan.source.sha256,
-    sourceByteLength: plan.source.byteLength, sourceExpectation: plan.retentionPacket.registration.sourceExpectation,
+    version: 1,
+    documentId: issued.documentId,
+    generationId: issued.generationId,
+    jobId: issued.jobId,
+    firstLeaseToken: issued.firstLeaseToken,
+    authorityDigest: issued.authorityDigest,
+    predecessorGenerationId: issued.predecessorGenerationId,
+    sourceSha256: plan.source.sha256,
+    sourceByteLength: plan.source.byteLength,
+    sourceExpectation: plan.retentionPacket.registration.sourceExpectation,
     sourceExpectationDigest: plan.retentionPacket.registration.sourceExpectationSha256,
-    expectedInventoryDigest: `sha256:${"0".repeat(64)}`, registration: plan.retentionPacket.registration,
+    expectedInventoryDigest: `sha256:${"0".repeat(64)}`,
+    registration: plan.retentionPacket.registration,
     groups: generationEvidenceSlots.map(([family, groupKey]) => {
       const group = plan.declarations.groups.find((value) => value.family === family && value.groupKey === groupKey);
       return { family, groupKey, state: group ? "declared" : "pending", declaration: group?.declaration ?? null };
     }),
-    units: plan.declarations.units, outcomes,
+    units: plan.declarations.units,
+    outcomes,
     artifacts: artifacts.map(({ bytesHex, ...metadata }) => {
       void bytesHex;
       return { ...metadata, sourceSha256: plan.source.sha256 };
@@ -1333,9 +1353,17 @@ function assertFourPageStageTransport(
   };
   // UUID owner and full digest widths bound their actual SQL identities. The closed
   // reader shape is mirrored only for sizing, with an additional 4 KiB margin.
-  const upperBytes = sqlJsonUpperBytes({ ok: true, managed: true, preparedSupplierArtifacts: {
-    version: "ingestion-prepared-supplier-artifacts-v1", identity, inventory, artifacts,
-  } }) + 4096;
+  const upperBytes =
+    sqlJsonUpperBytes({
+      ok: true,
+      managed: true,
+      preparedSupplierArtifacts: {
+        version: "ingestion-prepared-supplier-artifacts-v1",
+        identity,
+        inventory,
+        artifacts,
+      },
+    }) + 4096;
   if (upperBytes > PREPARED_SUPPLIER_READBACK_MAX_BYTES) refuse("stage_transport_limit_exceeded");
 }
 
@@ -1364,8 +1392,10 @@ export async function stageWholeOriginalSupplier(args: {
     ["record_ingestion_generation_outcomes", { p_outcomes: outcomes }],
     ["record_ingestion_generation_accounting", {}],
   ];
-  const exactFourPagePilot = plan.source.sha256 === "sha256:abbc8107a09582e18f36bf4905c75f1fc78af70cd516851b89bff8919ca5bece" &&
-    plan.source.byteLength === 2211561 && plan.retentionPacket.registration.sourceExpectationSha256 ===
+  const exactFourPagePilot =
+    plan.source.sha256 === "sha256:abbc8107a09582e18f36bf4905c75f1fc78af70cd516851b89bff8919ca5bece" &&
+    plan.source.byteLength === 2211561 &&
+    plan.retentionPacket.registration.sourceExpectationSha256 ===
       "sha256:2a5c6ae064ef159f15042105c85edc9da4af6bd231ae1268e703baf0c447e0da";
   if (exactFourPagePilot) assertFourPageStageTransport(plan, artifacts, outcomes, calls);
   // Other sources keep the existing half-envelope reserve for inventory and SQL spacing.

@@ -35,6 +35,8 @@ type Shifts = {
   status: "loading" | "ready" | "signed-out" | "error";
   shifts: Record<string, unknown>[];
   teamLoading: boolean;
+  teamMessage?: string | null;
+  teamRefreshing?: boolean;
   demoMode: boolean;
   sample: boolean;
   reload: () => Promise<void>;
@@ -235,6 +237,10 @@ describe("MyDayWeekPage", () => {
     const row = screen.getByTestId("my-day-week-day-2026-10-03");
     expect(row.textContent).toContain("Date passed");
     expect(row.textContent).not.toContain("Date has passed");
+    // The status shape: a red triangle before a grey word, never an amber word.
+    const state = within(row).getByText("Date passed");
+    expect(state.getAttribute("data-late")).toBe("passed");
+    expect(state.className).not.toContain("warning-text");
   });
 
   it("keeps a shift that ends at midnight on its own day", () => {
@@ -314,7 +320,7 @@ describe("MyDayWeekPage", () => {
   });
 
   it("warns when relocated teaching entries or team shifts could not be read", () => {
-    setShifts({ teamMessage: "Team shifts could not be loaded. Your own shifts are shown." } as Partial<Shifts>);
+    setShifts({ teamMessage: "Team shifts could not be loaded. Your own shifts are shown." });
     setTeaching([], {
       week: { sessions: [], relocated: [], teams: [], relocatedUnavailable: true },
     } as Partial<Teaching>);
@@ -322,6 +328,26 @@ describe("MyDayWeekPage", () => {
     expect(screen.getByTestId("my-day-week-failed-notice").textContent).toContain(
       "Couldn't load: Team shifts and On Call teaching entries. Showing the rest.",
     );
+    expect(screen.queryByTestId("my-day-week-hours")).toBeNull();
+  });
+
+  it("links to Hours with the same Monday-to-Sunday total, and hides it while team shifts refresh", () => {
+    // Saturday 3 Oct (Perth): Monday 28 Sep counts, next Monday 5 Oct does not.
+    const shifts = [
+      shift("mon", "2026-09-28T00:00:00Z", "2026-09-28T08:00:00Z", "day"),
+      shift("sat", "2026-10-03T01:00:00Z", "2026-10-03T09:00:00Z", "day"),
+      shift("next-mon", "2026-10-05T00:00:00Z", "2026-10-05T08:00:00Z", "day"),
+    ];
+    setShifts({ shifts });
+    const { unmount } = render(<MyDayWeekPage now={NOW} />);
+    const link = screen.getByTestId("my-day-week-hours");
+    expect(link.getAttribute("href")).toBe("/my-day/hours");
+    expect(link.textContent).toMatch(/^16 h rostered this week/);
+    unmount();
+
+    setShifts({ shifts, teamRefreshing: true });
+    render(<MyDayWeekPage now={NOW} />);
+    expect(screen.queryByTestId("my-day-week-hours")).toBeNull();
   });
 
   it("lists CPD routines due in the week and dated My Day items, once each", () => {
@@ -354,7 +380,7 @@ describe("MyDayWeekPage", () => {
     expect(screen.getByTestId("my-day-week-sample-notice")).toBeTruthy();
   });
 
-  it("shows example shifts with a demo notice in demo mode", () => {
+  it("shows example shifts with no example notice in demo mode", () => {
     setShifts({
       sample: true,
       demoMode: true,
@@ -362,7 +388,7 @@ describe("MyDayWeekPage", () => {
     });
     render(<MyDayWeekPage now={NOW} />);
     expect(screen.getByTestId("my-day-week-shift-ex")).toBeTruthy();
-    expect(screen.getByTestId("my-day-week-demo-notice")).toBeTruthy();
+    expect(screen.queryByTestId("my-day-week-demo-notice")).toBeNull();
   });
 
   it("shows a skeleton while any source is loading, not empty days", () => {

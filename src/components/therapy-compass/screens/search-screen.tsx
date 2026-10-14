@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 
 import {
@@ -13,12 +15,16 @@ import {
   resultFilterFacetGroup,
 } from "@/components/clinical-dashboard/result-filter-control";
 import { pageContainer } from "@/components/ui-primitives";
+import { therapyScreenHref } from "@/lib/therapy-compass-navigation";
+import { isAdministratorUser } from "@/lib/authorization";
+import { useAuthIfAvailable } from "@/lib/example-data/store";
 
 import { useTcBindings } from "../bindings";
 import { matchesAvailability, matchesTopics } from "../data/select";
 import { hasSearchableTherapyQuery } from "@/lib/therapy-ranking";
 import { LoadingState } from "../ui";
-import { ResultCard } from "../therapy-card";
+import { CompactResultRow } from "../therapy-card";
+import { FilterHighlightNote, FilterNotMatchingHeading } from "@/components/clinical-dashboard/filter-highlight";
 
 // Curated quick-filter tags surfaced as chips (all exist in the tag set).
 // None of the six is ever zero across the whole 205-therapy catalogue, so the
@@ -30,20 +36,51 @@ const MAX_CARDS = 24;
 
 export function SearchScreen() {
   const b = useTcBindings();
+  const isAdministrator = isAdministratorUser(useAuthIfAvailable()?.session?.user);
   const q = b.search.query;
-  const results = b.searchResults;
+  // Nothing typed is browsing, not a search: show the list A to Z with no
+  // "Best match" or "Why matched", so it never reads as the app having picked
+  // something for this patient. Display-only; the search library is untouched.
+  // "Nothing typed" uses the scorer's own normalisation, so punctuation alone
+  // (which the scorer cannot rank on) is browsing too.
+  const browsing = !hasSearchableTherapyQuery(q);
+  const results = useMemo(
+    () =>
+      browsing
+        ? [...b.searchResults].sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }))
+        : b.searchResults,
+    [b.searchResults, browsing],
+  );
   const shown = results.slice(0, MAX_CARDS);
+  // Filters highlight, never hide: therapies the filters pick come first, and
+  // every other therapy matching the query stays listed under "Not matching".
+  // `b.queryMatches` is the query-only set, before any filter.
+  const highlightFilterActive =
+    b.search.tags.length > 0 || b.search.reviewedOnly || b.search.briefOnly || b.search.sheetOnly;
+  const outside = useMemo(() => {
+    if (!highlightFilterActive) return [];
+    const picked = new Set(b.searchResults.map((therapy) => therapy.slug));
+    const rest = b.queryMatches.filter((therapy) => !picked.has(therapy.slug));
+    return browsing
+      ? rest.sort((left, right) => left.name.localeCompare(right.name, "en", { sensitivity: "base" }))
+      : rest;
+  }, [highlightFilterActive, b.searchResults, b.queryMatches, browsing]);
+  // Unlike the primary result list, outside-filter results are explicitly
+  // promised as reachable by the "Not matching" shelf, so do not cap them.
+  const outsideShown = outside;
+  const scopeCount = highlightFilterActive ? results.length + outside.length : results.length;
   // An empty query gives every record the same baseline score and then sorts
   // alphabetically, so only call out a best match when the scorer had real
   // query evidence to rank. Facets narrow the list but do not rank it.
-  const hasRankedQuery = hasSearchableTherapyQuery(q);
+  const hasRankedQuery = !browsing;
   const topics = useMemo(() => new Set(b.search.tags), [b.search.tags]);
   // Filters only — the query is deliberately excluded. It counts toward the
   // sheet's Clear all (see below), because `clearSearch` resets it, but the
   // trigger badge is labelled "N filters active" and a search term is not a
   // filter. Counting it there makes the control announce a state the page is
   // not in, which is the exact defect this screen's sheet was built to fix.
-  const activeFilterCount = b.search.tags.length + Number(b.search.reviewedOnly) + Number(b.search.briefOnly);
+  const activeFilterCount =
+    b.search.tags.length + Number(b.search.reviewedOnly) + Number(b.search.briefOnly) + Number(b.search.sheetOnly);
   // Topics and availability both narrow the same list, so both belong on the
   // shelf. The query is deliberately absent: it is stated in the composer and
   // removing it is not a filter operation.
@@ -59,6 +96,16 @@ export function SearchScreen() {
       : []),
     ...(b.search.briefOnly
       ? [{ id: "brief", groupLabel: "Availability", valueLabel: "Brief available", onRemove: b.toggleBriefOnly }]
+      : []),
+    ...(b.search.sheetOnly
+      ? [
+          {
+            id: "sheet",
+            groupLabel: "Availability",
+            valueLabel: "Patient sheet available",
+            onRemove: b.toggleSheetOnly,
+          },
+        ]
       : []),
   ];
   const filterPanelId = useId();
@@ -165,8 +212,9 @@ export function SearchScreen() {
     <section data-screen-label="Search" className={`${pageContainer} space-y-2.5 sm:space-y-3`}>
       <SearchResultsHeaderBand
         modeId="therapy-compass"
-        query={q}
-        matchCount={results.length}
+        query={browsing ? "" : q}
+        emptyQuerySubject="Therapies"
+        matchCount={scopeCount}
         status={b.error ? "error" : b.loading ? "loading" : "ready"}
         faultBody={b.error ?? undefined}
         onRetry={b.retryData}
@@ -202,7 +250,15 @@ export function SearchScreen() {
         <LoadingState />
       ) : (
         <>
-          {results.length === 0 ? (
+          <FilterHighlightNote
+            active={highlightFilterActive && scopeCount > 0}
+            highlighted={results.length}
+            total={scopeCount}
+            onClear={b.clearSearchFilters}
+            testId="therapy-highlight-note"
+            className="mb-2"
+          />
+          {scopeCount === 0 ? (
             <SearchResultsEmptyState
               modeId="therapy-compass"
               query={q}
@@ -213,18 +269,56 @@ export function SearchScreen() {
               // a query reset as a filter operation.
               onClearSearch={b.clearSearch}
             />
-          ) : (
-            <div className="flex flex-col gap-3.5">
+          ) : results.length > 0 ? (
+            // One hairline card with divided compact rows (no cards inside cards).
+            <ul
+              data-testid="therapy-result-list"
+              className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0"
+            >
               {shown.map((t, index) => (
-                <ResultCard key={t.slug} therapy={t} featured={hasRankedQuery && index === 0} />
+                <CompactResultRow key={t.slug} therapy={t} featured={!browsing && hasRankedQuery && index === 0} />
               ))}
+            </ul>
+          ) : null}
+          {outside.length > 0 ? (
+            <div data-testid="therapy-outside-filter" className="mt-2 grid gap-2">
+              <FilterNotMatchingHeading
+                label="Not matching"
+                count={outside.length}
+                level={2}
+                testId="therapy-outside-heading"
+              />
+              <ul className="m-0 list-none divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-0">
+                {outsideShown.map((t) => (
+                  <CompactResultRow key={t.slug} therapy={t} outsideFilter />
+                ))}
+              </ul>
             </div>
-          )}
+          ) : null}
         </>
       )}
 
       {!b.error && !b.loading ? (
         <UniversalSearchAlsoMatches modeId="therapy-compass" query={q} className="mt-4" />
+      ) : null}
+
+      {/* The sign-off queue left the main tabs (it is editorial work, not a
+          clinical destination). This quiet link keeps it one tap away for a site
+          administrator, the only reader who can sign off (owner decision, 13 Oct 2026). */}
+      {isAdministrator ? (
+        <p className="m-0 pt-2">
+          <Link
+            href={b.workspaceHref(therapyScreenHref("review"))}
+            data-testid="therapy-review-queue-link"
+            className="inline-flex min-h-tap items-center gap-2 rounded-lg px-1 text-sm-minus font-semibold text-[color:var(--text-muted)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+          >
+            <ClipboardCheck aria-hidden="true" className="size-icon-md shrink-0" />
+            Review queue
+            {b.loading || b.error ? null : (
+              <span className="nums text-[color:var(--text-muted)]">· {b.reviewCount} to review</span>
+            )}
+          </Link>
+        </p>
       ) : null}
     </section>
   );

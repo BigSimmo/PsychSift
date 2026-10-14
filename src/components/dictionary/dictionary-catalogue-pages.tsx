@@ -26,6 +26,7 @@ import { SearchResultsHeaderBand } from "@/components/clinical-dashboard/search-
 import { UniversalSearchAlsoMatches } from "@/components/clinical-dashboard/universal-search-also-matches";
 import { DesktopComposerPortalSlot } from "@/components/desktop-composer-portal-slot";
 import { DictionaryResultRow } from "@/components/dictionary/dictionary-result-row";
+import { AlphabetStrip, alphabetStripTargetClass } from "@/components/mode-kit/alphabet-strip";
 import { InPageNavHeader } from "@/components/in-page-nav/in-page-nav-header";
 import { type PageSection } from "@/components/in-page-nav/page-section-index";
 import { useInPageSectionNav } from "@/components/in-page-nav/use-in-page-section-nav";
@@ -48,6 +49,7 @@ import {
   parseDictionaryCatalogueParams,
   type DictionaryCatalogueScope,
   type DictionaryCatalogueSort,
+  type DictionarySearchHit,
 } from "@/lib/dictionary";
 import {
   dictionaryEntryKinds,
@@ -116,6 +118,43 @@ function catalogueNoun(scope: DictionaryCatalogueScope, count: number) {
 }
 
 /**
+ * One hairline card per group of rows. Rows divide themselves with a hairline;
+ * the card is the only box, at every width, so a phone sees the same grouped
+ * list a desktop does rather than an edge-to-edge strip.
+ */
+const dictionaryGroupCard =
+  "min-w-0 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)]";
+
+function dictionaryHitKey(hit: DictionarySearchHit) {
+  return hit.type === "entry"
+    ? `entry-${hit.entry.slug}`
+    : hit.type === "topic"
+      ? `topic-${hit.topic.slug}`
+      : `abbr-${hit.abbreviation}`;
+}
+
+function dictionaryLetterTargetId(letter: string) {
+  return `dictionary-letter-${letter === "#" ? "other" : letter}`;
+}
+
+/**
+ * Splits an alphabetical list into letter groups ("A · 6 terms"). A ranked
+ * search result is one group with no heading: its order is relevance, and
+ * cutting it at letter boundaries would scatter the best match.
+ */
+function groupHitsByLetter(hits: readonly DictionarySearchHit[], alphabetical: boolean) {
+  if (!alphabetical) return [{ letter: null, hits: [...hits] }];
+  const groups: { letter: string | null; hits: DictionarySearchHit[] }[] = [];
+  for (const hit of hits) {
+    const letter = dictionaryBrowseLetter(hit);
+    const last = groups.at(-1);
+    if (last && last.letter === letter) last.hits.push(hit);
+    else groups.push({ letter, hits: [hit] });
+  }
+  return groups;
+}
+
+/**
  * The clinical dictionary catalogue — one destination for the whole list.
  *
  * `/dictionary/search` and `/dictionary/browse` were two routes over one
@@ -144,6 +183,10 @@ export function DictionaryCataloguePage() {
   const [letterOpen, setLetterOpen] = useState(false);
 
   const hits = useMemo(() => dictionaryCatalogue(params), [params]);
+  const hitGroups = useMemo(
+    () => groupHitsByLetter(hits, params.sort === "az" || params.sort === "za"),
+    [hits, params.sort],
+  );
   // Both counts come from the same predicate as the list, so a segment's number
   // is what pressing it actually returns (docs/filter-contract.md). While a
   // query runs they are the matches for that query, not the catalogue totals.
@@ -438,28 +481,40 @@ export function DictionaryCataloguePage() {
         </div>
         <div
           id="dictionary-catalogue-results"
-          className="mx-auto w-full max-w-[var(--content-width-catalogue)] px-0 py-3 sm:px-6 sm:py-4"
+          className="mx-auto w-full max-w-[var(--content-width-catalogue)] px-4 py-3 sm:px-6 sm:py-4"
         >
           {hits.length ? (
-            <section
-              aria-label="Dictionary catalogue"
-              className="border-y border-[color:var(--border)] sm:overflow-hidden sm:rounded-xl sm:border-x sm:bg-[color:var(--surface)]"
-            >
-              {hits.map((hit) => {
-                const key =
-                  hit.type === "entry"
-                    ? `entry-${hit.entry.slug}`
-                    : hit.type === "topic"
-                      ? `topic-${hit.topic.slug}`
-                      : `abbr-${hit.abbreviation}`;
-                return <DictionaryResultRow key={key} hit={hit} />;
-              })}
+            <section aria-label="Dictionary catalogue" className="grid gap-5">
+              {hitGroups.map((group) => (
+                <div
+                  key={group.letter ?? "results"}
+                  id={group.letter ? dictionaryLetterTargetId(group.letter) : undefined}
+                  className={cn("grid min-w-0 gap-2", group.letter && alphabetStripTargetClass)}
+                >
+                  {group.letter ? (
+                    <h2 className="flex items-baseline gap-2.5 px-0.5">
+                      <span className="font-mono text-2xl font-semibold leading-none text-[color:var(--clinical-accent)]">
+                        {group.letter}
+                      </span>
+                      <span className="sr-only"> · </span>
+                      <span className="text-xs font-bold uppercase tracking-kicker text-[color:var(--text-muted)]">
+                        {group.hits.length} {catalogueNoun(params.scope, group.hits.length)}
+                      </span>
+                    </h2>
+                  ) : null}
+                  <div className={dictionaryGroupCard}>
+                    {group.hits.map((hit) => (
+                      <DictionaryResultRow key={dictionaryHitKey(hit)} hit={hit} titleAs={group.letter ? "h3" : "h2"} />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </section>
           ) : (
             // The empty state wears the same card as the result list. Bare on
             // the page background it read as a rendering failure rather than an
             // answer, and the advice named a filter even when none was applied.
-            <div className="border-y border-[color:var(--border)] px-4 py-12 text-center sm:rounded-xl sm:border-x sm:bg-[color:var(--surface)]">
+            <div className={cn(dictionaryGroupCard, "px-4 py-12 text-center")}>
               {searching ? (
                 <Search className="mx-auto size-icon-xl text-[color:var(--decoration-soft)]" aria-hidden="true" />
               ) : (
@@ -522,6 +577,17 @@ export function DictionaryCataloguePage() {
             </div>
           )}
         </div>
+        {/* Phone A to Z strip (audit item 13): only while the list is grouped by
+            letter, and only the letters that are there. */}
+        {hitGroups.some((group) => group.letter) ? (
+          <AlphabetStrip
+            listId="dictionary-catalogue-results"
+            testId="dictionary-alphabet-strip"
+            entries={hitGroups.flatMap((group) =>
+              group.letter ? [{ letter: group.letter, targetId: dictionaryLetterTargetId(group.letter) }] : [],
+            )}
+          />
+        ) : null}
         {/* The catalogue shell is `bleed`, so every band owns its own container.
             Without one this cross-mode tray stretched the full viewport while
             the result list above it stayed inside the catalogue width, which
@@ -531,7 +597,8 @@ export function DictionaryCataloguePage() {
           <UniversalSearchAlsoMatches modeId="dictionary" query={params.q} className="mt-4" />
         </div>
         <InformationPageFooter>
-          All published entries link a source · Specialist clinical approval remains pending
+          Reference definitions, not clinical guidance or decision support · All published entries link a source ·
+          Specialist clinical approval remains pending
         </InformationPageFooter>
       </InformationPageShell>
       <ResultFilterSheet
@@ -637,14 +704,14 @@ export function DictionaryTopicsPage() {
                 <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-            <section className="border-b border-[color:var(--border)]" aria-label="Clinical topics">
+            <section className={cn(dictionaryGroupCard, "mt-4")} aria-label="Clinical topics">
               {visible.map((topic) => {
                 const entries = dictionaryTopicEntries(topic);
                 return (
                   <Link
                     key={topic.slug}
                     href={`/dictionary/topics/${topic.slug}`}
-                    className="group grid min-h-[6rem] grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--border)] py-3 last:border-b-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+                    className="group grid min-h-[6rem] grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-[color:var(--border)] px-3 py-3 last:border-b-0 hover:bg-[color:var(--surface-subtle)] sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[color:var(--focus)]"
                   >
                     <span className="grid h-10 w-10 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
                       <Layers3 className="h-5 w-5" aria-hidden="true" />
@@ -900,15 +967,16 @@ export function DictionaryTopicDetailPage({ topicSlug }: { topicSlug: string }) 
                 <section key={group.kind} aria-labelledby={`group-${group.kind}`}>
                   <h2
                     id={`group-${group.kind}`}
-                    className="border-b border-[color:var(--border)] pb-2 text-sm font-extrabold uppercase tracking-kicker text-[color:var(--text-muted)]"
+                    className="px-0.5 pb-2 text-sm font-extrabold uppercase tracking-kicker text-[color:var(--text-muted)]"
                   >
                     {dictionaryKindLabel(group.kind)}
                   </h2>
-                  <div>
+                  <div className={dictionaryGroupCard}>
                     {group.entries.map((entry) => (
                       <DictionaryResultRow
                         key={entry.slug}
                         hit={{ type: "entry", entry, score: 10, reason: topic.title }}
+                        titleAs="h3"
                       />
                     ))}
                   </div>

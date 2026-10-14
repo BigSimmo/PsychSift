@@ -9,6 +9,7 @@ import { cn } from "@/components/ui-primitives";
 import { appModeDefinition } from "@/lib/app-modes";
 import { formatMyDayDue } from "@/lib/my-day/merge";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
+import { formatPerthDay, PERTH_TIME_ZONE, perthDateOf, perthTimeOf } from "@/lib/perth-time";
 
 /*
  * The small pieces the My Day page, its dashboard and the home card share.
@@ -27,6 +28,27 @@ export function useMyDayNow(nowProp?: Date): Date {
     return () => clearInterval(timer);
   }, [nowProp]);
   return nowProp ?? tick;
+}
+
+/**
+ * How old My Day's data is, for the "Updated … · On Call, Roster" line (Ward Flow review item 5,
+ * owner approved 12 Oct 2026): "just now", then "4 min ago", then the clock time once it is an
+ * hour old, with its day ("at 14:05, Tue 13 Oct"). `at` is when the sources last answered; `clock` is that moment as "14:05".
+ */
+export function myDayUpdatedAgo(
+  now: Date,
+  at: number | null,
+  clock: string | null,
+  zone: string = PERTH_TIME_ZONE,
+): string {
+  if (at === null) return clock ? `at ${clock}` : "just now";
+  const minutes = Math.floor((now.getTime() - at) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  // Past the hour the clock alone is ambiguous (yesterday's 14:05 reads like today's), so give the day too.
+  // Time and day both come from `at` in the caller's work zone (the page passes its useWorkTimeZone zone),
+  // so a zone change can't mix the two and nothing reads an ambient zone.
+  return `at ${perthTimeOf(at, zone)}, ${formatPerthDay(perthDateOf(at, zone))}`;
 }
 
 export function myDayModeLabel(mode: MyDaySourceMode): string {

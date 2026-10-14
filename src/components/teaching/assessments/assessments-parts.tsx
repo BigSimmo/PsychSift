@@ -71,9 +71,14 @@ export const secondaryText = "text-xs leading-snug text-[color:var(--text-muted)
 export const titleText = "text-sm font-bold leading-snug text-[color:var(--text-heading)]";
 export const labelText = "text-2xs font-bold uppercase tracking-label text-[color:var(--text-muted)]";
 
+/**
+ * Status shapes (12 Oct 2026): colour is kept for the three statuses that carry a shape (amber dot,
+ * red triangle, green tick). An "accent" word such as "Not started" or "Book your meeting" is a
+ * plain grey word, so it never reads as done in the mode's green.
+ */
 const PILL_TONES: Record<PillTone, WorkTone> = {
   neutral: "neutral",
-  accent: "mode",
+  accent: "neutral",
   warm: "amber",
   ok: "green",
   bad: "red",
@@ -242,7 +247,7 @@ export function StepRow({
   const goes = ("href" in action && !!action.href) || ("onClick" in action && !!action.onClick);
   const Glyph = state === "ok" ? Check : state === "now" ? ArrowRight : Clock;
   return (
-    <li className={cn("min-w-0", state === "lock" && "[&_.work-row__text]:opacity-60")}>
+    <li className="min-w-0" data-dim={state === "lock" ? "" : undefined}>
       <RowShell action={action}>
         <span
           aria-hidden="true"

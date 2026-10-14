@@ -1306,6 +1306,151 @@ describe("design-system adoption manifest", () => {
     }
   });
 
+  it("preserves indexed import, word-boundary and cyclic barrel evidence", () => {
+    const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-adoption-index-"));
+    try {
+      writeFixtureFile(
+        fixtureRoot,
+        "docs/design-system/adoption-contract.json",
+        JSON.stringify({
+          schemaVersion: 7,
+          componentFamilies: { Gamma: "fixture", Beta: "fixture", Alpha: "fixture" },
+          productionSurfaces: [],
+          requiredProofCategories: [],
+          baseline: { visualBaselineStatus: "not-committed" },
+        }),
+      );
+      writeFixtureFile(
+        fixtureRoot,
+        ".design-sync/config.json",
+        JSON.stringify({
+          pkg: "@fixture/ui",
+          componentSrcMap: {
+            Alpha: "src/components/barrel.tsx",
+            Beta: "src/components/barrel.tsx",
+            Gamma: "src/components/fallback.tsx",
+          },
+        }),
+      );
+      writeFixtureFile(fixtureRoot, ".design-sync/entry.tsx", 'export { Alpha, Beta, Gamma } from "@fixture/ui";');
+      writeFixtureFile(
+        fixtureRoot,
+        "src/app/layout.tsx",
+        'import "./shared"; const fragment = "ckb-"; export default () => <html className={fragment + "v2"} />;',
+      );
+      writeFixtureFile(
+        fixtureRoot,
+        "src/app/page.tsx",
+        'import { Alpha, Beta as Alias } from "@/components/barrel"; import { Gamma } from "@/components/fallback"; const lazy = import("./lazy");',
+      );
+      writeFixtureFile(fixtureRoot, "src/app/shared.tsx", 'import * as Kit from "@/components/barrel";');
+      writeFixtureFile(fixtureRoot, "src/app/lazy.tsx", 'import { Beta } from "@/components/barrel";');
+      writeFixtureFile(fixtureRoot, "src/components/reference.tsx", 'import Kit from "./barrel";');
+      writeFixtureFile(fixtureRoot, "src/components/barrel.tsx", 'export * from "./alpha"; export * from "./beta";');
+      writeFixtureFile(fixtureRoot, "src/components/alpha.tsx", 'export function Alpha() {} export * from "./beta";');
+      writeFixtureFile(fixtureRoot, "src/components/beta.tsx", 'export function Beta() {} export * from "./alpha";');
+      writeFixtureFile(fixtureRoot, "src/components/fallback.ts", "export function Gamma() {}");
+      writeFixtureFile(
+        fixtureRoot,
+        "tests/a.test.ts",
+        "// AlphaLong Beta Gamma; comments also count as textual proof.",
+      );
+      writeFixtureFile(fixtureRoot, "tests/z.test.ts", "// Alpha Alpha Beta Gamma");
+
+      const manifest = buildAdoptionManifest({ root: fixtureRoot });
+      expect(manifest.components.map((component: { name: string }) => component.name)).toEqual([
+        "Alpha",
+        "Beta",
+        "Gamma",
+      ]);
+      expect(manifest.components[0]).toMatchObject({
+        sourceExported: true,
+        directImportFiles: ["src/app/page.tsx", "src/app/shared.tsx", "src/components/reference.tsx"],
+        productImportFiles: ["src/app/page.tsx", "src/app/shared.tsx"],
+        testFiles: ["tests/z.test.ts"],
+      });
+      // The existing scanner matches local named-import spelling, so an aliased
+      // Beta import alone does not add Beta evidence; namespace/default imports do.
+      expect(manifest.components[1]).toMatchObject({
+        sourceExported: true,
+        directImportFiles: ["src/app/lazy.tsx", "src/app/shared.tsx", "src/components/reference.tsx"],
+        productImportFiles: ["src/app/lazy.tsx", "src/app/shared.tsx"],
+        testFiles: ["tests/a.test.ts", "tests/z.test.ts"],
+      });
+      expect(manifest.components[2]).toMatchObject({
+        sourceExported: false,
+        directImportFiles: ["src/app/page.tsx"],
+        productImportFiles: ["src/app/page.tsx"],
+        testFiles: ["tests/a.test.ts", "tests/z.test.ts"],
+      });
+      expect(manifest.globalShell).toMatchObject({ literalCkbV2: false, dynamicCkbV2: true });
+    } finally {
+      fs.rmSync(fixtureRoot, { force: true, recursive: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it("observes source, proof, registration and contract edits on the next build", () => {
+    const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), "design-system-adoption-rebuild-"));
+    try {
+      const contract = {
+        schemaVersion: 7,
+        componentFamilies: { Alpha: "original" },
+        productionSurfaces: [],
+        requiredProofCategories: [],
+        baseline: { visualBaselineStatus: "not-committed" },
+      };
+      const config = { pkg: "@fixture/ui", componentSrcMap: { Alpha: "src/components/alpha.tsx" } };
+      writeFixtureFile(fixtureRoot, "docs/design-system/adoption-contract.json", JSON.stringify(contract));
+      writeFixtureFile(fixtureRoot, ".design-sync/config.json", JSON.stringify(config));
+      writeFixtureFile(fixtureRoot, ".design-sync/entry.tsx", 'export { Alpha } from "@fixture/ui";');
+      writeFixtureFile(fixtureRoot, ".design-sync/previews/Alpha.tsx", 'import { Alpha } from "@fixture/ui";');
+      writeFixtureFile(fixtureRoot, "src/app/layout.tsx", 'export default () => <html className="ckb-v2" />;');
+      writeFixtureFile(fixtureRoot, "src/app/page.tsx", 'import { Alpha } from "@/components/alpha";');
+      writeFixtureFile(fixtureRoot, "src/components/alpha.tsx", "export function Alpha() {}");
+      writeFixtureFile(fixtureRoot, "tests/proof.test.ts", "// Alpha");
+
+      const before = buildAdoptionManifest({ root: fixtureRoot });
+      expect(before.components[0]).toMatchObject({
+        sourceExported: true,
+        designSync: { previewValid: true },
+        testFiles: ["tests/proof.test.ts"],
+      });
+      expect(before.globalShell.literalCkbV2).toBe(true);
+
+      writeFixtureFile(fixtureRoot, "src/components/alpha.tsx", "export function Other() {}");
+      expect(buildAdoptionManifest({ root: fixtureRoot }).components[0].sourceExported).toBe(false);
+
+      contract.componentFamilies.Alpha = "updated";
+      config.componentSrcMap.Alpha = "src/components/renamed.tsx";
+      writeFixtureFile(fixtureRoot, "docs/design-system/adoption-contract.json", JSON.stringify(contract));
+      writeFixtureFile(fixtureRoot, ".design-sync/config.json", JSON.stringify(config));
+      writeFixtureFile(fixtureRoot, ".design-sync/entry.tsx", "export {};");
+      writeFixtureFile(fixtureRoot, ".design-sync/previews/Alpha.tsx", 'import { Other } from "@fixture/ui";');
+      writeFixtureFile(
+        fixtureRoot,
+        "src/app/layout.tsx",
+        'const fragment = "ckb-"; export default () => <html className={fragment + "v2"} />;',
+      );
+      writeFixtureFile(fixtureRoot, "src/app/page.tsx", 'import { Alpha } from "@/components/renamed";');
+      writeFixtureFile(fixtureRoot, "src/components/renamed.tsx", "export function Other() {}");
+      writeFixtureFile(fixtureRoot, "tests/proof.test.ts", "// AlphaLong");
+
+      const after = buildAdoptionManifest({ root: fixtureRoot });
+      expect(after.components[0]).toMatchObject({
+        family: "updated",
+        source: "src/components/renamed.tsx",
+        sourceExported: false,
+        entryExported: false,
+        designSync: { previewValid: false },
+        productImportFiles: ["src/app/page.tsx"],
+        testFiles: [],
+      });
+      expect(after.globalShell).toMatchObject({ literalCkbV2: false, dynamicCkbV2: true });
+    } finally {
+      fs.rmSync(fixtureRoot, { force: true, recursive: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
   // Full-repo rebuild + deep equality is intentionally heavy; under coverage instrumentation
   // of scripts/** this exceeds Vitest's default 30s (CI Unit coverage on 4b85f0e2 timed out).
   it("is deterministic and records declared global v2 adoption", { timeout: 90_000 }, () => {
@@ -1518,7 +1663,10 @@ describe("design-system adoption manifest", () => {
     // 215 -> 218: hospital-side roles (Admin People and roles, Hospital, and its Sick calls page).
     // 218 -> 219: My Day's full-size Calendar (`/my-day/calendar`).
     // 219 -> 221: Hospital's Short-staffed days and New starters pages.
-    expect(manifest.routeCoverage.discovered).toHaveLength(221);
+    // 221 -> 223: Job applications and its CV moved to /admin/applications (the old /cme addresses
+    // stay as redirects).
+    // 223 -> 224: Clinical Forms' Clock tab (`/forms/clock`), the MHA clock under Forms.
+    expect(manifest.routeCoverage.discovered).toHaveLength(224);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

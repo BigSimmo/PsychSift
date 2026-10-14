@@ -35,7 +35,7 @@ function actionSamples(id: string, userId: string, date: string): RosterAction[]
     })),
     { action: "open.post", assignmentId: id },
     { action: "open.report", assignmentId: id },
-    ...(["open.claim", "open.approve", "open.decline", "open.cancel"] as const).map((action) => ({
+    ...(["open.claim", "open.approve", "open.decline", "open.cancel", "open.withdraw"] as const).map((action) => ({
       action,
       openShiftId: id,
     })),

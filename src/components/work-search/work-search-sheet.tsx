@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Sparkles,
   TriangleAlert,
-  Users,
   WifiOff,
   X,
   type LucideIcon,
@@ -34,13 +33,13 @@ import {
   type RefObject,
 } from "react";
 
-import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
 import {
   mayRecordRecentSearches,
   readAppPreferences,
   subscribeAppPreferences,
 } from "@/components/clinical-dashboard/use-app-preferences";
-import { WorkButton, WorkEmpty, WorkTag } from "@/components/mode-kit/work";
+import { WorkButton, WorkEmpty } from "@/components/mode-kit/work";
+import { useRecentPages } from "@/components/recent-pages/use-recent-pages";
 import { useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useWorkSearchRecords } from "@/components/work-search/use-work-search-records";
 import { AnswerCard } from "@/components/work-search/work-search-answer-card";
@@ -59,9 +58,11 @@ import { WorkSearchGlyph } from "@/components/work-search/work-search-glyph";
 import { workFrameIcons } from "@/components/work-frame/work-frame-icons";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
+import { appModeIcons } from "@/lib/app-mode-icons";
 import { appModeHomeHref } from "@/lib/app-modes";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
 import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/perth-time";
+import { RECENT_PAGE_SECTION_LABEL, RECENT_PAGES_SHOWN } from "@/lib/recent-pages";
 import { AGREEMENT_PAGE_HREF } from "@/lib/work-profile/agreement-answers";
 import { answerWorkQuestion, type WorkAnswer } from "@/lib/work-search/answers";
 import { workSearchAreaLabels, workSearchAreas, type WorkAreaRead, type WorkSearchArea } from "@/lib/work-search/model";
@@ -427,6 +428,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   const keepRecents = useSyncExternalStore(subscribeAppPreferences, readSaveRecentSearches, () => false);
   const [storedRecents, setRecents] = useState(() => (keepRecents ? recentsFor(epoch) : []));
   const recents = keepRecents ? storedRecents : [];
+  // Pages opened lately, across Work and Clinical: paths and page titles only, never anything typed.
+  const recentPages = useRecentPages({ limit: RECENT_PAGES_SHOWN });
   const [scrolled, setScrolled] = useState(false);
   const [chipsMore, setChipsMore] = useState(false);
   /** The query "Search for … exactly" was tapped for: one-letter-out matching is off until it changes. */
@@ -435,7 +438,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
   /** "Cleared what you typed", shown until the next keystroke. */
   const [clearedNotice, setClearedNotice] = useState(() => clearedNoticeOwed(epoch));
   const [offline, setOffline] = useState(isOffline);
-  const [signInOpen, setSignInOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -706,7 +708,11 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   return (
                     <li key={page.id} data-mode-identity={page.identity}>
                       <Link
-                        href={page.href}
+                        href={
+                          page.id === "day:my-day-profile" && /\bprivacy\b/i.test(query)
+                            ? "/my-day/profile?tab=privacy"
+                            : page.href
+                        }
                         onClick={onPlainClick(openResult)}
                         data-work-search-result=""
                         className="work-row scroll-mb-6 scroll-mt-40"
@@ -786,7 +792,8 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
         <span aria-hidden="true" className="work-ic" data-tone="amber">
           <ShieldAlert aria-hidden="true" strokeWidth={2} />
         </span>
-        <span className="min-w-0 flex-1">
+        {/* The field's description too (aria-describedby), so the warning is written once (design audit D24). */}
+        <span id="work-search-patient-note" className="min-w-0 flex-1">
           <b className="block text-sm-minus font-bold text-[color:var(--warning)]">Looks like patient details</b>
           <span className="mt-0.5 block text-xs leading-snug text-[color:var(--text)]">
             Not searched or saved. Please don&apos;t type patient details here.
@@ -985,9 +992,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   patient ? "caret-[color:var(--warning)]" : "caret-[color:var(--mode-identity)]",
                 )}
               />
-              <span id="work-search-patient-note" className="sr-only">
-                {patient ? "Looks like patient details. Not searched or saved." : ""}
-              </span>
               {typed ? (
                 <button
                   type="button"
@@ -1028,6 +1032,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               )}
               role="group"
               aria-label="Filter by area"
+              data-large-text-wrap=""
             >
               {(["all", ...tabAreas] as const).map((area) => {
                 const selected = filter === area;
@@ -1092,22 +1097,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
               body="It looked like patient details, so it was removed and not saved."
               testId="work-search-cleared"
             />
-          ) : null}
-          {records.sample && !typed ? (
-            <Notice
-              icon={Users}
-              title="Sample records, not yours"
-              body="Sign in to see your own."
-              action={
-                <button type="button" onClick={() => setSignInOpen(true)} className="work-button" data-variant="tinted">
-                  Sign in
-                </button>
-              }
-            />
-          ) : records.anySample && !records.sample && !patient ? (
-            <p role="note" className="m-0 px-1 text-2xs font-semibold text-[color:var(--text-muted)]">
-              Some of what&apos;s shown here is sample data, not yours.
-            </p>
           ) : null}
           {patient ? null : (
             <AreaNotices areas={records.areas} missing={answer?.missing} offline={offline} onRetry={retryAll} />
@@ -1200,10 +1189,7 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                 </div>
               ) : nextUp.length > 0 || loading ? (
                 <section className="grid gap-2">
-                  <SectionLabel id="work-search-next">
-                    Next up
-                    {records.sample ? <WorkTag tone="neutral">Sample</WorkTag> : null}
-                  </SectionLabel>
+                  <SectionLabel id="work-search-next">Next up</SectionLabel>
                   {nextUp.length > 0 ? (
                     <ListCard labelledBy="work-search-next" onKeyDown={(event) => moveFocus(event, inputRef)}>
                       {nextUp.map((item) => (
@@ -1213,6 +1199,31 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
                   ) : (
                     <SkeletonRows count={3} />
                   )}
+                </section>
+              ) : null}
+              {recentPages.length > 0 ? (
+                <section className="grid gap-2" data-testid="work-search-recent-pages">
+                  <SectionLabel id="work-search-recent-pages">Recent pages</SectionLabel>
+                  <ul aria-labelledby="work-search-recent-pages" className="work-card work-rows">
+                    {recentPages.map((page) => {
+                      const Icon = appModeIcons[page.section];
+                      const sectionLabel = RECENT_PAGE_SECTION_LABEL[page.section];
+                      return (
+                        <ActionRow
+                          key={page.path}
+                          icon={<Icon aria-hidden="true" strokeWidth={2} />}
+                          area={page.mode === "work" ? page.section : undefined}
+                          tone={page.mode === "work" ? undefined : "neutral"}
+                          href={page.path}
+                          onNavigate={() => close(true)}
+                          sub={sectionLabel !== page.title ? sectionLabel : undefined}
+                          weight="semibold"
+                        >
+                          {page.title}
+                        </ActionRow>
+                      );
+                    })}
+                  </ul>
                 </section>
               ) : null}
               <section className="grid gap-2">
@@ -1380,7 +1391,6 @@ export function WorkSearchSheet({ open, onClose, currentArea, returnFocusRef }: 
           </div>
         </div>
       </div>
-      <AccountSetupDialog open={signInOpen} onClose={() => setSignInOpen(false)} />
     </Sheet>
   );
 }

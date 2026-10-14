@@ -41,7 +41,7 @@ describe("RosterFatigueRestRing", () => {
       { id: "s2", startsAt: "2026-10-05T14:00:00+08:00", endsAt: "2026-10-05T22:00:00+08:00" },
     ];
     render(<RosterFatigueRestRing shifts={shifts} now={now} />);
-    expect(screen.getByText(/10 h safe recovery interval/i)).toBeTruthy();
+    expect(screen.getByText(/10 h minimum rest/i)).toBeTruthy();
     expect(screen.getByText("6.0h")).toBeTruthy(); // 6 hours remaining
   });
 
@@ -77,7 +77,7 @@ describe("RosterFatigueRestRing", () => {
     expect(result.totalTurnaroundMs).toBe(0);
     expect(result.isBreach).toBe(true);
     render(<RosterFatigueRestRing shifts={shifts} now={now} />);
-    expect(screen.queryByText(/10 h safe recovery interval/i)).toBeNull();
+    expect(screen.queryByText(/10 h minimum rest/i)).toBeNull();
   });
 
   it("uses the overlapping preceding shift rather than an older safe gap", () => {

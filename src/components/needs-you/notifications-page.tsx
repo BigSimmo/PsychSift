@@ -32,14 +32,15 @@ export function NotificationsPage() {
   const bandShown = useModeBandShown();
   return (
     <InformationPageShell testId="notifications-page" width="bleed" className="bg-[color:var(--work-wash)]">
-      <div className={`${PAGE_WIDTH} notify-page`}>
+      <div className={`${PAGE_WIDTH} notify-page`} data-page-width="reading" data-page-padded="">
         <header className={bandShown ? "sr-only" : "grid gap-0.5 px-1"} data-testid="notifications-page-header">
           <PageTitleUnderBand className="text-2xl font-bold tracking-tight text-[color:var(--work-ink)]">
             Notifications
           </PageTitleUnderBand>
-          <p className="text-sm text-[color:var(--text-muted)]">{description}</p>
+          {/* With the band on screen its line above the title already says this (design audit D24). */}
+          {bandShown ? null : <p className="text-sm text-[color:var(--text-muted)]">{description}</p>}
         </header>
-        <NotificationCentreBody feed={feed} active onNavigate={stay} />
+        <NotificationCentreBody feed={feed} active onNavigate={stay} surface="page" />
       </div>
     </InformationPageShell>
   );

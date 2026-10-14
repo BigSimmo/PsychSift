@@ -46,9 +46,9 @@ import {
   type WorkArea,
   type WorkFrameItem,
 } from "@/lib/work-frame/areas";
+import { universalHeaderLeadingSlotId } from "@/components/work-frame/universal-header-slot";
 
-/** Where the top bar draws a page's back button in place of the menu button. */
-export const universalHeaderLeadingSlotId = "universal-header-leading";
+export { universalHeaderLeadingSlotId };
 
 export type WorkFrameHeaderProps = {
   readonly area: WorkArea;
@@ -89,7 +89,7 @@ function WorkFrameTabName({ item, className }: { readonly item: WorkFrameItem; r
 
 /**
  * The work-mode header band (work-mode redesign, owner request 6 Oct 2026):
- * the area's pale tint with a dot texture and a faint line drawing, an eyebrow
+ * the area's pale tint and a faint line drawing, an eyebrow
  * and title with one optional glass action, then the three pinned tabs and
  * More, which opens the area's whole navigation as a bottom sheet.
  *

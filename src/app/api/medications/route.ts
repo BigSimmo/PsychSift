@@ -274,9 +274,9 @@ export async function GET(request: Request) {
         // turns it into the "Retained copy" notice.
         ...(canonical.degraded ? { retainedSnapshot: true as const } : {}),
       },
-      // Not widened to cover `canonical.degraded`: `fixture` lengthens public caching, which would
-      // pin a stale seed list in front of a database that may recover in thirty seconds.
-      { request, fixture: observed.source === "seed_uninitialized" },
+      // `fixture` lengthens public caching for canonical public responses, but is withheld when
+      // `canonical.degraded` is true to avoid pinning a temporary seed fallback.
+      { request, fixture: !canonical.degraded },
     );
   } catch (error) {
     // A cancelled request is not a fault: answer 499, exactly as the catch in /api/search does.

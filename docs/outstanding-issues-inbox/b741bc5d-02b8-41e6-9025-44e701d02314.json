@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "b741bc5d-02b8-41e6-9025-44e701d02314",
+  "createdOn": "2026-10-11",
+  "action": "done",
+  "payload": {
+    "id": "#JQ3KY7",
+    "outcome": "Refreshed automated-review coverage guidance in AGENTS.md and docs/agents/pull-request-workflow.md while maintaining the 24,000-byte AGENTS budget",
+    "baseRowFingerprint": "adc71f22f5b4c7159b54f0614e72f2a2371bc2d9022bc81690ccd9b526c6b93e"
+  }
+}

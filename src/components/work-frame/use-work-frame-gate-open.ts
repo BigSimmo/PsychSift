@@ -24,7 +24,9 @@ export function useWorkFrameGateOpen(): (gate: WorkFrameGate | undefined) => boo
   const signedIn = useSignedIn();
   const heldRoles = useHeldWorkRoles(signedIn);
   const examplesOn = useExampleData().mode === "on";
-  const hospitalRole = examplesOn || !signedIn || heldRoles.some((role) => HOSPITAL_ROLES.has(role));
+  // Signed out, or signed in with no role, these pages are a dead end, so they stay out of the menus
+  // (audit 11 Oct 2026). Example data switched on still opens them: the example hospital is a full view.
+  const hospitalRole = examplesOn || heldRoles.some((role) => HOSPITAL_ROLES.has(role));
   const hospitalHub = hospitalRole || heldRoles.some((role) => HOSPITAL_HUB_ROLES.has(role));
   const courses = useCourseOrganiser();
   const courseOrganiser = courses.organiser || courses.sample;

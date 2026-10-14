@@ -42,7 +42,7 @@ RUN python3 -m venv /opt/docling-venv \
 # Prefetch docling's models now: the egress-blocked run cannot reach HuggingFace,
 # so a missing model at run time would fail every docling conversion.
 #
-# The model weights are NOT pinned by the hash-locked docling==2.124.0 requirement —
+# The model weights are NOT pinned by the hash-locked docling== requirement —
 # that lock pins the Python client only. `docling-tools models download` takes no
 # version argument of any kind (there is no --revision flag), so it fetches whatever
 # the HuggingFace repositories hold on build day. This comment previously claimed the

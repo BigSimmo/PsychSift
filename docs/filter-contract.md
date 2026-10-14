@@ -24,7 +24,16 @@ are. Adding the facet kind changed no rendered output.
 **Which is which is a question about the data, not the UI.** Differentials'
 All / Presentations / Diagnoses is a lens: a result cannot be both. Formulation's twelve domains
 are facets: a mechanism routinely carries four. Rendering facets as radios — which formulation
-does today — tells the reader they cannot hold two domains at once, which is false.
+used to do — told the reader they could not hold two domains at once, which was false (`formulation-home.tsx` now uses `resultFilterFacetGroup` and derives options from live mechanism tags).
+
+### Filters highlight, never hide (Oct 2026 clinical-safety rule)
+
+Across clinical browse and search surfaces where hiding a non-matching row could conceal a relevant differential, diagnostic criterion, or therapy option, **filters highlight and reorder rather than remove rows** (`src/components/clinical-dashboard/filter-highlight.tsx`, documented in [`docs/search-chrome-behaviour.md`](search-chrome-behaviour.md) under _"Filters highlight, never hide"_):
+
+- **Differentials stream (`differential-stream-workspace.tsx`):** Urgency and chapter filters order matching entries first and keep non-matching entries visible below a divider (`"Not emergent"` for the emergent urgency filter, or `"Not matching"` otherwise) with their titles muted via `--text-muted` (never `opacity`).
+- **DSM search (`dsm-reference-page.tsx`):** Category and support filters keep all query-matching DSM entries visible, elevating filter-matching entries above a `"Not matching"` divider with non-matching titles muted via `--text-muted`.
+- **Therapy search (`therapy-compass-home.tsx`):** Topic, reviewed, and handout filters elevate matching therapy skills/modules first and keep non-matching items visible below a `"Not matching"` divider with `--text-muted` titles.
+- **Live announcement and counts:** When highlight-mode filters are active, a polite live note announces `"N of M highlighted, all rows stay"` (`FilterHighlightSummaryNote`), while option counts report the highlighted match count `N` and the results bar reports the full scoped total `M`.
 
 ### There is no `navigate` kind, and that is the point
 
@@ -66,7 +75,8 @@ for one-of-N dimensions are wrong and are replaced as each mode adopts.
 ## 3. Counts, and the rule that makes them safe
 
 A count goes in `option.hint` and answers **"how many would I have if I ticked this as well?"** —
-the same predicate as the filter. Under OR-within-group, adding an option to an already-selected
+the same predicate as the filter (whether the filter narrows the visible list or highlights matching
+rows above a divider). Under OR-within-group, adding an option to an already-selected
 group _widens_, so a count derived by narrowing the current subset would disagree with what the
 click actually does. `projectSmartTagFacetGroups` in `src/lib/document-tags.ts` is the reference
 implementation.
@@ -77,8 +87,8 @@ the failure rather than patching it:
 
 > **Derive the option list from the data. Never declare it.**
 
-Formulation declares twelve domains; three of them — Biological, Social and Cultural — match
-none of the twelve mechanisms, so the sheet offers three controls that can never return anything.
+Formulation originally declared twelve domains; three of them — Biological, Social and Cultural — matched
+none of the twelve mechanisms, so the sheet offered three controls that could never return anything (`formulation-home.tsx` now derives its domain facet options from the mechanisms data so zero-member domains are omitted).
 Documents derives its facets from the current match set, so a zero-member facet cannot exist.
 Derive, and the union count is always safe.
 
@@ -126,10 +136,8 @@ the _scoped_ count: "how many of the 232 survive the current urgency selection" 
 in memory, which is the megabyte this client must not import. The total alone cannot satisfy
 section 3.
 
-Differentials **browse** (`differential-stream-workspace.tsx`) does get scope, because its server
-component hands it a model carrying matched and unmatched entries together, distinguished by
-`isMatch` — which is exactly the in-memory universe the search page lacks. Services can do this for
-the same reason: its 219-item registry is already client-side.
+Differentials **browse** (`differential-stream-workspace.tsx`) already has the full stream model in memory: its server
+component hands it matched and unmatched entries together, and under the Oct 2026 _"Filters highlight, never hide"_ rule its urgency and chapter filters highlight matching entries first while keeping non-matching entries visible below a `"Not emergent"` or `"Not matching"` divider (`--text-muted` titles, `"N of M highlighted, all rows stay"`). Services keeps the scope segment because its 219-item registry is client-side and its filters narrow the displayed list.
 
 The search page therefore takes the reach action instead — a `secondaryAction` reading "Browse the
 full differentials catalogue", uncounted, routing through `differentialRouteWithQuery` so the query
@@ -225,8 +233,9 @@ the thing the reader could no longer see or reach. The anchored panel uses `useD
 reader has already moved it.
 
 **A mode opts in by passing `anchorRef`** — the same ref given to its wide-screen
-`ResultFilterTrigger`. Omit it and the rail is unchanged, which is what keeps this additive; only
-differentials search passes it today.
+`ResultFilterTrigger`. Only Differentials currently passes `anchorRef` to `ResultFilterSheet`.
+Forms, Services, DSM, Specifiers, Medication, Formulation, Therapy, Applications, Factsheets,
+and Documents omit it and use the default right-hand drawer rail from `sm` up.
 
 Two things not to undo:
 
@@ -238,16 +247,19 @@ Two things not to undo:
 
 ## 6. Invariants
 
-- **`footerNote` counts what the filters actually govern.** Specifiers currently reports
-  `results.length + catalogueMatches.length` while the groups narrow only `results` — the sheet
-  claims to scope a list it half controls. A mode must not report a total its filters cannot move.
+- **`footerNote` counts what the filters actually govern.** Specifiers uses `matchingTotal`: the
+  active scope's filtered `guideMatches.length` or `catalogueMatches.length`. The catalogue
+  matches are filtered by category and reviewed status before counting. On highlight-mode surfaces (Differentials stream, DSM search,
+  Therapy search), the summary note states `"N of M highlighted, all rows stay"`. A mode must not
+  report a total its filters cannot move.
 - **`onClearAll` never touches the query.** Clearing filters and clearing a search are different
   intentions. Therapy-compass now uses the shared sheet's filter-only clear; the composer's
   explicit "Clear search" action remains responsible for deleting the query.
-- **One trigger component.** `ResultFilterTrigger`. Therapy-compass now uses the shared trigger
-  at every breakpoint, both slots rendered from one helper, as forms, on-call and documents do.
-  Its former desktop facet rail is gone: an always-open rail made Therapy the only mode whose
-  filters were expanded by default, and it pushed the first result below the fold.
+- **One trigger component.** `ResultFilterTrigger`. Therapy Compass, Forms, and Documents render
+  both breakpoint slots through their `renderFilterTrigger` helpers. Differentials, Services,
+  and DSM render equivalent `ResultFilterTrigger` elements directly in each slot. Therapy's
+  former desktop facet rail is gone: an always-open rail made Therapy the only
+  mode whose filters were expanded by default, and it pushed the first result below the fold.
 - **Tap targets are `min-h-tap` (48px) on phone.** Do not relax to 44px for generic WCAG
   guidance; it reintroduces a known `ui-smoke` flake.
 

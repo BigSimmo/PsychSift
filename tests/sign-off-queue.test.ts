@@ -47,7 +47,12 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // The 89 written items and universals were signed off; 514 placeholders remain.
   specifiers: 514,
   // 54 records were signed off. The 47 that remain have no sign-off tool.
-  therapy: 47,
+  // The audit-remediation source-governance pass removed the wake-therapy record's only
+  // reference (an "uploaded guide" note) and cleared its sign-off, so it is back in the
+  // queue with no references for the review tool to check against: 48. Five more records
+  // edited on #3510 went back to needs_review rather than being re-signed (owner decision,
+  // 13 Oct 2026 10:23 PM AWST): 53.
+  therapy: 53,
   // All 93 signable candidates were reviewed; six Indigenous sources remain held.
   sources: 6,
 };

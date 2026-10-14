@@ -3,8 +3,9 @@
 // The Psychiatry hub is a front door to the sections it gathers. Every section
 // keeps its own address, so each section tile must point at that section's
 // existing home, and the hub must list exactly the sections the menu's
-// Psychiatry group lists. The Ask page's question box runs the cited answer
-// search, and the on-device history only shows what this device recorded.
+// Psychiatry group lists. Home's question box runs the cited answer search,
+// Home reaches every builder and comparison the retired Tools page listed, and
+// the on-device history only shows what this device recorded.
 
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,10 +18,15 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(pageParam ? { page: pageParam } : {}),
 }));
 
-import { PsychiatryHome, type PsychiatrySectionCounts } from "@/components/psychiatry/psychiatry-home";
+import {
+  parsePsychiatryPage,
+  PsychiatryHome,
+  type PsychiatrySectionCounts,
+} from "@/components/psychiatry/psychiatry-home";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups } from "@/lib/phone-mode-groups";
 import { clearPsychiatryVisits, recordPsychiatryVisit } from "@/lib/psychiatry-hub/visits";
+import { desktopPageComposerSlotId } from "@/lib/mode-home-composer";
 
 const counts: PsychiatrySectionCounts = {
   dsm: 146,
@@ -30,6 +36,8 @@ const counts: PsychiatrySectionCounts = {
   formulation: 12,
   therapy: 205,
   forms: 54,
+  calculators: 14,
+  dictionary: 300,
 };
 const now = new Date("2026-10-03T04:00:00Z");
 
@@ -43,7 +51,7 @@ afterEach(cleanup);
 
 describe("PsychiatryHome", () => {
   it("links every section in the menu's Psychiatry group to its existing home, with its count", () => {
-    render(<PsychiatryHome counts={counts} now={now} initialPage="tools" />);
+    render(<PsychiatryHome counts={counts} now={now} />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Psychiatry" })).toBeTruthy();
 
@@ -56,6 +64,8 @@ describe("PsychiatryHome", () => {
       "formulation",
       "therapy-compass",
       "forms",
+      "calculators",
+      "dictionary",
       "first-nations",
     ]);
 
@@ -70,11 +80,12 @@ describe("PsychiatryHome", () => {
     expect(links[1]).toHaveTextContent("201 diagnoses · 31 presentations");
   });
 
-  it("sends a question to the cited answer search", () => {
+  it("draws no search box of its own: the shared Clinical box asks the question", () => {
+    // Owner request, 13 Oct 2026: the bottom box on phones, under the band from
+    // tablet up, and no second box at the top of the page.
     render(<PsychiatryHome counts={counts} now={now} />);
-    fireEvent.change(screen.getByTestId("psychiatry-ask-input"), { target: { value: "  lithium monitoring  " } });
-    fireEvent.click(screen.getByTestId("psychiatry-ask-submit"));
-    expect(push).toHaveBeenCalledWith(appModeHomeHref("answer", { query: "lithium monitoring", run: true }));
+    expect(screen.queryByRole("search")).toBeNull();
+    expect(screen.getByTestId("psychiatry-composer")).toHaveAttribute("id", desktopPageComposerSlotId);
   });
 
   it("shows no history figures until this device has recorded something", () => {
@@ -112,26 +123,49 @@ describe("PsychiatryHome", () => {
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Form 1A")).toBeTruthy();
     expect(within(screen.getByTestId("psychiatry-mha-links")).getByText("Opened once on this phone")).toBeTruthy();
 
+    // With something in it, Continue sits at the top of the content, before "For a shift".
+    const continueCard = screen.getByTestId("psychiatry-card-continue");
+    const shiftCard = screen.getByTestId("psychiatry-card-shift");
+    expect(continueCard.compareDocumentPosition(shiftCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
     fireEvent.click(screen.getByTestId("psychiatry-continue-clear"));
     expect(screen.queryByTestId("psychiatry-resume")).toBeNull();
   });
 
-  it("counts this month's records and the last seven days on the Tools page", () => {
-    const at = now.getTime() - 60 * 60 * 1000;
-    recordPsychiatryVisit({ href: "/forms/form-1a", title: "Form 1A", kind: "forms", at: at - 60_000 });
-    recordPsychiatryVisit({ href: "/dsm/diagnoses/mdd", title: "Major depressive disorder", kind: "dsm", at });
-    render(<PsychiatryHome counts={counts} now={now} initialPage="tools" />);
-    expect(screen.getByTestId("psychiatry-month")).toHaveTextContent("2 records opened so far this month");
-    expect(screen.getByTestId("psychiatry-card-week")).toHaveTextContent("· 2 in all");
-    expect(screen.getByTestId("psychiatry-card-week")).toHaveTextContent(
-      "Counted on this phone while Save recent searches is on.",
-    );
-  });
-
-  it("says in one line when nothing has been opened yet on the Tools page", () => {
-    render(<PsychiatryHome counts={counts} now={now} initialPage="tools" />);
-    expect(screen.getByTestId("psychiatry-week-empty")).toHaveTextContent("Nothing opened here yet.");
-    expect(screen.queryByTestId("psychiatry-month")).toBeNull();
+  it("reaches every builder and comparison the retired Tools page listed, from Home", () => {
+    render(<PsychiatryHome counts={counts} now={now} />);
+    const builders = within(screen.getByRole("list", { name: "Builders" }));
+    const hrefs = builders.getAllByRole("link").map((link) => link.getAttribute("href"));
+    for (const href of [
+      "/specifiers/builder",
+      "/specifiers/compare",
+      "/formulation/builder",
+      "/formulation/map",
+      "/therapy-compass/pathways",
+      "/therapy-compass/compare",
+      "/therapy-compass/recommend",
+      "/differentials/presentations",
+      "/dsm/compare",
+    ]) {
+      expect(hrefs).toContain(href);
+    }
+    // First Nations is listed once, in Sections, not again in Builders.
+    expect(hrefs).not.toContain(appModeHomeHref("first-nations"));
+    expect(
+      within(screen.getByRole("list", { name: "Psychiatry sections" }))
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href") === appModeHomeHref("first-nations")),
+    ).toHaveLength(1);
+    // One link to the plain list of every tool.
+    expect(screen.getAllByRole("link", { name: "All tools" })).toHaveLength(1);
+    expect(screen.getByTestId("psychiatry-all-tools")).toHaveAttribute("href", "/tools");
+    // The Act, the MHA clock and Safety plan each sit once, in their own sections.
+    expect(screen.getByTestId("psychiatry-mha-act")).toHaveAttribute("href", "/forms/act");
+    expect(screen.getByTestId("psychiatry-shift-mha-clock")).toHaveAttribute("href", "/psychiatry/mha-clock");
+    expect(screen.getByTestId("psychiatry-shift-safety-plan")).toHaveAttribute("href", "/safety-plan");
+    // The weekly chart and the Medicines signpost went with the Tools page.
+    expect(screen.queryByTestId("psychiatry-card-week")).toBeNull();
+    expect(screen.queryByTestId("psychiatry-medicines-signpost")).toBeNull();
   });
 
   it("switches search off and says so when the browser is offline", () => {
@@ -139,26 +173,35 @@ describe("PsychiatryHome", () => {
     try {
       render(<PsychiatryHome counts={counts} now={now} />);
       expect(screen.getByTestId("psychiatry-offline")).toHaveTextContent("Search needs a connection.");
-      expect(screen.getByTestId("psychiatry-ask-input")).toBeDisabled();
-      expect(screen.queryByTestId("psychiatry-ask-try")).toBeNull();
+      cleanup();
+      render(<PsychiatryHome counts={counts} now={now} initialPage="saved" />);
+      expect(screen.getByTestId("psychiatry-offline")).toHaveTextContent("Search needs a connection.");
     } finally {
       onLine.mockRestore();
     }
   });
 
-  it("draws no tab row of its own: the band's Ask, Tools and Saved tabs switch the page by ?page=", () => {
+  it("draws no tab row of its own: the band's Home and Saved tabs switch the page by ?page=", () => {
     render(<PsychiatryHome counts={counts} now={now} />);
     expect(screen.queryByRole("tablist")).toBeNull();
-    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Psychiatry sections" })).toBeTruthy();
   });
 
-  it("opens the page named by ?page=, and falls back to Ask for anything else", () => {
+  it("opens the page named by ?page=, and falls back to Home for anything else", () => {
     pageParam = "saved";
     const { unmount } = render(<PsychiatryHome counts={counts} now={now} />);
-    expect(screen.queryByTestId("psychiatry-ask-input")).toBeNull();
+    expect(screen.queryByRole("list", { name: "Psychiatry sections" })).toBeNull();
     unmount();
     pageParam = "nonsense";
     render(<PsychiatryHome counts={counts} now={now} />);
-    expect(screen.getByTestId("psychiatry-ask-input")).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Psychiatry sections" })).toBeTruthy();
+  });
+
+  it("lands an old ?page=tools link on Home, with the tools it used to hold", () => {
+    expect(parsePsychiatryPage("tools", "saved")).toBe("ask");
+    pageParam = "tools";
+    render(<PsychiatryHome counts={counts} now={now} />);
+    expect(screen.getByRole("list", { name: "Psychiatry sections" })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Builders" })).toBeTruthy();
   });
 });

@@ -606,7 +606,12 @@ export async function upsertDocumentEnrichment(args: {
     if (!args.fence || !args.ingestionEgress || typeof args.indexGenerationId !== "string") {
       throw new IngestionAttemptError("ingestion_attempt_required");
     }
-    return upsertFencedDocumentEnrichment({ ...args, fence: args.fence, ingestionEgress: args.ingestionEgress, indexGenerationId: args.indexGenerationId });
+    return upsertFencedDocumentEnrichment({
+      ...args,
+      fence: args.fence,
+      ingestionEgress: args.ingestionEgress,
+      indexGenerationId: args.indexGenerationId,
+    });
   }
   return upsertLegacyDocumentEnrichment(args);
 }

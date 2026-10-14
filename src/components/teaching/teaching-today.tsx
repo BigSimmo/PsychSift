@@ -1,19 +1,20 @@
 "use client";
 
-import { CalendarDays, Check, Network, QrCode } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, Network, QrCode } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
-import { ModeBandAction } from "@/components/mode-band/mode-band";
-import { WorkGlassButton, WorkMiniRing, WorkRing, useWorkUndoToast } from "@/components/mode-kit/work";
+import { WorkMiniRing, WorkRing, useWorkUndoToast } from "@/components/mode-kit/work";
 import { ModeModuleSkeleton } from "@/components/mode-kit/module-skeleton";
 import { LogToCpdSheet } from "@/components/teaching/log-to-cpd-sheet";
 import { recordChart } from "@/components/teaching/my-record-model";
 import {
-  T5Date,
   T5Heading,
   T5Icon,
   T5Kicker,
+  T5Link,
   T5List,
   T5Meta,
   T5Meter,
@@ -27,7 +28,14 @@ import { ActionStrip, type TeachingAction } from "@/components/teaching/teaching
 import { catchUpCount } from "@/components/teaching/teaching-catch-up";
 import { TeachingCalendarSheet } from "@/components/teaching/teaching-calendar-sheet";
 import { TeachingCodeSheet, type CodeSheetMark } from "@/components/teaching/teaching-code-sheet";
-import { addDays, dayParts, mondayOf, perthDateKey, perthTime } from "@/components/teaching/teaching-dates";
+import {
+  addDays,
+  dayParts,
+  mondayOf,
+  perthDateKey,
+  perthTime,
+  shortDayLabel,
+} from "@/components/teaching/teaching-dates";
 import { TeachingContextBar } from "@/components/teaching/teaching-modules";
 import { NeedsYou } from "@/components/teaching/teaching-needs-you";
 import { withUnit } from "@/components/teaching/teaching-number";
@@ -60,6 +68,7 @@ import {
   useTeachingSignedOut,
 } from "@/components/teaching/use-teaching-sample";
 import { useTeachingWeek, type TeachingWeekState } from "@/components/teaching/use-teaching-week";
+import { cn } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 import {
@@ -244,6 +253,7 @@ function TodayBody({
           signedOut={signedOut}
           onRetry={view.retry}
           onCalendar={() => setCalendarOpen(true)}
+          then={next}
         />
       ) : (
         <TeachingStateNotice
@@ -252,9 +262,8 @@ function TodayBody({
           onSwitchService={teamValue !== ALL_TEAMS ? () => setTeam(ALL_TEAMS) : undefined}
         />
       )}
-      {next ? <NextForYou session={next} /> : null}
       {/* No session ahead still leaves past ones to log, give feedback on or catch up on. */}
-      <NeedsYou live={live} today={today} catchUp={catchUp} />
+      <NeedsYou live={live} today={today} now={now} catchUp={catchUp} />
       {hero ? (
         <T5List testId="teaching-rest-of-week">
           <T5Row
@@ -273,7 +282,8 @@ function TodayBody({
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              href="/teaching/whats-on"
+              // The count is for this Monday's week; on a Sunday Week would otherwise open the coming one.
+              href={`/teaching/week?view=other&week=${mondayOf(today)}`}
             />
           ) : null}
         </T5List>
@@ -304,6 +314,7 @@ function TodayHero({
   signedOut,
   onRetry,
   onCalendar,
+  then,
 }: {
   session: SessionSummaryRead;
   week: TeachingWeekResponse;
@@ -316,6 +327,8 @@ function TodayHero({
   signedOut: boolean;
   onRetry: () => void;
   onCalendar: () => void;
+  /** The session after this one that is yours to present, else simply the next: one line in the hero. */
+  then: SessionSummaryRead | null;
 }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -463,6 +476,7 @@ function TodayHero({
           </p>
         ) : null}
         {text.note ? <T5Meta>{text.note}</T5Meta> : null}
+        {then ? <ThenLine session={then} heroDate={perthDateKey(session.startsAt)} /> : null}
         {offlineCheckIn ? <T5Meta>Check in needs signal. Without code works for 7 days.</T5Meta> : null}
         {signedOut && canCheckIn && !mark && checkInWindow ? <T5Meta>Check in after you sign in</T5Meta> : null}
         <ActionStrip
@@ -482,17 +496,13 @@ function TodayHero({
         ) : null}
       </T5Panel>
       {canCheckIn && !mark && !offline && checkInWindow ? (
-        <ModeBandAction>
-          {() => (
-            <WorkGlassButton
-              icon={QrCode}
-              label="Type a check-in code"
-              className="work-band__action"
-              onClick={() => setCodeOpen(true)}
-              testId="teaching-today-code"
-            />
-          )}
-        </ModeBandAction>
+        // Under the session, not in the band's corner, which is for Favourite only (audit D18).
+        <div className="flex justify-end">
+          <T5Link onClick={() => setCodeOpen(true)} testId="teaching-today-code">
+            <QrCode aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+            Type a check-in code
+          </T5Link>
+        </div>
       ) : null}
       {canCheckIn ? (
         <TeachingCodeSheet
@@ -528,28 +538,32 @@ function TodayHero({
   );
 }
 
-/** The next session after the hero that is yours to present, else simply the next one. */
-function NextForYou({ session }: { session: SessionSummaryRead }) {
-  const { day, month } = dayParts(perthDateKey(session.startsAt));
+/**
+ * "Then you present Journal club at 14:00": the session after the hero, inside it, in place of a
+ * separate Next for you card (Work mode simplify plan, 12 Oct 2026). A presenter's talk opens
+ * Presenting, where the patient-details check lives.
+ */
+function ThenLine({ session, heroDate }: { session: SessionSummaryRead; heroDate: string }) {
+  const date = perthDateKey(session.startsAt);
+  const words = `Then ${session.isPresenter ? "you present " : ""}${session.title}${
+    date === heroDate ? "" : `, ${shortDayLabel(date)}`
+  } at ${perthTime(session.startsAt)}`;
+  const href = session.isPresenter
+    ? `/teaching/teach?talk=${encodeURIComponent(session.occurrenceId)}`
+    : sessionHref(session);
+  if (!href) return <T5Meta>{words}</T5Meta>;
   return (
-    <T5Section label="Next for you" testId="teaching-next-for-you">
-      <T5List>
-        <T5Row
-          lead={<T5Date day={day} month={month} />}
-          title={session.isPresenter ? `You present: ${session.title}` : session.title}
-          meta={[
-            perthTime(session.startsAt),
-            session.venue ?? (session.hasJoinLink ? "Online" : "Room to confirm"),
-          ].join(" · ")}
-          // A presenter's next talk opens Presenting, where the patient-details check lives.
-          href={
-            session.isPresenter
-              ? `/teaching/teach?talk=${encodeURIComponent(session.occurrenceId)}`
-              : sessionHref(session)
-          }
-        />
-      </T5List>
-    </T5Section>
+    <Link
+      href={href}
+      data-testid="teaching-hero-then"
+      className={cn(
+        focusRing,
+        "-mx-1 -my-2.5 flex min-h-12 items-center gap-1 rounded-lg px-1 text-xs leading-snug font-bold text-inherit no-underline",
+      )}
+    >
+      <span className="min-w-0 break-words">{words}</span>
+      <ChevronRight aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={2.5} />
+    </Link>
   );
 }
 

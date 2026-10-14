@@ -1,16 +1,16 @@
 "use client";
 
-import { Check, ChevronLeft, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
+import { Check, Clock, Copy, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
-import { ContextualBackLink } from "@/components/contextual-back-link";
 import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkBody, WorkDock, WorkIconCircle, WorkSectionLabel, WorkTag } from "@/components/mode-kit/work";
 import { announce } from "@/components/ui/live-announcer";
 import { useOptionalToast } from "@/components/ui/toast";
 import { cn } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
+import { WorkPageBack } from "@/components/work-frame/work-page-back";
 
 /**
  * Small, flat, presentational pieces shared by two CPD features (Send to AMA
@@ -39,6 +39,7 @@ export function CpdFeaturePage({
   title,
   testId,
   back,
+  identity = "cme",
   children,
 }: {
   readonly eyebrow: string;
@@ -50,25 +51,16 @@ export function CpdFeaturePage({
    * is one and falls back to `href`, so it never dead-ends.
    */
   readonly back?: CpdFeatureBack;
+  /** The area colour. Job applications lives in Admin, so it takes Admin's colour. */
+  readonly identity?: "cme" | "my-work";
   readonly children: ReactNode;
 }) {
   useModeBandHeading({ eyebrow, title });
   return (
-    <main data-mode-identity="cme" data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
+    <main data-mode-identity={identity} data-testid={testId} className="min-w-0 [overflow-wrap:anywhere]">
       <WorkBody>
-        {back ? (
-          <ContextualBackLink
-            fallbackHref={back.href}
-            data-testid="cpd-feature-back"
-            className={cn(
-              focusRing,
-              "-ml-1 inline-flex min-h-12 w-fit items-center gap-1 text-sm font-medium text-[color:var(--mode-identity)] no-underline",
-            )}
-          >
-            <ChevronLeft aria-hidden="true" className="size-icon-sm" />
-            {back.label}
-          </ContextualBackLink>
-        ) : null}
+        {/* One way back: drawn in the top bar, not as a second link here. */}
+        {back ? <WorkPageBack href={back.href} label={back.label} testId="cpd-feature-back" /> : null}
         <h1 className="sr-only">{title}</h1>
         {children}
       </WorkBody>
@@ -112,7 +104,7 @@ export function DateTile({ on, label }: { readonly on: string; readonly label: s
     <span
       role="img"
       aria-label={label}
-      className="grid w-11 shrink-0 justify-items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1"
+      className="grid w-12 shrink-0 justify-items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1"
     >
       <span aria-hidden="true" className="text-2xs font-semibold leading-4 text-[color:var(--mode-identity)]">
         {month}
@@ -134,7 +126,7 @@ export function Tag({ tone = "neutral", children }: { readonly tone?: TagTone; r
 /** "Not checked" honesty marker, in the warning tint. */
 export function PendingTag({ children }: { readonly children: ReactNode }) {
   return (
-    <WorkTag tone="amber">
+    <WorkTag tone="amber" plain>
       <span className="inline-flex items-center gap-1">
         <Clock aria-hidden="true" strokeWidth={2.2} className="size-3" />
         {children}

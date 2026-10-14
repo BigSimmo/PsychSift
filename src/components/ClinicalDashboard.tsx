@@ -5,7 +5,16 @@ import { useSubmittedModeSearch } from "@/components/clinical-dashboard/use-subm
 import { useSettingsState } from "./clinical-dashboard/SettingsStateProvider";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CircleAlert, Clock3, ExternalLink, FileText, FolderOpen, RefreshCw, Search, Activity } from "lucide-react";
-import { type CSSProperties, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
 import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
@@ -34,11 +43,16 @@ import {
   resolveDashboardModeSurface,
 } from "@/components/clinical-dashboard/dashboard-mode-surface";
 import * as SidebarDialogs from "@/components/clinical-dashboard/lazy-sidebar-dialogs";
+import { TWO_PANE_SIDE_MENU } from "@/lib/work-frame/side-menu-choice";
 import { prefetchTwoPaneSideMenu, TwoPaneSideMenuHost } from "@/components/work-frame/lazy-work-side-nav";
 import { TwoPaneSideRail, type TwoPaneMenuPane } from "@/components/work-frame/two-pane-side-strip";
 import { useNewWorkMode } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { useSettingsGuideFlow } from "@/components/clinical-dashboard/use-settings-guide-flow";
-import { deriveSidebarIdentity, ClinicalDesktopSidebar } from "@/components/clinical-dashboard/ClinicalSidebar";
+import {
+  deriveSidebarIdentity,
+  ClinicalDesktopSidebar,
+  ClinicalMobileSidebar,
+} from "@/components/clinical-dashboard/ClinicalSidebar";
 import {
   canRunDashboardSearch,
   fallbackSetupChecks,
@@ -53,6 +67,7 @@ import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboa
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
+import { AnswerProviderNotice } from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
   AnswerProgress,
@@ -186,7 +201,7 @@ import {
 } from "@/lib/private-search-scope";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
-import { hasCrisisWording } from "@/lib/crisis-wording";
+import { hasCrisisWording, hasOverdoseWording } from "@/lib/crisis-wording";
 import { useDeferredRegistrySearch } from "@/components/clinical-dashboard/use-deferred-registry-search";
 import { buildAnswerFollowUpQuery, buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
 import {
@@ -223,6 +238,7 @@ import type {
 } from "@/lib/types";
 import type { SearchScopeFilters } from "@/lib/search-scope";
 import { DashboardDesktopResultComposerSlot } from "@/components/clinical-dashboard/dashboard-desktop-result-composer-slot";
+import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId, patientDetailsAddonSlotId } from "@/lib/mode-home-composer";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
 import { createQuoteFollowUp, type AnswerViewMode, shouldPollForUpdates } from "@/lib/ward-output";
@@ -232,6 +248,16 @@ import {
   PriorAnswerTurnSurface,
 } from "@/components/clinical-dashboard/answer-thread-turn";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
+// Loaded on the first Answer question rather than with the page (bundle budget, 2026-10-13).
+function loadClinicalQuestionPatientCheck() {
+  return import("@/lib/clinical-question-patient-check");
+}
+
+// A question is never sent unchecked: when the check cannot load (a dropped connection),
+// Ask stops with this and the next Ask tries the download again.
+const PATIENT_CHECK_UNAVAILABLE =
+  "Could not check your question for patient details. Check your connection and try again.";
+
 export type { AnswerFeedbackType } from "@/lib/answer-feedback";
 export function ClinicalDashboard(props: ClinicalDashboardProps = {}) {
   return (
@@ -285,6 +311,7 @@ function ClinicalDashboardContent({
   const activeAnswerThreadOwnerIdRef = useRef<string | null>(null);
   const [answerThreadBootstrapped, setAnswerThreadBootstrapped] = useState(false);
   const [query, setQuery] = useState(initialQuery);
+  const deferredQuery = useDeferredValue(query);
   const [searchMode, setSearchMode] = useState<AppModeId>(initialSearchMode);
   const {
     activeScrollOwner,
@@ -518,10 +545,10 @@ function ClinicalDashboardContent({
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const searchCommandContextValue = useMemo(
     () => ({
-      query,
+      query: deferredQuery,
       modeId: searchMode,
     }),
-    [query, searchMode],
+    [deferredQuery, searchMode],
   );
   const [indexingActionId, setIndexingActionId] = useState<string | null>(null);
   const [indexingActive, setIndexingActive] = useState(false);
@@ -635,6 +662,8 @@ function ClinicalDashboardContent({
     localNoAuthMode,
   });
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);
+  // The two-pane side menu (owner pick 8 Oct 2026) is off again; the classic phone menu shows (10 Oct 2026).
+  const twoPaneSideMenu = TWO_PANE_SIDE_MENU;
   const newWorkMode = useNewWorkMode();
   // From 768 px the two-pane menu's strip stays on screen as a rail (1024 px up
   // keeps the full sidebar). A rail button opens the menu on its own pane.
@@ -1650,14 +1679,29 @@ function ClinicalDashboardContent({
     const trimmedQuery = searchText.trim();
     if (!trimmedQuery) return;
     const modeSearch = appModeSearchConfig(targetMode);
+    const isDifferentialsMode = modeSearch.resultKind === "differentials";
+    const isAnswerRequest = modeSearch.resultKind === "answer";
+    if (isAnswerRequest) {
+      // A mode switch, Stop or newer search while the check loads makes this submission stale.
+      const submittedSeq = searchRequestSeqRef.current;
+      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
+      if (submittedSeq !== searchRequestSeqRef.current) return;
+      if (!patientCheck) {
+        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        return;
+      }
+      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const targetQueryMode = appModeQueryMode(targetMode, queryModeOverride);
     const privateScopeRef =
       scopeRefOverride ??
       (selectedDocumentIds.length > 0 && auth.session?.user.id
         ? (persistPrivateSearchScope(window.sessionStorage, auth.session.user.id, selectedDocumentIds) ?? undefined)
         : undefined);
-    const isDifferentialsMode = modeSearch.resultKind === "differentials";
-    const isAnswerRequest = modeSearch.resultKind === "answer";
     // Note: no automatic mode-default label scope for Services/Forms. Applying
     // one on every search routed resolveSearchScope's label path over the whole
     // library, whose single `document_labels.in(<all ids>)` request produces an
@@ -1999,6 +2043,24 @@ function ClinicalDashboardContent({
 
   async function ask(searchText = query, contextOverride?: SearchNavigationContext, replaceExistingAnswer = false) {
     const trimmedQuery = searchText.trim();
+    // A Clinical question goes to an overseas AI service. One that looks like it holds a patient
+    // detail is not sent, saved as a recent question or written into the address bar (audit S2,
+    // 2026-10-13). The composer already disables Ask for it; this covers every other way in
+    // (a link with ?run=1, a recent question). The answer API refuses it again.
+    if (searchMode === "answer" && trimmedQuery) {
+      const submittedSeq = searchRequestSeqRef.current;
+      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
+      if (submittedSeq !== searchRequestSeqRef.current) return;
+      if (!patientCheck) {
+        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        return;
+      }
+      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const effectiveQueryMode = contextOverride?.queryMode ?? queryMode;
     const effectiveScopeFilters = contextOverride?.scopeFilters ?? scopeFilters;
     const privateScopeRef =
@@ -2143,6 +2205,7 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
+    // An Answer cross-search reaches executeSearch, which holds back patient details.
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
@@ -2718,7 +2781,7 @@ function ClinicalDashboardContent({
         activeModeSearch,
         answer,
         documentMatchCount: documentMatches.length,
-        query,
+        query: deferredQuery,
         quoteCount: answerRenderModel?.quoteCards.length ?? 0,
         reviewSourceCount: answerRenderModel?.reviewSources.length ?? 0,
         toolCatalogCount: toolCatalogRecords.length,
@@ -2730,7 +2793,7 @@ function ClinicalDashboardContent({
       activeModeSearch,
       answer,
       documentMatches.length,
-      query,
+      deferredQuery,
       answerRenderModel?.quoteCards.length,
       answerRenderModel?.reviewSources.length,
       visualEvidence.length,
@@ -2738,6 +2801,18 @@ function ClinicalDashboardContent({
     ],
   );
   const answerProgressCompleted = answerProgressEvents.at(-1)?.stage === "complete";
+  // A failed documents search with nothing listed. The documents results own that
+  // message (one calm "not a reliable nothing found" state with Retry and Browse), so the
+  // generic red "Search unavailable" box is not stacked on top. When earlier matches are
+  // still listed they belong to the previous query, so the red box stays and says so.
+  const documentsSearchFailed = searchMode === "documents" && Boolean(error) && errorKind !== "no-results";
+  const documentsResultsOwnError =
+    documentsSearchFailed &&
+    activeModeResultKind === "documents" &&
+    modeSearchSubmitted &&
+    Boolean(query.trim()) &&
+    documentMatches.length === 0;
+  const differentialsCompareHasSelection = useDifferentialsCompareHasSelection();
   const {
     showAuthPanel,
     showDegradedNotice,
@@ -2763,6 +2838,7 @@ function ClinicalDashboardContent({
     activeModeResultKind,
     answer,
     answerFollowUpSuggestionCount: answerFollowUpSuggestions.length,
+    differentialsCompareHasSelection,
     answerLifecycleStatus: answerLifecycle.status,
     answerProgressCompleted,
     answerProgressEventCount: answerProgressEvents.length,
@@ -2953,21 +3029,27 @@ function ClinicalDashboardContent({
         } as CSSProperties
       }
     >
-      <TwoPaneSideRail
-        identity={sidebarIdentity}
-        side="clinical"
-        workAvailable={newWorkMode}
-        showAccountLibrary={favouritesAccessible}
-        hideOnDesktop
-        onOpenMenu={(pane) => {
-          closeDashboardTransientSurfaces("mobileSidebar");
-          setMenuPane(pane);
-          settingsState.setMobileSidebarOpen(true);
-        }}
-        onPrefetchMenu={prefetchTwoPaneSideMenu}
-        onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-      />
-      <div className="hidden lg:contents">{desktopSidebar}</div>
+      {twoPaneSideMenu ? (
+        <>
+          <TwoPaneSideRail
+            identity={sidebarIdentity}
+            side="clinical"
+            workAvailable={newWorkMode}
+            showAccountLibrary={favouritesAccessible}
+            hideOnDesktop
+            onOpenMenu={(pane) => {
+              closeDashboardTransientSurfaces("mobileSidebar");
+              setMenuPane(pane);
+              settingsState.setMobileSidebarOpen(true);
+            }}
+            onPrefetchMenu={prefetchTwoPaneSideMenu}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+          />
+          <div className="hidden lg:contents">{desktopSidebar}</div>
+        </>
+      ) : (
+        desktopSidebar
+      )}
       <PhoneFooterLayerFrame
         className="phone-viewport-frame relative flex min-h-0 min-w-0 flex-1 flex-col md:h-full"
         scrollHidden={chromeScrollHidden}
@@ -3269,7 +3351,7 @@ function ClinicalDashboardContent({
                       </>
                     }
                   />
-                ) : error ? (
+                ) : error && !documentsResultsOwnError ? (
                   <EmptyState
                     icon={CircleAlert}
                     title={activeModeResultKind === "answer" ? "Answer unavailable" : "Search unavailable"}
@@ -3310,8 +3392,9 @@ function ClinicalDashboardContent({
 
                 {activeModeResultKind === "answer" &&
                 (loading || answer) &&
-                hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ? (
-                  <AnswerCrisisBanner />
+                (hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ||
+                  hasOverdoseWording(answerLifecycle.query ?? latestAnswerQuery)) ? (
+                  <AnswerCrisisBanner query={answerLifecycle.query ?? latestAnswerQuery} />
                 ) : null}
 
                 {matchedEmergencyProtocols.map((protocol) => (
@@ -3364,18 +3447,25 @@ function ClinicalDashboardContent({
                   // mode-specific branch so picking a mode on `/` changes only its
                   // presentation and composer target; mode-owned content stays behind
                   // its own route (/tools, /favourites, /dsm, …).
-                  <SharedHomeEmptyState
-                    modeId={searchMode}
-                    desktopComposerSlotId={desktopHomeComposerSlotId}
-                    recentQueries={recentQueries}
-                    onSelectRecent={(recentQuery) => {
-                      setQuery(recentQuery);
-                      void ask(recentQuery);
-                    }}
-                  />
+                  <>
+                    <SharedHomeEmptyState
+                      modeId={searchMode}
+                      desktopComposerSlotId={desktopHomeComposerSlotId}
+                      recentQueries={recentQueries}
+                      onSelectRecent={(recentQuery) => {
+                        setQuery(recentQuery);
+                        void ask(recentQuery);
+                      }}
+                    />
+                    {/* Before the first question is sent (owner decision, 13 Oct 2026): where an
+                        Answer question goes. Below the home content, so the composer never moves. */}
+                    {searchMode === "answer" && !clientDemoMode ? (
+                      <AnswerProviderNotice className="mt-2" testId="answer-provider-notice-home" />
+                    ) : null}
+                  </>
                 ) : activeModeResultKind === "differentials" ? (
                   <DifferentialsHome
-                    query={query}
+                    query={deferredQuery}
                     loading={loading}
                     searchSubmitted={modeSearchSubmitted}
                     evidenceQuery={differentialEvidenceQuery}
@@ -3407,10 +3497,10 @@ function ClinicalDashboardContent({
                     }}
                   />
                 ) : searchMode === "tools" ? (
-                  <ToolsHub query={query} desktopComposerSlotId={desktopHomeComposerSlotId} />
+                  <ToolsHub query={deferredQuery} desktopComposerSlotId={desktopHomeComposerSlotId} />
                 ) : activeModeResultKind === "favourites" && favouritesAccessible ? (
                   <FavouritesHub
-                    query={query}
+                    query={deferredQuery}
                     demoMode={clientDemoMode}
                     onClearQuery={() => {
                       setQuery("");
@@ -3426,7 +3516,7 @@ function ClinicalDashboardContent({
                   activeModeResultKind === "forms" ? (
                   searchMode === "prescribing" ? (
                     <MedicationPrescribingWorkspace
-                      query={query}
+                      query={deferredQuery}
                       loading={false}
                       realDataReady
                       authUnavailable={false}
@@ -3445,7 +3535,7 @@ function ClinicalDashboardContent({
                         recordStatus={recordStatus}
                         recordDegraded={recordsDegraded}
                         showRecordMatches={searchMode === "services" || searchMode === "forms"}
-                        query={query}
+                        query={deferredQuery}
                         loading={loading}
                         documentCount={indexedDocumentTotal}
                         recentDocuments={documents}
@@ -3467,7 +3557,16 @@ function ClinicalDashboardContent({
                         onDocumentFiltersApply={searchMode === "documents" ? handleDocumentFiltersApply : undefined}
                         showHome={searchMode === "documents" && !modeSearchSubmitted}
                         desktopComposerSlotId={desktopHomeComposerSlotId}
-                        searchFailed={searchMode === "documents" && Boolean(error) && errorKind !== "no-results"}
+                        searchFailed={documentsSearchFailed}
+                        searchFailureReason={documentsSearchFailed ? error : null}
+                        onRetrySearch={
+                          searchMode === "documents" && query.trim()
+                            ? () => {
+                                setError(null);
+                                void ask(documentsSearchFailed ? (lastFailedQuery ?? query) : query);
+                              }
+                            : undefined
+                        }
                       />
                     </>
                   )
@@ -3504,7 +3603,7 @@ function ClinicalDashboardContent({
                       ))}
                       <StagedAnswerResultSurface
                         answer={answer}
-                        query={latestAnswerQuery ?? query}
+                        query={latestAnswerQuery ?? deferredQuery}
                         bestSource={bestSource}
                         sourceSummary={sourceSummary}
                         renderModel={answerRenderModel}
@@ -3525,6 +3624,12 @@ function ClinicalDashboardContent({
                         generating={loading}
                         onScopeDocument={handleScopeDocument}
                       />
+                      {/* Once per page, under the latest answer: where a question goes (audit S3). */}
+                      {explicitDemoMode ||
+                      answer.demoMode === true ||
+                      answer.fallbackMode === "non_production_demo" ? null : (
+                        <AnswerProviderNotice className="mt-1" />
+                      )}
                     </>
                   ) : null
                 ) : null}
@@ -3649,28 +3754,48 @@ function ClinicalDashboardContent({
           onClose={closeAccountSetup}
           intent={accountSetupIntent}
         />
-        <TwoPaneSideMenuHost
-          open={settingsState.mobileSidebarOpen}
-          onOpenChange={settingsState.setMobileSidebarOpen}
-          identity={sidebarIdentity}
-          startSide="clinical"
-          openPane={menuPane}
-          workAvailable={newWorkMode}
-          currentArea={null}
-          activeMode={searchMode}
-          recentQueries={recentQueries}
-          showAccountLibrary={favouritesAccessible}
-          onNewChat={startNewChat}
-          onPickRecent={pickRecentQuery}
-          onSelectMode={selectSearchMode}
-          onPrefetchApplications={prefetchApplications}
-          onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
-          onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
-          onSignOut={async () => {
-            clinicalAskSession.clear();
-            await auth.signOut();
-          }}
-        />
+        {twoPaneSideMenu ? (
+          <TwoPaneSideMenuHost
+            open={settingsState.mobileSidebarOpen}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            identity={sidebarIdentity}
+            startSide="clinical"
+            openPane={menuPane}
+            workAvailable={newWorkMode}
+            currentArea={null}
+            activeMode={searchMode}
+            recentQueries={recentQueries}
+            showAccountLibrary={favouritesAccessible}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onSelectMode={selectSearchMode}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onSignOut={async () => {
+              clinicalAskSession.clear();
+              await auth.signOut();
+            }}
+          />
+        ) : (
+          <ClinicalMobileSidebar
+            open={settingsState.mobileSidebarOpen}
+            recentQueries={recentQueries}
+            identity={sidebarIdentity}
+            activeMode={searchMode}
+            onOpenChange={settingsState.setMobileSidebarOpen}
+            onNewChat={startNewChat}
+            onPickRecent={pickRecentQuery}
+            onOpenSettings={settingsGuideFlow.openSettingsWithDefaultFocus}
+            onOpenAccount={settingsGuideFlow.openAccountProfileWithDefaultFocus}
+            onPrefetchSettings={SidebarDialogs.loadSettingsDialog}
+            onPrefetchAccount={SidebarDialogs.prefetchAccountDialog}
+            onPrefetchApplications={prefetchApplications}
+            onOpenSearch={openSidebarSearch}
+            onSelectMode={selectSearchMode}
+            showAccountLibrary={favouritesAccessible}
+          />
+        )}
       </PhoneFooterLayerFrame>
     </div>
   );

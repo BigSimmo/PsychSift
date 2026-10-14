@@ -15,6 +15,7 @@ import {
   PROOF_GROUPS,
   reconstructTestedTree,
   selectPullRequestCandidates,
+  skippedGroups,
   UNRELATED_INPUT_RULES,
 } from "../scripts/ci-main-tree-proof.mjs";
 
@@ -22,7 +23,8 @@ import {
  * Main tree proof: a push to `main` skips only the jobs the merged PR's own CI run already passed
  * on a byte-identical tree. Everything here pins the fail-closed shape — an absent or partial proof
  * must leave the push doing the full job set it did before, and the jobs with main-only behaviour
- * (Build + deployment boot smoke, the Firefox/WebKit release matrix) must never become skippable.
+ * (Build + deployment boot smoke) must never become skippable. The Firefox/WebKit release matrix
+ * is skippable only on its own proof: a green full-suite dispatch run on the identical tree.
  */
 const workflowText = readFileSync(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
 const workflow = createRequire(import.meta.url)("js-yaml").load(workflowText);
@@ -45,6 +47,43 @@ describe("main tree proof script", () => {
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("ci-main-tree-proof self-test passed.");
+  });
+
+  it("never lists the release matrix as skipped in the step summary", () => {
+    expect(skippedGroups({ coverage: true, ui: true, lighthouse: true, matrix: true })).toEqual([
+      "coverage",
+      "ui",
+      "lighthouse",
+    ]);
+    expect(skippedGroups({ coverage: false, ui: false, lighthouse: false, matrix: true })).toEqual([]);
+  });
+
+  it("exits non-zero when a self-test assertion fails, writing no GitHub outputs", () => {
+    const outDir = mkdtempSync(path.join(tmpdir(), "tree-proof-self-test-"));
+    const outputFile = path.join(outDir, "output");
+    const summaryFile = path.join(outDir, "summary");
+    writeFileSync(outputFile, "");
+    writeFileSync(summaryFile, "");
+    try {
+      const result = spawnSync(process.execPath, ["scripts/ci-main-tree-proof.mjs", "--self-test"], {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          CI_TREE_PROOF_SELF_TEST_FORCE_FAIL: "1",
+          GITHUB_OUTPUT: outputFile,
+          GITHUB_STEP_SUMMARY: summaryFile,
+        },
+      });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("self-test FAILED");
+      expect(result.stderr).toMatch(/forced failure \(test hook\)[\r\n]\s+at /);
+      expect(result.stdout).not.toContain("self-test passed");
+      expect(result.stdout).not.toContain("coverage=");
+      expect(readFileSync(outputFile, "utf8")).toBe("");
+      expect(readFileSync(summaryFile, "utf8")).toBe("");
+    } finally {
+      rmSync(outDir, { recursive: true, force: true, maxRetries: 5 });
+    }
   });
 
   it("names exactly the PR-run jobs each group skips, matching ci.yml job names", () => {
@@ -156,13 +195,13 @@ describe("main tree proof script", () => {
     };
     const result = await evaluate({ env: env as unknown as NodeJS.ProcessEnv, now, request, runGit, runGitOk });
     expect(fetched).toEqual(["+refs/pull/42/head:refs/remotes/tree-proof/42"]);
-    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true });
+    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true, matrix: false });
     expect(result.runUrl).toBe("https://example.test/run/9");
 
     // Same evidence, one byte of tree drift: nothing is proven.
     gitTable["rev-parse HEAD^{tree}"] = "e".repeat(40);
     const drifted = await evaluate({ env: env as unknown as NodeJS.ProcessEnv, now, request, runGit, runGitOk });
-    expect(drifted.proof).toEqual({ coverage: false, ui: false, lighthouse: false });
+    expect(drifted.proof).toEqual({ coverage: false, ui: false, lighthouse: false, matrix: false });
   });
 
   it("propagates API errors so the step's catch turns them into a full run", async () => {
@@ -203,6 +242,7 @@ describe("main tree proof script", () => {
     expect(result.stdout).toContain("coverage=false");
     expect(result.stdout).toContain("ui=false");
     expect(result.stdout).toContain("lighthouse=false");
+    expect(result.stdout).not.toContain("matrix=");
   });
 });
 
@@ -223,6 +263,8 @@ describe("main tree proof workflow wiring", () => {
     expect(jobs.changes.outputs.tree_proven_coverage).toBe("${{ steps.tree-proof.outputs.coverage }}");
     expect(jobs.changes.outputs.tree_proven_ui).toBe("${{ steps.tree-proof.outputs.ui }}");
     expect(jobs.changes.outputs.tree_proven_lighthouse).toBe("${{ steps.tree-proof.outputs.lighthouse }}");
+    // The release matrix has no tree proof: every main push that changes UI, perf inputs or the lockfile runs it.
+    expect(jobs.changes.outputs.tree_proven_matrix).toBeUndefined();
     // The changes job checks out full history, which HEAD^1 and the ancestry check rely on.
     const checkout = steps.find((step) => String(step.uses ?? "").startsWith("actions/checkout@"));
     expect(checkout?.with?.["fetch-depth"]).toBe(0);
@@ -264,30 +306,29 @@ describe("main tree proof workflow wiring", () => {
       "ui-critical",
       "ui-critical-fast",
     ]);
+    // The Firefox/WebKit/phone matrix never runs on a PR, so no proof can skip it on main.
+    expect(ifOf("release-browser-matrix")).not.toMatch(/tree_proven_/);
     expect(ifOf("ui-critical-fast")).toContain("needs.changes.outputs.tree_proven_ui != 'true'");
   });
 
-  it("keeps Build (deployment boot smoke) and the release browser matrix running on proven pushes", () => {
-    for (const job of [
-      "build",
-      "release-browser-matrix",
-      "static-pr",
-      "safety",
-      "ui-playwright-build",
-      "visual-baseline",
-    ]) {
+  it("keeps Build (deployment boot smoke) running on proven pushes, and the matrix on a PR-only proof", () => {
+    for (const job of ["build", "static-pr", "safety", "ui-playwright-build", "visual-baseline"]) {
       expect(ifOf(job)).not.toContain("tree_proven");
     }
-    // The matrix tolerates the proof-skipped Production UI and still runs on main...
-    expect(ifOf("release-browser-matrix")).toContain("needs.ui-critical.result == 'skipped'");
+    // The matrix does not wait on Production UI at all (it runs alongside it), so a proof-skipped
+    // Production UI cannot hold it back, and it still runs on main...
+    expect(ifOf("release-browser-matrix")).not.toContain("ui-critical");
+    expect(jobs["release-browser-matrix"].needs).not.toContain("ui-critical");
     expect(ifOf("release-browser-matrix")).toContain("github.ref == 'refs/heads/main'");
-    // ...and takes its primary (mockups-only Chromium) path when the PR proved production Chromium,
+    // ...and takes its primary (mockups-only Chromium) path whenever UI changed, because production
+    // Chromium is then proven by Production UI in the same run or by the merged PR's identical tree,
     // instead of re-running production Chromium unsharded on the fail-safe path.
     const matrixStep = (jobs["release-browser-matrix"].steps as Step[]).find(
       (step) => step.name === "Full browser UI matrix",
     );
-    expect(matrixStep?.env?.UI_PROVEN_BY_PR).toBe("${{ needs.changes.outputs.tree_proven_ui }}");
-    expect(matrixStep?.run).toContain('[ "$UI_PROVEN_BY_PR" = "true" ]');
+    expect(matrixStep?.env?.UI_CHANGED).toBe("${{ needs.changes.outputs.ui_changed }}");
+    expect(matrixStep?.run).toContain('if [ "$UI_CHANGED" = "true" ]; then');
+    expect(ifOf("ui-critical")).toContain("needs.changes.outputs.ui_changed == 'true'");
   });
 
   it("keeps the scheduled full run and the push-run concurrency unchanged", () => {
@@ -382,7 +423,7 @@ describe("PR branch update reuse", () => {
 
   it("carries every group when the newly tested tree is identical to a recorded green one", async () => {
     const result = await evaluatePullRequestUpdate(setup());
-    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true });
+    expect(result.proof).toEqual({ coverage: true, ui: true, lighthouse: true, matrix: false });
     expect(result.runUrl).toBe("https://example.test/run/5");
   });
 
@@ -390,7 +431,7 @@ describe("PR branch update reuse", () => {
     const result = await evaluatePullRequestUpdate(
       setup({ changed: ["README.md", "worker/requirements.txt", "eval/docling/pyproject.toml"] }),
     );
-    expect(result.proof).toEqual({ coverage: false, ui: true, lighthouse: true });
+    expect(result.proof).toEqual({ coverage: false, ui: true, lighthouse: true, matrix: false });
   });
 
   it("runs everything when any changed path could be an input", async () => {
@@ -406,12 +447,12 @@ describe("PR branch update reuse", () => {
       "scripts/ci-main-tree-proof.mjs",
     ]) {
       const result = await evaluatePullRequestUpdate(setup({ changed: ["README.md", input] }));
-      expect(result.proof, input).toEqual({ coverage: false, ui: false, lighthouse: false });
+      expect(result.proof, input).toEqual({ coverage: false, ui: false, lighthouse: false, matrix: false });
     }
   });
 
   it("fails open to the full run on every doubt", async () => {
-    const none = { coverage: false, ui: false, lighthouse: false };
+    const none = { coverage: false, ui: false, lighthouse: false, matrix: false };
     expect((await evaluatePullRequestUpdate({ ...setup(), env: { ...env, PR_ACTION: "opened" } })).proof).toEqual(none);
     expect((await evaluatePullRequestUpdate({ ...setup(), env: { ...env, PR_HEAD_REPO: "fork/r" } })).proof).toEqual(
       none,

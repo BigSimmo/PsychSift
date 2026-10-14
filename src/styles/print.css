@@ -1,0 +1,71 @@
+/* Print styles for WA MHA statutory forms and clinical documents (#C4CFFP) */
+
+@media print {
+  /* Prevent form headers, titles, and statutory metadata from rendering blank.
+   * Specificity overrides global `header { display: none !important; }`.
+   */
+  .wa-mha-form-print,
+  .wa-mha-print-header,
+  .form-print-header,
+  header.form-print-header,
+  header.wa-mha-print-header,
+  [data-wa-mha-form-print] header,
+  [data-print-header],
+  .form-print-title,
+  [data-print-title],
+  .statutory-metadata,
+  [data-statutory-metadata] {
+    display: block !important;
+    visibility: visible !important;
+    color: black !important;
+    background: transparent !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .wa-mha-form-print header *,
+  .wa-mha-print-header *,
+  .form-print-header *,
+  [data-print-header] *,
+  .statutory-metadata * {
+    visibility: visible !important;
+  }
+
+  /* Form page breaking & layout */
+  .wa-mha-form-print {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt;
+    line-height: var(--leading-snug);
+    color: black;
+  }
+
+  .form-print-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: calc(var(--spacing) * 4);
+  }
+
+  .form-print-table {
+    width: 100%;
+    border-collapse: collapse;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .form-print-table th,
+  .form-print-table td {
+    border: 1px solid black;
+    padding: calc(var(--spacing) * 1) calc(var(--spacing) * 2);
+    color: black;
+  }
+
+  /* Hide screen-only interactive elements */
+  [data-screen-only],
+  .no-print {
+    display: none !important;
+  }
+}
