@@ -42,16 +42,16 @@ Match the gate to what actually changed. Running a broader gate is not more rigo
 observe the change; running a narrower one is not sloppy if it can. Add a second gate only when it
 covers a distinct plausible regression and the incremental confidence justifies its cost.
 
-| Change                      | Gate that can actually fail                                                                                                                                    |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Markdown / docs only        | `prettier --check`, `docs:check-links`, `docs:check-index`                                                                                                     |
-| Localised source behavior   | `test:focused -- --files <paths>`                                                                                                                              |
-| Ordinary pre-PR check       | `verify:cheap` — `check:installed-lock-parity` + `check:diff-integrity` + `lint` + `typecheck` + `test`                                                        |
-| Cross-module/unknown scope  | `verify:full` — 42 static gates (`check:runtime` through `check:offline-pack` terminal static gate) then `lint` + `typecheck` + unit `test` (+ `build` in PRs) |
-| Before PR handoff           | `verify:pr-local` (risk-routed; inspect with `--dry-run`)                                                                                                      |
-| UI, styling, routing, a11y  | `npm run ensure`, affected journey, broad UI only when shared                                                                                                  |
-| Phone chrome                | `verify:phone-chrome` (narrower than `verify:ui`; run it first)                                                                                                |
-| Explicit release confidence | `verify:release` (includes `build` + full Playwright + governance/eval; provider approval required)                                                            |
+| Change                      | Gate that can actually fail                                                                                                                 |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markdown / docs only        | `prettier --check`, `docs:check-links`, `docs:check-index`                                                                                  |
+| Localised source behavior   | `test:focused -- --files <paths>`                                                                                                           |
+| Ordinary pre-PR check       | `verify:cheap` — `check:installed-lock-parity` + `check:diff-integrity` + `lint` + `typecheck` + `test`                                     |
+| Cross-module/unknown scope  | `verify:full` — 42 static gates (`check:runtime` through `check:offline-pack` terminal static gate) then `lint` + `typecheck` + unit `test` |
+| Before PR handoff           | `verify:pr-local` (risk-routed; inspect with `--dry-run`)                                                                                   |
+| UI, styling, routing, a11y  | `npm run ensure`, affected journey, broad UI only when shared                                                                               |
+| Phone chrome                | `verify:phone-chrome` (narrower than `verify:ui`; run it first)                                                                             |
+| Explicit release confidence | `verify:release` (includes `build` + full Playwright + governance/eval; provider approval required)                                         |
 
 `lint`, `typecheck`, and `test` cannot observe a markdown-only change. Say so rather than running
 them for appearance.

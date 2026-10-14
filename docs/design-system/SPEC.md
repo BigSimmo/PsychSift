@@ -451,7 +451,8 @@ types keep their event signatures; zero-prop roots are recorded explicitly.
 **`cn()` resolves conflicting utilities via `twMergeClinical`, while explicit props remain preferred.**
 `cn()` in `src/components/ui-primitives.tsx` wraps `twMergeClinical` (`clinicalTwMerge`, built with
 `extendTailwindMerge` in `src/lib/tailwind-merge.ts`) taught this repo's custom `@theme` scales
-(`CLINICAL_TWMERGE_THEME`: custom `font-size`, `leading`, `spacing`, and `rounded` tokens). Even so,
+(`CLINICAL_TWMERGE_THEME`: custom `text`/font-size, `leading`, `tracking`, `spacing`, `ease`, and
+`animate` groups). Even so,
 **for a clinical system, explicit props beat unrestricted class replacement** — expose deliberate size
 and slot props rather than relying on ad-hoc `className` overrides.
 

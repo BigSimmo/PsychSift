@@ -63,7 +63,8 @@ Parse the intent from natural language too — the exact syntax is a convenience
 
 - **`/issues add <text>`** — queue an immutable `add` request. Infer `Pri`/`Type` from the text
   (ask only if genuinely ambiguous; default `P2`/`task`). `scripts/outstanding-issues.mjs` and the
-  serial reconciler allocate ULID-backed 6-character Crockford Base32 `#XXXXXX` IDs; a feature
+  serial reconciler allocate ULID-backed Crockford Base32 `#XXXXXX` IDs (six characters by default, growing
+  when needed to avoid collisions); a feature
   branch must never hand-allocate IDs or edit canonical rows directly.
 - **`/issues done <id> [outcome]`** — queue an immutable `done` request for the existing canonical
   ID and its one-line outcome. Reconciliation moves the row to **Resolved / archive** and updates
@@ -102,7 +103,8 @@ npm run issues:queue -- '#M6JNR8' --acuity A3 --when "After the next release"
 Each command creates one validated UUID JSON file under `docs/outstanding-issues-inbox/`; it does
 not edit `docs/outstanding-issues.md`. Requests are immutable and merge independently. Only a
 dedicated fresh-base ledger branch may run `npm run issues:reconcile`, which allocates ULID-backed
-6-character Crockford Base32 `#XXXXXX` IDs via `scripts/outstanding-issues.mjs`, applies
+Crockford Base32 `#XXXXXX` IDs (six characters by default, growing when needed to avoid
+collisions) via `scripts/outstanding-issues.mjs`, applies
 requests serially, and moves them to `docs/outstanding-issues-inbox/applied/`. Never reconcile as
 part of an ordinary product PR.
 

@@ -1,6 +1,6 @@
-> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
-
 # Code Review Documentation Index
+
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
 
 ## 📚 Complete Documentation Set
 

@@ -12,9 +12,9 @@
 2026-09-25 WA safety fixes, the array itself is defined once in
 `src/lib/crisis-contacts.ts` (`WA_CRISIS_CONTACTS`) and re-exported unchanged as
 `publicCrisisContacts` from `src/components/care-plan/mockups/fixtures.ts`, so every consumer
-listed in this document still reads the same values under the same name. Three more real
-numbers (Lifeline, Suicide Call Back Service, 13YARN) were added there in that change; this
-record still covers only the original four.
+listed in this document still reads the same values under the same name. This record covers
+all eight contacts: the original four, Lifeline, Suicide Call Back Service, and 13YARN added
+in that change, and the separate `POISONS_INFORMATION_CONTACT` added in October.
 **No number in this document has been changed.** This record was written alongside a
 verification-record comment in the fixture; the values themselves are untouched.
 
@@ -58,11 +58,11 @@ file), so no further line-number chase is needed there — the identity guarante
 
 ### What is verified, and by what
 
-- **The values are pinned.** `tests/care-plan-domain.test.ts:414` asserts the exact seven names,
-  numbers and emergency-service flags (the four covered by this record, plus Lifeline, Suicide
-  Call Back Service and 13YARN added 2026-09-25), and `:443-452` asserts that every entry carries
-  an `https://` source URL, the correct `verifiedOn` for its cohort, and — for both MHERL
-  entries — a caveat matching "not an emergency service".
+- **All eight contacts are pinned.** `tests/care-plan-domain.test.ts` asserts the seven
+  `WA_CRISIS_CONTACTS` names, numbers, emergency-service flags, source URLs and cohort dates,
+  including the "not an emergency service" caveat for both MHERL entries.
+  `tests/crisis-contacts.test.ts` also pins those contacts and the separate
+  `POISONS_INFORMATION_CONTACT` number, source URL, `verifiedOn` and non-emergency flag.
 - **The after-hours pathway must stay real.** `tests/care-plan-domain.test.ts:498` fails if any
   of the three WA numbers disappears from the fixtures, so a later change cannot quietly swap a
   working crisis line for a dead fictional one. The reasoning is `docs/care-plan/sdd-ledger.md:634`:
@@ -93,9 +93,12 @@ file), so no further line-number chase is needed there — the identity guarante
 
 **Every six months, from the `verifiedOn` date recorded in the fixture.**
 
-| Last verified | Next due       | Owner        |
-| ------------- | -------------- | ------------ |
-| 2026-08-20    | **2027-02-20** | Josh (owner) |
+| Contacts                                   | Last verified | Next due       | Owner        |
+| ------------------------------------------ | ------------- | -------------- | ------------ |
+| Emergency services                         | 2026-08-20    | **2027-02-20** | Josh (owner) |
+| Lifeline, Suicide Call Back Service        | 2026-09-25    | **2027-03-25** | Josh (owner) |
+| MHERL Perth, MHERL Peel, Rurallink, 13YARN | 2026-09-27    | **2027-03-27** | Josh (owner) |
+| Poisons Information Centre                 | 2026-10-13    | **2027-04-13** | Josh (owner) |
 
 **Six months is the canonical re-verification cadence across the repository, reconciling and
 superseding the 2026-09-02 audit finding L4 (which had proposed 12 months).** Two things bear on the
@@ -116,18 +119,20 @@ retired on 2026-09-26.)
 
 1. Open each source URL in the table above.
 2. Confirm the number, the coverage area, and the availability window still match what
-   `WA_CRISIS_CONTACTS` holds (`src/lib/crisis-contacts.ts`).
+   the seven `WA_CRISIS_CONTACTS` entries and the separate `POISONS_INFORMATION_CONTACT`
+   hold (`src/lib/crisis-contacts.ts`).
 3. **If a value has changed, correct it in `src/lib/crisis-contacts.ts` and nowhere else.**
+   The poisons contact is a separate record in that module, not an array entry.
    `fixtures.ts` only re-exports the array by identity, and `patient-safety-plan.tsx` reads the
    same array by id — neither hand-types a number, so neither needs a matching edit. The
    after-hours entries in `syntheticCmhtContacts` (`fixtures.ts`) still repeat the three WA
    numbers as plain strings and must be corrected separately — they are listed per number in the
    table above.
 4. Update `verifiedOn` for every entry checked, and update the matching assertion in
-   `tests/care-plan-domain.test.ts:414` (and, for the year-2026-09-25 cohort, the corresponding
-   check in `tests/crisis-contacts.test.ts`), which pin the exact date.
+   `tests/care-plan-domain.test.ts` and `tests/crisis-contacts.test.ts`, which pin the cohort
+   dates; the separate poisons record is pinned in `tests/crisis-contacts.test.ts`.
 5. Update the "Last verified" and "Next due" rows in this document, and record who checked.
-6. Run `npx vitest run tests/care-plan-domain.test.ts`.
+6. Run `npx vitest run tests/care-plan-domain.test.ts tests/crisis-contacts.test.ts`.
 
 ### Verification history
 
@@ -176,7 +181,7 @@ This paragraph is a pointer for whoever picks it up.
 
 ## Claims in this document that could not be verified from the repository
 
-1. **That the four numbers are still correct today.** To verify — no network access in this session.
+1. **That all eight numbers are still correct today.** To verify — no network access in this session.
 2. **That the stated availability windows are still correct.** Same reason.
 3. **Who performed the 2026-08-20 verification.** The repository records the date, not the person.
 4. **The six-month re-verification cadence.** Now established as canonical across the repository,

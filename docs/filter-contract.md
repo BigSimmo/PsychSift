@@ -33,7 +33,7 @@ Across clinical browse and search surfaces where hiding a non-matching row could
 - **Differentials stream (`differential-stream-workspace.tsx`):** Urgency and chapter filters order matching entries first and keep non-matching entries visible below a divider (`"Not emergent"` for the emergent urgency filter, or `"Not matching"` otherwise) with their titles muted via `--text-muted` (never `opacity`).
 - **DSM search (`dsm-reference-page.tsx`):** Category and support filters keep all query-matching DSM entries visible, elevating filter-matching entries above a `"Not matching"` divider with non-matching titles muted via `--text-muted`.
 - **Therapy search (`therapy-compass-home.tsx`):** Topic, reviewed, and handout filters elevate matching therapy skills/modules first and keep non-matching items visible below a `"Not matching"` divider with `--text-muted` titles.
-- **Live announcement and counts:** When highlight-mode filters are active, a polite live note announces `"N of M highlighted, all rows stay"` (`FilterHighlightSummaryNote`), while option counts and the results bar continue to report the highlighted match count `N`.
+- **Live announcement and counts:** When highlight-mode filters are active, a polite live note announces `"N of M highlighted, all rows stay"` (`FilterHighlightSummaryNote`), while option counts report the highlighted match count `N` and the results bar reports the full scoped total `M`.
 
 ### There is no `navigate` kind, and that is the point
 
@@ -233,10 +233,9 @@ the thing the reader could no longer see or reach. The anchored panel uses `useD
 reader has already moved it.
 
 **A mode opts in by passing `anchorRef`** — the same ref given to its wide-screen
-`ResultFilterTrigger` (or via `ModeFilterSheet`, which wires the trigger ref and `ResultFilterSheet`
-together across modes such as Differentials, Forms, Services, DSM, Specifiers, Medication,
-Formulation, Therapy, Applications, and Factsheets). Omit `anchorRef` (as Documents does for its
-dense multi-group drawer) and the right-hand drawer rail is used from `sm` up.
+`ResultFilterTrigger`. Only Differentials currently passes `anchorRef` to `ResultFilterSheet`.
+Forms, Services, DSM, Specifiers, Medication, Formulation, Therapy, Applications, Factsheets,
+and Documents omit it and use the default right-hand drawer rail from `sm` up.
 
 Two things not to undo:
 
@@ -248,17 +247,18 @@ Two things not to undo:
 
 ## 6. Invariants
 
-- **`footerNote` counts what the filters actually govern.** Specifiers' `footerNote` reports only
-  `${results.length} matching specifiers` (excluding any separate `catalogueMatches` fallback list
-  that the filters do not govern). On highlight-mode surfaces (Differentials stream, DSM search,
+- **`footerNote` counts what the filters actually govern.** Specifiers uses `matchingTotal`: the
+  active scope's filtered `guideMatches.length` or `catalogueMatches.length`. The catalogue
+  matches are filtered by category and reviewed status before counting. On highlight-mode surfaces (Differentials stream, DSM search,
   Therapy search), the summary note states `"N of M highlighted, all rows stay"`. A mode must not
   report a total its filters cannot move.
 - **`onClearAll` never touches the query.** Clearing filters and clearing a search are different
   intentions. Therapy-compass now uses the shared sheet's filter-only clear; the composer's
   explicit "Clear search" action remains responsible for deleting the query.
-- **One trigger component.** `ResultFilterTrigger`. Therapy-compass, Differentials, Forms, Services,
-  DSM, and Documents all use the shared trigger at every breakpoint, both slots rendered from one
-  helper. Therapy's former desktop facet rail is gone: an always-open rail made Therapy the only
+- **One trigger component.** `ResultFilterTrigger`. Therapy Compass, Forms, and Documents render
+  both breakpoint slots through their `renderFilterTrigger` helpers. Differentials, Services,
+  and DSM render equivalent `ResultFilterTrigger` elements directly in each slot. Therapy's
+  former desktop facet rail is gone: an always-open rail made Therapy the only
   mode whose filters were expanded by default, and it pushed the first result below the fold.
 - **Tap targets are `min-h-tap` (48px) on phone.** Do not relax to 44px for generic WCAG
   guidance; it reintroduces a known `ui-smoke` flake.

@@ -108,11 +108,13 @@ Reaching the page is all it grants. The panels in `src/lib/developer-area/hub-pa
 (`/mockups/development/corpus-health`), and `settings-check`
 (`/mockups/development/settings`) — plus the 2 reference entries (`brand` at
 `/brand/preview.html` and `care-plan` at `/mockups/care-plan`). The panels that
-read live server or Supabase data check the administrator claim themselves and
-degrade to "unavailable" for a link holder: `resolveHubEnvironmentFacts`
-(`environment-facts.ts`), the corpus-health and ingestion readers, and the live
-clinical/roster/on-call operational readers all call `isAdministratorUser`
-independently of the gate.
+read live server or Supabase data retain their own authorization rules. The guarded readers
+`resolveHubEnvironmentFacts` (`environment-facts.ts`), corpus health, and settings check call
+`isAdministratorUser` independently of the developer gate and degrade to unavailable or
+unauthorized for a link holder. The ingestion reader's `GET /api/ingestion/jobs` also requires
+an administrator via `requireAuthenticatedUser`. `GET /api/on-call/entries` returns
+shared entries to signed-in users; it does not require an administrator claim. The developer
+link itself grants no authorization to these readers or APIs.
 
 That separation is deliberate. The link is a convenience credential that can be
 forwarded in a message or copied off a screen; the corpus is the clinical

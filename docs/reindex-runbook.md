@@ -41,7 +41,7 @@ If you prefer to run each step by hand (or need to reconcile a migration in betw
 
 1. Confirm the target project is `sjrfecxgysukkwxsowpy`.
 2. Run `npm run supabase:recovery-status`.
-3. Confirm migration alignment (merging `supabase/migrations/*.sql` to `main` triggers the Supabase GitHub integration auto-deploy in ~34s to production `sjrfecxgysukkwxsowpy`; manual apply is only for recovery/reconciliation when auto-deploy fails, and only after the health probe succeeds).
+3. Confirm migration alignment (merging `supabase/migrations/*.sql` to `main` triggers the Supabase GitHub integration auto-deploy in ~34s to production `sjrfecxgysukkwxsowpy`; manual apply is only for recovery/reconciliation when auto-deploy fails, and only with explicit operator approval after the health probe succeeds).
 4. Run `npm run reindex:health`.
 5. If stale or failed jobs exist, run `npm run recover:ingestion` and confirm the prompt.
 6. Run `npm run worker:once` with the conservative defaults from `.env.example`.

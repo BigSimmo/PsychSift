@@ -20,7 +20,8 @@
  *
  * Run: npm run snapshot:hazards
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -42,7 +43,8 @@ function read(relativePath) {
 /**
  * Derive a deterministic YYYY-MM-DD date from the existing committed snapshot or
  * the reviewedAt date in `docs/clinical-hazard-controls.json` so `--check` never
- * depends on git history depth (shallow clones / squash merges) or wall-clock days.
+ * depends on git history depth (shallow clones / squash merges) or wall-clock days
+ * for its generatedAt metadata. Review expiry is evaluated against the current time.
  */
 export function resolveSourceGeneratedAt(fallbackNow = new Date()) {
   const existingPath = join(repoRoot, SNAPSHOT_REL_PATH);
@@ -222,7 +224,7 @@ export const RETIRED_REGISTERS = [
 
 export function buildHazardSnapshot(now) {
   const sourceDate = now ? now.toISOString().slice(0, 10) : resolveSourceGeneratedAt();
-  const effectiveNow = now ?? new Date(`${sourceDate}T00:00:00Z`);
+  const effectiveNow = now ?? new Date();
   const registers = [buildPsychSiftRegister(effectiveNow)];
 
   const allHazards = registers.flatMap((register) => register.hazards);
@@ -260,7 +262,13 @@ if (invokedDirectly) {
     }
     console.log(`[hazard-register] PASS: ${SNAPSHOT_REL_PATH} matches ${CONTROLS_JSON} and ${ANALYSIS_MD}.`);
   } else {
-    writeFileSync(target, expected, "utf8");
+    const temporary = `${target}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(temporary, expected, { encoding: "utf8", flag: "wx" });
+      renameSync(temporary, target);
+    } finally {
+      rmSync(temporary, { force: true });
+    }
     console.log(
       `[hazard-register] wrote ${SNAPSHOT_REL_PATH} ` +
         `(${snapshot.counts.hazards} hazards across ${snapshot.counts.registers} registers, ` +

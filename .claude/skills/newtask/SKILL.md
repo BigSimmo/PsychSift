@@ -76,10 +76,20 @@ almost always has a pushed branch named after it. Report which check you used. O
 3. **Install deps in the new worktree** (a cold worktree fails `vitest`/`tsc`). Prefer
    `node scripts/setup-codex-worktree.mjs`, which reuses a byte-identical donor `node_modules`
    before falling back to `npm ci --include=dev --prefer-offline --no-audit --no-fund`:
+
    ```bash
-   cd D:/Repos/PsychSift/.claude/worktrees/<task-slug> && npm ci --include=dev --prefer-offline --no-audit --no-fund
+   cd D:/Repos/PsychSift/.claude/worktrees/<task-slug>
+   node scripts/setup-codex-worktree.mjs
    ```
+
+   **Fallback — direct install when the setup helper cannot be used:**
+
+   ```bash
+   npm ci --include=dev --prefer-offline --no-audit --no-fund
+   ```
+
    `postinstall` writes the lock-parity stamp and installs the pre-push guards automatically.
+
 4. **Confirm the base is current:** `node scripts/check-base-freshness.mjs` — expect
    `behind 0`. If it reports behind, the fetch/worktree base is stale; recreate.
 5. **Warm routes before any browser/UI work** (fresh worktrees can hash onto a

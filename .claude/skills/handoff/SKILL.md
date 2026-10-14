@@ -61,8 +61,8 @@ force-push, or discard work.
    Never pipe the push through `tail`,
    `head`, or another command that can mask its status. Confirm the remote tip equals local HEAD
    with `git ls-remote` before reporting success. The pre-push guards in `scripts/guard-push.mjs` run
-   (non-bypassable auto-merge sentinel, plus scoped overrides `SKIP_STATIC_GUARD=1`,
-   `SKIP_DRIFT_GUARD=1`, `SKIP_FORMAT_GUARD=1`, `SKIP_BROWSER_GUARD=1`,
+   (non-bypassable `autoMergeGuard` sentinel, plus five scoped overrides `SKIP_STATIC_GUARD=1`,
+   `SKIP_DRIFT_GUARD=1`, `SKIP_FORMAT_GUARD=1`,
    `SKIP_IN_FLIGHT_CI_GUARD=1`, and `SKIP_LEDGER_WRITE_GUARD=1`) — heed a block rather than
    overriding blindly.
 

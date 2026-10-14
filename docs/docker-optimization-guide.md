@@ -107,6 +107,7 @@ livenessProbe:
   - `/opt/ocr-venv` (worker OCR venv / `/opt/worker-venv` in earlier notes): PyMuPDF, Pillow, and `pytesseract` from `worker/python/requirements.txt`, placed on `PATH`.
   - `/opt/docling-venv`: isolated shadow-extraction venv built from `eval/docling/requirements.txt` (`WORKER_DOCLING_PYTHON_BIN=/opt/docling-venv/bin/python`) with prefetched models at `/opt/docling-models` (`HF_HUB_OFFLINE=1`).
 - **OCI labels (`Dockerfile` and `Dockerfile.worker`):**
+
   ```dockerfile
   LABEL org.opencontainers.image.source="https://github.com/BigSimmo/PsychSift"
   LABEL org.opencontainers.image.title="PsychSift ingestion worker"
@@ -210,6 +211,11 @@ Railway will:
 
 ### Inspect Image Labels
 
+Build the images locally first using the build commands documented in `Dockerfile` and
+`Dockerfile.worker`, which omit an explicit tag suffix (`-t clinical-kb-app` and
+`-t clinical-kb-worker`) and therefore produce the `:latest` images inspected below. The
+Docker image CI workflow builds `:ci` tags; inspect those tags when checking CI images.
+
 **App tier:**
 
 ```bash
@@ -277,7 +283,7 @@ worker_last_claim_processed_seconds_ago{instance="worker-1"} 45
 | **CI/CD**    | Multi-arch (`amd64,arm64`) already enabled            | ARM deployment ready              |
 | **Scanning** | Trivy CVE scanning (advisory on PR, required on main) | Supply-chain security             |
 | **Worker**   | `/health` endpoint on port 3001                       | Proactive failure detection       |
-| **Labels**   | Resource hints (CPU, memory)                          | Better orchestration              |
+| **Labels**   | OCI source and title metadata                         | Image provenance and identity     |
 | **Build**    | Optimized .dockerignore, explicit --chown             | Faster builds, explicit ownership |
 
 All changes are **backward compatible**—no breaking changes to APIs or existing deployments.

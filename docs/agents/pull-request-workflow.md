@@ -60,9 +60,9 @@ ranking-protected file changed, a `RAG impact:` placeholder to replace; include 
 
 - Complete the Preflight **truthfully**: check only the boxes that are actually true for this
   change. Never tick every box to satisfy the parser.
-- `governanceItemSatisfied` compares with exact string equality, so a checked line must
-  reproduce the template wording and nothing else. Appending a reason (for example `- [x] <item> — because ...`) silently fails to match and emits an advisory warning. Copy the seven lines verbatim and put reasoning in a paragraph
-  beneath them.
+- `governanceItemSatisfied` first checks exact string equality, then falls back to matching
+  legacy evidence, which may still be accepted even with appended reasons. Copy the seven
+  template lines verbatim and put reasoning in a paragraph beneath them.
 - Check a body offline before pushing rather than learning it from CI;
   `evaluatePullRequestPolicy` is the same function the workflow calls. Expect `ok: true` with
   empty `errors` (and address any relevant `warnings`):

@@ -1,6 +1,6 @@
-> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
-
 # Dockerfile Optimization Summary
+
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
 
 ## Changes Applied
 

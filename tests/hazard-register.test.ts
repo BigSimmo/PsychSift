@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildHazardSnapshot,
@@ -128,6 +128,20 @@ describe("reviewExpired", () => {
 });
 
 describe("buildHazardSnapshot against the real repository documents", () => {
+  it("ages review expiry against the current time while keeping generatedAt stable", () => {
+    const generatedAt = buildHazardSnapshot().generatedAt;
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2100-01-01T00:00:00Z"));
+      const current = buildHazardSnapshot();
+      expect(current.generatedAt).toBe(generatedAt);
+      expect(current.registers.every((register) => register.reviewExpired)).toBe(true);
+      expect(current.counts.reviewExpired).toBe(current.counts.hazards);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   // The generator is plain JavaScript, so TypeScript infers a loose shape
   // from it. Asserting it to the loader's own type
   // here is what the page consumes, and doubles as a check that the generator

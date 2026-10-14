@@ -8,7 +8,7 @@ The authoritative schema and proof registrations are declared in [`docs/design-s
 
 ## 1. Scope and Surface Coverage
 
-CME encompasses 18 distinct production routes providing hours logging, category distributions, annual RANZCP compliance validation, CPD home and evidence portfolios, accreditation/reflection/survey workflows, calendar views, routine schedules, and annual print/export summaries:
+CME encompasses 22 distinct production routes providing hours logging, category distributions, annual RANZCP compliance validation, CPD home and evidence portfolios, accreditation/reflection/survey workflows, calendar views, routine schedules, and annual print/export summaries:
 
 - `/cme` — Dashboard, category distribution bar, pace projection, and quick logging sheet
 - `/cme/log` and `/cme/log/[id]` — Activity logs and detail inspectors

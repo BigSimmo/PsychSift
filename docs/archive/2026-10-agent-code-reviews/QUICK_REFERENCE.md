@@ -1,6 +1,6 @@
-> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
-
 # Quick Reference: PsychSift Docker Production Setup
+
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
 
 ## 🚀 One-Liner Commands
 

@@ -1,6 +1,6 @@
-> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
-
 # Deployment Checklist: Docker Optimizations & Health Checks
+
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
 
 **Date:** 2026-01-15
 **Status:** Ready to Deploy

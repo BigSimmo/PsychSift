@@ -189,7 +189,7 @@ Following a Supabase database restore or disaster recovery failover, verify all 
 2. **Webhook Endpoint & Signature Verification:** Confirm Railway webhook destinations and Supabase Database Webhook triggers are active and matching HMAC secrets.
 3. **Authentication & Connection Limits:** Validate auth rate limits and connection pool percentage allocation in the Supabase Dashboard.
 4. **Cron Job Schedule Registration:** Verify pg_cron extensions and scheduled maintenance jobs (cache retention, query log sweeps) are active.
-5. **Storage Bucket Policies:** Confirm private document storage buckets (`clinical-documents`, `clinical-images`, `cme-private-evidence`) have active RLS policies preventing unauthenticated public reads.
+5. **Storage Buckets, Files & Policies:** Include files from `clinical-documents`, `clinical-images`, and `cme-private-evidence` in the storage recovery inventory. `supabase/schema.sql` recreates all three bucket rows, but not their files; restore the files separately. Confirm all three private buckets have active RLS policies preventing unauthenticated public reads.
 
 ## 8. Operational notes & diagnostics (#248, #305, #315, #102, #6SMMB4, #9X40BT)
 

@@ -128,7 +128,8 @@ Before implementing any changes to RAG ranking, retrieval, synthesis, or evaluat
 
 ### 2. Protected Surface Identification
 
-- Verify whether the changed files touch protected RAG ranking surfaces (`scripts/pr-policy.mjs` `ragRankingPatterns` and authored clinical datasets in `clinicalRiskPatterns`):
+- Verify whether the changed files touch protected RAG ranking surfaces matched by
+  `ragRankingPatterns` in `scripts/pr-policy.mjs`:
   - `src/lib/rag/**` (retrieval pipeline, candidate sources, composition, routing, synthesis)
   - `src/lib/clinical-search.ts`, `src/lib/retrieval-selection.ts`, `src/lib/released-search-order.ts`, `src/lib/ranking-config.ts`, `src/lib/evidence.ts`, `src/lib/result-sort.ts`, `src/lib/answer-ranking.ts`, `src/lib/evidence-relevance.ts`, `src/lib/semantic-rerank.ts`, `src/lib/eval-document-matching.ts`
   - `src/lib/source-authority-registry.ts`, `src/lib/australian-source-priority.ts` (source authority and Australian clinical context ordering)
@@ -137,12 +138,17 @@ Before implementing any changes to RAG ranking, retrieval, synthesis, or evaluat
   - `src/lib/retrieval-rpc-rollout.ts`, `src/lib/clinical-evidence-haystack.ts`, `src/lib/cross-document-synthesis.ts`, `src/lib/corpus-grounding.ts`, `src/lib/keyword-query.ts`
   - `src/lib/document-enrichment.ts`, `src/lib/visual-intelligence.ts`, `src/lib/image-filtering.ts`
   - `worker/embedding-fields.ts`, `worker/table-facts.ts`, `worker/assertion-tagging.ts`
-  - Hand-authored clinical datasets in `src/lib/` (`src/lib/dictionary-data.ts`, `src/lib/factsheets-data.ts`, `src/lib/specifiers.ts`, `src/lib/differential*.ts`, `src/lib/registry-records.ts`, `tests/calculator-mockup-clinical-safety.test.ts`, per `scripts/pr-policy.mjs:89-150`)
   - `scripts/eval-retrieval.ts`, `scripts/build-ranking-snapshot.ts`, `scripts/tune-search-weights.ts`
   - `scripts/lib/clinical-aliases.ts`, `scripts/lib/ranking-tuning.ts`, `scripts/lib/ranking-snapshot-builder.ts`
   - `scripts/fixtures/rag-retrieval-golden.json`, `scripts/fixtures/rag-ranking-candidate-snapshot.v1.json`
   - Contract test pins: `tests/rag-fast-path-ordering.test.ts`, `tests/ranking-tuning.test.ts`, `tests/retrieval-selection.test.ts`, `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`, `tests/rag-imputation-contract.test.ts`
   - Database schema & retrieval RPCs in `supabase/schema.sql` and `supabase/migrations/`
+
+- Separately check authored clinical datasets matched by `clinicalRiskPatterns` for clinical
+  governance requirements: `src/lib/dictionary-data.ts`, `src/lib/factsheets-data.ts`,
+  `src/lib/specifiers.ts`, `src/lib/differential*.ts`, `src/lib/registry-records.ts`, and
+  `tests/calculator-mockup-clinical-safety.test.ts`. Dataset edits are clinical-risk changes;
+  they are not automatically RAG ranking changes.
 
 ### 3. Refuted Approaches Review
 

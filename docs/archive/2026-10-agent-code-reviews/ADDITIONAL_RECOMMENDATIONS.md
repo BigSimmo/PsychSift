@@ -1,6 +1,6 @@
-> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
-
 # Additional Code Quality & Security Recommendations
+
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
 
 Beyond the 6 bugs fixed, here are strategic improvements to enhance maintainability, performance, and resilience.
 

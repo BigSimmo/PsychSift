@@ -241,7 +241,11 @@ function catalogueTargets(readmeMarkdown: string): { files: Set<string>; directo
     const target = match[1];
     if (target.includes("://") || target.startsWith("/") || target.startsWith("#")) continue;
     const normalized = path.posix.normalize(path.posix.join(DOCS_ROOT, target));
-    files.add(normalized);
+    if (target.endsWith("/")) {
+      directories.add(`${normalized.replace(/\/$/, "")}/`);
+    } else {
+      files.add(normalized);
+    }
   }
 
   for (const match of withoutUrls.matchAll(/docs\/[A-Za-z0-9._/-]+\.md/g)) {

@@ -97,7 +97,7 @@ entries.
 ## Sources: registered is not ingested
 
 **Twenty-six of the 58 sources are admitted to `src/data/source-acquisitions.json` as candidates**,
-up from two: the initial 18 published and review-dated sources (the WHO AUDIT and ASSIST manuals,
+up from 18: the initial 18 published and review-dated sources (the WHO AUDIT and ASSIST manuals,
 AIHW's 2025 prisons health report, WA Health MP 0155/21 and its consent article, RANZCP PS #74,
 PS #116 and PPG #16, NICE NG225 and CG103, Australian Prescriber's movement-disorders article, and
 seven Healthdirect articles), three further published guidelines after publisher/edition verification
