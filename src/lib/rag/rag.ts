@@ -113,6 +113,7 @@ import {
 } from "@/lib/rag/rag-extractive-answer";
 import { contextPackAdmissionMatches } from "./rag-context-admission";
 import { withAdmissionDischargeSideEvidence } from "./rag-admission-discharge-side-evidence";
+import { withBestPracticePrescriptionEvidence } from "./rag-best-practice-prescription-evidence";
 import { chooseValidatedExtractiveShortCircuit, hasValidatedExtractiveCandidate } from "@/lib/rag/rag-extractive-first";
 import { buildComparisonMatrix, comparisonEvidenceGuide, selectSafeComparisonFallback } from "@/lib/rag/rag-comparison";
 export {
@@ -2389,10 +2390,16 @@ async function answerQuestionWithScopeUncoalesced(
   });
   // Same top-up as the generation fallback below, so the source-bound
   // admission/discharge extractive-first answer can fire before generation.
-  const extractiveFirstInputResults = withAdmissionDischargeSideEvidence({
+  // The measured Best Practice Prescription pair gets the same governed top-up (#3527 pattern).
+  const extractiveFirstInputResults = withBestPracticePrescriptionEvidence({
     query: args.query,
     queryClass,
-    selected: answerInputResults,
+    selected: withAdmissionDischargeSideEvidence({
+      query: args.query,
+      queryClass,
+      selected: answerInputResults,
+      candidates: sideEvidenceCandidates,
+    }),
     candidates: sideEvidenceCandidates,
   });
   const validatedExtractiveShortCircuit = chooseValidatedExtractiveShortCircuit({
