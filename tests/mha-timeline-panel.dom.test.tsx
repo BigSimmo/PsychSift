@@ -70,6 +70,8 @@ describe("MhaTimelinePanel with unsigned copies of the shipped entries", () => {
 
     const input = within(panel).getByLabelText("When was this made?");
     expect(input).toHaveAttribute("type", "datetime-local");
+    // Design audit D01: the record starts its clock, carrying the form across.
+    expect(within(panel).getByTestId("mha-timeline-start-clock")).toHaveAttribute("href", "/forms/clock?form=3A");
 
     const items = within(panel).getAllByRole("listitem");
     expect(items).toHaveLength(3);

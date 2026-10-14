@@ -6,6 +6,7 @@ import { modeModuleSurface } from "@/components/mode-kit/recipes";
 import { cn } from "@/components/ui-primitives";
 import type { HoursSummary } from "@/lib/roster/hours";
 import { WEEKDAYS } from "@/lib/roster/shifts/perth-time";
+import { SHIFT_LETTER } from "@/lib/roster/shift-kind";
 
 import { formatSpanWords } from "@/lib/roster/shifts-overview";
 
@@ -14,7 +15,7 @@ import { RosterSectionHead } from "./roster-list";
 
 /**
  * This pay fortnight: rostered hours as fourteen bars, done ones solid and
- * coming ones hatched, a leave day marked "L" instead of a bar, and a dashed
+ * coming ones hatched, a leave day marked with its code ("AL") instead of a bar, and a dashed
  * line after today. Rostered hours, not pay. Bars are SVG so no size needs an
  * inline style.
  */
@@ -125,7 +126,7 @@ export function RosterFortnight({
                 )}
               >
                 {leave ? (
-                  <span className="text-2xs font-semibold text-[color:var(--text-muted)]">L</span>
+                  <span className="text-2xs font-semibold text-[color:var(--text-muted)]">{SHIFT_LETTER.leave}</span>
                 ) : (
                   <svg className="h-14 w-full max-w-4 overflow-visible">
                     {share > 0 ? (
@@ -164,7 +165,7 @@ export function RosterFortnight({
             </svg>
             Coming
           </span>
-          {hasLeave ? <span>L leave</span> : null}
+          {hasLeave ? <span>{SHIFT_LETTER.leave} leave</span> : null}
           <span className="ml-auto">Rostered hours</span>
         </p>
         <dl className="nums grid text-sm">

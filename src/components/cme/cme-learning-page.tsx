@@ -254,7 +254,7 @@ function LearningRow({
         <Link
           href={learningItemLogHref(item)}
           className="work-button relative z-[var(--z-raised)] min-h-tap shrink-0 self-center"
-          data-variant="tinted"
+          data-variant="grey"
         >
           Log as CPD
         </Link>

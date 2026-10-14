@@ -28,7 +28,7 @@ import { PersonalRenewalsList } from "@/components/admin/renewals/personal-list"
 import { RecordDatesSheet, type RecordDatesReadOnly } from "@/components/admin/renewals/record-dates-sheet";
 import { RenewalsShowFilterList } from "@/components/admin/renewals/show-filter-list";
 import { AccountSetupDialog } from "@/components/clinical-dashboard/account-setup-dialog";
-import { ModeBandAction, PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { PageTitleUnderBand, useModeBandHeading } from "@/components/mode-band/mode-band";
 import { WorkButton, WorkCard, WorkDock, WorkGlassButton, WorkIconCircle } from "@/components/mode-kit/work";
 import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { onCallEntryAnchorId } from "@/components/on-call/on-call-page-anchors";
@@ -428,19 +428,6 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
   return (
     <AdminPage testId="admin-renewals-main">
       <PageTitleUnderBand className="sr-only">Renewals</PageTitleUnderBand>
-      {ready ? (
-        <ModeBandAction>
-          {(underBand) => (
-            <WorkGlassButton
-              icon={Ellipsis}
-              label="More actions"
-              onClick={() => setMenuOpen(true)}
-              className={underBand ? "work-band__action" : undefined}
-              testId="admin-renewals-more"
-            />
-          )}
-        </ModeBandAction>
-      ) : null}
 
       {loadState === "loading" ? (
         <div className={adminStyles.column} data-testid="admin-renewals-loading" aria-busy="true">
@@ -470,17 +457,31 @@ export function AdminRenewalsPage({ now: nowProp }: { now?: Date } = {}) {
         </>
       ) : (
         <>
-          <SegmentedControl
-            label="Renewals"
-            value={tab}
-            onChange={setTab}
-            layout="equal"
-            options={[
-              { value: "checklist", label: "Soonest" },
-              { value: "group", label: "By group" },
-              { value: "personal", label: "Personal" },
-            ]}
-          />
+          {/* More actions sits beside the views, in the page: the band's corner is for
+              Favourite only (audit D18). It drops under them when the line is too narrow. */}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="min-w-0 flex-[1_1_15rem]">
+              <SegmentedControl
+                label="Renewals"
+                value={tab}
+                onChange={setTab}
+                layout="equal"
+                options={[
+                  { value: "checklist", label: "Soonest" },
+                  { value: "group", label: "By group" },
+                  { value: "personal", label: "Personal" },
+                ]}
+              />
+            </div>
+            {ready ? (
+              <WorkGlassButton
+                icon={Ellipsis}
+                label="More actions"
+                onClick={() => setMenuOpen(true)}
+                testId="admin-renewals-more"
+              />
+            ) : null}
+          </div>
 
           {failedAction ? (
             <WorkCard padded testId="admin-renewals-action-failed">

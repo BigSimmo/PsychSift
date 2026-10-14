@@ -295,6 +295,43 @@
   outline-offset: -2px;
 }
 
+/* Design audit D10: the counts as small words in one wrapping line (Renewals and Admin Today). */
+.glanceWords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 1);
+  margin: calc(var(--spacing) * 1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.glanceWord {
+  display: inline-flex;
+  min-height: var(--spacing-tap, calc(var(--spacing) * 12));
+  align-items: center;
+  gap: calc(var(--spacing) * 1.5);
+  padding: 0 calc(var(--spacing) * 3);
+  border: 1px solid var(--work-line, var(--border));
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.glanceWord:disabled {
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.glanceWord[aria-pressed="true"] {
+  background: var(--mode-identity-soft);
+  box-shadow: var(--work-edge-inset) var(--mode-identity);
+  color: var(--text-heading);
+}
+
 .glanceFigure {
   flex: none;
   text-align: center;

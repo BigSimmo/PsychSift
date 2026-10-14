@@ -30,7 +30,7 @@ const TALLY_WORDS: Record<RenewalsShowFilter, string> = {
  */
 export function TodayAtAGlance({ counts }: { counts: Record<RenewalsShowFilter, number> }) {
   return (
-    <ul role="list" aria-label="At a glance" className={adminStyles.tally} data-testid="admin-today-at-a-glance">
+    <ul role="list" aria-label="At a glance" className={adminStyles.glanceWords} data-testid="admin-today-at-a-glance">
       {RENEWALS_SHOW_FILTERS.map((filter) => {
         const count = counts[filter];
         const label = RENEWALS_SHOW_LABELS[filter];
@@ -39,16 +39,13 @@ export function TodayAtAGlance({ counts }: { counts: Record<RenewalsShowFilter, 
             <Link
               href={renewalsShowHref(filter)}
               aria-label={`${label}: ${count}`}
-              className={adminStyles.tallyItem}
+              className={adminStyles.glanceWord}
               data-testid={`admin-today-at-a-glance-${filter}`}
               data-zero={count === 0 ? "" : undefined}
             >
-              <span aria-hidden="true" className={adminStyles.tallyFigure}>
-                {count}
-                <AdminStatusShape status={COUNT_STATUS[filter]} />
-              </span>
-              <span aria-hidden="true" className={adminStyles.tallyWord}>
-                {TALLY_WORDS[filter]}
+              <AdminStatusShape status={COUNT_STATUS[filter]} />
+              <span aria-hidden="true" className="tabular-nums">
+                {`${count} ${TALLY_WORDS[filter].toLowerCase()}`}
               </span>
             </Link>
           </li>

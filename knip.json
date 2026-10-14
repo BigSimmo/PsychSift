@@ -10,7 +10,13 @@
     "*.config.{ts,mts,mjs,cjs}"
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs,cjs}", "worker/**/*.ts", "eslint-rules/**/*.mjs"],
-  "ignore": ["src/lib/supabase/database.types.ts", "**/*mockup*", "supabase/functions/**", "docs/**"],
+  "ignore": [
+    "src/lib/supabase/database.types.ts",
+    "**/*mockup*",
+    "supabase/functions/**",
+    "docs/**",
+    "src/components/work-setup/work-setup-row.tsx"
+  ],
   "ignoreDependencies": [
     "mammoth",
     "qrcode",
