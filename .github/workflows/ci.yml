@@ -2218,12 +2218,11 @@ jobs:
     if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    # One routing job at a time, never cancelling the one in flight. Without this a slow older run
-    # could read the issue, wait, and write after a newer run had already routed. A newer waiting run
-    # replaces an older waiting one, which is safe: the newest run is the one that must speak.
-    concurrency:
-      group: main-failure-routing
-      cancel-in-progress: false
+    # No job-level `concurrency` group on purpose. A concurrency group keeps only ONE pending job and
+    # replaces it with whichever job became ready last, which follows run-finish order, not commit
+    # order: a newer red run's routing could be cancelled by an older green run, leaving the issue
+    # closed while main is red (and cancelling that newer run's whole CI result). Ordering is
+    # instead enforced by the routed-sha stamp, and re-checked immediately before each write.
     permissions:
       contents: read
       issues: write
@@ -2376,11 +2375,24 @@ jobs:
             }
             const previous = existing ? null : await latestClosedOwned();
 
+            // Re-read the stamp right before writing, so a run that routed while this one was reading
+            // is honoured. This replaces serialisation: the window is a few API calls, not a whole job.
+            async function supersededNow() {
+              const { data: nowOpen } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
+              const current = nowOpen.find(owned) ?? (await latestClosedOwned());
+              return isSuperseded(current);
+            }
+
             if (await isSuperseded(existing ?? previous)) {
               core.info(
                 `Run for ${headSha.slice(0, 12)} is older than the commit already routed; ` +
                   `leaving the pinned issue alone (this run was ${red ? "red" : "green"}).`,
               );
+              return;
+            }
+
+            if (await supersededNow()) {
+              core.info(`Run for ${headSha.slice(0, 12)} was superseded while reading; leaving the pinned issue alone.`);
               return;
             }
 
