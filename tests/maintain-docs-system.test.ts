@@ -22,7 +22,7 @@ describe("maintain-docs-system pipeline", () => {
     while (tempDirs.length > 0) {
       const dir = tempDirs.pop();
       if (dir && fs.existsSync(dir)) {
-        fs.rmSync(dir, { recursive: true, force: true });
+        fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
       }
     }
   });
