@@ -226,17 +226,18 @@ export const RETIRED_REGISTERS = [
 ];
 
 export function buildHazardSnapshot(now) {
-  const effectiveNow = now ?? new Date();
+  const sourceDate = now ? now.toISOString().slice(0, 10) : resolveSourceGeneratedAt();
+  const effectiveNow = now ?? new Date(`${sourceDate}T00:00:00Z`);
   const registers = [buildPsychSiftRegister(effectiveNow)];
 
   const allHazards = registers.flatMap((register) => register.hazards);
   return {
     version: HAZARD_SNAPSHOT_VERSION,
-    generatedAt: now ? now.toISOString().slice(0, 10) : resolveSourceGeneratedAt(effectiveNow),
+    generatedAt: sourceDate,
     counts: {
       registers: registers.length,
       registersMissing: registers.filter((register) => !register.exists).length,
-      registersUnsigned: registers.filter((register) => !register.exists || !register.signedOff).length,
+      registersUnsigned: registers.filter((register) => register.exists && !register.signedOff).length,
       hazards: allHazards.length,
       unmitigated: allHazards.filter((hazard) => hazard.status === "unmitigated").length,
       reviewExpired: allHazards.filter((hazard) => hazard.reviewExpired).length,
