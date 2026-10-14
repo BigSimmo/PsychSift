@@ -2354,9 +2354,7 @@ jobs:
               }
             }
 
-            const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
             const owned = (issue) => String(issue.body ?? "").includes(MARKER) || issue.title === title;
-            const existing = open.find(owned) ?? null;
 
             // The most recent issue this job closed, matched by marker only so it never reopens an
             // issue a person wrote. It is the ordering reference when nothing is open, and the issue a
@@ -2373,14 +2371,29 @@ jobs:
               });
               return closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
             }
-            const previous = existing ? null : await latestClosedOwned();
 
-            // Re-read the stamp right before writing, so a run that routed while this one was reading
-            // is honoured. This replaces serialisation: the window is a few API calls, not a whole job.
+            // `existing` is our open issue; `previous` is the latest closed one, read only when nothing
+            // is open. Every write below acts on these two, so the re-check rebuilds both together.
+            async function readIssueState() {
+              const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
+              const openOwned = open.find(owned) ?? null;
+              return { existing: openOwned, previous: openOwned ? null : await latestClosedOwned() };
+            }
+            let { existing, previous } = await readIssueState();
+
+            // Re-read the issue state right before writing, so a run that routed while this one was
+            // reading is honoured, and the writes below act on the fresh open/closed issue rather than
+            // the stale one. This replaces serialisation: the window is a few API calls, not a whole
+            // job. Fails open like the ordering lookup: an unreadable re-check routes on the state
+            // already read rather than aborting and losing the alert.
             async function supersededNow() {
-              const { data: nowOpen } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
-              const current = nowOpen.find(owned) ?? (await latestClosedOwned());
-              return isSuperseded(current);
+              try {
+                ({ existing, previous } = await readIssueState());
+              } catch (error) {
+                core.warning(`Could not re-read the pinned issue before writing, routing on the state already read: ${error.message}`);
+                return false;
+              }
+              return isSuperseded(existing ?? previous);
             }
 
             if (await isSuperseded(existing ?? previous)) {

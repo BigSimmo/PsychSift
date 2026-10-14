@@ -195,6 +195,12 @@ async function runRouting(options: {
   listingFails?: boolean;
   openIssues?: Issue[];
   closedIssues?: Issue[];
+  /** Per-call open-issue reads (the last entry repeats), to model the pinned issue changing mid-run. */
+  openIssuesByCall?: Issue[][];
+  /** Per-call closed-issue reads (the last entry repeats). */
+  closedIssuesByCall?: Issue[][];
+  /** Make the nth (1-based) open-issue read reject. */
+  failOpenReadOnCall?: number;
   /** What `compareCommits` reports for the run's commit against the last routed one, or an Error to reject. */
   compare?: "behind" | "ahead" | "identical" | "diverged" | Error;
 }) {
@@ -203,6 +209,8 @@ async function runRouting(options: {
   const updates: Array<{ issue_number: number; state?: string; body?: string }> = [];
   const comments: number[] = [];
   const compared: Array<{ base: string; head: string }> = [];
+  let openReads = 0;
+  let closedReads = 0;
   const github = {
     paginate: async () => {
       if (options.listingFails) throw new Error("Resource not accessible by integration");
@@ -211,9 +219,17 @@ async function runRouting(options: {
     rest: {
       actions: { listJobsForWorkflowRun: () => undefined },
       issues: {
-        listForRepo: async ({ state }: { state: string }) => ({
-          data: state === "open" ? (options.openIssues ?? []) : (options.closedIssues ?? []),
-        }),
+        listForRepo: async ({ state }: { state: string }) => {
+          if (state === "open") {
+            openReads += 1;
+            if (options.failOpenReadOnCall === openReads) throw new Error("API rate limit exceeded");
+            const calls = options.openIssuesByCall;
+            return { data: calls ? calls[Math.min(openReads, calls.length) - 1]! : (options.openIssues ?? []) };
+          }
+          closedReads += 1;
+          const calls = options.closedIssuesByCall;
+          return { data: calls ? calls[Math.min(closedReads, calls.length) - 1]! : (options.closedIssues ?? []) };
+        },
         create: async (request: { title: string; body: string }) => {
           created.push(request);
           return { data: { number: 900 } };
@@ -436,6 +452,59 @@ describe("main CI failure routing ignores superseded runs", () => {
       compare: new Error("Not Found"),
     });
     expect(result.updates).toHaveLength(1);
+    expect(result.comments).toEqual([42]);
+  });
+
+  it("writes to the issue state re-read just before writing, not the state read at the start", async () => {
+    // A newer green run closed #42 while this older-but-ahead red run was reading: the start sees
+    // #42 open, the re-check sees it closed. The red run must reopen the closed issue, not update
+    // the (now closed) one it first saw.
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssuesByCall: [[marked(ROUTED_SHA)], []],
+      closedIssuesByCall: [[marked(ROUTED_SHA)]],
+      compare: "ahead",
+    });
+    expect(result.created).toHaveLength(0);
+    expect(result.updates).toHaveLength(1);
+    expect(result.updates[0]).toMatchObject({ issue_number: 42, state: "open" });
+    expect(result.updates[0]!.body).toContain(stamp(RUN_SHA));
+  });
+
+  it("closes the freshly opened issue on green when a red run reopened it while this run was reading", async () => {
+    // Start: nothing open, #42 closed. By the re-check an older red run reopened #42. This green
+    // run is ahead and must close it, not rewrite the closed-issue body and leave it open.
+    const result = await runRouting({
+      results: green,
+      jobs: [],
+      openIssuesByCall: [[], [marked(ROUTED_SHA)]],
+      closedIssuesByCall: [[marked(ROUTED_SHA)]],
+      compare: "ahead",
+    });
+    expect(result.closed).toEqual([42]);
+  });
+
+  it("stands down when the re-check shows a newer run routed while this one was reading", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssuesByCall: [[ownIssueWithoutStamp()], [marked(ROUTED_SHA)]],
+      compare: "behind",
+    });
+    expect(result.updates).toHaveLength(0);
+  });
+
+  it("fails open when the first issue read works but the re-check read fails", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [marked(ROUTED_SHA)],
+      failOpenReadOnCall: 2,
+      compare: "ahead",
+    });
+    expect(result.updates).toHaveLength(1);
+    expect(result.updates[0]!.body).toContain(stamp(RUN_SHA));
     expect(result.comments).toEqual([42]);
   });
 
