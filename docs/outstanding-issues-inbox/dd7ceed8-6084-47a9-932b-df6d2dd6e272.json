@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "dd7ceed8-6084-47a9-932b-df6d2dd6e272",
+  "createdOn": "2026-10-14",
+  "action": "cancel",
+  "payload": {
+    "requestId": "d088ad38-f38f-4ba1-894a-aa2dca11dc65",
+    "reason": "Removed unsupported diagnosis: rankLocalFavourites uses substring matching and caller already passes deferredTrimmedQuery via useDeferredValue"
+  }
+}
