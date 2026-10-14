@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  answerIsNotInSources,
   answerIsRefusal,
   answerTextForClipboard,
   answerStateForAnswer,
@@ -360,5 +361,25 @@ describe("answerIsRefusal (#Z9NS6H, owner approval 2026-09-28)", () => {
     expect(
       answerIsRefusal({ answer: { grounded: true, fallbackReasonCode: null }, answerState: { kind: "ready" } }),
     ).toBe(false);
+  });
+});
+
+describe("answerIsNotInSources (audit D03)", () => {
+  it.each([
+    [
+      "no_candidates",
+      { confidence: "unsupported" as const, fallbackReasonCode: "no_candidates" as const },
+      false,
+      true,
+    ],
+    ["unsupported", { confidence: "unsupported" as const, fallbackReasonCode: "unsupported" as const }, false, true],
+    // A fail-closed answer (numeric check, timeout) keeps its sources and its caution.
+    ["unsupported with no reason code", { confidence: "unsupported" as const, fallbackReasonCode: null }, false, false],
+    ["the demo corpus refusal", { confidence: "unsupported" as const, fallbackReasonCode: null }, true, true],
+    // Partial support is still an answer with sources.
+    ["coverage_gap", { confidence: "unsupported" as const, fallbackReasonCode: "coverage_gap" as const }, false, false],
+    ["a supported answer", { confidence: "high" as const, fallbackReasonCode: null }, false, false],
+  ])("%s", (_label, answer, demo, expected) => {
+    expect(answerIsNotInSources(answer, { demo })).toBe(expected);
   });
 });

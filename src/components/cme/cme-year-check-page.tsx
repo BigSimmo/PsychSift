@@ -108,7 +108,7 @@ function CheckRow({ row, set }: { row: CmeYearCheckRow; set: CmeRequirementSet }
         href={href}
         data-testid={`cme-check-action-${row.id}`}
         className="work-button min-h-tap shrink-0"
-        data-variant="tinted"
+        data-variant="grey"
       >
         {action.label}
         <span className="sr-only">: {row.label}</span>
@@ -384,7 +384,7 @@ export function CmeYearCheckPage({
                   title={row.title}
                   subtitle={`${formatCmeRowDate(row.date, today)} · ${evidenceRowLine(row)}`}
                   end={
-                    <Link href={row.href} className="work-button min-h-tap shrink-0" data-variant="tinted">
+                    <Link href={row.href} className="work-button min-h-tap shrink-0" data-variant="grey">
                       Attach
                       <span className="sr-only">: {row.title}</span>
                     </Link>

@@ -440,11 +440,7 @@ export function CmeMissedSessionsSection({
                     </div>
                   ) : !readOnly ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link
-                        href={missedReplacementHref(session)}
-                        className="work-button min-h-tap"
-                        data-variant="tinted"
-                      >
+                      <Link href={missedReplacementHref(session)} className="work-button min-h-tap" data-variant="grey">
                         Log the replacement
                       </Link>
                       {linkingId === session.id ? (

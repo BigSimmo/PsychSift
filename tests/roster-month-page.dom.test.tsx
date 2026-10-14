@@ -127,6 +127,8 @@ describe("Roster Month tab", () => {
   it("leads with the next shift and lists only the next three shifts", () => {
     render(<RosterMonthPage now={NOW} />);
     expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("On call tonight");
+    // The title wraps rather than cutting off at "On call tonig…" (design audit D23).
+    expect(screen.getByText("On call tonight").className).not.toContain("truncate");
     // Team stays one tap away from Month (Open shifts fold moved Team out of the tabs).
     expect(screen.getByTestId("roster-month-who")).toHaveAttribute("href", "/roster/team");
     const coming = screen.getByTestId("roster-month-coming");

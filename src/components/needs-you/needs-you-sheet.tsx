@@ -21,14 +21,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type Keyboard
 
 import { useBellPhoneQueue } from "@/components/alerts/use-bell-phone-queue";
 import { useRemindMe } from "@/components/alerts/use-remind-me";
-import {
-  WorkButton,
-  WorkChip,
-  WorkChips,
-  WorkEmpty,
-  WorkIconCircle,
-  WorkSectionLabel,
-} from "@/components/mode-kit/work";
+import { WorkButton, WorkChip, WorkChips, WorkIconCircle, WorkSectionLabel } from "@/components/mode-kit/work";
+import { WorkStateNotice } from "@/components/mode-kit/work-state";
 import { useNotificationFeed, type NotificationFeed } from "@/components/needs-you/use-notification-feed";
 import { OnCallNotificationsPanel } from "@/components/on-call/on-call-notifications";
 import { Sheet } from "@/components/ui/sheet";
@@ -202,6 +196,12 @@ export type NotificationCentreBodyProps = {
   readonly active: boolean;
   /** Runs when a row's link is followed (the sheet closes itself; the page does nothing). */
   readonly onNavigate: () => void;
+  /**
+   * Where the body is drawn. On the page its states take the shared work state
+   * card; in the bell's sheet they draw without the card (design audit 13 Oct
+   * 2026, D13).
+   */
+  readonly surface?: "sheet" | "page";
 };
 
 /**
@@ -209,7 +209,8 @@ export type NotificationCentreBodyProps = {
  * rows, row options, snoozed list, notes and Undo bar, with every state the
  * centre has. The bell's sheet and the Notifications page both draw this.
  */
-export function NotificationCentreBody({ feed, active, onNavigate }: NotificationCentreBodyProps) {
+export function NotificationCentreBody({ feed, active, onNavigate, surface = "sheet" }: NotificationCentreBodyProps) {
+  const bareState = surface === "sheet";
   const [segment, setSegment] = useState<NotificationSegment>("all");
   const [area, setArea] = useState<NotificationArea | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -327,7 +328,9 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
       ) : null}
 
       {status === "signed-out" ? (
-        <WorkEmpty
+        <WorkStateNotice
+          kind="signed-out"
+          bare={bareState}
           icon={Bell}
           title="Your notifications live here"
           body={<span data-testid="needs-you-signed-out">Sign in to see what needs you.</span>}
@@ -335,7 +338,10 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
       ) : status === "loading" ? (
         <NotificationSkeleton />
       ) : status === "error" ? (
-        <WorkEmpty
+        <WorkStateNotice
+          kind="error"
+          role={null}
+          bare={bareState}
           icon={TriangleAlert}
           title="Notifications did not load"
           body={
@@ -398,19 +404,26 @@ export function NotificationCentreBody({ feed, active, onNavigate }: Notificatio
 
           {summary.count === 0 && feed.failed.length > 0 ? (
             // Something did not load, so an empty list is not "all caught up".
-            <WorkEmpty
+            <WorkStateNotice
+              kind="empty"
+              bare={bareState}
               icon={CheckCheck}
               title="Nothing in what loaded"
               body={<span data-testid="needs-you-empty-partial">The areas that loaded have nothing for you.</span>}
             />
           ) : summary.count === 0 ? (
-            <WorkEmpty
+            // No body line: the title line above already says "Nothing needs you right now" (design audit D24).
+            <WorkStateNotice
+              kind="empty"
+              bare={bareState}
               icon={CheckCheck}
               title="You're all caught up"
-              body={<span data-testid="needs-you-empty">Nothing needs you right now.</span>}
+              testId="needs-you-empty"
             />
           ) : shown.length === 0 ? (
-            <WorkEmpty
+            <WorkStateNotice
+              kind="empty"
+              bare={bareState}
               icon={CheckCheck}
               title={segment === "update" ? "No updates" : "Nothing to act on"}
               body={

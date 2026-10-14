@@ -69,14 +69,21 @@ const IDENTITY_MODES: ReadonlySet<AppModeId> = new Set([
   "first-nations",
 ]);
 
+/**
+ * Work areas whose band keeps today's date above the title, because the day is
+ * what their pages are about (owner, 13 Oct 2026: "just please remove the date
+ * on most pages as it is not necessary"). Elsewhere the line is left for the
+ * page's own state (`useModeBandHeading`), or stays empty.
+ */
+const DATE_AREAS: ReadonlySet<WorkArea["id"]> = new Set(["day", "rost", "open", "teach", "call"]);
+
 /** Where the band's status line is drawn; `ModeBandStatus` portals into it. */
 export const modeBandStatusSlotId = "mode-band-status";
-const modeBandActionSlotId = "mode-band-action";
 
 export type ModeBandLead =
   /** A child of another page: a small back link in the mode colour. */
   | { kind: "back"; href: string; label: string }
-  /** A top-level page: today's date, in Perth. */
+  /** A top-level page: no back link (the date line went, 13 Oct 2026). */
   | { kind: "date" };
 
 export type ModeBandProps = {
@@ -205,20 +212,6 @@ function modeHomePath(modeId: AppModeId): string | undefined {
 
 function isHidden(pathname: string, hiddenOn: readonly string[] | undefined): boolean {
   return (hiddenOn ?? []).some((path) => (path.endsWith("/") ? pathname.startsWith(path) : pathname === path));
-}
-
-/**
- * Today's date, rendered after hydration so a server in another timezone, or a
- * page cached across midnight, can never show yesterday, and checked each
- * minute so a page left open moves on at midnight. The row keeps its height
- * either way.
- */
-function TodayDate() {
-  const time = useClientTime({ updateInterval: 60_000 });
-  const { zone } = useWorkTimeZone();
-  if (!time) return <span className="mode-band__date" />;
-  const now = new Date(time);
-  return <span className="mode-band__date">{dateLong(now, zone)}</span>;
 }
 
 /**
@@ -507,7 +500,7 @@ function WorkModeBandHeader({
       current={current}
       currentIsOwnPage={currentIsOwnPage}
       bandRef={setBand}
-      eyebrow={heading?.eyebrow ?? <TodayDateText />}
+      eyebrow={heading?.eyebrow ?? (DATE_AREAS.has(area.id) ? <TodayDateText /> : undefined)}
       title={heading?.title ?? baseTitle}
       counts={counts}
       status={
@@ -530,16 +523,19 @@ function WorkModeBandHeader({
           <Link href={customiseHref} className="work-glass-button work-band__action" aria-label="Customise">
             <SlidersHorizontal aria-hidden="true" className="size-icon-md" strokeWidth={2} />
           </Link>
-        ) : (
-          // A page's own action (My Day's Edit) takes the glass action's place.
-          <span id={modeBandActionSlotId} className="work-band__action-slot" />
-        )
+        ) : // The band's corner is the page's Favourite heart alone (audit D18, 13 Oct 2026):
+        // a page's own tools sit in the page or in More.
+        null
       }
     />
   );
 }
 
-/** Today's date as plain text, settled after hydration (see TodayDate). */
+/**
+ * Today's date, rendered after hydration so a server in another timezone, or a
+ * page cached across midnight, can never show yesterday, and checked each
+ * minute so a page left open moves on at midnight.
+ */
 function TodayDateText() {
   const time = useClientTime({ updateInterval: 60_000 });
   const { zone } = useWorkTimeZone();
@@ -612,9 +608,7 @@ function ModeBandHeader({
               <ChevronLeft aria-hidden="true" className="size-icon-lg shrink-0" strokeWidth={2.25} />
               {lead.label}
             </Link>
-          ) : (
-            <TodayDate />
-          )}
+          ) : null}
           {customiseHref ? (
             <Link href={customiseHref} className="mode-band__customise" aria-label="Customise">
               <Settings2 aria-hidden="true" className="size-icon-lg shrink-0" strokeWidth={2} />
@@ -622,10 +616,7 @@ function ModeBandHeader({
                 Customise
               </span>
             </Link>
-          ) : (
-            // A page's own action (My Day's Edit) takes Customise's place.
-            <span id={modeBandActionSlotId} className="contents" />
-          )}
+          ) : null}
         </div>
         {/* Not a heading: each page keeps its own h1 naming the page, which the
             top bar's pill also names; this is the mode's name. */}
@@ -838,18 +829,6 @@ export function PageTitleUnderBand({ className, children }: { className?: string
       {children}
     </h1>
   );
-}
-
-/**
- * A page's one header action, drawn opposite the date in its mode band (where
- * Customise sits on other modes) and styled like Customise there. With no
- * band it is drawn where it is placed, with the page's own look.
- */
-export function ModeBandAction({ children }: { children: (underBand: boolean) => ReactNode }) {
-  const shown = useModeBandShown();
-  const host = useModeBandHost(modeBandActionSlotId);
-  if (!shown) return <>{children(false)}</>;
-  return host ? createPortal(children(true), host) : null;
 }
 
 /** Draws its children only on a page with no mode band above it. */

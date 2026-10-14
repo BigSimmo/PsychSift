@@ -4,7 +4,7 @@ import { MhaClockPage } from "@/components/psychiatry/mha-clock-page";
 import { mhaClockForms } from "@/lib/psychiatry-hub/mha-clock-forms";
 
 export const metadata: Metadata = {
-  title: "MHA clock | PsychSift",
+  title: "MHA time limits | PsychSift",
   description: "Every Mental Health Act form you are holding, with how long it has been running and its time limits.",
 };
 

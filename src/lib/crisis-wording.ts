@@ -18,3 +18,11 @@ export function hasCrisisWording(text: string | null | undefined): boolean {
   if (!text) return false;
   return crisisWordingPattern.test(text.normalize("NFKC"));
 }
+
+const overdoseWordingPattern = /\b(?:overdos\w*|poison\w*|ingest(?:ed|ion)?)\b/i;
+
+/** Overdose or poisoning wording: the answer crisis card then adds the Poisons Information Centre. */
+export function hasOverdoseWording(text: string | null | undefined): boolean {
+  if (!text) return false;
+  return overdoseWordingPattern.test(text.normalize("NFKC"));
+}

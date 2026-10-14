@@ -234,9 +234,13 @@ type AgendaEntry = {
   readonly startsAt: number | null;
   readonly area: string;
   readonly detail: string | null;
-  /** A state in words ("Date passed", "Cancelled"), shown in amber when `warn`. */
+  /** A state in words ("Date passed", "Cancelled"), in grey ink. */
   readonly state: string | null;
-  readonly warn: boolean;
+  /**
+   * The status shape before the state word (Ward Flow review, 12 Oct 2026): a red triangle once a
+   * date has passed, an amber dot when it is due soon, none for a plain word like "Cancelled".
+   */
+  readonly shape: "passed" | "soon" | null;
   /** A session that starts as on call ends, or runs across it: said in amber under the row. */
   readonly clash: string | null;
   readonly href: string;
@@ -262,7 +266,7 @@ function shiftEntry(shift: MyShift): AgendaEntry {
     area: "Roster",
     detail: kind === "leave" ? null : untilWords(shift.startsAt, shift.endsAt),
     state: null,
-    warn: false,
+    shape: null,
     clash: null,
     href: "/roster/shifts",
     testId: `my-day-week-shift-${shift.id}`,
@@ -281,7 +285,7 @@ function teachingEntry(session: SessionSummaryRead, shifts: readonly MyShift[]):
     area: "Teaching",
     detail: [session.venue, session.isPresenter ? "you lead" : null].filter(Boolean).join(" · ") || null,
     state: cancelled ? "Cancelled" : null,
-    warn: cancelled,
+    shape: null,
     clash: cancelled || session.allDay ? null : clashWithShifts(shifts, session.startsAt, session.endsAt),
     href:
       sessionHref(session) ??
@@ -313,7 +317,7 @@ function itemEntry(item: MyDayItem): AgendaEntry {
     // The state already says the date has passed; a detail that repeats it is dropped.
     detail: item.detail && !(overdue && /passed|overdue/i.test(item.detail)) ? item.detail : null,
     state,
-    warn: overdue,
+    shape: overdue ? "passed" : item.severity === "soon" ? "soon" : null,
     clash: null,
     href: item.href,
     testId: `my-day-item-${item.id}`,
@@ -368,7 +372,10 @@ function AgendaRow({ entry, done }: { readonly entry: AgendaEntry; readonly done
               {entry.state ? (
                 <>
                   {" · "}
-                  <span className={entry.warn ? "font-semibold text-[color:var(--warning-text)]" : undefined}>
+                  <span
+                    data-late={entry.shape === "passed" ? "passed" : entry.shape === "soon" ? "" : undefined}
+                    className="font-semibold text-[color:var(--work-ink-muted)]"
+                  >
                     {entry.state}
                   </span>
                 </>
@@ -430,7 +437,7 @@ function dayDetail(entry: AgendaEntry): DayDetail {
     mode: entry.identity,
     title: entry.time && entry.time !== "All day" ? `${entry.title} ${entry.time}` : entry.title,
     subtitle: [entry.state, entry.area, entry.detail, entry.clash].filter(Boolean).join(" · ") || undefined,
-    passed: entry.warn,
+    passed: entry.shape === "passed",
     href: entry.href,
     actionLabel: "Open",
   };

@@ -104,6 +104,8 @@ export type ChiefPsychiatristStandard = {
   reviewed: boolean;
   /** The signing reviewer's public name when `reviewed`; otherwise null. */
   reviewedBy: string | null;
+  /** The sign-off's UTC timestamp when `reviewed`; otherwise null. */
+  reviewedAt: string | null;
 };
 
 const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -134,6 +136,7 @@ export function parseChiefPsychiatristStandards(value: unknown): ChiefPsychiatri
         sourceUrl: safeCanonicalSourceUrl(text(entry.sourceUrl) || null),
         reviewed: reviewedBy !== null,
         reviewedBy,
+        reviewedAt: reviewedBy !== null ? text(entry.reviewedAt) || null : null,
       },
     ];
   });

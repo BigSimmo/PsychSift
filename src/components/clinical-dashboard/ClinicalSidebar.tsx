@@ -9,11 +9,13 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
   Check,
+  ChevronDown,
   ChevronRight,
   FileText,
   Heart,
@@ -24,12 +26,15 @@ import {
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
+  Phone,
   Pin,
   Pill,
   Search,
   Settings as SettingsIcon,
+  ShieldCheck,
   Sparkles,
   SunMedium,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -50,7 +55,12 @@ import { Sheet } from "@/components/ui/sheet";
 import { appModeDefinition, appModeHomeHref, type AppModeId } from "@/lib/app-modes";
 import { phoneModeGroups, phoneModeGroupsForSide } from "@/lib/phone-mode-groups";
 import { isDashboardModeHref } from "@/lib/search-route-ownership";
-import { useSidebarPins, pinnableSidebarModeIds } from "@/components/clinical-dashboard/use-sidebar-pins";
+import {
+  defaultSidebarPinnedModeIds,
+  useSidebarPins,
+  pinnableSidebarModeIds,
+} from "@/components/clinical-dashboard/use-sidebar-pins";
+import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
 import { useTheme } from "@/components/clinical-dashboard/use-theme";
 import type { ThemePreference } from "@/lib/theme";
 import {
@@ -858,6 +868,10 @@ export function ClinicalSidebarContent({
   const pinnedModeItems = pinnedModeIds
     .map(sidebarModeItem)
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  // Design audit D14: on the phone drawer the product-default pins only repeated the page groups
+  // below, so until the reader edits their shortcuts the drawer offers the urgent tools instead.
+  // The desktop sidebar has no groups beneath, so it keeps the default pins.
+  const showUrgentShortcuts = Boolean(drawer) && pinsAreProductDefault(pinnedModeIds);
   const moreModesActive =
     (pinnableSidebarModeIds as readonly AppModeId[]).includes(activeMode) && !pinnedModeIds.includes(activeMode);
   const accountLabel = accountProfileLabel(identity);
@@ -1004,7 +1018,8 @@ export function ClinicalSidebarContent({
                 />
               </div>
               <nav aria-label="Pinned shortcuts" className="grid gap-0.5">
-                {pinnedModeItems.map((item) => {
+                {showUrgentShortcuts ? <UrgentShortcuts rowItem={rowItem} onNavigate={onNavigate} /> : null}
+                {(showUrgentShortcuts ? [] : pinnedModeItems).map((item) => {
                   const Icon = item.icon;
                   const active = activeMode === item.id;
                   return (
@@ -1032,7 +1047,7 @@ export function ClinicalSidebarContent({
                     </Link>
                   );
                 })}
-                {!pinnedModeItems.length ? (
+                {!pinnedModeItems.length && !showUrgentShortcuts ? (
                   <p className="rounded-lg border border-dashed border-[color:var(--border)] px-3 py-2 text-sm text-[color:var(--text-muted)]">
                     Pin your most-used modes.
                   </p>
@@ -1153,6 +1168,80 @@ export function ClinicalSidebarContent({
     </div>
   );
 }
+function pinsAreProductDefault(pinnedModeIds: readonly AppModeId[]): boolean {
+  return (
+    pinnedModeIds.length === defaultSidebarPinnedModeIds.length &&
+    pinnedModeIds.every((id, index) => id === defaultSidebarPinnedModeIds[index])
+  );
+}
+
+// Loaded on first open: the drawer is on every page and most readers never open this.
+const LazyCrisisLinesCard = dynamic(() => import("@/components/crisis-lines-card").then((mod) => mod.CrisisLinesCard));
+const SIDEBAR_CRISIS_CONTACTS = [
+  ...WA_CRISIS_CONTACTS.filter((contact) =>
+    ["SYN-CRISIS-CONTACT-001", "SYN-CRISIS-CONTACT-002", "SYN-CRISIS-CONTACT-005"].includes(contact.id),
+  ),
+  POISONS_INFORMATION_CONTACT,
+];
+
+const urgentShortcutLinks = [
+  { id: "mha-time-limits", label: "MHA time limits", href: "/psychiatry/mha-clock", icon: Timer },
+  { id: "safety-plan", label: "Safety plan", href: "/safety-plan", icon: ShieldCheck },
+  { id: "forms", label: "Forms", href: "/forms", icon: FileText },
+] as const;
+
+/**
+ * The phone drawer's default shortcuts (design audit D14): the tools a clinician needs fast,
+ * none of which the page groups below already list as a row. Crisis numbers open in place with
+ * the same call rows as the answer page and Admin Help, so a number is two taps from any page.
+ */
+function UrgentShortcuts({ rowItem, onNavigate }: { rowItem: string; onNavigate?: () => void }) {
+  const [crisisOpen, setCrisisOpen] = useState(false);
+  return (
+    <>
+      <details
+        className="group/urgent min-w-0"
+        data-testid="sidebar-urgent-crisis"
+        onToggle={(event) => setCrisisOpen(event.currentTarget.open)}
+      >
+        <summary className={cn(rowItem, "min-h-12 cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>
+          <Phone aria-hidden="true" className="h-4 w-4 shrink-0 text-[color:var(--text-muted)]" />
+          <span className="min-w-0 flex-1 truncate text-left">Crisis numbers</span>
+          <ChevronDown
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-[color:var(--text-muted)] transition-transform group-open/urgent:rotate-180 motion-reduce:transition-none"
+          />
+        </summary>
+        <div className="pb-2 pt-1">
+          {crisisOpen ? (
+            <LazyCrisisLinesCard
+              contacts={SIDEBAR_CRISIS_CONTACTS}
+              testId="sidebar-crisis-lines"
+              rowTestIdPrefix="sidebar-crisis"
+              label="Crisis numbers"
+            />
+          ) : null}
+        </div>
+      </details>
+      {urgentShortcutLinks.map((item) => {
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.id}
+            href={item.href}
+            onClick={() => onNavigate?.()}
+            data-testid={`sidebar-urgent-${item.id}`}
+            className={cn(rowItem, "min-h-12 border border-transparent")}
+          >
+            <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-[color:var(--text-muted)]" />
+            <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
 /**
  * The drawer's page list: every clinical page as a one-tap row under the mode
  * menu's own groups (Search, Psychiatry, Medicines, Library), in place of the
@@ -1180,7 +1269,9 @@ function SidebarGroupedModes({
   onNavigate?: () => void;
 }) {
   const { pinnedModeIds } = useSidebarPins();
-  const currentInGroups = !pinnedModeIds.includes(activeMode);
+  // Only the drawer shows these groups, and there default pins give way to the urgent tools, so
+  // the current page is then marked here.
+  const currentInGroups = pinsAreProductDefault(pinnedModeIds) || !pinnedModeIds.includes(activeMode);
   const groups = phoneModeGroupsForSide("clinical").map((group) => ({
     id: group.id,
     label: group.showHeading ? group.label : "Library",

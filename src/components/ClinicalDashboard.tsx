@@ -67,6 +67,7 @@ import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboa
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
 import { AnswerCancelledNotice } from "@/components/clinical-dashboard/answer-cancelled-notice";
+import { AnswerProviderNotice } from "@/components/clinical-dashboard/answer-provider-notice";
 import { isPreformattedGroundedAnswer } from "@/components/clinical-dashboard/answer-content";
 import {
   AnswerProgress,
@@ -200,7 +201,7 @@ import {
 } from "@/lib/private-search-scope";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { answerLifecycleReducer, initialAnswerLifecycle } from "@/lib/answer-lifecycle";
-import { hasCrisisWording } from "@/lib/crisis-wording";
+import { hasCrisisWording, hasOverdoseWording } from "@/lib/crisis-wording";
 import { useDeferredRegistrySearch } from "@/components/clinical-dashboard/use-deferred-registry-search";
 import { buildAnswerFollowUpQuery, buildAnswerFollowUpSuggestions } from "@/lib/answer-follow-up";
 import {
@@ -247,6 +248,16 @@ import {
   PriorAnswerTurnSurface,
 } from "@/components/clinical-dashboard/answer-thread-turn";
 import type { AnswerFeedbackType } from "@/lib/answer-feedback";
+// Loaded on the first Answer question rather than with the page (bundle budget, 2026-10-13).
+function loadClinicalQuestionPatientCheck() {
+  return import("@/lib/clinical-question-patient-check");
+}
+
+// A question is never sent unchecked: when the check cannot load (a dropped connection),
+// Ask stops with this and the next Ask tries the download again.
+const PATIENT_CHECK_UNAVAILABLE =
+  "Could not check your question for patient details. Check your connection and try again.";
+
 export type { AnswerFeedbackType } from "@/lib/answer-feedback";
 export function ClinicalDashboard(props: ClinicalDashboardProps = {}) {
   return (
@@ -1668,14 +1679,29 @@ function ClinicalDashboardContent({
     const trimmedQuery = searchText.trim();
     if (!trimmedQuery) return;
     const modeSearch = appModeSearchConfig(targetMode);
+    const isDifferentialsMode = modeSearch.resultKind === "differentials";
+    const isAnswerRequest = modeSearch.resultKind === "answer";
+    if (isAnswerRequest) {
+      // A mode switch, Stop or newer search while the check loads makes this submission stale.
+      const submittedSeq = searchRequestSeqRef.current;
+      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
+      if (submittedSeq !== searchRequestSeqRef.current) return;
+      if (!patientCheck) {
+        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        return;
+      }
+      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const targetQueryMode = appModeQueryMode(targetMode, queryModeOverride);
     const privateScopeRef =
       scopeRefOverride ??
       (selectedDocumentIds.length > 0 && auth.session?.user.id
         ? (persistPrivateSearchScope(window.sessionStorage, auth.session.user.id, selectedDocumentIds) ?? undefined)
         : undefined);
-    const isDifferentialsMode = modeSearch.resultKind === "differentials";
-    const isAnswerRequest = modeSearch.resultKind === "answer";
     // Note: no automatic mode-default label scope for Services/Forms. Applying
     // one on every search routed resolveSearchScope's label path over the whole
     // library, whose single `document_labels.in(<all ids>)` request produces an
@@ -2017,6 +2043,24 @@ function ClinicalDashboardContent({
 
   async function ask(searchText = query, contextOverride?: SearchNavigationContext, replaceExistingAnswer = false) {
     const trimmedQuery = searchText.trim();
+    // A Clinical question goes to an overseas AI service. One that looks like it holds a patient
+    // detail is not sent, saved as a recent question or written into the address bar (audit S2,
+    // 2026-10-13). The composer already disables Ask for it; this covers every other way in
+    // (a link with ?run=1, a recent question). The answer API refuses it again.
+    if (searchMode === "answer" && trimmedQuery) {
+      const submittedSeq = searchRequestSeqRef.current;
+      const patientCheck = await loadClinicalQuestionPatientCheck().catch(() => null);
+      if (submittedSeq !== searchRequestSeqRef.current) return;
+      if (!patientCheck) {
+        setActionNotice({ tone: "warning", message: PATIENT_CHECK_UNAVAILABLE });
+        return;
+      }
+      const patientDetail = patientCheck.clinicalQuestionPatientDetail(trimmedQuery);
+      if (patientDetail) {
+        setActionNotice({ tone: "warning", message: patientCheck.clinicalQuestionPatientDetailMessage(patientDetail) });
+        return;
+      }
+    }
     const effectiveQueryMode = contextOverride?.queryMode ?? queryMode;
     const effectiveScopeFilters = contextOverride?.scopeFilters ?? scopeFilters;
     const privateScopeRef =
@@ -2161,6 +2205,7 @@ function ClinicalDashboardContent({
   }
 
   function crossModeSearch(mode: AppModeId, crossQuery: string) {
+    // An Answer cross-search reaches executeSearch, which holds back patient details.
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
       return;
@@ -3347,8 +3392,9 @@ function ClinicalDashboardContent({
 
                 {activeModeResultKind === "answer" &&
                 (loading || answer) &&
-                hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ? (
-                  <AnswerCrisisBanner />
+                (hasCrisisWording(answerLifecycle.query ?? latestAnswerQuery) ||
+                  hasOverdoseWording(answerLifecycle.query ?? latestAnswerQuery)) ? (
+                  <AnswerCrisisBanner query={answerLifecycle.query ?? latestAnswerQuery} />
                 ) : null}
 
                 {matchedEmergencyProtocols.map((protocol) => (
@@ -3401,15 +3447,22 @@ function ClinicalDashboardContent({
                   // mode-specific branch so picking a mode on `/` changes only its
                   // presentation and composer target; mode-owned content stays behind
                   // its own route (/tools, /favourites, /dsm, …).
-                  <SharedHomeEmptyState
-                    modeId={searchMode}
-                    desktopComposerSlotId={desktopHomeComposerSlotId}
-                    recentQueries={recentQueries}
-                    onSelectRecent={(recentQuery) => {
-                      setQuery(recentQuery);
-                      void ask(recentQuery);
-                    }}
-                  />
+                  <>
+                    <SharedHomeEmptyState
+                      modeId={searchMode}
+                      desktopComposerSlotId={desktopHomeComposerSlotId}
+                      recentQueries={recentQueries}
+                      onSelectRecent={(recentQuery) => {
+                        setQuery(recentQuery);
+                        void ask(recentQuery);
+                      }}
+                    />
+                    {/* Before the first question is sent (owner decision, 13 Oct 2026): where an
+                        Answer question goes. Below the home content, so the composer never moves. */}
+                    {searchMode === "answer" && !clientDemoMode ? (
+                      <AnswerProviderNotice className="mt-2" testId="answer-provider-notice-home" />
+                    ) : null}
+                  </>
                 ) : activeModeResultKind === "differentials" ? (
                   <DifferentialsHome
                     query={deferredQuery}
@@ -3571,6 +3624,12 @@ function ClinicalDashboardContent({
                         generating={loading}
                         onScopeDocument={handleScopeDocument}
                       />
+                      {/* Once per page, under the latest answer: where a question goes (audit S3). */}
+                      {explicitDemoMode ||
+                      answer.demoMode === true ||
+                      answer.fallbackMode === "non_production_demo" ? null : (
+                        <AnswerProviderNotice className="mt-1" />
+                      )}
                     </>
                   ) : null
                 ) : null}

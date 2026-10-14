@@ -84,6 +84,46 @@ function groupSummary(rows: readonly RequirementChecklistRow[], today: string): 
  * reason, never a button that pretends to work. The working button lives in
  * the page's dock.
  */
+const MONTH_LABELS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/** Needs-action rows as one list grouped by month: passed dates first, undated rows last (design audit D10). */
+function monthGroups(rows: readonly RequirementChecklistRow[], today: string) {
+  const groups: { key: string; label: string; rows: RequirementChecklistRow[] }[] = [];
+  const at = (key: string, label: string) => {
+    let group = groups.find((candidate) => candidate.key === key);
+    if (!group) {
+      group = { key, label, rows: [] };
+      groups.push(group);
+    }
+    return group;
+  };
+  for (const row of rows) {
+    if (!row.expiresOn) at("no-date", "No date yet").rows.push(row);
+    else if (row.expiresOn < today) at("passed", "Date passed").rows.push(row);
+    else {
+      const key = row.expiresOn.slice(0, 7);
+      const month = MONTH_LABELS[Number(key.slice(5, 7)) - 1];
+      const year = key.slice(0, 4);
+      at(key, year === today.slice(0, 4) ? month : `${month} ${year}`).rows.push(row);
+    }
+  }
+  const rank = (key: string) => (key === "passed" ? "0" : key === "no-date" ? "9" : `1${key}`);
+  return groups.sort((a, b) => (rank(a.key) < rank(b.key) ? -1 : 1));
+}
+
 export type RecordDatesSlot =
   { readonly kind: "button"; readonly onOpen: () => void } | { readonly kind: "note"; readonly text: string };
 
@@ -197,9 +237,20 @@ export function ChecklistList({
       ) : null}
 
       {needsAction.length > 0 ? (
-        <AdminSection label="Needs action · soonest first" count={needsAction.length} testId={`${testId}-needs-action`}>
-          <WorkCard as="ul">{needsAction.map((row) => renderRow(row, false))}</WorkCard>
-        </AdminSection>
+        // Design audit D10 (Josh approved 13 Oct 2026): what needs action is one list grouped by
+        // month, passed dates first and undated rows last.
+        <div className={adminStyles.column} data-testid={`${testId}-needs-action`}>
+          {monthGroups(needsAction, today).map((group) => (
+            <AdminSection
+              key={group.key}
+              label={group.label}
+              count={group.rows.length}
+              testId={`${testId}-month-${group.key}`}
+            >
+              <WorkCard as="ul">{group.rows.map((row) => renderRow(row, false))}</WorkCard>
+            </AdminSection>
+          ))}
+        </div>
       ) : null}
 
       {recordedGroups.length > 0 ? (

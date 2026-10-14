@@ -1,4 +1,5 @@
 "use client";
+// Unused since design audit D11 (13 Oct 2026): kept under the 30-day deletion rule; delete from 12 Nov 2026 with its knip.json ignore entry.
 
 import { ChevronRight, Compass, X } from "lucide-react";
 import Link from "next/link";

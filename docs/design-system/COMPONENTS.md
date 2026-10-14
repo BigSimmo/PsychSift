@@ -1058,14 +1058,14 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `AnswerFooter`           | answer   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `AsyncButton`            | controls | yes   | yes                | inherited-global-root | yes            | no                 |               5 |
 | `Breadcrumb`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
-| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             129 |
+| `Button`                 | controls | yes   | yes                | inherited-global-root | yes            | no                 |             128 |
 | `Checkbox`               | controls | yes   | yes                | inherited-global-root | yes            | no                 |              14 |
 | `Chip`                   | controls | yes   | yes                | inherited-global-root | yes            | no                 |               8 |
 | `ChoiceChip`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               7 |
 | `Citation`               | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `CitationList`           | source   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `ConfirmDialog`          | layout   | yes   | yes                | inherited-global-root | yes            | no                 |              13 |
-| `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               4 |
+| `DateDisplay`            | source   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `Disclosure`             | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
 | `DisclosureGroup`        | layout   | yes   | yes                | inherited-global-root | yes            | no                 |               1 |
 | `DoseLine`               | answer   | yes   | yes                | no                    | yes            | no                 |               0 |
@@ -1078,7 +1078,7 @@ This generated snapshot is a local source-derived inventory. It does not assert 
 | `FieldHint`              | feedback | yes   | yes                | inherited-global-root | yes            | no                 |               2 |
 | `FormField`              | controls | yes   | yes                | inherited-global-root | yes            | no                 |              18 |
 | `IconButton`             | controls | yes   | yes                | inherited-global-root | yes            | no                 |               3 |
-| `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              33 |
+| `InlineNotice`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              32 |
 | `LinkAction`             | controls | yes   | yes                | no                    | yes            | no                 |               0 |
 | `LoadingPanel`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              10 |
 | `MissingValue`           | feedback | yes   | yes                | inherited-global-root | yes            | no                 |              11 |

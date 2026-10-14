@@ -55,6 +55,9 @@ describe("year check page", () => {
     // work-mode redesign, owner request 6 Oct 2026: the mockup's "2 of 4", without the overclaiming "covered".
     expect(within(ring).getByRole("heading")).toHaveTextContent(/^Activities per domain · 2 of 4$/);
     expect(ring.querySelectorAll('path[data-filled="true"]')).toHaveLength(2);
+    // The "2/4" count is page text at 12px or more, not 8px SVG text (design audit D25).
+    expect(ring.querySelector("svg text")).toBeNull();
+    expect(within(ring).getByText("2/4").className).toContain("text-sm");
     expect(ring).toHaveTextContent("Professionalism2 activities");
     // An archived activity does not count, so culturally safe practice still offers "Tag one".
     expect(within(ring).getByRole("link", { name: "Tag one for Culturally safe practice" })).toHaveAttribute(
