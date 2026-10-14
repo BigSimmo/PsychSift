@@ -165,3 +165,7 @@ b8d37288487663197c2197de3ec46f1783849f51:supabase/applied-migration-hashes.json:
 # filename containing "access", so generic-api-key read its SHA-256 as a key. The file was
 # renamed in the next commit; this pin covers only the original commit. No credential (PR #3427).
 a958fdce92f53571c02fa3ea2a03c61300122763:supabase/applied-migration-hashes.json:generic-api-key:303
+
+# Reviewed false positive: a synthetic object-property marker in the witness error-redaction
+# test is not authentication material. Only this original historical finding is excluded.
+3a287997fab2fcd9b207d692d4af1b334801bbfb:tests/worker-original-witness-readback.test.ts:generic-api-key:302
