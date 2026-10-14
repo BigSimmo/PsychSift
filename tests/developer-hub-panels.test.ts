@@ -31,11 +31,11 @@ describe("hub panels", () => {
   it("ships the ledger as a phase 1 panel", () => {
     const ledger = HUB_PANELS.find((panel) => panel.id === "task-ledger");
     expect(ledger?.phase).toBe(1);
-    expect(ledger?.href).toBe("/mockups/development/ledger");
+    expect(ledger?.href).toBe("/admin/developer-hub/ledger");
   });
 
   it("links one clinical trust cockpit from the existing clinical group", () => {
-    const clinicalTrust = HUB_PANELS.filter((panel) => panel.href === "/mockups/development/clinical-trust");
+    const clinicalTrust = HUB_PANELS.filter((panel) => panel.href === "/admin/developer-hub/clinical-trust");
     expect(clinicalTrust).toHaveLength(1);
     expect(clinicalTrust[0]).toMatchObject({ id: "clinical-trust", phase: 1, group: "clinical" });
   });
@@ -107,7 +107,7 @@ describe("ingestion panel (2026-08-25)", () => {
     const panel = HUB_PANELS.find((entry) => entry.id === "ingestion");
     expect(panel).toBeDefined();
     expect(panel!.phase).toBe(1);
-    expect(panel!.href).toBe("/mockups/development/ingestion");
+    expect(panel!.href).toBe("/admin/developer-hub/ingestion");
     expect(panel!.group).toBe("system");
   });
 });
@@ -118,7 +118,7 @@ describe("clinical sign-off queue panel (2026-09-18)", () => {
     expect(panel).toBeDefined();
     expect(panel!.phase).toBe(1);
     expect(panel!.group).toBe("clinical");
-    expect(panel!.href).toBe("/mockups/development/clinical-sign-off");
+    expect(panel!.href).toBe("/admin/developer-hub/clinical-sign-off");
   });
 
   it("never lets the card claim completeness or the power to sign anything off", () => {
@@ -158,7 +158,7 @@ describe("placeholder pruning (2026-08-25)", () => {
     const panel = HUB_PANELS.find((entry) => entry.id === "hazard-register");
     expect(panel).toBeDefined();
     expect(panel!.phase).toBe(1);
-    expect(panel!.href).toBe("/mockups/development/hazards");
+    expect(panel!.href).toBe("/admin/developer-hub/hazards");
     // The one wording trap on this card: it must not claim to cover every
     // clinical risk. Three of the four uncontrolled rows are reviews nobody has
     // convened, so a completeness claim here would be the first untrue thing on

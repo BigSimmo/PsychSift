@@ -25,7 +25,11 @@ import {
 import type { Json } from "@/lib/supabase/database.types";
 import type { RagAnswer, RagQueryClass, SearchResult, SourcePolicyConflict } from "@/lib/types";
 import { restoreCachedContextPackAdmission } from "@/lib/rag/rag-context-admission";
-import { ragIndexingPromptVersion, ragQueryClassifierPromptVersion } from "@/lib/rag/rag-versioning";
+import {
+  ragAnswerInputVersion,
+  ragIndexingPromptVersion,
+  ragQueryClassifierPromptVersion,
+} from "@/lib/rag/rag-versioning";
 
 export type RagAnswerQueryPlanDiagnostics = Readonly<{
   queryPlanKind: import("@/lib/rag/rag-programme-eval").RagQueryPlanKind;
@@ -195,6 +199,7 @@ export type AnswerGenerationFingerprintInput = {
   maxOutputTokens: number;
   providerMode: string;
   promptVersion: string;
+  answerInputVersion?: string;
   contextPackVersion: string;
   schemaVersion: string;
   classifierPromptVersion: string;
@@ -205,7 +210,10 @@ export type AnswerGenerationFingerprintInput = {
 };
 
 export function buildAnswerGenerationFingerprint(input: AnswerGenerationFingerprintInput) {
-  return createHash("sha256").update(JSON.stringify(input)).digest("hex").slice(0, 20);
+  return createHash("sha256")
+    .update(JSON.stringify({ ...input, answerInputVersion: input.answerInputVersion ?? ragAnswerInputVersion }))
+    .digest("hex")
+    .slice(0, 20);
 }
 
 export function answerGenerationFingerprint(decision?: RagProgrammeRolloutDecision) {

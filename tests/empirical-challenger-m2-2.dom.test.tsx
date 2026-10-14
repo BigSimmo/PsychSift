@@ -10,10 +10,10 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
     const baselineRaw = readFileSync("scripts/design-system-contract-baseline.json", "utf8");
     const baseline = JSON.parse(baselineRaw);
 
-    it("verifies exact metric counts: disabledOpacityUses (31), visibleLiveRegions (20), legacyShadowAliases (32)", () => {
-      expect(baseline.metrics.disabledOpacityUses).toBe(31);
-      expect(baseline.metrics.visibleLiveRegions).toBe(20);
-      expect(baseline.metrics.legacyShadowAliases).toBe(32);
+    it("verifies exact metric counts: disabledOpacityUses (30), visibleLiveRegions (17), legacyShadowAliases (30)", () => {
+      expect(baseline.metrics.disabledOpacityUses).toBe(30);
+      expect(baseline.metrics.visibleLiveRegions).toBe(17);
+      expect(baseline.metrics.legacyShadowAliases).toBe(30);
     });
 
     it("verifies zero artificial inflation: sum of debtByPath matches top-level metrics exactly", () => {
@@ -23,9 +23,9 @@ describe("Empirical Challenger M2-2: Baseline Ratchets, Test Guard Exemptions & 
       const sumVisibleLiveRegions = sumValues(baseline.debtByPath.visibleLiveRegions);
       const sumLegacyShadowAliases = sumValues(baseline.debtByPath.legacyShadowAliases);
 
-      expect(sumDisabledOpacity).toBe(31);
-      expect(sumVisibleLiveRegions).toBe(20);
-      expect(sumLegacyShadowAliases).toBe(32);
+      expect(sumDisabledOpacity).toBe(30);
+      expect(sumVisibleLiveRegions).toBe(17);
+      expect(sumLegacyShadowAliases).toBe(30);
 
       expect(baseline.metrics.disabledOpacityUses).toBe(sumDisabledOpacity);
       expect(baseline.metrics.visibleLiveRegions).toBe(sumVisibleLiveRegions);

@@ -595,12 +595,15 @@ describe("the committed repository", () => {
 
   it("still declares the developer-gated prefixes the policy depends on", () => {
     const prefixes = readDeveloperGatedPrefixes(process.cwd());
+    expect(prefixes).toContain("/admin/developer-hub");
     expect(prefixes).toContain("/mockups/development");
     expect(prefixes).toContain("/mockups/care-plan");
   });
 
   it("keeps the developer-gated prototypes out of retirement scope", () => {
-    const gated = readDeveloperGatedPrefixes(process.cwd()).map((p) => p.replace("/mockups/", ""));
+    const gated = readDeveloperGatedPrefixes(process.cwd())
+      .filter((p) => p.startsWith("/mockups/"))
+      .map((p) => p.replace("/mockups/", ""));
     const slugs = listRouteSlugs(process.cwd());
     for (const prefix of gated) expect(slugs).toContain(prefix);
   });

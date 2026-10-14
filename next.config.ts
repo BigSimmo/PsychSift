@@ -216,6 +216,9 @@ const nextConfig: NextConfig = {
       // clinician arriving at /about actually wants to know: what this is and what it does with
       // what they type.
       { source: "/about", destination: "/privacy", permanent: true },
+      // Developer-gated tools relocated from /mockups to /admin (Task #0QXGAN).
+      { source: "/mockups/development", destination: "/admin/developer-hub", permanent: true },
+      { source: "/mockups/development/:path*", destination: "/admin/developer-hub/:path*", permanent: true },
     ];
   },
 

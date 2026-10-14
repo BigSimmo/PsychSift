@@ -2,22 +2,22 @@
   "metrics": {
     "rawColorLiterals": 0,
     "literalShadowClasses": 0,
-    "legacyTapClasses": 3,
+    "legacyTapClasses": 0,
     "interactiveTapFloorDeclarations": 4,
     "colourOnlyStatusIndicators": 0,
     "statusColouredNumerals": 0,
     "edgeOwnershipConflicts": 5,
     "onePixelShadowSpreads": 0,
-    "hardcodedCssMotionDurations": 25,
+    "hardcodedCssMotionDurations": 21,
     "rawCssZIndices": 4,
     "legacyPaletteUtilities": 0,
     "darkColorOverrides": 0,
-    "legacyShadowAliases": 32,
+    "legacyShadowAliases": 30,
     "arbitraryTracking": 0,
-    "rawPaddingLiterals": 22,
-    "rawRadiusLiterals": 15,
-    "rawGapLiterals": 11,
-    "rawMarginLiterals": 8,
+    "rawPaddingLiterals": 21,
+    "rawRadiusLiterals": 14,
+    "rawGapLiterals": 10,
+    "rawMarginLiterals": 6,
     "rawLineHeightLiterals": 0,
     "layoutTransitionExceptions": 10,
     "textSoftConsumers": 0,
@@ -26,20 +26,16 @@
     "handRolledCommandButtons": 8,
     "elevationInversions": 5,
     "sameFileTextSmMinusMix": 32,
-    "visibleLiveRegions": 20,
-    "disabledOpacityUses": 31
+    "visibleLiveRegions": 17,
+    "disabledOpacityUses": 30
   },
   "debtByPath": {
     "rawColorLiterals": {},
     "literalShadowClasses": {},
-    "legacyTapClasses": {
-      "src/components/agreement-ask/agreement-parts.tsx": 1,
-      "src/components/cme/cpd-feature-kit.tsx": 1,
-      "src/components/cme/cpd-home/cpd-home-handoff-strip.tsx": 1
-    },
+    "legacyTapClasses": {},
     "interactiveTapFloorDeclarations": {
-      "src/components/DocumentTagCloud.tsx": 2,
       "src/components/clinical-dashboard/universal-search-also-matches.tsx": 1,
+      "src/components/DocumentTagCloud.tsx": 2,
       "src/components/privacy-input-notice.tsx": 1
     },
     "colourOnlyStatusIndicators": {},
@@ -50,7 +46,7 @@
     },
     "onePixelShadowSpreads": {},
     "hardcodedCssMotionDurations": {
-      "src/app/globals.css": 25
+      "src/app/globals.css": 21
     },
     "rawCssZIndices": {
       "src/app/globals.css": 4
@@ -64,7 +60,6 @@
       "src/components/calculators/search-detail.tsx": 1,
       "src/components/calculators/search-page.tsx": 1,
       "src/components/clinical-dashboard/dashboard-nav.tsx": 2,
-      "src/components/clinical-dashboard/differentials-home.tsx": 1,
       "src/components/clinical-dashboard/document-search-results.tsx": 3,
       "src/components/clinical-dashboard/favourites-hub.tsx": 1,
       "src/components/clinical-dashboard/master-search-header.tsx": 2,
@@ -80,28 +75,27 @@
       "src/components/primitive-recipes/recipes.ts": 1,
       "src/components/route-error-boundary.tsx": 1,
       "src/components/therapy-compass/screens/sheets-screen.tsx": 1,
-      "src/components/ui/button.tsx": 1,
       "src/components/ui/sheet.tsx": 1,
       "src/components/ui/toast.tsx": 1,
       "src/components/ui/tooltip.tsx": 1
     },
     "arbitraryTracking": {},
     "rawPaddingLiterals": {
-      "src/app/globals.css": 18,
+      "src/app/globals.css": 17,
       "src/components/clinical-dashboard/result-filter-control.tsx": 1,
       "src/components/clinical-record-panels.tsx": 2,
       "src/components/differentials/differential-detail-page.tsx": 1
     },
     "rawRadiusLiterals": {
-      "src/app/globals.css": 13,
+      "src/app/globals.css": 12,
       "src/components/clinical-dashboard/search-results-header-band.tsx": 1,
       "src/components/mode-nav/mode-nav.tsx": 1
     },
     "rawGapLiterals": {
-      "src/app/globals.css": 11
+      "src/app/globals.css": 10
     },
     "rawMarginLiterals": {
-      "src/app/globals.css": 6,
+      "src/app/globals.css": 4,
       "src/components/document-viewer/source-panels.tsx": 2
     },
     "rawLineHeightLiterals": {},
@@ -165,7 +159,7 @@
     },
     "visibleLiveRegions": {
       "src/components/clinical-dashboard/answer-status.tsx": 1,
-      "src/components/clinical-dashboard/differentials-home.tsx": 2,
+      "src/components/clinical-dashboard/differentials-home.tsx": 1,
       "src/components/clinical-dashboard/favourites-command-library-page.tsx": 1,
       "src/components/clinical-dashboard/result-filter-control.tsx": 1,
       "src/components/clinical-dashboard/search-results-header-band.tsx": 1,
@@ -174,9 +168,7 @@
       "src/components/developer-area/clinical-trust-cockpit.tsx": 1,
       "src/components/differentials/diagnosis-map-panel.tsx": 1,
       "src/components/differentials/differential-detail-page.tsx": 1,
-      "src/components/differentials/differential-stream-workspace.tsx": 1,
       "src/components/document-viewer/document-viewer-state-surface.tsx": 1,
-      "src/components/dsm/dsm-search-page.tsx": 1,
       "src/components/forms/form-detail-page.tsx": 1,
       "src/components/services/service-detail-page.tsx": 1,
       "src/components/therapy-compass/recommend-scenario-control.tsx": 1,
@@ -186,7 +178,7 @@
     },
     "disabledOpacityUses": {
       "src/components/calculators/bedside-sheet.tsx": 1,
-      "src/components/calculators/calculator-ui.tsx": 2,
+      "src/components/calculators/calculator-ui.tsx": 1,
       "src/components/calculators/clinical-console.tsx": 1,
       "src/components/calculators/guided-flow.tsx": 1,
       "src/components/clinical-dashboard/answer-follow-up-suggestions.tsx": 1,

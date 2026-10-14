@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "c2135275-dffa-4c91-9422-2e995cdf7b02",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#X98D7J",
+    "outcome": "Resolved: Added case-by-case canary breakdown formatting to release reporter.",
+    "baseRowFingerprint": "b923a563baf27c97674efcf2d078025403e878baeb90b7bba5985002e72a2974"
+  }
+}

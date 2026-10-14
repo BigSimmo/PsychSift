@@ -30,9 +30,9 @@ const PROXY_AUTH_HKDF_INFO = "psychsift:proxy-auth-claims:v1";
  * env-parity check can vouch for.
  */
 function getProxyAuthSigningKey(): Buffer | null {
-  const trimmed = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!trimmed) return null;
-  return Buffer.from(hkdfSync("sha256", Buffer.from(trimmed, "utf8"), Buffer.alloc(0), PROXY_AUTH_HKDF_INFO, 32));
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!secret) return null;
+  return Buffer.from(hkdfSync("sha256", Buffer.from(secret, "utf8"), Buffer.alloc(0), PROXY_AUTH_HKDF_INFO, 32));
 }
 
 /** The exact bytes covered by the signature: claims and issued-at together, so neither can move. */
@@ -92,4 +92,46 @@ export function verifyProxyAuthHeader(headerValue: string): string | null {
     return null;
   }
   return null;
+}
+
+/**
+ * Constant-time string comparison preventing timing side channels.
+ * Compares UTF-8 byte lengths first to prevent RangeError in timingSafeEqual.
+ */
+export function timingSafeSecretEqual(received: string, expected: string): boolean {
+  const expectedBytes = Buffer.from(expected, "utf8");
+  const receivedBytes = Buffer.from(received, "utf8");
+  if (expectedBytes.length !== receivedBytes.length) return false;
+  return timingSafeEqual(expectedBytes, receivedBytes);
+}
+
+/**
+ * Extracts the presented PROXY_AUTH token from request headers.
+ * Checks x-proxy-auth, proxy-auth, then Authorization: Bearer <token>.
+ */
+export function presentedProxyAuthToken(request: Request): string {
+  const customHeader = request.headers.get("x-proxy-auth") ?? request.headers.get("proxy-auth");
+  if (customHeader?.trim()) return customHeader.trim();
+  const authorization = request.headers.get("authorization") ?? "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+  return bearer ?? "";
+}
+
+export type ProxyAuthResult = { ok: true } | { ok: false; status: 401 | 503; error: string };
+
+/**
+ * Validates inbound proxy requests using constant-time comparison against PROXY_AUTH.
+ * Fails closed (503) if neither PROXY_AUTH nor fallback server secret is configured.
+ * Returns 401 if token is missing or mismatched.
+ */
+export function verifyProxyAuthSecret(request: Request): ProxyAuthResult {
+  const secret = process.env.PROXY_AUTH?.trim();
+  if (!secret) {
+    return { ok: false, status: 503, error: "PROXY_AUTH secret is not configured" };
+  }
+  const presented = presentedProxyAuthToken(request);
+  if (!presented || !timingSafeSecretEqual(presented, secret)) {
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+  return { ok: true };
 }

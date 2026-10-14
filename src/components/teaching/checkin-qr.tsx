@@ -1,5 +1,6 @@
-import { create } from "qrcode";
-import { useMemo } from "react";
+"use client";
+
+import { useEffect, useState } from "react";
 
 import { cn } from "@/components/ui-primitives";
 
@@ -14,8 +15,26 @@ import { cn } from "@/components/ui-primitives";
  */
 const QUIET_ZONE = 4;
 
-export function qrModulePath(value: string): { path: string; size: number } {
-  const qr = create(value, { errorCorrectionLevel: "M" });
+export interface QrMatrix {
+  readonly path: string;
+  readonly size: number;
+}
+
+let qrcodeModulePromise: Promise<typeof import("qrcode")> | null = null;
+let qrcodeLib: typeof import("qrcode") | null = null;
+
+export function loadQrCode(): Promise<typeof import("qrcode")> {
+  if (qrcodeLib) return Promise.resolve(qrcodeLib);
+  if (!qrcodeModulePromise) {
+    qrcodeModulePromise = import("qrcode").then((mod) => {
+      qrcodeLib = mod;
+      return mod;
+    });
+  }
+  return qrcodeModulePromise;
+}
+
+function computeQrPath(qr: import("qrcode").QRCode): QrMatrix {
   const count = qr.modules.size;
   let path = "";
   for (let row = 0; row < count; row += 1) {
@@ -26,21 +45,68 @@ export function qrModulePath(value: string): { path: string; size: number } {
   return { path, size: count + QUIET_ZONE * 2 };
 }
 
+const matrixCache = new Map<string, QrMatrix>();
+
+function getOrComputeMatrix(create: typeof import("qrcode").create, value: string): QrMatrix {
+  const cached = matrixCache.get(value);
+  if (cached) return cached;
+  const qr = create(value, { errorCorrectionLevel: "M" });
+  const result = computeQrPath(qr);
+  matrixCache.set(value, result);
+  return result;
+}
+
+export function useQrMatrix(value: string | null): QrMatrix | null {
+  const [matrix, setMatrix] = useState<QrMatrix | null>(() => {
+    if (!value || !qrcodeLib) return null;
+    return getOrComputeMatrix(qrcodeLib.create, value);
+  });
+  const [prevValue, setPrevValue] = useState<string | null>(value);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setMatrix(value && qrcodeLib ? getOrComputeMatrix(qrcodeLib.create, value) : null);
+  }
+
+  useEffect(() => {
+    if (!value || qrcodeLib) return;
+    let cancelled = false;
+    loadQrCode().then((mod) => {
+      if (!cancelled) {
+        setMatrix(getOrComputeMatrix(mod.create, value));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [value]);
+
+  return matrix;
+}
+
+export async function qrModulePath(value: string): Promise<QrMatrix> {
+  const cached = matrixCache.get(value);
+  if (cached) return cached;
+  const { create } = await loadQrCode();
+  return getOrComputeMatrix(create, value);
+}
+
 export function CheckinQr({ value, label, className }: { value: string; label: string; className?: string }) {
-  const drawn = useMemo(() => qrModulePath(value), [value]);
+  const drawn = useQrMatrix(value);
+  const size = drawn?.size ?? 29;
   return (
     <svg
       role="img"
       aria-label={label}
-      viewBox={`0 0 ${drawn.size} ${drawn.size}`}
+      viewBox={`0 0 ${size} ${size}`}
       shapeRendering="crispEdges"
       data-testid="teaching-checkin-qr"
       data-mode-identity="teaching"
       data-qr-value={value}
       className={cn("block aspect-square w-full forced-color-adjust-none", className)}
     >
-      <rect width={drawn.size} height={drawn.size} className="fill-[color:var(--teaching-qr-light)]" />
-      <path d={drawn.path} className="fill-[color:var(--teaching-qr-dark)]" />
+      <rect width={size} height={size} className="fill-[color:var(--teaching-qr-light)]" />
+      {drawn ? <path d={drawn.path} className="fill-[color:var(--teaching-qr-dark)]" /> : null}
     </svg>
   );
 }

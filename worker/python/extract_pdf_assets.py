@@ -1244,6 +1244,13 @@ def extract(pdf_path, output_dir, budget=None):
     budget = budget or ExtractionBudget()
     os.makedirs(output_dir, exist_ok=True)
     document = open_pdf_for_extraction(pdf_path)
+    try:
+        return _extract_document(document, output_dir, budget)
+    finally:
+        document.close()
+
+
+def _extract_document(document, output_dir, budget):
     pages = []
     images = []
     warnings = []

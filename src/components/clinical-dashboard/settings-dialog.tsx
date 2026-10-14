@@ -1484,7 +1484,7 @@ export function SettingsDialog({
                     prototypes it links to — no patient record, message or schedule on them is real.
                   </p>
                   <Link
-                    href="/mockups/development"
+                    href="/admin/developer-hub"
                     onClick={onClose}
                     className={cn(floatingControl, "mt-3 w-full gap-2 text-sm")}
                     data-testid="settings-row-development-page"

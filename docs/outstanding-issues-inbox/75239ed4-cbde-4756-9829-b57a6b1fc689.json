@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "75239ed4-cbde-4756-9829-b57a6b1fc689",
+  "createdOn": "2026-10-14",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "issue",
+    "summary": "Cache compiled boundary regexes in document chunking pipeline",
+    "detail": "In src/lib/chunking.ts, buildChunks repeatedly re-compiles regex boundary patterns during document chunking, consuming 27.67 ms average CPU time on 12-page documents. Pre-compiling sentence/section regex patterns or memoizing chunk boundaries improves background ingestion throughput.",
+    "source": "session 2026-10-14 performance audit follow-up",
+    "issueUlid": "01M4WDKGQDBGDVPD7HR56ED6MC"
+  }
+}

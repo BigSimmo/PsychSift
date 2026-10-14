@@ -59,7 +59,7 @@ function Node({
     <span aria-hidden="true" className="relative z-[var(--z-raised)] grid justify-items-center gap-0.5 text-center">
       <span
         className={cn(
-          "mb-1 grid size-11 place-items-center rounded-full bg-[color:var(--surface-raised)]",
+          "mb-1 grid size-12 place-items-center rounded-full bg-[color:var(--surface-raised)]",
           state === "done" &&
             "border border-[color:var(--mode-identity-border)] bg-[color:var(--mode-identity-soft)] text-[color:var(--mode-identity)]",
           state === "current" &&

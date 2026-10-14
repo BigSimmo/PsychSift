@@ -66,6 +66,25 @@ function withoutApprovedTermTrackerStorage(path: string, source: string): string
   return source.replace(/\blocalStorage\b/g, "");
 }
 
+/**
+ * The in-app QR check-in helper (#ZTDZ4Z, 2026-10-13) opens the phone camera to read a session QR code. That is
+ * the camera, never the microphone: this one file may name `mediaDevices.getUserMedia`, and only while it asks for
+ * video. Every request it makes must say `audio: false`, and it may not name an audio or speech API, so the
+ * microphone rule below still holds for it.
+ */
+const QR_CHECK_IN_HELPER = "src/components/teaching/qr-check-in-helper.tsx";
+
+function withoutApprovedCameraAccess(path: string, source: string): string {
+  if (!path.split(sep).join("/").endsWith(QR_CHECK_IN_HELPER)) return source;
+  const requests = source.match(/\bgetUserMedia\(\s*\{/g) ?? [];
+  expect(requests.length, "the helper requests the camera").toBeGreaterThan(0);
+  expect(source.match(/\baudio:\s*false\b/g) ?? [], "every camera request declines audio").toHaveLength(
+    requests.length,
+  );
+  expect(source, "no camera request asks for audio").not.toMatch(/\baudio:\s*(?!false\b)\S/);
+  return source.replace(/\bmediaDevices\b|\bgetUserMedia\b/g, "");
+}
+
 function files(): string[] {
   const found: string[] = [];
   const walk = (dir: string) => {
@@ -88,7 +107,10 @@ describe("Teaching search privacy", () => {
 
   it.each(all)("%s reaches for no composer, microphone, search API, unapproved device storage or push", (path) => {
     const source = readFileSync(path, "utf8");
-    const sanitized = withoutApprovedTermTrackerStorage(path, withoutAllowedStorageAccess(source));
+    const sanitized = withoutApprovedCameraAccess(
+      path,
+      withoutApprovedTermTrackerStorage(path, withoutAllowedStorageAccess(source)),
+    );
     for (const specifier of FORBIDDEN_IMPORTS)
       expect(source, `${path} imports ${specifier}`).not.toContain(`"${specifier}"`);
     for (const [pattern, what] of FORBIDDEN_TEXT) expect(sanitized, `${path} reaches ${what}`).not.toMatch(pattern);

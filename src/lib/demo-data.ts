@@ -685,6 +685,7 @@ export function demoAnswer(query: string, documentId?: string, documentIds?: str
     confidence: supportedQuestion && sources.length > 0 ? "high" : "unsupported",
     citations: sources.slice(0, 4).map((source) => citationFromResult(source, "deterministic_support")),
     sources,
+    strongSupportLabelCapped: false,
     answerSections: sources.length
       ? broadMultiDocumentQuery
         ? [
@@ -778,6 +779,7 @@ export function demoSummary(documentId: string): RagAnswer {
     confidence: "high",
     citations: sources.slice(0, 4).map((source) => citationFromResult(source, "deterministic_support")),
     sources,
+    strongSupportLabelCapped: false,
     answerSections: [
       {
         heading:

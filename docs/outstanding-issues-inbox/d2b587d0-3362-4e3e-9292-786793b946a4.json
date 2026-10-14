@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "d2b587d0-3362-4e3e-9292-786793b946a4",
+  "createdOn": "2026-10-13",
+  "action": "done",
+  "payload": {
+    "id": "#SW6NN4",
+    "outcome": "Resolved: Decoupled later-added NICE guideline citations from original upload source in therapy provenance views."
+  }
+}

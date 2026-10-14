@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ACCOUNT_TRANSITION_EVENT, WORK_PAGE_FAVOURITES_STORAGE_KEY } from "@/lib/account-scoped-browser-state";
 
@@ -44,11 +44,9 @@ beforeAll(async () => {
   stars = await import("@/lib/favourites/work-page-stars");
 });
 
-afterAll(() => {
-  vi.unstubAllGlobals();
-});
-
 beforeEach(() => {
+  // The global node setup unstubs globals after every test, so re-install the window per test.
+  vi.stubGlobal("window", fakeWindow);
   storage.clear();
   storage.failWrites = false;
   stars.resetWorkPageStarsForTesting();

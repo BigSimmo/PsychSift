@@ -104,7 +104,7 @@ export function DateTile({ on, label }: { readonly on: string; readonly label: s
     <span
       role="img"
       aria-label={label}
-      className="grid w-11 shrink-0 justify-items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1"
+      className="grid w-12 shrink-0 justify-items-center rounded-md border border-[color:var(--border)] bg-[color:var(--surface-raised)] py-1"
     >
       <span aria-hidden="true" className="text-2xs font-semibold leading-4 text-[color:var(--mode-identity)]">
         {month}

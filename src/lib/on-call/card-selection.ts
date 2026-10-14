@@ -1,6 +1,5 @@
-import { isComplianceEntry } from "@/lib/on-call/compliance";
 import { onCallEntryFreshness, type OnCallEntry } from "@/lib/on-call/entry-model";
-import { isRoleExplainerEntry } from "@/lib/on-call/who-is-who";
+import { onCallViewForEntry } from "@/lib/on-call/view";
 
 /**
  * Which entries belong on the printed essentials card (Task 13) — the one
@@ -97,8 +96,8 @@ export function selectCardEntries(entries: readonly OnCallEntry[], now: Date = n
   return entries.filter((entry) => {
     if (!entry.includeOnCard) return false;
     if (entry.isPersonal) return false;
-    if (isComplianceEntry(entry)) return false;
-    if (isRoleExplainerEntry(entry)) return false;
+    const view = onCallViewForEntry(entry);
+    if (view === "compliance" || view === "who-is-who") return false;
     if (onCallEntryFreshness(entry, now).state === "stale") return false;
     return true;
   });

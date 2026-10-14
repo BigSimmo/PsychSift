@@ -4,6 +4,7 @@ import { TriangleAlert, Clock, CornerDownLeft, Heart, Loader2, Search, Sparkles 
 import { useRouter } from "next/navigation";
 import {
   useCallback,
+  useDeferredValue,
   useEffect,
   useId,
   useMemo,
@@ -575,9 +576,10 @@ export function UniversalSearchCommandSurface({
     ],
     [demoMode, savedRegistryFavourites],
   );
+  const deferredTrimmedQuery = useDeferredValue(trimmedQuery);
   const favouriteMatches = useMemo(
-    () => rankLocalFavourites(allFavouriteItems, trimmedQuery, demoMode),
-    [allFavouriteItems, demoMode, trimmedQuery],
+    () => rankLocalFavourites(allFavouriteItems, deferredTrimmedQuery, demoMode),
+    [allFavouriteItems, demoMode, deferredTrimmedQuery],
   );
   const savedHrefs = useMemo(() => new Set(allFavouriteItems.map((item) => item.href)), [allFavouriteItems]);
   // `savedHrefs` still includes demo fixtures for de-duplication; only these are

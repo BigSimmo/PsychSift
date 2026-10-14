@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "59ff335c-079c-479d-b468-4310921b4079",
+  "createdOn": "2026-10-14",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Precompute GIN search_tsv on site_content_release_records for hybrid retrieval",
+    "detail": "In Supabase RPC match_document_chunks_hybrid_v3 (supabase/migrations/20260830122000_add_corpus_scoped_retrieval_v3.sql), full-text matching against site_content_release_records dynamically runs to_tsvector on each row during queries. Storing a generated or trigger-maintained search_tsv tsvector column with a GIN index on public.site_content_release_records accelerates hybrid retrieval without dynamic DB re-vectorization.",
+    "source": "session 2026-10-14 performance audit follow-up",
+    "issueUlid": "01M4WDK96WJVQ1HAM0NR12F759"
+  }
+}

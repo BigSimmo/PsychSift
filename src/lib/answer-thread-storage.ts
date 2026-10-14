@@ -48,21 +48,13 @@ export type StoredAnswerTurn = {
 };
 
 export type PersistedAnswerThread = {
-  version: 2;
+  version: 3;
   priorTurns: StoredAnswerTurn[];
   latestTurn: Omit<StoredAnswerTurn, "id"> | null;
   collapsedTurnIds: string[];
   showEarlierTurns: boolean;
   latestSubmissionSignature: string;
   expiresAt: number;
-};
-
-type LegacyPersistedAnswerThread = {
-  version: 1;
-  priorTurns?: unknown;
-  latestTurn?: unknown;
-  collapsedTurnIds?: unknown;
-  savedAt?: unknown;
 };
 
 export type AnswerThreadRestoreOptions = {
@@ -78,27 +70,60 @@ function storedResolvedQuery(value: unknown): { resolvedQuery?: string } {
   return { resolvedQuery: value };
 }
 
-function normalizeStoredAnswerTurn(value: unknown): StoredAnswerTurn | null {
+export function normalizeStoredAnswerTurn(value: unknown): StoredAnswerTurn | null {
   if (!value || typeof value !== "object") return null;
   const turn = value as Record<string, unknown>;
+  const rawAnswer = turn.answer as Record<string, unknown> | undefined;
+  if (
+    !rawAnswer ||
+    typeof rawAnswer !== "object" ||
+    rawAnswer.strongSupportLabelCapped === undefined ||
+    typeof rawAnswer.strongSupportLabelCapped !== "boolean"
+  ) {
+    return null;
+  }
   const answer = projectClientAnswerPayload(turn.answer);
   const sources = Array.isArray(turn.sources)
     ? turn.sources.map(projectClientSearchResult).filter((source): source is ClientSearchResult => Boolean(source))
     : null;
-  if (typeof turn.id !== "string" || typeof turn.query !== "string" || !turn.query.trim() || !answer || !sources) {
+  if (
+    typeof turn.id !== "string" ||
+    typeof turn.query !== "string" ||
+    !turn.query.trim() ||
+    !answer ||
+    !sources ||
+    answer.strongSupportLabelCapped === undefined ||
+    typeof answer.strongSupportLabelCapped !== "boolean"
+  ) {
     return null;
   }
   return { id: turn.id, query: turn.query, ...storedResolvedQuery(turn.resolvedQuery), answer, sources };
 }
 
-function normalizeLatestTurn(value: unknown): Omit<StoredAnswerTurn, "id"> | null {
+export function normalizeLatestTurn(value: unknown): Omit<StoredAnswerTurn, "id"> | null {
   if (!value || typeof value !== "object") return null;
   const turn = value as Record<string, unknown>;
+  const rawAnswer = turn.answer as Record<string, unknown> | undefined;
+  if (
+    !rawAnswer ||
+    typeof rawAnswer !== "object" ||
+    rawAnswer.strongSupportLabelCapped === undefined ||
+    typeof rawAnswer.strongSupportLabelCapped !== "boolean"
+  ) {
+    return null;
+  }
   const answer = projectClientAnswerPayload(turn.answer);
   const sources = Array.isArray(turn.sources)
     ? turn.sources.map(projectClientSearchResult).filter((source): source is ClientSearchResult => Boolean(source))
     : null;
-  if (typeof turn.query !== "string" || !turn.query.trim() || !answer || !sources) {
+  if (
+    typeof turn.query !== "string" ||
+    !turn.query.trim() ||
+    !answer ||
+    !sources ||
+    answer.strongSupportLabelCapped === undefined ||
+    typeof answer.strongSupportLabelCapped !== "boolean"
+  ) {
     return null;
   }
   return { query: turn.query, ...storedResolvedQuery(turn.resolvedQuery), answer, sources };
@@ -119,7 +144,8 @@ function normalizeCollapsedTurnIds(value: unknown, priorTurns: StoredAnswerTurn[
   return Array.from(new Set(value.filter((id): id is string => typeof id === "string" && availableIds.has(id))));
 }
 
-function normalizeV2(value: Record<string, unknown>): PersistedAnswerThread | null {
+export function normalizePersistedAnswerThread(value: Record<string, unknown>): PersistedAnswerThread | null {
+  if (value.version !== 3) return null;
   const now = Date.now();
   const priorTurns = normalizeTurns(value.priorTurns);
   const latestTurn = normalizeLatestTurn(value.latestTurn);
@@ -135,39 +161,13 @@ function normalizeV2(value: Record<string, unknown>): PersistedAnswerThread | nu
     return null;
   }
   return {
-    version: 2,
+    version: 3,
     priorTurns,
     latestTurn,
     collapsedTurnIds: normalizeCollapsedTurnIds(value.collapsedTurnIds, priorTurns),
     showEarlierTurns: value.showEarlierTurns === true,
     latestSubmissionSignature: value.latestSubmissionSignature,
     expiresAt: value.expiresAt,
-  };
-}
-
-function migrateV1(
-  value: LegacyPersistedAnswerThread,
-  expectedSubmissionSignature: string | undefined,
-): PersistedAnswerThread | null {
-  const priorTurns = normalizeTurns(value.priorTurns);
-  const latestTurn = normalizeLatestTurn(value.latestTurn);
-  if (!latestTurn || !expectedSubmissionSignature) return null;
-  // V1 had no query-mode/scope signature. It is safe to accept only for an
-  // unscoped answer URL whose exact query matches the latest completed turn.
-  const unscopedLegacySignature = `answer:${latestTurn.query.trim()}:`;
-  if (expectedSubmissionSignature !== unscopedLegacySignature) return null;
-  const now = Date.now();
-  const savedAt = typeof value.savedAt === "number" && Number.isFinite(value.savedAt) ? value.savedAt : now;
-  const expiresAt = savedAt + answerThreadTtlMs;
-  if (savedAt > now || expiresAt <= now) return null;
-  return {
-    version: 2,
-    priorTurns,
-    latestTurn,
-    collapsedTurnIds: normalizeCollapsedTurnIds(value.collapsedTurnIds, priorTurns),
-    showEarlierTurns: false,
-    latestSubmissionSignature: expectedSubmissionSignature,
-    expiresAt,
   };
 }
 
@@ -193,12 +193,7 @@ export function loadPersistedAnswerThread(
       return null;
     }
     const record = parsed as Record<string, unknown>;
-    const thread =
-      record.version === 2
-        ? normalizeV2(record)
-        : record.version === 1
-          ? migrateV1(record as LegacyPersistedAnswerThread, options.expectedSubmissionSignature)
-          : null;
+    const thread = normalizePersistedAnswerThread(record);
     if (!thread) {
       removeStoredThread(ownerId);
       return null;
@@ -211,7 +206,6 @@ export function loadPersistedAnswerThread(
     ) {
       return null;
     }
-    if (record.version === 1) savePersistedAnswerThread(ownerId, thread);
     return thread;
   } catch {
     try {
@@ -238,7 +232,7 @@ export function savePersistedAnswerThread(ownerId: string, thread: PersistedAnsw
       return false;
     }
     const payload: PersistedAnswerThread = {
-      version: 2,
+      version: 3,
       priorTurns,
       latestTurn,
       collapsedTurnIds: normalizeCollapsedTurnIds(thread.collapsedTurnIds, priorTurns),

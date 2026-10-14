@@ -166,7 +166,7 @@ export function OnCallOrientationSection({
   onEditEntry,
   onVerified,
 }: OnCallOrientationSectionProps) {
-  const allOrientation = entries.filter((entry) => entry.section === "orientation");
+  const allOrientation = entries.filter((entry) => (entry.view ?? entry.section) === "orientation");
 
   if (allOrientation.length === 0) {
     return (

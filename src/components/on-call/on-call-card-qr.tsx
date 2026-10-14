@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-import { qrModulePath } from "@/components/teaching/checkin-qr";
+import { useQrMatrix } from "@/components/teaching/checkin-qr";
 import { cn } from "@/components/ui-primitives";
 
 const subscribe = () => () => undefined;
@@ -22,9 +22,9 @@ function useLiveCardUrl(): string | null {
  */
 export function OnCallCardQr({ className }: { readonly className?: string }) {
   const value = useLiveCardUrl();
-  if (!value)
+  const drawn = useQrMatrix(value);
+  if (!value || !drawn)
     return <div className={cn("size-20", className)} aria-hidden="true" data-testid="on-call-card-qr-pending" />;
-  const drawn = qrModulePath(value);
   return (
     <svg
       role="img"

@@ -3048,8 +3048,11 @@ async function answerQuestionWithScopeUncoalesced(
       `source_count: ${contextResults.length}`,
       `source_relevance: ${contextArtifacts.relevance.label}`,
     ].join("\n");
+    const sanitizedQuery = sanitizePromptUserQuery(args.query);
     return `Question:
-${args.query}
+<user_query>
+${sanitizedQuery}
+</user_query>
 ${clinicalModePrompt(args.queryMode ?? "auto") ? `\nSelected clinical query mode:\n${clinicalModePrompt(args.queryMode ?? "auto")}\n` : ""}
 
 Interpreted clinical task:
@@ -4172,4 +4175,18 @@ ${buildRagSourceBlock(results)}`;
     total_latency_ms: generated.latencyMs,
   };
   return observeRagAnswer(assessAndEnforceClaimSupport(answer), options?.observationContext);
+}
+
+export function sanitizePromptUserQuery(query: string): string {
+  if (!query) return "";
+  // Owner ruling (13 Oct 2026): a raw "<" stays, so the model reads "<5 mg" as
+  // written. Only the prompt's own delimiters are removed: the source fence
+  // markers (`<<<` / `>>>`) and the `<user_query>` tags the query sits inside.
+  // Control characters go too (newline, tab and other unicode stay).
+  return query
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u2028\u2029]/g, "")
+    .replace(/<{3,}|>{3,}/g, "")
+    .replace(/<\s*\/?\s*user_query\s*>/gi, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }

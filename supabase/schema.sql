@@ -12814,6 +12814,9 @@ create trigger site_content_release_records_immutable
 before update or delete on public.site_content_release_records
 for each row execute function public.guard_site_content_immutable_row();
 
+alter table public.site_content_release_records
+  enable always trigger site_content_release_records_immutable;
+
 create trigger site_content_release_receipts_append_only
 before update or delete on public.site_content_release_receipts
 for each row execute function public.guard_site_content_immutable_row();
@@ -27319,3 +27322,125 @@ end $$;
 
 revoke all on function public.roster_open_withdraw(uuid, uuid, uuid) from public, anon, authenticated;
 grant execute on function public.roster_open_withdraw(uuid, uuid, uuid) to service_role;
+
+-- FORCE ROW LEVEL SECURITY on six control-plane tables (20261013170000_force_rls_control_plane.sql).
+-- The release-records immutability trigger's ENABLE ALWAYS state
+-- (20261013140000_enable_always_release_records_immutability.sql) sits beside its create trigger above.
+alter table public.clinical_quality_feedback_triage force row level security;
+alter table public.clinical_quality_feedback_triage_events force row level security;
+alter table public.document_corpus_access_snapshots force row level security;
+alter table public.document_corpus_access_state force row level security;
+alter table public.public_source_activation_guards force row level security;
+alter table public.public_source_cleanup_mutation_guards force row level security;
+
+-- Bounded retention for api_rate_limit_subjects (20261013150000_api_rate_limit_subjects_retention.sql).
+create or replace function public.purge_expired_api_rate_limit_subjects(p_retention_days integer default 7)
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_catalog, pg_temp
+as $$
+declare
+  v_deleted integer;
+begin
+  if p_retention_days < 1 then
+    raise exception 'retention days must be positive';
+  end if;
+  delete from public.api_rate_limit_subjects where updated_at < now() - make_interval(days => p_retention_days);
+  get diagnostics v_deleted = row_count;
+  return v_deleted;
+end;
+$$;
+
+revoke all on function public.purge_expired_api_rate_limit_subjects(integer) from public, anon, authenticated;
+grant execute on function public.purge_expired_api_rate_limit_subjects(integer) to service_role;
+
+-- Daily purge at 03:45 UTC. Preview/branch databases may not ship pg_cron; skip
+-- scheduling there while still installing the purge function.
+do $cron$
+begin
+  if to_regnamespace('cron') is null then
+    return;
+  end if;
+
+  perform cron.unschedule(j.jobid)
+  from cron.job j
+  where j.jobname = 'purge-expired-api-rate-limit-subjects';
+
+  perform cron.schedule(
+    'purge-expired-api-rate-limit-subjects',
+    '45 3 * * *',
+    $job$select public.purge_expired_api_rate_limit_subjects(7);$job$
+  );
+end
+$cron$;
+
+-- Teaching assessments and CPD registrar milestones (20261013160000_teaching_assessments_and_milestones.sql).
+create table public.registrar_assessments (
+  id uuid primary key default gen_random_uuid(),
+  registrar_id uuid not null references auth.users(id) on delete cascade,
+  assessor_id uuid references auth.users(id) on delete set null,
+  category text not null check (category in ('epa', 'wba', 'ita', 'supervisor_review', 'general')),
+  title text not null,
+  ratings jsonb not null default '{}'::jsonb,
+  feedback text,
+  status text not null default 'draft' check (status in ('draft', 'submitted', 'signed_off', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.registrar_training_milestones (
+  id uuid primary key default gen_random_uuid(),
+  registrar_id uuid not null references auth.users(id) on delete cascade,
+  milestone_code text not null,
+  milestone_title text not null,
+  stage text not null check (stage in ('stage_1', 'stage_2', 'stage_3', 'fellowship')),
+  achieved_at timestamptz,
+  evidence_summary text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists registrar_assessments_registrar_idx
+  on public.registrar_assessments (registrar_id, created_at desc);
+
+create index if not exists registrar_assessments_assessor_idx
+  on public.registrar_assessments (assessor_id)
+  where assessor_id is not null;
+
+create index if not exists registrar_training_milestones_registrar_idx
+  on public.registrar_training_milestones (registrar_id, stage);
+
+drop trigger if exists registrar_assessments_updated_at on public.registrar_assessments;
+create trigger registrar_assessments_updated_at
+  before update on public.registrar_assessments
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists registrar_training_milestones_updated_at on public.registrar_training_milestones;
+create trigger registrar_training_milestones_updated_at
+  before update on public.registrar_training_milestones
+  for each row execute function public.set_updated_at();
+
+alter table public.registrar_assessments enable row level security;
+alter table public.registrar_assessments force row level security;
+
+alter table public.registrar_training_milestones enable row level security;
+alter table public.registrar_training_milestones force row level security;
+
+revoke all on table public.registrar_assessments from public, anon, authenticated;
+grant select, insert, update, delete on table public.registrar_assessments to service_role;
+
+revoke all on table public.registrar_training_milestones from public, anon, authenticated;
+grant select, insert, update, delete on table public.registrar_training_milestones to service_role;
+
+create policy "registrar_assessments_service_role_all"
+  on public.registrar_assessments
+  for all to service_role
+  using (true)
+  with check (true);
+
+create policy "registrar_training_milestones_service_role_all"
+  on public.registrar_training_milestones
+  for all to service_role
+  using (true)
+  with check (true);
