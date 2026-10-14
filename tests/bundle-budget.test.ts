@@ -107,6 +107,7 @@ describe("check-bundle-budget CLI exit", () => {
     const sandbox = mkdtempSync(path.join(tmpdir(), "bundle-budget-cli-"));
     const chunksDir = path.join(sandbox, ".next", "static", "chunks");
     mkdirSync(chunksDir, { recursive: true });
+    writeFileSync(path.join(sandbox, ".next", "BUILD_ID"), "test-build-id\n");
     writeFileSync(path.join(chunksDir, "main.js"), "console.log('ok')");
     writeFileSync(
       path.join(sandbox, ".next", "app-build-manifest.json"),
@@ -279,6 +280,41 @@ describe("check-bundle-budget CLI exit", () => {
     } finally {
       rmSync(sandbox, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
+  });
+
+  it("skips when .next/static/chunks exists from next dev without .next/BUILD_ID, and fails closed with --refresh-baseline", async () => {
+    const sandbox = mkdtempSync(path.join(tmpdir(), "bundle-budget-devonly-"));
+    const chunksDir = path.join(sandbox, ".next", "static", "chunks");
+    mkdirSync(chunksDir, { recursive: true });
+    writeFileSync(path.join(chunksDir, "main.js"), "console.log('dev')");
+    try {
+      const checkResult = await runCli(sandbox);
+      expect(checkResult.code).toBe(0);
+      expect(checkResult.stdout).toContain("Skipping.");
+
+      const refreshResult = await runCli(sandbox, ["--refresh-baseline"]);
+      expect(refreshResult.code).toBe(1);
+      expect(refreshResult.stderr).toContain("cannot refresh baseline without a build");
+    } finally {
+      rmSync(sandbox, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it("consolidates MasterSearchHeader desktop slot observation and enforces search input privacy and popover back hit target", () => {
+    const headerSrc = readFileSync(
+      path.join(process.cwd(), "src/components/clinical-dashboard/master-search-header.tsx"),
+      "utf8",
+    );
+    const observerCalls = headerSrc.match(/observeDesktopComposerSlots\(/g) ?? [];
+    expect(observerCalls).toHaveLength(1);
+    expect(headerSrc).toContain('id="global-search-input"');
+    expect(headerSrc).toContain('autoComplete="off"');
+    expect(headerSrc).toContain("spellCheck={false}");
+    expect(headerSrc).toContain('data-gramm="false"');
+    expect(headerSrc).toContain('data-enable-grammarly="false"');
+    expect(headerSrc).toMatch(
+      /<button\b(?:[^>]|=>)*\bdata-testid="app-mode-popover-back"[^>]*\bclassName="(?:[^"]*\s)?size-tap(?:\s[^"]*)?"[^>]*>/,
+    );
   });
 
   it("fails closed when baseline source SHA is unresolvable during --refresh-baseline", async () => {

@@ -117,6 +117,10 @@ export function ClinicalAskAnswerSurface({
               autoFocus={index === 0}
               name={item.id}
               required={item.required}
+              autoComplete="off"
+              spellCheck={false}
+              data-gramm="false"
+              data-enable-grammarly="false"
               value={clarificationAnswers[item.id] ?? ""}
               onChange={(event) => onClarificationChange?.(item.id, event.currentTarget.value)}
             />
@@ -312,7 +316,7 @@ function Evidence({
       <ol>
         {evidence.map((item) => (
           <li key={item.id}>
-            <a href={item.href} target="_blank" rel="noreferrer">
+            <a href={item.href} target="_blank" rel="noopener noreferrer">
               {item.title}
             </a>{" "}
             — {item.publisher} · {item.tier} · {item.reviewState.replace("_", " ")}

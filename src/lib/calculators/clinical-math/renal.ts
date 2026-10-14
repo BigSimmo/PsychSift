@@ -30,12 +30,22 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
 
   if (!Number.isFinite(input.weightKg) || input.weightKg <= 0) {
     errors.push("Weight must be greater than zero kg");
+  } else if (input.weightKg < 20) {
+    errors.push("Weight is below adult physiological bounds (<20 kg)");
   } else if (input.weightKg > 350) {
     errors.push("Weight exceeds physiological bounds (>350 kg)");
+  } else if (input.weightKg < 35) {
+    warnings.push(
+      "Low body weight (<35 kg): Cockcroft-Gault may overestimate creatinine clearance in cachexia or low muscle mass.",
+    );
   }
 
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");
+  } else if (input.creatinineUnit === "umol/L" && (input.serumCreatinine < 15 || input.serumCreatinine > 3000)) {
+    errors.push("Serum creatinine must be within physiological range (15–3000 umol/L; check unit selection)");
+  } else if (input.creatinineUnit === "mg/dL" && (input.serumCreatinine < 0.17 || input.serumCreatinine > 34.0)) {
+    errors.push("Serum creatinine must be within physiological range (0.17–34.0 mg/dL; check unit selection)");
   }
 
   if (errors.length > 0) {
@@ -96,6 +106,10 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
   }
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");
+  } else if (input.creatinineUnit === "umol/L" && (input.serumCreatinine < 15 || input.serumCreatinine > 3000)) {
+    errors.push("Serum creatinine must be within physiological range (15–3000 umol/L; check unit selection)");
+  } else if (input.creatinineUnit === "mg/dL" && (input.serumCreatinine < 0.17 || input.serumCreatinine > 34.0)) {
+    errors.push("Serum creatinine must be within physiological range (0.17–34.0 mg/dL; check unit selection)");
   }
 
   if (errors.length > 0) {

@@ -76,7 +76,6 @@ const pathways: Record<string, CalculatorPathway> = {
         href: "/?mode=answer&q=ECT+consent+requirements",
         minBandIndex: 4,
       },
-      { title: "MDQ — bipolar screen before antidepressants", kind: "calculator", calcId: "mdq", minBandIndex: 2 },
     ],
   },
   gad7: {
@@ -114,23 +113,6 @@ const pathways: Record<string, CalculatorPathway> = {
       { title: "GAD-7 — anxiety severity", kind: "calculator", calcId: "gad7", minBandIndex: 2 },
     ],
   },
-  mdq: {
-    related: [
-      {
-        title: "Bipolar disorder — assessment and referral",
-        kind: "guideline",
-        href: "/documents/search?q=bipolar+disorder+assessment",
-      },
-      {
-        title: "Lithium — initiation and monitoring",
-        kind: "medication",
-        href: "/medications/lithium-carbonate-ir-sr",
-        minBandIndex: 1,
-      },
-      { title: "Elevated mood — differential diagnoses", kind: "differential", href: "/differentials" },
-      { title: "PHQ-9 — current depressive severity", kind: "calculator", calcId: "phq9" },
-    ],
-  },
   cage: {
     related: [
       { title: "AUDIT-C — consumption screen", kind: "calculator", calcId: "auditc" },
@@ -157,39 +139,6 @@ const pathways: Record<string, CalculatorPathway> = {
         title: "Safe drinking limits",
         kind: "answer",
         href: "/?mode=answer&q=safe+drinking+limits+australia",
-      },
-    ],
-  },
-  sadpersons: {
-    related: [
-      {
-        title: "Suicide risk assessment framework",
-        kind: "guideline",
-        href: "/documents/search?q=suicide+risk+assessment+framework",
-      },
-      { title: "Safety planning template", kind: "form", href: "/forms" },
-      { title: "13YARN — crisis support referral", kind: "service", href: "/services" },
-      { title: "Acute mental health team", kind: "service", href: "/services", minBandIndex: 1 },
-    ],
-  },
-  ybocs: {
-    related: [
-      {
-        title: "OCD — exposure and response prevention",
-        kind: "guideline",
-        href: "/documents/search?q=OCD+exposure+response+prevention",
-      },
-      {
-        title: "Sertraline — higher-dose OCD treatment",
-        kind: "medication",
-        href: "/medications/sertraline",
-        minBandIndex: 2,
-      },
-      {
-        title: "SSRI augmentation in OCD",
-        kind: "answer",
-        href: "/?mode=answer&q=SSRI+augmentation+OCD",
-        minBandIndex: 3,
       },
     ],
   },

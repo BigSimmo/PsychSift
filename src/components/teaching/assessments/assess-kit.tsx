@@ -21,6 +21,7 @@ import { useModeBandHeading, useModeBandShown } from "@/components/mode-band/mod
 import { WorkGlassButton } from "@/components/mode-kit/work";
 import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame-header";
 import { useClaimWorkFrameBack } from "@/components/work-frame/work-frame-store";
+import { ignoreUnavailableActivation } from "@/components/ui-primitives";
 import { RATING_LABELS, type Rating } from "@/lib/teaching/assessments/content";
 import { looksLikePatientDetails } from "@/lib/teaching/assessments/model";
 import { withUnit } from "@/components/teaching/teaching-number";
@@ -845,6 +846,7 @@ export function AssessButton({
   icon: Icon,
   disabled,
   describedBy,
+  title,
   onClick,
 }: {
   readonly children: ReactNode;
@@ -853,6 +855,7 @@ export function AssessButton({
   readonly icon?: LucideIcon;
   readonly disabled?: boolean;
   readonly describedBy?: string;
+  readonly title?: string;
   readonly onClick: () => void;
 }) {
   return (
@@ -861,9 +864,10 @@ export function AssessButton({
       className="work-button"
       data-variant={variant}
       data-size={block ? "wide" : undefined}
-      disabled={disabled}
+      aria-disabled={disabled ? "true" : undefined}
       aria-describedby={describedBy}
-      onClick={onClick}
+      title={title}
+      onClick={disabled ? ignoreUnavailableActivation : onClick}
     >
       {Icon ? <Icon aria-hidden="true" strokeWidth={2} /> : null}
       {children}

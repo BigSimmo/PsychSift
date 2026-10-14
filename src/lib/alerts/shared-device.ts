@@ -6,6 +6,8 @@ import {
   CPD_APPLICATIONS_STORAGE_KEY,
   CPD_HOME_SEND_STORAGE_KEY,
   REMIND_ME_STORAGE_KEY,
+  TEACHING_EXAM_PREP_STORAGE_KEY,
+  TEACHING_TERM_TRACKER_STORAGE_KEY,
 } from "@/lib/account-scoped-browser-state";
 
 /**
@@ -48,6 +50,10 @@ export function setSharedDevice(shared: boolean): void {
       // Referee names, the statement and CPD Home send marks stay off a shared device too.
       window.localStorage.removeItem(CPD_APPLICATIONS_STORAGE_KEY);
       window.localStorage.removeItem(CPD_HOME_SEND_STORAGE_KEY);
+      // Teaching records are also private to the signed-in person and must not
+      // remain recoverable when this computer is marked shared.
+      window.localStorage.removeItem(TEACHING_TERM_TRACKER_STORAGE_KEY);
+      window.localStorage.removeItem(TEACHING_EXAM_PREP_STORAGE_KEY);
     } else window.localStorage.removeItem(STORAGE_KEY);
   } catch {
     // Storage refused (private mode): the switch simply does not stick.

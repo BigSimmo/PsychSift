@@ -21,7 +21,7 @@ export function FactsheetsTopicsPage({
   const groups = factsheetsGroupedByCategory();
 
   return (
-    <div
+    <main
       data-testid="factsheets-topics-page"
       className="mx-auto w-full max-w-reading px-4 py-5 pb-4 sm:px-6 sm:py-8 lg:px-8"
     >
@@ -52,6 +52,6 @@ export function FactsheetsTopicsPage({
           publication.
         </p>
       </aside>
-    </div>
+    </main>
   );
 }

@@ -16,6 +16,7 @@ import type {
 } from "@/lib/roster/shifts/model";
 import { zonedToday } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { hasSupabaseAuthSession } from "@/lib/supabase/session-hint";
 
 /**
  * The signed-in doctor's own shifts, fetched from `/api/roster/shifts`.
@@ -128,10 +129,11 @@ function unionShifts(listed: readonly OnCallShift[], older: readonly OnCallShift
  */
 export function useRosterShifts(
   teamRange?: { from: string; to: string },
-  options?: { readonly ownHistory?: boolean },
+  options?: { readonly ownHistory?: boolean; readonly skipWhenUnauthenticated?: boolean },
 ): RosterShiftsState {
   const { zone } = useWorkTimeZone();
-  const teams = useRosterTeams();
+  const skipGuest = Boolean(options?.skipWhenUnauthenticated && !hasSupabaseAuthSession());
+  const teams = useRosterTeams({ skip: skipGuest });
   const today = zonedToday(zone);
   const from = teamRange?.from ?? addDaysToDate(today, -LISTED_PAST_DAYS);
   const to = teamRange?.to ?? addDaysToDate(today, 40);
@@ -153,6 +155,7 @@ export function useRosterShifts(
   }, []);
   useEffect(() => {
     if (!wantsHistory) return;
+    if (options?.skipWhenUnauthenticated && !hasSupabaseAuthSession()) return;
     const controller = new AbortController();
     const url = `${ROSTER_SHIFTS_URL}?${new URLSearchParams({ from, to: historyTo })}`;
     // A re-read after a change goes to the network itself, never joining a read that began before the change.
@@ -171,7 +174,7 @@ export function useRosterShifts(
         if (!controller.signal.aborted) setHistory({ from, to: historyTo, shifts: [], failed: true });
       });
     return () => controller.abort();
-  }, [wantsHistory, from, historyTo, historyReload]);
+  }, [wantsHistory, from, historyTo, historyReload, options?.skipWhenUnauthenticated]);
   const [teamData, setTeamData] = useState<{
     payload: typeof teams.data;
     owner: string;
@@ -217,7 +220,9 @@ export function useRosterShifts(
       });
     return () => controller.abort();
   }, [actorId, teamPayload, from, to]);
-  const [status, setStatus] = useState<RosterShiftsStatus>("loading");
+  const [status, setStatus] = useState<RosterShiftsStatus>(() =>
+    options?.skipWhenUnauthenticated && !hasSupabaseAuthSession() ? "signed-out" : "loading",
+  );
   const [shifts, setShifts] = useState<readonly OnCallShift[]>([]);
   const [latestImport, setLatestImport] = useState<OnCallShiftImportSummary | null>(null);
   const [demoMode, setDemoMode] = useState(false);
@@ -247,10 +252,13 @@ export function useRosterShifts(
   const load = useCallback(async () => apply(await fetchShifts()), [apply]);
 
   useEffect(() => {
+    if (options?.skipWhenUnauthenticated && !hasSupabaseAuthSession()) {
+      return;
+    }
     const controller = new AbortController();
     fetchShifts(controller.signal).then(apply, () => undefined);
     return () => controller.abort();
-  }, [apply]);
+  }, [apply, options?.skipWhenUnauthenticated]);
 
   const save = useCallback(
     async (request: OnCallShiftImportRequest) => {

@@ -7,7 +7,7 @@ import type { FavouriteItem } from "@/components/favourites/favourites-view-mode
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn, ignoreUnavailableActivation, textMuted } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import {
   addSavedNumber,
@@ -461,7 +461,14 @@ function NumberActions({
             />
           </div>
         )}
-        <button type="button" className={sheetRow} onClick={handleCopy} disabled={!dialable}>
+        <button
+          type="button"
+          className={cn(sheetRow, !dialable && "cursor-not-allowed opacity-60 active:bg-transparent")}
+          aria-disabled={!dialable ? "true" : undefined}
+          aria-describedby={!dialable ? `${item.id}-copy-unavailable` : undefined}
+          title={!dialable ? "This number is too short to copy. Edit it to fix." : undefined}
+          onClick={!dialable ? ignoreUnavailableActivation : handleCopy}
+        >
           <SheetActionIcon icon={copy === "copied" ? Check : copy === "failed" ? TriangleAlert : Clipboard} />
           <SheetRowText
             title={copy === "copied" ? "Copied" : copy === "failed" ? "Not copied" : "Copy number"}
@@ -470,6 +477,11 @@ function NumberActions({
             }
           />
         </button>
+        {!dialable ? (
+          <span id={`${item.id}-copy-unavailable`} className="sr-only">
+            This number is too short to copy. Edit it to fix.
+          </span>
+        ) : null}
         <button type="button" className={sheetRow} onClick={() => onEdit(item)}>
           <SheetActionIcon icon={Pencil} />
           <SheetRowText title="Edit" sub="Name, number and note" />

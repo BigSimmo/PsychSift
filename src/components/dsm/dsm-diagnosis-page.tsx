@@ -293,7 +293,7 @@ export function DsmDiagnosisPage({ diagnosis }: { diagnosis: DsmDiagnosis }) {
                     )}
                   </RecordSection>
 
-                  <DsmDiagnosisNoteBuilder record={dsmNoteBuilderRecord(diagnosis)} />
+                  <DsmDiagnosisNoteBuilder key={diagnosis.icd_code} record={dsmNoteBuilderRecord(diagnosis)} />
 
                   {/* Differentials (compare-next), the record's provenance and the
                     reference notice close the record, the shared record order. */}

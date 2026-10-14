@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useId, useMemo, useState } from "react";
 import { BookOpenCheck, Check, ChevronDown, ChevronRight, CircleAlert, GitCompareArrows, SearchX } from "lucide-react";
 
 import {
@@ -205,125 +205,168 @@ export function DsmSearchPage({
   totalCount?: number;
 }) {
   const searchParams = useSearchParams();
+  const serializedParams = searchParams.toString();
+  const deferredQuery = useDeferredValue(query);
+  const deferredResults = useDeferredValue(queryResults);
   const [selected, setSelected] = useState<string[]>(initialIds.slice(0, 3));
   const [filterOpen, setFilterOpen] = useState(false);
   const filterPanelId = useId();
   const categoryKeys = useMemo(() => new Set(categories.map((item) => item.key)), [categories]);
-  const selectedCategories = new Set(readResultFilterValues(searchParams, "category", categoryKeys));
-  const supportValues = new Set(["specifiers", "differentials"] as const);
-  const selectedSupport = new Set(readResultFilterValues(searchParams, "support", supportValues));
-  const filterDiagnoses = (
-    categorySelection: ReadonlySet<string>,
-    supportSelection: ReadonlySet<"specifiers" | "differentials">,
-  ) =>
-    queryResults.filter((result) => {
-      if (categorySelection.size > 0 && !categorySelection.has(result.category.key)) return false;
-      if (supportSelection.has("specifiers") && result.specifierCount === 0) return false;
-      if (supportSelection.has("differentials") && result.differentialCount === 0) return false;
-      return true;
-    });
-  const results = filterDiagnoses(selectedCategories, selectedSupport);
+  const selectedCategories = useMemo(
+    () => new Set(readResultFilterValues(new URLSearchParams(serializedParams), "category", categoryKeys)),
+    [serializedParams, categoryKeys],
+  );
+  const supportValues = useMemo(() => new Set(["specifiers", "differentials"] as const), []);
+  const selectedSupport = useMemo(
+    () => new Set(readResultFilterValues(new URLSearchParams(serializedParams), "support", supportValues)),
+    [serializedParams, supportValues],
+  );
+  const filterDiagnoses = useCallback(
+    (categorySelection: ReadonlySet<string>, supportSelection: ReadonlySet<"specifiers" | "differentials">) =>
+      deferredResults.filter((result) => {
+        if (categorySelection.size > 0 && !categorySelection.has(result.category.key)) return false;
+        if (supportSelection.has("specifiers") && result.specifierCount === 0) return false;
+        if (supportSelection.has("differentials") && result.differentialCount === 0) return false;
+        return true;
+      }),
+    [deferredResults],
+  );
+  const filtered = useMemo(
+    () => filterDiagnoses(selectedCategories, selectedSupport),
+    [filterDiagnoses, selectedCategories, selectedSupport],
+  );
+  const results = filtered;
   // Filters highlight, never hide: the filtered diagnoses come first and every
   // other query-matched diagnosis stays listed after them under "Not matching".
   const highlightFilterActive = selectedCategories.size + selectedSupport.size > 0;
-  const resultSlugs = new Set(results.map((result) => result.slug));
-  const outsideResults = highlightFilterActive ? queryResults.filter((result) => !resultSlugs.has(result.slug)) : [];
-  // Browsing reads A to Z, like the chapters; a search keeps its ranked order.
-  if (highlightFilterActive && query.trim().length === 0) outsideResults.sort(compareDsmBrowseTitles);
+  const outsideResults = useMemo(() => {
+    if (!highlightFilterActive) return [];
+    const resultSlugs = new Set(filtered.map((result) => result.slug));
+    const remaining = deferredResults.filter((result) => !resultSlugs.has(result.slug));
+    // Browsing reads A to Z, like the chapters; a search keeps its ranked order.
+    if (deferredQuery.trim().length === 0) remaining.sort(compareDsmBrowseTitles);
+    return remaining;
+  }, [highlightFilterActive, filtered, deferredResults, deferredQuery]);
   // Nothing typed: this is the whole catalogue, not a search, so it reads as the
   // chapter list a psychiatrist looks things up by rather than a ranked list.
-  const browsing = query.trim().length === 0;
-  const browseGroups = browsing ? groupDsmBrowseByChapter(categories, results) : [];
+  const browsing = deferredQuery.trim().length === 0;
+  const grouped = useMemo(
+    () => (browsing ? groupDsmBrowseByChapter(categories, filtered) : []),
+    [browsing, categories, filtered],
+  );
+  const browseGroups = grouped;
   // Chapters start closed so the phone opens on a chapter index; a chapter filter
   // (or a list that is only one chapter) opens them.
   const openChapters = selectedCategories.size > 0 || browseGroups.length === 1;
   const activeFilterCount = selectedCategories.size + selectedSupport.size;
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
-  function toggleCategory(value: string) {
-    replaceResultFilterUrl((params) => {
-      const current = new Set(readResultFilterValues(params, "category", categoryKeys));
-      if (!current.delete(value)) current.add(value);
-      writeResultFilterValues(params, "category", current, categoryKeys);
-    });
-  }
+  const toggleCategory = useCallback(
+    (value: string) => {
+      replaceResultFilterUrl((params) => {
+        const current = new Set(readResultFilterValues(params, "category", categoryKeys));
+        if (!current.delete(value)) current.add(value);
+        writeResultFilterValues(params, "category", current, categoryKeys);
+      });
+    },
+    [categoryKeys],
+  );
 
-  function toggleSupport(value: "specifiers" | "differentials") {
-    replaceResultFilterUrl((params) => {
-      const current = new Set(readResultFilterValues(params, "support", supportValues));
-      if (!current.delete(value)) current.add(value);
-      writeResultFilterValues(params, "support", current, supportValues);
-    });
-  }
+  const toggleSupport = useCallback(
+    (value: "specifiers" | "differentials") => {
+      replaceResultFilterUrl((params) => {
+        const current = new Set(readResultFilterValues(params, "support", supportValues));
+        if (!current.delete(value)) current.add(value);
+        writeResultFilterValues(params, "support", current, supportValues);
+      });
+    },
+    [supportValues],
+  );
 
-  function clearFilters() {
+  const clearFilters = useCallback(() => {
     replaceResultFilterUrl((params) => {
       params.delete("category");
       params.delete("support");
     });
-  }
+  }, []);
 
-  const appliedFilters: AppliedFilterChip[] = [
-    ...[...selectedCategories].map((key) => ({
-      id: `category-${key}`,
-      groupLabel: "Category",
-      valueLabel: categories.find((item) => item.key === key)?.label ?? key,
-      onRemove: () => toggleCategory(key),
-    })),
-    ...[...selectedSupport].map((support) => ({
-      id: `support-${support}`,
-      groupLabel: "Support",
-      valueLabel: support === "specifiers" ? "Has specifiers" : "Has differential guidance",
-      onRemove: () => toggleSupport(support),
-    })),
-  ];
+  const appliedFilters = useMemo<AppliedFilterChip[]>(
+    () => [
+      ...[...selectedCategories].map((key) => ({
+        id: `category-${key}`,
+        groupLabel: "Category",
+        valueLabel: categories.find((item) => item.key === key)?.label ?? key,
+        onRemove: () => toggleCategory(key),
+      })),
+      ...[...selectedSupport].map((support) => ({
+        id: `support-${support}`,
+        groupLabel: "Support",
+        valueLabel: support === "specifiers" ? "Has specifiers" : "Has differential guidance",
+        onRemove: () => toggleSupport(support),
+      })),
+    ],
+    [selectedCategories, selectedSupport, categories, toggleCategory, toggleSupport],
+  );
 
-  const filterGroups = [
-    resultFilterFacetGroup({
-      id: "category",
-      label: "Category",
-      description: "Select one or more query-matched diagnostic categories.",
-      selected: selectedCategories,
-      options: categories.map((category) => {
-        const next = new Set(selectedCategories);
-        if (!next.has(category.key)) next.add(category.key);
-        const count = filterDiagnoses(next, selectedSupport).length;
-        return {
-          value: category.key,
-          label: category.label,
-          hint: String(count),
-          disabled: count === 0 && !selectedCategories.has(category.key),
-        };
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const category of categories) {
+      const next = new Set(selectedCategories);
+      if (!next.has(category.key)) next.add(category.key);
+      counts.set(category.key, filterDiagnoses(next, selectedSupport).length);
+    }
+    return counts;
+  }, [categories, selectedCategories, selectedSupport, filterDiagnoses]);
+
+  const totalMatchingConditions = useMemo(() => filtered.length, [filtered]);
+
+  const filterGroups = useMemo(
+    () => [
+      resultFilterFacetGroup({
+        id: "category",
+        label: "Category",
+        description: "Select one or more query-matched diagnostic categories.",
+        selected: selectedCategories,
+        options: categories.map((category) => {
+          const count = categoryCounts.get(category.key) ?? 0;
+          return {
+            value: category.key,
+            label: category.label,
+            hint: String(count),
+            disabled: count === 0 && !selectedCategories.has(category.key),
+          };
+        }),
+        onToggle: toggleCategory,
       }),
-      onToggle: toggleCategory,
-    }),
-    resultFilterFacetGroup({
-      id: "has-specifiers",
-      label: "Specifier support",
-      selected: new Set(selectedSupport.has("specifiers") ? ["specifiers"] : []),
-      options: [
-        {
-          value: "specifiers",
-          label: "Has specifiers",
-          hint: String(filterDiagnoses(selectedCategories, new Set([...selectedSupport, "specifiers"])).length),
-        },
-      ],
-      onToggle: () => toggleSupport("specifiers"),
-    }),
-    resultFilterFacetGroup({
-      id: "has-differentials",
-      label: "Differential guidance",
-      selected: new Set(selectedSupport.has("differentials") ? ["differentials"] : []),
-      options: [
-        {
-          value: "differentials",
-          label: "Has differential guidance",
-          hint: String(filterDiagnoses(selectedCategories, new Set([...selectedSupport, "differentials"])).length),
-        },
-      ],
-      onToggle: () => toggleSupport("differentials"),
-    }),
-  ];
+      resultFilterFacetGroup({
+        id: "has-specifiers",
+        label: "Specifier support",
+        selected: new Set(selectedSupport.has("specifiers") ? ["specifiers"] : []),
+        options: [
+          {
+            value: "specifiers",
+            label: "Has specifiers",
+            hint: String(filterDiagnoses(selectedCategories, new Set([...selectedSupport, "specifiers"])).length),
+          },
+        ],
+        onToggle: () => toggleSupport("specifiers"),
+      }),
+      resultFilterFacetGroup({
+        id: "has-differentials",
+        label: "Differential guidance",
+        selected: new Set(selectedSupport.has("differentials") ? ["differentials"] : []),
+        options: [
+          {
+            value: "differentials",
+            label: "Has differential guidance",
+            hint: String(filterDiagnoses(selectedCategories, new Set([...selectedSupport, "differentials"])).length),
+          },
+        ],
+        onToggle: () => toggleSupport("differentials"),
+      }),
+    ],
+    [categories, categoryCounts, selectedCategories, selectedSupport, filterDiagnoses, toggleCategory, toggleSupport],
+  );
 
   // Titles are remembered when a row is ticked, so the tray keeps naming a
   // diagnosis after a new search drops it from the current results.
@@ -385,12 +428,12 @@ export function DsmSearchPage({
           description="Narrow the query-matched summary set without changing diagnosis or comparison content."
           groups={filterGroups}
           onClearAll={activeFilterCount > 0 ? clearFilters : undefined}
-          summary={{ count: results.length, noun: results.length === 1 ? "diagnosis" : "diagnoses" }}
+          summary={{ count: totalMatchingConditions, noun: totalMatchingConditions === 1 ? "diagnosis" : "diagnoses" }}
         />
 
         <FilterHighlightNote
           active={highlightFilterActive && queryResults.length > 0}
-          highlighted={results.length}
+          highlighted={totalMatchingConditions}
           total={queryResults.length}
           onClear={clearFilters}
           testId="dsm-highlight-note"

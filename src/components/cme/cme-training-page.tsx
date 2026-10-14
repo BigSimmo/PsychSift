@@ -1215,7 +1215,7 @@ function RecordLinkRow({
   return (
     <li data-testid={testId} className={cn(modeInsetHairline, "flex min-w-0 items-center before:left-0")}>
       {external ? (
-        <a href={href} target="_blank" rel="noreferrer" className={classes}>
+        <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
           {body}
         </a>
       ) : (
@@ -1500,54 +1500,56 @@ function CmeInternExperience({ intern }: { readonly intern: InternAssessments })
   const termNumbers = intern.terms.map((term) => term.number);
   return (
     <CmeGroup label="Clinical experience · terms done" testId="cme-training-experience">
-      <table className="w-full border-separate border-spacing-y-1 text-sm" data-testid="cme-training-experience-grid">
-        <caption className="sr-only">Clinical experience categories covered in each term</caption>
-        <thead>
-          <tr>
-            <th scope="col" className="w-5">
-              <span className="sr-only">Category</span>
-            </th>
-            <th scope="col">
-              <span className="sr-only">Experience</span>
-            </th>
-            {termNumbers.map((number) => (
-              <th
-                key={number}
-                scope="col"
-                className="w-7 text-center text-xs font-normal text-[color:var(--text-muted)]"
-              >{`T${number}`}</th>
-            ))}
-            <th scope="col">
-              <span className="sr-only">Terms done</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {intern.experience.map((row) => (
-            <tr key={row.category} data-testid={`cme-training-experience-${row.category}`}>
-              <th scope="row" className="pr-2 text-left font-semibold text-[color:var(--text-heading)]">
-                {row.category}
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate border-spacing-y-1 text-sm" data-testid="cme-training-experience-grid">
+          <caption className="sr-only">Clinical experience categories covered in each term</caption>
+          <thead>
+            <tr>
+              <th scope="col" className="w-5">
+                <span className="sr-only">Category</span>
               </th>
-              <td className="pr-2 text-[color:var(--text)]">{row.label}</td>
-              {termNumbers.map((number) => {
-                const state = experienceCell(row, number, intern.currentTerm);
-                return (
-                  <td key={number} className="text-center" data-state={state}>
-                    <span
-                      aria-hidden="true"
-                      className={cn("inline-block size-5 rounded-sm align-middle", CELL_CLASS[state])}
-                    />
-                    <span className="sr-only">{`Term ${number}: ${CELL_WORDS[state]}`}</span>
-                  </td>
-                );
-              })}
-              <td className="nums whitespace-nowrap pl-2 text-right text-sm-minus text-[color:var(--text-muted)]">
-                {experienceCount(row, intern.experienceTermsNeeded)}
-              </td>
+              <th scope="col">
+                <span className="sr-only">Experience</span>
+              </th>
+              {termNumbers.map((number) => (
+                <th
+                  key={number}
+                  scope="col"
+                  className="w-7 text-center text-xs font-normal text-[color:var(--text-muted)]"
+                >{`T${number}`}</th>
+              ))}
+              <th scope="col">
+                <span className="sr-only">Terms done</span>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {intern.experience.map((row) => (
+              <tr key={row.category} data-testid={`cme-training-experience-${row.category}`}>
+                <th scope="row" className="pr-2 text-left font-semibold text-[color:var(--text-heading)]">
+                  {row.category}
+                </th>
+                <td className="pr-2 text-[color:var(--text)]">{row.label}</td>
+                {termNumbers.map((number) => {
+                  const state = experienceCell(row, number, intern.currentTerm);
+                  return (
+                    <td key={number} className="text-center" data-state={state}>
+                      <span
+                        aria-hidden="true"
+                        className={cn("inline-block size-5 rounded-sm align-middle", CELL_CLASS[state])}
+                      />
+                      <span className="sr-only">{`Term ${number}: ${CELL_WORDS[state]}`}</span>
+                    </td>
+                  );
+                })}
+                <td className="nums whitespace-nowrap pl-2 text-right text-sm-minus text-[color:var(--text-muted)]">
+                  {experienceCount(row, intern.experienceTermsNeeded)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p className="text-xs text-[color:var(--text-muted)]">
         Filled: covered in that term. Dashed: this term, not finished. Category D applies to PGY1.
       </p>

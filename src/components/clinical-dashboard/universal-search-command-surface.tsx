@@ -1160,6 +1160,7 @@ export function UniversalSearchCommandSurface({
       const slashShortcut = event.key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey;
       const commandShortcut = event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey) && !event.altKey;
       if (!slashShortcut && !commandShortcut) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       const target = event.target as HTMLElement | null;
       if (
         target &&

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 
 export const loadSettingsDialog = () =>
   import("@/components/clinical-dashboard/settings-dialog").then((module) => module.SettingsDialog);
@@ -19,9 +19,13 @@ export function prefetchAccountDialog() {
 }
 
 export function SidebarSettingsDialog(props: ComponentProps<typeof SettingsDialog>) {
-  return props.open ? <SettingsDialog {...props} /> : null;
+  const [hasOpened, setHasOpened] = useState(props.open);
+  if (props.open && !hasOpened) setHasOpened(true);
+  return hasOpened ? <SettingsDialog {...props} /> : null;
 }
 
 export function SidebarAccountSetupDialog(props: ComponentProps<typeof AccountSetupDialog>) {
-  return props.open ? <AccountSetupDialog {...props} /> : null;
+  const [hasOpened, setHasOpened] = useState(props.open);
+  if (props.open && !hasOpened) setHasOpened(true);
+  return hasOpened ? <AccountSetupDialog {...props} /> : null;
 }

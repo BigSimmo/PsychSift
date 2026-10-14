@@ -2,11 +2,9 @@ import {
   Activity,
   AlertTriangle,
   Baby,
-  Brain,
   CloudRain,
   GlassWater,
   HeartPulse,
-  Repeat2,
   ShieldAlert,
   Wine,
   Zap,
@@ -69,6 +67,7 @@ export type CalculatorFixture = {
   scoringNote: string;
   source: string;
   caution?: string;
+  disclaimer?: string;
 };
 
 export const domainLabels: Record<CalculatorDomain, string> = {
@@ -100,32 +99,6 @@ const kessler1to5: CalculatorOption[] = [
   { label: "Some of the time", short: "3", points: 3 },
   { label: "Most of the time", short: "4", points: 4 },
   { label: "All of the time", short: "5", points: 5 },
-];
-
-const ybocsSeverity: CalculatorOption[] = [
-  { label: "None", short: "0", points: 0 },
-  { label: "Mild", short: "1", points: 1 },
-  { label: "Moderate", short: "2", points: 2 },
-  { label: "Severe", short: "3", points: 3 },
-  { label: "Extreme", short: "4", points: 4 },
-];
-
-// Items 4 and 9 ask how much effort the patient makes to resist, which is a different question
-// from the perceived control asked by items 5 and 10, so they carry their own anchors.
-const ybocsResistance: CalculatorOption[] = [
-  { label: "Always resists", short: "0", points: 0 },
-  { label: "Resists most of the time", short: "1", points: 1 },
-  { label: "Some effort to resist", short: "2", points: 2 },
-  { label: "Yields, with some reluctance", short: "3", points: 3 },
-  { label: "Completely yields", short: "4", points: 4 },
-];
-
-const ybocsControl: CalculatorOption[] = [
-  { label: "Complete control", short: "0", points: 0 },
-  { label: "Much control", short: "1", points: 1 },
-  { label: "Moderate control", short: "2", points: 2 },
-  { label: "Little control", short: "3", points: 3 },
-  { label: "No control", short: "4", points: 4 },
 ];
 
 export const calculators: CalculatorFixture[] = [
@@ -332,113 +305,6 @@ export const calculators: CalculatorFixture[] = [
     ],
   },
   {
-    id: "mdq",
-    abbrev: "MDQ",
-    name: "Mood Disorder Questionnaire",
-    domain: "mood",
-    icon: Repeat2,
-    indication: "Screen for lifetime bipolar-spectrum disorder before starting or reviewing antidepressant treatment.",
-    summary: "13 lifetime hypomanic symptoms plus co-occurrence and impairment criteria.",
-    stem: "Has there ever been a period of time when you were not your usual self and you…",
-    timeEstimate: "3–4 min",
-    minScore: 0,
-    maxScore: 13,
-    scoringNote:
-      "Positive screen requires ≥7 symptoms, symptoms clustering in the same period, and moderate-or-serious impairment.",
-    source: "Hirschfeld et al. 2000",
-    caution: "A positive screen is not a diagnosis — confirm with a structured bipolar-disorder assessment.",
-    items: [
-      {
-        id: "m1",
-        kind: "checkbox",
-        points: 1,
-        text: "…felt so good or hyper that other people thought you were not your normal self, or you got into trouble",
-      },
-      {
-        id: "m2",
-        kind: "checkbox",
-        points: 1,
-        text: "…were so irritable that you shouted at people or started fights",
-      },
-      { id: "m3", kind: "checkbox", points: 1, text: "…felt much more self-confident than usual" },
-      {
-        id: "m4",
-        kind: "checkbox",
-        points: 1,
-        text: "…got much less sleep than usual and found you didn't really miss it",
-      },
-      { id: "m5", kind: "checkbox", points: 1, text: "…were much more talkative or spoke much faster than usual" },
-      {
-        id: "m6",
-        kind: "checkbox",
-        points: 1,
-        text: "…had thoughts racing through your head that you couldn't slow down",
-      },
-      {
-        id: "m7",
-        kind: "checkbox",
-        points: 1,
-        text: "…were so easily distracted that you had trouble concentrating or staying on track",
-      },
-      { id: "m8", kind: "checkbox", points: 1, text: "…had much more energy than usual" },
-      { id: "m9", kind: "checkbox", points: 1, text: "…were much more active or did many more things than usual" },
-      {
-        id: "m10",
-        kind: "checkbox",
-        points: 1,
-        text: "…were much more social or outgoing — for example, telephoning friends in the middle of the night",
-      },
-      { id: "m11", kind: "checkbox", points: 1, text: "…were much more interested in sex than usual" },
-      {
-        id: "m12",
-        kind: "checkbox",
-        points: 1,
-        text: "…did things that were unusual for you or that other people might have thought excessive, foolish, or risky",
-      },
-      {
-        id: "m13",
-        kind: "checkbox",
-        points: 1,
-        text: "…found that spending money got you or your family into trouble",
-      },
-      {
-        id: "mco",
-        kind: "checkbox",
-        points: 0,
-        text: "Several of these ever happened during the same period of time",
-        detail: "Criterion 2 — co-occurrence. Does not add to the symptom count.",
-      },
-      {
-        id: "mimp",
-        kind: "options",
-        text: "How much of a problem did any of these cause you?",
-        detail: "Criterion 3 — impairment. Moderate or serious is required for a positive screen.",
-        options: [
-          { label: "No problem", short: "None", points: 0 },
-          { label: "Minor problem", short: "Minor", points: 0 },
-          { label: "Moderate problem", short: "Mod", points: 0 },
-          { label: "Serious problem", short: "Serious", points: 0 },
-        ],
-      },
-    ],
-    bands: [
-      {
-        min: 0,
-        max: 6,
-        label: "Below symptom threshold",
-        tone: "success",
-        guidance: "Symptom-count screen result; interpret with all required criteria and clinical context.",
-      },
-      {
-        min: 7,
-        max: 13,
-        label: "Symptom threshold met",
-        tone: "warning",
-        guidance: "Symptom-count screen result; interpret with all required criteria and clinical context.",
-      },
-    ],
-  },
-  {
     id: "cage",
     abbrev: "CAGE",
     name: "CAGE Questionnaire",
@@ -553,132 +419,6 @@ export const calculators: CalculatorFixture[] = [
         tone: "danger",
         guidance:
           "At or above the registered screening thresholds for men and for women; interpret in clinical context.",
-      },
-    ],
-  },
-  {
-    id: "sadpersons",
-    abbrev: "SAD PERSONS",
-    name: "SAD PERSONS Scale",
-    domain: "risk",
-    icon: ShieldAlert,
-    indication: "Structure a rapid inventory of static suicide-risk factors as an adjunct to clinical assessment.",
-    summary: "10 yes/no risk factors, one point each; supports — never replaces — clinical judgement.",
-    timeEstimate: "1–2 min",
-    minScore: 0,
-    maxScore: 10,
-    scoringNote: "1 point per factor present. Bands are indicative only; act on clinical concern at any score.",
-    source: "Patterson et al. 1983",
-    caution:
-      "Risk scales have poor predictive value. Use to prompt a structured risk assessment, not to gate disposition decisions.",
-    items: [
-      { id: "s1", kind: "checkbox", points: 1, text: "Sex — male" },
-      { id: "s2", kind: "checkbox", points: 1, text: "Age — under 19 or over 45" },
-      { id: "s3", kind: "checkbox", points: 1, text: "Depression — current low mood or diagnosed depressive episode" },
-      { id: "s4", kind: "checkbox", points: 1, text: "Previous suicide attempt or psychiatric care" },
-      { id: "s5", kind: "checkbox", points: 1, text: "Excess alcohol or substance use" },
-      { id: "s6", kind: "checkbox", points: 1, text: "Rational thinking loss — psychosis or organic impairment" },
-      { id: "s7", kind: "checkbox", points: 1, text: "Separated, widowed, or divorced" },
-      {
-        id: "s8",
-        kind: "checkbox",
-        points: 1,
-        text: "Organised or serious attempt / plan",
-        flag: "Organised plan endorsed — escalate to a full structured risk assessment now.",
-      },
-      { id: "s9", kind: "checkbox", points: 1, text: "No social supports" },
-      { id: "s10", kind: "checkbox", points: 1, text: "Stated future intent to repeat or ambivalence about survival" },
-    ],
-    bands: [
-      {
-        min: 0,
-        max: 4,
-        label: "Lower indicative risk",
-        tone: "info",
-        guidance: "Lower score band; this instrument is not available for score-based decision support.",
-      },
-      {
-        min: 5,
-        max: 6,
-        label: "Intermediate",
-        tone: "warning",
-        guidance: "Intermediate score band; this instrument is not available for score-based decision support.",
-      },
-      {
-        min: 7,
-        max: 10,
-        label: "Higher indicative risk",
-        tone: "danger",
-        guidance: "Higher score band; this instrument is not available for score-based decision support.",
-      },
-    ],
-  },
-  {
-    id: "ybocs",
-    abbrev: "Y-BOCS",
-    name: "Yale-Brown Obsessive Compulsive Scale — Severity",
-    domain: "anxiety",
-    icon: Brain,
-    indication: "Grade the severity of obsessive-compulsive symptoms and track treatment response.",
-    summary: "10 severity items (0–4) across obsessions and compulsions; total 0–40.",
-    timeEstimate: "5–8 min",
-    minScore: 0,
-    maxScore: 40,
-    scoringNote: "Sum of 10 items. Items 1–5 grade obsessions, 6–10 compulsions; subscales can be reported separately.",
-    source: "Goodman et al. 1989",
-    items: [
-      { id: "y1", kind: "options", options: ybocsSeverity, text: "Time occupied by obsessive thoughts" },
-      { id: "y2", kind: "options", options: ybocsSeverity, text: "Interference from obsessive thoughts" },
-      { id: "y3", kind: "options", options: ybocsSeverity, text: "Distress associated with obsessive thoughts" },
-      {
-        id: "y4",
-        kind: "options",
-        options: ybocsResistance,
-        text: "Resistance against obsessions",
-        detail: "0 = always resists",
-      },
-      { id: "y5", kind: "options", options: ybocsControl, text: "Degree of control over obsessive thoughts" },
-      { id: "y6", kind: "options", options: ybocsSeverity, text: "Time spent performing compulsive behaviours" },
-      { id: "y7", kind: "options", options: ybocsSeverity, text: "Interference from compulsive behaviours" },
-      { id: "y8", kind: "options", options: ybocsSeverity, text: "Distress if compulsions are prevented" },
-      {
-        id: "y9",
-        kind: "options",
-        options: ybocsResistance,
-        text: "Resistance against compulsions",
-        detail: "0 = always resists",
-      },
-      { id: "y10", kind: "options", options: ybocsControl, text: "Degree of control over compulsive behaviour" },
-    ],
-    bands: [
-      {
-        min: 0,
-        max: 7,
-        label: "Subclinical",
-        tone: "success",
-        guidance: "Subclinical score band; interpret in clinical context.",
-      },
-      { min: 8, max: 15, label: "Mild", tone: "info", guidance: "Mild score band; interpret in clinical context." },
-      {
-        min: 16,
-        max: 23,
-        label: "Moderate",
-        tone: "warning",
-        guidance: "Moderate score band; interpret in clinical context.",
-      },
-      {
-        min: 24,
-        max: 31,
-        label: "Severe",
-        tone: "danger",
-        guidance: "Severe score band; interpret in clinical context.",
-      },
-      {
-        min: 32,
-        max: 40,
-        label: "Extreme",
-        tone: "danger",
-        guidance: "Extreme score band; interpret in clinical context.",
       },
     ],
   },

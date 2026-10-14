@@ -70,6 +70,12 @@ export function TextField({
           {Icon ? <Icon aria-hidden="true" className={fieldIcon} /> : null}
           <input
             {...props}
+            onWheel={(e) => {
+              if (props.type === "number") {
+                e.currentTarget.blur();
+              }
+              props.onWheel?.(e);
+            }}
             id={field.id}
             required={field.required}
             autoComplete={field.autoComplete}

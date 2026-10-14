@@ -139,7 +139,7 @@ export function ReminderSettingsBlock({
                     Phone calendar alert
                   </span>
                   <Select
-                    label={`${label}: Phone calendar alert`}
+                    label="Phone calendar alert"
                     hideLabel
                     aria-labelledby={`${headingId} ${alertLabelId}`}
                     value={settings.calendarAlert}
@@ -223,7 +223,7 @@ export function ReminderSettingsBlock({
           routines and teaching.
         </p>
         <Select
-          label="Daily limit for calendar alerts"
+          label="Daily limit"
           hideLabel
           aria-labelledby="settings-reminders-cap-label"
           value={String(reminders.maxAlertsPerDay)}

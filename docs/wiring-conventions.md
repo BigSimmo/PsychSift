@@ -123,13 +123,15 @@ fires in both directions, and `tests/favourites-hub-unavailable-controls.dom.tes
 converted placeholder, asserts it takes focus, asserts the accessible description is what the reader
 gets, and asserts activating it by keyboard and by pointer does nothing.
 
-**Not yet converted**, and deliberately so — the four "not available in this comparison view"
-placeholders and the Compact/Detailed density pair in
-`differentials/differential-presentation-workflow-page.tsx`. That page is scheduled for a rewrite, and
-`tests/mobile-interaction-regressions.test.ts` still pins the density pair as native-only. Convert
-them with that rewrite, not before. `document-viewer/document-image-filmstrip.tsx` and the
-`DocumentViewer.tsx` summarize action are also still native (the latter mixes an auth reason with a
-loading state, so it needs splitting before it can be classified).
+**Converted vs. regression-pinned controls** — `teaching/assessments/assess-kit.tsx` (`AssessButton`),
+`teaching/assessments/assessments-term-overview.tsx` (bell reminders, Supervisors tab `Remind`, and blocked
+export), `favourites/number-sheets.tsx` (short-number copy), `document-viewer/document-image-filmstrip.tsx`
+(unknown-page figure chips), `document-viewer/document-overview-landing.tsx`, and `DocumentViewer.tsx`
+(signed-out "Sign in to answer" split from busy `summarizing`/`loadingSummary`) all use `aria-disabled="true"`
+with `aria-describedby`, `title`, and `ignoreUnavailableActivation`. Form-validity and regression-pinned
+controls (`roster/manage/publish/roster-publish-tab.tsx` `Publish` and the bulk-selection / once-a-day
+remind buttons in `assessments-term-overview.tsx`) remain native `disabled` where existing DOM suites assert
+`.toBeDisabled()`.
 
 **Read-only indicators are not controls.** The shared `ToggleSwitch` (`ui-primitives.tsx`) renders an
 operable `role="switch"` only when an `onToggle` is passed; without it, it is a presentational

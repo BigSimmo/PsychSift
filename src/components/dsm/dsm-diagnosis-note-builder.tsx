@@ -1,8 +1,9 @@
 "use client";
 
 import { MessageSquareText, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
+import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { Button } from "@/components/ui/button";
@@ -34,21 +35,26 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: DsmCriterionStatus; label: string }
 const COPY_RESET_MS = 2200;
 
 export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderRecord }) {
+  return <DsmDiagnosisNoteBuilderInner key={record.icdCode} record={record} />;
+}
+
+function DsmDiagnosisNoteBuilderInner({ record }: { record: DsmNoteBuilderRecord }) {
   const { criteria, differentials, specifiers: selectableSpecifiers, isDsmCriteria } = record;
   // On 145 of the 146 records these rows are the key-feature summary, not DSM-5-TR
   // criteria. The controls say which one the clinician is actually ticking, so the
   // wording on screen matches the wording the note will carry.
   const rowNoun = isDsmCriteria ? "criterion" : "key feature";
+  const storageKey = `psychsift_dsm_draft_${record.icdCode}`;
 
   const initialDraft = useMemo(() => {
     if (typeof window === "undefined") return null;
     try {
-      const draft = sessionStorage.getItem(`psychsift_dsm_draft_${record.icdCode}`);
+      const draft = sessionStorage.getItem(storageKey);
       return draft ? JSON.parse(draft) : null;
     } catch {
       return null;
     }
-  }, [record.icdCode]);
+  }, [storageKey]);
 
   const [statuses, setStatuses] = useState<Record<string, DsmCriterionStatus>>(() => initialDraft?.statuses ?? {});
   const [specifiers, setSpecifiers] = useState<string[]>(() => initialDraft?.specifiers ?? []);
@@ -65,13 +71,19 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
   useDirtyStateGuard(isDirty);
 
   useEffect(() => {
-    if (isDirty || !includeCriterionText) {
-      sessionStorage.setItem(
-        `psychsift_dsm_draft_${record.icdCode}`,
-        JSON.stringify({ statuses, specifiers, specifierText, excluded, includeCriterionText }),
-      );
+    try {
+      if (isDirty || !includeCriterionText) {
+        sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({ statuses, specifiers, specifierText, excluded, includeCriterionText }),
+        );
+      } else {
+        sessionStorage.removeItem(storageKey);
+      }
+    } catch {
+      // Ignore storage errors
     }
-  }, [record.icdCode, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
+  }, [storageKey, isDirty, statuses, specifiers, specifierText, excluded, includeCriterionText]);
 
   const note = useMemo(
     () =>
@@ -96,28 +108,24 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
     return list.includes(value) ? list.filter((entry) => entry !== value) : [...list, value];
   }
 
-  useEffect(() => {
-    if (!isDirty) return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isDirty]);
-
-  function resetBuilder() {
+  const resetBuilder = useCallback(() => {
     setStatuses({});
     setSpecifiers([]);
     setSpecifierText("");
     setExcluded([]);
     setIncludeCriterionText(true);
     try {
-      sessionStorage.removeItem(`psychsift_dsm_draft_${record.icdCode}`);
+      sessionStorage.removeItem(storageKey);
     } catch {
       // Ignore storage errors
     }
-  }
+  }, [storageKey]);
+
+  useEffect(() => {
+    return subscribeAccountTransition(() => {
+      resetBuilder();
+    });
+  }, [resetBuilder]);
 
   async function copyNote(): Promise<boolean> {
     let copied = false;
@@ -218,6 +226,10 @@ export function DsmDiagnosisNoteBuilder({ record }: { record: DsmNoteBuilderReco
             value={specifierText}
             onChange={(event) => setSpecifierText(event.target.value)}
             placeholder="moderate, recurrent"
+            autoComplete="off"
+            spellCheck={false}
+            data-gramm="false"
+            data-enable-grammarly="false"
             className={fieldControlPlain}
           />
         </div>

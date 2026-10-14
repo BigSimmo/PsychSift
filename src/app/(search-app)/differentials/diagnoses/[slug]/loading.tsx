@@ -6,7 +6,7 @@ export default function Loading() {
       <div className={searchPageContainer}>
         <Skeleton className="mb-4 h-8 w-48 rounded-lg" />
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <Skeleton className="h-10 w-80 max-w-sm rounded-lg" />
+          <Skeleton className="h-10 w-full max-w-80 rounded-lg" />
           <Skeleton className="h-7 w-24 rounded-md" />
         </div>
         <Skeleton className="mb-6 h-12 w-full rounded-xl" animationDelay="50ms" />

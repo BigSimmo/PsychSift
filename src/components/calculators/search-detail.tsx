@@ -505,6 +505,9 @@ export function ScorePanel({
             Governance reference: <GovernanceReferenceList sources={governanceSources} />
           </p>
         ) : null}
+        {calc.disclaimer ? (
+          <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{calc.disclaimer}</p>
+        ) : null}
       </div>
     </section>
   );
@@ -596,6 +599,10 @@ function CalculatorDetail({
           <SeverityPill tone={derived.result.tone} label={derived.started ? derived.result.label : "Not started"} />
         </div>
         <ScoreBandBar calc={calc} score={derived.score} started={derived.started} />
+        <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+          {calc.disclaimer ??
+            "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument."}
+        </p>
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]">

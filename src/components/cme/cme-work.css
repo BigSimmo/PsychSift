@@ -452,6 +452,28 @@ html.dark[data-mode-identity="cme"] {
   }
 }
 
+@media (forced-colors: active) {
+  .cpd-switch {
+    border: 1px solid CanvasText;
+  }
+
+  .cpd-switch::after {
+    border: 1px solid CanvasText;
+    background: CanvasText;
+  }
+
+  [aria-checked="true"] > .cpd-switch,
+  [aria-pressed="true"] > .cpd-switch {
+    border-color: Highlight;
+    outline: 2px solid Highlight;
+  }
+
+  [aria-checked="true"] > .cpd-switch::after,
+  [aria-pressed="true"] > .cpd-switch::after {
+    background: Highlight;
+  }
+}
+
 /* ---------------------------------------------------------- hours stepper */
 
 .cpd-stepper {

@@ -11,7 +11,7 @@ import { DEVELOPER_AREA_HEADER, DEVELOPER_AREA_PATH_HEADER, isDeveloperGatedPath
 import {
   DEVELOPER_ACCESS_COOKIE,
   DEVELOPER_ACCESS_COOKIE_MAX_AGE_SECONDS,
-  DEVELOPER_ACCESS_COOKIE_PATH,
+  DEVELOPER_ACCESS_COOKIE_PATHS,
   DEVELOPER_ACCESS_ERROR_PARAM,
   DEVELOPER_ACCESS_QUERY_PARAM,
   developerAccessKeyMatches,
@@ -281,7 +281,8 @@ export async function proxy(request: NextRequest) {
     url.searchParams.delete(DEVELOPER_ACCESS_ERROR_PARAM);
     if (!token) url.searchParams.set(DEVELOPER_ACCESS_ERROR_PARAM, "1");
     const response = withCsp(NextResponse.redirect(url));
-    if (token) setDeveloperAccessCookie(response, token, request);
+    // withCsp already renews a valid incoming cookie across all three paths.
+    if (token && !developerAccessRenewal) setDeveloperAccessCookie(response, token, request);
     return response;
   }
 
@@ -468,13 +469,19 @@ function carrySessionRefresh(from: NextResponse, to: NextResponse): NextResponse
  * deployment is https, so this is https in practice.
  */
 function setDeveloperAccessCookie(response: NextResponse, token: string, request: NextRequest) {
-  response.cookies.set(DEVELOPER_ACCESS_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: request.nextUrl.protocol === "https:",
-    path: DEVELOPER_ACCESS_COOKIE_PATH,
-    maxAge: DEVELOPER_ACCESS_COOKIE_MAX_AGE_SECONDS,
-  });
+  // Next's cookie store keys by name, so serialize separately and append each
+  // path's header without overwriting the other developer or session cookies.
+  const cookieResponse = new NextResponse();
+  for (const path of DEVELOPER_ACCESS_COOKIE_PATHS) {
+    cookieResponse.cookies.set(DEVELOPER_ACCESS_COOKIE, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+      path,
+      maxAge: DEVELOPER_ACCESS_COOKIE_MAX_AGE_SECONDS,
+    });
+    response.headers.append("Set-Cookie", cookieResponse.headers.get("Set-Cookie")!);
+  }
 }
 
 export function shouldBlockProductionMockups(

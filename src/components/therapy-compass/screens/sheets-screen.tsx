@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, Scale, Search } from "lucide-react";
+import { AlertTriangle, ChevronDown, Scale, Search } from "lucide-react";
 
 import { InformationPageFooter, InformationPageShell } from "@/components/information-page-shell";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -10,6 +10,7 @@ import { BrowserPrintButton, PrintOutput } from "@/components/ui/print-output";
 import { cardSurface } from "@/components/card-recipes";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn, ToggleSwitch } from "@/components/ui-primitives";
+import { therapyNeedsReview } from "@/lib/therapies";
 import { therapyRecordHref } from "@/lib/therapy-compass-navigation";
 
 import { useTcBindings } from "../bindings";
@@ -27,6 +28,7 @@ export function SheetsScreen() {
   const { notice, saved, toggleFavourite } = useTherapyFavourite(t?.slug ?? null);
   if (b.loading || !t) return <LoadingState label="Loading patient sheet builder…" />;
 
+  const needsReview = therapyNeedsReview(t);
   const steps = parseSteps(t.deliverySteps, 5);
   const template = t.patientSheetTemplates[0];
   const about = t.patientExplanation || template?.body || t.clinicalSummary || "";
@@ -149,13 +151,22 @@ export function SheetsScreen() {
                 className="w-full max-w-[720px] bg-[color:var(--tc-paper-background)] border border-[color:var(--tc-paper-border)] rounded-sm shadow-[var(--tc-paper-shadow)] py-13 px-14 text-[color:var(--tc-paper-ink)]"
               >
                 <div className="max-sm:flex-wrap flex items-center justify-between border-b-2 border-b-[color:var(--tc-paper-accent-strong)] pb-4 mb-6">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <span className="inline-flex items-center justify-center w-[34px] h-[34px] rounded-md bg-[color:var(--tc-paper-accent-background)] text-[color:var(--tc-paper-accent)]">
                       <Scale aria-hidden="true" size={20} strokeWidth={1.6} />
                     </span>
                     <span className="text-sm-minus font-semibold text-[color:var(--tc-paper-muted)] tracking-normal">
                       Therapy · Patient information
                     </span>
+                    {needsReview ? (
+                      <span
+                        data-testid="therapy-sheet-review-warning"
+                        className="inline-flex items-center gap-1.5 rounded-sm border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] px-2.5 py-0.5 text-2xs font-semibold text-[color:var(--warning-text)]"
+                      >
+                        <AlertTriangle aria-hidden="true" className="size-icon-xs flex-none" />
+                        Awaiting clinical review
+                      </span>
+                    ) : null}
                   </div>
                   <span className="text-2xs text-[color:var(--tc-paper-muted)]">Prepared for you</span>
                 </div>

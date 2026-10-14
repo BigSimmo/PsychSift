@@ -2966,7 +2966,11 @@
         "preview": ".design-sync/previews/TextField.tsx",
         "previewValid": true
       },
-      "testFiles": ["tests/design-sync-visual-exports.test.ts", "tests/ui-v2-components.dom.test.tsx"],
+      "testFiles": [
+        "tests/clinical-math-bounds.test.ts",
+        "tests/design-sync-visual-exports.test.ts",
+        "tests/ui-v2-components.dom.test.tsx"
+      ],
       "baseline": {
         "targetLayer": "v2",
         "liveLayer": "v2",

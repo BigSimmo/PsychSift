@@ -5,22 +5,16 @@ import { BookOpenText, Languages, UserRound } from "lucide-react";
 import { useId, useState } from "react";
 
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
-import { cn, textMuted } from "@/components/ui-primitives";
+import { cn, ignoreUnavailableActivation, textMuted } from "@/components/ui-primitives";
 import { Sheet } from "@/components/ui/sheet";
-import {
-  ACT_SECTION_CHIP_LIMIT,
-  formCatalogDetails,
-  PRIORITY_FACT_CARD_LABELS,
-  type FormRecord,
-} from "@/lib/form-catalog";
+import { ACT_SECTION_CHIP_LIMIT, mhaActMetadata, PRIORITY_FACT_CARD_LABELS } from "@/lib/form-catalog-constants";
 import {
   CULTURAL_NOTE_LABELS,
   culturalNoteReviewer,
   culturalNotesForForm,
   type FormCulturalNoteKind,
 } from "@/lib/forms-cultural-notes";
-import type { FormActSection, FormPriorityFactCard } from "@/lib/form-ranker";
-import { mhaActMetadata } from "@/lib/mha-act-sections";
+import { formCatalogDetails, type FormActSection, type FormPriorityFactCard, type FormRecord } from "@/lib/form-ranker";
 import { signOffDisplay } from "@/lib/sign-off-label";
 import type { ServiceSummaryCard } from "@/lib/service-ranker";
 
@@ -201,6 +195,7 @@ function ActSectionsCard({
 
 /** Shown when a section's summary has been invalidated by an Act version bump. */
 function PendingSectionBody({ formCode, pdfHref }: { formCode?: string; pdfHref?: string }) {
+  const unavailableDescriptionId = useId();
   return (
     <div className="space-y-3">
       <p className="text-sm leading-6 text-[color:var(--text)]">
@@ -213,7 +208,7 @@ function PendingSectionBody({ formCode, pdfHref }: { formCode?: string; pdfHref?
             className="text-[color:var(--clinical-accent)] underline underline-offset-2"
             href={mhaActMetadata.sourceUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
           >
             {`Mental Health Act 2014 (WA), version ${mhaActMetadata.actVersion} as at ${mhaActMetadata.actAsAt}`}
           </a>
@@ -224,12 +219,27 @@ function PendingSectionBody({ formCode, pdfHref }: { formCode?: string; pdfHref?
               className="text-[color:var(--clinical-accent)] underline underline-offset-2"
               href={pdfHref}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               {formCode ? `Official Form ${formCode} PDF` : "Official form PDF"}
             </a>
           </li>
-        ) : null}
+        ) : (
+          <li>
+            <button
+              type="button"
+              aria-disabled="true"
+              aria-describedby={unavailableDescriptionId}
+              onClick={ignoreUnavailableActivation}
+              className="text-left text-xs text-[color:var(--text-muted)]"
+            >
+              {formCode ? `Official Form ${formCode} PDF unavailable` : "Official form PDF unavailable"}
+            </button>
+            <span id={unavailableDescriptionId} className="sr-only">
+              Official PDF link is not available for this form; consult the Chief Psychiatrist register.
+            </span>
+          </li>
+        )}
       </ul>
     </div>
   );
@@ -443,6 +453,14 @@ export function PriorityFactsSection({ form, cards }: { form: FormRecord; cards:
                 >
                   <span className="font-semibold text-[color:var(--text-heading)]">{`Section ${entry.section}`}</span>
                   {` — ${entry.title}`}
+                  {entry.reviewStatus === "drafted" ? (
+                    <span
+                      data-testid={`form-act-section-overflow-drafted-${entry.section}`}
+                      className="ml-2 inline-block rounded-full border border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] px-2 py-0.5 text-2xs font-semibold text-[color:var(--warning-text)]"
+                    >
+                      Awaiting clinical review
+                    </span>
+                  ) : null}
                 </button>
               </li>
             ))}

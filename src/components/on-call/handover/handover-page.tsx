@@ -386,7 +386,9 @@ function NoteArea({
         rows={rows}
         placeholder={placeholder}
         autoComplete="off"
-        spellCheck
+        spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
         onChange={(event) => onChange(event.target.value)}
         data-testid={testId}
         className={cn(fieldControlPlain, "min-h-20 py-2 text-base-minus")}
@@ -424,6 +426,9 @@ function TextLine({
         maxLength={maxLength}
         placeholder={placeholder}
         autoComplete="off"
+        spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
         onChange={(event) => onChange(event.target.value)}
         data-testid={testId}
         className={inputClass}
@@ -842,6 +847,9 @@ export function OnCallHandoverPage() {
                           maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.bed}
                           onChange={(event) => update("bed")(event.target.value)}
                           autoComplete="off"
+                          spellCheck={false}
+                          data-gramm="false"
+                          data-enable-grammarly="false"
                           data-testid="on-call-handover-bed"
                           className={inputClass}
                         />
@@ -852,6 +860,9 @@ export function OnCallHandoverPage() {
                           maxLength={ON_CALL_HANDOVER_FIELD_LIMITS.ward}
                           onChange={(event) => update("ward")(event.target.value)}
                           autoComplete="off"
+                          spellCheck={false}
+                          data-gramm="false"
+                          data-enable-grammarly="false"
                           data-testid="on-call-handover-ward"
                           className={inputClass}
                         />

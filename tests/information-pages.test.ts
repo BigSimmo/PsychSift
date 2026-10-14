@@ -28,12 +28,20 @@ describe("information pages and the search composer", () => {
     }
   });
 
-  it("treats every CPD route as an information page, and Job applications and its CV in Admin", () => {
+  it("treats every CPD, On Call, and Roster route (including nested paths) as an information page, and Job applications and its CV in Admin", () => {
     for (const path of [
       "/cme",
       "/cme/log",
       "/cme/log/abc",
+      "/cme/training",
+      "/cme/training/log",
       "/cme/cpd-home",
+      "/on-call",
+      "/on-call/card",
+      "/on-call/handover/night",
+      "/roster",
+      "/roster/shifts",
+      "/roster/shifts/swap",
       "/admin/applications",
       "/admin/applications/cv",
     ]) {

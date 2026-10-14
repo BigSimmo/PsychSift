@@ -231,7 +231,7 @@ export function SectionHeading({ children, count, id }: { children: ReactNode; c
     >
       <span>{children}</span>
       {count !== undefined ? (
-        <span className="nums text-2xs font-semibold normal-case tracking-normal">{count}</span>
+        <span className="nums text-2xs font-semibold normal-case tracking-normal">{` ${count}`}</span>
       ) : null}
     </h2>
   );
