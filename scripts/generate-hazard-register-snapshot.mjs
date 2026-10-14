@@ -20,13 +20,15 @@
  *
  * Run: npm run snapshot:hazards
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const SNAPSHOT_REL_PATH = "data/hazard-register-snapshot.json";
 
 export const HAZARD_SNAPSHOT_VERSION = "hazard-register-snapshot-v1";
 export const REVIEW_TIME_ZONE = "Australia/Perth";
@@ -36,6 +38,34 @@ const ANALYSIS_MD = "docs/clinical-hazard-analysis.md";
 
 function read(relativePath) {
   return readFileSync(join(repoRoot, relativePath), "utf8");
+}
+
+/**
+ * Derive a deterministic YYYY-MM-DD date from the latest git commit touching
+ * the hazard register source files so `--check` does not flap across calendar
+ * days when the hazard register itself has not changed.
+ */
+export function resolveSourceGeneratedAt(fallbackNow = new Date()) {
+  try {
+    const out = execFileSync("git", ["log", "-1", "--format=%cs", "--", ANALYSIS_MD, CONTROLS_JSON], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(out)) return out;
+  } catch {
+    // Fall back to existing snapshot date or wall-clock UTC date when git is unavailable.
+  }
+  const existingPath = join(repoRoot, SNAPSHOT_REL_PATH);
+  if (existsSync(existingPath)) {
+    try {
+      const existing = JSON.parse(readFileSync(existingPath, "utf8"));
+      if (/^\d{4}-\d{2}-\d{2}$/.test(existing?.generatedAt ?? "")) return existing.generatedAt;
+    } catch {
+      // Ignore malformed existing snapshot.
+    }
+  }
+  return fallbackNow.toISOString().slice(0, 10);
 }
 
 /** Strip the markdown emphasis and links a table cell carries, leaving readable text. */
@@ -195,17 +225,18 @@ export const RETIRED_REGISTERS = [
   { name: "Ward Flow", retiredAt: "2026-09-26", status: "no register ever written; retired" },
 ];
 
-export function buildHazardSnapshot(now = new Date()) {
-  const registers = [buildPsychSiftRegister(now)];
+export function buildHazardSnapshot(now) {
+  const effectiveNow = now ?? new Date();
+  const registers = [buildPsychSiftRegister(effectiveNow)];
 
   const allHazards = registers.flatMap((register) => register.hazards);
   return {
     version: HAZARD_SNAPSHOT_VERSION,
-    generatedAt: now.toISOString().slice(0, 10),
+    generatedAt: now ? now.toISOString().slice(0, 10) : resolveSourceGeneratedAt(effectiveNow),
     counts: {
       registers: registers.length,
       registersMissing: registers.filter((register) => !register.exists).length,
-      registersUnsigned: registers.filter((register) => register.exists && !register.signedOff).length,
+      registersUnsigned: registers.filter((register) => !register.exists || !register.signedOff).length,
       hazards: allHazards.length,
       unmitigated: allHazards.filter((hazard) => hazard.status === "unmitigated").length,
       reviewExpired: allHazards.filter((hazard) => hazard.reviewExpired).length,
@@ -217,12 +248,27 @@ export function buildHazardSnapshot(now = new Date()) {
 
 const invokedDirectly = isDirectEntrypoint(import.meta.url);
 if (invokedDirectly) {
+  const checkMode = process.argv.includes("--check");
   const snapshot = buildHazardSnapshot();
-  const target = join(repoRoot, "data/hazard-register-snapshot.json");
-  writeFileSync(target, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
-  console.log(
-    `[hazard-register] wrote data/hazard-register-snapshot.json ` +
-      `(${snapshot.counts.hazards} hazards across ${snapshot.counts.registers} registers, ` +
-      `${snapshot.counts.unmitigated} unmitigated, ${snapshot.counts.registersMissing} register(s) missing)`,
-  );
+  const expected = `${JSON.stringify(snapshot, null, 2)}\n`;
+  const target = join(repoRoot, SNAPSHOT_REL_PATH);
+  if (checkMode) {
+    if (!existsSync(target)) {
+      console.error(`[hazard-register] FAIL: ${SNAPSHOT_REL_PATH} is missing; run \`npm run snapshot:hazards\`.`);
+      process.exit(1);
+    }
+    const actual = readFileSync(target, "utf8").replace(/\r\n/g, "\n");
+    if (actual !== expected) {
+      console.error(`[hazard-register] FAIL: ${SNAPSHOT_REL_PATH} is stale; run \`npm run snapshot:hazards\`.`);
+      process.exit(1);
+    }
+    console.log(`[hazard-register] PASS: ${SNAPSHOT_REL_PATH} matches ${CONTROLS_JSON} and ${ANALYSIS_MD}.`);
+  } else {
+    writeFileSync(target, expected, "utf8");
+    console.log(
+      `[hazard-register] wrote ${SNAPSHOT_REL_PATH} ` +
+        `(${snapshot.counts.hazards} hazards across ${snapshot.counts.registers} registers, ` +
+        `${snapshot.counts.unmitigated} unmitigated, ${snapshot.counts.registersMissing} register(s) missing)`,
+    );
+  }
 }

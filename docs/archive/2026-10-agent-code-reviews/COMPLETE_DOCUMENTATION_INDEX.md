@@ -1,3 +1,5 @@
+> **Archived report (2026-10).** Historical point-in-time agent code review retained for audit history.
+
 # COMPLETE DOCUMENTATION INDEX
 
 ## All 22 Issues Tracked + All Deliverables

@@ -36,12 +36,11 @@ force-push, or discard work.
    blindly. Do not stage `.env*`, secrets, build output, logs, or unrelated WIP; if you
    see a possible secret, report the path (never the value) and stop.
 3. **Format and verify.** From a fully owned feature worktree, run `npm run format`, inspect the
-   complete formatter diff, and include only intended formatting. Then invoke
-   `verification-router` (or the `gates` skill when scope is already clear) and run the one
-   smallest sufficient gate it selects. Default PR-ready work uses
+   complete formatter diff, and include only intended formatting. Then invoke the `gates` / `plan`
+   skills and run the one smallest sufficient gate they select. Default PR-ready work uses
    `npm run verify:pr-local`; inspect its selection with `--dry-run` when uncertain. For
    UI/routing/styling, prove the affected journey first and add `verify:ui` only for shared UI
-   foundations or when the router says its distinct coverage is necessary. Never stack
+   foundations or when the planner says its distinct coverage is necessary. Never stack
    `verify:cheap` + `verify:ui` + `verify:release` by default.
    - Touched `src/app/`, `src/components/`, or `tests/` (or design-system adoption
      inputs): run `npm run design-system:adoption:update` and stage any regenerated
@@ -61,8 +60,11 @@ force-push, or discard work.
    a force-push or base change is not ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)).
    Never pipe the push through `tail`,
    `head`, or another command that can mask its status. Confirm the remote tip equals local HEAD
-   with `git ls-remote` before reporting success. The pre-push guards run
-   (auto-merge sentinel, format, drift) — heed a block rather than overriding blindly.
+   with `git ls-remote` before reporting success. The pre-push guards in `scripts/guard-push.mjs` run
+   (non-bypassable auto-merge sentinel, plus scoped overrides `SKIP_STATIC_GUARD=1`,
+   `SKIP_DRIFT_GUARD=1`, `SKIP_FORMAT_GUARD=1`, `SKIP_BROWSER_GUARD=1`,
+   `SKIP_IN_FLIGHT_CI_GUARD=1`, and `SKIP_LEDGER_WRITE_GUARD=1`) — heed a block rather than
+   overriding blindly.
 
    **Restarting a branch whose PR already merged:** GitHub deletes the remote branch on merge,
    so the local `origin/<branch>` ref is stale and `--force-with-lease` fails with `stale info`

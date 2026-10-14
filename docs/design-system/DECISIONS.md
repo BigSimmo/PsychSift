@@ -156,23 +156,24 @@ announcer APIs are support-only entry exports. The focus-stack internals remain 
 The adoption contract separately declares every production page route and shared surface root
 under an explicit surface family and disposition. New undeclared routes fail generation. API and
 mockup trees are non-product exclusions; the sole route-only exception is the documented legacy
-document-source redirect. All declared roots remain on the compatibility shell until a separate
-adoption change opts in literally.
+document-source redirect. All 14 declared clinical surface families now mount `.ckb-v2` (via the
+literal `.ckb-v2` on the global `<html>` root, with declared `v2` shell and `passed` proof in
+`adoption-contract.json` / [ADOPTION.md](ADOPTION.md)).
 
 **Rejected.** (a) A hand-maintained, partial `dtsPropsFor` list: it already drifted from final
 `Chip`, `Sheet`, `ConfirmDialog`, and callback contracts. (b) Calling every bundle symbol a visual
 component: providers, hooks, state models, and portals need public entry access without fake
 preview rows. (c) Treating registration or a product import as v2 style adoption: `AnswerCard` is
 a valid local reference with zero product imports, while the app-mounted `OverlayRoot` remains
-infrastructure on the compatibility shell. (d) Keeping
+shared overlay infrastructure. (d) Keeping
 `FilterBar` or `DataTable` as future names: `AccessibleTable` is canonical and filter composition
 belongs to the owning surface. (e) Leaving `SegmentedControl` or `OverlayRoot` as open
 specifications after their source, API, preview, and tests exist.
 
 **Why.** Source-derived publication makes API drift fail deterministically; route-complete
 adoption makes an undeclared production surface fail closed. Keeping those claims separate lets
-the repository say exactly what is ready locally without implying remote publication, browser
-acceptance, product restyling, or v2 root activation.
+the repository say exactly what is ready locally without implying remote publication or committed
+Linux visual baselines before they exist.
 
 ---
 
@@ -185,8 +186,8 @@ declined conversions rather than left as an open question for the next reader to
   `justify-center` display hero on the fluid `text-hero` token, and it is the slot the
   in-flow phone composer sits directly beneath (`desktopComposerSlotId` /
   `DesktopComposerPortalSlot` render immediately after it). `PageHeader` is a left-aligned
-  title stack. Converting the hero would be a visual redesign of all thirteen mode homes
-  (`src/lib/app-modes.ts`) and risks colliding with the "one composer per page" contract in
+  title stack. Converting the hero would be a visual redesign across the mode homes
+  (originally 13 mode homes; `src/lib/app-modes.ts` now defines 26 app modes) and risks colliding with the "one composer per page" contract in
   `docs/search-chrome-behaviour.md` — out of proportion to a header-vocabulary convergence.
 - `search-results-header-band.tsx` is a results spine carrying live status
   (`role="status"`), result counts, and applied-filter chips — not a page-title stack.

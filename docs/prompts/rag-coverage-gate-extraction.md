@@ -7,7 +7,7 @@ that the two private helpers are orchestration-owned and cannot move without a b
 
 ## Perfected prompt
 
-Safely implement the X3 / #086 `rag.ts` decomposition in the Database repository.
+Safely implement the X3 / #086 `rag.ts` decomposition in the PsychSift (`BigSimmo/PsychSift`) repository.
 
 ### Objective
 
@@ -122,8 +122,7 @@ Run narrowly, then widen locally:
 7. `npm run typecheck`
 8. `npm run lint`
 9. `npm run verify:cheap`
-10. Run repository Prettier on changed files only, then `npm run format:check` if coordination
-    permits. Never run `prettier --write .`.
+10. Run `npm run format` (whole-tree Prettier) and commit the result before pushing (or run `npm run format:check` when in a read-only/no-commit Cloud session).
 11. `git diff --check`
 
 For every command, record its real exit status and quote the decisive output line. Do not pipe a

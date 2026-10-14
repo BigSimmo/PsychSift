@@ -15,13 +15,17 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 689
-- Distinct ref cells: 442
-- Distinct reviewed heads: 671
-- Date range: `2026-08-12` to `2026-10-04`
+- Records: 695
+- Distinct ref cells: 447
+- Distinct reviewed heads: 677
+- Date range: `2026-08-12` to `2026-10-13`
 
 Records per date, newest first:
 
+- `2026-10-13` — 2 records
+- `2026-10-11` — 1 record
+- `2026-10-10` — 1 record
+- `2026-10-09` — 2 records
 - `2026-10-04` — 1 record
 - `2026-10-03` — 2 records
 - `2026-10-02` — 10 records
@@ -71,6 +75,12 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-13 | codex/pr3509-preserved-source-guard-20261013 | PR3509 final guard snapshot acceptance | Independent exact-head static acceptance: both strict-mode findings re… | [14a8c580](branch-review-records/14a8c5800f92feed60b9ab5772a77b93f718a0e7abcecfe2cd927fb4d8358e4a.record.md) |
+| 2026-10-13 | codex/pr3509-preserved-source-guard-20261013 | PR3509 preserved-source admission guard | Blocked: independent review found missing-object admission and latest-… | [92c47408](branch-review-records/92c47408e0c8e08f48bd977ed8d9cc0b8968505dffd33d2143f64e5952aa9393.record.md) |
+| 2026-10-11 | codex/fix-on-call-navigation-and-page-hydration | local all-page navigation and shared update fix review | Fixed release recovery, On Call fallback clarity, release-specific wor… | [5be51f83](branch-review-records/5be51f836fdaf3eb8d81a0af6ceab83e768b0a080ff4fb813dac5985719d42b9.record.md) |
+| 2026-10-10 | codescene-non-rag-current-20261010 | codescene-non-rag-current-20261010 independent governance integration dirty diff | No governance blocker found; independent source-only dirty-diff review… | [ab937457](branch-review-records/ab93745778dff4eab8369ee651e62e0b1d488603e6f1b84a31a20751433515d6.record.md) |
+| 2026-10-09 | codex/chat-context7-docs-repair-2e43 | context7-documentation-publication | Addressed ten documentation audit recommendations and three baseline-c… | [1e7b291a](branch-review-records/1e7b291a8dc55fd293047db0c06d5cf7690dec241fd9ad40362612e78802ecbc.record.md) |
+| 2026-10-09 | feat/adversarial-audit-hardening | Run PR sweep | Codacy void-expression braces; prior conflict/SEO/Gitar disposition st… | [6618381b](branch-review-records/6618381b609bb2d0a240a8466cddb5c1aad766d56f98851a7b04a4681fa30989.record.md) |
 | 2026-10-04 | PR-3246 | PR unblock sweep 2026-10-04 | Bounded fixture-cleanup retries fix the observed unit safety failure;… | [9115c339](branch-review-records/9115c339226a715328756e362faf384a792530fba572815658a4ec367d1b858c.record.md) |
 | 2026-10-03 | codex/psychsift-efficiency-draft-20261003 | fresh-current-main efficiency draft complete scope | Independent complete-scope standards and specification review: no high… | [2724a0bc](branch-review-records/2724a0bc90ead02fd53081c5c5210177f2e482e18b754aee8ad8c67bf4564473.record.md) |
 | 2026-10-03 | claude/tooling-guards-from-3238 | Run PR | Prepared both actionable review fixes: safe local-main resolver fallba… | [49fa5357](branch-review-records/49fa53578bdeab1b8ca9658b3b28bf4d8db0c51be833d4273eea84b56058c101.record.md) |

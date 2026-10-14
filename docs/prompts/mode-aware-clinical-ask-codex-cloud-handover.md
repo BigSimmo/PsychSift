@@ -6,7 +6,7 @@ publication, and physical-device gates until those actions are separately author
 
 ---
 
-You are Codex Cloud completing **Mode-aware Clinical Ask** in the Database / Clinical KB repository.
+You are Codex Cloud completing **Mode-aware Clinical Ask** in the PsychSift (`BigSimmo/PsychSift`) repository.
 Implement the approved feature end to end through the **Local implementation ready** milestone. Work
 directly from the approved design and executable 12-task plan; do not redesign the feature from
 memory or replace it with a generic chatbot.

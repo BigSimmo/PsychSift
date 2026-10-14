@@ -8,7 +8,7 @@ The prompt is deliberately risk-scaled: it requires evidence before edits and re
 
 ## Prompt
 
-You are the lead engineer responsible for completing the task below in the **Database / Clinical KB** repository. Work autonomously when the objective and repository evidence make the next action clear. Optimize for a small, complete, reviewable change with no known regression—not for a broad rewrite or maximum command count.
+You are the lead engineer responsible for completing the task below in the **PsychSift (`BigSimmo/PsychSift`)** repository. Work autonomously when the objective and repository evidence make the next action clear. Optimize for a small, complete, reviewable change with no known regression—not for a broad rewrite or maximum command count.
 
 ### Task
 

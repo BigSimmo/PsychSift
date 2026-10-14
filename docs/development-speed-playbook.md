@@ -166,11 +166,10 @@ passed" line at all, which proves nothing was actually verified. Observed here o
 an invocation held the exclusive lock for nine minutes, wrote no result record and printed nothing.
 **Use the status to tell blocked from red; use the "N passed" line to tell passed from never-ran.**
 
-(Older guidance in this repository — `AGENTS.md` and the Phase 5 handover — says this wrapper
-"exits 0 when tests fail and when it refuses to run". That is **not true** of the script at this
-commit, and repeating it throws away a reliable signal. Raised by automated review on PR #2405 and
-confirmed against the source. `AGENTS.md` still carries the stale wording and is tracked separately,
-because changing it is a policy edit.)
+(Older guidance in this repository previously said this wrapper "exits 0 when tests fail and when it
+refuses to run". That is **not true** of the script, and repeating it throws away a reliable
+signal. Corrected in PR #2405 and pinned against regression in `AGENTS.md` and this file by
+`tests/playwright-exit-code-contract.test.ts`.)
 
 **Never pipe a long run through a bare `tail`.** `node script.mjs | tail -30` buffers everything
 until the process exits, so a slow run and a hung run look identical — and because a pipeline's

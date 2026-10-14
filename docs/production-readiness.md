@@ -5,7 +5,7 @@
 
 ## Operational Release Gate Mechanics
 
-The production preflight command:
+The production preflight command (`npm run check:production-readiness`, also referred to as `verify:production-readiness` in audit notes):
 
 ```bash
 npm run check:production-readiness
@@ -14,7 +14,7 @@ npm run check:production-readiness
 is composed of two consecutive verification steps:
 
 1. `npm run check:privacy-readiness:release` — executes `node scripts/check-privacy-readiness.mjs --release` (the script only recognizes `--release`; `--mode=release` is ignored and runs structural mode).
-2. `node scripts/run-tsx.mjs scripts/production-readiness.ts` — validates local environment configuration, Supabase target checks, and secret presence.
+2. `node scripts/run-tsx.mjs scripts/production-readiness.ts` — validates local environment configuration, Supabase target checks, secret presence, the `--clinical-ask-profile=disabled|launch` profile, the developer-area gate (`NEXT_PUBLIC_MOCKUPS_ENABLED`, `DEVELOPER_AREA_ACCESS_KEY`, `DEV_AREA_UNLOCK_SECRET`), and webhook alert delivery readiness (`SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `RAILWAY_WEBHOOK_SECRET`).
 
 ### Disabled Clinical Ask configuration profile
 

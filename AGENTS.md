@@ -140,76 +140,23 @@ Read and follow [External skill precedence](docs/agents/native-startup/external-
 # Supabase project safety
 
 - This repo targets the live Supabase project `PsychSift Production`.
-- **MERGING TO `main` DEPLOYS TO PRODUCTION.** The Supabase GitHub integration has **"Deploy to
-  production" ENABLED**, production branch **`main`** — confirmed by a dashboard read on 2026-08-21,
-  after two earlier sessions inferred it wrongly in both directions. Any migration merged to `main` is
-  applied to the live clinical database automatically, within seconds (measured at 34 s in
-  `docs/audit/live-drift-forensics-2026-08.md` §3.7). There is no separate deploy step to forget and no
-  window to hold it back. Therefore:
-  - **Treat merge approval as production-deploy approval.** Never merge a PR touching
-    `supabase/migrations/**` outside an approved window, and never enable auto-merge on one.
-  - **Never write PR metadata promising a deferred deploy.** There is no deploy step to defer to,
-    so "AWAITING DEPLOY WINDOW", "deployed manually after merge", "deployment is pending operator
-    approval" and "not yet applied" all describe a control this repository does not have — and they are dangerous exactly when believed, because
-    they invite a reviewer to merge a change they think is still parked. PR #2502 carried that
-    phrase in its own title and reached the live database within minutes of merge; the post-merge
-    `live-drift` run caught it as pending-apply drift. State the merge decision instead ("merge only
-    inside the approved window"), which is the control that actually exists. `scripts/pr-policy.mjs`
-    hard-blocks the claim on any PR touching `supabase/migrations/**` and quotes the offending
-    phrase back. The title is always in scope; body statements must name the database subject, so a
-    mixed PR keeps saying "do not deploy the staging worker until its image passes smoke tests" —
-    a real constraint on something merging does not do. Approval sought BEFORE merge is likewise
-    sanctioned and never matched. Patterns and their pinned behaviour table live in
-    `scripts/pr-policy.mjs` beside the RAG and governance gates.
-  - **After such a PR merges, the schema-application gate is the post-merge `live-drift` workflow**
-    (`.github/workflows/live-drift.yml`), which must complete with BOTH `npm run check:drift` and
-    `npm run check:migration-history` green. `supabase migration list` is not that gate: it reads the
-    recorded history only, so it cannot tell an applied migration from a history row whose statements
-    never executed — the exact shape of the fifteen no-statements rows `#Q5JHBJ` exists for.
-    `check:drift` compares the live schema itself. A manual `supabase migration list --linked
---project-ref sjrfecxgysukkwxsowpy` read is a useful supplement, but it is provider-backed and so
-    needs explicit user confirmation first, per "API and provider confirmation boundary" above. A
-    merged-but-unapplied migration is silent drift — the incident this whole programme exists to
-    close.
-  - **A migration that cannot run inside a transaction cannot ship this way.** The integration applies
-    each migration in one transaction, so a bare `CREATE INDEX CONCURRENTLY` migration fails outright.
-    Index work stays operator-prebuild + a validate-only guard migration (the `20260804110240` pattern,
-    see the guard-migration contract below).
-  - **Automatic branching is also ON** (one preview database per PR that changes `supabase/**`, limit
-    3). Supabase warns that Branching Compute is **not covered by the organisation's Spend Cap**. CI's
-    `Migration replay` job (`db-reset-verify`, `supabase migration up --local`) independently replays
-    the whole chain on every database-touching PR, so preview branches are a second net rather than the
-    only one.
+- **MERGING TO `main` DEPLOYS TO PRODUCTION.** The Supabase GitHub integration has **"Deploy to production" ENABLED** on branch **`main`** (confirmed 2026-08-21). Any migration merged to `main` applies to the live clinical database automatically within seconds (34 s in `docs/audit/live-drift-forensics-2026-08.md` §3.7), with no separate deploy step or hold window:
+  - **Treat merge approval as production-deploy approval.** Never merge a PR touching `supabase/migrations/**` outside an approved window, and never enable auto-merge on one.
+  - **Never write PR metadata promising a deferred deploy.** Phrases like "AWAITING DEPLOY WINDOW", "deployed manually after merge", "deployment is pending operator approval", and "not yet applied" describe a control this repo lacks and invite premature merges (as on PR #2502). State the merge gate instead ("merge only inside the approved window"). `scripts/pr-policy.mjs` hard-blocks deferred-deploy claims on PRs touching `supabase/migrations/**` (title always in scope; body statements must name the database subject; pre-merge approval phrasing and non-DB deploy constraints remain allowed).
+  - **After such a PR merges, the schema-application gate is the post-merge `live-drift` workflow** (`.github/workflows/live-drift.yml`), which must complete with BOTH `npm run check:drift` and `npm run check:migration-history` green. `supabase migration list` reads recorded history only and cannot detect no-statements rows (`#Q5JHBJ`), whereas `check:drift` compares the live schema. A manual `supabase migration list --linked --project-ref sjrfecxgysukkwxsowpy` read is an optional provider-backed supplement requiring explicit user confirmation first.
+  - **Transactional execution only.** Each migration runs in one transaction, so bare `CREATE INDEX CONCURRENTLY` fails; use operator-prebuild + a validate-only guard migration (`20260804110240` pattern below).
+  - **Automatic branching is ON** (one preview DB per `supabase/**` PR, limit 3; Branching Compute is **not covered by the Spend Cap**). CI's `Migration replay` job (`db-reset-verify`, `supabase migration up --local`) independently replays the chain on every DB PR.
 - Expected project ref: `sjrfecxgysukkwxsowpy`.
 - Older unused project ref `qjgitjyhxrwxsrydablr` belongs to `Database`; treat it as stale and do not use it.
 - Hosted migrations, `supabase/schema.sql`, `supabase/roles.sql`, CI, and deployment tooling must target role `postgres`; never assume a platform-reserved role. The single older applied migration is immutable and pinned by `npm run check:migration-role`.
 - Bare-image storage scaffolding must discover its local schema owner at runtime and must never be reused as hosted migration SQL.
 - Run `npm run check:migration-role` after changing Supabase SQL, migration tooling, CI replay, or disaster-recovery instructions.
 - Run `npm run check:supabase-project` after changing Supabase env values.
-- **Guard-migration contract.** Any mark-applied version, `supabase migration repair --status applied`,
-  hand-applied SQL later recorded as a migration, or other history repair MUST ship a fail-fast
-  validation guard migration in the same change, following `20260804110240_restore_rag_search_health_indexes.sql`
-  exactly (validates presence + `indisvalid`/`indisready` + normalized definition, never builds,
-  `set local` timeouts, one `raise exception`). `schema_drift_snapshot()` v2 (`20260818090000`) reports every
-  `supabase_migrations` version recorded without executed statements; `check:drift` fails on any such row
-  that lacks a reviewed `migration_history` entry in `supabase/drift-allowlist.json` pointing at its guard
-  (`guard.class` `validation` is mandatory for versions from 2026-08-18; `superseded`/`no_ddl` are for
-  pre-contract history only). Never allowlist a history row bare, and never widen an entry's class to make
-  it pass. Enforced offline by `tests/migration-history-guards.test.ts`; index-monitoring decisions on the
-  retrieval-critical tables are enforced by `tests/search-health-index-coverage.test.ts` +
-  `supabase/search-health-unmonitored-indexes.json` (`required_indexes` changes travel by migration only).
-  Full contract: `docs/database-drift-detection.md`.
+- **Guard-migration contract.** Any mark-applied version, `supabase migration repair --status applied`, hand-applied SQL recorded as a migration, or history repair MUST ship a fail-fast validation guard migration in the same change, following `20260804110240_restore_rag_search_health_indexes.sql` (validates presence + `indisvalid`/`indisready` + normalized definition, never builds, `set local` timeouts, one `raise exception`). `schema_drift_snapshot()` v2 (`20260818090000`) reports no-statement `supabase_migrations` versions; `check:drift` fails unless `supabase/drift-allowlist.json` has a reviewed `migration_history` entry pointing at its guard (`guard.class` `validation` mandatory from 2026-08-18; `superseded`/`no_ddl` pre-contract only; never allowlist bare or widen class). Enforced by `tests/migration-history-guards.test.ts` and `tests/search-health-index-coverage.test.ts` + `supabase/search-health-unmonitored-indexes.json` (`required_indexes` changes via migration only). See `docs/database-drift-detection.md`.
 
 ## Supabase merge caution
 
-Merging a PR that touches `supabase/` applies its migrations to the live clinical database
-within seconds — there is no separate deploy step. Treat that merge as a production deploy.
-`PR policy` still blocks edits to applied migrations and out-of-order or future-dated
-migrations: **a migration already on `main` must never be edited** — ship a new migration with the
-newest timestamp. Clinical-content and RAG-ranking PRs keep the clinical governance preflight,
-the `RAG impact:` body line, the canary-pair requirement, and exclusion from the unattended
-`Clear PRs` batch (`clinical-review-required` and `rag-evidence-required` in
-`scripts/pr-batch-core.mjs`). Full rule: [Merge authority](docs/agents/pull-request-workflow.md#merge-authority).
+Merging a `supabase/` PR deploys to production within seconds. `PR policy` blocks edits to applied, out-of-order, or future-dated migrations: **never edit a migration already on `main`** — ship a new timestamped migration. Clinical-content and RAG-ranking PRs keep clinical governance preflight, the `RAG impact:` line, canary-pair proof, and exclusion from `Clear PRs` (`clinical-review-required` / `rag-evidence-required` in `scripts/pr-batch-core.mjs`). Full rule: [Merge authority](docs/agents/pull-request-workflow.md#merge-authority).
 
 <!-- END:supabase-project-safety -->
 
@@ -220,46 +167,32 @@ the `RAG impact:` body line, the canary-pair requirement, and exclusion from the
 Retrieval/ranking behaviour is live-validated and safeguarded. Before touching any protected
 surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approaches → safeguards).
 
-- **Flag it.** Any task that will touch `src/lib/rag/**`, clinical-search, retrieval-selection,
+- **Flag it.** Any task touching `src/lib/rag/**`, clinical-search, retrieval-selection,
   released-search-order, ranking-config, evidence/result-sort/answer-ranking,
-  evidence-relevance/semantic-rerank/eval-document-matching, the source-authority tiering
+  evidence-relevance/semantic-rerank/eval-document-matching, source-authority tiering
   (`src/lib/source-authority-registry.ts`, `src/lib/australian-source-priority.ts`), the eval harness
   (`scripts/eval-retrieval.ts`, `scripts/lib/clinical-aliases.ts`, ranking-tuning/snapshot
-  tooling), the golden fixture/snapshot, or the retrieval RPCs must say so to the user BEFORE
-  editing, even when the change looks incidental (refactor, rename, "just a comment"). The same
-  applies to the two producers of retrieval inputs that sit outside `src/lib/rag/**` and are
-  easy to mistake for plain ingestion: the text producers (`src/lib/chunking.ts`,
-  `src/lib/extractors/**`, `worker/python/extract_pdf_assets.py`), which decide what ever
-  becomes a chunk or a citation, and the structured-evidence producers
+  tooling), the golden fixture/snapshot, or retrieval RPCs must notify the user BEFORE
+  editing, even for incidental changes. The same applies to retrieval-input producers outside `src/lib/rag/**`: text producers (`src/lib/chunking.ts`,
+  `src/lib/extractors/**`, `worker/python/extract_pdf_assets.py`), structured-evidence producers
   (`src/lib/document-index-units.ts`, `src/lib/model-index-extraction.ts`,
-  `src/lib/deep-memory.ts`), whose index units are queried directly by the candidate fan-out and
-  whose `applyMemoryCardBoosts` rescores results. Added 2026-09-16; `pr-policy` classifies all
-  of these as RAG-ranking surfaces, and `docs/rag-behaviour/safeguards.md` carries the reasoning.
-  The other retrieval inputs are covered too (added 2026-09-25): retrieval RPC version choice
+  `src/lib/deep-memory.ts`, `applyMemoryCardBoosts`), retrieval RPC version choice
   and scoring helpers (`src/lib/retrieval-rpc-rollout.ts`, `clinical-evidence-haystack.ts`,
-  `cross-document-synthesis.ts`, `corpus-grounding.ts`, `keyword-query.ts`), and the producers of
-  enrichment, image-caption, embedding-field, table-fact and assertion rows
+  `cross-document-synthesis.ts`, `corpus-grounding.ts`, `keyword-query.ts`), and enrichment, image-caption, embedding-field, table-fact, and assertion producers
   (`src/lib/document-enrichment.ts`, `visual-intelligence.ts`, `image-filtering.ts`,
   `worker/embedding-fields.ts`, `worker/table-facts.ts`, `worker/assertion-tagging.ts`).
-  The authoritative list is `ragRankingPatterns` in `scripts/pr-policy.mjs`, which also protects
-  the ranking contract tests; where this sentence and that list ever differ, flag everything
-  either names (aligned 2026-09-25).
+  `docs/rag-behaviour/safeguards.md` explains why. The authoritative list (including ranking contract tests) is `ragRankingPatterns` in `scripts/pr-policy.mjs`; flag anything named by either list.
 - **PR nudge (advisory since 2026-09-17).** PRs touching those surfaces get a `pr-policy`
-  **warning** — not a block — when the body has no explicit `RAG impact:` line. Still write one,
-  because it is the fastest way to tell a reviewer whether ordering moved: either
-  `RAG impact: no retrieval behaviour change — <reason>` or
-  `RAG impact: behaviour change — canary pair <baseline> -> <post>`. The real safeguards are
-  unchanged and both still fail closed: the live eval-canary below, and the source-pin contract
-  test (`tests/rag-imputation-contract.test.ts`), which goes red on any edit to the imputation
-  formulas or release-comparator key order.
+  **warning** — not a block — when the body has no explicit `RAG impact:` line. Still write one
+  (`RAG impact: no retrieval behaviour change — <reason>` or
+  `RAG impact: behaviour change — canary pair <baseline> -> <post>`). Hard fail-closed safeguards remain
+  the live eval-canary below and `tests/rag-imputation-contract.test.ts` (imputation formulas and release-comparator key order).
 - **Canary for behaviour.** Any retrieval/ranking/ordering behaviour change requires a live
-  eval-canary before/after pair (doc/content recall pinned 1.0, zero per-case rr regressions)
-  before it is trusted; regression → immediate single-commit revert + confirmation run.
-  Dispatches are provider-backed (~$1–2) and always need explicit user approval.
+  eval-canary before/after pair (doc/content recall pinned 1.0, zero per-case rr regressions);
+  regression → immediate single-commit revert + confirmation run. Dispatches are provider-backed (~$1–2) and require explicit user approval.
 - **Never** insert a comparator key above the relevance score, bulk-merge the wide
   captured-case alias tier into the strict golden tier, relax the clamped-score contract, or
-  adopt tuner recommendations without a measured live gain. Offline-green + review-approved
-  was proven insufficient for this surface on 2026-07-20 (see refuted-approaches).
+  adopt tuner recommendations without a measured live gain (see `docs/rag-behaviour/refuted-approaches.md`).
 
 <!-- END:rag-ranking-protection -->
 

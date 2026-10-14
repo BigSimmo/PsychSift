@@ -112,7 +112,7 @@ A schema restore is not operationally complete until all five environment-owned 
 
 ### 5. Dashboard-owned configuration
 
-- **Procedure:** Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating keys), connection pool limits (e.g. auth pool pinned at 10 connections), per-project API keys (`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), and `E2E_USER_*` test credentials.
+- **Procedure:** Re-enter auth provider configuration (magic link, Google/Apple/Microsoft SSO redirect URLs, rotating keys), connection pool limits (percentage-mode pool setting at `20–25%` of compute-managed `max_connections` rather than pinning at 10 connections; see `docs/auth-connection-cap-runbook.md`), per-project API keys (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` — note that `Dockerfile` bakes `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` into the client bundle at image build time, so rotating it requires a Railway image rebuild, not just a restart), and `E2E_USER_*` test credentials.
 - **Sanity check:** Run `npm run check:env-parity` and names-only checks to verify all consuming environments have valid, non-empty references without logging secret material.
 
 ### 6. Post-restore system health verification

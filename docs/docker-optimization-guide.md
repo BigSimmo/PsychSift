@@ -65,17 +65,21 @@ HIGH=X CRITICAL=Y
 - `200 OK` — status is "ok" or "degraded"
 - `503 Service Unavailable` — status is "error"
 
-**Integration with Railway:**
-Add to `railway.worker.json`:
+**Integration with Railway (`railway.worker.json`):**
 
 ```json
-"healthcheck": {
-  "path": "/health",
-  "port": 3001,
-  "intervalSeconds": 30,
-  "timeoutSeconds": 5,
-  "startPeriodSeconds": 30,
-  "failureThreshold": 3
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile.worker"
+  },
+  "deploy": {
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "preDeployCommand": ["node /app/scripts/deploy/await-migrations.mjs"]
+  }
 }
 ```
 
@@ -92,25 +96,21 @@ livenessProbe:
   failureThreshold: 3
 ```
 
-### 4. Resource Limit Labels ✓
+### 4. Worker Container Architecture & OCI Metadata ✓
 
 **Files:** `Dockerfile`, `Dockerfile.worker`
 
-**App tier labels:**
+**Live `Dockerfile.worker` runtime layout:**
 
-```dockerfile
-org.opencontainers.image.cpu="1"
-org.opencontainers.image.memory="512m"
-```
-
-**Worker tier labels:**
-
-```dockerfile
-org.opencontainers.image.cpu="2"
-org.opencontainers.image.memory="2048m"
-```
-
-These labels document expected resource allocation for Railway and Kubernetes orchestrators. Not enforced at container runtime but guide deployment decisions.
+- **Bundled entrypoint:** Runs `CMD ["node", "dist/worker/index.mjs"]` (built by `scripts/build-worker.mjs` from `worker/index.ts` / `worker/main.ts` with production-only `node_modules` and built-in `/health` HTTP server via `worker/health.ts`).
+- **Dual isolated Python virtual environments:**
+  - `/opt/ocr-venv` (worker OCR venv / `/opt/worker-venv` in earlier notes): PyMuPDF, Pillow, and `pytesseract` from `worker/python/requirements.txt`, placed on `PATH`.
+  - `/opt/docling-venv`: isolated shadow-extraction venv built from `eval/docling/requirements.txt` (`WORKER_DOCLING_PYTHON_BIN=/opt/docling-venv/bin/python`) with prefetched models at `/opt/docling-models` (`HF_HUB_OFFLINE=1`).
+- **OCI labels (`Dockerfile` and `Dockerfile.worker`):**
+  ```dockerfile
+  LABEL org.opencontainers.image.source="https://github.com/BigSimmo/PsychSift"
+  LABEL org.opencontainers.image.title="PsychSift ingestion worker"
+  ```
 
 ### 5. Build Context Optimization ✓
 
@@ -178,44 +178,48 @@ curl http://localhost:3001/health | jq
 
 ### Railway Deployment
 
-Update `railway.worker.json` to include:
+`railway.worker.json` configures the worker build, pre-deploy migration check, and `/health` readiness check:
 
 ```json
 {
-  "services": {
-    "worker": {
-      "healthcheck": {
-        "path": "/health",
-        "port": 3001,
-        "intervalSeconds": 30,
-        "timeoutSeconds": 5,
-        "startPeriodSeconds": 30,
-        "failureThreshold": 3
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile.worker"
+  },
+  "deploy": {
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "preDeployCommand": ["node /app/scripts/deploy/await-migrations.mjs"],
+    "multiRegionConfig": {
+      "asia-southeast1-eqsg3a": {
+        "numReplicas": 1
       }
     }
   }
 }
 ```
 
-Then Railway will:
+Railway will:
 
-1. Start worker with `NODE_ENV=production`
-2. Probe `/health` every 30s after 30s startup grace period
-3. Mark unhealthy after 3 consecutive failed probes (90s total)
-4. Auto-restart unhealthy workers
+1. Run `preDeployCommand` (`node /app/scripts/deploy/await-migrations.mjs`) to verify expected migrations are live
+2. Start the bundled worker (`node dist/worker/index.mjs`) with `NODE_ENV=production`
+3. Probe `/health` (`healthcheckPath: "/health"`, `healthcheckTimeout: 300`) on `WORKER_HEALTH_PORT` / `PORT`
+4. Restart the container under `restartPolicyType: "ALWAYS"` if the process exits
 
 ### Inspect Image Labels
 
 **App tier:**
 
 ```bash
-docker inspect clinical-kb-app:latest | jq '.[] | .Config.Labels' | grep cpu
+docker inspect clinical-kb-app:latest | jq '.[] | .Config.Labels'
 ```
 
 **Worker tier:**
 
 ```bash
-docker inspect clinical-kb-worker:latest | jq '.[] | .Config.Labels' | grep memory
+docker inspect clinical-kb-worker:latest | jq '.[] | .Config.Labels'
 ```
 
 ---
@@ -247,17 +251,17 @@ worker_last_claim_processed_seconds_ago{instance="worker-1"} 45
 
 ## Next Steps (Optional)
 
-1. **Integrate health server into worker main loop:**
-   - Start in worker/index.ts via `createHealthCheckServer()`
-   - Listen on 0.0.0.0:3001 in parallel with claim loop
-   - Call `recordClaimProcessed()` after each job completes
+1. **Health server built into the worker entrypoint (completed):**
+   - Bundled via `worker/index.ts` (`dist/worker/index.mjs`) and started in `worker/main.ts` via `startWorkerHealthServerIfConfigured()` (`createHealthCheckServer()` in `worker/health.ts`)
+   - Listens on `0.0.0.0:$WORKER_HEALTH_PORT` (or `$PORT`) in parallel with the claim loop
+   - Calls `recordClaimProcessed()` after each job completes
 
 2. **Add Prometheus /metrics endpoint:**
    - Export worker_health_status, worker_claim_lag, etc.
    - Scrape from Railway monitoring dashboard
 
 3. **Document in deployment runbook:**
-   - Add railway.worker.json health config to docs/deployment-architecture.md
+   - Keep `railway.worker.json` health config synchronized with `docs/deployment-architecture.md`
    - Link to Kubernetes manifest template
 
 4. **Consider docling-only image optimization:**

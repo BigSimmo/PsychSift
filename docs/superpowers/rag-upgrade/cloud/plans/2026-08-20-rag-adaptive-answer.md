@@ -834,7 +834,7 @@ Expected: PASS or an accurately classified environment/provider gate. Do not byp
 
 Use `npm run verify:pr-local -- --dry-run --files src/lib/rag/adaptive-answer-plan.ts,src/lib/rag/answer-composition.ts,src/lib/rag/rag-answer-instructions.ts,src/lib/rag/rag.ts,src/lib/answer-verification.ts,src/components/clinical-dashboard/answer-content.tsx` to see the repository-selected handoff plan. Run the selected gate once only when the change is ready for PR handoff.
 
-Before an applicable expensive gate, quote the literal arbiter command: `npm run arbiter -- typecheck`, `npm run arbiter -- test`, or `npm run arbiter -- verify:pr-local`. This RAG/UI scope normally returns `RUN` unless exact content is already `PROVEN`. If a gate reports a content-addressed receipt, record it as a reused receipt with its emitted timestamp. Do not describe a receipt, `DEFER`, or `PROVEN` verdict as a fresh execution or rerun unchanged work merely to replace it.
+Check content-addressed gate receipts (`npm run receipts`) before rerunning an unchanged expensive gate (`npm run typecheck`, `npm run test`, or `npm run verify:pr-local`); the former gate-arbiter helper was retired on 2026-09-17. If a gate reports a content-addressed receipt, record it as a reused receipt with its emitted timestamp. Do not describe a reused receipt as a fresh execution or rerun unchanged work merely to replace it.
 
 - [ ] **Step 3: Stop at the hosted boundary unless separately authorized**
 

@@ -272,9 +272,9 @@ Verification gates (see `package.json` for the full chain):
 
 ```bash
 npm run verify:cheap    # ordinary offline gate: check:installed-lock-parity
-                        # + lint + typecheck + test (nothing else)
+                        # + check:diff-integrity + lint + typecheck + test
 npm run verify:full     # 42 static/consistency gates (check:runtime through
-                        # check:instructions; `npm run check:gate-manifest`
+                        # check:offline-pack; `npm run check:gate-manifest`
                         # lists them from verify:full:internal) then lint +
                         # typecheck + test — does not invoke the cheap script
 npm run verify:pr-local # risk-routed PR mirror: focused docs/workflow contracts

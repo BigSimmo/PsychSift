@@ -87,7 +87,6 @@ repository gate. The generated inventories remain governed by their own contract
 - [design-system/ADOPTION.md](design-system/ADOPTION.md) — PR 13 registration record: adoption order, per-surface file allowlists, exclusions, pins, proof shots
 - [dictionary-editorial-drafts.md](dictionary-editorial-drafts.md) — the unpublished Dictionary draft layer: sense-first abbreviation drafts, hash-reconciled definition reviews, per-source acquisition outcomes, and what a register candidate is and is not
 - [comparison-behaviour.md](comparison-behaviour.md) — shared selection, state, responsive, and accessibility contract for comparison surfaces
-- [clinical-chat-ui-component-map.md](clinical-chat-ui-component-map.md) — chat UI component inventory
 - [clinical-badge-system-guide.md](clinical-badge-system-guide.md) — clinical badge semantics
 - [multi-user-auth-setup.md](multi-user-auth-setup.md) — auth, sessions, owner scoping
 - [pwa.md](pwa.md) — PWA install assets, privacy-first service worker, offline shell
@@ -217,6 +216,7 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [process-hardening.md](process-hardening.md) — verification gates, CI expectations, known debts
 - [continuous-integration.md](continuous-integration.md) — workflow concurrency keys, push exemption, and Guard 2 in-flight CI push guard
 - [testing.md](testing.md) — test execution, focused/live commands, Playwright ownership, flake policy
+- [live-browser-testing.md](live-browser-testing.md) — live browser testing architecture and operating guide
 - [development-speed-playbook.md](development-speed-playbook.md) — going faster without weakening any gate: receipts, narrow selection, worktree reuse
 - [phone-chrome-physical-acceptance.md](phone-chrome-physical-acceptance.md) — labelled Safari and cold-launch PWA acceptance matrix
 - [productivity-workflows.md](productivity-workflows.md) — repo workflow planners (flightplan, triage, rag-lab, …)
@@ -249,6 +249,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/external-skill-precedence.md](agents/external-skill-precedence.md) — External Skill Precedence and Evidence — User-global skills and output-style plugins are installed outside this repo and know nothing about its contracts.
 - [agents/pull-request-workflow.md](agents/pull-request-workflow.md) — Pull Request Workflow — The one canonical pull-request rulebook for every AI tool: open, follow CI, review threads, records, merge authority, landed, branch sync, Run PR, Clear PRs, bundling.
 - [agents/repository-skills-and-issues.md](agents/repository-skills-and-issues.md) — Repository Skills and Outstanding-Work Memory — Select repo-local skills under `.agents/skills/` when their descriptions match the actual task and their use materially helps; read an explicitly named skill before acting.
+- [agents/shared-context-and-memory.md](agents/shared-context-and-memory.md) — Context, adaptive agents and memory across local and cloud sessions — Read this reference when a task needs continuity, delegation, memory or a change of execution host.
 - [agents/test-deletion-guard.md](agents/test-deletion-guard.md) — Deleting tests, or letting a tool delete them for you — On 2026-08-31 a commit on PR #2481 titled "test(ui):
 - [agents/smart-agent-allocation.md](agents/smart-agent-allocation.md) — Default model/effort selection, independent ownership and review, evidence reuse, and portable Codex Cloud delivery.
 - [agents/task-efficiency.md](agents/task-efficiency.md) - On-demand task brief, one continuation record and private measurement using existing workflows.
@@ -262,7 +263,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [agents/native-startup/publication-workflows.md](agents/native-startup/publication-workflows.md) — Safe Git publication workflows, PR shortcuts, and anti-churn sync
 - [agents/native-startup/search-chrome-behaviour.md](agents/native-startup/search-chrome-behaviour.md) — Search chrome behaviour, composer ownership, and phone edge-to-edge contracts
 - [prompts/codex-architecture-maintainability-ultra-review.md](prompts/codex-architecture-maintainability-ultra-review.md) — Codex Local Ultra — Architecture & Maintainability Review Orchestrator — Perform a rigorous, evidence-based Architecture and Maintainability review of this repository using multi-agent coordination.
-- [prompts/codex-cloud-design-status-semantics.md](prompts/codex-cloud-design-status-semantics.md) — Codex Cloud prompt — design-system clinical status semantics — Copy the complete prompt below into a new Codex Cloud task for the Database repository KB repository.
+- [prompts/codex-cloud-design-status-semantics.md](prompts/codex-cloud-design-status-semantics.md) — Codex Cloud prompt — design-system clinical status semantics — Copy the complete prompt below into a new Codex Cloud task for the PsychSift (`BigSimmo/PsychSift`) repository.
 - [prompts/codex-cloud-detailed-task.md](prompts/codex-cloud-detailed-task.md) — Codex Cloud detailed-task prompt — Use this prompt when assigning a substantial implementation, refactor, defect fix, or other detailed task to Codex Cloud in this repository.
 - [prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md](prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md) — Codex Comprehensive Full-Stack Product, Design, Architecture, Engineering, Security, Quality and Refactoring Master Prompt — Keep this master specification as a normal Markdown file, for example:
 - [prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md](prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md) — Review and Adversarial Stress Test of the Codex Full-Stack Master Prompt — The original Cursor prompt had unusually strong domain coverage and quality controls.
@@ -280,22 +281,15 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [codex/functional-correctness/README.md](codex/functional-correctness/README.md) — Functional correctness review packets — Durable artifacts requested from the functional correctness review prompt belong here.
 - [codex/performance-reliability/README.md](codex/performance-reliability/README.md) — Performance and reliability review packets — Durable artifacts requested from the performance and reliability review prompt belong here.
 - [codex/tests-quality-gates/README.md](codex/tests-quality-gates/README.md) — Tests and quality-gates review packets — Durable artifacts requested from the tests and quality-gates review prompt belong here.
-- [plans/design-system-live-convergence-plan.md](plans/design-system-live-convergence-plan.md) — Design-system live convergence programme — Status: execution-ready plan…
-- [plans/document-viewer-phase2-unified-chrome.md](plans/document-viewer-phase2-unified-chrome.md) — Phase 2 — Unified viewing chrome (PDF + photo) — Status: plan only (no product behaviour change in this doc PR) Programme:
-- [plans/document-viewer-phase3-handover.md](plans/document-viewer-phase3-handover.md) — Document viewer — Phase 3 handover — Execution brief for Phase 3 of docs/plans/document-viewer-redesign-plan.md.
 - [plans/document-viewer-redesign-plan.md](plans/document-viewer-redesign-plan.md) — Document viewer redesign — PDF + photo surfaces — Status: programme plan (Phases 0–3 landed;
 - [plans/edge-ingestion-overhaul-3pr-plan.md](plans/edge-ingestion-overhaul-3pr-plan.md) — Edge Ingestion Overhaul — 3-PR Execution Plan — Status: Planning only.
 - [plans/tooling-activation-implementation-plan.md](plans/tooling-activation-implementation-plan.md) — Tooling activation — implementation plan — Status: local workstreams (WS-B, WS-C) implemented 2026-08-01;
 
 ## Plans and workstreams (living)
 
-- [mode-aware-clinical-ask-local-handover.md](mode-aware-clinical-ask-local-handover.md) — three-phase local integration, approval-gated staging/governance, and PR publication handover for Mode-aware Clinical Ask
-- [answer-page-redesign-handover.md](answer-page-redesign-handover.md) — build-and-merge handover for the chosen answer-page design: what claim-level citation data already exists, the three-PR order it forces, the design contract, and the gates and PR-body requirements that block the merge
 - [maturity-backlog-workorders.md](maturity-backlog-workorders.md) — actionable work orders tracking the repository-maturity audit backlog
 - [no-unchecked-indexed-access-migration-plan.md](no-unchecked-indexed-access-migration-plan.md) — staged multi-PR rollout for the `noUncheckedIndexedAccess` TypeScript flag (ledger `#211`)
-- [ledger-id-scheme-proposal.md](ledger-id-scheme-proposal.md) — design for collision-free outstanding-issue ids so concurrent sessions stop contending on `issues:next-id` (ledger `#168`)
 - [pr-handoff-stop-cross-agent-gap.md](pr-handoff-stop-cross-agent-gap.md) — why the PR-babysit budget is hook-enforced for Claude Code but prose-only for Codex and Cursor, and what parity would require (ledger `#258`)
-- [framework-dependency-modernization-checklist.md](framework-dependency-modernization-checklist.md) — ordered Next.js 16, runtime, dependency, Turbopack, and verification migration program
 - [search-rag-master-plan.md](search-rag-master-plan.md) / [search-rag-master-context.md](search-rag-master-context.md) — search/RAG roadmap and shared context
 - [rag-improvement/README.md](rag-improvement/README.md) — reviewed/updated RAG improvement programme: answer-quality track (intent-aware related information, length) + corrected eval/safety infra track
 - [rag-improvement/HANDOVER.md](rag-improvement/HANDOVER.md) — multi-session handover: per-session work packets, status table, checklists, and paste-ready prompts for executing the programme
@@ -306,6 +300,7 @@ Every remaining tracked document in this category (process, plus the `agents/` r
 - [rag-hybrid-findings-and-todo.md](rag-hybrid-findings-and-todo.md) — hybrid retrieval findings backlog
 - [reindex-shadow-harness-design.md](reindex-shadow-harness-design.md) — designed-only shadow reindex harness (driver not built)
 - [ingestion-concurrency-fix-workorder.md](ingestion-concurrency-fix-workorder.md) — ingestion concurrency workorder
+- [projects/design-system-remediation.md](projects/design-system-remediation.md) — PsychSift design system, screen, accessibility, responsive & interaction remediation project plan
 - [redesign/](redesign/) — premium redesign plans, decision log, token adoption
 - [superpowers/](superpowers/) — agent-authored plans and specs
 - **Care Plan (prototype, developer-gated under `/mockups/care-plan`)** — [superpowers/specs/2026-08-20-care-plan-design.md](superpowers/specs/2026-08-20-care-plan-design.md) is the binding design spec, [care-plan-context.md](care-plan-context.md) the binding glossary, [superpowers/plans/2026-08-20-care-plan-implementation.md](superpowers/plans/2026-08-20-care-plan-implementation.md) the implementation plan, [care-plan/sdd-ledger.md](care-plan/sdd-ledger.md) the build ledger and [care-plan/complete-work-ledger.md](care-plan/complete-work-ledger.md) the record of what landed; the dated handoffs, transcripts and reports under [care-plan/](care-plan/) are point-in-time records
@@ -333,6 +328,7 @@ Every remaining tracked document in this category, one line each; the descriptio
 - [superpowers/plans/2026-09-27-roster-mode-plan-a-database.md](superpowers/plans/2026-09-27-roster-mode-plan-a-database.md) — Roster mode plan A: the combined database change (PR #3117)
 - [superpowers/plans/2026-09-27-roster-mode-plan-b-release-1.md](superpowers/plans/2026-09-27-roster-mode-plan-b-release-1.md) — Roster mode plan B: Release 1, one doctor (PR #3118)
 - [superpowers/plans/2026-09-27-roster-mode-plan-c-release-2.md](superpowers/plans/2026-09-27-roster-mode-plan-c-release-2.md) — Roster mode plan C: Release 2, Roster for a health service (the plan to complete it)
+- [superpowers/plans/2026-09-27-roster-mode-plan-d-release-3.md](superpowers/plans/2026-09-27-roster-mode-plan-d-release-3.md) — Roster maker: implementation plan (Release 3 preparation)
 - [superpowers/plans/2026-09-27-roster-mode-status.md](superpowers/plans/2026-09-27-roster-mode-status.md) — Roster mode: where the build stands and the plan to complete it
 - [superpowers/plans/2026-09-27-roster-mode-db-agreement.md](superpowers/plans/2026-09-27-roster-mode-db-agreement.md) — Roster mode: the Roster, On Call, Admin and Teaching agreement on the combined database change
 - [superpowers/plans/2026-09-27-roster-mode-build-brief.md](superpowers/plans/2026-09-27-roster-mode-build-brief.md) — Roster mode: the brief the build threads work from
@@ -564,10 +560,34 @@ Every remaining tracked document in this category (dated records and the `eviden
 - [design-system/drift-measurement-2026-09-02.md](design-system/drift-measurement-2026-09-02.md) — Design-token drift measurement, 2026-09-02
 - [design-system/sweep-fix-visible-live-regions.md](design-system/sweep-fix-visible-live-regions.md) — Sweep fix — visible live regions (closes finding 4 of the 2026-08-29 sweep)
 
+### Also catalogued (2026-10-14)
+
+- [clinical-chat-ui-component-map.md](clinical-chat-ui-component-map.md) — Clinical chat UI component inventory (point-in-time architecture map)
+- [mode-aware-clinical-ask-local-handover.md](mode-aware-clinical-ask-local-handover.md) — Three-phase local integration, approval-gated staging/governance, and PR publication handover for Mode-aware Clinical Ask (completed)
+- [answer-page-redesign-handover.md](answer-page-redesign-handover.md) — Build-and-merge handover for the chosen answer-page design (completed)
+- [ledger-id-scheme-proposal.md](ledger-id-scheme-proposal.md) — Design for collision-free outstanding-issue ids (`#168`, implemented via ULIDs)
+- [framework-dependency-modernization-checklist.md](framework-dependency-modernization-checklist.md) — Ordered Next.js 16, runtime, dependency, Turbopack, and verification migration program (completed)
+- [plans/design-system-live-convergence-plan.md](plans/design-system-live-convergence-plan.md) — Design-system live convergence programme (completed plan)
+- [plans/document-viewer-phase2-unified-chrome.md](plans/document-viewer-phase2-unified-chrome.md) — Phase 2 — Unified viewing chrome (PDF + photo) plan (completed)
+- [plans/document-viewer-phase3-handover.md](plans/document-viewer-phase3-handover.md) — Document viewer — Phase 3 handover (completed)
+- [audit/codescene-non-rag-remediation-2026-10-09.md](audit/codescene-non-rag-remediation-2026-10-09.md) — CodeScene maintainability remediation: non-RAG phase (2026-10-09)
+- [audit/full-repository-adversarial-audit-2026-10-09.md](audit/full-repository-adversarial-audit-2026-10-09.md) — Comprehensive repository-wide adversarial audit & reconciliation report (2026-10-09)
+- [audit/psychsift-ux-behavioral-audit-report-2026-10.md](audit/psychsift-ux-behavioral-audit-report-2026-10.md) — PsychSift comprehensive app behavior, UX & clinical ergonomics audit report (2026-10)
+- [evidence/mha-timeframes-owner-attribution.md](evidence/mha-timeframes-owner-attribution.md) — Mental Health Act timeframes: owner's attribution confirmed (2026-10-03)
+- [evidence/pr-3143-owner-signoff-confirmation.md](evidence/pr-3143-owner-signoff-confirmation.md) — PR #3143: clinical owner's sign-off confirmation (2026-10-02)
+- [investigations/firefox-click-state-failures.md](investigations/firefox-click-state-failures.md) — Firefox (Gecko) click state failures in Playwright (#33346A)
+- [mockup-audit-and-issues-report.md](mockup-audit-and-issues-report.md) — Comprehensive mockup audit & issues report (2026-10-09)
+- [superpowers/plans/2026-09-26-cpd-elevation.md](superpowers/plans/2026-09-26-cpd-elevation.md) — CPD mode elevation implementation plan (2026-09-26)
+- [superpowers/plans/2026-09-26-first-nations-mode.md](superpowers/plans/2026-09-26-first-nations-mode.md) — First Nations mode implementation plan (shipped 2026-09-26, PR #3116)
+- [superpowers/plans/2026-09-27-first-nations-mode-completion.md](superpowers/plans/2026-09-27-first-nations-mode-completion.md) — First Nations mode completion checkpoint (2026-09-27)
+- [superpowers/specs/2026-09-26-cpd-elevation-design.md](superpowers/specs/2026-09-26-cpd-elevation-design.md) — CPD mode elevation design spec (2026-09-26)
+- [superpowers/specs/2026-09-26-first-nations-mode-design.md](superpowers/specs/2026-09-26-first-nations-mode-design.md) — First Nations mode design spec (2026-09-26)
+- [archive/2026-10-agent-code-reviews/](archive/2026-10-agent-code-reviews/) — Archived October 2026 point-in-time agent code reviews retained for audit history
+
 ## Archive
 
 - [archive/](archive/) — completed phase plans, superseded designs, and old
-  progress logs kept for provenance. Never treat archive content as current
+  progress logs kept for provenance (including [archive/2026-10-agent-code-reviews/](archive/2026-10-agent-code-reviews/)). Never treat archive content as current
   guidance.
 
 ## Maintenance rules

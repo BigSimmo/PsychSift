@@ -36,8 +36,9 @@ Last reviewed: 2026-07-10. Applies to any feature branch or release candidate.
     `Cross-Origin-*`, `Permissions-Policy`, and `Origin-Agent-Cluster`.
 - [x] Server-side headers exposure is reduced (`X-Powered-By` disabled).
 - [x] Added one-command production preflight:
-  - `npm run check:production-readiness`
-  - runs env validation, Supabase target checks, lockfile/env-file presence checks, and placeholder checks.
+  - `npm run check:production-readiness` (also referred to as `verify:production-readiness` in audit notes)
+  - chains `npm run check:privacy-readiness:release` (`node scripts/check-privacy-readiness.mjs --release`) followed by `node scripts/run-tsx.mjs scripts/production-readiness.ts`.
+  - runs env validation, Supabase target checks, lockfile/env-file presence checks, placeholder checks, `--clinical-ask-profile=disabled|launch` validation, developer-area gate verification (`NEXT_PUBLIC_MOCKUPS_ENABLED`, `DEVELOPER_AREA_ACCESS_KEY`, `DEV_AREA_UNLOCK_SECRET`), and webhook alert delivery readiness (`SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, `RAILWAY_WEBHOOK_SECRET`).
 - [x] Added local/dev secret presence helper:
   - `npm run check:local-presence` (optional `--fill`)
   - names + length buckets only; fills only safety-identifier / query-hash / deep-probe into gitignored `.env.local`; never prints values or invents provider credentials.

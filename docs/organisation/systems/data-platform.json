@@ -172,6 +172,7 @@
     "tests/proxy.test.ts",
     "tests/public-*",
     "tests/recovery-readiness-evidence.test.ts",
+    "tests/restore-edge-function-docs.test.ts",
     "tests/retrieval-access-scope.test.ts",
     "tests/retrieval-owner-filter-guard.test.ts",
     "tests/safe-buffer.test.ts",

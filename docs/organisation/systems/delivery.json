@@ -211,6 +211,7 @@
     "tests/installed-lock-parity.test.ts",
     "tests/layout-tolerance.test.ts",
     "tests/lib-layering.test.ts",
+    "tests/lighthouse-baseline-browser-pin.test.ts",
     "tests/live-*",
     "tests/local-*",
     "tests/measure-cls-attribution-contract.test.ts",

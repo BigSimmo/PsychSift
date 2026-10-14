@@ -51,15 +51,17 @@ contract: see [search-chrome-behaviour.md](search-chrome-behaviour.md).
   clip the pinned Filter. `ui-smoke` asserts the rail fits as geometry, not as a class —
   the class that caused this read as correct, and `expectNoPageHorizontalOverflow` cannot
   see an internal scroller.
-- **A control composed from a shared recipe must not rely on override order.** `cn` is a
-  plain join, not tailwind-merge. `DocumentFilterTrigger` was `floatingControl` plus an
-  override string, so every contradictory utility reached the DOM and stylesheet order —
-  not intent — picked the winner. `text-sm`/`text-xs` and the two `shadow-*` happened to
-  resolve the way the override wanted; `font-semibold` (600 against the sort group's
-  470/560) and `--border-lux` (a visibly darker stroke than `--border`) never did, so the
-  one control sitting flush against the sort group rendered as a different component. It
-  now uses the band's own control recipe — the same string `Save search` and `Retry` use —
-  with the active/resting colours as mutually exclusive branches.
+- **A control composed from a shared recipe must not rely on fragile override order.** Before
+  `cn()` was upgraded to wrap `twMergeClinical` (`extendTailwindMerge` in
+  `src/lib/tailwind-merge.ts`, taught this repo's custom `@theme` tokens), `cn` was a plain
+  join, so `DocumentFilterTrigger` (`floatingControl` plus an override string) sent every
+  contradictory utility to the DOM where stylesheet order — not intent — picked the winner:
+  `font-semibold` (600 against the sort group's 470/560) and `--border-lux` (a visibly darker
+  stroke than `--border`) lost, making the control flush against the sort group render as a
+  different component. Even with `twMergeClinical` active in `cn()`, shared bar controls use
+  the band's own control recipe — the same string `Save search` and `Retry` use — with the
+  active/resting colours as mutually exclusive branches rather than relying on utility override
+  chains.
 - **Every mode uses one adaptive filter system, not a phone-only substitute.** Each result
   surface passes `ResultFilterTrigger` at phone and desktop breakpoints. The trigger opens
   `ResultFilterSheet`, which is a bottom sheet on phones and a restrained right drawer from
@@ -130,10 +132,9 @@ the shelf or filter badge.
   in-context homes that both preserve the query: the filter sheet's footer, under a rule
   and phrased as reach with the corpus count beside it, and the zero-result state. Do not
   delete either without giving nav a query-preserving route first.
-- **Sort does not move into the phone filter sheet.** Only documents and therapy-compass
-  currently have phone filter sheets (`Filter documents` / `TherapyFilterSheet`). Of the
-  four production `onSortChange` consumers, documents already pairs Sort with a sheet;
-  therapy has a sheet but no Sort. Moving Sort into the sheet from the shared band would
-  remove Sort from phones in the three sheetless Sort consumers — differentials, forms,
-  and services — the exact defect an earlier round fixed. If this is ever wanted it is
-  per-page work on those consumers, not a shared-band change.
+- **Sort does not move into the phone filter sheet.** Although Documents, Therapy Compass,
+  Differentials, Forms, and Services now all share `ResultFilterSheet` (historically only
+  Documents and Therapy had phone filter sheets when this decision was first recorded), Sort
+  remains in the results bar utility rail rather than moving into the filter sheet: Sort is
+  set roughly once per session and orders results, whereas Filter carries narrowing or
+  highlighting state (`appliedFilters`) and is returned to repeatedly.

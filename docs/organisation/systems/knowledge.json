@@ -4,7 +4,7 @@
   "kind": "area",
   "name": "Knowledge and records",
   "owns": "How people and agents know how to work, and what has been decided, found or left open: entry docs, agent tooling, ledgers and records.",
-  "canonicalDocs": ["docs/agents-guide.md", "docs/README.md", "docs/DOCS-SYSTEM.md"],
+  "canonicalDocs": ["docs/agents-guide.md", "docs/README.md", "docs/DOCS-SYSTEM.md", "docs/codebase-index.md"],
   "paths": [
     ".agents/**",
     ".claude/**",

@@ -226,8 +226,9 @@ function documentSection(repoPath: string): string {
  * `//` of a comment inside a fenced code block, which fails in the worse
  * direction by hiding a document the index really does list.
  */
-function catalogueTargets(readmeMarkdown: string): Set<string> {
-  const targets = new Set<string>();
+function catalogueTargets(readmeMarkdown: string): { files: Set<string>; directories: Set<string> } {
+  const files = new Set<string>();
+  const directories = new Set<string>();
 
   // Both loops below scan for `docs/…md`, and an absolute URL can contain that
   // substring — `https://github.com/…/blob/main/docs/some-doc.md` would
@@ -239,16 +240,36 @@ function catalogueTargets(readmeMarkdown: string): Set<string> {
   for (const match of withoutUrls.matchAll(/\]\(([^)\s#]+)/g)) {
     const target = match[1];
     if (target.includes("://") || target.startsWith("/") || target.startsWith("#")) continue;
-    targets.add(path.posix.normalize(path.posix.join(DOCS_ROOT, target)));
+    const normalized = path.posix.normalize(path.posix.join(DOCS_ROOT, target));
+    if (target.endsWith("/")) {
+      directories.add(`${normalized.replace(/\/$/, "")}/`);
+    } else {
+      files.add(normalized);
+      if (normalized.endsWith("/README.md") && normalized !== README_PATH) {
+        directories.add(normalized.slice(0, -"README.md".length));
+      }
+    }
   }
 
-  for (const match of withoutUrls.matchAll(/docs\/[A-Za-z0-9._/-]+\.md/g)) targets.add(match[0]);
+  for (const match of withoutUrls.matchAll(/docs\/[A-Za-z0-9._/-]+\.md/g)) {
+    files.add(match[0]);
+    if (match[0].endsWith("/README.md") && match[0] !== README_PATH) {
+      directories.add(match[0].slice(0, -"README.md".length));
+    }
+  }
 
-  return targets;
+  return { files, directories };
 }
 
 export function buildDocumentationSection(docPaths: readonly string[], readmeMarkdown: string): DocumentationSection {
   const catalogued = catalogueTargets(readmeMarkdown);
+  const isCatalogued = (repoPath: string): boolean => {
+    if (catalogued.files.has(repoPath)) return true;
+    for (const dirPrefix of catalogued.directories) {
+      if (repoPath.startsWith(dirPrefix)) return true;
+    }
+    return false;
+  };
 
   // Dispersed by a hash of the path, for the reason on `byDispersedPath` above:
   // two branches each adding a document under the same directory would
@@ -263,7 +284,7 @@ export function buildDocumentationSection(docPaths: readonly string[], readmeMar
     .map((repoPath) => ({
       path: repoPath,
       section: documentSection(repoPath),
-      catalogued: catalogued.has(repoPath),
+      catalogued: isCatalogued(repoPath),
     }));
 
   const sectionNames = new Set<string>();

@@ -5,9 +5,11 @@ description: Track and recall all outstanding tasks, recommendations, and issues
 
 # issues — the outstanding-work memory
 
-`docs/outstanding-issues.md` is the single universal, durable, cross-session ledger for recommended
-execution order, open **tasks**, **recommendations**, **issues**, provider/operator work, and archive
-history. Chat context resets; that file does not. This skill reads it back and keeps it current.
+`docs/outstanding-issues.md` is the repository outstanding-issues ledger — the single universal,
+durable, cross-session register for recommended execution order, open **tasks**, **recommendations**,
+**issues**, provider/operator work, and archive history (while `docs/task-receipts.md` governs
+canonical task lifecycle and receipt handoff). Chat context resets; `docs/outstanding-issues.md`
+does not. This skill reads it back and keeps it current.
 
 **The ledger on the remote `main` branch is the source of truth, not chat memory or a stale
 worktree.** Never answer `/issues` from conversation recall or by reading the checkout file
@@ -60,8 +62,9 @@ read-only `/issues` needs no such check. Recorded as `#292`.
 Parse the intent from natural language too — the exact syntax is a convenience, not a requirement.
 
 - **`/issues add <text>`** — queue an immutable `add` request. Infer `Pri`/`Type` from the text
-  (ask only if genuinely ambiguous; default `P2`/`task`). The serial reconciler allocates the
-  numeric issue ID later; a feature branch must never read or bump the `issues:next-id` marker.
+  (ask only if genuinely ambiguous; default `P2`/`task`). `scripts/outstanding-issues.mjs` and the
+  serial reconciler allocate ULID-backed 6-character Crockford Base32 `#XXXXXX` IDs; a feature
+  branch must never hand-allocate IDs or edit canonical rows directly.
 - **`/issues done <id> [outcome]`** — queue an immutable `done` request for the existing canonical
   ID and its one-line outcome. Reconciliation moves the row to **Resolved / archive** and updates
   any recommended-queue references.
@@ -91,14 +94,15 @@ paragraph; put the smallest next action in **Detail / next action**.
 
 ```bash
 npm run issues:add -- --pri P2 --type issue --summary "…" --detail "…" --source "…"
-npm run issues:done -- '#151' --outcome "Resolved 2026-07-31 by PR #1494. …"
-npm run issues:update -- '#151' --detail "…"
-npm run issues:queue -- '#151' --acuity A3 --when "After the next release"
+npm run issues:done -- '#M6JNR8' --outcome "Resolved 2026-07-31 by PR #1494. …"
+npm run issues:update -- '#M6JNR8' --detail "…"
+npm run issues:queue -- '#M6JNR8' --acuity A3 --when "After the next release"
 ```
 
 Each command creates one validated UUID JSON file under `docs/outstanding-issues-inbox/`; it does
 not edit `docs/outstanding-issues.md`. Requests are immutable and merge independently. Only a
-dedicated fresh-base ledger branch may run `npm run issues:reconcile`, which allocates IDs, applies
+dedicated fresh-base ledger branch may run `npm run issues:reconcile`, which allocates ULID-backed
+6-character Crockford Base32 `#XXXXXX` IDs via `scripts/outstanding-issues.mjs`, applies
 requests serially, and moves them to `docs/outstanding-issues-inbox/applied/`. Never reconcile as
 part of an ordinary product PR.
 

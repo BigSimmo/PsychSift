@@ -80,15 +80,17 @@ none were copied from production or requested during this preparation.
 
 ### Railway
 
-- Project: `Database` (`5deaad0b-675a-4c13-978e-5ca2b5b877f9`)
-- Production app service: `Database`
-  (`6db32f39-2ecd-493c-a688-feb2d6670ff4`)
+- Project: `PsychSift` (`5deaad0b-675a-4c13-978e-5ca2b5b877f9`)
+- Production app service: `PsychSift` (formerly `Database`,
+  `6db32f39-2ecd-493c-a688-feb2d6670ff4`)
 - Production worker service: `worker`
   (`29510fca-4920-470d-941c-b1290e06d3d5`)
 - Staging app service: `app`
   (`d9ddf695-3403-4785-b2dd-2cfd3c4816a6`)
 - Staging worker service: `worker-5g6o`
-  (`0a521251-9d6e-4f18-9ed3-ec362a48e8da`)
+  (`0a521251-9d6e-4f18-9ed3-ec362a48e8da` — exists in `staging` and carries
+  `OPENAI_API_KEY`; operators must not point it at production or trigger
+  unintended background work)
 - Active production app domains:
   `psychiatry.tools`, `www.psychiatry.tools`, and
   `database-production-c1c0.up.railway.app`

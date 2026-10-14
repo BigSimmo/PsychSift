@@ -21,11 +21,10 @@ gates.
 2. Keep one owner for each hot file, especially
    `supabase/functions/indexing-v3-agent/index.ts`. Parallel work may cover only
    disjoint documentation, tests, or scripts.
-3. Format only files intentionally changed. Use targeted Prettier, then
-   `npm run format:changed`, and inspect the complete status and diff before
-   committing. Never use repository-wide formatting as a blanket handoff step,
-   and never commit test results, traces, screenshots, Lighthouse output, logs,
-   caches, scratch files, or unrelated corpus assets.
+3. Run `npm run format` (whole-tree Prettier) and commit the result before
+   pushing, and inspect the complete status and diff before committing. Never
+   commit test results, traces, screenshots, Lighthouse output, logs, caches,
+   scratch files, or unrelated corpus assets.
 4. Treat changes to selected chunks, summaries, labels, sections, or embeddings
    as retrieval-behaviour changes even when ranking code is untouched. State the
    RAG impact explicitly and run the smallest offline regression gate that can

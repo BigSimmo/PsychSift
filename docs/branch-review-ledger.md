@@ -39,14 +39,9 @@ Record the **Reviewed HEAD** as the full 40-character SHA. `see PR head`, `pendi
 
 `npm run check:branch-review-ledger` (in `verify:full` and CI) enforces the `ledger` merge attribute, six cells per record, clean UTF-8 (no mojibake from a non-UTF-8 append), table-row records only, real dates, and no duplicates. Records dated 2026-07-29 or later must additionally carry a resolvable HEAD. The merge driver is installed by `npm install` / `hooks:install` (`merge.ledger.driver`). Archives under `docs/archive/branch-review-ledger-*.md` are checked for the same structural rules.
 
-### Rotation
+### Archival Policy
 
-```bash
-npm run ledger:rotate -- --dry-run                  # default cutoff: current calendar-quarter start
-npm run ledger:rotate -- --before 2026-07-29        # one-time / operator cutoff
-```
-
-Default rotation archives every live row dated before the current UTC calendar-quarter start into `docs/archive/branch-review-ledger-<yyyy-qN>.md`. The 2026-07-30 L4 bootstrap used `--before 2026-07-29` because the entire history landed inside one month; going forward, run `npm run ledger:rotate` once per UTC calendar quarter (or when the live table grows unwieldy). Preview with `--dry-run` first.
+This historical table is frozen (`npm run check:ledger-write-discipline` rejects any dated-row edit or rotation here). All new review records are written as immutable content-addressed files under `docs/branch-review-records/` via `npm run ledger:append` (and indexed in `docs/branch-review-index.md` via `npm run ledger:index`). See [`docs/branch-review-archival-policy.md`](branch-review-archival-policy.md) for what may and may not be done to review records.
 
 ### Historical note — 2026-07-28 hygiene pass
 
