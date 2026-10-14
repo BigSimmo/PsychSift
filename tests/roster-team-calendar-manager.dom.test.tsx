@@ -297,6 +297,12 @@ describe("Team calendar, manager layer", () => {
   });
 
   it("reads requests, manage and the roster again after a give-away is sent from the calendar", async () => {
+    // The give-away sheet reads the real clock (`useRosterNow()` is not handed the page's pinned
+    // `now`), and the shift (Thu 15 Oct, 09:00 Perth) counts as urgent inside 24 hours, which swaps
+    // "Offer to 1 person" for "I can't make it". This test only ever passed because the real date
+    // was more than a day before the fixture shift; from 09:00 Perth on 14 Oct 2026 it failed on
+    // every run. Pin Date to two days before the shift so the ordinary give-away path is the one tested.
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-13T00:00:00Z") });
     const { posts, reads } = mockFetch();
     render(<RosterTeamPage now={NOW} />);
     fireEvent.click(await screen.findByRole("button", { name: /You, Day 09:00–17:00/ }));
