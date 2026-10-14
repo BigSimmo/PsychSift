@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "d088ad38-f38f-4ba1-894a-aa2dca11dc65",
+  "createdOn": "2026-10-14",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "Debounce Levenshtein typo calculations in universal search command palette",
+    "detail": "In src/components/clinical-dashboard/universal-search-command-surface.tsx, rankLocalFavourites computes typo distances (Levenshtein distance) synchronously across favourite items on every keystroke. Adding a 30-50 ms micro-debounce when typing rapidly prevents main-thread stuttering during fast input sequences while keeping arrow-key selection immediate.",
+    "source": "session 2026-10-14 performance audit follow-up",
+    "issueUlid": "01M4WDJMMXEDX3R52DJQJ8RWJX"
+  }
+}
