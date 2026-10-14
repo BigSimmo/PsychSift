@@ -2573,7 +2573,7 @@ function isAkgBestPracticePrescriptionSource(result: SearchResult) {
   return /\bBest Practice Prescription(?:\s+Program)?\s*\(?AKG\)?\b/i.test(comparisonSourceLabel(result));
 }
 
-function bestPracticePrescriptionProgramUseEvidence(result: SearchResult) {
+export function bestPracticePrescriptionProgramUseEvidence(result: SearchResult) {
   if (!isAkgBestPracticePrescriptionSource(result)) return false;
   const text = boundedSourceText(result);
   return (
@@ -2586,7 +2586,7 @@ function bestPracticePrescriptionProgramUseEvidence(result: SearchResult) {
   );
 }
 
-function bestPracticePrescriptionProfileEvidence(result: SearchResult) {
+export function bestPracticePrescriptionProfileEvidence(result: SearchResult) {
   if (!isAkgBestPracticePrescriptionSource(result)) return false;
   const text = boundedSourceText(result);
   return (
