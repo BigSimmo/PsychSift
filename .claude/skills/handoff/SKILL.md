@@ -60,7 +60,9 @@ force-push, or discard work.
    a force-push or base change is not ([Merge authority](../../../docs/agents/pull-request-workflow.md#merge-authority)).
    Never pipe the push through `tail`,
    `head`, or another command that can mask its status. Confirm the remote tip equals local HEAD
-   with `git ls-remote` before reporting success. The pre-push guards in `scripts/guard-push.mjs` run
+   with `git ls-remote` before reporting success. This provider-touching verification requires
+   explicit user confirmation; push authorization alone does not cover it. If confirmation is
+   absent, report the push result and remote-tip verification as pending. The pre-push guards in `scripts/guard-push.mjs` run
    (non-bypassable `autoMergeGuard` sentinel, plus five scoped overrides `SKIP_STATIC_GUARD=1`,
    `SKIP_DRIFT_GUARD=1`, `SKIP_FORMAT_GUARD=1`,
    `SKIP_IN_FLIGHT_CI_GUARD=1`, and `SKIP_LEDGER_WRITE_GUARD=1`) — heed a block rather than

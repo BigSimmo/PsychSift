@@ -142,7 +142,9 @@ Before implementing any changes to RAG ranking, retrieval, synthesis, or evaluat
   - `scripts/lib/clinical-aliases.ts`, `scripts/lib/ranking-tuning.ts`, `scripts/lib/ranking-snapshot-builder.ts`
   - `scripts/fixtures/rag-retrieval-golden.json`, `scripts/fixtures/rag-ranking-candidate-snapshot.v1.json`
   - Contract test pins: `tests/rag-fast-path-ordering.test.ts`, `tests/ranking-tuning.test.ts`, `tests/retrieval-selection.test.ts`, `tests/rag-second-stage-ranking.test.ts`, `tests/eval-retrieval.test.ts`, `tests/rag-imputation-contract.test.ts`
-  - Database schema & retrieval RPCs in `supabase/schema.sql` and `supabase/migrations/`
+
+- Manually review database schema and retrieval RPC changes in `supabase/schema.sql` and
+  `supabase/migrations/` for RAG impact; these paths are not matched by `ragRankingPatterns`.
 
 - Separately check authored clinical datasets matched by `clinicalRiskPatterns` for clinical
   governance requirements: `src/lib/dictionary-data.ts`, `src/lib/factsheets-data.ts`,
