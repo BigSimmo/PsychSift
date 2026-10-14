@@ -505,9 +505,10 @@ export function ScorePanel({
             Governance reference: <GovernanceReferenceList sources={governanceSources} />
           </p>
         ) : null}
-        {calc.disclaimer ? (
-          <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{calc.disclaimer}</p>
-        ) : null}
+        <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+          {calc.disclaimer ??
+            "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument."}
+        </p>
       </div>
     </section>
   );
