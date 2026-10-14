@@ -45,8 +45,7 @@ the pinned targets and the code evidence establishes the fail-closed guard.
 
 Sanitized external reference: `PsychSift owner approval in Codex task 01a04af2-74bf-7e40-aa14-4a9e78295b33 on 2026-09-01; task content retained outside Git`
 
-Last reviewed: `2026-09-26` (synced with [`privacy-readiness.v1.json`](privacy-readiness.v1.json))
-Review expiry: `2035-12-31`
+Review expiry: `2026-10-01`
 
 ## 2. Retention schedules
 
@@ -81,8 +80,7 @@ This record does not claim that the owner separately restated each technical det
 
 Sanitized external reference: `Supabase migration 20260901033250, post-state review, and PsychSift owner approval in Codex task 01a04af2-74bf-7e40-aa14-4a9e78295b33 on 2026-09-01`
 
-Last reviewed: `2026-09-26` (synced with [`privacy-readiness.v1.json`](privacy-readiness.v1.json))
-Review expiry: `2035-12-31`
+Review expiry: `2026-10-01`
 
 ### Production configuration recheck — 2026-09-13
 
