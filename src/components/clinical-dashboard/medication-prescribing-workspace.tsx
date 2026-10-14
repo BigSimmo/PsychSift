@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useDeferredValue, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ModeHomeTemplate } from "@/components/mode-home-template";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -576,8 +576,7 @@ function MedicationResults({
   // Keep the full catalogue payload here: Safety/Monitoring chips and patient
   // alerts need sections/stats/quick that `fields=index` strips. Cross-mode
   // identity consumers still use `fields=index`.
-  const deferredQuery = useDeferredValue(query);
-  const catalog = useMedicationCatalog(deferredQuery);
+  const catalog = useMedicationCatalog(query);
   const isDesktop = useDesktopViewport();
   const { profile, isEmpty: profileEmpty } = usePatientProfile();
   const searchParams = useSearchParams();
