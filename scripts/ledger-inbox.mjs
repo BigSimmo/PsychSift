@@ -401,7 +401,14 @@ export function planRequestBatch(requests, options = {}) {
   const byId = indexRequests(requests);
   const { cancelledIds, cancellations, ineffective } = planCancellations(requests, byId, applied, warn);
 
-  const active = requests.filter((request) => request.action !== "cancel" && !cancelledIds.has(request.id));
+  // Adds go first (stable otherwise): a close/update may target the issue a pending add creates
+  // (attachIssueFingerprint accepts that), and filename order would otherwise let a mutation whose
+  // UUID sorts first reach a row that does not exist yet and abort the whole batch.
+  const remaining = requests.filter((request) => request.action !== "cancel" && !cancelledIds.has(request.id));
+  const active = [
+    ...remaining.filter((request) => request.action === "add"),
+    ...remaining.filter((request) => request.action !== "add"),
+  ];
   const conflicts = mutationConflicts(active);
   if (conflicts.length > 0) {
     const detail = conflicts.map(([id, requestIds]) => `${id}: ${requestIds.join(", ")}`).join("; ");

@@ -301,6 +301,27 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
     });
   });
 
+  describe("pending add ordering", () => {
+    it("planRequestBatch applies an add before a mutation of its issue even when the mutation's UUID sorts first", () => {
+      const close = {
+        version: 1,
+        id: "0000aaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: { id: "#ABC123", outcome: "Resolved in PR #3510" },
+      };
+      const add = {
+        version: 1,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: { pri: "P2", type: "task", summary: "New issue", issueUlid: "01M31F4Y1HABC123DBX940FYMC" },
+      };
+      const plan = planRequestBatch([close, add]);
+      expect(plan.active.map((request) => (request as { action: string }).action)).toEqual(["add", "done"]);
+    });
+  });
+
   describe("concurrent duplicate done requests in a batch", () => {
     it("planRequestBatch does not flag duplicate done requests as mutation conflicts", () => {
       const req1 = {
