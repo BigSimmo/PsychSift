@@ -438,9 +438,11 @@ export function planRequestBatch(requests, options = {}) {
   }
 
   for (const mutation of active.filter((request) => request.action !== "add")) {
-    // If the mutation carries baseRowFingerprint or targetTable='archive', it identifies
-    // an existing ledger row, NOT a pending add. Do not reject it against unrelated adds.
-    if (mutation.payload?.baseRowFingerprint || mutation.payload?.targetTable === "archive") {
+    if (
+      mutation.payload?.baseRowFingerprint ||
+      mutation.payload?.targetTable === "archive" ||
+      mutation.payload?.allowArchived
+    ) {
       continue;
     }
 
@@ -1321,6 +1323,7 @@ function attachIssueFingerprint(action, payload) {
 
     if (action === "done") {
       payload.allowArchived = true;
+      payload.targetTable = "archive";
       if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
       payload.id = row.id;
       return;

@@ -533,6 +533,37 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
       expect(collidingRow?.id).toBe("#DREDWA1");
       expect(collidingRow?.raw).toContain("Closed colliding new add");
     });
+
+    it("allows archived-row done when a pending add shares its display-ID prefix", () => {
+      const add = {
+        version: 2,
+        id: "ffffaaaa-6666-4666-8666-666666666666",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "New add with DREDWA prefix",
+          issueUlid: "01M09A9WXBDREDWA1111111111",
+        },
+      };
+      const doneArchived = {
+        version: 2,
+        id: "0000aaaa-6666-4666-8666-666666666666",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#DREDWA",
+          targetUlid: "01M09A9WXBDREDWA7KN2EB1JRA",
+          allowArchived: true,
+          targetTable: "archive",
+          outcome: "Merged outcome note",
+        },
+      };
+
+      const plan = planRequestBatch([add, doneArchived]);
+      expect(plan.active).toHaveLength(2);
+    });
   });
 
   describe("concurrent duplicate done requests in a batch", () => {
