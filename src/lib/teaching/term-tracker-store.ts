@@ -32,6 +32,9 @@ import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 const listeners = new Set<() => void>();
 const memory = new Map<string, string>();
 subscribeAccountTransition(() => memory.clear());
+if (typeof window !== "undefined") {
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, () => memory.clear());
+}
 
 function notify(): void {
   for (const listener of listeners) listener();
