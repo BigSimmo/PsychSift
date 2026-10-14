@@ -241,21 +241,11 @@ function catalogueTargets(readmeMarkdown: string): { files: Set<string>; directo
     const target = match[1];
     if (target.includes("://") || target.startsWith("/") || target.startsWith("#")) continue;
     const normalized = path.posix.normalize(path.posix.join(DOCS_ROOT, target));
-    if (target.endsWith("/")) {
-      directories.add(`${normalized.replace(/\/$/, "")}/`);
-    } else {
-      files.add(normalized);
-      if (normalized.endsWith("/README.md") && normalized !== README_PATH) {
-        directories.add(normalized.slice(0, -"README.md".length));
-      }
-    }
+    files.add(normalized);
   }
 
   for (const match of withoutUrls.matchAll(/docs\/[A-Za-z0-9._/-]+\.md/g)) {
     files.add(match[0]);
-    if (match[0].endsWith("/README.md") && match[0] !== README_PATH) {
-      directories.add(match[0].slice(0, -"README.md".length));
-    }
   }
 
   return { files, directories };
