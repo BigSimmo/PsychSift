@@ -415,6 +415,124 @@ describe("ledger-inbox idempotent close and duplicate done handling", () => {
         /targets ambiguous display ID #ABC123; multiple pending adds share this prefix/,
       );
     });
+
+    it("rejects an explicit targetUlid that does not match the single matching pending add", () => {
+      const add = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Only add",
+          issueUlid: "01M31F4Y1HABC123DBX940FYMC",
+        },
+      };
+      const closeMismatched = {
+        version: 2,
+        id: "0000aaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#ABC123",
+          targetUlid: "01M31F4Y1HABC1239999999999",
+          outcome: "Mismatched close",
+        },
+      };
+
+      expect(() => planRequestBatch([add, closeMismatched])).toThrow(
+        /targets ULID 01M31F4Y1HABC1239999999999 which does not match pending add/,
+      );
+    });
+
+    it("allows existing-row mutations when unrelated pending adds share its display-ID prefix", () => {
+      const add1 = {
+        version: 2,
+        id: "ffffaaaa-1111-4111-8111-111111111111",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "New add 1 sharing prefix DREDWA",
+          issueUlid: "01M09A9WXBDREDWA1111111111",
+        },
+      };
+      const add2 = {
+        version: 2,
+        id: "ffffaaaa-2222-4222-8222-222222222222",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "New add 2 sharing prefix DREDWA",
+          issueUlid: "01M09A9WXBDREDWA2222222222",
+        },
+      };
+      const closeExisting = {
+        version: 2,
+        id: "0000aaaa-4444-4444-8444-444444444444",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#DREDWA",
+          targetUlid: "01M09A9WXBDREDWA7KN2EB1JRA",
+          baseRowFingerprint: issueRowFingerprint(BASE_LEDGER, "#DREDWA"),
+          outcome: "Closed existing issue",
+        },
+      };
+
+      const plan = planRequestBatch([add1, add2, closeExisting]);
+      expect(plan.active).toHaveLength(3);
+
+      const result = applyRequestBatch(BASE_LEDGER, [add1, add2, closeExisting]);
+      const parsed = parseIssues(result.markdown);
+      const archived = parsed.rows.find((r) => r.ulid === "01M09A9WXBDREDWA7KN2EB1JRA");
+      expect(archived?.table).toBe("archive");
+      expect(archived?.id).toBe("#DREDWA");
+    });
+
+    it("correctly closes a colliding new issue when an existing issue already has its prefix", () => {
+      const collidingAdd = {
+        version: 2,
+        id: "ffffaaaa-5555-4555-8555-555555555555",
+        createdOn: "2026-10-13",
+        action: "add",
+        payload: {
+          pri: "P2",
+          type: "task",
+          summary: "Colliding add with DREDWA prefix",
+          issueUlid: "01M09A9WXBDREDWA1111111111",
+        },
+      };
+      const closeColliding = {
+        version: 2,
+        id: "0000aaaa-5555-4555-8555-555555555555",
+        createdOn: "2026-10-13",
+        action: "done",
+        payload: {
+          id: "#DREDWA",
+          targetUlid: "01M09A9WXBDREDWA1111111111",
+          outcome: "Closed colliding new add",
+        },
+      };
+
+      const result = applyRequestBatch(BASE_LEDGER, [collidingAdd, closeColliding]);
+      const parsed = parseIssues(result.markdown);
+
+      // Existing issue #DREDWA should remain open
+      const existingRow = parsed.rows.find((r) => r.ulid === "01M09A9WXBDREDWA7KN2EB1JRA");
+      expect(existingRow?.table).toBe("open");
+      expect(existingRow?.id).toBe("#DREDWA");
+
+      // Colliding new add should have been allocated a length-7 ID and resolved
+      const collidingRow = parsed.rows.find((r) => r.ulid === "01M09A9WXBDREDWA1111111111");
+      expect(collidingRow?.table).toBe("archive");
+      expect(collidingRow?.id).toBe("#DREDWA1");
+      expect(collidingRow?.raw).toContain("Closed colliding new add");
+    });
   });
 
   describe("concurrent duplicate done requests in a batch", () => {

@@ -167,6 +167,10 @@ function findIssueRow(markdown, id, tables) {
   );
 }
 
+function findIssueRowByUlid(markdown, ulid, tables) {
+  return parseIssues(markdown).rows.find((row) => row.ulid === ulid && tables.includes(row.table));
+}
+
 function assertOutcomeAmendmentTarget(markdown, request) {
   if (!isOutcomeAmendment(request)) return;
   const target = findIssueRow(markdown, request.payload.id, ["open", "archive"]);
@@ -434,6 +438,12 @@ export function planRequestBatch(requests, options = {}) {
   }
 
   for (const mutation of active.filter((request) => request.action !== "add")) {
+    // If the mutation carries baseRowFingerprint or targetTable='archive', it identifies
+    // an existing ledger row, NOT a pending add. Do not reject it against unrelated adds.
+    if (mutation.payload?.baseRowFingerprint || mutation.payload?.targetTable === "archive") {
+      continue;
+    }
+
     const targetDisplayId = normalizeIssueDisplayId(mutation.payload?.id);
     const matchingAdds = addsByPrefix.get(targetDisplayId) ?? [];
     if (matchingAdds.length > 1) {
@@ -448,9 +458,13 @@ export function planRequestBatch(requests, options = {}) {
           `mutation ${mutation.id} targets ULID ${mutation.payload.targetUlid} which does not match any pending add with prefix ${targetDisplayId}`,
         );
       }
-    } else if (matchingAdds.length === 1 && !mutation.payload?.baseRowFingerprint) {
+    } else if (matchingAdds.length === 1) {
       if (!mutation.payload?.targetUlid) {
         mutation.payload.targetUlid = matchingAdds[0].ulid;
+      } else if (mutation.payload.targetUlid !== matchingAdds[0].ulid) {
+        throw new Error(
+          `mutation ${mutation.id} targets ULID ${mutation.payload.targetUlid} which does not match pending add ${matchingAdds[0].ulid} for ${targetDisplayId}`,
+        );
       }
     }
   }
@@ -1272,49 +1286,57 @@ function createRequestPayload(action, argv) {
 
 function attachIssueFingerprint(action, payload) {
   if (!["done", "update", "amend-outcome"].includes(action) || typeof payload.id !== "string") return;
-  const current = readOutstandingIssues();
-  const currentFingerprint = issueRowFingerprint(current, payload.id);
-  if (currentFingerprint !== null) {
-    if (action === "amend-outcome" || (action === "update" && payload.outcome !== undefined)) {
-      throw new Error(
-        `ledger request rejected: ${payload.id} is still open; outcome amendments require an archived issue`,
-      );
-    }
-    payload.baseRowFingerprint = currentFingerprint;
-    const row = findIssueRow(current, payload.id, ["open"]);
-    if (row?.ulid && !payload.targetUlid) {
-      payload.targetUlid = row.ulid;
-    }
-    return;
-  }
+  const pending = loadPending();
 
-  const isArchived = isArchivedIssue(current, payload.id);
-  if (isArchived) {
-    if (action === "done") {
-      // Carry archive-aware intent so reconcile merges the outcome instead of
-      // no-oping via the idempotent archived fast-path.
-      payload.allowArchived = true;
-      const row = findIssueRow(current, payload.id, ["archive"]);
-      if (row?.ulid && !payload.targetUlid) {
-        payload.targetUlid = row.ulid;
-      }
+  // If explicit targetUlid identifies a pending add, retain it without borrowing
+  // an existing row's fingerprint (even if an existing row shares the 6-character display prefix).
+  if (payload.targetUlid) {
+    const pendingAdd = pending.find(
+      ({ request }) => request?.action === "add" && request?.payload?.issueUlid === payload.targetUlid,
+    );
+    if (pendingAdd) {
       return;
     }
-    const archiveFingerprint = archiveRowFingerprint(current, payload.id);
+  }
+
+  const current = readOutstandingIssues();
+  const row = payload.targetUlid
+    ? findIssueRowByUlid(current, payload.targetUlid, ["open", "archive"])
+    : findIssueRow(current, payload.id, ["open", "archive"]);
+
+  if (row) {
+    const isArchived = row.table === "archive";
+    if (!isArchived) {
+      if (action === "amend-outcome" || (action === "update" && payload.outcome !== undefined)) {
+        throw new Error(
+          `ledger request rejected: ${row.id} is still open; outcome amendments require an archived issue`,
+        );
+      }
+      const currentFingerprint = issueRowFingerprint(current, row.id);
+      if (currentFingerprint) payload.baseRowFingerprint = currentFingerprint;
+      if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
+      payload.id = row.id;
+      return;
+    }
+
+    if (action === "done") {
+      payload.allowArchived = true;
+      if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
+      payload.id = row.id;
+      return;
+    }
+    const archiveFingerprint = archiveRowFingerprint(current, row.id);
     if (archiveFingerprint) {
       payload.baseRowFingerprint = archiveFingerprint;
       payload.allowArchived = true;
       payload.targetTable = "archive";
-      const row = findIssueRow(current, payload.id, ["archive"]);
-      if (row?.ulid && !payload.targetUlid) {
-        payload.targetUlid = row.ulid;
-      }
+      if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
+      payload.id = row.id;
       return;
     }
   }
 
   const targetDisplayId = normalizeIssueDisplayId(payload.id);
-  const pending = loadPending();
   const pendingMatches = pending.filter(({ request }) => {
     if (request?.action !== "add" || !request?.payload?.issueUlid) return false;
     const derived = displayIdForUlid(request.payload.issueUlid);
@@ -1323,6 +1345,10 @@ function attachIssueFingerprint(action, payload) {
   if (pendingMatches.length === 1) {
     if (!payload.targetUlid) {
       payload.targetUlid = pendingMatches[0].request.payload.issueUlid;
+    } else if (payload.targetUlid !== pendingMatches[0].request.payload.issueUlid) {
+      throw new Error(
+        `ledger request rejected: targetUlid ${payload.targetUlid} does not match pending add ${pendingMatches[0].request.payload.issueUlid} (${payload.id})`,
+      );
     }
     return;
   }
