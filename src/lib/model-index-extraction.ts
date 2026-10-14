@@ -7,6 +7,8 @@ import {
   selectCoverageAwarePromptChunks,
 } from "@/lib/indexing-coverage";
 import { generateParsedTextResult } from "@/lib/openai";
+import type { IngestionProviderEgressContext } from "@/lib/ingestion-provider-egress";
+import type { ProviderEgressPurpose } from "@/lib/document-ingress-safety";
 import { cleanClinicalSummaryText, fenceSourceEvidence, sourceTextForModelEvidence } from "@/lib/source-text-sanitizer";
 
 export const modelIndexExtractionVersion = "model-heavy-index-v1" as const;
@@ -350,10 +352,14 @@ ${imageBlock || "No image metadata."}`;
 }
 
 export async function generateModelIndexProfile(args: {
+  ingestionEgress?: IngestionProviderEgressContext;
+  ingestionPurpose?: ProviderEgressPurpose;
+  signal?: AbortSignal;
   document: { title: string; file_name: string; source_path?: string | null };
   chunks: ModelIndexChunk[];
   images?: ModelIndexImage[];
 }) {
+  args.signal?.throwIfAborted();
   if (args.chunks.length === 0) return emptyProfile();
   const model = env.OPENAI_INDEXING_MODEL;
   const documentIdentity = args.document.file_name || args.document.title;
@@ -361,17 +367,21 @@ export async function generateModelIndexProfile(args: {
     buildPrompt({ ...args, images: args.images ?? [] }),
     modelIndexProfileSchema,
     {
+      signal: args.signal,
       model,
       // Answer-size budget; responseBody() floors the effective cap by reasoning effort so
       // medium-effort reasoning cannot starve the model-index JSON (reasoningHeadroomFloor).
       maxOutputTokens: 3200,
       operation: "summary",
+      ingestionEgress: args.ingestionEgress,
+      ingestionPurpose: args.ingestionPurpose,
       schemaName: "clinical_model_index_profile",
       promptCacheKey: "clinical-model-index-profile-v1",
       reasoningEffort: "medium",
       textVerbosity: "medium",
     },
   ).catch((error: unknown) => {
+    args.signal?.throwIfAborted();
     // The shared parser fails closed when a truncated/model-invalid response has no
     // schema-valid parsed payload. Preserve document identity in the ingestion log,
     // then rethrow so the job cannot silently lose index coverage.
@@ -381,6 +391,7 @@ export async function generateModelIndexProfile(args: {
     });
     throw error;
   });
+  args.signal?.throwIfAborted();
   // A provider may rarely report an incomplete status while still returning a
   // schema-valid parsed payload. That payload remains safe to normalise, but the
   // event is visible for coverage review.

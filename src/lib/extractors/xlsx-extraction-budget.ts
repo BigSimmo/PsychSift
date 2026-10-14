@@ -12,13 +12,24 @@ export type XlsxExtractionBudget = {
   maxTextBytes: number;
 };
 
-function budgetExceeded(message: string): never {
-  throw new Error(`XLSX_EXTRACTION_BUDGET_EXCEEDED: ${message}`);
+export type XlsxSourceProvenanceErrorCode =
+  "XLSX_SOURCE_PROVENANCE_INVALID" | "XLSX_SOURCE_PROVENANCE_IDENTITY_MISMATCH" | "XLSX_EXTRACTION_BUDGET_EXCEEDED";
+
+/** Fixed, content-free refusal; never retain parser, filename or cell diagnostics. */
+export class XlsxSourceProvenanceError extends Error {
+  constructor(public readonly code: XlsxSourceProvenanceErrorCode) {
+    super(code);
+    this.name = "XlsxSourceProvenanceError";
+  }
 }
 
-function nonNegativeCount(value: number, label: string) {
+function budgetExceeded(): never {
+  throw new XlsxSourceProvenanceError("XLSX_EXTRACTION_BUDGET_EXCEEDED");
+}
+
+function nonNegativeCount(value: number) {
   if (!Number.isSafeInteger(value) || value < 0) {
-    budgetExceeded(`invalid ${label} ${value}`);
+    budgetExceeded();
   }
   return value;
 }
@@ -31,21 +42,21 @@ export class XlsxExtractionBudgetTracker {
   constructor(readonly limits: XlsxExtractionBudget = XLSX_EXTRACTION_BUDGET) {}
 
   assertSheetCount(sheetCount: number) {
-    const safeSheetCount = nonNegativeCount(sheetCount, "worksheet count");
+    const safeSheetCount = nonNegativeCount(sheetCount);
     if (safeSheetCount > this.limits.maxSheets) {
-      budgetExceeded(`worksheet count ${safeSheetCount} exceeds ${this.limits.maxSheets}`);
+      budgetExceeded();
     }
   }
 
   addRow(cellCount: number) {
-    const safeCellCount = nonNegativeCount(cellCount, "cell count");
+    const safeCellCount = nonNegativeCount(cellCount);
     const nextRowCount = this.rowCount + 1;
     if (!Number.isSafeInteger(nextRowCount) || nextRowCount > this.limits.maxRows) {
-      budgetExceeded(`row count exceeds ${this.limits.maxRows}`);
+      budgetExceeded();
     }
     const nextCellCount = this.cellCount + safeCellCount;
     if (!Number.isSafeInteger(nextCellCount) || nextCellCount > this.limits.maxCells) {
-      budgetExceeded(`cell count exceeds ${this.limits.maxCells}`);
+      budgetExceeded();
     }
     this.rowCount = nextRowCount;
     this.cellCount = nextCellCount;
@@ -54,7 +65,7 @@ export class XlsxExtractionBudgetTracker {
   addText(text: string) {
     const nextTextBytes = this.textBytes + Buffer.byteLength(text, "utf8");
     if (!Number.isSafeInteger(nextTextBytes) || nextTextBytes > this.limits.maxTextBytes) {
-      budgetExceeded(`extracted UTF-8 text exceeds ${this.limits.maxTextBytes} bytes`);
+      budgetExceeded();
     }
     this.textBytes = nextTextBytes;
   }

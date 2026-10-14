@@ -1,3 +1,6 @@
+import { parseIngestionFence, runIngestionPersistence, IngestionAttemptError, IngestionPersistenceError, type IngestionFence } from "../../supabase/functions/_shared/ingestion-attempt";
+import { ProviderEgressDeniedError } from "@/lib/document-ingress-safety";
+import { assertIngestionProviderEgress, type IngestionProviderEgressContext } from "@/lib/ingestion-provider-egress";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildClinicalTextSearchQuery, classifyRagQuery, normalizedClinicalSearchTokens } from "@/lib/clinical-search";
 import { logger } from "@/lib/logger";
@@ -679,6 +682,26 @@ export async function assertLocalDeepMemoryOwnership(supabase: SupabaseClient, d
 }
 
 export async function upsertDocumentDeepMemory(args: {
+  fence?: IngestionFence;
+  ingestionEgress?: IngestionProviderEgressContext;
+  signal?: AbortSignal;
+  supabase: SupabaseClient;
+  document: MemoryDocument;
+  chunks: MemoryChunk[];
+  images?: MemoryImage[];
+  summary?: string | null;
+}) {
+  const hasWorkerBinding = ["fence", "ingestionEgress", "signal"].some((key) =>
+    Object.prototype.hasOwnProperty.call(args, key),
+  );
+  if (hasWorkerBinding) {
+    if (!args.fence || !args.ingestionEgress) throw new IngestionAttemptError("ingestion_attempt_required");
+    return upsertFencedDocumentDeepMemory({ ...args, fence: args.fence, ingestionEgress: args.ingestionEgress });
+  }
+  return upsertLegacyDocumentDeepMemory(args);
+}
+
+async function upsertLegacyDocumentDeepMemory(args: {
   supabase: SupabaseClient;
   document: MemoryDocument;
   chunks: MemoryChunk[];
@@ -889,6 +912,291 @@ export async function upsertDocumentDeepMemory(args: {
         .then(undefined, () => undefined);
     }
   }
+
+  return { sections, memoryCards: cards, indexUnits, modelProfile };
+}
+async function upsertFencedDocumentDeepMemory(args: {
+  ingestionEgress: IngestionProviderEgressContext;
+  supabase: SupabaseClient;
+  fence: IngestionFence;
+  signal?: AbortSignal;
+  document: MemoryDocument;
+  chunks: MemoryChunk[];
+  images?: MemoryImage[];
+  summary?: string | null;
+}) {
+  const fence = parseIngestionFence(args.fence);
+  args.signal?.throwIfAborted();
+  if (fence.document_id !== args.document.id || !fence.expected_generation_id)
+    throw new IngestionAttemptError("ingestion_attempt_required");
+  if (args.chunks.some((chunk) => chunk.metadata?.index_generation_id !== fence.expected_generation_id))
+    throw new IngestionAttemptError("ingestion_attempt_required");
+  const mutate = async (
+    name:
+      | "cleanup_ingestion_deep_memory_staging"
+      | "stage_ingestion_deep_memory"
+      | "commit_document_deep_memory_generation",
+    payload: Record<string, unknown>,
+  ) => {
+    args.signal?.throwIfAborted();
+    const result = await runIngestionPersistence(() => {
+      const rpcArgs = { ...payload, p_fence: fence };
+      if (name === "cleanup_ingestion_deep_memory_staging") {
+        return args.supabase.rpc("cleanup_ingestion_deep_memory_staging", rpcArgs);
+      }
+      if (name === "stage_ingestion_deep_memory") {
+        return args.supabase.rpc("stage_ingestion_deep_memory", rpcArgs);
+      }
+      return args.supabase.rpc("commit_document_deep_memory_generation", rpcArgs);
+    });
+    args.signal?.throwIfAborted();
+    return result;
+  };
+  if (args.chunks.length === 0) throw new Error("Cannot build deep memory for a document with no chunks.");
+
+  await assertLocalDeepMemoryOwnership(args.supabase, args.document.id);
+
+  args.signal?.throwIfAborted();
+  await assertIngestionProviderEgress(
+    args.ingestionEgress,
+    "deep_memory",
+    JSON.stringify({ document: args.document, chunks: args.chunks, images: args.images ?? [] }),
+    args.signal,
+  );
+  const sections = buildDocumentSections(args);
+  let modelProfile: ModelIndexProfile | null = null;
+  try {
+    modelProfile = await generateModelIndexProfile({
+      ingestionEgress: args.ingestionEgress,
+      ingestionPurpose: "deep_memory",
+      signal: args.signal,
+      document: args.document,
+      chunks: args.chunks,
+      images: args.images ?? [],
+    });
+  } catch (error) {
+    // A failed model index profile degrades this document's memory cards to a
+    // deterministic fallback. Surface it (mirroring hybrid_rpc_failed below)
+    // rather than swallowing the error and silently shipping weaker retrieval.
+    args.signal?.throwIfAborted();
+    if (
+      error instanceof IngestionAttemptError ||
+      error instanceof ProviderEgressDeniedError ||
+      (error instanceof Error && error.name === "AbortError")
+    )
+      throw error;
+    logger.warn("deep_memory_model_profile_failed", {
+      documentId: args.document.id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    modelProfile = fallbackModelIndexProfile();
+  }
+  args.signal?.throwIfAborted();
+  const cards = buildDocumentMemoryCards({ ...args, sections, modelProfile });
+  if (cards.length === 0) throw new Error("Deep memory generated no source-backed memory cards.");
+
+  // Audit M11: compute everything that can fail on the network (memory-card
+  // and index-unit embeddings) BEFORE deleting the existing memory rows. The
+  // previous order deleted first and rebuilt after, so an OpenAI outage
+  // mid-rebuild left the document with ZERO memory rows (silent retrieval
+  // degradation) while documents.metadata still advertised the prior
+  // rag_memory_version. A failure between the delete and insert below is
+  // still possible, but the exposure window no longer spans OpenAI calls.
+  const embeddings = await embedTexts(cards.map(embeddingText), {
+    signal: args.signal,
+    ingestionEgress: args.ingestionEgress,
+    ingestionPurpose: "embedding",
+  });
+  if (embeddings.length !== cards.length) throw new Error("OpenAI returned an unexpected memory-card embedding count.");
+
+  args.signal?.throwIfAborted();
+  const indexUnits = buildDocumentIndexUnitInputs({
+    document: args.document,
+    chunks: args.chunks,
+    sections,
+    modelProfile,
+    summary: args.summary ?? null,
+    images: (args.images ?? []).map((image) => {
+      const metadata = image.metadata ?? {};
+      return {
+        id: image.id,
+        caption: image.caption,
+        pageNumber: image.page_number,
+        imageType: image.image_type,
+        sourceKind: image.source_kind,
+        labels: image.labels,
+        tableLabel: typeof metadata.table_label === "string" ? metadata.table_label : null,
+        tableTitle: typeof metadata.table_title === "string" ? metadata.table_title : null,
+        tableTextSnippet:
+          typeof metadata.table_text_snippet === "string"
+            ? metadata.table_text_snippet
+            : typeof metadata.table_text === "string"
+              ? metadata.table_text
+              : null,
+        tableRole: typeof metadata.table_role === "string" ? metadata.table_role : null,
+        accessibleTableMarkdown:
+          typeof metadata.accessible_table_markdown === "string" ? metadata.accessible_table_markdown : null,
+        tableRows: Array.isArray(metadata.table_rows) ? (metadata.table_rows as string[][]) : null,
+        tableColumns: Array.isArray(metadata.table_columns) ? (metadata.table_columns as string[]) : null,
+        structuredVisualProfile:
+          typeof metadata.structured_visual_profile === "object" && metadata.structured_visual_profile !== null
+            ? (metadata.structured_visual_profile as never)
+            : null,
+        metadata,
+      };
+    }),
+  });
+  const indexUnitEmbeddings =
+    indexUnits.length > 0
+      ? await embedTexts(indexUnits.map(embeddingTextForDocumentIndexUnit), {
+          signal: args.signal,
+          ingestionEgress: args.ingestionEgress,
+          ingestionPurpose: "embedding",
+        })
+      : [];
+  if (indexUnits.length > 0 && indexUnitEmbeddings.length !== indexUnits.length) {
+    throw new Error("OpenAI returned an unexpected index-unit embedding count.");
+  }
+  args.signal?.throwIfAborted();
+  const anchors = args.chunks
+    .filter((chunk) => chunk.anchor_id === null)
+    .map((chunk) => ({ id: chunk.id, anchor_id: derivedChunkAnchor(chunk) }));
+  const indexUnitCountsByType = countDocumentIndexUnitsByType(indexUnits);
+
+  const artifactGenerationId = crypto.randomUUID();
+  const stagedMetadata = (metadata: unknown) => ({
+    ...metadataRecord(metadata),
+    generated_by: localDeepMemoryProducer,
+    artifact_generation_id: artifactGenerationId,
+    ingestion_lease_token: fence.lease_token,
+    index_generation_id: artifactGenerationId,
+  });
+  const stagedSections = sections.map((section) => ({
+    ...section,
+    producer: localDeepMemoryProducer,
+    artifact_generation_id: artifactGenerationId,
+    index_generation_id: artifactGenerationId,
+    metadata: stagedMetadata(section.metadata),
+  }));
+
+  const cleanupStagedArtifacts = async () => {
+    // Only a local pre-commit failure is eligible; cleanup uncertainty is fatal,
+    // and inert staging remains for U13. Never fall back to a direct delete.
+    await mutate("cleanup_ingestion_deep_memory_staging", { p_artifact_generation: artifactGenerationId });
+  };
+  const insertedSections: Array<{ id: string; section_index: number }> = [];
+  for (let start = 0; start < stagedSections.length; start += 500) {
+    const sectionResult = await mutate("stage_ingestion_deep_memory", {
+      p_artifact_generation: artifactGenerationId,
+      p_sections: stagedSections.slice(start, start + 500),
+      p_cards: [],
+      p_units: [],
+    });
+    if (!Array.isArray(sectionResult.sections)) throw new IngestionAttemptError("ingestion_rpc_invalid");
+    insertedSections.push(...(sectionResult.sections as Array<{ id: string; section_index: number }>));
+  }
+  const expectedSectionIndexes = new Set(sections.map((section) => section.section_index));
+  if (
+    insertedSections.length !== sections.length ||
+    new Set(insertedSections.map((section) => section.section_index)).size !== sections.length ||
+    insertedSections.some(
+      (section) =>
+        !section || typeof section.id !== "string" || !section.id || !expectedSectionIndexes.has(section.section_index),
+    )
+  ) {
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  }
+
+  const sectionIds = new Map<string | number, string>();
+  for (const section of insertedSections ?? []) {
+    sectionIds.set(section.section_index, section.id);
+  }
+
+  try {
+    for (let start = 0; start < cards.length; start += 50) {
+      const batch = cards.slice(start, start + 50).map((card, index) => {
+        const { section_index: sectionIndex, ...row } = card;
+        return {
+          ...row,
+          producer: localDeepMemoryProducer,
+          artifact_generation_id: artifactGenerationId,
+          index_generation_id: artifactGenerationId,
+          metadata: stagedMetadata(row.metadata),
+          section_id: sectionIndex === undefined ? null : (sectionIds.get(sectionIndex) ?? null),
+          embedding: assertEmbeddingDim(embeddings[start + index], `document_memory_cards.${start + index}`),
+        };
+      });
+      await mutate("stage_ingestion_deep_memory", {
+        p_artifact_generation: artifactGenerationId,
+        p_sections: [],
+        p_cards: batch,
+        p_units: [],
+      });
+    }
+
+    if (indexUnits.length > 0) {
+      for (let start = 0; start < indexUnits.length; start += 50) {
+        const batch = indexUnits.slice(start, start + 50).map((unit, index) => ({
+          ...unit,
+          producer: localDeepMemoryProducer,
+          artifact_generation_id: artifactGenerationId,
+          index_generation_id: artifactGenerationId,
+          metadata: stagedMetadata(unit.metadata),
+          embedding: assertEmbeddingDim(indexUnitEmbeddings[start + index], `document_index_units.${start + index}`),
+        }));
+        await mutate("stage_ingestion_deep_memory", {
+          p_artifact_generation: artifactGenerationId,
+          p_sections: [],
+          p_cards: [],
+          p_units: batch,
+        });
+      }
+    }
+  } catch (error) {
+    if (error instanceof IngestionAttemptError) throw error;
+    try {
+      await cleanupStagedArtifacts();
+    } catch (cleanupError) {
+      throw new IngestionPersistenceError(
+        new AggregateError(
+          [error, cleanupError instanceof IngestionPersistenceError ? cleanupError.cause : cleanupError],
+          "Deep-memory staging failed and cleanup could not be confirmed.",
+        ),
+      );
+    }
+    throw error;
+  }
+
+  // The RPC may have committed even when its response is lost. Never clean up
+  // after invocation: committed rows now share the document generation, while
+  // genuinely staged leftovers remain invisible and are superseded later.
+  const aliases = (modelProfile?.aliases ?? [])
+    .filter((alias) => alias.confidence >= 0.65)
+    .map((alias) => ({
+      alias: alias.alias,
+      canonical: alias.canonical,
+      alias_type: alias.alias_type,
+      weight: Math.max(0.5, Math.min(1.5, alias.confidence + 0.25)),
+      enabled: true,
+      metadata: {
+        source: "model_index_profile",
+        document_id: args.document.id,
+        source_chunk_ids: alias.source_chunk_ids,
+        model_index_version: modelIndexExtractionVersion,
+        generated_by: localDeepMemoryProducer,
+        artifact_generation_id: artifactGenerationId,
+      },
+    }));
+  await mutate("commit_document_deep_memory_generation", {
+    p_artifact_generation: artifactGenerationId,
+    p_rag_memory_version: ragDeepMemoryVersion,
+    p_document_intelligence_version: documentIntelligenceVersion,
+    p_section_count: sections.length,
+    p_memory_card_count: cards.length,
+    p_index_unit_counts_by_type: indexUnitCountsByType,
+    p_anchors: anchors,
+    p_aliases: aliases,
+  });
 
   return { sections, memoryCards: cards, indexUnits, modelProfile };
 }

@@ -577,3 +577,8 @@ Every remaining tracked document in this category (dated records and the `eviden
   it is a point-in-time record.
 - When a maintained doc is superseded, move it to `archive/` and update inbound
   links (`npm run docs:check-links` finds broken ones).
+
+
+## Ingestion and RAG implementation record
+
+[Plan, progress, processes and verification history — 15 October 2026](audit/ingestion-rag-2026-10-15/complete-record.md). This is a draft implementation handover with explicit failed, reused and unrun evidence; it is not general release or bulk-ingestion approval.

@@ -1,14 +1,18 @@
 {
-  "generated_at": "2026-10-10T08:13:32.118Z",
+  "generated_at": "2026-10-13T19:54:03.063Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "7b4f66ffe058afd990b8885658ac8634a64236f75866f52dc085f6e09deab8ec",
-  "replay_seconds": 20,
+  "schema_sha256": "f49f08d36ee0b5a95903626ff71f84efddd72cf789a3eb2f5cf172c22b089657",
+  "replay_seconds": 58,
   "snapshot": {
     "views": [
       {
+        "name": "document_current_pages",
+        "def_hash": "a7fbbc5f4800e137afe480b975921c4a"
+      },
+      {
         "name": "document_strict_gate_status",
-        "def_hash": "9f21fc372b45ddfdd32ceb65007d1ba3"
+        "def_hash": "e84a20e6869ef15381afc21ce006c2b8"
       }
     ],
     "tables": [
@@ -2382,6 +2386,177 @@
       },
       {
         "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "name": "document_admission_events",
+        "columns": [
+          {
+            "name": "actor_kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "administrator_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "admission_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "admission_policy_version",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "authority",
+            "type": "jsonb",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "backend_principal",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "byte_count",
+            "type": "bigint",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "content_sha256",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "correlation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "statement_timestamp()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "document_input_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "file_name_sha256",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "ingestion_job_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "mime_type",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "request_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "source_channel",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "staging_owner_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "storage_path_sha256",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
@@ -3642,6 +3817,14 @@
             "generated": ""
           },
           {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "metadata",
             "type": "jsonb",
             "default": "'{}'::jsonb",
@@ -4364,6 +4547,14 @@
             "generated": ""
           },
           {
+            "name": "page_storage_mode",
+            "type": "text",
+            "default": "'legacy_unqualified'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
             "name": "search_tsv",
             "type": "tsvector",
             "default": "to_tsvector('english'::regconfig, ((COALESCE(title, ''::text) || ' '::text) || COALESCE(file_name, ''::text)))",
@@ -4804,6 +4995,54 @@
             "generated": ""
           },
           {
+            "name": "lease_authority_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_duration_seconds",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expected_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_write_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "locked_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -4936,11 +5175,35 @@
             "generated": ""
           },
           {
+            "name": "index_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "job_id",
             "type": "uuid",
             "default": null,
             "identity": "",
             "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "job_kind",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
             "generated": ""
           },
           {
@@ -5052,6 +5315,54 @@
             "generated": ""
           },
           {
+            "name": "lease_authority_digest",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_duration_seconds",
+            "type": "integer",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expected_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_expires_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_token",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "lease_write_generation_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
             "name": "locked_at",
             "type": "timestamp with time zone",
             "default": null,
@@ -5080,7 +5391,7 @@
             "type": "timestamp with time zone",
             "default": "now()",
             "identity": "",
-            "not_null": true,
+            "not_null": false,
             "generated": ""
           },
           {
@@ -13957,6 +14268,12 @@
         "def_hash": "4b955d1f51f3978acf64eb58d2eb4847"
       },
       {
+        "def": "CREATE UNIQUE INDEX document_admission_events_pkey ON public.document_admission_events USING btree (id)",
+        "name": "document_admission_events_pkey",
+        "table": "document_admission_events",
+        "def_hash": "af0b49e4bbc7665d590a2c43bf2d2858"
+      },
+      {
         "def": "CREATE INDEX document_chunks_anchor_idx ON public.document_chunks USING btree (document_id, anchor_id) WHERE (anchor_id IS NOT NULL)",
         "name": "document_chunks_anchor_idx",
         "table": "document_chunks",
@@ -14413,16 +14730,22 @@
         "def_hash": "a9823a094fa75f73873a28b83611c715"
       },
       {
-        "def": "CREATE UNIQUE INDEX document_pages_document_id_page_number_key ON public.document_pages USING btree (document_id, page_number)",
-        "name": "document_pages_document_id_page_number_key",
-        "table": "document_pages",
-        "def_hash": "c90188cffdaedb69077ee5a4a78391bd"
-      },
-      {
         "def": "CREATE INDEX document_pages_document_idx ON public.document_pages USING btree (document_id, page_number)",
         "name": "document_pages_document_idx",
         "table": "document_pages",
         "def_hash": "df247583a4c786241b9ba10919079743"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_pages_generation_unique ON public.document_pages USING btree (document_id, index_generation_id, page_number) WHERE (index_generation_id IS NOT NULL)",
+        "name": "document_pages_generation_unique",
+        "table": "document_pages",
+        "def_hash": "e322df04ec7c5fc170d89fa655972ebf"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX document_pages_legacy_unique ON public.document_pages USING btree (document_id, page_number) WHERE (index_generation_id IS NULL)",
+        "name": "document_pages_legacy_unique",
+        "table": "document_pages",
+        "def_hash": "60954253358bd676d3b155ba72927fd7"
       },
       {
         "def": "CREATE UNIQUE INDEX document_pages_pkey ON public.document_pages USING btree (id)",
@@ -16805,7 +17128,7 @@
       {
         "cmd": "SELECT",
         "name": "pages owner read",
-        "qual": "(EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_pages.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "qual": "(EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_pages.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid)) AND public.is_visible_document_page(document_pages.index_generation_id, d.index_generation_id, d.page_storage_mode))))",
         "roles": [
           "authenticated"
         ],
@@ -17493,6 +17816,16 @@
         "table": "differential_records"
       },
       {
+        "def": "CREATE TRIGGER reject_document_admission_event_delete BEFORE DELETE ON public.document_admission_events FOR EACH ROW EXECUTE FUNCTION public.reject_document_admission_event_mutation()",
+        "name": "reject_document_admission_event_delete",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CREATE TRIGGER reject_document_admission_event_update BEFORE UPDATE ON public.document_admission_events FOR EACH ROW EXECUTE FUNCTION public.reject_document_admission_event_mutation()",
+        "name": "reject_document_admission_event_update",
+        "table": "document_admission_events"
+      },
+      {
         "def": "CREATE TRIGGER set_document_embedding_field_content_hash BEFORE INSERT OR UPDATE ON public.document_embedding_fields FOR EACH ROW EXECUTE FUNCTION public.set_document_embedding_field_content_hash()",
         "name": "set_document_embedding_field_content_hash",
         "table": "document_embedding_fields"
@@ -17535,6 +17868,11 @@
       {
         "def": "CREATE TRIGGER documents_ingestion_webhook AFTER UPDATE OF metadata ON public.documents FOR EACH ROW EXECUTE FUNCTION public.notify_document_change_ingestion_webhook()",
         "name": "documents_ingestion_webhook",
+        "table": "documents"
+      },
+      {
+        "def": "CREATE TRIGGER documents_page_storage_mode_owner BEFORE INSERT OR UPDATE ON public.documents FOR EACH ROW EXECUTE FUNCTION ingestion_generation_evidence.guard_page_mode()",
+        "name": "documents_page_storage_mode_owner",
         "table": "documents"
       },
       {
@@ -17798,6 +18136,14 @@
       },
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres"
+        ],
+        "def_hash": "4b056ff4c38b7f520f3af9ac98530fb2",
+        "signature": "public.admit_administrator_document(jsonb,jsonb,boolean)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -17837,6 +18183,20 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "2b70a6cd72c01fad41aecb0490d4b0b9",
+        "signature": "public.assert_current_ingestion_attempt(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "8a7d6e18de07fad9ea10e2e9cdf90d69",
+        "signature": "public.assert_ingestion_artifact_sources(jsonb,uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
@@ -17865,6 +18225,14 @@
         ],
         "def_hash": "2edbe5e02d8585898df0f3fd8f2ade8a",
         "signature": "public.backfill_legacy_index_health_batch(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "28bc69044f4bc9ba6c9235c80584d9c9",
+        "signature": "public.begin_ingestion_generation_evidence(jsonb,uuid,jsonb,text)"
       },
       {
         "acl": [
@@ -17911,7 +18279,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "d061668633026acc816e1d63403765d1",
+        "def_hash": "0d1f396d2b8eabcfd5902f0c326b6559",
         "signature": "public.claim_indexing_v3_agent_jobs(text,integer,integer)"
       },
       {
@@ -17919,7 +18287,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "be510041f30bafd1472440c7e3076716",
+        "def_hash": "64a776fa765a7d8cdc164e55d99bfa9a",
         "signature": "public.claim_ingestion_jobs(text,integer,integer)"
       },
       {
@@ -18150,6 +18518,13 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "1adc128cd086bbfb552b1c32d069be5c",
+        "signature": "public.commit_document_index_generation(jsonb,uuid,integer,integer,integer,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "efcde25889974dc92277e2cfe9d1534c",
         "signature": "public.commit_document_index_generation(uuid,text,uuid,uuid,text,integer,integer,integer,jsonb,jsonb,jsonb)"
       },
@@ -18165,8 +18540,23 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "73323a04fc0d4eff9d04ee70daca7057",
+        "signature": "public.complete_ingestion_job(jsonb,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "6406ade971963fa9b6d952765a697bd9",
         "signature": "public.complete_ingestion_job(uuid,uuid,uuid,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "1c90fb5da1aa71b2a178b1ff95b8ebd9",
+        "signature": "public.complete_managed_admin_text(jsonb,uuid,jsonb,boolean)"
       },
       {
         "acl": [
@@ -18180,6 +18570,13 @@
         "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
+        ],
+        "def_hash": "2abd634ec77e562afc7cd6c2488ff349",
+        "signature": "public.complete_strict_enrichment_job(jsonb,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
         ],
         "def_hash": "48a83471e1ce7a272cb81cfe6137b3ca",
         "signature": "public.complete_strict_enrichment_job(uuid,uuid,text,text,text)"
@@ -18242,11 +18639,18 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "92c7f8f708e4061063a840f6d1970d26",
+        "signature": "public.create_uploaded_document_with_ingestion_job(jsonb,integer)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "93bd4e366deaf415b35e8a287d0067fe",
-        "signature": "public.create_uploaded_document_with_ingestion_job(jsonb,integer)"
+        "def_hash": "0aef78114464f2ed25d84e44e100bb75",
+        "signature": "public.declare_ingestion_generation_evidence(jsonb,uuid,jsonb)"
       },
       {
         "acl": [
@@ -18285,7 +18689,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "e5ae9b56178a6a13e5528ead1ae0339a",
+        "def_hash": "4c04b6071bd643199595321da88c1144",
         "signature": "public.document_publication_state_digest(uuid,uuid)"
       },
       {
@@ -18316,6 +18720,13 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "0b07744dbc6e79de25118cb6d468527b",
+        "signature": "public.fail_or_retry_ingestion_job(jsonb,uuid,boolean,text,text,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "0bbcb829db375283a92627aba610e6df",
         "signature": "public.fail_or_retry_ingestion_job(uuid,uuid,uuid,boolean,text,text,text,timestamp with time zone,text)"
       },
@@ -18334,6 +18745,14 @@
         ],
         "def_hash": "4fd6d14bca865dbd72b26e69a27a3c2a",
         "signature": "public.finalize_public_source_version(jsonb,integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d4fcfa068ef2adc70c4d19c8a4df0b77",
+        "signature": "public.finish_ingestion_job_stage(jsonb,uuid,boolean,jsonb,text)"
       },
       {
         "acl": [
@@ -18431,6 +18850,22 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "3b1e0d01cbe092ff8be3526290679ce9",
+        "signature": "public.heartbeat_indexing_v3_agent_job(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "76255c0e3f232aeee4518446345800e2",
+        "signature": "public.heartbeat_ingestion_job(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "073b0554d36b99a2f21f2d4fcb56b0ec",
         "signature": "public.heartbeat_site_content_sync_event(bigint,uuid,uuid,bigint,integer)"
       },
@@ -18476,11 +18911,27 @@
       },
       {
         "acl": [
+          "authenticated=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "1363f1e12dc3c8a91249bb73fc4f5de8",
+        "signature": "public.is_visible_document_page(uuid,uuid,text)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
         "def_hash": "69c0b6affcaeb9a0e23a8673d4bbe7c0",
         "signature": "public.jsonb_merge_deep(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "84d86f83a1a54d8d16bf12e98892aae1",
+        "signature": "public.lock_ingestion_document_authority(uuid,boolean)"
       },
       {
         "acl": [
@@ -18734,8 +19185,40 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "b953a6c93a0ce61c139bfe9c342be376",
+        "signature": "public.patch_ingestion_document_state(jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8104a04f09413ef52b43735611971dee",
+        "signature": "public.persist_ingestion_index_quality(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "d9a0bdae6dc905a9d62a7b76e0338a47",
+        "signature": "public.persist_ingestion_summary_projection(jsonb,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "d89bcd39f927acf0bf8e6560d5202371",
         "signature": "public.preflight_public_source_acquisition(jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "574c88302663afcb100e559c61ca3cd3",
+        "signature": "public.prepare_completed_admin_text_reference(uuid,uuid,uuid,text,jsonb,boolean)"
       },
       {
         "acl": [
@@ -18815,7 +19298,39 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "f520a2d69fb5f11f731bd889399f30b8",
+        "def_hash": "6c3ac9bb9b53f5b4eb5445392c4c0a31",
+        "signature": "public.read_completed_admin_text_source_layout(uuid,uuid,uuid,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fa3e34bc4d8160d24d3a48bbcf0151cc",
+        "signature": "public.read_ingestion_generation_inventory(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "9bf043bf29dabb65a97ce8f089a9c028",
+        "signature": "public.read_ingestion_prepared_supplier_artifacts(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c778cfc8d2ca8426ba615b31392a415b",
+        "signature": "public.read_published_admin_text_source_layout(uuid,uuid,uuid,uuid,uuid[])"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "2d457be5ca8ff44304389f802403b576",
         "signature": "public.read_site_content_health()"
       },
       {
@@ -18849,6 +19364,22 @@
         ],
         "def_hash": "758192017ba316c760764ba3afa12aaa",
         "signature": "public.record_clinical_quality_feedback_triage(uuid,text,uuid,text,text,uuid,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "c6e71f5be655c073d1255a0f233ad0bc",
+        "signature": "public.record_ingestion_generation_accounting(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "9f972380e4e4a3087d57a0a582f3c59f",
+        "signature": "public.record_ingestion_generation_outcomes(jsonb,uuid,jsonb)"
       },
       {
         "acl": [
@@ -18912,6 +19443,21 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "4ed29103241f65a5a38cf8d9ec6d0877",
+        "signature": "public.register_admin_text_source_section_layout(jsonb,uuid,text,jsonb,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "6ec208bdb25675354b5b47ad9a9a7a91",
+        "signature": "public.reject_document_admission_event_mutation()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "d7f732832d4f42cbe2bf7e8d4e7a5706",
         "signature": "public.release_public_source_cleanup_job(uuid,uuid,text)"
       },
@@ -18928,7 +19474,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "2258b6a4a9fd85bdf10a768778fb5d55",
+        "def_hash": "dcda90c6e03ed1205f95977035dff35a",
         "signature": "public.repair_enrichment_quality_batch(integer)"
       },
       {
@@ -18938,6 +19484,38 @@
         ],
         "def_hash": "31258714cad37bf42e122f60c88e9242",
         "signature": "public.repair_strict_enrichment_gate_batch(integer)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "1520c6bbd33e559b378af3cd20b8029c",
+        "signature": "public.replace_indexing_v3_core_embeddings(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fe3db9d4fc695ace6b224ee7130dd2b6",
+        "signature": "public.replace_indexing_v3_memory_cards(jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "8c5cf2b7235c27151af099e850d8fe85",
+        "signature": "public.replace_indexing_v3_sections(jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "f6e7d1155ad1f2d8824fffe0b0aad48e",
+        "signature": "public.replace_indexing_v3_visual_artifacts(jsonb,jsonb,jsonb,jsonb)"
       },
       {
         "acl": [
@@ -18981,10 +19559,26 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "0eb2f3c6c7251f6863e35139f80eabf7",
+        "signature": "public.resolve_registered_published_admin_source_plan(uuid,uuid)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "4a60ce4d039995e10eaff45c82e1ba74",
         "signature": "public.restore_public_source_document_to_steward(uuid,uuid,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "80bf4de7fc9bdbe17adbe2ca92f1b3bc",
+        "signature": "public.retain_ingestion_generation_artifacts(jsonb,uuid,jsonb)"
       },
       {
         "acl": [
@@ -19095,6 +19689,14 @@
         ],
         "def_hash": "2c12e7f103e1b697134442322ee25fd3",
         "signature": "public.roster_open_shifts_mark_reported()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "abed0339949b065bf0ce884e689f4205",
+        "signature": "public.roster_open_withdraw(uuid,uuid,uuid)"
       },
       {
         "acl": [
@@ -19538,6 +20140,14 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "2259bb3257efb038f8cf113de03d1c66",
+        "signature": "public.start_ingestion_job_stage(jsonb,text,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "6b51ece12494d136b39977d8532c013c",
@@ -19841,11 +20451,33 @@
       },
       {
         "acl": [
+          "postgres=X/postgres"
+        ],
+        "def_hash": "d48cda49fbc67bb323d03f30bf75fcd8",
+        "signature": "public.trusted_document_admission_core(jsonb,jsonb,boolean,text,uuid,text)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "eac36d1ea73ad162d4926fcdddffffb1",
+        "signature": "public.update_indexing_v3_agent_job_status(jsonb,text,text,timestamp with time zone,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
         "def_hash": "c5fafb6bc7cc303cb1199895b777d6a6",
         "signature": "public.update_indexing_v3_agent_job_status(uuid,text,text,timestamp with time zone)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "b3658e68136b9dab61abda965a73f770",
+        "signature": "public.update_ingestion_job_progress(jsonb,text,integer)"
       },
       {
         "acl": [
@@ -19981,6 +20613,14 @@
         ],
         "def_hash": "bd56290b6046a516b82b66989a6b5386",
         "signature": "public.work_user_id_by_email(text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "743dc2b98a63d7f514aa973e8c943f10",
+        "signature": "public.write_ingestion_base_artifacts(jsonb,uuid,jsonb,jsonb,jsonb,jsonb,jsonb)"
       }
     ],
     "extensions": [
@@ -20870,6 +21510,81 @@
         "table": "differential_records"
       },
       {
+        "def": "CHECK ((((actor_kind = 'administrator'::text) AND (source_channel = 'admin_api'::text) AND (administrator_id IS NOT NULL) AND (backend_principal IS NULL)) OR ((actor_kind = 'trusted_backend'::text) AND (source_channel = 'backend_import'::text) AND (administrator_id IS NULL) AND (backend_principal IS NOT NULL))))",
+        "name": "document_admission_events_actor_identity_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((actor_kind = ANY (ARRAY['administrator'::text, 'trusted_backend'::text])))",
+        "name": "document_admission_events_actor_kind_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((admission_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_admission_events_admission_digest_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((jsonb_typeof(authority) = 'object'::text))",
+        "name": "document_admission_events_authority_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK (((backend_principal IS NULL) OR (((length(backend_principal) >= 1) AND (length(backend_principal) <= 200)) AND (backend_principal = btrim(backend_principal)) AND (backend_principal !~ '[[:cntrl:]]'::text))))",
+        "name": "document_admission_events_backend_principal_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK (((byte_count >= 1) AND (byte_count <= 157286400)))",
+        "name": "document_admission_events_byte_count_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((content_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_admission_events_content_sha256_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((document_input_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_admission_events_document_input_digest_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((file_name_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_admission_events_file_name_sha256_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "document_admission_events_pkey",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((admission_policy_version = 'trusted-document-admission-v1'::text))",
+        "name": "document_admission_events_policy_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((request_digest ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_admission_events_request_digest_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((source_channel = ANY (ARRAY['admin_api'::text, 'backend_import'::text])))",
+        "name": "document_admission_events_source_channel_check",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "FOREIGN KEY (staging_owner_id) REFERENCES auth.users(id) ON DELETE RESTRICT",
+        "name": "document_admission_events_staging_owner_id_fkey",
+        "table": "document_admission_events"
+      },
+      {
+        "def": "CHECK ((storage_path_sha256 ~ '^sha256:[0-9a-f]{64}$'::text))",
+        "name": "document_admission_events_storage_path_sha256_check",
+        "table": "document_admission_events"
+      },
+      {
         "def": "CHECK ((length(btrim(content)) > 0))",
         "name": "document_chunks_content_not_blank",
         "table": "document_chunks"
@@ -21105,11 +21820,6 @@
         "table": "document_pages"
       },
       {
-        "def": "UNIQUE (document_id, page_number)",
-        "name": "document_pages_document_id_page_number_key",
-        "table": "document_pages"
-      },
-      {
         "def": "PRIMARY KEY (id)",
         "name": "document_pages_pkey",
         "table": "document_pages"
@@ -21270,6 +21980,11 @@
         "table": "documents"
       },
       {
+        "def": "CHECK ((page_storage_mode = ANY (ARRAY['legacy_unqualified'::text, 'typed_exact'::text])))",
+        "name": "documents_page_storage_mode_check",
+        "table": "documents"
+      },
+      {
         "def": "PRIMARY KEY (id)",
         "name": "documents_pkey",
         "table": "documents"
@@ -21385,6 +22100,11 @@
         "table": "indexing_v3_agent_jobs"
       },
       {
+        "def": "CHECK ((((lease_authority_digest IS NULL) OR (lease_authority_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((lease_duration_seconds IS NULL) OR ((lease_duration_seconds >= 60) AND (lease_duration_seconds <= 86400))) AND ((status <> 'processing'::text) OR ((lease_token IS NOT NULL) AND (locked_by IS NOT NULL) AND (btrim(locked_by) <> ''::text) AND (lease_expected_generation_id IS NOT NULL) AND (lease_write_generation_id IS NOT NULL) AND (lease_authority_digest IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_duration_seconds IS NOT NULL)))))",
+        "name": "indexing_v3_agent_jobs_lease_tuple",
+        "table": "indexing_v3_agent_jobs"
+      },
+      {
         "def": "PRIMARY KEY (id)",
         "name": "indexing_v3_agent_jobs_pkey",
         "table": "indexing_v3_agent_jobs"
@@ -21397,6 +22117,11 @@
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "ingestion_job_stages_document_id_fkey",
+        "table": "ingestion_job_stages"
+      },
+      {
+        "def": "CHECK ((job_kind = ANY (ARRAY['node'::text, 'indexing_v3'::text])))",
+        "name": "ingestion_job_stages_job_kind_check",
         "table": "ingestion_job_stages"
       },
       {
@@ -21417,6 +22142,11 @@
       {
         "def": "FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE CASCADE",
         "name": "ingestion_jobs_document_id_fkey",
+        "table": "ingestion_jobs"
+      },
+      {
+        "def": "CHECK ((((lease_authority_digest IS NULL) OR (lease_authority_digest ~ '^sha256:[0-9a-f]{64}$'::text)) AND ((lease_duration_seconds IS NULL) OR ((lease_duration_seconds >= 60) AND (lease_duration_seconds <= 86400))) AND ((status <> 'processing'::text) OR ((lease_token IS NOT NULL) AND (locked_by IS NOT NULL) AND (btrim(locked_by) <> ''::text) AND (lease_write_generation_id IS NOT NULL) AND (lease_authority_digest IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (lease_duration_seconds IS NOT NULL)))))",
+        "name": "ingestion_jobs_lease_tuple",
         "table": "ingestion_jobs"
       },
       {

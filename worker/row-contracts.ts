@@ -94,13 +94,15 @@ function assertAgainst(schema: z.ZodType, value: unknown, source: string): void 
  * grounds. A scalar here would corrupt every downstream metadata merge.
  */
 const claimedJobDocumentSchema = z.looseObject({
-  id: z.string().min(1),
+  id: z.uuid(),
   owner_id: z.string().nullable(),
   title: z.string(),
   file_name: z.string(),
   file_type: z.string(),
   storage_path: z.string(),
   content_hash: z.string().nullable(),
+  file_size: z.number().int().nonnegative().nullable().optional(),
+  page_storage_mode: z.enum(["legacy_unqualified", "typed_exact"]).optional(),
   source_path: z.string().nullable(),
   import_batch_id: z.string().nullable(),
   status: z.enum(["queued", "processing", "indexed", "failed"]),
@@ -117,14 +119,26 @@ const claimedJobDocumentSchema = z.looseObject({
  * `error_message`) pass through untouched because the worker never reads them off the
  * claimed row.
  */
-const claimedJobRowSchema = z.looseObject({
-  id: z.string().min(1),
-  document_id: z.string().min(1),
-  batch_id: z.string().nullable(),
-  attempt_count: z.number().int(),
-  max_attempts: z.number().int(),
-  documents: claimedJobDocumentSchema,
-});
+const claimedJobRowSchema = z
+  .looseObject({
+    locked_by: z.string().refine((value) => value.trim().length > 0),
+    lease_token: z.uuid(),
+    lease_expected_generation_id: z.uuid().nullable(),
+    lease_write_generation_id: z.uuid(),
+    lease_authority_digest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+    lease_expires_at: z.iso.datetime({ offset: true }),
+    lease_duration_seconds: z.number().int().min(60).max(86400),
+    id: z.uuid(),
+    document_id: z.uuid(),
+    batch_id: z.string().nullable(),
+    attempt_count: z.number().int(),
+    max_attempts: z.number().int(),
+    documents: claimedJobDocumentSchema,
+  })
+  .refine((row) => row.document_id === row.documents.id, {
+    path: ["documents", "id"],
+    message: "Claim document identity mismatch",
+  });
 
 /**
  * Deliberately the inferred schema type, not `JobRow`: `claimJobs`'s declared
@@ -139,51 +153,11 @@ export function assertClaimedJobRow(row: unknown): asserts row is ClaimedJobRow 
   assertAgainst(claimedJobRowSchema, row, "claim_ingestion_jobs");
 }
 
-/**
- * The identity a contract-rejected claimed row must still yield for the worker to fail it
- * terminally through `fail_or_retry_ingestion_job`. Permissive on purpose: `batch_id` is
- * `.nullish()` coerced to `null` so a row missing the key entirely can still be failed
- * rather than left to the stale reclaim.
- */
-const rejectedClaimedJobCoreSchema = z.looseObject({
-  id: z.string().min(1),
-  document_id: z.string().min(1),
-  batch_id: z.string().nullish(),
-});
-
+/** Rejected rows cannot authorize any mutation; the durable lease may expire for reclaim. */
 export type RejectedClaimedJobRow = {
   error: WorkerRowShapeError;
-  /**
-   * Identity for the terminal-fail path, or `null` when even the job/document ids are
-   * untrustworthy — in which case the caller leaves the lease to the stale reclaim.
-   * `documentStatus` preserves `"indexed"` when the malformed row's document claims it, so
-   * failing a bad atomic-reindex row never demotes a live indexed document (mirrors
-   * `preservedStatus` in `worker/behavior.ts`). `ownerId` is only ever used as an ownership
-   * filter in the missing-schema fallback, where a wrong value can no-op the update but
-   * never corrupt another owner's row.
-   */
-  failable: {
-    id: string;
-    document_id: string;
-    batch_id: string | null;
-    ownerId: string | null;
-    documentStatus: "indexed" | "failed";
-  } | null;
+  failable: null;
 };
-
-function describeFailableJob(row: unknown): RejectedClaimedJobRow["failable"] {
-  const core = rejectedClaimedJobCoreSchema.safeParse(row);
-  if (!core.success) return null;
-  const documents = (row as { documents?: unknown }).documents;
-  const doc = typeof documents === "object" && documents !== null ? (documents as Record<string, unknown>) : null;
-  return {
-    id: core.data.id,
-    document_id: core.data.document_id,
-    batch_id: core.data.batch_id ?? null,
-    ownerId: typeof doc?.owner_id === "string" ? doc.owner_id : null,
-    documentStatus: doc?.status === "indexed" ? "indexed" : "failed",
-  };
-}
 
 /**
  * Partition a claimed batch into rows that may enter the job lifecycle and rows that must
@@ -193,7 +167,7 @@ function describeFailableJob(row: unknown): RejectedClaimedJobRow["failable"] {
  * the RPC has already committed leases and `attempt_count` increments for every row in the
  * batch, and a throw there bypasses the job lifecycle entirely (the run-loop claim catch
  * backs off and repolls; under `--once` it exits the process), orphaning valid sibling jobs.
- * Per-row rejection lets the caller fail only the offending job.
+ * Per-row rejection lets valid siblings proceed without inventing authority for rejected rows.
  */
 export function partitionClaimedJobRows(rows: readonly unknown[]): {
   accepted: ClaimedJobRow[];
@@ -207,7 +181,7 @@ export function partitionClaimedJobRows(rows: readonly unknown[]): {
       accepted.push(row);
     } catch (error) {
       if (!(error instanceof WorkerRowShapeError)) throw error;
-      rejected.push({ error, failable: describeFailableJob(row) });
+      rejected.push({ error, failable: null });
     }
   }
   return { accepted, rejected };
@@ -227,6 +201,7 @@ export function partitionClaimedJobRows(rows: readonly unknown[]): {
 const enrichmentChunkRowSchema = z.looseObject({
   id: z.string().min(1),
   document_id: z.string().min(1),
+  index_generation_id: z.uuid(),
   page_number: z.number().int().nullable(),
   chunk_index: z.number().int(),
   section_heading: z.string().nullable(),
@@ -251,6 +226,8 @@ const enrichmentChunkRowSchema = z.looseObject({
  */
 const enrichmentImageRowSchema = z.looseObject({
   id: z.string().min(1),
+  document_id: z.string().min(1),
+  index_generation_id: z.uuid(),
   page_number: z.number().int().nullable(),
   caption: z.string(),
   image_type: z.string(),
@@ -268,11 +245,37 @@ export type EnrichmentImageRow = z.infer<typeof enrichmentImageRowSchema>;
  * try in `worker/main.ts`: enrichment is marked failed, the job still completes, and repair
  * is queued for the indexing agent — record-and-skip, never a retry loop.
  */
-export function assertEnrichmentChunkRows(rows: unknown): asserts rows is EnrichmentChunkRow[] {
+type EnrichmentAuthority = { documentId: string; indexGenerationId: string };
+function assertEnrichmentAuthority(
+  rows: Array<{ document_id: string; index_generation_id: string; metadata: Record<string, unknown> }>,
+  authority: EnrichmentAuthority | undefined,
+  source: string,
+) {
+  if (!authority) return;
+  if (
+    rows.some(
+      (row) =>
+        row.document_id !== authority.documentId ||
+        row.index_generation_id !== authority.indexGenerationId ||
+        row.metadata.index_generation_id !== authority.indexGenerationId,
+    )
+  ) {
+    throw new WorkerRowShapeError(source, ["document/generation identity mismatch"]);
+  }
+}
+export function assertEnrichmentChunkRows(
+  rows: unknown,
+  authority?: EnrichmentAuthority,
+): asserts rows is EnrichmentChunkRow[] {
   assertAgainst(z.array(enrichmentChunkRowSchema), rows, "document_chunks.enrichment_load");
+  assertEnrichmentAuthority(rows as EnrichmentChunkRow[], authority, "document_chunks.enrichment_load");
 }
 
 /** Validate enrichment image read-backs; same containment as the chunk assert. */
-export function assertEnrichmentImageRows(rows: unknown): asserts rows is EnrichmentImageRow[] {
+export function assertEnrichmentImageRows(
+  rows: unknown,
+  authority?: EnrichmentAuthority,
+): asserts rows is EnrichmentImageRow[] {
   assertAgainst(z.array(enrichmentImageRowSchema), rows, "document_images.enrichment_load");
+  assertEnrichmentAuthority(rows as EnrichmentImageRow[], authority, "document_images.enrichment_load");
 }

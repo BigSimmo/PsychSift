@@ -1,3 +1,7 @@
+import { docxPageSourceProvenanceSchema } from "@/lib/extractors/docx-source-provenance";
+import { pdfPageSourceProvenanceSchema, PdfSourceProvenanceError, validatePdfSourcePages } from "@/lib/extractors/pdf-source-provenance";
+import { buildTextSourceProvenance, textPageSourceProvenanceSchema, TextSourceProvenanceError, validateTextSourcePages } from "@/lib/extractors/text-source-provenance";
+import { xlsxPageSourceProvenanceSchema, validateXlsxSourcePages, XlsxSourceProvenanceError } from "@/lib/extractors/xlsx-source-provenance";
 import { spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
@@ -33,6 +37,21 @@ const extractedPageSchema = z.object({
   text: z.string(),
   ocrUsed: z.boolean().optional(),
   needsOcr: z.boolean().optional(),
+  metadata: z
+    .object({
+      source_provenance: z
+        .union([
+          docxPageSourceProvenanceSchema,
+          pdfPageSourceProvenanceSchema,
+          textPageSourceProvenanceSchema,
+          xlsxPageSourceProvenanceSchema,
+        ])
+        .optional(),
+      // Existing Python PDF diagnostic; validate explicitly without accepting arbitrary metadata.
+      image_coverage_ratio: z.number().finite().min(0).max(1).optional(),
+    })
+    .strict()
+    .optional(),
 });
 
 const extractedImageSchema = z.object({
@@ -70,7 +89,43 @@ const extractedDocumentSchema = z.object({
 });
 
 export function parseExtractedDocumentPayload(raw: string): ExtractedDocument {
-  return extractedDocumentSchema.parse(JSON.parse(raw));
+  const payload = JSON.parse(raw);
+  const hasXlsxProvenance =
+    Array.isArray(payload?.pages) &&
+    payload.pages.some(
+      (page: { metadata?: { source_provenance?: { format?: string } } }) =>
+        page?.metadata?.source_provenance?.format === "xlsx",
+    );
+  if (hasXlsxProvenance) {
+    if (!Array.isArray(payload.images) || payload.images.length)
+      throw new XlsxSourceProvenanceError("XLSX_SOURCE_PROVENANCE_INVALID");
+    validateXlsxSourcePages(payload.pages);
+  }
+  const hasTextProvenance =
+    Array.isArray(payload?.pages) &&
+    payload.pages.some(
+      (page: { metadata?: { source_provenance?: { format?: string } } }) =>
+        page?.metadata?.source_provenance?.format === "txt",
+    );
+  if (hasTextProvenance) validateTextSourcePages(payload.pages);
+  if (Array.isArray(payload?.pages)) validatePdfSourcePages(payload.pages);
+  const result = extractedDocumentSchema.safeParse(payload);
+  if (!result.success) {
+    if (hasXlsxProvenance) throw new XlsxSourceProvenanceError("XLSX_SOURCE_PROVENANCE_INVALID");
+    if (hasTextProvenance) throw new TextSourceProvenanceError("TXT_SOURCE_PROVENANCE_INVALID");
+    if (
+      Array.isArray(payload?.pages) &&
+      payload.pages.some(
+        (page: { metadata?: { source_provenance?: { format?: string } } }) =>
+          page?.metadata &&
+          Object.hasOwn(page.metadata, "source_provenance") &&
+          page.metadata.source_provenance?.format !== "docx",
+      )
+    )
+      throw new PdfSourceProvenanceError("PDF_SOURCE_PROVENANCE_INVALID");
+    throw result.error;
+  }
+  return result.data;
 }
 
 export function isUsableFallbackPdfImage(image: {
@@ -583,9 +638,11 @@ export async function assertOoxmlArchiveBudget(buffer: Buffer) {
   }
 }
 
-function extractTxt(buffer: Buffer) {
+function extractTxt(buffer: Buffer, knownText = false) {
+  const text = buffer.toString("utf8");
+  const metadata = knownText ? { source_provenance: buildTextSourceProvenance(buffer, text) } : undefined;
   return {
-    pages: [{ pageNumber: 1, text: buffer.toString("utf8"), ocrUsed: false }],
+    pages: [{ pageNumber: 1, text, ocrUsed: false, ...(metadata ? { metadata } : {}) }],
     images: [],
   } satisfies ExtractedDocument;
 }
@@ -611,5 +668,5 @@ export async function extractDocument(args: { buffer: Buffer; fileName: string; 
     return extractXlsx(args.buffer);
   }
 
-  return extractTxt(args.buffer);
+  return extractTxt(args.buffer, args.mimeType === "text/plain" || args.fileName.toLowerCase().endsWith(".txt"));
 }

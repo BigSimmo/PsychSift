@@ -17,7 +17,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-09-16.table-aware-v1"
+EXTRACTOR_VERSION = "2026-10-13.table-aware-caption-v2"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -689,9 +689,10 @@ def split_table_heading(text):
     if not cleaned:
         return None, None
 
+    # Caption labels start their text block; inline cross-references are not headings.
     patterns = (
-        r"(?i)\b(table\s+\d+[a-z]?)\s*[:.\-\u2013\u2014]?\s*(.+)",
-        r"(?i)\b(appendix\s+\d+[a-z]?)\s*[:.\-\u2013\u2014]?\s*(.+)",
+        r"(?i)^(table\s+[a-z]?\d+(?:\.\d+)*[a-z]?)\b\s*[:.\-\u2013\u2014]?\s*(.+)",
+        r"(?i)^(appendix\s+\d+[a-z]?)\b\s*[:.\-\u2013\u2014]?\s*(.+)",
     )
     for pattern in patterns:
         match = re.search(pattern, cleaned)

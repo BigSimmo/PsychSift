@@ -1,3 +1,9 @@
+import {
+  publishedOriginalSectionMetadataForResult,
+  type PublishedOriginalSectionPathFact,
+  type RawPublishedOriginalRowObserver,
+} from "@/lib/rag/rag-source-block";
+import { isPublicDocument } from "@/lib/documents/is-public-document";
 /**
  * rag-candidate-sources - candidate retrieval surfaces for the RAG search
  * waterfall, extracted verbatim from rag.ts (decomposition phase 1,
@@ -177,6 +183,7 @@ function publicGovernedSourceMetadata(input: unknown) {
 
 function sanitizeGovernedCandidateRows(args: {
   rows: unknown[];
+  observeRawPublishedRow?: RawPublishedOriginalRowObserver;
   requestedScopes: SourceCorpusScope[];
   targetSiteDomains: SiteContentDomain[];
   snapshot: RagContextSnapshot;
@@ -215,6 +222,7 @@ function sanitizeGovernedCandidateRows(args: {
     void site_change_epoch;
     void pending_exclusion_exact;
     void context_pack_admission;
+    args.observeRawPublishedRow?.(row);
     const sanitized = { ...publicRow, source_metadata: publicGovernedSourceMetadata(publicRow.source_metadata) };
     return [
       row.corpus_scope === "clinical_kb_site"
@@ -349,6 +357,7 @@ export async function searchGovernedCorpora(args: {
   signal?: AbortSignal;
   maxRpcCalls?: number;
   onRpcCall?: () => void;
+  observeRawPublishedRow?: RawPublishedOriginalRowObserver;
 }): Promise<SearchResult[]> {
   throwIfAborted(args.signal);
   const targetSiteDomains = args.queryPlan?.siteDomainDecision === "inferred" ? [] : args.targetSiteDomains;
@@ -396,6 +405,7 @@ export async function searchGovernedCorpora(args: {
           rows: args.documentFilters?.length
             ? data.filter((row) => args.documentFilters!.includes(row.document_id))
             : data,
+          observeRawPublishedRow: args.observeRawPublishedRow,
           requestedScopes: phase.corpusScopes,
           targetSiteDomains,
           snapshot: args.snapshot,
@@ -681,6 +691,89 @@ export function mergeSearchResults(primary: SearchResult[], secondary: SearchRes
  * @param telemetry - Optional retrieval telemetry updated with RPC failures and text-relaxation usage.
  * @returns Matching document chunks, using corrected or relaxed queries when strict matching produces no candidates.
  */
+/** Read only an absent path into the request-local observer; candidate rows remain untouched. */
+async function observePublishedTextRows(args: {
+  supabase: ReturnType<typeof createAdminClient>;
+  rows: SearchResult[];
+  accessScope: RetrievalAccessScope;
+  signal?: AbortSignal;
+  observeRawPublishedRow: RawPublishedOriginalRowObserver;
+}) {
+  throwIfAborted(args.signal);
+  const needed: { row: SearchResult; generation: string }[] = [];
+  for (const row of args.rows) {
+    if (Object.hasOwn(row, "section_path")) {
+      args.observeRawPublishedRow(row);
+      continue;
+    }
+    try {
+      const facts = publishedOriginalSectionMetadataForResult(row);
+      needed.push({ row, generation: facts.index_generation_id as string });
+    } catch {
+      // The observer keeps ordinary rows ordinary and makes malformed V2 receipts unusable.
+      args.observeRawPublishedRow(row);
+    }
+  }
+  if (!needed.length) return;
+  const pathFacts = new Map<string, PublishedOriginalSectionPathFact | null>();
+  const rowKey = (row: { document_id: string; id: string }) => JSON.stringify([row.document_id, row.id]);
+  try {
+    if (args.accessScope.includePublic) {
+      const documentIds = [...new Set(needed.map(({ row }) => row.document_id))];
+      const documentQuery = args.supabase.from("documents")
+        .select("id,owner_id,status,metadata")
+        .in("id", documentIds).eq("status", "indexed").is("owner_id", null).limit(documentIds.length);
+      const { data: documents, error: documentError } = await (
+        args.signal ? documentQuery.abortSignal(args.signal) : documentQuery
+      );
+      throwIfAborted(args.signal);
+      if (!documentError && documents) {
+        const publicDocuments = new Map<string, string | null>();
+        for (const document of documents) {
+          if (!document || document.owner_id !== null || document.status !== "indexed" || !isPublicDocument(document))
+            continue;
+          const generation = committedIndexGeneration(document.metadata);
+          if (publicDocuments.has(document.id)) publicDocuments.set(document.id, null);
+          else publicDocuments.set(document.id, generation);
+        }
+        const eligible = needed.filter(({ row, generation }) => publicDocuments.get(row.document_id) === generation);
+        if (eligible.length) {
+          const chunkIds = [...new Set(eligible.map(({ row }) => row.id))];
+          const eligibleDocumentIds = [...new Set(eligible.map(({ row }) => row.document_id))];
+          const chunkQuery = args.supabase.from("document_chunks")
+            .select("id,document_id,index_generation_id,content,section_path")
+            .in("id", chunkIds).in("document_id", eligibleDocumentIds).limit(chunkIds.length);
+          const { data: chunks, error: chunkError } = await (
+            args.signal ? chunkQuery.abortSignal(args.signal) : chunkQuery
+          );
+          throwIfAborted(args.signal);
+          if (!chunkError && chunks) {
+            const expected = new Map(eligible.map((item) => [rowKey(item.row), item]));
+            for (const chunk of chunks) {
+              const key = rowKey(chunk), match = expected.get(key);
+              if (!match) continue;
+              if (pathFacts.has(key)) { pathFacts.set(key, null); continue; }
+              if (
+                chunk.index_generation_id !== match.generation || chunk.content !== match.row.content ||
+                !Array.isArray(chunk.section_path) || !chunk.section_path.every((part) => typeof part === "string")
+              ) { pathFacts.set(key, null); continue; }
+              pathFacts.set(key, Object.freeze({
+                id: chunk.id, document_id: chunk.document_id, index_generation_id: chunk.index_generation_id,
+                content: chunk.content, section_path: Object.freeze([...chunk.section_path]),
+              }));
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // Preserve cancellation. Read/refusal failures cannot supply a factual path to a selected row.
+    throwIfAborted(args.signal);
+  }
+  throwIfAborted(args.signal);
+  for (const { row } of needed) args.observeRawPublishedRow(row, pathFacts.get(rowKey(row)) ?? null);
+}
+
 export async function searchTextChunkCandidates(args: {
   supabase: ReturnType<typeof createAdminClient>;
   queryVariants: string[];
@@ -691,6 +784,7 @@ export async function searchTextChunkCandidates(args: {
   matchCount: number;
   telemetry?: SearchTelemetry;
   signal?: AbortSignal;
+  observeRawPublishedRow?: RawPublishedOriginalRowObserver;
 }) {
   const runChunkText = async (queryText: string, matchCount: number) => {
     const accessScope = retrievalAccessScopeForArgs(args);
@@ -712,6 +806,12 @@ export async function searchTextChunkCandidates(args: {
     if (error) recordHybridRpcError(args.telemetry, "match_document_chunks_text", error);
     if (error || !data?.length) return [] as SearchResult[];
     assertRetrievalRows(data, "match_document_chunks_text");
+    if (args.observeRawPublishedRow) {
+      await observePublishedTextRows({
+        supabase: args.supabase, rows: data, accessScope, signal: args.signal,
+        observeRawPublishedRow: args.observeRawPublishedRow,
+      });
+    }
     return data;
   };
 

@@ -1,3 +1,7 @@
+import type { DocxPageSourceProvenance } from "@/lib/extractors/docx-source-provenance";
+import type { PdfPageSourceProvenance } from "@/lib/extractors/pdf-source-provenance";
+import type { TextPageSourceProvenance } from "@/lib/extractors/text-source-provenance";
+import type { XlsxPageSourceProvenance } from "@/lib/extractors/xlsx-source-provenance";
 export type DocumentStatus = "queued" | "processing" | "indexed" | "failed";
 export type JobStatus = "pending" | "processing" | "completed" | "failed";
 export type ImportBatchStatus = "queued" | "processing" | "completed" | "completed_with_errors" | "failed";
@@ -1439,6 +1443,10 @@ export type RagAnswer = {
 };
 
 export type ExtractedPage = {
+  metadata?: Record<string, unknown> & {
+    source_provenance?:
+      DocxPageSourceProvenance | PdfPageSourceProvenance | TextPageSourceProvenance | XlsxPageSourceProvenance;
+  };
   pageNumber: number;
   text: string;
   ocrUsed?: boolean;

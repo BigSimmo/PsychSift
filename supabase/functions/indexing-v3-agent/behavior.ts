@@ -1,3 +1,284 @@
+import {
+  IngestionAttempt,
+  IngestionAttemptError,
+  parseIngestionFence,
+  type IngestionFence,
+  // @ts-ignore -- Deno requires explicit extensions; keep this on the module specifier line for Node typechecks.
+} from "../_shared/ingestion-attempt.ts";
+import {
+  buildSourceAnchoredFallbackPayload,
+  normalizeSourceAnchoredSummary,
+  persistedSourceAnchoredSummaryProjectionMatches,
+  projectSourceAnchoredLabels,
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_MAX_PROMPT_IMAGES,
+  type SourceAnchoredSummaryAuthority,
+  type SourceAnchoredSummaryPayload,
+  type PersistedSourceAnchoredSummaryProjection,
+  // @ts-ignore -- Shared import-pure source authority contract uses Deno's required extension.
+} from "../_shared/source-anchored-summary.ts";
+
+import {
+  ProviderEgressDeniedError,
+  type ProviderEgressBinding,
+  type ProviderEgressPurpose,
+  // @ts-ignore -- Deno requires explicit extensions on canonical shared modules.
+} from "../_shared/document-ingress-safety.ts";
+import {
+  assertIngestionProviderEgress,
+  assertIngestionProviderEgressContextActive,
+  IngestionProviderEgressRefusal,
+  type IngestionProviderEgressContext,
+  // @ts-ignore -- Deno requires explicit extensions on canonical shared modules.
+} from "../_shared/ingestion-provider-egress.ts";
+
+export function edgeProviderEgressBinding(
+  fence: IngestionFence,
+  attemptCount: number,
+  source: unknown,
+): ProviderEgressBinding {
+  const row = asObjectRecord(source);
+  if (!row || row.document_id !== fence.document_id || row.index_generation_id !== fence.expected_generation_id) {
+    throw new IngestionProviderEgressRefusal("provider_egress_binding_mismatch");
+  }
+  if (typeof row.admission_event_id !== "string" || !row.admission_event_id.trim()) {
+    throw new IngestionProviderEgressRefusal("provider_egress_denied", [
+      { code: "admission_missing", action: "obtain_current_admission" },
+    ]);
+  }
+  if (
+    typeof row.content_sha256 !== "string" ||
+    !/^sha256:[0-9a-f]{64}$/.test(row.content_sha256) ||
+    typeof row.document_content_hash !== "string" ||
+    !/^[0-9a-f]{64}$/.test(row.document_content_hash) ||
+    row.content_sha256 !== `sha256:${row.document_content_hash}` ||
+    !Number.isSafeInteger(attemptCount) ||
+    attemptCount < 0
+  ) {
+    throw new IngestionProviderEgressRefusal("provider_egress_binding_mismatch");
+  }
+  return Object.freeze({
+    admissionEventId: row.admission_event_id,
+    documentId: fence.document_id,
+    generationId: fence.expected_generation_id!,
+    jobId: fence.job_id,
+    attemptId: `${fence.job_id}:${attemptCount}`,
+    leaseId: fence.lease_token,
+    contentSha256: row.content_sha256 as ProviderEgressBinding["contentSha256"],
+    authorityDigest: fence.authority_digest as ProviderEgressBinding["authorityDigest"],
+  });
+}
+
+/** Authorize exact immutable bytes immediately before each actual Edge dispatch. */
+export async function runEdgeProviderEgressTransport<T>(
+  attempt: IngestionAttempt,
+  timeoutSignal: AbortSignal,
+  context: IngestionProviderEgressContext,
+  purpose: ProviderEgressPurpose,
+  payload: string,
+  execute: (signal: AbortSignal, payload: string) => Promise<T>,
+): Promise<T> {
+  return runEdgeIngestionTransport(attempt, timeoutSignal, async (signal) => {
+    await assertIngestionProviderEgress(context, purpose, payload, signal);
+    assertIngestionProviderEgressContextActive(context, signal);
+    attempt.check();
+    const result = await execute(signal, payload);
+    assertIngestionProviderEgressContextActive(context, signal);
+    attempt.check();
+    return result;
+  });
+}
+
+export function edgeProviderEgressFailure(error: unknown) {
+  if (!(error instanceof ProviderEgressDeniedError)) return null;
+  const refusal =
+    error instanceof IngestionProviderEgressRefusal ? error : new IngestionProviderEgressRefusal(error.code);
+  const reasons = refusal.reasons;
+  return Object.freeze({
+    code: error.code,
+    codes: Object.freeze(reasons.map((reason) => reason.code)),
+    reasons,
+    actions: Object.freeze([...new Set(reasons.map((reason) => reason.action))]),
+  });
+}
+
+export function parseEdgeIngestionClaim(value: unknown, workerId: string, nowMs = Date.now()): IngestionFence {
+  const row = asObjectRecord(value);
+  const document = asObjectRecord(row?.documents);
+  const expiry = typeof row?.lease_expires_at === "string" ? Date.parse(row.lease_expires_at) : NaN;
+  if (
+    !row ||
+    !document ||
+    row.job_kind !== "indexing_v3" ||
+    row.locked_by !== workerId ||
+    document.id !== row.document_id ||
+    document.index_generation_id !== row.lease_expected_generation_id ||
+    row.lease_write_generation_id !== row.lease_expected_generation_id ||
+    !Number.isFinite(nowMs) ||
+    !Number.isFinite(expiry) ||
+    expiry <= nowMs ||
+    !Number.isInteger(row.lease_duration_seconds) ||
+    (row.lease_duration_seconds as number) < 1 ||
+    (row.lease_duration_seconds as number) > 86400
+  ) {
+    throw new IngestionAttemptError("ingestion_attempt_required");
+  }
+  return parseIngestionFence({
+    job_kind: row.job_kind,
+    job_id: row.id,
+    document_id: row.document_id,
+    worker_id: row.locked_by,
+    lease_token: row.lease_token,
+    expected_generation_id: row.lease_expected_generation_id,
+    authority_digest: row.lease_authority_digest,
+  });
+}
+
+export async function runEdgeIngestionMutation(
+  attempt: IngestionAttempt,
+  execute: (fence: IngestionFence) => Promise<unknown>,
+  allowGateRefusal = false,
+  releaseOnSuccess = false,
+) {
+  return attempt.serialize(async () => {
+    try {
+      const value = await execute(attempt.fence);
+      attempt.check();
+      const result = asObjectRecord(value);
+      if (
+        allowGateRefusal &&
+        result?.ok === false &&
+        result.reason === "completion_gate_blocked" &&
+        Array.isArray(result.missing) &&
+        result.missing.every((item) => typeof item === "string")
+      )
+        return result;
+      const accepted = attempt.accept(value);
+      if (releaseOnSuccess) attempt.cancel();
+      return accepted;
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
+  });
+}
+
+export async function runEdgeIngestionTransport<T>(
+  attempt: IngestionAttempt,
+  timeoutSignal: AbortSignal,
+  execute: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  attempt.check();
+  const signal = AbortSignal.any([attempt.signal, timeoutSignal]);
+  signal.throwIfAborted();
+  const result = await execute(signal);
+  signal.throwIfAborted();
+  attempt.check();
+  return result;
+}
+
+export function parseEdgeCompletionResult(value: unknown): { ok: true; status: "completed" } {
+  const row = asObjectRecord(value);
+  if (row?.ok === false && row.reason === "completion_gate_blocked")
+    throw new IngestionAttemptError("completion_gate_blocked");
+  if (!row || row.ok !== true || row.status !== "completed" || Object.keys(row).length !== 2)
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  return { ok: true, status: "completed" };
+}
+
+export async function ensureEdgeSummaryProjection(args: {
+  authority: SourceAnchoredSummaryAuthority;
+  existing: PersistedSourceAnchoredSummaryProjection | null | undefined;
+  labels: ReadonlyArray<{
+    label: string;
+    label_type: string;
+    confidence: number;
+    metadata: Record<string, unknown> | null;
+  }>;
+  persist: (payload: SourceAnchoredSummaryPayload) => Promise<unknown>;
+}): Promise<SourceAnchoredSummaryPayload> {
+  const corpus = args.authority;
+  if (
+    corpus.selectedChunks.length > SOURCE_ANCHORED_MAX_CHUNKS ||
+    corpus.selectedImages.length > SOURCE_ANCHORED_MAX_IMAGES
+  )
+    throw new Error("source_anchored_summary_source_limit_exceeded");
+  // Loaded rows establish membership; they are not the model's bounded selection.
+  const seen = new Set<string>();
+  for (const row of [...corpus.selectedChunks, ...corpus.selectedImages]) {
+    if (row.index_generation_id !== corpus.indexGenerationId)
+      throw new Error("source_anchored_summary_source_generation_mismatch");
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(row.id) ||
+      seen.has(row.id) ||
+      (row.page_number !== null && (!Number.isInteger(row.page_number) || row.page_number <= 0))
+    )
+      throw new Error("source_anchored_summary_source_invalid");
+    seen.add(row.id);
+  }
+  let payload: SourceAnchoredSummaryPayload | undefined;
+  const raw = asObjectRecord(asObjectRecord(args.existing?.metadata)?.source_anchored_summary_v1);
+  if (raw?.summary_kind === "structured") {
+    try {
+      const select = (ids: unknown, rows: SourceAnchoredSummaryAuthority["selectedChunks"], max: number) => {
+        if (
+          !Array.isArray(ids) ||
+          ids.length > max ||
+          ids.some((id) => typeof id !== "string") ||
+          new Set(ids).size !== ids.length
+        )
+          throw new Error("source_anchored_summary_cached_anchors_invalid");
+        const byId = new Map(rows.map((row) => [row.id, row]));
+        return ids.map((id) => {
+          const row = byId.get(id);
+          if (!row) throw new Error("source_anchored_summary_cached_anchor_missing");
+          return row;
+        });
+      };
+      // Preserve the payload's anchor order, including anchors beyond fallback cutoffs.
+      const selected = {
+        ...corpus,
+        selectedChunks: select(raw.source_chunk_ids, corpus.selectedChunks, 36),
+        selectedImages: select(raw.source_image_ids, corpus.selectedImages, SOURCE_ANCHORED_MAX_PROMPT_IMAGES),
+      };
+      payload = normalizeSourceAnchoredSummary(raw, selected);
+    } catch {
+      /* Rebuild only from the current exact-generation corpus. */
+    }
+  }
+  if (!payload)
+    payload = buildSourceAnchoredFallbackPayload({
+      ...corpus,
+      selectedChunks: corpus.selectedChunks.slice(0, 36),
+      selectedImages: corpus.selectedImages.slice(0, SOURCE_ANCHORED_MAX_PROMPT_IMAGES),
+    });
+  const labels = projectSourceAnchoredLabels(payload);
+  const projectionMatches =
+    labels.length === args.labels.length &&
+    labels.every((label) =>
+      args.labels.some(
+        (row) =>
+          row.label === label.label &&
+          row.label_type === label.label_type &&
+          row.confidence === label.confidence &&
+          row.metadata?.index_generation_id === payload.index_generation_id &&
+          row.metadata?.summary_version === payload.summary_version &&
+          JSON.stringify(row.metadata?.source_chunk_ids) === JSON.stringify(label.source_chunk_ids) &&
+          JSON.stringify(row.metadata?.source_image_ids) === JSON.stringify(label.source_image_ids) &&
+          JSON.stringify(row.metadata?.pages) === JSON.stringify(label.pages),
+      ),
+    );
+  if (
+    payload.summary_kind === "structured" &&
+    projectionMatches &&
+    persistedSourceAnchoredSummaryProjectionMatches(args.existing, payload)
+  )
+    return payload;
+  await args.persist(payload);
+  return payload;
+}
+
 export type CompletionGate = {
   counts: {
     sections: number;
@@ -69,8 +350,9 @@ export function agentFailureDecision(args: {
   maxAttempts: number;
   nowMs: number;
   retryDelayMs: number;
+  error?: unknown;
 }) {
-  const shouldRetry = args.attemptCount < args.maxAttempts;
+  const shouldRetry = !(args.error instanceof ProviderEgressDeniedError) && args.attemptCount < args.maxAttempts;
   return {
     shouldRetry,
     status: shouldRetry ? "retry_pending" : "failed",
@@ -238,7 +520,7 @@ export async function runClaimedJobBatch<TJob>(
   jobs: readonly TJob[],
   handlers: {
     processJob: (job: TJob) => Promise<{ status: "completed" | "deferred"; missing: string[] }>;
-    markJobFailure: (job: TJob, message: string) => Promise<unknown>;
+    markJobFailure: (job: TJob, message: string, error?: unknown) => Promise<unknown>;
   },
 ): Promise<ClaimedBatchResult<TJob>> {
   const result: ClaimedBatchResult<TJob> = {
@@ -262,7 +544,7 @@ export async function runClaimedJobBatch<TJob>(
       const message = errorMessage(error);
       let failureRecordError: string | null = null;
       try {
-        await handlers.markJobFailure(job, message);
+        await handlers.markJobFailure(job, message, error);
       } catch (recordError) {
         failureRecordError = errorMessage(recordError);
       }

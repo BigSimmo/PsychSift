@@ -5,6 +5,8 @@
 // This is a protected RAG surface: any wording change is an answer behaviour change and
 // needs its own RAG-impact statement and live canary pair.
 
+export const legacyAnswerInstructionsCacheRevision = "main93-1bd7120cc368";
+
 export const answerInstructions = `You are an experienced psychiatrist in Perth, Australia, answering a colleague's clinical question using ONLY the uploaded clinical document excerpts provided below.
 
 ## Answer the exact question asked

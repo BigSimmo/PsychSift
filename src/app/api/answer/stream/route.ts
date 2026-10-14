@@ -33,6 +33,7 @@ import { safeErrorLogDetails } from "@/lib/privacy";
 import { buildServerTimingHeader, preambleServerTimingEntries } from "@/lib/server-timing";
 import { startSseHeartbeat } from "@/lib/sse-heartbeat";
 import { parseJsonBody } from "@/lib/validation/body";
+import { rejectPatientDetailQuestion } from "@/lib/clinical-question-patient-check-server";
 import { answerRequestSchema, type AnswerRequestBody } from "@/lib/validation/answer-request";
 import type { AnswerStreamEventMap, AnswerStreamEventName } from "@/lib/answer-stream-contract";
 import { toPublicAnswerProgressEvent } from "@/lib/answer-progress-public";
@@ -40,6 +41,8 @@ import { answerFeedbackMetadata } from "@/lib/answer-feedback-token";
 import { observeRagAnswer } from "@/lib/rag/rag-programme-telemetry";
 import { toClientSearchScopeSummary } from "@/lib/answer-client-payload";
 import { apiErrorCodeSchema, apiStreamErrorPayloadSchema } from "@/lib/api-error-payload";
+import { registeredPublicAnswerOptions } from "@/lib/registered-public-answer-options";
+import { AnswerPilotBudgetError, runAnswerWithPilotBudget } from "@/lib/answer-pilot-budget";
 
 export const runtime = "nodejs";
 
@@ -234,10 +237,24 @@ function streamAnswer(
             sendProgress({ stage: "analyzing", message: "Reading the committed document sections." });
             sendProgress({ stage: "generating", message: "Building the governed clinical summary." });
           }
-          const answer =
-            body.summaryMode && body.documentId
-              ? await summarizeDocument(body.documentId, ownerId, { signal, observationContext })
-              : await answerQuestionWithScope({
+          const answer = await runAnswerWithPilotBudget({
+            ownerId,
+            documentId: body.documentId ?? (body.documentIds?.length === 1 ? body.documentIds[0] : undefined),
+            query: body.query,
+            queryMode: body.queryMode,
+            summaryMode: body.summaryMode,
+            activeFilterCount: scope?.activeFilterCount,
+            resolvedDocumentIds: scope?.documentIds,
+          }, () => body.summaryMode && body.documentId
+            ? summarizeDocument(body.documentId, ownerId, { signal, observationContext })
+            : answerQuestionWithScope({
+                  ...registeredPublicAnswerOptions({
+                    requesterId: ownerId,
+                    accessScope,
+                    explicitDocumentIds: body.documentIds ?? (body.documentId ? [body.documentId] : undefined),
+                    resolvedDocumentIds: scope?.documentIds,
+                    signal,
+                  }),
                   query: body.query,
                   documentId: singleDocumentScope ? body.documentId : undefined,
                   documentIds: singleDocumentScope
@@ -250,7 +267,7 @@ function streamAnswer(
                   observationContext,
                   onProgress,
                   signal,
-                });
+                }));
           const governedResponse = buildGovernedAnswerClientResponse(answer);
 
           await persistAnswerDiagnostics({
@@ -270,7 +287,9 @@ function streamAnswer(
           // Parity with /api/answer (PR #315): outside production, a misconfigured
           // Supabase API key degrades to a visible demo answer instead of a stream
           // error — the UI's answer search uses this route, not /api/answer.
-          const fallbackReason = nonProductionSupabaseDemoFallbackReason(error);
+          const fallbackReason = error instanceof AnswerPilotBudgetError
+            ? null
+            : nonProductionSupabaseDemoFallbackReason(error);
           if (fallbackReason) {
             sendFinal({ ...buildDemoStreamAnswer(body, fallbackReason), interactionId });
             return;
@@ -309,6 +328,9 @@ function streamAnswer(
 export async function POST(request: Request) {
   try {
     const body = await parseJsonBody(request, answerRequestSchema, "Invalid answer request.");
+    // Refuse a question that looks like it holds a patient detail before it reaches the
+    // AI service (audit S2, 2026-10-13). The page checks first; this is the backstop.
+    rejectPatientDetailQuestion(body);
     const streamAbortController = new AbortController();
     const streamSignal = mergeAbortSignals([request.signal, streamAbortController.signal]);
     if (isDemoMode()) return streamAnswer(body, resolveRetrievalAccessScope(), streamSignal, streamAbortController);

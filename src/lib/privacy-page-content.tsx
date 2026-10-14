@@ -16,12 +16,13 @@ import type { ReactNode } from "react";
  */
 
 export const PRIVACY_DRAFT_DISCLAIMER =
-  "This is draft product information based on the repository's configured behaviour. It is not legal advice, a final privacy policy, or an assertion of governance approval.";
+  "This is draft product information based on how PsychSift is set up. It is not legal advice, a final privacy policy, or an assertion of governance approval.";
 
 /**
  * ISO date the copy below was last checked against the repository. Rendered as
- * "describes configured behaviour as of …" — deliberately not "reviewed", which
- * would imply a governance sign-off that PIA-5 records as still outstanding.
+ * "Describes how PsychSift is set up as of 1 September 2026" — deliberately not
+ * "reviewed", which would imply a governance sign-off that PIA-5 records as
+ * still outstanding.
  */
 export const PRIVACY_CONTENT_AS_OF = "2026-09-01";
 
@@ -63,6 +64,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     short: "Tool",
     gist: "Clinical reference KB — not a patient-record system",
     body: [
+      "For this restricted ingestion pilot, only administrators upload licensed public clinical references and wholly invented examples. Do not submit real or deidentified patient cases, patient identifiers or voice. User-private uploads are outside this pilot. This pilot does not establish approval for other features or data uses.",
       <>
         PsychSift is a knowledge base over clinical reference material. It is{" "}
         <strong>not a patient-record system</strong> and its provider-backed features do not ask for patient
@@ -114,6 +116,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     short: "Providers",
     gist: "OpenAI embedding / synthesis may leave Australia",
     body: [
+      "Administrator ingestion can send selected reference text to the OpenAI API to create retrieval embeddings. The native PDF path in this pilot sends extracted text for embeddings; it does not send PDF files or images to OpenAI.",
       <>
         When external provider mode is configured, question text may be sent to the OpenAI API to create a retrieval
         embedding, including when the final response is source-only. When model-backed answer synthesis is used, the
@@ -132,7 +135,7 @@ export const PRIVACY_SECTIONS: PrivacySection[] = [
     short: "Access",
     gist: "Shared public corpus · owner-scoped rows · private buckets",
     body: [
-      "There are two tiers here, and the difference matters. Reference documents the operator has published to the shared public corpus are searchable, retrievable, and citable by every account, and by anyone who reaches the site without signing in. That is deliberate: the corpus is intended to hold guideline and reference material, not patient data, and it is what the search and answer features read. Nothing in the application inspects what a document actually contains, so that intent rests on the operator's upload and publication practice rather than on a technical control.",
+      "There are two tiers here, and the difference matters. Reference documents the operator has published to the shared public corpus are searchable, retrievable, and citable by every account, and by anyone who reaches the site without signing in. That is deliberate: the corpus is intended to hold guideline and reference material, not patient data, and it is what the search and answer features read. The controlled ingestion pilot includes bounded malware and identifier-shaped-content checks and source-specific validation. These limited checks do not guarantee de-identification, completeness, suitability or detection of all hidden content. Operators remain responsible for checking the material and their authority to process and publish it.",
       "Everything else stays with its account. Uploading documents is an administrator action, so an ordinary signed-in account holds its log rows and saved items rather than uploads, and a document that has not been published stays with the administrator account that uploaded it. Those rows are stamped with the account that owns them, the server scopes every read to that owner, and database row-level security stands behind it for anything reaching the database directly, so another signed-in user cannot search, retrieve, or cite them. Publishing a document into the shared corpus is an operator action; another user cannot trigger it. The operator can also publish the corpus as a whole rather than document by document: a single service-role switch suspends the per-document approval requirement and makes every stored document public at once, and the same switch reverses it.",
       "Document and image files sit in private storage buckets with no direct browser access. A file opens through a short-lived link that the server mints only after checking that the parent record is either one your account owns or one published to the shared public corpus, and those links expire after ten minutes by default. Within that window the link is usable by anyone holding it, so treat a copied link as the document itself.",
       "Administrative access is a separate question from user access. Server-side work such as ingestion runs with elevated database credentials that are never exposed to the browser, and privileged actions are written to an append-only audit record. The operator of the deployment can also reach stored data through the database provider's own console; who holds that access is an operator control, not an application one.",

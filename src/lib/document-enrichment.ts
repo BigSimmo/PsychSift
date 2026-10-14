@@ -1,3 +1,32 @@
+import {
+  IngestionAttemptError,
+  parseIngestionFence,
+  runIngestionPersistence,
+  type IngestionFence,
+} from "../../supabase/functions/_shared/ingestion-attempt";
+import {
+  SOURCE_ANCHORED_MAX_CHUNKS,
+  SOURCE_ANCHORED_MAX_IMAGES,
+  SOURCE_ANCHORED_MAX_PROMPT_IMAGES,
+  SOURCE_ANCHORED_SUMMARY_METADATA_KEY,
+  SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY,
+  SOURCE_ANCHORED_SUMMARY_VERSION,
+  canonicalSourceAnchoredText,
+  normalizeSourceAnchoredSummary,
+  persistedSourceAnchoredSummaryProjectionMatches,
+  projectSourceAnchoredLabels,
+  projectSourceAnchoredSummary,
+  requireSourceAnchoredSummaryGeneration,
+  type SourceAnchoredClinicalProfile,
+  type SourceAnchoredSummaryAuthority,
+  type SourceAnchoredSummaryPayload,
+} from "../../supabase/functions/_shared/source-anchored-summary";
+import {
+  containsForbiddenPublicSourceChunkContent,
+  publicSourcePolicyViolation,
+} from "../../supabase/functions/_shared/public-source-policy";
+import { ProviderEgressDeniedError } from "@/lib/document-ingress-safety";
+import { assertIngestionProviderEgress, type IngestionProviderEgressContext } from "@/lib/ingestion-provider-egress";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { classifyDocumentOrganization } from "@/lib/document-organization";
@@ -130,6 +159,7 @@ const summarySchema = z
 type ParsedGeneratedSummary = z.infer<typeof summarySchema>;
 
 type EnrichmentChunk = {
+  index_generation_id?: string | null;
   id: string;
   page_number: number | null;
   chunk_index: number;
@@ -138,6 +168,7 @@ type EnrichmentChunk = {
 };
 
 type EnrichmentImage = {
+  index_generation_id?: string | null;
   id: string;
   page_number: number | null;
   caption: string | null;
@@ -557,6 +588,30 @@ export async function generateDocumentEnrichment(args: {
 }
 
 export async function upsertDocumentEnrichment(args: {
+  fence?: IngestionFence;
+  ingestionEgress?: IngestionProviderEgressContext;
+  signal?: AbortSignal;
+  indexGenerationId?: string;
+  supabase: SupabaseClient;
+  document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
+    metadata?: ClinicalDocument["metadata"];
+  };
+  chunks: EnrichmentChunk[];
+  images?: EnrichmentImage[];
+}) {
+  const hasWorkerBinding = ["fence", "ingestionEgress", "signal", "indexGenerationId"].some((key) =>
+    Object.prototype.hasOwnProperty.call(args, key),
+  );
+  if (hasWorkerBinding) {
+    if (!args.fence || !args.ingestionEgress || typeof args.indexGenerationId !== "string") {
+      throw new IngestionAttemptError("ingestion_attempt_required");
+    }
+    return upsertFencedDocumentEnrichment({ ...args, fence: args.fence, ingestionEgress: args.ingestionEgress, indexGenerationId: args.indexGenerationId });
+  }
+  return upsertLegacyDocumentEnrichment(args);
+}
+
+async function upsertLegacyDocumentEnrichment(args: {
   supabase: SupabaseClient;
   document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
     metadata?: ClinicalDocument["metadata"];
@@ -668,6 +723,272 @@ export async function upsertDocumentEnrichment(args: {
   if (documentMetadataError) throw new Error(documentMetadataError.message);
 
   return { summary: summary as DocumentSummary, labels: enrichment.labels };
+}
+export function assertSourceAnchoredSummaryPreflight(args: {
+  documentMetadata: unknown;
+  indexGenerationId: unknown;
+  chunks: readonly EnrichmentChunk[];
+  images: readonly EnrichmentImage[];
+}) {
+  const indexGenerationId = requireSourceAnchoredSummaryGeneration(args.indexGenerationId);
+  const metadata = metadataRecord(args.documentMetadata);
+  if (metadata.index_generation_id !== indexGenerationId) {
+    throw new Error("source_anchored_summary_requires_active_generation");
+  }
+  if (args.chunks.length > SOURCE_ANCHORED_MAX_CHUNKS || args.images.length > SOURCE_ANCHORED_MAX_IMAGES) {
+    throw new Error("source_anchored_summary_source_limit_exceeded");
+  }
+  if (args.chunks.length + args.images.length === 0) throw new Error("source_anchored_summary_source_missing");
+  for (const row of [...args.chunks, ...args.images]) {
+    if (row.index_generation_id !== indexGenerationId) {
+      throw new Error("source_anchored_summary_source_generation_mismatch");
+    }
+  }
+  const policyViolation = publicSourcePolicyViolation(
+    metadata,
+    containsForbiddenPublicSourceChunkContent(args.chunks.map((chunk) => ({ content: chunk.content }))),
+  );
+  if (policyViolation) throw new Error(policyViolation);
+  return indexGenerationId;
+}
+
+function sourceAuthority(args: {
+  documentId: string;
+  indexGenerationId: string;
+  chunks: EnrichmentChunk[];
+  images: EnrichmentImage[];
+}): SourceAnchoredSummaryAuthority {
+  const selected = selectCoverageAwarePromptChunks(args.chunks);
+  return {
+    documentId: args.documentId,
+    indexGenerationId: args.indexGenerationId,
+    expectedStructuredModel: env.OPENAI_INDEXING_MODEL,
+    expectedStructuredModelVersion: ragEnrichmentVersion,
+    selectedChunks: selected.chunks,
+    selectedImages: args.images.slice(0, SOURCE_ANCHORED_MAX_PROMPT_IMAGES),
+  };
+}
+
+function modelProfile(raw: Record<string, unknown>, authority: SourceAnchoredSummaryAuthority) {
+  const specifics = raw.clinical_specifics as Record<string, unknown> | undefined;
+  const profileSource = (specifics?.profile ?? {}) as Record<string, unknown>;
+  const chunkPages = new Map(authority.selectedChunks.map((row) => [row.id, row.page_number] as const));
+  const imagePages = new Map(authority.selectedImages.map((row) => [row.id, row.page_number] as const));
+  const profile: Record<string, unknown> = { overview: "pending" };
+  for (const key of summaryProfileKeys) {
+    const items = Array.isArray(profileSource[key]) ? profileSource[key] : [];
+    profile[key] = items.map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return item;
+      const value = item as Record<string, unknown>;
+      const chunkIds = Array.isArray(value.source_chunk_ids) ? value.source_chunk_ids.map(String) : [];
+      const imageIds = Array.isArray(value.source_image_ids) ? value.source_image_ids.map(String) : [];
+      const pages = Array.from(
+        new Set(
+          [...chunkIds.map((id) => chunkPages.get(id)), ...imageIds.map((id) => imagePages.get(id))].filter(
+            (page): page is number => Number.isInteger(page) && Number(page) > 0,
+          ),
+        ),
+      ).sort((a, b) => a - b);
+      return { ...value, pages };
+    });
+  }
+  const projection = projectSourceAnchoredSummary(profile as unknown as SourceAnchoredClinicalProfile);
+  profile.overview = projection;
+  return profile as unknown as SourceAnchoredClinicalProfile;
+}
+
+async function generateSourceAnchoredSummary(args: {
+  ingestionEgress: IngestionProviderEgressContext;
+  document: Pick<ClinicalDocument, "id" | "title" | "file_name" | "source_path">;
+  authority: SourceAnchoredSummaryAuthority;
+  chunks: EnrichmentChunk[];
+  images: EnrichmentImage[];
+  signal?: AbortSignal;
+}) {
+  try {
+    args.signal?.throwIfAborted();
+    const selectedImageIds = new Set(args.authority.selectedImages.map((image) => image.id));
+    const promptImages = args.images.filter((image) => selectedImageIds.has(image.id));
+    const prompt = `${buildEnrichmentPrompt({ ...args, images: promptImages })}\nFor every support=not_found item, begin its text exactly with "Not established by selected source evidence:" and use no source anchors.`;
+    const result = await generateParsedTextResult(prompt, summarySchema, {
+      signal: args.signal,
+      model: env.OPENAI_INDEXING_MODEL,
+      maxOutputTokens: 2400,
+      operation: "summary",
+      ingestionEgress: args.ingestionEgress,
+      ingestionPurpose: "summary",
+      schemaName: "clinical_document_enrichment",
+      promptCacheKey: "clinical-document-enrichment-v1",
+      reasoningEffort: "medium",
+      textVerbosity: "medium",
+    });
+    args.signal?.throwIfAborted();
+    if (result.truncated) throw new Error("truncated structured enrichment");
+    const raw = result.parsed as unknown as Record<string, unknown>;
+    if (raw.summary_version === SOURCE_ANCHORED_SUMMARY_VERSION) {
+      return normalizeSourceAnchoredSummary(raw, args.authority);
+    }
+    const profile = modelProfile(raw, args.authority);
+    const labels = (Array.isArray(raw.labels) ? raw.labels : [])
+      .map((item) => {
+        const value = item && typeof item === "object" && !Array.isArray(item) ? (item as Record<string, unknown>) : {};
+        return {
+          label: canonicalSourceAnchoredText(value.label).toLowerCase(),
+          label_type: value.label_type,
+          confidence: value.confidence,
+        };
+      })
+      .sort((a, b) => String(a.label_type).localeCompare(String(b.label_type)) || a.label.localeCompare(b.label));
+    const projected = projectSourceAnchoredSummary(profile);
+    return normalizeSourceAnchoredSummary(
+      {
+        summary_kind: "structured",
+        summary_version: SOURCE_ANCHORED_SUMMARY_VERSION,
+        document_id: args.document.id,
+        index_generation_id: args.authority.indexGenerationId,
+        model: env.OPENAI_INDEXING_MODEL,
+        model_version: ragEnrichmentVersion,
+        generated_at: new Date().toISOString(),
+        source_chunk_ids: args.authority.selectedChunks.map((row) => row.id),
+        source_image_ids: args.authority.selectedImages.map((row) => row.id),
+        summary: projected,
+        clinical_specifics: {
+          profile,
+          actions: profile.key_clinical_actions.map((item) => item.text),
+          thresholds_timing: profile.thresholds_timing.map((item) => item.text),
+          medication_monitoring: profile.medication_dose_monitoring.map((item) => item.text),
+          risk_escalation: profile.escalation_risk_warnings.map((item) => item.text),
+          documentation_forms: profile.required_forms_documentation.map((item) => item.text),
+          exceptions_gaps: profile.not_covered.map((item) => item.text),
+        },
+        labels,
+        heuristic_fallback: false,
+      },
+      args.authority,
+    );
+  } catch (error) {
+    args.signal?.throwIfAborted();
+    if (error instanceof ProviderEgressDeniedError || (error instanceof Error && error.name === "AbortError"))
+      throw error;
+    console.warn("document enrichment generation failed", {
+      document: args.document.file_name ?? args.document.title,
+      ...safeErrorLogDetails(error),
+    });
+    throw new Error("source_anchored_summary_generation_failed", { cause: error });
+  }
+}
+
+function projectedLabelRows(payload: SourceAnchoredSummaryPayload, ownerId: string | null) {
+  return projectSourceAnchoredLabels(payload).map((label) => ({
+    document_id: payload.document_id,
+    owner_id: ownerId,
+    label: label.label,
+    label_type: label.label_type,
+    confidence: label.confidence,
+    source: "generated" as const,
+    metadata: {
+      index_generation_id: payload.index_generation_id,
+      summary_version: payload.summary_version,
+      source_chunk_ids: label.source_chunk_ids,
+      source_image_ids: label.source_image_ids,
+      pages: label.pages,
+    },
+  }));
+}
+
+async function upsertFencedDocumentEnrichment(args: {
+  ingestionEgress: IngestionProviderEgressContext;
+  supabase: SupabaseClient;
+  fence: IngestionFence;
+  signal?: AbortSignal;
+  document: Pick<ClinicalDocument, "id" | "owner_id" | "title" | "file_name" | "source_path"> & {
+    metadata?: ClinicalDocument["metadata"];
+  };
+  indexGenerationId: string;
+  chunks: EnrichmentChunk[];
+  images?: EnrichmentImage[];
+}) {
+  const fence = parseIngestionFence(args.fence);
+  args.signal?.throwIfAborted();
+  if (fence.document_id !== args.document.id || fence.expected_generation_id !== args.indexGenerationId) {
+    throw new IngestionAttemptError("ingestion_attempt_required");
+  }
+  const images = args.images ?? [];
+  const indexGenerationId = assertSourceAnchoredSummaryPreflight({
+    documentMetadata: args.document.metadata,
+    indexGenerationId: args.indexGenerationId,
+    chunks: args.chunks,
+    images,
+  });
+  await assertIngestionProviderEgress(
+    args.ingestionEgress,
+    "summary",
+    JSON.stringify({ document: args.document, chunks: args.chunks, images: args.images ?? [] }),
+    args.signal,
+  );
+  const authority = sourceAuthority({ documentId: args.document.id, indexGenerationId, chunks: args.chunks, images });
+  // The legacy cache binds source IDs/generation but carries no source-content digest.
+  // Regenerate inside ingestion rather than accepting a profile with unproven byte identity.
+  const payload = await generateSourceAnchoredSummary({
+    ingestionEgress: args.ingestionEgress,
+    document: args.document,
+    authority,
+    chunks: args.chunks,
+    images,
+    signal: args.signal,
+  });
+  args.signal?.throwIfAborted();
+  const selected = selectCoverageAwarePromptChunks(args.chunks);
+  const summary = {
+    document_id: args.document.id,
+    owner_id: args.document.owner_id ?? null,
+    summary: payload.summary,
+    clinical_specifics: payload.clinical_specifics,
+    source_chunk_ids: payload.source_chunk_ids,
+    source_image_ids: payload.source_image_ids,
+    model: payload.model,
+    generated_at: payload.generated_at,
+    updated_at: payload.generated_at,
+    metadata: {
+      generated_by: "local-worker",
+      index_generation_id: payload.index_generation_id,
+      rag_enrichment_version: ragEnrichmentVersion,
+      rag_indexing_version: ragEnrichmentVersion,
+      rag_memory_version: ragEnrichmentVersion,
+      clinical_profile_version: summaryProfileVersion,
+      coverage_profile: buildIndexingCoverageProfile({ chunks: args.chunks, images }),
+      enrichment_prompt_strategy: selected.strategy,
+      enrichment_prompt_chunk_ids: selected.chunks.map((chunk) => chunk.id),
+      label_count: payload.labels.length,
+      [SOURCE_ANCHORED_SUMMARY_METADATA_KEY]: payload,
+      [SOURCE_ANCHORED_SUMMARY_PROJECTION_COMPLETE_KEY]: true,
+    },
+  };
+  const result = await runIngestionPersistence(() =>
+    args.supabase.rpc("persist_ingestion_summary_projection", {
+      p_fence: fence,
+      p_summary: summary,
+      p_labels: projectedLabelRows(payload, args.document.owner_id ?? null),
+      p_metadata: {
+        rag_enrichment_version: ragEnrichmentVersion,
+        rag_indexing_version: ragEnrichmentVersion,
+        rag_memory_version: ragEnrichmentVersion,
+        rag_enrichment_updated_at: payload.generated_at,
+        generated_label_count: payload.labels.length,
+      },
+    }),
+  );
+  args.signal?.throwIfAborted();
+  if (!result.summary || typeof result.summary !== "object" || Array.isArray(result.summary))
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  const persistedSummary = result.summary as Record<string, unknown>;
+  if (
+    persistedSummary.document_id !== args.document.id ||
+    persistedSummary.owner_id !== (args.document.owner_id ?? null) ||
+    !persistedSourceAnchoredSummaryProjectionMatches(persistedSummary, payload)
+  )
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  return { summary: result.summary as DocumentSummary, labels: payload.labels };
 }
 
 function tokenSet(text: string) {
