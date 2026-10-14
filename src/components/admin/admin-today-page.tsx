@@ -34,7 +34,7 @@ import {
 import { cacheOnCallEntries, readCachedOnCallEntries, useOnCallEntries } from "@/lib/on-call/entry-store";
 import type { OnCallEntry } from "@/lib/on-call/entry-model";
 import { msUntilNextOnCallLocalDay } from "@/lib/on-call/local-date";
-import { formatZonedLongDay, zonedDateOf, zonedTimeOf } from "@/lib/work-time/format";
+import { formatZonedLongDay, zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
 
 /**
@@ -46,7 +46,8 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *
  * Phone is one column in that order. From a laptop width it splits into what
  * to act on (left) and what is ahead (right); left then right IS the phone
- * order. The band names the page with the greeting and the date.
+ * order. The band names the page "Admin" (audit D15, 13 Oct 2026): no greeting,
+ * and no date line, which the owner asked to drop from Admin.
  *
  * Fail-closed: while loading, signed out or after a failed load nothing from
  * the reader's records is drawn, never a saved copy (the device cache holds
@@ -79,11 +80,6 @@ function TodayLoadingSkeleton() {
   );
 }
 
-function greetingFor(now: Date, zone: string): string {
-  const hour = Number(zonedTimeOf(now, zone).slice(0, 2));
-  return hour >= 5 && hour < 12 ? "Good morning" : hour >= 12 && hour < 18 ? "Good afternoon" : "Good evening";
-}
-
 /** Open to everyone, signed in or not: the crisis lines live on Help. */
 function HelpRow() {
   return (
@@ -113,9 +109,8 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const today = zonedDateOf(now, zone);
   const load = adminLoadState(state);
   const bandShown = useModeBandShown();
-  const greeting = greetingFor(now, zone);
   const dateEcho = formatZonedLongDay(today);
-  useModeBandHeading({ eyebrow: dateEcho, title: greeting });
+  useModeBandHeading({ title: "Admin" });
 
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const shared = useMemo(() => selectAdminSharedEntries(state), [state]);
@@ -149,12 +144,12 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
 
   return (
     <AdminPage testId="admin-today-main" wide>
-      {/* The band shows the greeting and date; this stays for screen readers and band-less views. */}
+      {/* The band names the page; this stays for screen readers, and band-less views keep the date. */}
       <header data-testid="admin-today-greeting" className={cn("grid gap-0.5", bandShown && "sr-only")}>
         <PageTitleUnderBand className="text-2xl font-semibold text-[color:var(--text-heading)]">
-          {greeting}
+          Admin
         </PageTitleUnderBand>
-        <p className="text-sm text-[color:var(--text-muted)]">{dateEcho}</p>
+        {bandShown ? null : <p className="text-sm text-[color:var(--text-muted)]">{dateEcho}</p>}
       </header>
 
       {load === "loading" ? (

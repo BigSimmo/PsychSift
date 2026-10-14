@@ -375,7 +375,6 @@
         "src/components/roster/manage/roster-approve-tab.tsx",
         "src/components/roster/manage/roster-cover-tab.tsx",
         "src/components/roster/manage/roster-decision-sheet.tsx",
-        "src/components/roster/manage/roster-manage-page.tsx",
         "src/components/roster/manage/roster-people-list.tsx",
         "src/components/roster/manage/roster-team-settings.tsx",
         "src/components/roster/requests/roster-dates-sheet.tsx",
@@ -509,7 +508,6 @@
         "src/components/roster/manage/roster-approve-tab.tsx",
         "src/components/roster/manage/roster-cover-tab.tsx",
         "src/components/roster/manage/roster-decision-sheet.tsx",
-        "src/components/roster/manage/roster-manage-page.tsx",
         "src/components/roster/manage/roster-people-list.tsx",
         "src/components/roster/manage/roster-team-settings.tsx",
         "src/components/roster/requests/roster-dates-sheet.tsx",
@@ -897,13 +895,11 @@
       "entryExported": true,
       "directImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
-        "src/components/privacy-quiet-signal-page.tsx",
         "src/components/ui/retrieval-state-banner.tsx",
         "src/components/ui/verification-notice.tsx"
       ],
       "productImportFiles": [
         "src/components/answer/AnswerFooter.tsx",
-        "src/components/privacy-quiet-signal-page.tsx",
         "src/components/ui/retrieval-state-banner.tsx",
         "src/components/ui/verification-notice.tsx"
       ],
@@ -1437,7 +1433,6 @@
         "src/components/DocumentViewer.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/account-setup-dialog.tsx",
-        "src/components/clinical-dashboard/answer-crisis-banner.tsx",
         "src/components/clinical-dashboard/auth-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/medication-considerations.tsx",
@@ -1473,7 +1468,6 @@
         "src/components/DocumentViewer.tsx",
         "src/components/calendar/calendar-subscribe.tsx",
         "src/components/clinical-dashboard/account-setup-dialog.tsx",
-        "src/components/clinical-dashboard/answer-crisis-banner.tsx",
         "src/components/clinical-dashboard/auth-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/medication-considerations.tsx",

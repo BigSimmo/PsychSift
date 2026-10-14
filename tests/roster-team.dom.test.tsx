@@ -162,7 +162,7 @@ describe("Roster team journey", () => {
     render(<RosterTeamPage now={new Date("2026-10-14T00:00:00Z")} />);
     const list = await screen.findByTestId("roster-team-tomorrow");
     expect(screen.getByRole("heading", { name: "On with you tomorrow" })).toBeTruthy();
-    expect(screen.getByText("Thu 15 Oct · you're on evening")).toBeTruthy();
+    expect(screen.getByText("Thu 15 Oct · you're on late")).toBeTruthy();
     expect(list.textContent).toContain("Dr Sam Example");
     // Pat's shift ends before Alex's starts, so Pat is not "on with" Alex.
     expect(list.textContent).not.toContain("Dr Pat Example");
@@ -189,7 +189,7 @@ describe("Roster team journey", () => {
     render(<RosterTeamPage now={new Date("2026-10-16T00:00:00Z")} />);
     expect(await screen.findByRole("heading", { name: "Team week · 12 to 18 Oct" })).toBeTruthy();
     expect(screen.getByTestId("roster-team-legend").textContent).toBe(
-      "D day · E evening · N night · C on call · L leave · W other work · blank is off.",
+      "D day · L late · N night · OC on call · AL leave · W other work · blank is off.",
     );
   });
   it("lists who is on now, until when, and hides the list when nobody is on", async () => {
@@ -236,7 +236,7 @@ describe("Roster team journey", () => {
     const { unmount } = render(<RosterTeamPage now={new Date("2026-10-15T00:00:00Z")} />);
     const section = await screen.findByTestId("roster-team-with-you");
     expect(screen.getByRole("heading", { name: "On with you tonight" })).toBeTruthy();
-    expect(section.textContent).toContain("Your evening");
+    expect(section.textContent).toContain("Your late");
     expect(section.textContent).toContain("Dr Sam Example");
     unmount();
     mockTeam(true, false, [samsNight, mine]);

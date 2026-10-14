@@ -184,8 +184,9 @@ describe("Needs you sheet", () => {
 
   it("says nothing needs you when the lists are empty", () => {
     render(<NeedsYouSheet open onClose={close} returnFocusRef={returnFocusRef} />);
-    expect(screen.getByTestId("needs-you-empty").textContent).toBe("Nothing needs you right now.");
-    expect(screen.getByText("You're all caught up")).toBeTruthy();
+    expect(screen.getByTestId("needs-you-empty").textContent).toBe("You're all caught up");
+    // Said once: the sheet's own line under the title, not again in the empty state (design audit D24).
+    expect(screen.getAllByText(/Nothing needs you right now/)).toHaveLength(1);
   });
 });
 

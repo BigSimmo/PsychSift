@@ -238,6 +238,20 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
   const [timeError, setTimeError] = useState(false);
   const timeValue = madeAt ?? (now ? perthInputValue(now) : "");
 
+  // A form record's "Start clock" link arrives as ?form=1A (and &made=<Perth time> when the reader
+  // had already entered one there), so the form is picked and only Start is left to press.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get("form");
+    if (!wanted || !forms.some((form) => form.code === wanted)) return;
+    // Read once the page is in the browser, so the server and first paint agree.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCode(wanted);
+    const made = params.get("made");
+    if (made && parsePerthDateTimeInput(made)) setMadeAt(made);
+    document.getElementById(ADD_SECTION_ID)?.scrollIntoView({ block: "start" });
+  }, [forms]);
+
   const fail = (text: string, onTime: boolean) => {
     setMessage(text);
     setTimeError(onTime);
@@ -338,81 +352,6 @@ function AddClock({ forms, now }: { readonly forms: readonly MhaClockForm[]; rea
         </button>
       </form>
     </section>
-  );
-}
-
-/**
- * One lane per clock from when it was made to now, and a shared now line. Decorative: every figure
- * on it is also written in the list below.
- */
-function ShiftBand({ clocks, now }: { readonly clocks: readonly MhaClock[]; readonly now: Date }) {
-  const nowMs = now.getTime();
-  const earliest = Math.max(Math.min(...clocks.map((clock) => clock.madeAt)), nowMs - 33 * HOUR_MS);
-  const start = Math.floor(earliest / HOUR_MS) * HOUR_MS;
-  const end = Math.max(Math.ceil((nowMs + HOUR_MS) / HOUR_MS) * HOUR_MS, start + 6 * HOUR_MS);
-  const span = end - start;
-  const pct = (ms: number) => Math.min(100, Math.max(0, ((ms - start) / span) * 100));
-  const step = span <= 12 * HOUR_MS ? 3 * HOUR_MS : span <= 24 * HOUR_MS ? 6 * HOUR_MS : 12 * HOUR_MS;
-  const ticks: number[] = [];
-  for (let tick = start; tick <= end; tick += step) ticks.push(tick);
-  const LANE = 14;
-  const GAP = 8;
-  const lanesHeight = clocks.length * LANE + (clocks.length - 1) * GAP;
-  const height = lanesHeight + 20;
-  const nowX = `${pct(nowMs)}%`;
-
-  // SVG with percentage coordinates, so positions need no inline styles.
-  return (
-    <div aria-hidden="true" className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2 py-1" data-testid="mha-clock-band">
-      <div className="grid content-start gap-2">
-        {clocks.map((clock) => (
-          <span
-            key={clock.id}
-            className="flex h-3.5 items-center justify-end text-xs font-semibold text-[color:var(--dash-ink)]"
-          >
-            {clock.formCode}
-          </span>
-        ))}
-      </div>
-      <svg width="100%" height={height} className="overflow-visible">
-        {clocks.map((clock, index) => {
-          const y = index * (LANE + GAP);
-          const from = pct(clock.madeAt);
-          return (
-            <g key={clock.id}>
-              <rect x="0" y={y} width="100%" height={LANE} rx={LANE / 2} className="fill-[color:var(--dash-card)]" />
-              <rect
-                x={`${from}%`}
-                y={y}
-                width={`${Math.max(0, pct(nowMs) - from)}%`}
-                height={LANE}
-                rx={LANE / 2}
-                className="fill-[color:var(--dash-faint)] forced-colors:fill-[CanvasText]"
-              />
-            </g>
-          );
-        })}
-        <line
-          x1={nowX}
-          x2={nowX}
-          y1="-2"
-          y2={lanesHeight + 2}
-          strokeWidth="2"
-          className="stroke-[color:var(--dash-ink)] forced-colors:stroke-[CanvasText]"
-        />
-        {ticks.map((tick, index) => (
-          <text
-            key={tick}
-            x={`${pct(tick)}%`}
-            y={height - 3}
-            textAnchor={index === 0 ? "start" : pct(tick) >= 92 ? "end" : "middle"}
-            className="fill-[color:var(--dash-faint)] text-2xs nums"
-          >
-            {hhmm(tick)}
-          </text>
-        ))}
-      </svg>
-    </div>
   );
 }
 
@@ -787,11 +726,11 @@ export function MhaClockPage({
   return (
     <InformationPageShell testId="mha-clock-page">
       <div className={cn("mx-auto grid w-full max-w-3xl gap-3", dashSurface)}>
-        <InformationPageBreadcrumbs home={home} current="MHA clock" />
+        <InformationPageBreadcrumbs home={home} current="MHA time limits" />
         <header className="grid min-w-0 gap-0.5">
           <p className="min-h-5 text-sm text-[color:var(--dash-muted)]">{now ? `${hhmm(now)} Perth time` : null}</p>
           <h1 className="font-dash-figure text-3xl-minus leading-tight tracking-tight text-[color:var(--dash-ink)]">
-            MHA clock
+            MHA time limits
           </h1>
         </header>
 
@@ -869,7 +808,6 @@ export function MhaClockPage({
                     </span>
                   ) : null}
                 </p>
-                {now ? <ShiftBand clocks={clocks} now={now} /> : null}
               </>
             )}
             <p className="text-xs text-[color:var(--dash-muted)]" data-testid="mha-clock-retention">

@@ -506,6 +506,9 @@ describe("Log rows, grouped by month", () => {
     expect(filled.map((node) => node.getAttribute("data-testid"))).toEqual(["cme-log-new-entry"]);
     expect(screen.getByTestId("cme-log-new-entry")).toHaveTextContent("Log an activity");
     expect(screen.queryByTestId("cme-quick-log-button")).toBeNull();
+    // One docked button (design audit D09): Copy next stays in its card, never floating as well.
+    const dock = screen.getByTestId("cme-log-new-entry").closest(".work-dock");
+    expect(dock?.querySelectorAll("a, button")).toHaveLength(1);
   });
 
   it("reminds the owner to keep patient details out of reflections, beside the archived link", async () => {

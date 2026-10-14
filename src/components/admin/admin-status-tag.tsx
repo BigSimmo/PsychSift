@@ -65,7 +65,7 @@ export function AdminStatusMark({ status }: { readonly status: AdminStatus }) {
   return null;
 }
 
-/** The status tag: shape, then the word in small caps, on a flat tint. */
+/** The status tag: shape, then the word in sentence case, on a flat tint. */
 export function AdminStatusTag({
   status,
   label,

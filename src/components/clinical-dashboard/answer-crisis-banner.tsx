@@ -1,7 +1,8 @@
 "use client";
 
-import { InlineNotice } from "@/components/ui-primitives";
-import { WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { CrisisLinesCard } from "@/components/crisis-lines-card";
+import { POISONS_INFORMATION_CONTACT, WA_CRISIS_CONTACTS } from "@/lib/crisis-contacts";
+import { hasOverdoseWording } from "@/lib/crisis-wording";
 
 // Numbers come from the one shared module, looked up by id, so they can never drift from
 // the Patient Safety Plan or any other surface that prints them.
@@ -14,28 +15,24 @@ const EMERGENCY_CONTACT = crisisContact("SYN-CRISIS-CONTACT-001");
 const LIFELINE_CONTACT = crisisContact("SYN-CRISIS-CONTACT-005");
 const MHERL_METRO_CONTACT = crisisContact("SYN-CRISIS-CONTACT-002");
 
-const telLink =
-  "font-bold underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]";
-
-/** Shown above an Answer-mode reply whenever the question uses crisis wording (`hasCrisisWording`). */
-export function AnswerCrisisBanner() {
+/**
+ * Shown above an Answer-mode reply whenever the question uses crisis wording (`hasCrisisWording`).
+ * The same card and rows as Admin Help (design audit D02): every number visible, each with its own
+ * 48px call link. Overdose or poisoning wording adds the Poisons Information Centre after 000.
+ */
+export function AnswerCrisisBanner({ query }: { readonly query?: string | null }) {
+  const contacts = hasOverdoseWording(query)
+    ? [EMERGENCY_CONTACT, POISONS_INFORMATION_CONTACT, MHERL_METRO_CONTACT, LIFELINE_CONTACT]
+    : [EMERGENCY_CONTACT, MHERL_METRO_CONTACT, LIFELINE_CONTACT];
   return (
-    <InlineNotice tone="info" className="mb-3">
-      <span data-testid="answer-crisis-banner">
-        If you or someone else is in immediate danger, call{" "}
-        <a className={telLink} href={`tel:${EMERGENCY_CONTACT.telephoneUri}`}>
-          {EMERGENCY_CONTACT.telephoneDisplay}
-        </a>
-        . For support at any time, call {LIFELINE_CONTACT.name}{" "}
-        <a className={telLink} href={`tel:${LIFELINE_CONTACT.telephoneUri}`}>
-          {LIFELINE_CONTACT.telephoneDisplay}
-        </a>{" "}
-        (24 hours), or in Perth the Mental Health Emergency Response Line{" "}
-        <a className={telLink} href={`tel:${MHERL_METRO_CONTACT.telephoneUri}`}>
-          {MHERL_METRO_CONTACT.telephoneDisplay}
-        </a>{" "}
-        (24 hours).
-      </span>
-    </InlineNotice>
+    <div role="status" className="mb-3">
+      <CrisisLinesCard
+        contacts={contacts}
+        testId="answer-crisis-banner"
+        rowTestIdPrefix="answer-crisis"
+        label="Crisis numbers"
+        heading="If someone is in immediate danger, call 000."
+      />
+    </div>
   );
 }

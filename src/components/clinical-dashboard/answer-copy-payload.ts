@@ -233,6 +233,36 @@ export function buildAnswerClipboardText({
 const REFUSAL_FALLBACK_REASON_CODES: ReadonlySet<string> = new Set(["coverage_gap", "no_candidates", "low_signal"]);
 
 /**
+ * Whether the answer says the user's sources do not cover the question at all — the
+ * "Not in your sources" state (audit D03, 2026-10-13). Narrower than `answerIsRefusal` on
+ * purpose: a weak or partly unsupported answer still has prose a clinician reads and checks,
+ * so it keeps the full answer chrome.
+ *
+ * Deliberately narrow, because `confidence: "unsupported"` alone is not this state. The
+ * pipeline also uses it for answers that DID find sources and then failed closed: clinical
+ * numbers that could not be matched to the cited text ("Review the source passages
+ * directly…"), conflicting numeric bands, a search timeout, a generation failure that
+ * shows source snippets instead. Calling any of those "not in your sources" would be untrue
+ * and would hide the passages and the dose caution the reader is told to check.
+ *
+ * So the state needs BOTH the unsupported confidence AND the pipeline's own reason that
+ * nothing relevant was found: `no_candidates` ("No directly relevant source passage was
+ * found") or `unsupported` ("The active sources do not support this request"), which is
+ * what the final quality-gap answer ("No current source with … was found") carries. The
+ * synthetic demo carries no reason code, so its own not-covered answer counts too.
+ * `coverage_gap` ("support only part of this question") and `low_signal` can still carry a
+ * partial answer and keep the full chrome.
+ */
+export function answerIsNotInSources(
+  answer: Pick<ClientRagAnswerPayload, "confidence" | "fallbackReasonCode">,
+  { demo = false }: { demo?: boolean } = {},
+): boolean {
+  if (answer.confidence !== "unsupported") return false;
+  if (answer.fallbackReasonCode === "no_candidates" || answer.fallbackReasonCode === "unsupported") return true;
+  return demo && answer.fallbackReasonCode == null;
+}
+
+/**
  * Whether an answer is a refusal, for the source rail's "Documents searched" framing
  * (#Z9NS6H). Deliberately the UNION of every candidate signal — `grounded === false`,
  * an `ungrounded` or `no_answer` answer state, or a coverage_gap/no_candidates/low_signal
