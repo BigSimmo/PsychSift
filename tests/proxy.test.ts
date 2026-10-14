@@ -424,31 +424,60 @@ describe("passwordless developer-area access (?devkey)", () => {
     return response.headers.getSetCookie().find((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`));
   }
 
-  it("exchanges a correct key for a signed cookie and redirects the key out of the URL", async () => {
+  it.each(["http:", "https:"])(
+    "exchanges a correct key for three scoped cookies over %s and strips the key",
+    async (protocol) => {
+      await withKey(async () => {
+        const response = await proxy(
+          new NextRequest(`${protocol}//localhost/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`),
+        );
+
+        const location = response.headers.get("location");
+        expect(location).toBeTruthy();
+        // The whole point of the redirect: the secret must not survive into the
+        // address bar, the shared history entry, or an onward Referer header.
+        expect(location).not.toContain(KEY);
+        expect(location).not.toContain(DEVELOPER_ACCESS_QUERY_PARAM);
+        // A success carries no rejection marker, so a stale one from an earlier
+        // wrong guess cannot follow the visitor into the opened area.
+        expect(location).not.toContain(DEVELOPER_ACCESS_ERROR_PARAM);
+
+        const cookies = response.headers
+          .getSetCookie()
+          .filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`));
+        expect(cookies).toHaveLength(3);
+        expect(cookies.map((cookie) => cookie.match(/(?:^|;\s*)Path=([^;]+)/)?.[1])).toEqual([
+          "/admin/developer-hub",
+          "/mockups/development",
+          "/mockups/care-plan",
+        ]);
+        for (const cookie of cookies) {
+          expect(cookie).toContain("HttpOnly");
+          expect(cookie).toContain("SameSite=lax");
+          expect(cookie).toContain("Max-Age=31536000");
+          expect(cookie.includes("; Secure")).toBe(protocol === "https:");
+          // Each subtree receives a signature, never the URL key.
+          expect(cookie).not.toContain(KEY);
+          const token = cookie.slice(cookie.indexOf("=") + 1).split(";")[0];
+          expect(developerAccessTokenValid(token, { DEVELOPER_AREA_ACCESS_KEY: KEY })).toBe(true);
+        }
+      });
+    },
+  );
+
+  it("issues exactly three cookies when a key exchange also renews an existing valid cookie", async () => {
     await withKey(async () => {
-      const response = await proxy(requestFor(`/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`));
-
-      const location = response.headers.get("location");
-      expect(location).toBeTruthy();
-      // The whole point of the redirect: the secret must not survive into the
-      // address bar, the shared history entry, or an onward Referer header.
-      expect(location).not.toContain(KEY);
-      expect(location).not.toContain(DEVELOPER_ACCESS_QUERY_PARAM);
-      // A success carries no rejection marker, so a stale one from an earlier
-      // wrong guess cannot follow the visitor into the opened area.
-      expect(location).not.toContain(DEVELOPER_ACCESS_ERROR_PARAM);
-
-      const cookie = accessCookie(response);
-      expect(cookie).toBeTruthy();
-      expect(cookie).toContain("HttpOnly");
-      expect(cookie).toContain("SameSite=lax");
-      // The cookie is scoped to / so both /mockups and /admin/developer-hub receive it.
-      expect(cookie).toContain("Path=/");
-      // And it carries a signature, not the key.
-      expect(cookie).not.toContain(KEY);
-
-      const token = cookie!.slice(cookie!.indexOf("=") + 1).split(";")[0];
-      expect(developerAccessTokenValid(token, { DEVELOPER_AREA_ACCESS_KEY: KEY })).toBe(true);
+      const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
+      const response = await proxy(
+        requestWithCookie(
+          `/mockups/development?${DEVELOPER_ACCESS_QUERY_PARAM}=${KEY}`,
+          DEVELOPER_ACCESS_COOKIE,
+          token,
+        ),
+      );
+      expect(
+        response.headers.getSetCookie().filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`)),
+      ).toHaveLength(3);
     });
   });
 
@@ -495,7 +524,9 @@ describe("passwordless developer-area access (?devkey)", () => {
       const token = issueDeveloperAccessToken({ DEVELOPER_AREA_ACCESS_KEY: KEY }) as string;
 
       const renewed = await proxy(requestWithCookie("/mockups/development", DEVELOPER_ACCESS_COOKIE, token));
-      expect(accessCookie(renewed)).toBeTruthy();
+      expect(
+        renewed.headers.getSetCookie().filter((cookie) => cookie.startsWith(`${DEVELOPER_ACCESS_COOKIE}=`)),
+      ).toHaveLength(3);
 
       // Rolling renewal must extend only what already verifies; a forged value
       // is left to be refused by DeveloperAreaGate, never re-stamped as valid.

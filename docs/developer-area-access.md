@@ -73,6 +73,11 @@ sent onward. The field submits with `location.replace`, so the URL that briefly
 carries the secret is not left as a history entry either. From then on that
 browser opens the developer area with no sign-in at all.
 
+The response carries separate `Set-Cookie` headers for `/admin/developer-hub`,
+`/mockups/development`, and `/mockups/care-plan`. They share the developer cookie
+name; each header is appended separately so Next.js does not overwrite the
+other paths. Renewal uses the same path scopes.
+
 **The key travels in a URL either way, so rotate it after exporting logs.**
 Typed or bookmarked, the secret is presented as `?devkey=…` on one request. The
 proxy redirects it straight back out, so it does not persist in the address bar
