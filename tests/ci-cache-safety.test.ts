@@ -581,7 +581,9 @@ describe("CI cache safety", () => {
    * its own case rather than left to review.
    */
   it("never cancels an in-flight run for a base-branch push", () => {
-    const concurrency = sourceSegment(workflow, "concurrency:", "permissions:", {
+    // Anchored on the unindented key: job-level `concurrency:` blocks (the main-failure router
+    // serialises itself) are indented, so this stays the workflow-level contract.
+    const concurrency = sourceSegment(workflow, "\nconcurrency:\n", "permissions:", {
       label: "workflow concurrency block",
     });
 
