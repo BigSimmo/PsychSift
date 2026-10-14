@@ -58,7 +58,7 @@ describe("main CI failure routing", () => {
   it("reopens its most recent closed issue instead of opening a new one", () => {
     expect(routing).toContain('state: "closed",');
     expect(routing).toMatch(
-      /const previous = closed\.find\(\(issue\) => !issue\.pull_request && String\(issue\.body \?\? ""\)\.includes\(MARKER\)\)/,
+      /closed\.find\(\(issue\) => !issue\.pull_request && String\(issue\.body \?\? ""\)\.includes\(MARKER\)\)/,
     );
     expect(routing).toContain('state: "open", title, body');
     expect(routing.indexOf('state: "open", title, body')).toBeLessThan(routing.indexOf("issues.create("));
@@ -186,14 +186,23 @@ function routingScriptSource() {
   return body.join("\n");
 }
 
+const RUN_SHA = "0123456789abcdef0123456789abcdef01234567";
+const ROUTED_SHA = "fedcba9876543210fedcba9876543210fedcba98";
+
 async function runRouting(options: {
   results: { prRequired: string; matrix: string; visual: string };
   jobs?: ListedJob[];
   listingFails?: boolean;
   openIssues?: Issue[];
+  closedIssues?: Issue[];
+  /** What `compareCommits` reports for the run's commit against the last routed one, or an Error to reject. */
+  compare?: "behind" | "ahead" | "identical" | "diverged" | Error;
 }) {
   const created: Array<{ title: string; body: string }> = [];
   const closed: number[] = [];
+  const updates: Array<{ issue_number: number; state?: string; body?: string }> = [];
+  const comments: number[] = [];
+  const compared: Array<{ base: string; head: string }> = [];
   const github = {
     paginate: async () => {
       if (options.listingFails) throw new Error("Resource not accessible by integration");
@@ -203,17 +212,27 @@ async function runRouting(options: {
       actions: { listJobsForWorkflowRun: () => undefined },
       issues: {
         listForRepo: async ({ state }: { state: string }) => ({
-          data: state === "open" ? (options.openIssues ?? []) : [],
+          data: state === "open" ? (options.openIssues ?? []) : (options.closedIssues ?? []),
         }),
         create: async (request: { title: string; body: string }) => {
           created.push(request);
           return { data: { number: 900 } };
         },
-        update: async (request: { issue_number: number; state?: string }) => {
+        update: async (request: { issue_number: number; state?: string; body?: string }) => {
+          updates.push(request);
           if (request.state === "closed") closed.push(request.issue_number);
         },
-        createComment: async () => undefined,
+        createComment: async (request: { issue_number: number }) => {
+          comments.push(request.issue_number);
+        },
         addAssignees: async () => undefined,
+      },
+      repos: {
+        compareCommits: async (request: { base: string; head: string }) => {
+          compared.push(request);
+          if (options.compare instanceof Error) throw options.compare;
+          return { data: { status: options.compare ?? "ahead" } };
+        },
       },
     },
   };
@@ -223,7 +242,7 @@ async function runRouting(options: {
     PR_REQUIRED_RESULT: options.results.prRequired,
     BROWSER_MATRIX_RESULT: options.results.matrix,
     VISUAL_BASELINE_RESULT: options.results.visual,
-    HEAD_SHA: "0123456789abcdef",
+    HEAD_SHA: RUN_SHA,
     HEAD_MESSAGE: "Example merge",
   };
   const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
@@ -236,7 +255,7 @@ async function runRouting(options: {
       else process.env[key] = value;
     }
   }
-  return { created, closed };
+  return { created, closed, updates, comments, compared };
 }
 
 describe("main CI failure routing, executed", () => {
@@ -312,24 +331,135 @@ describe("main CI failure routing, executed", () => {
 
 /**
  * Runs on main finish out of order (2026-10-13: the tip's green run closed #3099, then an older
- * commit's red run reopened it). Only the run for main's current tip may open, update or close the
- * pinned issue, and the check must come before any issue is touched, and must fail open.
+ * commit's run reopened it). Every body the job writes records the commit it last routed, and a run
+ * whose commit is behind that one stands down. Ordering by what was last routed, not by "is this
+ * main's tip", means a merge streak cannot suppress every alert.
  */
 describe("main CI failure routing ignores superseded runs", () => {
-  const routing = workflow.slice(workflow.indexOf("  main-failure-routing:"));
-  const tipCheck = routing.indexOf('github.rest.repos.getBranch({ owner, repo, branch: "main" })');
-
-  it("compares the run's commit with main's current tip and stops when they differ", () => {
-    expect(tipCheck).toBeGreaterThan(-1);
-    expect(routing).toMatch(/if \(headSha && tipSha && tipSha !== headSha\) \{[\s\S]*?return;/);
+  const red = { prRequired: "failure", matrix: "skipped", visual: "skipped" };
+  const green = { prRequired: "success", matrix: "success", visual: "success" };
+  const failingJobs: ListedJob[] = [{ name: "Build", conclusion: "failure" }];
+  const stamp = (sha: string) => `<!-- routed-sha:${sha} -->`;
+  const marked = (sha: string): Issue => ({
+    number: 42,
+    title: "CI on main is failing",
+    body: `<!-- main-ci-routing:v1 -->\n${stamp(sha)}`,
   });
 
-  it("checks the tip before it reads, closes or reopens any issue", () => {
-    expect(tipCheck).toBeLessThan(routing.indexOf("issues.listForRepo("));
-    expect(tipCheck).toBeLessThan(routing.indexOf("if (!red)"));
+  it("serialises the routing job without cancelling the run in flight", () => {
+    const routing = workflow.slice(workflow.indexOf("  main-failure-routing:"));
+    expect(routing).toMatch(/concurrency:\n {6}group: main-failure-routing\n {6}cancel-in-progress: false/);
   });
 
-  it("fails open so an unreadable tip never swallows an alert", () => {
-    expect(routing).toContain("Could not read main's tip, routing this run anyway");
+  it("leaves the issue untouched when a superseded red run finishes after a newer one routed", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [marked(ROUTED_SHA)],
+      compare: "behind",
+    });
+    expect(result.compared).toMatchObject([{ base: ROUTED_SHA, head: RUN_SHA }]);
+    expect(result.updates).toHaveLength(0);
+    expect(result.comments).toHaveLength(0);
+    expect(result.created).toHaveLength(0);
+  });
+
+  it("does not close the issue for a superseded green run", async () => {
+    const result = await runRouting({ results: green, jobs: [], openIssues: [marked(ROUTED_SHA)], compare: "behind" });
+    expect(result.closed).toHaveLength(0);
+    expect(result.updates).toHaveLength(0);
+  });
+
+  it("does not reopen a closed issue for a red run older than the green that closed it", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      closedIssues: [marked(ROUTED_SHA)],
+      compare: "behind",
+    });
+    expect(result.updates).toHaveLength(0);
+    expect(result.created).toHaveLength(0);
+  });
+
+  it("still alerts when an older commit's run is the newest one to report (merge streak)", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [marked(ROUTED_SHA)],
+      compare: "ahead",
+    });
+    expect(result.updates).toHaveLength(1);
+    expect(result.updates[0]!.body).toContain(stamp(RUN_SHA));
+    expect(result.updates[0]!.body).not.toContain(stamp(ROUTED_SHA));
+    expect(result.comments).toEqual([42]);
+  });
+
+  it("opens an issue stamped with the run's commit when a red run finds none", async () => {
+    const result = await runRouting({ results: red, jobs: failingJobs });
+    expect(result.created).toHaveLength(1);
+    expect(result.created[0]!.body).toContain(stamp(RUN_SHA));
+    expect(result.compared).toHaveLength(0);
+  });
+
+  it("stamps the closing green run on the issue so a later stale red run cannot reopen it", async () => {
+    const result = await runRouting({ results: green, jobs: [], openIssues: [marked(ROUTED_SHA)], compare: "ahead" });
+    expect(result.closed).toEqual([42]);
+    expect(result.updates[0]!.body).toContain(stamp(RUN_SHA));
+    expect(result.updates[0]!.body).toContain("<!-- main-ci-routing:v1 -->");
+  });
+
+  it("records a green run on the closed issue when none is open", async () => {
+    const result = await runRouting({ results: green, jobs: [], closedIssues: [marked(ROUTED_SHA)], compare: "ahead" });
+    expect(result.closed).toHaveLength(0);
+    expect(result.updates).toHaveLength(1);
+    expect(result.updates[0]!.state).toBeUndefined();
+    expect(result.updates[0]!.body).toContain(stamp(RUN_SHA));
+  });
+
+  it("routes a red run that has no recorded commit to order against", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [ownIssueWithoutStamp()],
+      compare: "behind",
+    });
+    expect(result.compared).toHaveLength(0);
+    expect(result.updates).toHaveLength(1);
+  });
+
+  it("fails open: an ordering lookup that errors still routes the alert", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [marked(ROUTED_SHA)],
+      compare: new Error("Not Found"),
+    });
+    expect(result.updates).toHaveLength(1);
+    expect(result.comments).toEqual([42]);
+  });
+
+  it("treats a diverged history as not superseded", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [marked(ROUTED_SHA)],
+      compare: "diverged",
+    });
+    expect(result.updates).toHaveLength(1);
+  });
+
+  it("does not compare a run with itself when it is the commit last routed", async () => {
+    const result = await runRouting({
+      results: red,
+      jobs: failingJobs,
+      openIssues: [marked(RUN_SHA)],
+      compare: "behind",
+    });
+    expect(result.compared).toHaveLength(0);
+    expect(result.updates).toHaveLength(1);
   });
 });
+
+function ownIssueWithoutStamp(): Issue {
+  return { number: 42, title: "CI on main is failing", body: "<!-- main-ci-routing:v1 -->" };
+}

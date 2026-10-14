@@ -2218,6 +2218,12 @@ jobs:
     if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # One routing job at a time, never cancelling the one in flight. Without this a slow older run
+    # could read the issue, wait, and write after a newer run had already routed. A newer waiting run
+    # replaces an older waiting one, which is safe: the newest run is the one that must speak.
+    concurrency:
+      group: main-failure-routing
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write
@@ -2320,31 +2326,71 @@ jobs:
               }
             }
 
-            // Only the run for main's CURRENT tip may speak for main. Runs finish out of order: on
+            // A run older than the one that last routed must not undo it. Runs finish out of order: on
             // 2026-10-13 the tip's green run closed the issue at 17:27Z and an older commit's run,
-            // finishing at 17:33Z, reopened it for a failure main no longer had. A superseded run is
-            // still visible in its own checks; it just must not reopen or close the pinned issue.
-            // Fails open: if the tip cannot be read, route as before rather than lose an alert.
-            try {
-              const { data: branch } = await github.rest.repos.getBranch({ owner, repo, branch: "main" });
-              const tipSha = branch?.commit?.sha ?? "";
-              if (headSha && tipSha && tipSha !== headSha) {
-                core.info(
-                  `Run is for ${headSha.slice(0, 12)} but main is now at ${tipSha.slice(0, 12)}; ` +
-                    `leaving the pinned issue to the tip's run (this run was ${red ? "red" : "green"}).`,
-                );
-                return;
+            // finishing at 17:33Z, reopened it for a failure main no longer had. Every body this job
+            // writes carries the commit it last routed, and a run whose commit is BEHIND that one
+            // stands down. Ordering by what was last routed (not by "is this main's tip") means a busy
+            // merge streak cannot suppress every alert: an older red run still speaks when nothing
+            // newer has. Fails open: an unreadable ordering routes rather than loses an alert.
+            const ROUTED_PATTERN = /<!-- routed-sha:([0-9a-f]{7,40}) -->/;
+            const withRoutedStamp = (text) => {
+              const base = String(text ?? "").replace(ROUTED_PATTERN, "").trimEnd();
+              return headSha ? `${base}\n<!-- routed-sha:${headSha} -->` : base;
+            };
+            async function isSuperseded(issue) {
+              const routedSha = ROUTED_PATTERN.exec(String(issue?.body ?? ""))?.[1];
+              if (!headSha || !routedSha || routedSha === headSha) return false;
+              try {
+                const { data: comparison } = await github.rest.repos.compareCommits({
+                  owner,
+                  repo,
+                  base: routedSha,
+                  head: headSha,
+                });
+                return comparison?.status === "behind";
+              } catch (error) {
+                core.warning(`Could not order this run against ${routedSha.slice(0, 12)}, routing it anyway: ${error.message}`);
+                return false;
               }
-            } catch (error) {
-              core.warning(`Could not read main's tip, routing this run anyway: ${error.message}`);
             }
 
             const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
             const owned = (issue) => String(issue.body ?? "").includes(MARKER) || issue.title === title;
             const existing = open.find(owned) ?? null;
 
+            // The most recent issue this job closed, matched by marker only so it never reopens an
+            // issue a person wrote. It is the ordering reference when nothing is open, and the issue a
+            // new red spell reopens.
+            async function latestClosedOwned() {
+              const { data: closed } = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: "closed",
+                labels: label,
+                sort: "updated",
+                direction: "desc",
+                per_page: 20,
+              });
+              return closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
+            }
+            const previous = existing ? null : await latestClosedOwned();
+
+            if (await isSuperseded(existing ?? previous)) {
+              core.info(
+                `Run for ${headSha.slice(0, 12)} is older than the commit already routed; ` +
+                  `leaving the pinned issue alone (this run was ${red ? "red" : "green"}).`,
+              );
+              return;
+            }
+
             if (!red) {
               if (!existing) {
+                // Record this green run on the closed issue, so a still-older red run that finishes
+                // after it cannot reopen the issue for a failure main no longer has.
+                if (previous && withRoutedStamp(previous.body) !== String(previous.body ?? "")) {
+                  await github.rest.issues.update({ owner, repo, issue_number: previous.number, body: withRoutedStamp(previous.body) });
+                }
                 core.info("CI on main is green and no failure issue of ours is open.");
                 return;
               }
@@ -2364,7 +2410,14 @@ jobs:
                   MARKER,
                 ].join("\n"),
               });
-              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: "closed", state_reason: "completed" });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: "closed",
+                state_reason: "completed",
+                body: withRoutedStamp(existing.body),
+              });
               core.info(`Closed #${existing.number} after a green main run.`);
               return;
             }
@@ -2395,9 +2448,10 @@ jobs:
               "is a standing defect rather than a regression this push introduced.",
               MARKER,
             ].join("\n");
+            const stampedBody = withRoutedStamp(body);
 
             if (existing) {
-              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body: stampedBody });
               await github.rest.issues.createComment({
                 owner,
                 repo,
@@ -2410,18 +2464,8 @@ jobs:
               // Reopen the most recent issue this job closed rather than opening a new one per red
               // spell (owner decision, 2026-09-26: main flips red and green often, and 25 issues in a
               // day was noise). Marker-only match, so it never reopens an issue a person wrote.
-              const { data: closed } = await github.rest.issues.listForRepo({
-                owner,
-                repo,
-                state: "closed",
-                labels: label,
-                sort: "updated",
-                direction: "desc",
-                per_page: 20,
-              });
-              const previous = closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
               if (previous) {
-                await github.rest.issues.update({ owner, repo, issue_number: previous.number, state: "open", title, body });
+                await github.rest.issues.update({ owner, repo, issue_number: previous.number, state: "open", title, body: stampedBody });
                 await github.rest.issues.createComment({
                   owner,
                   repo,
@@ -2431,7 +2475,7 @@ jobs:
                 await assignAlert(previous.number);
                 core.warning(`CI on main is failing; reopened #${previous.number}.`);
               } else {
-                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: stampedBody });
                 await assignAlert(created.data.number);
                 core.warning(`CI on main is failing; opened #${created.data.number}.`);
               }
