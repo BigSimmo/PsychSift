@@ -345,7 +345,8 @@ at the **end** of adoption, with its own visual-regression pass (≈663 type cal
 
 **Current truth.** The target layer is built and the source mounts `.ckb-v2` literally on the global
 `<html>`, so all 14 target clinical surface families inherit v2 and are declared `v2` with `passed`
-proof in `adoption-contract.json` (see [ADOPTION.md](ADOPTION.md)), while `baseline` remains
+proof statuses recorded in `adoption-contract.json` (see [ADOPTION.md](ADOPTION.md)); those are recorded
+declarations, and the browser proofs were Not run for this documentation-only change. `baseline` remains
 `not-committed` pending human-approved Linux visual baselines. `adoption-manifest.json` records
 observed mounting and declared adoption independently; it is not an inference from a token file or
 a remote design-project claim.

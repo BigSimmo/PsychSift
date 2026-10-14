@@ -157,8 +157,10 @@ The adoption contract separately declares every production page route and shared
 under an explicit surface family and disposition. New undeclared routes fail generation. API and
 mockup trees are non-product exclusions; the sole route-only exception is the documented legacy
 document-source redirect. All 14 declared clinical surface families now mount `.ckb-v2` (via the
-literal `.ckb-v2` on the global `<html>` root, with declared `v2` shell and `passed` proof in
-`adoption-contract.json` / [ADOPTION.md](ADOPTION.md)).
+literal `.ckb-v2` on the global `<html>` root, with the declared `v2` shell and the `passed` proof statuses
+recorded in `adoption-contract.json` / [ADOPTION.md](ADOPTION.md)). Those statuses are recorded declarations
+backed by the evidence paths in `adoption-manifest.json`; this documentation-only change did not re-run the
+browser proofs (Not run: no browser or design-system command was executed for this wording).
 
 **Rejected.** (a) A hand-maintained, partial `dtsPropsFor` list: it already drifted from final
 `Chip`, `Sheet`, `ConfirmDialog`, and callback contracts. (b) Calling every bundle symbol a visual
