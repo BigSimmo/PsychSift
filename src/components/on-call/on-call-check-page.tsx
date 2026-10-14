@@ -157,7 +157,7 @@ export function OnCallCheckPage({ now: nowProp }: { now?: Date } = {}) {
                           </span>
                           <span className={cn(textMuted, "break-words text-xs")}>
                             {[
-                              ON_CALL_VIEW_TITLES[onCallViewForEntry(entry)],
+                              ON_CALL_VIEW_TITLES[entry.view ?? onCallViewForEntry(entry)],
                               entry.lastVerifiedAt
                                 ? `Checked ${formatClinicalDate(entry.lastVerifiedAt)}${
                                     dueAt ? `, due ${formatClinicalDate(dueAt.toISOString())}` : ""

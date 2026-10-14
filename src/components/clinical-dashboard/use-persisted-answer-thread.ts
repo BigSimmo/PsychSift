@@ -49,7 +49,7 @@ export function usePersistedAnswerThread({
     }
     if (!ownerId || !metadata) return;
     savePersistedAnswerThread(ownerId, {
-      version: 2,
+      version: 3,
       priorTurns,
       latestTurn,
       collapsedTurnIds: [...collapsedTurnIds],

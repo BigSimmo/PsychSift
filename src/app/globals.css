@@ -18,6 +18,7 @@
 /* Quiet tab and row motion (12 Oct 2026). Here rather than in the search-app layout so
    it adds no separate stylesheet to that layout's first download. */
 @import "./motion.css";
+@import "../styles/print.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));

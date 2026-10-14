@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-11T06:07:15.735Z",
+  "generated_at": "2026-10-13T18:50:06.206Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "58ae519e96479e7fd131dc50a7781bc4c394c30d7dc0cfeffd68b1e41a5ba6de",
-  "replay_seconds": 13,
+  "schema_sha256": "c194e7e015c87d6b7860df7a1d5667ba9aa7deb17208959a148e2aeaa3e816ac",
+  "replay_seconds": 15,
   "snapshot": {
     "views": [
       {
@@ -565,7 +565,7 @@
           }
         ],
         "reloptions": null,
-        "rls_forced": false,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -657,7 +657,7 @@
           }
         ],
         "reloptions": null,
-        "rls_forced": false,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -2630,7 +2630,7 @@
           }
         ],
         "reloptions": null,
-        "rls_forced": false,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -2682,7 +2682,7 @@
           }
         ],
         "reloptions": null,
-        "rls_forced": false,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -6484,7 +6484,7 @@
           }
         ],
         "reloptions": null,
-        "rls_forced": false,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -6551,7 +6551,7 @@
           }
         ],
         "reloptions": null,
-        "rls_forced": false,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -8044,6 +8044,182 @@
         ],
         "reloptions": null,
         "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "registrar_assessments",
+        "columns": [
+          {
+            "name": "assessor_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "category",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "feedback",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "ratings",
+            "type": "jsonb",
+            "default": "'{}'::jsonb",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "registrar_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "default": "'draft'::text",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "title",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": true,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
+        "name": "registrar_training_milestones",
+        "columns": [
+          {
+            "name": "achieved_at",
+            "type": "timestamp with time zone",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "evidence_summary",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "id",
+            "type": "uuid",
+            "default": "gen_random_uuid()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "milestone_code",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "milestone_title",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "registrar_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "stage",
+            "type": "text",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": true,
         "rls_enabled": true
       },
       {
@@ -15361,6 +15537,36 @@
         "def_hash": "6d913e54f17c817a9863443d02b8935c"
       },
       {
+        "def": "CREATE INDEX registrar_assessments_assessor_idx ON public.registrar_assessments USING btree (assessor_id) WHERE (assessor_id IS NOT NULL)",
+        "name": "registrar_assessments_assessor_idx",
+        "table": "registrar_assessments",
+        "def_hash": "5d6068290389fca6e99222c7c7214a18"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX registrar_assessments_pkey ON public.registrar_assessments USING btree (id)",
+        "name": "registrar_assessments_pkey",
+        "table": "registrar_assessments",
+        "def_hash": "0e242ab2a6fe252accaa8e38ac60b4f1"
+      },
+      {
+        "def": "CREATE INDEX registrar_assessments_registrar_idx ON public.registrar_assessments USING btree (registrar_id, created_at DESC)",
+        "name": "registrar_assessments_registrar_idx",
+        "table": "registrar_assessments",
+        "def_hash": "991e433df5b2b079de626c78c8f54e2e"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX registrar_training_milestones_pkey ON public.registrar_training_milestones USING btree (id)",
+        "name": "registrar_training_milestones_pkey",
+        "table": "registrar_training_milestones",
+        "def_hash": "19a6b1450bc0a6134c24c3d4141439fd"
+      },
+      {
+        "def": "CREATE INDEX registrar_training_milestones_registrar_idx ON public.registrar_training_milestones USING btree (registrar_id, stage)",
+        "name": "registrar_training_milestones_registrar_idx",
+        "table": "registrar_training_milestones",
+        "def_hash": "5e1c150e9d19323508de8d3e1eb5d722"
+      },
+      {
         "def": "CREATE INDEX roster_assignments_live_service_idx ON public.roster_assignments USING btree (service_id, starts_at) WHERE (superseded_at IS NULL)",
         "name": "roster_assignments_live_service_idx",
         "table": "roster_assignments",
@@ -17152,6 +17358,30 @@
       },
       {
         "cmd": "ALL",
+        "name": "registrar_assessments_service_role_all",
+        "qual": "true",
+        "roles": [
+          "service_role"
+        ],
+        "table": "registrar_assessments",
+        "schema": "public",
+        "permissive": "PERMISSIVE",
+        "with_check": "true"
+      },
+      {
+        "cmd": "ALL",
+        "name": "registrar_training_milestones_service_role_all",
+        "qual": "true",
+        "roles": [
+          "service_role"
+        ],
+        "table": "registrar_training_milestones",
+        "schema": "public",
+        "permissive": "PERMISSIVE",
+        "with_check": "true"
+      },
+      {
+        "cmd": "ALL",
         "name": "source review events service role",
         "qual": "true",
         "roles": [
@@ -17641,6 +17871,16 @@
         "def": "CREATE TRIGGER rag_response_cache_updated_at BEFORE UPDATE ON public.rag_response_cache FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
         "name": "rag_response_cache_updated_at",
         "table": "rag_response_cache"
+      },
+      {
+        "def": "CREATE TRIGGER registrar_assessments_updated_at BEFORE UPDATE ON public.registrar_assessments FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "registrar_assessments_updated_at",
+        "table": "registrar_assessments"
+      },
+      {
+        "def": "CREATE TRIGGER registrar_training_milestones_updated_at BEFORE UPDATE ON public.registrar_training_milestones FOR EACH ROW EXECUTE FUNCTION public.set_updated_at()",
+        "name": "registrar_training_milestones_updated_at",
+        "table": "registrar_training_milestones"
       },
       {
         "def": "CREATE TRIGGER roster_calendar_links_cap BEFORE INSERT ON public.roster_calendar_links FOR EACH ROW EXECUTE FUNCTION public.roster_calendar_links_cap()",
@@ -18785,6 +19025,14 @@
         ],
         "def_hash": "3c021e0243c1052b4928112c9dcc96c7",
         "signature": "public.publish_site_content_record(text,uuid,text,bigint,text,text,text)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "4299bc0f724cb2f8d32653580991cb24",
+        "signature": "public.purge_expired_api_rate_limit_subjects(integer)"
       },
       {
         "acl": [
@@ -22351,6 +22599,46 @@
         "def": "PRIMARY KEY (id)",
         "name": "rag_visual_eval_runs_pkey",
         "table": "rag_visual_eval_runs"
+      },
+      {
+        "def": "FOREIGN KEY (assessor_id) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "registrar_assessments_assessor_id_fkey",
+        "table": "registrar_assessments"
+      },
+      {
+        "def": "CHECK ((category = ANY (ARRAY['epa'::text, 'wba'::text, 'ita'::text, 'supervisor_review'::text, 'general'::text])))",
+        "name": "registrar_assessments_category_check",
+        "table": "registrar_assessments"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "registrar_assessments_pkey",
+        "table": "registrar_assessments"
+      },
+      {
+        "def": "FOREIGN KEY (registrar_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "registrar_assessments_registrar_id_fkey",
+        "table": "registrar_assessments"
+      },
+      {
+        "def": "CHECK ((status = ANY (ARRAY['draft'::text, 'submitted'::text, 'signed_off'::text, 'archived'::text])))",
+        "name": "registrar_assessments_status_check",
+        "table": "registrar_assessments"
+      },
+      {
+        "def": "PRIMARY KEY (id)",
+        "name": "registrar_training_milestones_pkey",
+        "table": "registrar_training_milestones"
+      },
+      {
+        "def": "FOREIGN KEY (registrar_id) REFERENCES auth.users(id) ON DELETE CASCADE",
+        "name": "registrar_training_milestones_registrar_id_fkey",
+        "table": "registrar_training_milestones"
+      },
+      {
+        "def": "CHECK ((stage = ANY (ARRAY['stage_1'::text, 'stage_2'::text, 'stage_3'::text, 'fellowship'::text])))",
+        "name": "registrar_training_milestones_stage_check",
+        "table": "registrar_training_milestones"
       },
       {
         "def": "CHECK ((ends_at > starts_at))",

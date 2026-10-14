@@ -23,6 +23,7 @@ import {
   queueRowFingerprint,
 } from "./check-outstanding-issues.mjs";
 import {
+  displayIdForUlid,
   isIssueDisplayId,
   isIssueUlid,
   issueUlid,
@@ -87,6 +88,9 @@ function validateDoneRequest(payload, problems) {
   if (!isIssueDisplayId(payload?.id)) problems.push("done requires a canonical issue display id");
   if (!payload?.outcome) problems.push("done requires outcome");
   validateFingerprint(payload, "done", problems);
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("done targetUlid must be a valid ULID");
+  }
 }
 
 function validateUpdateRequest(action, payload, problems) {
@@ -108,6 +112,9 @@ function validateUpdateRequest(action, payload, problems) {
   if (payload?.pri !== undefined && !["P1", "P2", "P3"].includes(String(payload.pri))) {
     problems.push("update pri must be P1, P2, or P3");
   }
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("update targetUlid must be a valid ULID");
+  }
 }
 
 function validateQueueRequest(payload, problems) {
@@ -119,6 +126,9 @@ function validateQueueRequest(payload, problems) {
     problems.push(`queue requires one of ${QUEUE_FIELDS.join(", ")}`);
   }
   validateFingerprint(payload, "queue", problems);
+  if (payload?.targetUlid !== undefined && !isIssueUlid(payload.targetUlid)) {
+    problems.push("queue targetUlid must be a valid ULID");
+  }
 }
 
 function validateCancelRequest(payload, problems) {
@@ -155,6 +165,10 @@ function findIssueRow(markdown, id, tables) {
   return parseIssues(markdown).rows.find(
     (row) => normalizeIssueDisplayId(row.id) === targetId && tables.includes(row.table),
   );
+}
+
+function findIssueRowByUlid(markdown, ulid, tables) {
+  return parseIssues(markdown).rows.find((row) => row.ulid === ulid && tables.includes(row.table));
 }
 
 function assertOutcomeAmendmentTarget(markdown, request) {
@@ -263,9 +277,11 @@ export function applyRequest(markdown, request, options = {}) {
   return applyValidatedRequest(markdown, request, options, dateOptions, autoAllowArchived);
 }
 
-function mutationTargets(request) {
+function mutationTargets(request, addUlids = new Set()) {
   if (request.action === "add" || request.action === "cancel") return [];
-  const id = normalizeIssueDisplayId(request.payload.id);
+  const targetUlid = request.payload?.targetUlid;
+  const isPendingAddTarget = targetUlid && addUlids.has(targetUlid);
+  const id = isPendingAddTarget ? `ulid:${targetUlid}` : normalizeIssueDisplayId(request.payload.id);
   // Key by the rows a request actually mutates. `update` changes only the
   // Open-items row and `queue` changes only its queue row, so they can safely
   // share a batch. `done` moves the Open-items row *and* prunes its queue
@@ -274,10 +290,10 @@ function mutationTargets(request) {
   return [request.action === "queue" ? `queue ${id}` : id];
 }
 
-function requestsByMutationTarget(requests) {
+function requestsByMutationTarget(requests, addUlids = new Set()) {
   const byTarget = new Map();
   for (const request of requests) {
-    for (const target of mutationTargets(request)) {
+    for (const target of mutationTargets(request, addUlids)) {
       const entries = byTarget.get(target) ?? [];
       entries.push(request);
       byTarget.set(target, entries);
@@ -286,9 +302,9 @@ function requestsByMutationTarget(requests) {
   return byTarget;
 }
 
-function mutationConflicts(requests) {
+function mutationConflicts(requests, addUlids = new Set()) {
   const conflicts = [];
-  for (const [target, targetRequests] of requestsByMutationTarget(requests).entries()) {
+  for (const [target, targetRequests] of requestsByMutationTarget(requests, addUlids).entries()) {
     if (targetRequests.length <= 1) continue;
     // Duplicate closes are batch-aware: after the first archives the row, later
     // closes append their outcomes. Archive amendments retain their original
@@ -400,8 +416,62 @@ export function planRequestBatch(requests, options = {}) {
   const byId = indexRequests(requests);
   const { cancelledIds, cancellations, ineffective } = planCancellations(requests, byId, applied, warn);
 
-  const active = requests.filter((request) => request.action !== "cancel" && !cancelledIds.has(request.id));
-  const conflicts = mutationConflicts(active);
+  // Adds go first (stable otherwise): a close/update may target the issue a pending add creates
+  // (attachIssueFingerprint accepts that), and filename order would otherwise let a mutation whose
+  // UUID sorts first reach a row that does not exist yet and abort the whole batch.
+  const remaining = requests.filter((request) => request.action !== "cancel" && !cancelledIds.has(request.id));
+  const active = [
+    ...remaining.filter((request) => request.action === "add"),
+    ...remaining.filter((request) => request.action !== "add"),
+  ];
+
+  const addRequests = active.filter((request) => request.action === "add");
+  const addsByPrefix = new Map();
+  const addUlids = new Set();
+  for (const add of addRequests) {
+    const ulid = add.payload?.issueUlid ?? issueUlidFromRequest(add.createdOn, add.id);
+    addUlids.add(ulid);
+    const prefix = displayIdForUlid(ulid);
+    const list = addsByPrefix.get(prefix) ?? [];
+    list.push({ request: add, ulid });
+    addsByPrefix.set(prefix, list);
+  }
+
+  for (const mutation of active.filter((request) => request.action !== "add")) {
+    if (
+      mutation.payload?.baseRowFingerprint ||
+      mutation.payload?.targetTable === "archive" ||
+      mutation.payload?.allowArchived
+    ) {
+      continue;
+    }
+
+    const targetDisplayId = normalizeIssueDisplayId(mutation.payload?.id);
+    const matchingAdds = addsByPrefix.get(targetDisplayId) ?? [];
+    if (matchingAdds.length > 1) {
+      if (!mutation.payload?.targetUlid) {
+        throw new Error(
+          `mutation ${mutation.id} targets ambiguous display ID ${mutation.payload?.id}; multiple pending adds share this prefix. Specify targetUlid to disambiguate.`,
+        );
+      }
+      const match = matchingAdds.find((a) => a.ulid === mutation.payload.targetUlid);
+      if (!match) {
+        throw new Error(
+          `mutation ${mutation.id} targets ULID ${mutation.payload.targetUlid} which does not match any pending add with prefix ${targetDisplayId}`,
+        );
+      }
+    } else if (matchingAdds.length === 1) {
+      if (!mutation.payload?.targetUlid) {
+        mutation.payload.targetUlid = matchingAdds[0].ulid;
+      } else if (mutation.payload.targetUlid !== matchingAdds[0].ulid) {
+        throw new Error(
+          `mutation ${mutation.id} targets ULID ${mutation.payload.targetUlid} which does not match pending add ${matchingAdds[0].ulid} for ${targetDisplayId}`,
+        );
+      }
+    }
+  }
+
+  const conflicts = mutationConflicts(active, addUlids);
   if (conflicts.length > 0) {
     const detail = conflicts.map(([id, requestIds]) => `${id}: ${requestIds.join(", ")}`).join("; ");
     throw new Error(
@@ -417,19 +487,47 @@ export function applyRequestBatch(markdown, requests, options = {}) {
   const plan = planRequestBatch(requests, options);
   let next = markdown;
   const closedInBatch = new Set();
+  const ulidToDisplayId = new Map();
+
+  for (const row of parseIssues(markdown).rows) {
+    if (row.ulid && row.id) {
+      ulidToDisplayId.set(row.ulid, normalizeIssueDisplayId(row.id));
+    }
+  }
+
   for (const request of plan.active) {
-    const id = normalizeIssueDisplayId(request.payload?.id);
-    const isDuplicateClose = request.action === "done" && id && closedInBatch.has(id);
-    // Honor payload.allowArchived from createRequest. Passing a literal false
-    // would shadow it via `options.allowArchived ?? payload.allowArchived` and
-    // reintroduce the silent idempotent omit for archive-aware closes.
-    next = applyRequest(next, request, {
-      ...options,
-      idempotent: true,
-      allowArchived: Boolean(options.allowArchived || isDuplicateClose || request.payload?.allowArchived),
-    });
-    if (request.action === "done" && id) {
-      closedInBatch.add(id);
+    if (request.action === "add") {
+      const durableId = request.payload?.issueUlid ?? issueUlidFromRequest(request.createdOn, request.id);
+      next = applyRequest(next, request, {
+        ...options,
+        idempotent: true,
+        onAllocated: ({ id, ulid }) => {
+          if (ulid && id) ulidToDisplayId.set(ulid, normalizeIssueDisplayId(id));
+        },
+      });
+      if (!ulidToDisplayId.has(durableId)) {
+        const addedRow = parseIssues(next).rows.find((r) => r.ulid === durableId);
+        if (addedRow?.id) {
+          ulidToDisplayId.set(durableId, normalizeIssueDisplayId(addedRow.id));
+        }
+      }
+    } else {
+      if (request.payload?.targetUlid && ulidToDisplayId.has(request.payload.targetUlid)) {
+        request.payload.id = ulidToDisplayId.get(request.payload.targetUlid);
+      }
+      const id = normalizeIssueDisplayId(request.payload?.id);
+      const isDuplicateClose = request.action === "done" && id && closedInBatch.has(id);
+      // Honor payload.allowArchived from createRequest. Passing a literal false
+      // would shadow it via `options.allowArchived ?? payload.allowArchived` and
+      // reintroduce the silent idempotent omit for archive-aware closes.
+      next = applyRequest(next, request, {
+        ...options,
+        idempotent: true,
+        allowArchived: Boolean(options.allowArchived || isDuplicateClose || request.payload?.allowArchived),
+      });
+      if (request.action === "done" && id) {
+        closedInBatch.add(id);
+      }
     }
   }
   return { markdown: next, ...plan };
@@ -1116,15 +1214,29 @@ export function assertSafeRemoteReconciliation(argv = [], options = {}) {
   }
 }
 
+function extractTargetUlid(argv) {
+  const explicit = argValue(argv, "targetUlid");
+  if (explicit && isIssueUlid(explicit)) return explicit;
+  const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
+  const rawTargetId = argValue(argv, "id") ?? positionalId;
+  if (!rawTargetId) return undefined;
+  const stripped = rawTargetId.startsWith("#") ? rawTargetId.slice(1) : rawTargetId;
+  if (isIssueUlid(stripped)) return stripped;
+  return undefined;
+}
+
 function requestTargetId(argv) {
   const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
   const rawTargetId = argValue(argv, "id") ?? positionalId;
   if (!rawTargetId) return undefined;
+  const stripped = rawTargetId.startsWith("#") ? rawTargetId.slice(1) : rawTargetId;
+  if (isIssueUlid(stripped)) return displayIdForUlid(stripped);
   return rawTargetId.startsWith("#") || rawTargetId.includes("-") ? rawTargetId : `#${rawTargetId}`;
 }
 
 function createRequestPayload(action, argv) {
   const targetId = requestTargetId(argv);
+  const targetUlid = extractTargetUlid(argv);
   if (action === "add") {
     return {
       pri: argValue(argv, "pri"),
@@ -1136,7 +1248,9 @@ function createRequestPayload(action, argv) {
     };
   }
   if (action === "done" || action === "amend-outcome") {
-    return { id: targetId, outcome: argValue(argv, "outcome") ?? argValue(argv, "reason") };
+    const payload = { id: targetId, outcome: argValue(argv, "outcome") ?? argValue(argv, "reason") };
+    if (targetUlid) payload.targetUlid = targetUlid;
+    return payload;
   }
   if (action === "cancel") {
     const positionalId = argv[1]?.startsWith("--") ? undefined : argv[1];
@@ -1146,7 +1260,7 @@ function createRequestPayload(action, argv) {
     };
   }
   if (action === "queue") {
-    return {
+    const payload = {
       id: targetId,
       acuity: argValue(argv, "acuity"),
       capability: argValue(argv, "capability"),
@@ -1154,8 +1268,10 @@ function createRequestPayload(action, argv) {
       estimate: argValue(argv, "estimate"),
       outcome: argValue(argv, "outcome") ?? argValue(argv, "reason"),
     };
+    if (targetUlid) payload.targetUlid = targetUlid;
+    return payload;
   }
-  return {
+  const payload = {
     // `pri` rides the same update request as the prose fields so a demotion and
     // its reason land as one auditable mutation. Without it, the CLI could not
     // express the re-prioritisation that updateIssue and validation both support.
@@ -1166,36 +1282,90 @@ function createRequestPayload(action, argv) {
     source: argValue(argv, "source"),
     outcome: argValue(argv, "outcome") ?? argValue(argv, "reason"),
   };
+  if (targetUlid) payload.targetUlid = targetUlid;
+  return payload;
 }
 
 function attachIssueFingerprint(action, payload) {
   if (!["done", "update", "amend-outcome"].includes(action) || typeof payload.id !== "string") return;
-  const current = readOutstandingIssues();
-  const currentFingerprint = issueRowFingerprint(current, payload.id);
-  if (currentFingerprint !== null) {
-    if (action === "amend-outcome" || (action === "update" && payload.outcome !== undefined)) {
-      throw new Error(
-        `ledger request rejected: ${payload.id} is still open; outcome amendments require an archived issue`,
-      );
+  const pending = loadPending();
+
+  // If explicit targetUlid identifies a pending add, retain it without borrowing
+  // an existing row's fingerprint (even if an existing row shares the 6-character display prefix).
+  if (payload.targetUlid) {
+    const pendingAdd = pending.find(
+      ({ request }) => request?.action === "add" && request?.payload?.issueUlid === payload.targetUlid,
+    );
+    if (pendingAdd) {
+      return;
     }
-    payload.baseRowFingerprint = currentFingerprint;
-    return;
   }
 
-  const isArchived = isArchivedIssue(current, payload.id);
-  if (!isArchived) throw new Error(`ledger request rejected: ${payload.id} is not in Open items`);
-  if (action === "done") {
-    // Carry archive-aware intent so reconcile merges the outcome instead of
-    // no-oping via the idempotent archived fast-path.
-    payload.allowArchived = true;
+  const current = readOutstandingIssues();
+  const row = payload.targetUlid
+    ? findIssueRowByUlid(current, payload.targetUlid, ["open", "archive"])
+    : findIssueRow(current, payload.id, ["open", "archive"]);
+
+  if (row) {
+    const isArchived = row.table === "archive";
+    if (!isArchived) {
+      if (action === "amend-outcome" || (action === "update" && payload.outcome !== undefined)) {
+        throw new Error(
+          `ledger request rejected: ${row.id} is still open; outcome amendments require an archived issue`,
+        );
+      }
+      const currentFingerprint = issueRowFingerprint(current, row.id);
+      if (currentFingerprint) payload.baseRowFingerprint = currentFingerprint;
+      if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
+      payload.id = row.id;
+      return;
+    }
+
+    if (action === "done") {
+      payload.allowArchived = true;
+      payload.targetTable = "archive";
+      if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
+      payload.id = row.id;
+      return;
+    }
+    const archiveFingerprint = archiveRowFingerprint(current, row.id);
+    if (archiveFingerprint) {
+      payload.baseRowFingerprint = archiveFingerprint;
+      payload.allowArchived = true;
+      payload.targetTable = "archive";
+      if (row.ulid && !payload.targetUlid) payload.targetUlid = row.ulid;
+      payload.id = row.id;
+      return;
+    }
+  }
+
+  const targetDisplayId = normalizeIssueDisplayId(payload.id);
+  const pendingMatches = pending.filter(({ request }) => {
+    if (request?.action !== "add" || !request?.payload?.issueUlid) return false;
+    const derived = displayIdForUlid(request.payload.issueUlid);
+    return derived === targetDisplayId;
+  });
+  if (pendingMatches.length === 1) {
+    if (!payload.targetUlid) {
+      payload.targetUlid = pendingMatches[0].request.payload.issueUlid;
+    } else if (payload.targetUlid !== pendingMatches[0].request.payload.issueUlid) {
+      throw new Error(
+        `ledger request rejected: targetUlid ${payload.targetUlid} does not match pending add ${pendingMatches[0].request.payload.issueUlid} (${payload.id})`,
+      );
+    }
     return;
   }
-  const archiveFingerprint = archiveRowFingerprint(current, payload.id);
-  if (archiveFingerprint) {
-    payload.baseRowFingerprint = archiveFingerprint;
-    payload.allowArchived = true;
-    payload.targetTable = "archive";
+  if (pendingMatches.length > 1) {
+    if (payload.targetUlid) {
+      const match = pendingMatches.find(({ request }) => request.payload.issueUlid === payload.targetUlid);
+      if (match) return;
+    }
+    throw new Error(
+      `ledger request rejected: ${payload.id} matches multiple pending add requests; specify the full ULID via --id to disambiguate`,
+    );
   }
+
+  throw new Error(`ledger request rejected: ${payload.id} is not in Open items`);
 }
 
 function attachQueueFingerprint(action, payload) {

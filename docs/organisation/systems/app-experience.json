@@ -69,6 +69,7 @@
     "src/components/applications-launcher-page.tsx",
     "src/components/calculators/**",
     "src/components/clinical-dashboard/**",
+    "src/components/clinical-notes/note-editor.tsx",
     "src/components/clinical-record-panels.tsx",
     "src/components/compare/**",
     "src/components/contextual-back-link.tsx",

@@ -5,6 +5,7 @@ import {
   type OnCallEntry,
   type OnCallSection,
 } from "@/lib/on-call/entry-model";
+import { onCallViewForEntry, type OnCallPageView } from "@/lib/on-call/view";
 import { PublicApiError } from "@/lib/http";
 import { withOwnerReadScope } from "@/lib/public-api-access";
 
@@ -37,7 +38,9 @@ export async function assertValidLinkedDocumentIds(
 const ROW_COLUMNS =
   "id, section, slug, title, subtitle, body, details, linked_document_ids, tags, is_personal, include_on_card, sort_order, last_verified_at";
 
-export function rowToOnCallEntry(row: Record<string, unknown>): OnCallEntry & { details: unknown } {
+export function rowToOnCallEntry(
+  row: Record<string, unknown>,
+): OnCallEntry & { details: unknown; view: OnCallPageView } {
   const base = onCallEntrySchema.parse({
     id: row.id,
     section: row.section,
@@ -59,7 +62,9 @@ export function rowToOnCallEntry(row: Record<string, unknown>): OnCallEntry & { 
   // A row whose details do not match its section is shown without them rather
   // than with a half-parsed shape a renderer would have to guess at.
   const parsed = onCallDetailsSchemaFor(base.section).safeParse(base.details);
-  return { ...base, details: parsed.success ? parsed.data : null };
+  const entry = { ...base, details: parsed.success ? parsed.data : null };
+  const view = onCallViewForEntry(entry);
+  return { ...entry, view };
 }
 
 /**

@@ -223,6 +223,7 @@ describe("fetchSharedOnCallEntries is deny-by-default", () => {
         "subtitle",
         "tags",
         "title",
+        "view",
       ].sort(),
     );
   });

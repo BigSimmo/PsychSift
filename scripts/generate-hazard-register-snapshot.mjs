@@ -20,7 +20,6 @@
  *
  * Run: npm run snapshot:hazards
  */
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,21 +40,11 @@ function read(relativePath) {
 }
 
 /**
- * Derive a deterministic YYYY-MM-DD date from the latest git commit touching
- * the hazard register source files so `--check` does not flap across calendar
- * days when the hazard register itself has not changed.
+ * Derive a deterministic YYYY-MM-DD date from the existing committed snapshot or
+ * the reviewedAt date in `docs/clinical-hazard-controls.json` so `--check` never
+ * depends on git history depth (shallow clones / squash merges) or wall-clock days.
  */
 export function resolveSourceGeneratedAt(fallbackNow = new Date()) {
-  try {
-    const out = execFileSync("git", ["log", "-1", "--format=%cs", "--", ANALYSIS_MD, CONTROLS_JSON], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "ignore"],
-    }).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(out)) return out;
-  } catch {
-    // Fall back to existing snapshot date or wall-clock UTC date when git is unavailable.
-  }
   const existingPath = join(repoRoot, SNAPSHOT_REL_PATH);
   if (existsSync(existingPath)) {
     try {
@@ -64,6 +53,12 @@ export function resolveSourceGeneratedAt(fallbackNow = new Date()) {
     } catch {
       // Ignore malformed existing snapshot.
     }
+  }
+  try {
+    const controls = JSON.parse(read(CONTROLS_JSON));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(controls?.reviewedAt ?? "")) return controls.reviewedAt;
+  } catch {
+    // Fall back to fallbackNow UTC date if controls cannot be parsed.
   }
   return fallbackNow.toISOString().slice(0, 10);
 }

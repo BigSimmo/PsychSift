@@ -118,7 +118,19 @@ describe("maintain-docs-system pipeline", () => {
           input: "docs/disaster-recovery-runbook.md",
           expectedSystem: "operations-and-governance",
           expectedSystemFile: "docs/organisation/systems/operations-and-governance.json",
-          expectedResolved: "delivery",
+          expectedResolved: "data-platform",
+        },
+        {
+          input: "docs/privacy-new-retention.md",
+          expectedSystem: "operations-and-governance",
+          expectedSystemFile: "docs/organisation/systems/operations-and-governance.json",
+          expectedResolved: "data-platform",
+        },
+        {
+          input: "src/lib/authorization-new.ts",
+          expectedSystem: "operations-and-governance",
+          expectedSystemFile: "docs/organisation/systems/operations-and-governance.json",
+          expectedResolved: "data-platform",
         },
       ];
 
@@ -128,6 +140,22 @@ describe("maintain-docs-system pipeline", () => {
         expect(result.systemFile).toBe(tc.expectedSystemFile);
         expect(result.resolvedSystem).toBe(tc.expectedResolved);
         expect(result.reason.length).toBeGreaterThan(10);
+      }
+    });
+
+    it("aligns with docs/organisation/systems/*.json ownership for representative existing files", () => {
+      const existingCases = [
+        { path: "src/lib/sources/index.ts", expectedResolved: "clinical-content" },
+        { path: "src/lib/authorization.ts", expectedResolved: "data-platform" },
+        { path: "docs/privacy-impact-assessment.md", expectedResolved: "data-platform" },
+        { path: "docs/source-acquisition-protocol.md", expectedResolved: "clinical-content" },
+        { path: "src/components/MasterSearchHeader.tsx", expectedResolved: "app-experience" },
+      ];
+
+      for (const tc of existingCases) {
+        const result = classifyRepositoryPath(tc.path);
+        expect(result.resolvedSystem).toBe(tc.expectedResolved);
+        expect(result.resolvedSystemFile).toBe(`docs/organisation/systems/${tc.expectedResolved}.json`);
       }
     });
 
@@ -219,13 +247,15 @@ describe("maintain-docs-system pipeline", () => {
   });
 
   describe("refreshDocPins", () => {
-    it("updates reviewed commit pins only for files that exist on disk", () => {
+    it("updates reviewed commit pins only for explicitly specified paths that exist on disk", () => {
       const root = makeTempFixture();
       const orgDir = path.join(root, "docs", "organisation");
       fs.mkdirSync(orgDir, { recursive: true });
 
       const existingDoc = path.join(root, "docs", "DOCS-SYSTEM.md");
+      const untouchedDoc = path.join(root, "docs", "README.md");
       fs.writeFileSync(existingDoc, "# Docs System\n", "utf8");
+      fs.writeFileSync(untouchedDoc, "# Docs Index\n", "utf8");
 
       const pinsPath = path.join(orgDir, "pins.json");
       fs.writeFileSync(
@@ -235,6 +265,7 @@ describe("maintain-docs-system pipeline", () => {
             version: 1,
             pins: {
               "docs/DOCS-SYSTEM.md": "0000000000000000000000000000000000000000",
+              "docs/README.md": "2222222222222222222222222222222222222222",
               "docs/missing-file.md": "1111111111111111111111111111111111111111",
             },
           },
@@ -245,7 +276,16 @@ describe("maintain-docs-system pipeline", () => {
       );
 
       const newSha = "abcdef1234567890abcdef1234567890abcdef12";
-      const res = refreshDocPins(root, { headSha: newSha });
+
+      // Without explicit paths, refreshDocPins is a no-op and never overwrites pins.
+      const noOpRes = refreshDocPins(root, { headSha: newSha });
+      expect(noOpRes.updated).toBe(false);
+      expect(noOpRes.updatedPaths).toEqual([]);
+
+      const res = refreshDocPins(root, {
+        headSha: newSha,
+        paths: ["docs/DOCS-SYSTEM.md", "docs/missing-file.md"],
+      });
 
       expect(res.updated).toBe(true);
       expect(res.headSha).toBe(newSha);
@@ -253,6 +293,7 @@ describe("maintain-docs-system pipeline", () => {
 
       const updatedPins = JSON.parse(fs.readFileSync(pinsPath, "utf8"));
       expect(updatedPins.pins["docs/DOCS-SYSTEM.md"]).toBe(newSha);
+      expect(updatedPins.pins["docs/README.md"]).toBe("2222222222222222222222222222222222222222");
       expect(updatedPins.pins["docs/missing-file.md"]).toBe("1111111111111111111111111111111111111111");
     });
   });

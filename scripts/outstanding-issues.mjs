@@ -221,6 +221,9 @@ export function addIssue(markdown, fields, options = {}) {
 
     const ulid = String(fields.issueUlid ?? options.issueUlid ?? issueUlid());
     const id = allocateDisplayId(ulid, new Set(parsed.rows.filter((entry) => entry.valid).map((entry) => entry.id)));
+    if (typeof options.onAllocated === "function") {
+      options.onAllocated({ id, ulid });
+    }
     const row = buildRow([
       issueIdCell(id, ulid),
       pri,

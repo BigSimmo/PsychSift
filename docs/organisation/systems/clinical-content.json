@@ -179,6 +179,7 @@
     "src/lib/medication-snapshot.ts",
     "src/lib/medication-source-links.ts",
     "src/lib/medications.ts",
+    "src/lib/medications/tall-man.ts",
     "src/lib/medicines-references.ts",
     "src/lib/mha-act-sections.ts",
     "src/lib/mha-timeline.ts",

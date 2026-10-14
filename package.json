@@ -9,7 +9,7 @@
     "npm": "11.x"
   },
   "scripts": {
-    "dev": "node scripts/dev-free-port.mjs",
+    "dev": "node --max-old-space-size=4096 scripts/dev-free-port.mjs",
     "preinstall": "node scripts/check-node-engine.cjs",
     "postinstall": "node scripts/check-installed-lock-parity.mjs --write-stamp && node scripts/install-git-hooks.mjs",
     "hooks:install": "node scripts/install-git-hooks.mjs",

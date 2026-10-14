@@ -18,9 +18,96 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { compilePattern } from "./check-organisation.mjs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_ROOT = path.resolve(__dirname, "..");
+
+/** @type {Map<string, string>} */
+const RESOLVED_TO_LOGICAL_SYSTEM = new Map([
+  ["answer-engine", "search-and-answers"],
+  ["source-intake", "sources-and-ingestion"],
+  ["personal-practice", "personal-practice"],
+  ["clinical-content", "clinical-modes"],
+  ["knowledge", "knowledge"],
+  ["app-experience", "shell-and-design"],
+  ["design-system", "shell-and-design"],
+  ["data-platform", "operations-and-governance"],
+  ["delivery", "operations-and-governance"],
+]);
+
+/** @type {Map<string, Array<{ system: string, pattern: string, exact: boolean, rank: number, regex: RegExp | null }>>} */
+const compiledRulesCache = new Map();
+
+function loadCompiledSystemRules(root = DEFAULT_ROOT) {
+  const cached = compiledRulesCache.get(root);
+  if (cached) return cached;
+
+  const systemsDir = path.join(root, "docs", "organisation", "systems");
+  if (!fs.existsSync(systemsDir)) {
+    compiledRulesCache.set(root, []);
+    return [];
+  }
+
+  const rules = [];
+  const entries = fs
+    .readdirSync(systemsDir)
+    .filter((f) => f.endsWith(".json"))
+    .sort();
+  for (const entry of entries) {
+    const absFile = path.join(systemsDir, entry);
+    let data;
+    try {
+      data = JSON.parse(fs.readFileSync(absFile, "utf8"));
+    } catch {
+      continue;
+    }
+    const systemId = typeof data?.id === "string" ? data.id : path.posix.basename(entry, ".json");
+    const paths = Array.isArray(data?.paths) ? data.paths : Array.isArray(data?.files) ? data.files : [];
+    for (const pattern of paths) {
+      if (typeof pattern !== "string" || !pattern.trim()) continue;
+      const star = pattern.indexOf("*");
+      const exact = star === -1;
+      rules.push({
+        system: systemId,
+        pattern,
+        exact,
+        rank: exact ? Number.POSITIVE_INFINITY : star,
+        regex: exact ? null : compilePattern(pattern),
+      });
+    }
+  }
+
+  compiledRulesCache.set(root, rules);
+  return rules;
+}
+
+function matchManifestRule(relPath, root = DEFAULT_ROOT) {
+  const rules = loadCompiledSystemRules(root);
+  if (rules.length === 0) return null;
+
+  for (const rule of rules) {
+    if (rule.exact && rule.pattern === relPath) {
+      return rule;
+    }
+  }
+
+  // Only evaluate glob rules from the manifest when the file exists on disk or the glob prefix
+  // is not a generic catch-all (`src/app/**/page.tsx`), so synthetic test paths still exercise heuristics.
+  const existsOnDisk = fs.existsSync(path.join(root, relPath));
+  let best = null;
+  for (const rule of rules) {
+    if (rule.exact || !rule.regex) continue;
+    if (!existsOnDisk && rule.pattern.startsWith("src/app/**/")) continue;
+    if (rule.regex.test(relPath)) {
+      if (!best || rule.rank > best.rank) {
+        best = rule;
+      }
+    }
+  }
+  return best;
+}
 
 /**
  * Normalizes a repository-relative path to POSIX forward slashes without leading `./` or `/`.
@@ -40,6 +127,7 @@ export function normalizeRepoPath(rawPath) {
  * canonical documentation/system areas (plus resolved on-disk system file in `docs/organisation/systems/`).
  *
  * @param {string} relativePath
+ * @param {{ root?: string }} [options]
  * @returns {{
  *   path: string,
  *   system: string,
@@ -49,7 +137,8 @@ export function normalizeRepoPath(rawPath) {
  *   reason: string
  * }}
  */
-export function classifyRepositoryPath(relativePath) {
+export function classifyRepositoryPath(relativePath, options = {}) {
+  const root = options.root || DEFAULT_ROOT;
   const rel = normalizeRepoPath(relativePath);
   const lower = rel.toLowerCase();
   const base = path.posix.basename(lower);
@@ -62,6 +151,19 @@ export function classifyRepositoryPath(relativePath) {
     resolvedSystemFile: `docs/organisation/systems/${resolvedSystem}.json`,
     reason,
   });
+
+  // 0. If the path already matches an organisation rule in `docs/organisation/systems/*.json`,
+  //    return that rule's area so `--classify` and `check:organisation` never diverge.
+  const manifestHit = matchManifestRule(rel, root);
+  if (manifestHit) {
+    const resolvedSystem = manifestHit.system;
+    const logicalSystem = RESOLVED_TO_LOGICAL_SYSTEM.get(resolvedSystem) ?? resolvedSystem;
+    return buildResult(
+      logicalSystem,
+      resolvedSystem,
+      `Matches organisation manifest rule \`${manifestHit.pattern}\` in \`docs/organisation/systems/${resolvedSystem}.json\`.`,
+    );
+  }
 
   // 1. search-and-answers / answer-engine (RAG, retrieval, grounding, rerank, search, answers, citations, query classification)
   if (
@@ -108,7 +210,7 @@ export function classifyRepositoryPath(relativePath) {
     );
   }
 
-  // 3. personal-practice (CME/CPD, roster, my-day, teaching, open-shifts, work, diary, workspace)
+  // 4. personal-practice (CME/CPD, roster, my-day, teaching, open-shifts, work, diary, workspace)
   if (
     lower.startsWith("src/app/workspace/") ||
     lower === "src/app/workspace" ||
@@ -127,7 +229,7 @@ export function classifyRepositoryPath(relativePath) {
     );
   }
 
-  // 4. clinical-modes / clinical-content (psychiatry, therapy, formulation, diagnosis, medications, sleep, scales, calculators, ect, ranzcp, dsm, differentials, on-call, care-plan, dictionary)
+  // 5. clinical-modes / clinical-content (psychiatry, therapy, formulation, diagnosis, medications, sleep, scales, calculators, ect, ranzcp, dsm, differentials, on-call, care-plan, dictionary)
   if (
     /^src\/app\/(psychiatry|therapy|medications|medicines|formulation|diagnosis|dsm|differentials|forms|services|dictionary|new-starters|on-call|scales|calculators|ect|sleep|ranzcp)(\/|$)/.test(
       lower,
@@ -149,7 +251,7 @@ export function classifyRepositoryPath(relativePath) {
     );
   }
 
-  // 5. knowledge (entry docs, agent tooling, ledgers, organisation map, decisions, knowledge graph, library)
+  // 6. knowledge (entry docs, agent tooling, ledgers, organisation map, decisions, knowledge graph, library)
   if (
     lower.startsWith("src/lib/knowledge/") ||
     lower === "src/lib/knowledge" ||
@@ -172,7 +274,7 @@ export function classifyRepositoryPath(relativePath) {
     );
   }
 
-  // 6. shell-and-design (navigation, global search shell, header, dock, theme, CSS tokens, design system, UI components)
+  // 7. shell-and-design (navigation, global search shell, header, dock, theme, CSS tokens, design system, UI components)
   if (
     lower.startsWith("src/components/") ||
     lower === "src/components" ||
@@ -193,12 +295,32 @@ export function classifyRepositoryPath(relativePath) {
     );
   }
 
-  // 7. operations-and-governance (CI, scripts, tests, migrations, Supabase, security, privacy, release, fallback)
-  const isDataPlatform = lower.startsWith("supabase/") || lower === "supabase";
+  // 8. operations-and-governance (data-platform vs delivery)
+  const isDataPlatform =
+    lower === ".env.example" ||
+    lower === "src/proxy.ts" ||
+    lower.startsWith("supabase/") ||
+    lower === "supabase" ||
+    /^src\/(app\/(auth|api\/(account|health|setup-status|webhooks))|lib\/(supabase|observability|validation|webhooks|work-mode-launch))(\/|$)/.test(
+      lower,
+    ) ||
+    /^src\/lib\/(auth|authorization|owner-scope|privacy|query-privacy|private-search-scope|account-|api-csrf|api-rate-limit|security-headers|deep-probe-auth|patient-label-storage|signed-url-cache|audit|env|client-env)/.test(
+      lower,
+    ) ||
+    /^docs\/(privacy|multi-user-auth|auth-connection-cap|database-|db-maintenance|supabase-|disaster-recovery|observability|error-tracking|openai-cross-border|operations-runbook)/.test(
+      lower,
+    ) ||
+    /^scripts\/(sql\/|.*(drift|migration|privacy|owner-scope|cross-tenant|tenancy|function-grants|default-acl|supabase))/.test(
+      lower,
+    ) ||
+    /\b(privacy|auth|authorization|authentication|owner-scope|tenancy|cross-tenant|rls|drift|migration)\b/.test(base);
+
   return buildResult(
     "operations-and-governance",
     isDataPlatform ? "data-platform" : "delivery",
-    "Matches CI, scripts, tests, migrations, security/privacy/clinical governance, or operational paths.",
+    isDataPlatform
+      ? "Matches database, migration, drift, authentication, authorization, owner-scope, or privacy paths owned by data-platform."
+      : "Matches CI, scripts, tests, build, release, or operational delivery paths.",
   );
 }
 
@@ -324,7 +446,7 @@ export function placeUnplacedFiles(root = DEFAULT_ROOT, options = {}) {
   const placed = [];
 
   for (const relPath of unplacedFiles) {
-    const classification = classifyRepositoryPath(relPath);
+    const classification = classifyRepositoryPath(relPath, { root });
     const targetRelFile = resolveTargetSystemFile(root, classification);
     if (!additionsBySystemFile.has(targetRelFile)) {
       additionsBySystemFile.set(targetRelFile, []);
@@ -371,15 +493,17 @@ export function placeUnplacedFiles(root = DEFAULT_ROOT, options = {}) {
     updatedSystemFiles.push(targetRelFile);
   }
 
+  compiledRulesCache.delete(root);
   return { placed, updatedSystemFiles: updatedSystemFiles.sort() };
 }
 
 /**
- * Updates `docs/organisation/pins.json` so every pinned document whose file exists on disk
- * has its reviewed commit pin refreshed to the current `HEAD` SHA.
+ * Updates `docs/organisation/pins.json` ONLY for explicitly specified `options.paths` whose
+ * files exist on disk, pinning them to a verified `main`-line commit (`git merge-base HEAD origin/main`
+ * or `options.headSha`) rather than blindly overwriting every pin with a branch `HEAD`.
  *
  * @param {string} [root]
- * @param {{ headSha?: string }} [options]
+ * @param {{ headSha?: string, paths?: string[] }} [options]
  * @returns {{ updated: boolean, headSha: string | null, updatedPaths: string[] }}
  */
 export function refreshDocPins(root = DEFAULT_ROOT, options = {}) {
@@ -388,16 +512,33 @@ export function refreshDocPins(root = DEFAULT_ROOT, options = {}) {
     return { updated: false, headSha: null, updatedPaths: [] };
   }
 
+  const targetPaths = Array.isArray(options.paths)
+    ? new Set(options.paths.map((p) => normalizeRepoPath(p)).filter(Boolean))
+    : null;
+  if (!targetPaths || targetPaths.size === 0) {
+    return { updated: false, headSha: null, updatedPaths: [] };
+  }
+
   let headSha = options.headSha || null;
   if (!headSha) {
-    try {
-      headSha = execFileSync("git", ["rev-parse", "HEAD"], {
-        cwd: root,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "ignore"],
-      }).trim();
-    } catch {
-      return { updated: false, headSha: null, updatedPaths: [] };
+    const candidateCommands = [
+      ["merge-base", "HEAD", "origin/main"],
+      ["merge-base", "HEAD", "main"],
+    ];
+    for (const gitArgs of candidateCommands) {
+      try {
+        const resolved = execFileSync("git", gitArgs, {
+          cwd: root,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        }).trim();
+        if (resolved) {
+          headSha = resolved;
+          break;
+        }
+      } catch {
+        // Try next main-line ref.
+      }
     }
   }
 
@@ -411,8 +552,8 @@ export function refreshDocPins(root = DEFAULT_ROOT, options = {}) {
 
   if (Array.isArray(parsed)) {
     for (const entry of parsed) {
-      const entryPath = entry?.path || entry?.file;
-      if (typeof entryPath === "string" && fs.existsSync(path.join(root, entryPath))) {
+      const entryPath = normalizeRepoPath(entry?.path || entry?.file);
+      if (entryPath && targetPaths.has(entryPath) && fs.existsSync(path.join(root, entryPath))) {
         if ("reviewedCommit" in entry && entry.reviewedCommit !== headSha) {
           entry.reviewedCommit = headSha;
           updatedPaths.push(entryPath);
@@ -427,12 +568,13 @@ export function refreshDocPins(root = DEFAULT_ROOT, options = {}) {
     }
   } else if (parsed && typeof parsed === "object") {
     if (parsed.pins && typeof parsed.pins === "object" && !Array.isArray(parsed.pins)) {
-      for (const docPath of Object.keys(parsed.pins)) {
-        if (fs.existsSync(path.join(root, docPath))) {
-          const currentVal = parsed.pins[docPath];
+      for (const rawDocPath of Object.keys(parsed.pins)) {
+        const docPath = normalizeRepoPath(rawDocPath);
+        if (targetPaths.has(docPath) && fs.existsSync(path.join(root, docPath))) {
+          const currentVal = parsed.pins[rawDocPath];
           if (typeof currentVal === "string") {
             if (currentVal !== headSha) {
-              parsed.pins[docPath] = headSha;
+              parsed.pins[rawDocPath] = headSha;
               updatedPaths.push(docPath);
             }
           } else if (currentVal && typeof currentVal === "object") {
@@ -445,8 +587,8 @@ export function refreshDocPins(root = DEFAULT_ROOT, options = {}) {
       }
     } else if (Array.isArray(parsed.pins)) {
       for (const entry of parsed.pins) {
-        const entryPath = entry?.path || entry?.file;
-        if (typeof entryPath === "string" && fs.existsSync(path.join(root, entryPath))) {
+        const entryPath = normalizeRepoPath(entry?.path || entry?.file);
+        if (entryPath && targetPaths.has(entryPath) && fs.existsSync(path.join(root, entryPath))) {
           if (entry.reviewedCommit !== headSha) {
             entry.reviewedCommit = headSha;
             updatedPaths.push(entryPath);
@@ -528,16 +670,18 @@ function runTsxScriptIfPresent(root, relTsScript, args = []) {
  * @param {{
  *   root?: string,
  *   check?: boolean,
- *   classifyPaths?: string[]
+ *   classifyPaths?: string[],
+ *   refreshPinPaths?: string[]
  * }} [options]
  */
 export function runDocsMaintain(options = {}) {
   const root = options.root || DEFAULT_ROOT;
   const check = Boolean(options.check);
   const classifyPaths = Array.isArray(options.classifyPaths) ? options.classifyPaths : [];
+  const refreshPinPaths = Array.isArray(options.refreshPinPaths) ? options.refreshPinPaths : [];
 
   if (classifyPaths.length > 0) {
-    const results = classifyPaths.map((p) => classifyRepositoryPath(p));
+    const results = classifyPaths.map((p) => classifyRepositoryPath(p, { root }));
     const payload = results.length === 1 ? results[0] : results;
     process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     return { mode: "classify", results };
@@ -563,9 +707,17 @@ export function runDocsMaintain(options = {}) {
     // 1. Verify organisation manifest & unplaced count === 0
     const organisationCheck = runNodeScriptJson(root, "scripts/check-organisation.mjs", ["--no-report", "--json"]);
     const unplacedCount = organisationCheck?.totals?.unplaced ?? 0;
-    const unplacedFiles = Object.entries(organisationCheck?.placement ?? {})
+    const unplacedFromFindings = Array.isArray(organisationCheck?.findings)
+      ? organisationCheck.findings
+          .filter((finding) => typeof finding?.key === "string" && finding.key.startsWith("unplaced:"))
+          .map((finding) =>
+            typeof finding.subject === "string" ? finding.subject : finding.key.slice("unplaced:".length),
+          )
+      : [];
+    const unplacedFromPlacement = Object.entries(organisationCheck?.placement ?? {})
       .filter(([, area]) => area === "(unplaced)")
       .map(([file]) => file);
+    const unplacedFiles = [...new Set([...unplacedFromFindings, ...unplacedFromPlacement])].sort();
     if (unplacedCount !== 0 || unplacedFiles.length > 0) {
       throw new Error(`Organisation check reported ${unplacedCount} unplaced file(s): ${unplacedFiles.join(", ")}`);
     }
@@ -602,8 +754,8 @@ export function runDocsMaintain(options = {}) {
   runNodeScriptIfPresent(root, "scripts/generate-hazard-register-snapshot.mjs");
   runNodeScriptIfPresent(root, "scripts/generate-branch-review-index.mjs");
 
-  // Step 3: Run full --check verification to confirm clean state
-  const pinResult = { updated: false };
+  // Step 3: Refresh pins ONLY if explicit paths were passed via --refresh-pins
+  const pinResult = refreshPinPaths.length > 0 ? refreshDocPins(root, { paths: refreshPinPaths }) : { updated: false };
 
   // Step 4: Run full --check verification to confirm clean state
   runDocsMaintain({ root, check: true });
@@ -620,20 +772,30 @@ function parseCliArgs(argv) {
   const args = argv.slice(2);
   let check = false;
   let classifyMode = false;
+  let refreshPinsMode = false;
   const classifyPaths = [];
+  const refreshPinPaths = [];
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (arg === "--check") {
       check = true;
+      classifyMode = false;
+      refreshPinsMode = false;
     } else if (arg === "--classify") {
       classifyMode = true;
+      refreshPinsMode = false;
+    } else if (arg === "--refresh-pins") {
+      refreshPinsMode = true;
+      classifyMode = false;
     } else if (classifyMode) {
       classifyPaths.push(arg);
+    } else if (refreshPinsMode) {
+      refreshPinPaths.push(arg);
     }
   }
 
-  return { check, classifyMode, classifyPaths };
+  return { check, classifyMode, classifyPaths, refreshPinPaths };
 }
 
 function isExecutedDirectly() {
@@ -649,12 +811,12 @@ function isExecutedDirectly() {
 
 if (isExecutedDirectly()) {
   try {
-    const { check, classifyMode, classifyPaths } = parseCliArgs(process.argv);
+    const { check, classifyMode, classifyPaths, refreshPinPaths } = parseCliArgs(process.argv);
     if (classifyMode && classifyPaths.length === 0) {
       console.error("Usage: node scripts/maintain-docs-system.mjs --classify <path...>");
       process.exit(1);
     }
-    runDocsMaintain({ check, classifyPaths });
+    runDocsMaintain({ check, classifyPaths, refreshPinPaths });
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);

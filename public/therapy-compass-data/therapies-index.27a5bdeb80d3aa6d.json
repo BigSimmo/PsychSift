@@ -76,7 +76,7 @@
     "name": "Adolescent-focused psychotherapy for anorexia nervosa",
     "category": "Eating Disorder Therapies",
     "bestUsedFor": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -96,7 +96,7 @@
     "name": "Advocacy-informed therapeutic work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1826,7 +1826,7 @@
     "name": "Habit reversal training / CBIT",
     "category": "OCD & Exposure Therapies",
     "bestUsedFor": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -3658,7 +3658,7 @@
     "name": "STAIR (Skills Training in Affective and Interpersonal Regulation)",
     "category": "Trauma Therapies",
     "bestUsedFor": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3717,7 +3717,7 @@
     "name": "Structured clinical management",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -4138,7 +4138,7 @@
     "name": "Wake therapy / sleep-deprivation chronotherapy",
     "category": "Brain & Body Therapies",
     "bestUsedFor": "Best as a specialist adjunctive intervention for selected depressive episodes where rapid mood improvement is clinically useful and the service can monitor the patient safely.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [

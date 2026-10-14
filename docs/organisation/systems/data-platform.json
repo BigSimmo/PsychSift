@@ -139,6 +139,7 @@
     "tests/document-corpus-access-mode.test.ts",
     "tests/documents-is-public.test.ts",
     "tests/drift-*",
+    "tests/edge-function-auth.test.ts",
     "tests/env-*",
     "tests/env.test.ts",
     "tests/error-*",

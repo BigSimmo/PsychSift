@@ -165,12 +165,12 @@ describe("Challenger M5-2: Empirical Verification & Hardening Harness", () => {
       ).toBeUndefined();
     });
 
-    it("verifies disabledOpacityUses ceiling is tightened to 31", () => {
-      expect(baseline.metrics.disabledOpacityUses).toBe(31);
+    it("verifies disabledOpacityUses ceiling is tightened to 30", () => {
+      expect(baseline.metrics.disabledOpacityUses).toBe(30);
     });
 
-    it("verifies visibleLiveRegions ceiling is tightened to 20", () => {
-      expect(baseline.metrics.visibleLiveRegions).toBe(20);
+    it("verifies visibleLiveRegions ceiling is tightened to 17", () => {
+      expect(baseline.metrics.visibleLiveRegions).toBe(17);
     });
 
     it("verifies patient-safety-plan shadow alias exception has been removed from baseline", () => {
