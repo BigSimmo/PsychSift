@@ -5,24 +5,7 @@ import { useEffect, useRef } from "react";
 import { kindOf } from "@/components/roster/roster-format";
 import { useRosterShifts } from "@/components/roster/use-roster-shifts";
 import { summariseToday } from "@/lib/roster/today";
-
-export function hasSupabaseAuthSession(): boolean {
-  if (typeof document === "undefined") return false;
-  if (/(?:^|;\s*)sb-[^=;]+-auth-token(?:[.\d]*)=/.test(document.cookie)) {
-    return true;
-  }
-  try {
-    for (let i = 0; i < window.localStorage.length; i += 1) {
-      const key = window.localStorage.key(i);
-      if (key && /^sb-.*-auth-token$/.test(key)) {
-        return true;
-      }
-    }
-  } catch {
-    // Ignore storage errors
-  }
-  return false;
-}
+import { hasSupabaseAuthSession } from "@/lib/supabase/session-hint";
 
 /**
  * Reads the doctor's own roster once, and reports whether a real shift (not
@@ -55,8 +38,7 @@ function ShiftNowProbeActive({ onResult }: { readonly onResult: (onShiftNow: boo
 }
 
 export function ShiftNowProbe({ onResult }: { readonly onResult: (onShiftNow: boolean) => void }) {
-  const requiresAuth = Boolean((useRosterShifts as { requiresAuthProbe?: boolean }).requiresAuthProbe);
-  const canProbe = !requiresAuth || hasSupabaseAuthSession();
+  const canProbe = hasSupabaseAuthSession();
   const reported = useRef(false);
   useEffect(() => {
     if (canProbe || reported.current) return;

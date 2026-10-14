@@ -16,6 +16,7 @@ import type {
 } from "@/lib/roster/shifts/model";
 import { zonedToday } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+import { hasSupabaseAuthSession } from "@/lib/supabase/session-hint";
 
 /**
  * The signed-in doctor's own shifts, fetched from `/api/roster/shifts`.
@@ -118,24 +119,6 @@ function unionShifts(listed: readonly OnCallShift[], older: readonly OnCallShift
   const extra = older.filter((shift) => !seen.has(shift.id));
   if (!extra.length) return listed;
   return [...extra, ...listed].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-}
-
-export function hasSupabaseAuthSession(): boolean {
-  if (typeof document === "undefined") return false;
-  if (/(?:^|;\s*)sb-[^=;]+-auth-token(?:[.\d]*)=/.test(document.cookie)) {
-    return true;
-  }
-  try {
-    for (let i = 0; i < window.localStorage.length; i += 1) {
-      const key = window.localStorage.key(i);
-      if (key && /^sb-.*-auth-token$/.test(key)) {
-        return true;
-      }
-    }
-  } catch {
-    // Ignore storage errors
-  }
-  return false;
 }
 
 /**
@@ -433,7 +416,6 @@ export function useRosterShifts(
     dismissChanges,
   };
 }
-useRosterShifts.requiresAuthProbe = true;
 
 /** "2 added, 1 moved, 1 removed", leaving out the zeros. */
 export function describeRosterChangeCounts(summary: Pick<OnCallShiftImportSummary, "added" | "changed" | "removed">) {
