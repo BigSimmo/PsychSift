@@ -312,7 +312,7 @@ describe("check-bundle-budget CLI exit", () => {
     expect(headerSrc).toContain("spellCheck={false}");
     expect(headerSrc).toContain('data-gramm="false"');
     expect(headerSrc).toContain('data-enable-grammarly="false"');
-    expect(headerSrc).toMatch(/data-testid="app-mode-popover-back"[\s\S]*?min-h-11 min-w-11/);
+    expect(headerSrc).toMatch(/data-testid="app-mode-popover-back"[\s\S]*?size-tap/);
   });
 
   it("fails closed when baseline source SHA is unresolvable during --refresh-baseline", async () => {
