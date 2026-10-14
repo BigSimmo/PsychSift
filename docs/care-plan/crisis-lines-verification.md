@@ -59,10 +59,12 @@ file), so no further line-number chase is needed there — the identity guarante
 ### What is verified, and by what
 
 - **All eight contacts are pinned.** `tests/care-plan-domain.test.ts` asserts the seven
-  `WA_CRISIS_CONTACTS` names, numbers, emergency-service flags, source URLs and cohort dates,
-  including the "not an emergency service" caveat for both MHERL entries.
-  `tests/crisis-contacts.test.ts` also pins those contacts and the separate
-  `POISONS_INFORMATION_CONTACT` number, source URL, `verifiedOn` and non-emergency flag.
+  `WA_CRISIS_CONTACTS` names, numbers, emergency-service flags and cohort dates, and that each
+  carries an `https://` source URL, including the "not an emergency service" caveat for both MHERL
+  entries. `tests/crisis-contacts.test.ts` also pins those contacts and the separate
+  `POISONS_INFORMATION_CONTACT` number, `verifiedOn` and non-emergency flag. The tests check only
+  that each source URL starts with `https://` (for the Poisons contact, `https://scgh.health.wa.gov.au/`);
+  they do not pin the exact URLs, so a changed source link must be caught at the next verification.
 - **The after-hours pathway must stay real.** `tests/care-plan-domain.test.ts:498` fails if any
   of the three WA numbers disappears from the fixtures, so a later change cannot quietly swap a
   working crisis line for a dead fictional one. The reasoning is `docs/care-plan/sdd-ledger.md:634`:
