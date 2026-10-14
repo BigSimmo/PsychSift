@@ -2218,6 +2218,11 @@ jobs:
     if: ${{ always() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # No job-level `concurrency` group on purpose. A concurrency group keeps only ONE pending job and
+    # replaces it with whichever job became ready last, which follows run-finish order, not commit
+    # order: a newer red run's routing could be cancelled by an older green run, leaving the issue
+    # closed while main is red (and cancelling that newer run's whole CI result). Ordering is
+    # instead enforced by the routed-sha stamp, and re-checked immediately before each write.
     permissions:
       contents: read
       issues: write
@@ -2320,12 +2325,97 @@ jobs:
               }
             }
 
-            const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
+            // A run older than the one that last routed must not undo it. Runs finish out of order: on
+            // 2026-10-13 the tip's green run closed the issue at 17:27Z and an older commit's run,
+            // finishing at 17:33Z, reopened it for a failure main no longer had. Every body this job
+            // writes carries the commit it last routed, and a run whose commit is BEHIND that one
+            // stands down. Ordering by what was last routed (not by "is this main's tip") means a busy
+            // merge streak cannot suppress every alert: an older red run still speaks when nothing
+            // newer has. Fails open: an unreadable ordering routes rather than loses an alert.
+            const ROUTED_PATTERN = /<!-- routed-sha:([0-9a-f]{7,40}) -->/;
+            const withRoutedStamp = (text) => {
+              const base = String(text ?? "").replace(ROUTED_PATTERN, "").trimEnd();
+              return headSha ? `${base}\n<!-- routed-sha:${headSha} -->` : base;
+            };
+            async function isSuperseded(issue) {
+              const routedSha = ROUTED_PATTERN.exec(String(issue?.body ?? ""))?.[1];
+              if (!headSha || !routedSha || routedSha === headSha) return false;
+              try {
+                const { data: comparison } = await github.rest.repos.compareCommits({
+                  owner,
+                  repo,
+                  base: routedSha,
+                  head: headSha,
+                });
+                return comparison?.status === "behind";
+              } catch (error) {
+                core.warning(`Could not order this run against ${routedSha.slice(0, 12)}, routing it anyway: ${error.message}`);
+                return false;
+              }
+            }
+
             const owned = (issue) => String(issue.body ?? "").includes(MARKER) || issue.title === title;
-            const existing = open.find(owned) ?? null;
+
+            // The most recent issue this job closed, matched by marker only so it never reopens an
+            // issue a person wrote. It is the ordering reference when nothing is open, and the issue a
+            // new red spell reopens.
+            async function latestClosedOwned() {
+              const { data: closed } = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: "closed",
+                labels: label,
+                sort: "updated",
+                direction: "desc",
+                per_page: 20,
+              });
+              return closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
+            }
+
+            // `existing` is our open issue; `previous` is the latest closed one, read only when nothing
+            // is open. Every write below acts on these two, so the re-check rebuilds both together.
+            async function readIssueState() {
+              const { data: open } = await github.rest.issues.listForRepo({ owner, repo, state: "open", labels: label });
+              const openOwned = open.find(owned) ?? null;
+              return { existing: openOwned, previous: openOwned ? null : await latestClosedOwned() };
+            }
+            let { existing, previous } = await readIssueState();
+
+            // Re-read the issue state right before writing, so a run that routed while this one was
+            // reading is honoured, and the writes below act on the fresh open/closed issue rather than
+            // the stale one. This replaces serialisation: the window is a few API calls, not a whole
+            // job. Fails open like the ordering lookup: an unreadable re-check routes on the state
+            // already read rather than aborting and losing the alert.
+            async function supersededNow() {
+              try {
+                ({ existing, previous } = await readIssueState());
+              } catch (error) {
+                core.warning(`Could not re-read the pinned issue before writing, routing on the state already read: ${error.message}`);
+                return false;
+              }
+              return isSuperseded(existing ?? previous);
+            }
+
+            if (await isSuperseded(existing ?? previous)) {
+              core.info(
+                `Run for ${headSha.slice(0, 12)} is older than the commit already routed; ` +
+                  `leaving the pinned issue alone (this run was ${red ? "red" : "green"}).`,
+              );
+              return;
+            }
+
+            if (await supersededNow()) {
+              core.info(`Run for ${headSha.slice(0, 12)} was superseded while reading; leaving the pinned issue alone.`);
+              return;
+            }
 
             if (!red) {
               if (!existing) {
+                // Record this green run on the closed issue, so a still-older red run that finishes
+                // after it cannot reopen the issue for a failure main no longer has.
+                if (previous && withRoutedStamp(previous.body) !== String(previous.body ?? "")) {
+                  await github.rest.issues.update({ owner, repo, issue_number: previous.number, body: withRoutedStamp(previous.body) });
+                }
                 core.info("CI on main is green and no failure issue of ours is open.");
                 return;
               }
@@ -2345,7 +2435,14 @@ jobs:
                   MARKER,
                 ].join("\n"),
               });
-              await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: "closed", state_reason: "completed" });
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: existing.number,
+                state: "closed",
+                state_reason: "completed",
+                body: withRoutedStamp(existing.body),
+              });
               core.info(`Closed #${existing.number} after a green main run.`);
               return;
             }
@@ -2376,9 +2473,10 @@ jobs:
               "is a standing defect rather than a regression this push introduced.",
               MARKER,
             ].join("\n");
+            const stampedBody = withRoutedStamp(body);
 
             if (existing) {
-              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body: stampedBody });
               await github.rest.issues.createComment({
                 owner,
                 repo,
@@ -2391,18 +2489,8 @@ jobs:
               // Reopen the most recent issue this job closed rather than opening a new one per red
               // spell (owner decision, 2026-09-26: main flips red and green often, and 25 issues in a
               // day was noise). Marker-only match, so it never reopens an issue a person wrote.
-              const { data: closed } = await github.rest.issues.listForRepo({
-                owner,
-                repo,
-                state: "closed",
-                labels: label,
-                sort: "updated",
-                direction: "desc",
-                per_page: 20,
-              });
-              const previous = closed.find((issue) => !issue.pull_request && String(issue.body ?? "").includes(MARKER)) ?? null;
               if (previous) {
-                await github.rest.issues.update({ owner, repo, issue_number: previous.number, state: "open", title, body });
+                await github.rest.issues.update({ owner, repo, issue_number: previous.number, state: "open", title, body: stampedBody });
                 await github.rest.issues.createComment({
                   owner,
                   repo,
@@ -2412,7 +2500,7 @@ jobs:
                 await assignAlert(previous.number);
                 core.warning(`CI on main is failing; reopened #${previous.number}.`);
               } else {
-                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body });
+                const created = await github.rest.issues.create({ owner, repo, title, labels: [label], body: stampedBody });
                 await assignAlert(created.data.number);
                 core.warning(`CI on main is failing; opened #${created.data.number}.`);
               }
