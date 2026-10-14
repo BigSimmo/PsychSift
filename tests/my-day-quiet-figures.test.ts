@@ -165,7 +165,7 @@ describe("This week", () => {
       startsAt: `${date}T08:00:00Z`,
       endsAt: `${date}T16:00:00Z`,
     }));
-    expect(weekRows(evenings, [], TODAY, EVENING)[0]!.title).toBe("Evening shifts");
+    expect(weekRows(evenings, [], TODAY, EVENING)[0]!.title).toBe("Late shifts");
   });
 
   it("codes each day by its strongest shift and keys only the codes shown", () => {
@@ -173,5 +173,7 @@ describe("This week", () => {
     expect(dayCode(["leave"])).toBe("leave");
     expect(dayCode([])).toBeNull();
     expect(codeKey(["on_call", null, "day", "day"])).toBe("D day shift · OC on call");
+    // The design system's codes (design audit D12): L is the late (evening) shift, AL is leave.
+    expect(codeKey(["evening", "leave"])).toBe("L evening shift · AL leave");
   });
 });

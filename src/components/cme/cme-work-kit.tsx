@@ -4,7 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ModeBandAction, useModeBandHeading } from "@/components/mode-band/mode-band";
+import { useModeBandHeading } from "@/components/mode-band/mode-band";
 import { cn } from "@/components/ui-primitives";
 import type { CmeCategory } from "@/lib/cme/types";
 
@@ -50,8 +50,12 @@ export function cmeFreshnessEyebrow({
   return "Not loaded";
 }
 
-/** The page's one round glass action in the band (Customise, Filter, Share). */
-export function CmeBandAction({
+/**
+ * The page's one tool (Customise, Filter, New routine), at the top right of the
+ * page body. The band's corner is for the Favourite heart alone (audit D18,
+ * 13 Oct 2026), so a page's own tool sits in the page.
+ */
+export function CmePageAction({
   icon: Icon,
   label,
   href,
@@ -63,27 +67,25 @@ export function CmeBandAction({
   readonly testId?: string;
 } & ({ readonly href: string; readonly onClick?: never } | { readonly onClick: () => void; readonly href?: never })) {
   return (
-    <ModeBandAction>
-      {(underBand) => {
-        if (!underBand) return null;
-        const glyph = <Icon aria-hidden="true" className="size-icon-md" strokeWidth={2} />;
-        return href !== undefined ? (
-          <Link href={href} className="work-glass-button work-band__action" aria-label={label} data-testid={testId}>
-            {glyph}
-          </Link>
-        ) : (
-          <button
-            type="button"
-            className="work-glass-button work-band__action"
-            aria-label={label}
-            onClick={onClick}
-            data-testid={testId}
-          >
-            {glyph}
-          </button>
-        );
-      }}
-    </ModeBandAction>
+    <div className="flex justify-end">
+      {href !== undefined ? (
+        <Link href={href} className="work-button min-h-tap" data-variant="secondary" data-testid={testId}>
+          <Icon aria-hidden="true" strokeWidth={2} />
+          {label}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="work-button min-h-tap"
+          data-variant="secondary"
+          onClick={onClick}
+          data-testid={testId}
+        >
+          <Icon aria-hidden="true" strokeWidth={2} />
+          {label}
+        </button>
+      )}
+    </div>
   );
 }
 

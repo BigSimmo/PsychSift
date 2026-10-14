@@ -562,6 +562,8 @@ const openShifts: WorkArea = {
 const manageTeam: WorkArea = {
   id: "manage",
   name: "Manage team",
+  // A sub-area keeps its parent's pill (audit D21), as Open shifts does; the band names the page.
+  pillName: "Roster",
   identity: "roster",
   parent: "rost",
   tabs: [
@@ -764,6 +766,8 @@ const teaching: WorkArea = {
 const assessments: WorkArea = {
   id: "assess",
   name: "Assessments",
+  // A sub-area keeps its parent's pill (audit D21); the band names the page.
+  pillName: "Teaching",
   identity: "teaching",
   parent: "teach",
   tabs: [

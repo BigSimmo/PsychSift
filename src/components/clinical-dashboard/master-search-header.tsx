@@ -41,7 +41,6 @@ import {
 
 import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
-import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 import {
   splitFilterText,
   filterText,
@@ -55,6 +54,7 @@ import { usePortalSlotFocus } from "@/components/clinical-dashboard/use-portal-s
 import { useHideOnScroll } from "@/components/clinical-dashboard/use-hide-on-scroll";
 import { useEventCallback } from "@/components/clinical-dashboard/use-event-callback";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
+import { useComposerPatientCheck } from "@/components/clinical-dashboard/use-composer-patient-check";
 import { PhoneFooterLayerPortal } from "@/components/clinical-dashboard/phone-footer-layer-portal";
 import { AnswerFollowUpSuggestions } from "@/components/clinical-dashboard/answer-follow-up-suggestions";
 import { SearchPinsMenu } from "@/components/clinical-dashboard/search-pins-menu";
@@ -399,7 +399,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     demoMode: false,
   });
   const trimmedQuery = query.trim();
-  const hasPhiWarning = Boolean(query && identifierShapeWarning(query));
+  const { clinicalPatientDetail, hasPhiWarning, phiWarningText } = useComposerPatientCheck(query, searchMode);
   const composerPhiWarningId = "composer-phi-warning";
   const selectedSearch = appModeSearchConfig(searchMode);
   // The trigger names the route the user is viewing. Session filtering still
@@ -425,7 +425,8 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     selectedSearch.kind === "formulation" ||
     selectedSearch.kind === "dsm";
   const searchSetupNotReady = !realDataReady && !canRunLocalSearch;
-  const canAsk = trimmedQuery.length >= 1 && !loading && selectedSearchable && !searchSetupNotReady;
+  const canAsk =
+    trimmedQuery.length >= 1 && !loading && selectedSearchable && !searchSetupNotReady && !clinicalPatientDetail;
   const indexedDocumentTotal = documentTotal ?? documents.length;
   const hasUnloadedDocuments = indexedDocumentTotal > documents.length;
   const loadedScopeSummary = hasUnloadedDocuments
@@ -2460,7 +2461,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             data-testid={composerPhiWarningId}
             className="mt-1.5 px-3 text-center text-2xs font-medium text-[color:var(--danger)]"
           >
-            Remove identifiable patient details before searching.
+            {phiWarningText}
           </p>
         ) : null}
         {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can

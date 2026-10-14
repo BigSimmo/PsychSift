@@ -235,6 +235,7 @@ describe("phone side menu Clinical tab", () => {
   });
 
   it("marks a pinned current page once, in Shortcuts, and never tints a recent chat", () => {
+    window.localStorage.setItem(SIDEBAR_PINS_STORAGE_KEY, JSON.stringify(["answer", "dsm"]));
     renderMenu({ activeMode: "answer" });
     const current = currentRows();
     expect(current).toHaveLength(1);
@@ -248,6 +249,22 @@ describe("phone side menu Clinical tab", () => {
     ).not.toHaveAttribute("aria-current");
     const newestChat = screen.getByRole("button", { name: recent[0] });
     expect(newestChat.className.split(/\s+/)).not.toContain("bg-[color:var(--clinical-accent-soft)]");
+  });
+
+  it("offers the urgent tools while the shortcuts are the product default, and marks the page in its group", () => {
+    renderMenu({ activeMode: "answer" });
+    const pinned = within(screen.getByRole("navigation", { name: "Pinned shortcuts" }));
+    expect(pinned.getByTestId("sidebar-urgent-crisis")).toHaveTextContent("Crisis numbers");
+    expect(pinned.getAllByRole("link").map((link) => [link.textContent, link.getAttribute("href")])).toEqual([
+      ["MHA time limits", "/psychiatry/mha-clock"],
+      ["Safety plan", "/safety-plan"],
+      ["Forms", "/forms"],
+    ]);
+    const current = currentRows();
+    expect(current).toHaveLength(1);
+    expect(
+      within(screen.getByRole("navigation", { name: "Search" })).getByRole("link", { name: "Answer" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("marks an unpinned current page once, in its group", () => {

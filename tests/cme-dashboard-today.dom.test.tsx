@@ -92,10 +92,10 @@ describe("Today", () => {
     localStorage.removeItem(CPD_APPLICATIONS_STORAGE_KEY);
   });
 
-  it("is headed Year, matching its tab", () => {
+  it("is headed CPD, the page's name (audit D15)", () => {
     render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole("heading", { level: 1, name: "Year" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "CPD" })).toBeInTheDocument();
   });
 
   it("lists the year check's top three open items, biggest gap first, then See all in End of year", () => {

@@ -1084,7 +1084,10 @@ export function MonthView({
                 title={detail.title}
                 subtitle={
                   detail.subtitle ? (
-                    <span className={detail.passed ? "font-semibold text-[color:var(--warning-text)]" : undefined}>
+                    <span
+                      data-late={detail.passed ? "passed" : undefined}
+                      className={detail.passed ? "font-semibold text-[color:var(--work-ink-muted)]" : undefined}
+                    >
                       {detail.subtitle}
                     </span>
                   ) : undefined

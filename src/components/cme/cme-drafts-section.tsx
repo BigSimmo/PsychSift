@@ -213,7 +213,7 @@ function DraftRow({
           href={`/cme/new?draft=${draft.id}`}
           data-testid={`cme-draft-continue-${draft.id}`}
           className="work-button min-h-tap shrink-0"
-          data-variant="tinted"
+          data-variant="grey"
         >
           Continue
         </Link>

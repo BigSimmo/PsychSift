@@ -17,7 +17,7 @@ import Link from "next/link";
 import { createElement, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { ModeBandAction, useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
+import { useModeBandHeading, useModeBandShown } from "@/components/mode-band/mode-band";
 import { WorkGlassButton } from "@/components/mode-kit/work";
 import { universalHeaderLeadingSlotId } from "@/components/work-frame/work-frame-header";
 import { useClaimWorkFrameBack } from "@/components/work-frame/work-frame-store";
@@ -44,13 +44,13 @@ export type AssessHeaderProps = {
   readonly title: string;
   /** Where the round back button goes, and what it says. */
   readonly back?: { readonly href: string; readonly label: string };
-  /** The round glass action at the right of the band (Save and close). */
+  /** The round glass action at the top right of the screen (Save and close). */
   readonly action?: { readonly icon: LucideIcon; readonly label: string; readonly onClick: () => void };
 };
 
 /**
  * Names a screen in the work band (eyebrow and title), puts its back button in
- * the header's round left button and its one action in the band's glass slot.
+ * the header's round left button and its one action at the top of the screen.
  * Keeps a focusable heading for screen readers, which the page moves focus to
  * on every change of screen. With no band (a test, a hidden band), it draws
  * the same things inline.
@@ -104,16 +104,10 @@ export function AssessHeader({ eyebrow, title, back, action }: AssessHeaderProps
       {heading}
       {backLink && host ? createPortal(backLink, host) : null}
       {action ? (
-        <ModeBandAction>
-          {() => (
-            <WorkGlassButton
-              icon={action.icon}
-              label={action.label}
-              onClick={action.onClick}
-              className="work-band__action"
-            />
-          )}
-        </ModeBandAction>
+        // At the top of the screen, not the band's corner, which is for Favourite only (audit D18).
+        <div className="flex justify-end">
+          <WorkGlassButton icon={action.icon} label={action.label} onClick={action.onClick} />
+        </div>
       ) : null}
     </>
   );

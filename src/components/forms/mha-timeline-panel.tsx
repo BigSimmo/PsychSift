@@ -1,8 +1,10 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Timer } from "lucide-react";
+import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 
+import { buttonFaceClass } from "@/components/ui/button-face";
 import { inPageAnchor } from "@/components/in-page-nav/in-page-nav-classes";
 import { cn, textMuted } from "@/components/ui-primitives";
 import { mhaActMetadata, mhaActSection } from "@/lib/mha-act-sections";
@@ -101,6 +103,16 @@ export function MhaTimelinePanel({ formCode }: { formCode: string }) {
         <p id={hintId} className={cn("text-xs leading-5", textMuted)}>
           {hint}
         </p>
+        {/* Design audit D01: a timed form starts its clock from here, with the form (and the
+            time, once entered) carried across, so the clock list is one tap from the record. */}
+        <Link
+          href={`/forms/clock?${new URLSearchParams(start ? { form: formCode, made: startValue } : { form: formCode })}`}
+          data-testid="mha-timeline-start-clock"
+          className={cn(buttonFaceClass({ variant: "secondary" }), "mt-2 w-full max-w-sm")}
+        >
+          <Timer aria-hidden="true" className="size-icon-sm" />
+          Start clock
+        </Link>
       </div>
 
       <ol className="space-y-3">

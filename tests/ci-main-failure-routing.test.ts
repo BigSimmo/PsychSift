@@ -346,9 +346,10 @@ describe("main CI failure routing ignores superseded runs", () => {
     body: `<!-- main-ci-routing:v1 -->\n${stamp(sha)}`,
   });
 
-  it("serialises the routing job without cancelling the run in flight", () => {
+  it("does not use a job-level concurrency group that could cancel a newer commit's routing", () => {
     const routing = workflow.slice(workflow.indexOf("  main-failure-routing:"));
-    expect(routing).toMatch(/concurrency:\n {6}group: main-failure-routing\n {6}cancel-in-progress: false/);
+    const jobBlock = routing.slice(0, routing.indexOf("    steps:"));
+    expect(jobBlock).not.toMatch(/\n {4}concurrency:/);
   });
 
   it("leaves the issue untouched when a superseded red run finishes after a newer one routed", async () => {
