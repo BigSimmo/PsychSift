@@ -327,6 +327,77 @@ describe("writing to a team", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
 
+  it("sends an open.post with a post key through roster_open_post_once, without the key in the post", async () => {
+    const KEY = "5e000000-0000-4000-8000-0000000000b1";
+    const gap = {
+      action: "open.post",
+      startsAt: "2026-10-18T06:00:00.000Z",
+      endsAt: "2026-10-18T14:30:00.000Z",
+      shiftCode: "E",
+      kind: "evening",
+      siteId: null,
+      urgent: false,
+    };
+    mocks.rpc.mockResolvedValue({ data: { openShiftId: OPEN, status: "open", replayed: true }, error: null });
+    const response = await POST(jsonRequest({ ...gap, postKey: KEY }), ctx());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ result: { openShiftId: OPEN, status: "open", replayed: true } });
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    const { action: _action, ...payload } = gap;
+    expect(mocks.rpc).toHaveBeenCalledWith("roster_open_post_once", {
+      p_actor_id: ALEX,
+      p_service_id: SERVICE,
+      p_post_key: KEY,
+      p_payload: payload,
+    });
+    // The replayed answer still reaches the alerts step, which itself sends nothing for a replay.
+    await vi.waitFor(() => expect(mocks.dispatch).toHaveBeenCalledTimes(1));
+    expect(mocks.dispatch.mock.calls[0][1]).toMatchObject({ result: { replayed: true } });
+
+    // A give-away with a key goes the same way; a post without one still goes through roster_command.
+    mocks.rpc.mockClear();
+    mocks.rpc.mockResolvedValue({ data: { openShiftId: OPEN, status: "open" }, error: null });
+    expect((await POST(jsonRequest({ action: "open.post", assignmentId: SWAP, postKey: KEY }), ctx())).status).toBe(
+      200,
+    );
+    expect(mocks.rpc).toHaveBeenLastCalledWith("roster_open_post_once", {
+      p_actor_id: ALEX,
+      p_service_id: SERVICE,
+      p_post_key: KEY,
+      p_payload: { assignmentId: SWAP },
+    });
+    expect((await POST(jsonRequest(gap), ctx())).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenLastCalledWith("roster_command", {
+      p_actor_id: ALEX,
+      p_service_id: SERVICE,
+      p_action: "open.post",
+      p_payload: payload,
+    });
+  });
+
+  it("refuses a post key that isn't a uuid before the database is asked", async () => {
+    const gap = {
+      action: "open.post",
+      startsAt: "2026-10-18T06:00:00.000Z",
+      endsAt: "2026-10-18T14:30:00.000Z",
+      shiftCode: "E",
+      kind: "evening",
+    };
+    for (const postKey of ["not-a-key", "", 42, null]) {
+      expect((await POST(jsonRequest({ ...gap, postKey }), ctx())).status).toBe(400);
+    }
+    // A key belongs to a post only: another action carrying one is refused too.
+    expect(
+      (
+        await POST(
+          jsonRequest({ action: "open.claim", openShiftId: OPEN, postKey: "5e000000-0000-4000-8000-0000000000b1" }),
+          ctx(),
+        )
+      ).status,
+    ).toBe(400);
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+
   it("needs all four team settings, because the SQL overwrites all four", async () => {
     const response = await POST(jsonRequest({ action: "settings.set", swapApproval: "manager" }), ctx());
     expect(response.status).toBe(400);

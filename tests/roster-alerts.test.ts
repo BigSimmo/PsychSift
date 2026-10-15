@@ -113,4 +113,42 @@ describe("generic phone alerts", () => {
     await dispatchRosterAlerts(client, event("swap.approve", MEI));
     expect(mocks.subscriptions).toHaveBeenCalledWith(client, [SAM]);
   });
+
+  it("offers a newly posted gap, but never re-sends the offer for a replayed post", async () => {
+    const OPEN = "5e000000-0000-4000-8000-000000000007";
+    const gap = {
+      action: "open.post",
+      startsAt: "2026-11-20T00:00:00.000Z",
+      endsAt: "2026-11-20T08:30:00.000Z",
+      shiftCode: "D",
+      kind: "day",
+      postKey: "5e000000-0000-4000-8000-000000000008",
+    } as const;
+    mocks.open.mockResolvedValue({
+      starts_at: gap.startsAt,
+      ends_at: gap.endsAt,
+      min_grade: null,
+      assignment_id: null,
+      posted_by: ALEX,
+      claimed_by: null,
+    });
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: ALEX,
+      action: gap,
+      result: { openShiftId: OPEN, status: "open" },
+    });
+    expect(mocks.open).toHaveBeenCalledWith(client, SERVICE, OPEN);
+
+    vi.clearAllMocks();
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: ALEX,
+      action: gap,
+      result: { openShiftId: OPEN, status: "open", replayed: true },
+    });
+    expect(mocks.read).not.toHaveBeenCalled();
+    expect(mocks.open).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
 });

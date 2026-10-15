@@ -4363,6 +4363,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      roster_open_post_keys: {
+        Row: {
+          created_at: string;
+          open_shift_id: string;
+          post_key: string;
+          posted_by: string | null;
+          service_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          open_shift_id: string;
+          post_key: string;
+          posted_by?: string | null;
+          service_id: string;
+        };
+        Update: {
+          created_at?: string;
+          open_shift_id?: string;
+          post_key?: string;
+          posted_by?: string | null;
+          service_id?: string;
+        };
+        Relationships: [];
+      };
       roster_open_shifts: {
         Row: {
           assignment_id: string | null;
@@ -4943,6 +4967,10 @@ export type Database = {
       };
       roster_open_withdraw: {
         Args: { p_actor_id: string; p_service_id: string; p_open_shift_id: string };
+        Returns: Json;
+      };
+      roster_open_post_once: {
+        Args: { p_actor_id: string; p_service_id: string; p_post_key: string; p_payload: Json };
         Returns: Json;
       };
       on_call_service_set_verified: {

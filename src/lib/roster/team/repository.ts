@@ -69,6 +69,11 @@ export async function rosterReadTeams(client: AdminClient, actorId: string): Pro
   return parsed.data.teams;
 }
 
+function withoutPostKey(payload: Record<string, unknown>): Record<string, unknown> {
+  const { postKey: _postKey, ...rest } = payload;
+  return rest;
+}
+
 /** A team write. `action` has already passed `rosterActionSchema` (or is a publish-route action). */
 export async function rosterCommand(
   client: AdminClient,
@@ -80,6 +85,8 @@ export async function rosterCommand(
   const { action: name, ...payload } = action;
   // The safe number goes through the stale check, which refuses it once anyone has saved since the editor's read.
   // Taking back an open-shift request has its own function, which only the doctor who asked can call.
+  // A post that carries a key goes through roster_open_post_once, which answers a repeat of the same
+  // key with the shift already saved instead of saving another; the key itself is not part of the post.
   const { data, error } =
     action.action === "open.withdraw"
       ? await client.rpc("roster_open_withdraw", {
@@ -94,12 +101,19 @@ export async function rosterCommand(
             p_expected_ids: action.expectedIds as never,
             p_needs: action.needs as never,
           })
-        : await client.rpc("roster_command", {
-            p_actor_id: actorId,
-            p_service_id: serviceId,
-            p_action: name,
-            p_payload: payload as never,
-          });
+        : action.action === "open.post" && action.postKey
+          ? await client.rpc("roster_open_post_once", {
+              p_actor_id: actorId,
+              p_service_id: serviceId,
+              p_post_key: action.postKey,
+              p_payload: withoutPostKey(payload) as never,
+            })
+          : await client.rpc("roster_command", {
+              p_actor_id: actorId,
+              p_service_id: serviceId,
+              p_action: name,
+              p_payload: payload as never,
+            });
   if (error) throw rosterApiError(error);
   const parsed = rosterCommandResultSchema.safeParse(data);
   if (!parsed.success) throw rosterUnavailable();
