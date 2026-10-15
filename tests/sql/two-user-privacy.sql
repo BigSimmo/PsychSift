@@ -124,21 +124,26 @@ select pg_temp.assert_true(not exists (
 ), 'the public role can call a public function: ' || coalesce((
   select string_agg(p.oid::regprocedure::text, ', ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')), ''));
+-- Exact signatures, so a new overload that reuses an allowed name is still caught.
+create temp table allowed_browser_functions(signature text primary key, reason text not null);
+insert into allowed_browser_functions values
+  ('admit_administrator_document(jsonb,jsonb,boolean)', 'administrator plus recent sign-in, checked inside'),
+  ('publish_site_content_record(text,uuid,text,bigint,text,text,text)', 'administrator, checked inside'),
+  ('record_site_content_reconciliation_plan(jsonb)', 'administrator, checked inside'),
+  ('retire_site_content_record(text,uuid,text,bigint,text,text,text)', 'administrator, checked inside'),
+  ('is_visible_document_page(uuid,uuid,text)', 'pure helper for the page policy, reads nothing');
+create temp view browser_callable_functions as
+  select replace(p.oid::regprocedure::text, ' ', '') as signature
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'EXECUTE');
 select pg_temp.assert_true(not exists (
-  select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'EXECUTE')
-    and p.proname not in (
-      'admit_administrator_document',            -- administrator plus recent sign-in, checked inside
-      'publish_site_content_record',             -- administrator, checked inside
-      'record_site_content_reconciliation_plan', -- administrator, checked inside
-      'retire_site_content_record',              -- administrator, checked inside
-      'is_visible_document_page'                 -- pure helper for the page policy, reads nothing
-    )
+  select 1 from browser_callable_functions c
+  where c.signature not in (select replace('public.' || signature, ' ', '') from allowed_browser_functions)
+    and c.signature not in (select replace(signature, ' ', '') from allowed_browser_functions)
 ), 'a signed-in doctor can call a function outside the reviewed allowlist: ' || coalesce((
-  select string_agg(p.oid::regprocedure::text, ', ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-  where n.nspname = 'public' and has_function_privilege('authenticated', p.oid, 'EXECUTE')
-    and p.proname not in ('admit_administrator_document', 'publish_site_content_record',
-      'record_site_content_reconciliation_plan', 'retire_site_content_record', 'is_visible_document_page')), ''));
+  select string_agg(c.signature, ', ') from browser_callable_functions c
+  where c.signature not in (select replace('public.' || signature, ' ', '') from allowed_browser_functions)
+    and c.signature not in (select replace(signature, ' ', '') from allowed_browser_functions)), ''));
 select pg_temp.assert_true(not (select prosecdef from pg_proc where oid = 'public.is_visible_document_page(uuid, uuid, text)'::regprocedure),
   'is_visible_document_page must stay an ordinary (not SECURITY DEFINER) helper');
 
