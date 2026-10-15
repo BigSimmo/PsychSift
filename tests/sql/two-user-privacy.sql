@@ -316,7 +316,7 @@ begin
     -- Storage objects are probed once per bucket, so a policy scoped to one bucket can't hide.
     for v_base in execute format(
       'select distinct on (%3$s) to_jsonb(t) from %1$s t where %2$s = %4$L::uuid order by %3$s',
-      r.rel, v_expr, case when r.rel = 'storage.objects'::regclass then 't.bucket_id' else '1' end, v_me) loop
+      r.rel, v_expr, case when r.rel = 'storage.objects'::regclass then 't.bucket_id' else 'true::boolean' end, v_me) loop
     select string_agg(quote_ident(a.attname), ', ' order by a.attnum) into v_cols
     from pg_attribute a
     where a.attrelid = r.rel and a.attnum > 0 and not a.attisdropped and a.attgenerated = ''
