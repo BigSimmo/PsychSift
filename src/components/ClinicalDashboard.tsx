@@ -10,12 +10,14 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
 } from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
+import { useDashboardBulkActions } from "@/components/clinical-dashboard/use-dashboard-bulk-actions";
 import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
 import {
   useDashboardLibraryRefresh,
@@ -106,7 +108,6 @@ import {
   normalizeNavigationHash,
 } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
 import { answerRecovery, errorCopy } from "@/lib/ui-copy";
-import { summarizeBulkReindexPayload } from "@/lib/bulk-reindex-results";
 import {
   type DocumentDrawerMode,
   type DocumentDrawerStatusFilter,
@@ -413,6 +414,20 @@ function ClinicalDashboardContent({
   // differentials results view can tell live-edited catalogue results apart
   // from evidence that belongs to a previously submitted search.
   const [differentialEvidenceQuery, setDifferentialEvidenceQuery] = useState<string | null>(null);
+  const [scopeFilters, setScopeFilters] = useState<SearchScopeFilters>(initialSearchNavigationContext.scopeFilters);
+  const [searchScope, setSearchScope] = useState<SearchScopeSummary | null>(null);
+  const [sourceGovernanceWarnings, setSourceGovernanceWarnings] = useState<SourceGovernanceWarning[]>([]);
+  // Write-only for now: the clinical-notes panel was its only reader and the source
+  // drawer replaced that panel. The state and its resets stay until the panel itself
+  // is removed (handover §8), so re-wiring a view mode does not have to be rebuilt.
+  const [, setAnswerViewMode] = useState<AnswerViewMode>("high_yield");
+  const [loading, setLoading] = useState(false);
+  const [answerProgress, setAnswerProgress] = useState<string | null>(null);
+  const [answerProgressEvents, setAnswerProgressEvents] = useState<TimedAnswerProgressUpdate[]>([]);
+  const [answerProgressStartedAt, setAnswerProgressStartedAt] = useState<number | null>(null);
+  const [answerEvidencePreview, setAnswerEvidencePreview] = useState<VerifiedEvidencePreviewUnit | null>(null);
+  const [answerLifecycle, dispatchAnswerLifecycle] = useReducer(answerLifecycleReducer, initialAnswerLifecycle);
+  const [error, setError] = useState<string | null>(null);
   const clearModeResultState = useCallback(() => {
     resetAnswerThread();
     setAnswer(null);
@@ -426,23 +441,20 @@ function ClinicalDashboardContent({
     setAnswerProgress(null);
     setAnswerEvidencePreview(null);
     setDifferentialEvidenceQuery(null);
-  }, [resetAnswerThread]);
-  const [scopeFilters, setScopeFilters] = useState<SearchScopeFilters>(initialSearchNavigationContext.scopeFilters);
-  const [searchScope, setSearchScope] = useState<SearchScopeSummary | null>(null);
-  const [sourceGovernanceWarnings, setSourceGovernanceWarnings] = useState<SourceGovernanceWarning[]>([]);
-  // Write-only for now: the clinical-notes panel was its only reader and the source
-  // drawer replaced that panel. The state and its resets stay until the panel itself
-  // is removed (handover §8), so re-wiring a view mode does not have to be rebuilt.
-  const [, setAnswerViewMode] = useState<AnswerViewMode>("high_yield");
-  const [bulkActionStatus, setBulkActionStatus] = useState<string | null>(null);
-  const [bulkActionBusy, setBulkActionBusy] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [answerProgress, setAnswerProgress] = useState<string | null>(null);
-  const [answerProgressEvents, setAnswerProgressEvents] = useState<TimedAnswerProgressUpdate[]>([]);
-  const [answerProgressStartedAt, setAnswerProgressStartedAt] = useState<number | null>(null);
-  const [answerEvidencePreview, setAnswerEvidencePreview] = useState<VerifiedEvidencePreviewUnit | null>(null);
-  const [answerLifecycle, dispatchAnswerLifecycle] = useReducer(answerLifecycleReducer, initialAnswerLifecycle);
-  const [error, setError] = useState<string | null>(null);
+  }, [
+    resetAnswerThread,
+    setAnswer,
+    setSources,
+    setDocumentMatches,
+    setSearchRelevance,
+    setSearchFacets,
+    setSearchScope,
+    setSourceGovernanceWarnings,
+    setError,
+    setAnswerProgress,
+    setAnswerEvidencePreview,
+    setDifferentialEvidenceQuery,
+  ]);
   // Companion state for `error`, used to pick the right recovery UI (retry vs.
   // a calm no-results panel) and to re-run the exact query that failed. Only read
   // while `error` is truthy, and set alongside every `setError(<message>)` so a
@@ -511,7 +523,7 @@ function ClinicalDashboardContent({
         navSyncLockRef.current = null;
       }, 350);
     },
-    [mainRef],
+    [mainRef, setActiveHash],
   );
   const settingsState = useSettingsState();
   const documentsDrawerReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -597,6 +609,18 @@ function ClinicalDashboardContent({
       cancelled = true;
     };
   }, [auth.session?.user.id, authStatus, routedSearchContext.scopeRef]);
+  // Audit M10: monotonically increasing token identifying the latest search.
+  // Concurrent searches (URL-bootstrap auto-search racing a user submit) can
+  // resolve out of order; only the latest request may commit answer/sources/
+  // error/loading state, or a stale response would display one query's answer
+  // under another query's composer text.
+  const searchRequestSeqRef = useRef(0);
+  // Aborts the in-flight answer/library search when the user presses Stop, a
+  // newer search supersedes the prior one, or the component unmounts.
+  const searchAbortRef = useRef<AbortController | null>(null);
+  // Distinguishes a timeout-driven abort from an explicit user/supersede abort.
+  const answerTimedOutRef = useRef(false);
+
   const prevAuthStatusRef = useRef(authStatus);
   useEffect(() => {
     const previous = prevAuthStatusRef.current;
@@ -763,7 +787,14 @@ function ClinicalDashboardContent({
         document.getElementById(targetId)?.scrollIntoView({ behavior: resolveScrollBehavior(), block: "start" });
       }, 0);
     },
-    [canUseAdministrativeApis, closeDashboardTransientSurfaces, settingsState],
+    [
+      canUseAdministrativeApis,
+      closeDashboardTransientSurfaces,
+      settingsState,
+      setActionNotice,
+      setDocumentDrawerStatusFilter,
+      setIndexingMonitorFilter,
+    ],
   );
 
   // The dashboard renders directly on "/" without the standalone search shell,
@@ -812,7 +843,7 @@ function ClinicalDashboardContent({
         return next;
       });
     },
-    [answerThreadOwnerId, canRecordRecentSearches],
+    [answerThreadOwnerId, canRecordRecentSearches, setRecentQueries],
   );
 
   usePersistedAnswerThread({
@@ -820,10 +851,10 @@ function ClinicalDashboardContent({
     enabled: answerThreadBootstrapped && searchMode === "answer",
     answer,
     priorTurns: priorAnswerTurns,
-    latestTurn: latestAnswerTurnRef.current,
+    latestTurnRef: latestAnswerTurnRef,
     collapsedTurnIds,
     showEarlierTurns,
-    metadata: latestAnswerSnapshotMetadataRef.current,
+    metadataRef: latestAnswerSnapshotMetadataRef,
   });
 
   const dashboardDataSurfaceVisible =
@@ -881,6 +912,17 @@ function ClinicalDashboardContent({
     setSources,
     setUserStartedIngestion,
   });
+  const { bulkActionStatus, bulkActionBusy, bulkReindexSelected, bulkAssignCollection, bulkUpdateMetadata } =
+    useDashboardBulkActions({
+      authBoundFetch,
+      authorizationHeader,
+      isAuthEpochCurrent,
+      markSessionExpired,
+      refresh,
+      selectedDocumentIds,
+      setIndexingActive,
+      setUserStartedIngestion,
+    });
 
   useEffect(() => {
     if (actionNotice?.tone !== "success") return undefined;
@@ -930,8 +972,11 @@ function ClinicalDashboardContent({
 
   // The URL sync reads the current mode to tell a stale UI-change flag from a
   // genuine one, without the mode becoming one of its dependencies.
+  // Refreshed in a layout effect, which runs before any effect that reads it.
   const searchModeRef = useRef(searchMode);
-  searchModeRef.current = searchMode;
+  useLayoutEffect(() => {
+    searchModeRef.current = searchMode;
+  });
   useHomeModeSeed({
     pathname,
     searchParams,
@@ -974,9 +1019,11 @@ function ClinicalDashboardContent({
   }, [clearModeResultState, focusComposerInput]);
 
   const executeSearchRef = useRef(executeSearch);
-  executeSearchRef.current = executeSearch;
   const scopeFiltersRef = useRef(scopeFilters);
-  scopeFiltersRef.current = scopeFilters;
+  useLayoutEffect(() => {
+    executeSearchRef.current = executeSearch;
+    scopeFiltersRef.current = scopeFilters;
+  });
 
   useEffect(() => {
     if (urlDocumentSearchBootstrappedRef.current) return;
@@ -1200,18 +1247,6 @@ function ClinicalDashboardContent({
     }
     throw lastError;
   }
-
-  // Audit M10: monotonically increasing token identifying the latest search.
-  // Concurrent searches (URL-bootstrap auto-search racing a user submit) can
-  // resolve out of order; only the latest request may commit answer/sources/
-  // error/loading state, or a stale response would display one query's answer
-  // under another query's composer text.
-  const searchRequestSeqRef = useRef(0);
-  // Aborts the in-flight answer/library search when the user presses Stop, a
-  // newer search supersedes the prior one, or the component unmounts.
-  const searchAbortRef = useRef<AbortController | null>(null);
-  // Distinguishes a timeout-driven abort from an explicit user/supersede abort.
-  const answerTimedOutRef = useRef(false);
 
   function stopSearch() {
     searchRequestSeqRef.current += 1;
@@ -1736,7 +1771,9 @@ function ClinicalDashboardContent({
     );
   }
   const askRef = useRef(ask);
-  askRef.current = ask;
+  useLayoutEffect(() => {
+    askRef.current = ask;
+  });
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -2061,75 +2098,6 @@ function ClinicalDashboardContent({
     void runDocumentSearchShortcut(searchText, nextFilters, true, targetMode);
   }
 
-  async function bulkReindexSelected(mode: "enrichment" | "full" | "retry_failed") {
-    if (!selectedDocumentIds.length) return;
-    setBulkActionBusy(true);
-    setBulkActionStatus(null);
-    try {
-      const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authorizationHeader,
-        },
-        body: JSON.stringify({ documentIds: selectedDocumentIds, mode }),
-      });
-      if (response.status === 401) {
-        markSessionExpired();
-        return;
-      }
-      const payload = await response.json().catch(() => ({}));
-      if (!isAuthEpochCurrent(requestEpoch)) return;
-      if (!response.ok) throw new Error(payload.error || errorCopy.bulkReindexFailed);
-      const summary = summarizeBulkReindexPayload(payload);
-      setBulkActionStatus(summary.message);
-      if (!summary.hasSuccessfulWork) return;
-      setUserStartedIngestion(true);
-      setIndexingActive(true);
-      await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
-    } catch (error) {
-      if (isAbortError(error)) return;
-      setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkReindexFailed);
-    } finally {
-      setBulkActionBusy(false);
-    }
-  }
-
-  async function bulkAssignCollection(collection: string) {
-    if (!selectedDocumentIds.length || !collection.trim()) return;
-    await bulkUpdateMetadata({ collection: collection.trim() });
-  }
-
-  async function bulkUpdateMetadata(metadata: Record<string, unknown>) {
-    if (!selectedDocumentIds.length || Object.keys(metadata).length === 0) return;
-    setBulkActionBusy(true);
-    setBulkActionStatus(null);
-    try {
-      const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authorizationHeader,
-        },
-        body: JSON.stringify({ documentIds: selectedDocumentIds, metadata }),
-      });
-      if (response.status === 401) {
-        markSessionExpired();
-        return;
-      }
-      const payload = await response.json().catch(() => ({}));
-      if (!isAuthEpochCurrent(requestEpoch)) return;
-      if (!response.ok) throw new Error(payload.error || errorCopy.bulkMetadataUpdateFailed);
-      setBulkActionStatus(`${payload.updatedCount ?? 0} selected documents updated.`);
-      await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
-    } catch (error) {
-      if (isAbortError(error)) return;
-      setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkMetadataUpdateFailed);
-    } finally {
-      setBulkActionBusy(false);
-    }
-  }
-
   function selectSearchMode(mode: AppModeId) {
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
@@ -2294,7 +2262,7 @@ function ClinicalDashboardContent({
         .filter((item): item is { section: string; distance: number } => Boolean(item))
         .sort((a, b) => a.distance - b.distance)[0]?.section ?? "#search";
     setActiveHash((active) => (active === current ? active : current));
-  }, [mainRef]);
+  }, [mainRef, setActiveHash]);
 
   const scheduleActiveSectionSync = useCallback(() => {
     if (scrollFrameRef.current !== null) return;
@@ -2414,7 +2382,7 @@ function ClinicalDashboardContent({
       documentMatches.length,
       deferredQuery,
       answerRenderModel?.quoteCards.length,
-      answerRenderModel?.reviewSources.length,
+      answerRenderModel?.reviewSources,
       visualEvidence.length,
       weakEvidence,
     ],
