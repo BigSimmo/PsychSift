@@ -403,6 +403,12 @@ export function useDashboardLibraryRefresh({
       refreshInFlightRef.current = { epoch: authRequest.epoch, dataScope: requestedDataScope, promise };
       try {
         return await promise;
+      } catch (error) {
+        // A request that fails outright (offline, DNS, reset) rejects here
+        // rather than returning a bad status. Show the unavailable notice so an
+        // empty library is never mistaken for a library with no documents.
+        if (!isAbortError(error) && canCommit()) setApiUnavailable(true);
+        throw error;
       } finally {
         authRequest.release();
         if (requestedDataScope !== 0 && canCommit()) setDashboardDataLoading(false);
@@ -498,10 +504,17 @@ export function useDashboardLibraryRefresh({
   );
   const needsSetupRecheck = useMemo(() => setupNeedsSlowRecheck(setupChecks), [setupChecks]);
 
+  // The auth epoch changes only when the signed-in owner changes (sign in,
+  // sign out, or a direct account switch). Clear the previous owner's library
+  // straight away rather than leaving it on screen until the next refresh.
+  const libraryEpochRef = useRef(authEpoch);
   useEffect(() => {
     dashboardDataLoadedRef.current = false;
     administrationDataLoadedRef.current = false;
-  }, [administrationDataLoadedRef, authEpoch, dashboardDataLoadedRef]);
+    if (libraryEpochRef.current === authEpoch) return;
+    libraryEpochRef.current = authEpoch;
+    clearLibraryLists();
+  }, [administrationDataLoadedRef, authEpoch, clearLibraryLists, dashboardDataLoadedRef]);
 
   useEffect(() => {
     refresh({ includeSetup: true, includeDashboardData: false, includeDocumentMeta: false }).catch(() => undefined);
