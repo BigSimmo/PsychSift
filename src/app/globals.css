@@ -4022,7 +4022,7 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
 /* Tablet rail range: the collapsed icon rail occupies the left edge from md
    until the full sidebar takes over at lg, so fixed composers must centre on
    the remaining content area instead of the viewport. Shells set
-   --clinical-sidebar-width-md (5.25rem, or 0px when the sidebar is hidden). */
+   --clinical-sidebar-width-md (4rem, or 0px when the sidebar is hidden). */
 @media (min-width: 768px) and (max-width: 1023.98px) {
   .dashboard-composer-edge {
     left: calc(var(--clinical-sidebar-width-md, 0px) + max(0.75rem, var(--safe-area-left)));
@@ -4049,14 +4049,14 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
   }
 
   .dashboard-composer-edge {
-    left: calc(var(--clinical-sidebar-width, 20rem) + 2rem);
+    left: calc(var(--clinical-sidebar-width, 16.5rem) + 2rem);
     right: max(2rem, var(--safe-area-right));
   }
 
   .dashboard-composer-edge.answer-footer-search-edge {
-    left: calc(var(--clinical-sidebar-width, 20rem) + (100vw - var(--clinical-sidebar-width, 20rem)) / 2);
+    left: calc(var(--clinical-sidebar-width, 16.5rem) + (100vw - var(--clinical-sidebar-width, 16.5rem)) / 2);
     right: auto;
-    width: min(calc(100vw - var(--clinical-sidebar-width, 20rem) - 64px), 820px);
+    width: min(calc(100vw - var(--clinical-sidebar-width, 16.5rem) - 64px), 820px);
   }
 }
 
