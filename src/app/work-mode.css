@@ -2937,8 +2937,8 @@ html[data-work-frame] .app-toast-region {
   height: 2.5rem;
   border-radius: calc(var(--spacing) * 2.5);
   transition:
-    background-color var(--duration-fast, 120ms) ease,
-    color var(--duration-fast, 120ms) ease;
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .work-rail__item:hover {
