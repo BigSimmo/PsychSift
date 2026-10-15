@@ -6,6 +6,7 @@ import { ragQueryClassifierPromptVersion } from "@/lib/rag/rag-versioning";
 import { hasAdversarialManipulationIntent } from "@/lib/rag/rag-routing";
 import {
   clearlyOutsideCorpusMedicalPattern,
+  isDeterministicNonClinicalConsumerRefusal,
   isUnsupportedSoftTailAnalysis,
   unavailableDocumentNoisePattern,
 } from "@/lib/rag/rag-query-guard";
@@ -185,7 +186,10 @@ export async function analyzeQueryWithClassifierFallback(
     // an injection surface.)
     hasAdversarialManipulationIntent(query) ||
     unavailableDocumentNoisePattern.test(query) ||
-    (clearlyOutsideCorpusMedicalPattern.test(query) && analysis.documentTitleTerms.length === 0)
+    (clearlyOutsideCorpusMedicalPattern.test(query) && analysis.documentTitleTerms.length === 0) ||
+    // A plainly non-clinical consumer question ("best coffee machine") with no clinical word the
+    // model could rescue it on: the classifier would only add latency before the same refusal.
+    isDeterministicNonClinicalConsumerRefusal(query, analysis)
   ) {
     return { ...analysis, needsClassifierFallback: false } satisfies ClinicalQueryAnalysis;
   }

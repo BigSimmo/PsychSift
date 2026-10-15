@@ -36,7 +36,7 @@ function signed(item: SpecifierCatalogItem, overrides: Partial<SpecifierCatalogI
     review: {
       ...unsigned(item).review,
       clinicianReviewStatus: "clinician-reviewed",
-      reviewedBy: "Dr Example",
+      reviewedBy: "Dr Alex Example",
       reviewedAt: "2026-09-26T03:00:00.000Z",
       reviewedContentSha256: "a".repeat(64),
       ...overrides,
@@ -57,7 +57,9 @@ describe("specifier reference page clinician review", () => {
     render(<SpecifierReferencePage item={signed(defined)} />);
     expect(screen.getByText(defined.definition!.meaning)).toBeInTheDocument();
     expect(screen.getByText(defined.definition!.clinicalNote)).toBeInTheDocument();
-    expect(screen.getAllByText("Definition reviewed by Dr Example on 26 September 2026").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Definition reviewed by Dr Alex Example on 26 September 2026").length).toBeGreaterThan(
+      0,
+    );
     expect(screen.queryByText("Definition pending verification")).toBeNull();
     expect(screen.queryByText("Pending qualified review")).toBeNull();
     expect(screen.queryByText(/pending qualified clinician/)).toBeNull();
