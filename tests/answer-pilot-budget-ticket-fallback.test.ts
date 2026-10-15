@@ -48,8 +48,19 @@ describe("answer pilot ticket fallback", () => {
     vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const work = vi.fn(async () => "answered");
-    await expect(runAnswerWithPilotBudget(request(), work)).resolves.toBe("answered");
+    await expect(
+      runAnswerWithPilotBudget(request({ resolvedDocumentIds: ["22222222-2222-4222-8222-222222222222"] }), work),
+    ).resolves.toBe("answered");
     expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses an unrestricted (undefined) document scope when the ticket has expired", async () => {
+    vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
+    const work = vi.fn(async () => "answered");
+    await expect(runAnswerWithPilotBudget(request({ resolvedDocumentIds: undefined }), work)).rejects.toBeInstanceOf(
+      AnswerPilotBudgetError,
+    );
+    expect(work).not.toHaveBeenCalled();
   });
 
   it("refuses every request while an unreadable ticket is configured", async () => {
@@ -77,7 +88,8 @@ describe("answer pilot ticket fallback", () => {
     expect(couldBelongToAnswerPilot({ documentId: PILOT_DOCUMENT_ID }, "b".repeat(64))).toBe(true);
     expect(couldBelongToAnswerPilot({ resolvedDocumentIds: [PILOT_DOCUMENT_ID] }, "b".repeat(64))).toBe(true);
     expect(couldBelongToAnswerPilot(request(), PILOT_QUERY_DIGEST)).toBe(true);
-    expect(couldBelongToAnswerPilot(request(), "b".repeat(64))).toBe(false);
+    expect(couldBelongToAnswerPilot(request({ resolvedDocumentIds: undefined }), "b".repeat(64))).toBe(true);
+    expect(couldBelongToAnswerPilot(request({ resolvedDocumentIds: ["x"] }), "b".repeat(64))).toBe(false);
     expect(couldBelongToAnswerPilot(null, "b".repeat(64))).toBe(true);
   });
 });
