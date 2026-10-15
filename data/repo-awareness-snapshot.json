@@ -4231,6 +4231,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-15-database-changes-need-owner-permission.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/plans/2026-08-20-rag-verified-incremental-delivery.md",
         "section": "superpowers",
         "catalogued": true

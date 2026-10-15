@@ -497,6 +497,7 @@ const dbPatterns = [
   "src/lib/supabase",
   "docs/database-drift-detection.md",
   "docs/supabase-migration-reconciliation.md",
+  "tests/sql",
   /^scripts\/(check-drift|check-chain-mirror-parity|generate-drift-manifest|check-m13-migration|check-retrieval-owner-migration|check-supabase-project|audit-tables|reindex|reindex-health|cleanup-abandoned-reindex-generations)\.ts$/,
   /^tests\/(supabase|drift|private-rag|private-access|retrieval-owner).*\.test\.ts$/,
 ];
