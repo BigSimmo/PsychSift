@@ -170,8 +170,8 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
     !policy.policyVersion ||
     !source.catalogueKey ||
     (source.sourceFamily === "native_pdf"
-      ? source.sourceSectionLayout !== undefined
-      : source.sourceSectionLayout?.sourceSha256 !== source.sourceSha256)
+      ? true
+      : source.sourceSectionLayout === undefined || source.sourceSectionLayout.sourceSha256 === source.sourceSha256)
   )
     return refuse();
   const expectation = parseSourceExpectation(source.sourceExpectation);
