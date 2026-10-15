@@ -19,6 +19,7 @@ function source(relativePath: string) {
 
 const clinicalDashboardSource = source("src/components/ClinicalDashboard.tsx");
 const dashboardDocumentActionsSource = source("src/components/clinical-dashboard/use-dashboard-document-actions.ts");
+const dashboardLibraryDataSource = source("src/components/clinical-dashboard/use-dashboard-library-data.ts");
 const dashboardModeSurfaceSource = source("src/components/clinical-dashboard/dashboard-mode-surface.ts");
 const masterSearchHeaderSource = source("src/components/clinical-dashboard/master-search-header.tsx");
 const universalAlsoMatchesSource = source("src/components/clinical-dashboard/universal-search-also-matches.tsx");
@@ -369,8 +370,11 @@ describe("audit navigation and auth regressions", () => {
       'localNoAuthMode || localDevCanAttemptPrivateApis || authStatus === "authenticated"',
     );
 
+    // Library loading and polling moved out of ClinicalDashboard into its own hook; the dashboard
+    // must still hand that hook the same private-API capability.
+    expect(clinicalDashboardSource).toMatch(/useDashboardLibraryRefresh\(\{[\s\S]*?canUsePrivateApis,[\s\S]*?\}\)/);
     const pollingContract = sourceSegment(
-      clinicalDashboardSource,
+      dashboardLibraryDataSource,
       "if (!nextDemoMode && !canUsePrivateApis) {",
       "const shouldRefreshWorkState =",
       { label: "private polling capability" },
