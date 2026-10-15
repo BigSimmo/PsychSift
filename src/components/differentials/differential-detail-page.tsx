@@ -260,7 +260,10 @@ function SectionRow({
           {/* A section with neither items nor a summary would render as a bare
               heading with no chevron and read as broken; say so plainly. */}
           <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)] sm:text-sm sm:leading-6">
-            {section.summary.trim() || "None listed"}
+            {section.summary.trim() ||
+              (section.items.length > 0 || (section.tone === "test" && record.investigations.length > 0)
+                ? "See the key distinction above"
+                : "None listed")}
           </p>
         </div>
         <span className="hidden justify-self-end text-xs font-semibold text-[color:var(--text-muted)] sm:block">
