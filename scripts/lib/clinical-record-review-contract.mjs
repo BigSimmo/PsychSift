@@ -175,7 +175,11 @@ function isPlainRecord(value) {
 // attributions (for example, "PsychSift") are not clinician sign-offs.
 function isNamedSpecifierReviewer(value) {
   if (typeof value !== "string") return false;
-  const words = value.trim().replace(/\s+/g, " ").split(" ").filter((word) => /\p{L}/u.test(word));
+  const words = value
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
   return nameWords.length >= 2 && !nameWords.some((word) => /^(?:psychsift|system|pending|placeholder)$/i.test(word));
@@ -508,13 +512,14 @@ function specifierRecords(document) {
 function specifierView(native, placement) {
   const review = isPlainRecord(native.review) ? native.review : {};
   const signable = placement.kind === "universal" || native.definitionStatus === "defined";
+  const unnamedStamp = review.clinicianReviewStatus === "clinician-reviewed" && !isSpecifierClinicianReviewed(review);
   const status =
     review.clinicianReviewStatus === "clinician-reviewed"
-      ? isSpecifierClinicianReviewed(review)
-        ? "reviewed"
-        : signable
+      ? unnamedStamp
+        ? signable
           ? "drafted"
           : "pending"
+        : "reviewed"
       : review.clinicianReviewStatus === "clinician-review-pending"
         ? signable
           ? "drafted"
@@ -531,9 +536,10 @@ function specifierView(native, placement) {
     sourceVerificationStatus: review.sourceVerificationStatus ?? null,
     sourceFamily: review.sourceFamily ?? null,
     status,
-    reviewedBy: review.reviewedBy ?? null,
-    reviewedAt: review.reviewedAt ?? null,
-    reviewedContentSha256: review.reviewedContentSha256 ?? null,
+    // An unnamed stamp is not an attestation: the view shows none, and a real sign-off overwrites it.
+    reviewedBy: unnamedStamp ? null : (review.reviewedBy ?? null),
+    reviewedAt: unnamedStamp ? null : (review.reviewedAt ?? null),
+    reviewedContentSha256: unnamedStamp ? null : (review.reviewedContentSha256 ?? null),
   };
 }
 
@@ -919,7 +925,9 @@ export function signOffQueue(kind, records, context = {}) {
   const waiting = records.filter(
     (record) =>
       (record?.status === "drafted" ||
-        (resolved.kind === "specifier" && record?.status === "reviewed" && !isNamedSpecifierReviewer(record?.reviewedBy)) ||
+        (resolved.kind === "specifier" &&
+          record?.status === "reviewed" &&
+          !isNamedSpecifierReviewer(record?.reviewedBy)) ||
         (record?.status === "reviewed" && recordPinState(record, resolved, context) === "stale")) &&
       !indigenousContentIn(record, resolved, context),
   );
@@ -982,15 +990,6 @@ export function applyClinicalReview(document, kind, reviewed) {
       counts: {
         ...document.exportMetadata.counts,
         sections: nextRecords.length,
-        reviewed: tally("reviewed"),
-        drafted: tally("drafted"),
-        pending: tally("pending"),
-      },
-    };
-  }
-  return next;
-}
-tions: nextRecords.length,
         reviewed: tally("reviewed"),
         drafted: tally("drafted"),
         pending: tally("pending"),

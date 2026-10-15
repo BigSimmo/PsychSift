@@ -31,6 +31,7 @@ import specifiersContent from "../data/specifiers-content.json";
 import { curatedDifferentials } from "@/lib/differential-curated";
 import { curatedProvenanceFor, curatedProvenanceLabel } from "@/lib/differential-detail";
 import { conceptReviewState, mechanismReviewState } from "@/lib/formulation-review-status";
+import { isSpecifierClinicianReviewed } from "@/lib/specifiers-content";
 
 /**
  * The sign-off kinds added for the Differentials overlays and the Formulation library.
@@ -325,7 +326,15 @@ describe("specifier sign-off", () => {
                 reviewedContentSha256: null,
               });
           }
-    document.stats.itemsPendingClinicianReview += 1;
+    // The site's own gate decides what counts as signed: an unnamed stamp is still pending.
+    const pendingItems = (doc: typeof specifiersContent) =>
+      doc.categories.flatMap((category) =>
+        category.disorders.flatMap((disorder) =>
+          disorder.groups.flatMap((group) => group.items.filter((item) => !isSpecifierClinicianReviewed(item.review))),
+        ),
+      ).length;
+    const pendingBefore = pendingItems(document);
+    document.stats.itemsPendingClinicianReview = pendingBefore;
     const beforeViews = collectionOf("specifier", document);
     const view = beforeViews.find((record: Json) => record.id === target.id);
     expect(view).toBeTruthy();
@@ -343,7 +352,7 @@ describe("specifier sign-off", () => {
       (record: Json, index: number) => JSON.stringify(record) !== JSON.stringify(beforeViews[index]),
     );
     expect(changed.map((record: Json) => record.id)).toEqual([view.id]);
-    expect(next.stats.itemsPendingClinicianReview).toBe(document.stats.itemsPendingClinicianReview - 1);
+    expect(next.stats.itemsPendingClinicianReview).toBe(pendingBefore - 1);
   });
 
   it("sends a signed definition back for review when its text is edited", () => {
