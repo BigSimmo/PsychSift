@@ -183,7 +183,7 @@ import {
   type AppModeId,
 } from "@/lib/app-modes";
 import { useLastAppMode } from "@/components/clinical-dashboard/use-last-app-mode";
-import { isDashboardModeHref } from "@/lib/search-route-ownership";
+import { isDashboardModeHref, ownPageModeHomeHref } from "@/lib/search-route-ownership";
 import { documentsSearchHref } from "@/lib/document-flow-routes";
 import {
   privateScopeReadyForRoute,
@@ -2528,6 +2528,16 @@ function ClinicalDashboardContent({
     }
     setLastAppMode(mode);
 
+    // A mode with nothing to search lives on its own page. Pointing the shared
+    // home's composer at it would show an empty search box whose query goes
+    // nowhere, so open the page instead, wherever the switch came from.
+    const ownPage = ownPageModeHomeHref(mode);
+    if (ownPage) {
+      stopSearch();
+      router.push(ownPage);
+      return;
+    }
+
     // On the shared home the pill is NOT navigation — it only decides where the
     // composer will send you. Keep the page, the draft query and the scroll
     // position, and rewrite `?mode=` in place. replaceState (not push) means Back
@@ -3012,19 +3022,19 @@ function ClinicalDashboardContent({
       className={cn(
         appBackdrop,
         // Browser phones scroll the document; installed mode keeps <main> bounded.
-        "mobile-app-shell phone-viewport-shell flex flex-col text-[color:var(--text)] sm:overflow-hidden md:grid md:grid-cols-[5.25rem_minmax(0,1fr)]",
+        "mobile-app-shell phone-viewport-shell flex flex-col text-[color:var(--text)] sm:overflow-hidden md:grid md:grid-cols-[4rem_minmax(0,1fr)]",
         // Sidebar collapse snaps by design (#1489): the previous
         // `motion-safe:transition-[grid-template-columns]` needed a mount-gating
         // hook in both shells to avoid animating from the default track width,
         // and animating a grid track relayouts the whole shell on every frame.
         // Restoring the animation means restoring that cost — do not re-add it
         // as a "missing transition" fix.
-        settingsState.sidebarCollapsed ? "lg:grid-cols-[5.25rem_minmax(0,1fr)]" : "lg:grid-cols-[20rem_minmax(0,1fr)]",
+        settingsState.sidebarCollapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[16.5rem_minmax(0,1fr)]",
       )}
       style={
         {
-          "--clinical-sidebar-width": settingsState.sidebarCollapsed ? "5.25rem" : "20rem",
-          "--clinical-sidebar-width-md": "5.25rem",
+          "--clinical-sidebar-width": settingsState.sidebarCollapsed ? "4rem" : "16.5rem",
+          "--clinical-sidebar-width-md": "4rem",
           "--mobile-composer-reserve": mobileComposerReserve,
         } as CSSProperties
       }

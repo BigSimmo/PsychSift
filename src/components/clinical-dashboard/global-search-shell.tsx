@@ -564,7 +564,7 @@ function GlobalStandaloneSearchShellBody({
     setMobileMenuOpen(true);
   };
   const effectiveSidebarCollapsed = isDifferentialPresentationWorkflow || workSideNav ? true : sidebarCollapsed;
-  const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "5.25rem" : "20rem") : "0px";
+  const effectiveSidebarWidth = shouldShowDesktopSidebar ? (effectiveSidebarCollapsed ? "4rem" : "16.5rem") : "0px";
   // Psychiatry stays an information page for its navigation, but its home now
   // takes the search box (see `dockedModeHomePaths`).
   const isInfoPage = isInformationPage(pathname) && !isDockedModeHomePath(pathname);
@@ -588,7 +588,10 @@ function GlobalStandaloneSearchShellBody({
     !(browserOffline && isDockedModeHomePath(pathname));
   // `/tools` owns its catalogue controls rather than a shared composer. Keep
   // the sidebar's cross-guide search usable by returning to Answer first.
-  const openSidebarSearch = pathname === "/tools" ? () => startNewAnswerChat() : () => focusComposerInput(inputRef);
+  // Pages without a mounted composer (Tools, document and information pages)
+  // open a fresh search instead, so the sidebar and rail Search never do nothing.
+  const openSidebarSearch = () =>
+    pathname !== "/tools" && inputRef.current?.isConnected ? focusComposerInput(inputRef) : startNewAnswerChat();
   const heroOwnsPhoneComposer = isStandaloneModeHome && mobileHomeComposerPlacement === "hero";
   // This flag controls sm+ padding for standalone mode homes. Tools has no
   // shared composer, so it cannot reserve floating-composer space. Phone
@@ -982,16 +985,16 @@ function GlobalStandaloneSearchShellBody({
           // and can minimize its own chrome. Standalone mode is bounded by the
           // shared display-mode contract without returning to a fixed root.
           "phone-viewport-shell sm:min-h-dvh bg-[color:var(--background)] text-[color:var(--text)]",
-          shouldShowDesktopSidebar && "md:grid md:grid-cols-[5.25rem_minmax(0,1fr)]",
+          shouldShowDesktopSidebar && "md:grid md:grid-cols-[4rem_minmax(0,1fr)]",
           // Sidebar collapse snaps by design (#1489) — see the matching note in
           // ClinicalDashboard. Do not re-add the grid-track transition here.
           shouldShowDesktopSidebar &&
-            (effectiveSidebarCollapsed ? "lg:grid-cols-[5.25rem_minmax(0,1fr)]" : "lg:grid-cols-[20rem_minmax(0,1fr)]"),
+            (effectiveSidebarCollapsed ? "lg:grid-cols-[4rem_minmax(0,1fr)]" : "lg:grid-cols-[16.5rem_minmax(0,1fr)]"),
         )}
         style={
           {
             "--clinical-sidebar-width": effectiveSidebarWidth,
-            "--clinical-sidebar-width-md": shouldShowDesktopSidebar ? "5.25rem" : "0px",
+            "--clinical-sidebar-width-md": shouldShowDesktopSidebar ? "4rem" : "0px",
             "--mobile-composer-reserve": mobileComposerReserve,
           } as CSSProperties
         }

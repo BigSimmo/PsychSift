@@ -1518,7 +1518,6 @@ test.describe("PsychSift UI smoke coverage", () => {
     const rail = page.getByLabel("PsychSift collapsed sidebar");
     const scrollRegion = rail.getByTestId("collapsed-sidebar-scroll-region");
     const navigation = rail.getByRole("navigation", { name: "Pinned shortcuts" });
-    const library = rail.getByRole("navigation", { name: "Your library" });
     await expect(rail.getByRole("button", { name: "New chat" })).toBeVisible();
     await expect(rail.getByRole("button", { name: "Settings" })).toBeVisible();
     await expect(scrollRegion.getByRole("button", { name: "New chat" })).toHaveCount(0);
@@ -1538,13 +1537,9 @@ test.describe("PsychSift UI smoke coverage", () => {
       { name: "Medication", href: "/?mode=prescribing" },
       { name: "Factsheets", href: "/?mode=factsheets" },
     ]);
-    expect(
-      await library
-        .getByRole("link")
-        .evaluateAll((links) =>
-          links.map((link) => ({ name: link.getAttribute("aria-label"), href: link.getAttribute("href") })),
-        ),
-    ).toEqual([{ name: "Favourites", href: "/favourites" }]);
+    // Core items only (owner request, 15 Oct 2026): Favourites lives in the open
+    // sidebar's Your library, not on the slim rail.
+    await expect(rail.getByRole("navigation", { name: "Your library" })).toHaveCount(0);
     // Specialist mode homes open from a single "More modes" control (sheet), not
     // an always-visible six-link rail group — the mode pill only retargets the
     // composer.
