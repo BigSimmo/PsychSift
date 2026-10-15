@@ -23,13 +23,13 @@ describe("modes with nothing to search open their own page", () => {
     expect(ownPageModeHomeHref("my-work")).toBe("/admin");
   });
 
-  it("redirects a bare or submitted /?mode=cme to /cme, dropping only the search-home query", () => {
+  it("redirects a bare or submitted /?mode=cme to /cme, dropping only mode and run", () => {
     expect(legacyHomeRedirectUrl(new URL("https://clinical-kb.test/?mode=cme"), "GET")?.toString()).toBe(
       "https://clinical-kb.test/cme",
     );
     expect(
       legacyHomeRedirectUrl(new URL("https://clinical-kb.test/?mode=on-call&q=ward&run=1&focus=1"), "GET")?.toString(),
-    ).toBe("https://clinical-kb.test/on-call");
+    ).toBe("https://clinical-kb.test/on-call?q=ward&focus=1");
     expect(legacyHomeRedirectUrl(new URL("https://clinical-kb.test/?mode=cme"), "POST")).toBeNull();
   });
 
@@ -37,7 +37,8 @@ describe("modes with nothing to search open their own page", () => {
     const cases = [
       ["/?mode=cme&year=2025", "/cme?year=2025"],
       ["/?mode=psychiatry&page=saved", "/psychiatry?page=saved"],
-      ["/?mode=roster&view=hours&q=ward", "/roster?view=hours"],
+      ["/?mode=roster&view=hours", "/roster?view=hours"],
+      ["/?mode=psychiatry&q=lithium&focus=1&run=1", "/psychiatry?q=lithium&focus=1"],
       ["/?mode=my-day&view=all#top", "/my-day?view=all"],
     ] as const;
     for (const [from, to] of cases) {
