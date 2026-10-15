@@ -980,7 +980,7 @@ export function ClinicalSidebarContent({
               }}
               aria-label="Search PsychSift"
               aria-keyshortcuts="Control+K Meta+K"
-              className={cn(rowItem, "border border-transparent")}
+              className={cn(rowItem, "focus-ring-contained border border-transparent focus-visible:-outline-offset-2")}
             >
               <Search aria-hidden="true" className="h-4 w-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate text-left">Search</span>
