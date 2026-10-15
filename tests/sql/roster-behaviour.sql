@@ -543,3 +543,7 @@ $delete_account$;
 set local role service_role;
 
 select 'roster behaviour: all checks passed' as result;
+
+-- The local runner and CI use psql -1, but keep this explicit so selecting this file twice
+-- (or running it outside the runner) can never leave its synthetic fixtures behind.
+rollback;
