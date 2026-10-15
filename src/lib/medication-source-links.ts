@@ -8,6 +8,7 @@ import {
 import { isCurrentActiveSourceReference } from "@/lib/sources/catalogue-core";
 import type { ClinicalSourceReferenceInput } from "@/lib/sources/catalogue-types";
 import { safeCanonicalSourceUrl } from "@/lib/sources/source-url-policy";
+import { isNamedPerson } from "@/lib/admin/rule-sign-off";
 
 /** A source link a medication page may show: one the owner has signed off as it now stands. */
 export type MedicationSourceLink = {
@@ -32,7 +33,7 @@ export const medicationSourceLinkIds: MedicationSourceLinkMap = medicationSource
 export function isConfirmedAcquisitionRecord(record: SourceAcquisitionRecord): boolean {
   if (record.disposition !== "adopted") return false;
   if (record.validationStatus !== "locally_reviewed" && record.validationStatus !== "approved") return false;
-  if (!record.attestedBy?.trim() || !record.attestedAt?.trim()) return false;
+  if (!record.attestedBy?.trim() || !isNamedPerson(record.attestedBy) || !record.attestedAt?.trim()) return false;
   const attested = record.attestedAgainstSha256?.trim();
   return Boolean(attested) && attested === acquisitionAttestedContentSha256(record);
 }
