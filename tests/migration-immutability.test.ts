@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -7,6 +11,7 @@ import {
   planSeal,
   readManifest,
   resealAllowed,
+  readSealedVersions,
   resealBlockedWithoutApproval,
 } from "../scripts/check-migration-immutability.mjs";
 
@@ -88,11 +93,32 @@ describe("migration sealing is append-only", () => {
     expect(resealBlockedWithoutApproval(edited, { env: env() })).toBe(true);
     expect(resealBlockedWithoutApproval(dropped, { env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "  " }) })).toBe(true);
     expect(resealBlockedWithoutApproval(appendOnly, { env: env() })).toBe(false);
+    for (const vague of ["no", "yes", "2026-10-15", "owner"]) {
+      expect(resealBlockedWithoutApproval(edited, { env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: vague }) })).toBe(true);
+    }
     expect(
       resealBlockedWithoutApproval(edited, {
         env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "owner, in chat, 2026-10-15" }),
       }),
     ).toBe(false);
+  });
+
+  it("treats a missing, unreadable or versionless manifest as unknown, never as empty", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "seal-"));
+    try {
+      const broken = path.join(dir, "broken.json");
+      const versionless = path.join(dir, "versionless.json");
+      const good = path.join(dir, "good.json");
+      writeFileSync(broken, "{not json");
+      writeFileSync(versionless, JSON.stringify({ note: "x" }));
+      writeFileSync(good, JSON.stringify({ versions: { "a.sql": "1" } }));
+      expect(readSealedVersions(path.join(dir, "absent.json"))).toBeNull();
+      expect(readSealedVersions(broken)).toBeNull();
+      expect(readSealedVersions(versionless)).toBeNull();
+      expect(readSealedVersions(good)).toEqual({ "a.sql": "1" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("allows exceptional restoration only with an explicit reseal opt-in", () => {

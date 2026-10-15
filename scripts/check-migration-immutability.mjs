@@ -22,7 +22,7 @@
  * only. It refuses `edited` and `missing` entries so an applied-history rewrite cannot clear this
  * gate by resealing the rewritten bytes. The genuine exception — restoring a file to the bytes
  * production actually holds — requires an explicit one-time override:
- *   MIGRATION_RESEAL_OWNER_APPROVAL="<who approved, when>" ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
+ *   MIGRATION_RESEAL_OWNER_APPROVAL="<who approved, YYYY-MM-DD>" ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
  *   (or `node scripts/check-migration-immutability.mjs --write --allow-reseal`, with the same approval variable)
  * That path prints every existing entry it changes; the manifest diff and the reason for it must
  * land in front of a reviewer. Resealing also needs the owner's explicit permission for that specific
@@ -68,6 +68,19 @@ export function readManifest(manifestPath = MANIFEST_PATH) {
 }
 
 /**
+ * The sealed hashes, or null when the manifest is missing, unreadable or has no versions map. Sealing
+ * must not treat that as "nothing sealed yet": rebuilding from disk would quietly accept every edit.
+ */
+export function readSealedVersions(manifestPath = MANIFEST_PATH) {
+  try {
+    const versions = readManifest(manifestPath)?.versions;
+    return versions && typeof versions === "object" && !Array.isArray(versions) ? versions : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Compare sealed hashes against what is on disk.
  *
  * @returns {{ edited: string[], missing: string[], unsealed: string[], ok: boolean }}
@@ -102,7 +115,18 @@ export function resealAllowed({ argv = process.argv, env = process.env } = {}) {
  */
 export function resealBlockedWithoutApproval(plan, { env = process.env } = {}) {
   const rewritesSealedEntries = plan.edited.length > 0 || plan.missing.length > 0;
-  return rewritesSealedEntries && !(env.MIGRATION_RESEAL_OWNER_APPROVAL ?? "").trim();
+  return rewritesSealedEntries && !ownerApprovalNamed(env);
+}
+
+/**
+ * True when MIGRATION_RESEAL_OWNER_APPROVAL names who approved and on what date, such as
+ * "the owner, in chat, 2026-10-15". It cannot prove a person said yes; it makes the claim
+ * specific enough to check against the record in review.
+ */
+export function ownerApprovalNamed(env = process.env) {
+  const value = (env.MIGRATION_RESEAL_OWNER_APPROVAL ?? "").trim();
+  const date = value.match(/\b\d{4}-\d{2}-\d{2}\b/);
+  return Boolean(date) && /[a-z]{3,}/i.test(value.replace(date[0], ""));
 }
 
 /**
@@ -155,12 +179,16 @@ function writeManifest(versions) {
 
 export function seal({ argv = process.argv, env = process.env, write = writeManifest } = {}) {
   const current = hashMigrations();
-  let previous = {};
-  try {
-    previous = readManifest().versions ?? {};
-  } catch {
-    previous = {};
+  const sealed = readSealedVersions();
+  if (sealed === null && !ownerApprovalNamed(env)) {
+    console.error(`Migration seal refused: ${MANIFEST_RELATIVE} is missing or unreadable.`);
+    console.error(
+      "Restore it from git rather than rebuilding it from the files on disk, which would accept any edit. " +
+        "Rebuilding it needs the owner's explicit permission (AGENTS.md, Supabase project safety).",
+    );
+    return 1;
   }
+  const previous = sealed ?? {};
   const allowReseal = resealAllowed({ argv, env });
   const plan = planSeal(previous, current, { allowReseal });
   if (plan.refused) {
@@ -184,7 +212,7 @@ export function seal({ argv = process.argv, env = process.env, write = writeMani
     console.error("");
     console.error(
       "Ask the owner for a yes to this specific reseal (AGENTS.md, Supabase project safety), then " +
-        "rerun with MIGRATION_RESEAL_OWNER_APPROVAL set to who approved it and when.",
+        "rerun with MIGRATION_RESEAL_OWNER_APPROVAL naming who approved it and the date (YYYY-MM-DD).",
     );
     return 1;
   }
