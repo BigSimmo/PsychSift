@@ -245,10 +245,14 @@ function checkLinks({ repoRoot, dir, names, entries, errors }) {
   }
   const rules = readRetiredRules(repoRoot);
   if (rules === null) return;
-  const ids = new Set(rules.map((rule) => rule?.id).filter(Boolean));
+  const byId = new Map(rules.filter((rule) => rule?.id).map((rule) => [rule.id, rule]));
   for (const entry of entries) {
+    const file = `${dir}/${entry.fileName}`;
     for (const id of entry.retires) {
-      if (!ids.has(id)) errors.push(`${dir}/${entry.fileName}: retires "${id}", which is not in ${RETIRED_RULES_FILE}`);
+      const rule = byId.get(id);
+      if (!rule) errors.push(`${file}: retires "${id}", which is not in ${RETIRED_RULES_FILE}`);
+      else if (typeof rule.decision === "string" && rule.decision !== file)
+        errors.push(`${file}: retires "${id}", but that rule's decision points at ${rule.decision}`);
     }
   }
   for (const rule of rules) {
