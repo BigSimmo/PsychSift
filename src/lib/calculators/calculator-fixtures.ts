@@ -78,6 +78,7 @@ export type CalculatorFixture = {
   scoringNote: string;
   source: string;
   caution?: string;
+  disclaimer?: string;
   instrumentVersion: string;
   administrationMethod: string;
   intendedPopulation: string;

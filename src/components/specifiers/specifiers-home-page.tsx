@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useId, useMemo, useState } from "react";
 import { ArrowRight, Search } from "lucide-react";
 
 import { pairCompareHref } from "@/components/compare";
@@ -138,11 +138,16 @@ function SpecifierCatalogueMatches({ matches }: { matches: SpecifierCatalogMatch
 
 function SpecifierResults({ query }: { query: string }) {
   const searchParams = useSearchParams();
+  const serializedParams = searchParams.toString();
+  const deferredQuery = useDeferredValue(query);
   const filterPanelId = useId();
   const [filterOpen, setFilterOpen] = useState(false);
-  const allGuideMatches = useMemo(() => searchSpecifiers(query, { family: "all", diagnosis: "" }), [query]);
-  const allCatalogueMatches = useMemo(() => searchSpecifierCatalog(query, {}, true), [query]);
-  const smartInterpretation = useMemo(() => interpretSmartSearch("specifiers", query), [query]);
+  const allGuideMatches = useMemo(
+    () => searchSpecifiers(deferredQuery, { family: "all", diagnosis: "" }),
+    [deferredQuery],
+  );
+  const allCatalogueMatches = useMemo(() => searchSpecifierCatalog(deferredQuery, {}, true), [deferredQuery]);
+  const smartInterpretation = useMemo(() => interpretSmartSearch("specifiers", deferredQuery), [deferredQuery]);
   const defaultScope: SpecifierResultScope =
     smartInterpretation.naturalLanguage && allCatalogueMatches.length > 0
       ? "catalogue"
@@ -154,184 +159,263 @@ function SpecifierResults({ query }: { query: string }) {
   const diagnosisValues = useMemo(() => new Set(diagnosisOptions.map((option) => option.value)), []);
   const family = readResultFilterValue(searchParams, "family", familyValues, "all") as "all" | SpecifierFamily;
   const diagnosis = readResultFilterValue(searchParams, "diagnosis", diagnosisValues, "");
+  const fullCatalogueMatches = useMemo(() => searchSpecifierCatalog("", {}, true), []);
   const categoryOptions = useMemo(
     () =>
-      [...new Map(allCatalogueMatches.map(({ item }) => [item.categoryId, item.category])).entries()]
+      [...new Map(fullCatalogueMatches.map(({ item }) => [item.categoryId, item.category])).entries()]
         .map(([value, label]) => ({ value, label }))
         .sort((left, right) => left.label.localeCompare(right.label)),
-    [allCatalogueMatches],
+    [fullCatalogueMatches],
   );
   const categoryValues = useMemo(() => new Set(categoryOptions.map((option) => option.value)), [categoryOptions]);
-  const selectedCategories = new Set(readResultFilterValues(searchParams, "category", categoryValues));
+  const selectedCategories = useMemo(
+    () => new Set(readResultFilterValues(new URLSearchParams(serializedParams), "category", categoryValues)),
+    [serializedParams, categoryValues],
+  );
   const reviewedOnly = searchParams.get("reviewed") === "1";
   // Nothing typed is browsing, not a search: the list is shown A to Z with no
   // "Top match", so it never reads as the app having picked something. Sorting
   // here (display only) leaves the search library's ranking untouched.
-  const browsing = query.length === 0;
+  const browsing = deferredQuery.length === 0;
   const guideMatches = useMemo(() => {
-    const matches = searchSpecifiers(query, { family, diagnosis });
+    const matches = searchSpecifiers(deferredQuery, { family, diagnosis });
     return browsing
       ? [...matches].sort((left, right) =>
           left.record.name.localeCompare(right.record.name, "en", { sensitivity: "base" }),
         )
       : matches;
-  }, [browsing, diagnosis, family, query]);
-  const filteredCatalogueMatches = allCatalogueMatches.filter(
-    ({ item }) =>
-      (selectedCategories.size === 0 || selectedCategories.has(item.categoryId)) &&
-      (!reviewedOnly || item.src === "source-verified"),
+  }, [browsing, diagnosis, family, deferredQuery]);
+  const filteredEntries = useMemo(
+    () =>
+      allCatalogueMatches.filter(
+        ({ item }) =>
+          (selectedCategories.size === 0 || selectedCategories.has(item.categoryId)) &&
+          (!reviewedOnly || item.src === "source-verified"),
+      ),
+    [allCatalogueMatches, selectedCategories, reviewedOnly],
   );
-  const catalogueMatches = browsing
-    ? [...filteredCatalogueMatches].sort((left, right) =>
-        left.item.label.localeCompare(right.item.label, "en", { sensitivity: "base" }),
-      )
-    : filteredCatalogueMatches;
+  const filteredCatalogueMatches = filteredEntries;
+  const sortedEntries = useMemo(
+    () =>
+      browsing
+        ? [...filteredCatalogueMatches].sort((left, right) =>
+            left.item.label.localeCompare(right.item.label, "en", { sensitivity: "base" }),
+          )
+        : filteredCatalogueMatches,
+    [browsing, filteredCatalogueMatches],
+  );
+  const catalogueMatches = sortedEntries;
   const matchingTotal = scope === "guides" ? guideMatches.length : catalogueMatches.length;
-  const resultSignature = `${query}|${scope}|${[...selectedCategories].sort().join(",")}|${reviewedOnly}`;
+  const resultSignature = `${deferredQuery}|${scope}|${[...selectedCategories].sort().join(",")}|${reviewedOnly}`;
   const [visibleState, setVisibleState] = useState({ signature: resultSignature, count: CATALOGUE_RESULT_LIMIT });
   if (visibleState.signature !== resultSignature) {
     setVisibleState({ signature: resultSignature, count: CATALOGUE_RESULT_LIMIT });
   }
-  const visibleCatalogueMatches = catalogueMatches.slice(0, visibleState.count);
+  const visibleCatalogueMatches = useMemo(
+    () => catalogueMatches.slice(0, visibleState.count),
+    [catalogueMatches, visibleState.count],
+  );
 
   const familyOptions = useMemo(
     () => specifierFamilies.map((option) => ({ value: option.id, label: option.label })),
     [],
   );
-  const updateLens = <Value extends string>(
-    key: "scope" | "family" | "diagnosis",
-    value: Value,
-    fallback: Value,
-    allowed: ReadonlySet<Value>,
-  ) => replaceResultFilterUrl((params) => writeResultFilterValue(params, key, value, fallback, allowed));
-  const toggleCategory = (value: string) =>
-    replaceResultFilterUrl((params) => {
-      const next = new Set(readResultFilterValues(params, "category", categoryValues));
-      if (!next.delete(value)) next.add(value);
-      writeResultFilterValues(params, "category", next, categoryValues);
-    });
-  const setReviewedOnly = (enabled: boolean) =>
-    replaceResultFilterUrl((params) => {
-      if (enabled) params.set("reviewed", "1");
-      else params.delete("reviewed");
-    });
-  const clearFilters = () =>
-    replaceResultFilterUrl((params) => {
-      params.delete("scope");
-      params.delete("family");
-      params.delete("diagnosis");
-      params.delete("category");
-      params.delete("reviewed");
-    });
+  const updateLens = useCallback(
+    <Value extends string>(
+      key: "scope" | "family" | "diagnosis",
+      value: Value,
+      fallback: Value,
+      allowed: ReadonlySet<Value>,
+    ) => replaceResultFilterUrl((params) => writeResultFilterValue(params, key, value, fallback, allowed)),
+    [],
+  );
+  const toggleCategory = useCallback(
+    (value: string) =>
+      replaceResultFilterUrl((params) => {
+        const next = new Set(readResultFilterValues(params, "category", categoryValues));
+        if (!next.delete(value)) next.add(value);
+        writeResultFilterValues(params, "category", next, categoryValues);
+      }),
+    [categoryValues],
+  );
+  const setReviewedOnly = useCallback(
+    (enabled: boolean) =>
+      replaceResultFilterUrl((params) => {
+        if (enabled) params.set("reviewed", "1");
+        else params.delete("reviewed");
+      }),
+    [],
+  );
+  const clearFilters = useCallback(
+    () =>
+      replaceResultFilterUrl((params) => {
+        params.delete("scope");
+        params.delete("family");
+        params.delete("diagnosis");
+        params.delete("category");
+        params.delete("reviewed");
+      }),
+    [],
+  );
   const activeFilterCount =
     Number(scope !== defaultScope) +
     (scope === "guides"
       ? Number(family !== "all") + Number(Boolean(diagnosis))
       : selectedCategories.size + Number(reviewedOnly));
-  const appliedFilters: AppliedFilterChip[] = [];
-  if (scope !== defaultScope) {
-    appliedFilters.push({
-      id: "scope",
-      groupLabel: "Search in",
-      valueLabel: scope === "guides" ? "Clinical guides" : "Full catalogue",
-      onRemove: () => updateLens("scope", defaultScope, defaultScope, specifierScopeValues),
-    });
-  }
-  if (scope === "guides") {
-    if (family !== "all") {
-      appliedFilters.push({
-        id: "family",
-        groupLabel: "Family",
-        valueLabel: familyOptions.find((option) => option.value === family)?.label ?? family,
-        onRemove: () => updateLens("family", "all", "all", familyValues),
+  const appliedFilters = useMemo<AppliedFilterChip[]>(() => {
+    const chips: AppliedFilterChip[] = [];
+    if (scope !== defaultScope) {
+      chips.push({
+        id: "scope",
+        groupLabel: "Search in",
+        valueLabel: scope === "guides" ? "Clinical guides" : "Full catalogue",
+        onRemove: () => updateLens("scope", defaultScope, defaultScope, specifierScopeValues),
       });
     }
-    if (diagnosis) {
-      appliedFilters.push({
-        id: "diagnosis",
-        groupLabel: "Diagnosis",
-        valueLabel: diagnosisOptions.find((option) => option.value === diagnosis)?.label ?? diagnosis,
-        onRemove: () => updateLens("diagnosis", "", "", diagnosisValues),
-      });
+    if (scope === "guides") {
+      if (family !== "all") {
+        chips.push({
+          id: "family",
+          groupLabel: "Family",
+          valueLabel: familyOptions.find((option) => option.value === family)?.label ?? family,
+          onRemove: () => updateLens("family", "all", "all", familyValues),
+        });
+      }
+      if (diagnosis) {
+        chips.push({
+          id: "diagnosis",
+          groupLabel: "Diagnosis",
+          valueLabel: diagnosisOptions.find((option) => option.value === diagnosis)?.label ?? diagnosis,
+          onRemove: () => updateLens("diagnosis", "", "", diagnosisValues),
+        });
+      }
+    } else {
+      for (const category of selectedCategories) {
+        chips.push({
+          id: `category-${category}`,
+          groupLabel: "Category",
+          valueLabel: categoryOptions.find((option) => option.value === category)?.label ?? category,
+          onRemove: () => toggleCategory(category),
+        });
+      }
+      if (reviewedOnly) {
+        chips.push({
+          id: "reviewed",
+          groupLabel: "Source",
+          valueLabel: "Source verified",
+          onRemove: () => setReviewedOnly(false),
+        });
+      }
     }
-  } else {
-    for (const category of selectedCategories) {
-      appliedFilters.push({
-        id: `category-${category}`,
-        groupLabel: "Category",
-        valueLabel: categoryOptions.find((option) => option.value === category)?.label ?? category,
-        onRemove: () => toggleCategory(category),
-      });
-    }
-    if (reviewedOnly) {
-      appliedFilters.push({
-        id: "reviewed",
-        groupLabel: "Source",
-        valueLabel: "Source verified",
-        onRemove: () => setReviewedOnly(false),
-      });
-    }
-  }
+    return chips;
+  }, [
+    scope,
+    defaultScope,
+    family,
+    familyOptions,
+    familyValues,
+    diagnosis,
+    diagnosisValues,
+    selectedCategories,
+    categoryOptions,
+    reviewedOnly,
+    updateLens,
+    toggleCategory,
+    setReviewedOnly,
+  ]);
 
-  const groups =
-    scope === "guides"
-      ? [
-          resultFilterGroup({
-            id: "family",
-            label: "Family",
-            value: family,
-            options: familyOptions.map((option) => ({
-              ...option,
-              hint: String(searchSpecifiers(query, { family: option.value, diagnosis }).length),
-            })),
-            onChange: (value) => updateLens("family", value, "all", familyValues),
-          }),
-          resultFilterGroup({
-            id: "diagnosis",
-            label: "Diagnosis",
-            value: diagnosis,
-            options: diagnosisOptions.map((option) => ({
-              ...option,
-              hint: String(searchSpecifiers(query, { family, diagnosis: option.value }).length),
-            })),
-            onChange: (value) => updateLens("diagnosis", value, "", diagnosisValues),
-          }),
-        ]
-      : [
-          resultFilterFacetGroup({
-            id: "category",
-            label: "Category",
-            selected: selectedCategories,
-            options: categoryOptions.map((option) => {
-              const next = new Set(selectedCategories);
-              if (!next.has(option.value)) next.add(option.value);
-              const count = allCatalogueMatches.filter(
-                ({ item }) => next.has(item.categoryId) && (!reviewedOnly || item.src === "source-verified"),
-              ).length;
-              return { ...option, hint: String(count), disabled: count === 0 && !selectedCategories.has(option.value) };
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const option of categoryOptions) {
+      const next = new Set(selectedCategories);
+      if (!next.has(option.value)) next.add(option.value);
+      const count = allCatalogueMatches.filter(
+        ({ item }) => next.has(item.categoryId) && (!reviewedOnly || item.src === "source-verified"),
+      ).length;
+      counts.set(option.value, count);
+    }
+    return counts;
+  }, [categoryOptions, selectedCategories, allCatalogueMatches, reviewedOnly]);
+
+  const grouped = useMemo(
+    () =>
+      scope === "guides"
+        ? [
+            resultFilterGroup({
+              id: "family",
+              label: "Family",
+              value: family,
+              options: familyOptions.map((option) => ({
+                ...option,
+                hint: String(searchSpecifiers(deferredQuery, { family: option.value, diagnosis }).length),
+              })),
+              onChange: (value) => updateLens("family", value, "all", familyValues),
             }),
-            onToggle: toggleCategory,
-          }),
-          resultFilterFacetGroup({
-            id: "reviewed",
-            label: "Source verification",
-            selected: new Set(reviewedOnly ? ["reviewed"] : []),
-            options: [
-              {
-                value: "reviewed",
-                label: "Source verified",
-                hint: String(
-                  allCatalogueMatches.filter(
-                    ({ item }) =>
-                      item.src === "source-verified" &&
-                      (selectedCategories.size === 0 || selectedCategories.has(item.categoryId)),
-                  ).length,
-                ),
-              },
-            ],
-            onToggle: () => setReviewedOnly(!reviewedOnly),
-          }),
-        ];
+            resultFilterGroup({
+              id: "diagnosis",
+              label: "Diagnosis",
+              value: diagnosis,
+              options: diagnosisOptions.map((option) => ({
+                ...option,
+                hint: String(searchSpecifiers(deferredQuery, { family, diagnosis: option.value }).length),
+              })),
+              onChange: (value) => updateLens("diagnosis", value, "", diagnosisValues),
+            }),
+          ]
+        : [
+            resultFilterFacetGroup({
+              id: "category",
+              label: "Category",
+              selected: selectedCategories,
+              options: categoryOptions.map((option) => {
+                const count = categoryCounts.get(option.value) ?? 0;
+                return {
+                  ...option,
+                  hint: String(count),
+                  disabled: count === 0 && !selectedCategories.has(option.value),
+                };
+              }),
+              onToggle: toggleCategory,
+            }),
+            resultFilterFacetGroup({
+              id: "reviewed",
+              label: "Source verification",
+              selected: new Set(reviewedOnly ? ["reviewed"] : []),
+              options: [
+                {
+                  value: "reviewed",
+                  label: "Source verified",
+                  hint: String(
+                    allCatalogueMatches.filter(
+                      ({ item }) =>
+                        item.src === "source-verified" &&
+                        (selectedCategories.size === 0 || selectedCategories.has(item.categoryId)),
+                    ).length,
+                  ),
+                },
+              ],
+              onToggle: () => setReviewedOnly(!reviewedOnly),
+            }),
+          ],
+    [
+      scope,
+      family,
+      familyOptions,
+      familyValues,
+      diagnosis,
+      diagnosisValues,
+      deferredQuery,
+      selectedCategories,
+      categoryOptions,
+      categoryCounts,
+      reviewedOnly,
+      allCatalogueMatches,
+      updateLens,
+      toggleCategory,
+      setReviewedOnly,
+    ],
+  );
+  const groups = grouped;
 
   return (
     <SpecifierPageShell>

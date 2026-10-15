@@ -1,7 +1,7 @@
 // Compact document identity and task controls. The embedded source follows this
 // card immediately; extracted summaries and text deliberately sit after it.
 import { Download, Loader2, MoreHorizontal, Search, Sparkles } from "lucide-react";
-import type { MouseEventHandler } from "react";
+import { useId, type MouseEventHandler } from "react";
 import { documentDisplayTitle, documentOrganizationProfile } from "@/components/DocumentOrganizationBadges";
 import { formatDocumentLabelDisplay } from "@/lib/document-tags";
 import {
@@ -12,7 +12,7 @@ import {
   documentFileKind,
   documentTileTone,
 } from "@/components/clinical-dashboard/document-ui";
-import { cn, panel, floatingControl, primaryControl } from "@/components/ui-primitives";
+import { cn, panel, floatingControl, ignoreUnavailableActivation, primaryControl } from "@/components/ui-primitives";
 import type { ClinicalDocument } from "@/lib/types";
 import type { PageRow } from "./types";
 
@@ -62,6 +62,7 @@ export function DocumentOverviewLanding({
   canSummarizeDocument: boolean;
   summarizing: boolean;
 }) {
+  const answerReasonId = useId();
   const documentType = compactDocumentType(document);
   const answerLabel = summarizing ? "Answering…" : canSummarizeDocument ? "Answer from this" : "Sign in to answer";
   const answerTitle = summarizing
@@ -69,6 +70,7 @@ export function DocumentOverviewLanding({
     : canSummarizeDocument
       ? "Answer from this document"
       : "Sign in before answering from this document.";
+  const answerUnavailable = !canSummarizeDocument && !summarizing;
 
   return (
     <section>
@@ -107,8 +109,10 @@ export function DocumentOverviewLanding({
             Search document
           </DocumentActionButton>
           <DocumentActionButton
-            onClick={onAskFromDocument}
-            disabled={!canSummarizeDocument}
+            onClick={answerUnavailable ? ignoreUnavailableActivation : onAskFromDocument}
+            disabled={summarizing}
+            aria-disabled={answerUnavailable ? "true" : undefined}
+            aria-describedby={answerUnavailable ? answerReasonId : undefined}
             title={answerTitle}
             icon={Sparkles}
             className={cn(secondaryButton, "w-full min-h-12 whitespace-nowrap px-2 text-xs")}
@@ -165,8 +169,10 @@ export function DocumentOverviewLanding({
             Search document
           </DocumentActionButton>
           <DocumentActionButton
-            onClick={onAskFromDocument}
-            disabled={!canSummarizeDocument}
+            onClick={answerUnavailable ? ignoreUnavailableActivation : onAskFromDocument}
+            disabled={summarizing}
+            aria-disabled={answerUnavailable ? "true" : undefined}
+            aria-describedby={answerUnavailable ? answerReasonId : undefined}
             title={answerTitle}
             icon={Sparkles}
             className={cn(secondaryButton, "min-h-12 whitespace-nowrap px-3 text-sm")}
@@ -196,6 +202,11 @@ export function DocumentOverviewLanding({
             {downloading ? "Preparing" : "Download"}
           </DocumentActionButton>
         </div>
+        {answerUnavailable ? (
+          <span id={answerReasonId} className="sr-only">
+            {answerTitle}
+          </span>
+        ) : null}
       </article>
     </section>
   );

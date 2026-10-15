@@ -22,6 +22,7 @@ import {
   appBackdrop,
   cn,
   floatingControl,
+  ignoreUnavailableActivation,
   InlineNotice,
   panel,
   sourceCard,
@@ -1278,25 +1279,45 @@ export function DocumentViewer({
                 </span>
                 Search document
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileActionsOpen(false);
-                  void summarize();
-                }}
-                disabled={!canSummarizeDocument}
-                title={summarizeTitle}
-                className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
-                  {loadingSummary ? (
+              {loadingSummary ? (
+                <button
+                  type="button"
+                  disabled
+                  title={summarizeTitle}
+                  className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
                     <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-                  ) : (
+                  </span>
+                  Answering…
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={
+                    !canSummarizeDocument
+                      ? ignoreUnavailableActivation
+                      : () => {
+                          setMobileActionsOpen(false);
+                          void summarize();
+                        }
+                  }
+                  aria-disabled={!canSummarizeDocument ? "true" : undefined}
+                  aria-describedby={!canSummarizeDocument ? "document-actions-summarize-reason" : undefined}
+                  title={summarizeTitle}
+                  className={cn(secondaryButton, "min-h-14 justify-start gap-3 px-3 text-left text-sm")}
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]">
                     <Sparkles aria-hidden="true" className="h-4 w-4" />
-                  )}
+                  </span>
+                  {canSummarizeDocument ? "Answer from this" : "Sign in to answer"}
+                </button>
+              )}
+              {!canSummarizeDocument && !loadingSummary ? (
+                <span id="document-actions-summarize-reason" className="sr-only">
+                  {summarizeTitle}
                 </span>
-                Answer from this
-              </button>
+              ) : null}
               {signedUrl ? (
                 <a
                   href={signedUrl}

@@ -72,25 +72,9 @@ function actSections(value: unknown): FormActSection[] | undefined {
   return sections.length ? sections : undefined;
 }
 
-/**
- * The Priority-facts card labels. Shared with the component so the grid label and the
- * detail-sheet title fallback can never drift apart again (the sheet used to say
- * "Criteria" where the grid said "Criteria / threshold").
- */
-export const PRIORITY_FACT_CARD_LABELS = {
-  clock: "Clock / review",
-  authority: "Made by / authority",
-  criteria: "Criteria / threshold",
-} as const;
+import { ACT_SECTION_CHIP_LIMIT, PRIORITY_FACT_CARD_LABELS } from "@/lib/form-catalog-constants";
 
-/**
- * Tiles the Act-section block may show: two full rows of three. Form 5A cites 11 sections
- * and 4A cites 9; rendering all of them as 48px tap targets inside one quarter of the 2x2
- * grid destroys the layout. Where the sections do not fit, the last tile becomes the "+n"
- * control, so the block is always two rows and never a ragged third — that third row set
- * the height of every other priority-facts card in the row.
- */
-export const ACT_SECTION_CHIP_LIMIT = 6;
+export { ACT_SECTION_CHIP_LIMIT, PRIORITY_FACT_CARD_LABELS };
 
 function summaryCardsForDetails(details: FormCatalogDetails, availabilityLabel: string): ServiceSummaryCard[] {
   const facts = details.priorityFacts;

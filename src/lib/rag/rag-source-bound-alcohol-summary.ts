@@ -102,40 +102,101 @@ export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationS
     // A finite recovery miss must not leave an unbound standard-drink recommendation delivered.
     // This source profile already requires the actual adult, child and maternal non-review citations.
     const lead = prose(answer.answer);
-    const drinkUnits = [...lead.matchAll(/\bstandard drinks?\b/gi)];
-    const tuple = lead.match(
-      /^For (.+?) aged (.+?), the NHMRC recommends (.+?) standard drinks (.+?) and (.+?) standard drinks (.+?) less is lower risk\./i,
+    const reject = () => ({ answer, complete: () => false });
+    // Only this pinned profile may be reworded. Admit independently bound clinical
+    // clauses, not a captured model narrative or a particular attribution verb.
+    // Full consumption rejects extra advice, negation and competing recommendations.
+    const adultClauses = lead.split(/(?<=[.!?])\s+/).filter((clause) => /\bstandard drinks?\b/i.test(clause));
+    if (adultClauses.length !== 1) return /\bstandard drinks?\b/i.test(lead) ? reject() : null;
+    const adultClause = adultClauses[0];
+    const consume = (text: string, pattern: RegExp) => {
+      const matches = [...text.matchAll(new RegExp(pattern.source, "gi"))];
+      return matches.length === 1 ? { text: text.replace(matches[0][0], " "), claim: matches[0][0] } : null;
+    };
+    const scope = consume(adultClause, /\bhealthy (?:adults|men and women) aged \d+ years (?:and over|or older)\b/);
+    const week = scope && consume(scope.text, /\b(?:no more than|at most) \d+ standard drinks? (?:a|per|each) week\b/);
+    const day =
+      week &&
+      consume(
+        week.text,
+        /\b(?:no more than|at most) \d+ standard drinks? (?:on any one day|in any (?:one|single) day|per day)\b/,
+      );
+    const less =
+      day &&
+      consume(day.text, /\b(?:less is lower risk|(?:drinking )?less (?:further )?(?:lowers|reduces) (?:the )?risk)\b/);
+    const adultRemainder = less?.text ?? day?.text;
+    // Consume affirmative attribution as one grammatical unit. Negated, adverse
+    // or unknown reporting language remains unconsumed and cannot reverse a limit.
+    const attribution =
+      adultRemainder &&
+      consume(
+        adultRemainder,
+        /\b(?:the )?NHMRC (?:(?:advises|recommends)|(?:guidance|advice|recommendations?|guidelines?) (?:is|are))\b/,
+      );
+    if (
+      !scope ||
+      !week ||
+      !day ||
+      adultRemainder === undefined ||
+      scope.claim.match(/\d+/)?.[0] !== age ||
+      week.claim.match(/\d+/)?.[0] !== weekly ||
+      day.claim.match(/\d+/)?.[0] !== daily ||
+      !/^(?:(?:for|should|drink|and)\b|[\s,;:.])*$/i.test(attribution ? attribution.text : adultRemainder) ||
+      !sourceDirectlySupportsAnswerText(adultClause, adult)
+    )
+      return reject();
+    let remaining = lead.replace(adultClause, " ");
+    const youngClause = consume(
+      remaining,
+      /\b(?:children and (?:young )?people|people|children) under \d+(?: years(?: of age)?)? (?:should|must) not drink alcohol\b/,
     );
     if (
-      drinkUnits.length > 0 &&
-      (!tuple ||
-        drinkUnits.length !== 2 ||
-        !equal(tuple[1], "healthy adults") ||
-        !equal(tuple[2], `${age} years and over`) ||
-        !equal(tuple[3], `no more than ${weekly}`) ||
-        !equal(tuple[4], "a week") ||
-        !equal(tuple[5], `no more than ${daily}`) ||
-        !equal(tuple[6], "on any one day"))
-    ) {
-      // The existing wrapper will withhold this candidate through its established unsupported fallback.
-      // The fallback has no drink tuple, so it cannot re-enter this rejection.
-      return { answer, complete: () => false };
-    }
-    const recordedLead = `For healthy adults aged ${age} years and over, the NHMRC recommends no more than ${weekly} standard drinks a week and no more than ${daily} standard drinks on any one day less is lower risk. Children and people under ${age} should not drink alcohol. Women who are pregnant or planning pregnancy should not drink alcohol, and not drinking is safest while breastfeeding.`;
-    const recordedRisk =
-      "The adult limits are not a safe or no-risk level not drinking is the best way to reduce alcohol-related harm.";
-    const risk = answer.answerSections?.length === 1 ? answer.answerSections[0] : undefined;
-    if (
-      !equal(answer.answer, recordedLead) ||
-      !risk ||
-      risk.heading !== "Important qualification" ||
-      risk.kind !== "contraindications_cautions" ||
-      risk.supportLevel !== "direct" ||
-      !equal(risk.body, recordedRisk) ||
-      risk.citation_chunk_ids.length !== 1 ||
-      risk.citation_chunk_ids[0] !== adult.id
+      !youngClause ||
+      youngClause.claim.match(/\d+/)?.[0] !== age ||
+      !sourceDirectlySupportsAnswerText(youngClause.claim, young)
     )
-      return null;
+      return reject();
+    remaining = youngClause.text;
+    const pregnancyClause = consume(
+      remaining,
+      /\bwomen who are pregnant or planning (?:a pregnancy|pregnancy) (?:should|must) not drink alcohol\b/,
+    );
+    if (!pregnancyClause || !sourceDirectlySupportsAnswerText(pregnancyClause.claim, maternal)) return reject();
+    remaining = pregnancyClause.text;
+    const breastfeedingClause = consume(
+      remaining,
+      /\b(?:for (?:women who are breastfeeding|breastfeeding women),? not drinking(?: alcohol)? is safest for (?:their|the) baby|not drinking(?: alcohol)? is safest while breastfeeding)\b/,
+    );
+    if (
+      !breastfeedingClause ||
+      !sourceDirectlySupportsAnswerText(breastfeedingClause.claim, maternal) ||
+      !/^(?:and\b|[\s,;:.])*$/i.test(breastfeedingClause.text)
+    )
+      return reject();
+    const risk = answer.answerSections?.length === 1 ? answer.answerSections[0] : undefined;
+    // The model's heading/kind is presentation, not evidence. Consume only the two
+    // adult qualifications already supported above; rebuild them from source text.
+    const noSafeClaim =
+      risk &&
+      consume(
+        prose(risk.body),
+        /\b(?:the adult limits|the adult guideline) (?:are|is) not a (?:safe or no-risk|safe|no-risk) level\b/,
+      );
+    const abstentionClaim =
+      noSafeClaim &&
+      consume(
+        noSafeClaim.text,
+        /\b(?:not drinking(?: alcohol)?|abstaining) is the best way to reduce alcohol-related harm\b/,
+      );
+    if (
+      !risk ||
+      risk.supportLevel !== "direct" ||
+      risk.citation_chunk_ids.length !== 1 ||
+      risk.citation_chunk_ids[0] !== adult.id ||
+      !abstentionClaim ||
+      !/^[\s,;:.]*$/.test(abstentionClaim.text)
+    )
+      return reject();
     const pregnancyNoSafe = sentence(
       maternal,
       /No safe level of alcohol consumption during pregnancy has been identified\./,
@@ -173,14 +234,25 @@ export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationS
     const next: RagAnswer = {
       ...answer,
       answer: required.join(" "),
-      answerSections: [{ ...risk, body: riskBody, citation_chunk_ids: [adult.id, maternal.id] }],
+      answerSections: [
+        {
+          heading: "Important qualification",
+          kind: "contraindications_cautions",
+          supportLevel: "direct",
+          body: riskBody,
+          citation_chunk_ids: [adult.id, maternal.id],
+        },
+      ],
     };
     return {
       answer: next,
       complete: (final: RagAnswer) => {
         const lead = prose(final.answer).toLowerCase();
         const deliveredRisk = final.answerSections?.find(
-          (section) => section.heading === risk.heading && section.kind === risk.kind && equal(section.body, riskBody),
+          (section) =>
+            section.heading === "Important qualification" &&
+            section.kind === "contraindications_cautions" &&
+            equal(section.body, riskBody),
         );
         return (
           required.every((text) => lead.includes(prose(text).toLowerCase())) &&

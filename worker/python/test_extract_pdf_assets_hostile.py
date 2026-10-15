@@ -9,6 +9,7 @@ restricts editing (owner password, empty user password) still extracts.
 from __future__ import annotations
 
 import os
+import gc
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,9 @@ class HostilePdfTests(unittest.TestCase):
         self.out = os.path.join(self.dir, "out")
 
     def tearDown(self):
+        # Failed PyMuPDF constructors can retain file handles in exception cycles.
+        # Collect them before Windows removes the fixture; cleanup errors still fail.
+        gc.collect()
         self._directory.cleanup()
 
     def path(self, name):

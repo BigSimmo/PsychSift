@@ -17,7 +17,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-13.table-aware-caption-v2"
+EXTRACTOR_VERSION = "2026-10-15.intact-layout-v5"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -470,7 +470,7 @@ def page_drawing_rects(page):
         rect = drawing.get("rect")
         if not rect:
             continue
-        rect = fitz.Rect(rect)
+        rect = fitz.Rect(rect) * page.rotation_matrix
         # Ignore hairline page rules / tiny marks.
         if rect.width < 8 or rect.height < 8:
             continue
@@ -565,7 +565,7 @@ def recover_table_rows_from_edge_strip(page, original_rect, extended_rect, exist
     for block in page.get_text("blocks") or []:
         if len(block) < 5:
             continue
-        block_rect = fitz.Rect(block[:4])
+        block_rect = fitz.Rect(block[:4]) * page.rotation_matrix
         intersection = extended_rect & block_rect
         if intersection.is_empty:
             continue
@@ -667,6 +667,7 @@ def extract_table_payload(table):
             "row_count": len(cleaned),
             "rows_truncated": len(cleaned) > MAX_TABLE_ROWS,
             "column_count": column_count,
+            "repeated_populated_geometry": repeated_populated_table_geometry(rows, getattr(table, "rows", [])),
         }
     except Exception:
         return {
@@ -677,6 +678,7 @@ def extract_table_payload(table):
             "row_count": 0,
             "rows_truncated": False,
             "column_count": 0,
+            "repeated_populated_geometry": False,
         }
 
 
@@ -724,7 +726,8 @@ def nearby_table_heading(page, rect, table_text):
     for block in blocks:
         if len(block) < 5:
             continue
-        x0, y0, x1, y1, text = block[:5]
+        x0, y0, x1, y1 = fitz.Rect(block[:4]) * getattr(page, "rotation_matrix", fitz.Identity)
+        text = block[4]
         if y1 > rect.y0 + 16 or y1 < rect.y0 - 140:
             continue
         if x1 < rect.x0 - 40 or x0 > rect.x1 + 40:
@@ -874,7 +877,32 @@ def table_candidate_confidence(label, title, table_text, row_count=0, column_cou
     return round(min(confidence, 0.99), 2)
 
 
-def real_table_candidate(label, title, table_text, row_count=0, column_count=0):
+def repeated_populated_table_geometry(rows, source_rows):
+    """Count occupied row bands using observed cells, including vertical spans."""
+    cells = set()
+    for values, source_row in zip(rows, source_rows):
+        for value, box in zip(values, source_row.cells):
+            if box is not None and clean_cell(value):
+                rect = fitz.Rect(box)
+                if rect.width > 0 and rect.height > 0:
+                    cells.add(tuple(rect))
+    boundaries = sorted({edge for box in cells for edge in (box[1], box[3])})
+    populated_bands = 0
+    for top, bottom in zip(boundaries, boundaries[1:]):
+        middle = (top + bottom) / 2
+        occupied = sorted((box for box in cells if box[1] <= middle < box[3]), key=lambda box: box[0])
+        # Distinct cells must occupy separate columns; overlapping boxes do not
+        # establish extra columns or duplicate a shared spanning cell's text.
+        if any(left[2] <= right[0] + 0.5 for left, right in zip(occupied, occupied[1:])):
+            populated_bands += 1
+    return populated_bands >= 2
+
+
+def real_table_candidate(label, title, table_text, row_count=0, column_count=0, rows=None, repeated_geometry=False):
+    # A poster's frame can produce a nominal grid with nearly every cell empty.
+    # Repeated populated columns establish a matrix; generated Markdown bars do not.
+    if not repeated_geometry and sum(sum(bool(str(cell or "").strip()) for cell in row) >= 2 for row in rows or []) < 2:
+        return False
     metrics = table_text_metrics(table_text)
     combined = " ".join([label or "", title or "", table_text or ""]).lower()
     known_table_heading = bool(label) or (title or "").lower() in (
@@ -895,7 +923,7 @@ def real_table_candidate(label, title, table_text, row_count=0, column_count=0):
     return False
 
 
-def likely_table_candidates(page):
+def likely_table_candidates(page, rejected_rects=None):
     candidates = []
     try:
         tables = page.find_tables()
@@ -906,7 +934,12 @@ def likely_table_candidates(page):
             label, title, heading_text = nearby_table_heading(page, rect, table_text)
             row_count = payload["row_count"]
             column_count = payload["column_count"]
-            if not real_table_candidate(label, title, table_text, row_count, column_count):
+            if not real_table_candidate(
+                label, title, table_text, row_count, column_count, payload.get("rows"),
+                payload.get("repeated_populated_geometry", False),
+            ):
+                if rejected_rects is not None:
+                    rejected_rects.append(rect)
                 continue
             role = table_role_for_candidate(label, title, table_text)
             candidates.append(
@@ -939,9 +972,25 @@ def fallback_table_candidates(page, existing_rects):
     for block in blocks:
         if len(block) < 5:
             continue
-        rect = fitz.Rect(block[:4])
+        rect = fitz.Rect(block[:4]) * getattr(page, "rotation_matrix", fitz.Identity)
         raw_text = str(block[4])
-        text = re.sub(r"\s+", " ", raw_text).strip()
+        # Only original delimited lines establish fallback rows. Flattening a
+        # multiline card joins its label and details, and can merge nearby cards
+        # into a false row even though no table was present in the source.
+        rows = text_grid_rows(raw_text)
+        if not rows or any(sum(bool(re.search(r"[^\W_]", cell)) for cell in row) < 2 for row in rows):
+            continue
+        # Outline/list labels are not a substantive column. PDF blocks can put
+        # only a paragraph's first line beside its label; promoting that fragment
+        # would silently omit its continuation and invent a table header.
+        if any(
+            re.fullmatch(r"(?:[A-Za-z]\.|\d+\.(?:\d+(?:\.\d+)*)?\.?)", row[0])
+            and any(re.search(r"[^\W\d_]", cell) for cell in row[1:])
+            and "|" not in source_line
+            for row, source_line in zip(rows, (line for line in raw_text.splitlines() if line.strip()))
+        ):
+            continue
+        text = raw_text.strip()
         if not text or rect.height < 10:
             continue
         text_blocks.append((rect, text, raw_text))
@@ -978,7 +1027,7 @@ def fallback_table_candidates(page, existing_rects):
     inferred_rows = len([line for line in text.splitlines() if line.strip()])
     rows = text_grid_rows(text)
     role = table_role_for_candidate(label, title, text)
-    if not real_table_candidate(label, title, text, inferred_rows, inferred_columns):
+    if not real_table_candidate(label, title, text, inferred_rows, inferred_columns, rows):
         return []
     return [
         {
@@ -1072,7 +1121,7 @@ def likely_vector_region(page):
             continue
         if rect.width < 40 or rect.height < 20:
             continue
-        rects.append(rect)
+        rects.append(fitz.Rect(rect) * page.rotation_matrix)
 
     if len(rects) < 4:
         return None
@@ -1157,6 +1206,51 @@ def _dense_length(value):
     return len(re.sub(r"\s+", "", value or ""))
 
 
+def _intact_display_text_pieces(page):
+    """Keep native lines intact, using displayed geometry only for text assembly.
+
+    Native text boxes are unrotated, whereas find_tables() boxes describe the
+    displayed page. Cropping retains its existing coordinates outside this helper.
+    A native block can itself contain adjacent cards: split disjoint horizontal
+    line groups so each card's label and details stay together after rotation.
+    """
+    pieces = []
+    needs_layout = bool(page.rotation)
+    text_flags = fitz.TEXTFLAGS_DICT & ~fitz.TEXT_PRESERVE_IMAGES
+    for block in (page.get_text("dict", flags=text_flags) or {}).get("blocks", []):
+        lines = []
+        for line in block.get("lines", []):
+            text = "".join(span.get("text", "") for span in line.get("spans", [])).strip()
+            if not text:
+                continue
+            rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
+            lines.append((rect, text))
+            direction = line.get("dir", (1, 0))
+            needs_layout = needs_layout or abs(direction[0] - 1) > 0.001 or abs(direction[1]) > 0.001
+        # Connected x intervals split side-by-side cards, without joining words
+        # or lines across native blocks or inventing paragraph-wide row bands.
+        groups = []
+        for index in sorted(range(len(lines)), key=lambda item: lines[item][0].x0):
+            rect = lines[index][0]
+            if groups and rect.x0 < groups[-1][0].x1:
+                groups[-1][0] |= rect
+                groups[-1][1].append(index)
+            else:
+                groups.append([fitz.Rect(rect), [index]])
+        needs_layout = needs_layout or len(groups) > 1
+        for rect, indices in groups:
+            pieces.append((rect, "\n".join(lines[index][1] for index in sorted(indices))))
+    for index, (rect, _) in enumerate(pieces):
+        if any(
+            min(rect.y1, other.y1) > max(rect.y0, other.y0)
+            and (rect.x1 <= other.x0 or other.x1 <= rect.x0)
+            for other, _ in pieces[index + 1:]
+        ):
+            needs_layout = True
+            break
+    return pieces, needs_layout
+
+
 def table_aware_page_text(page, grid_candidates, raw_text=None):
     """Assemble page text with detected table grids rendered cell by cell.
 
@@ -1170,7 +1264,9 @@ def table_aware_page_text(page, grid_candidates, raw_text=None):
 
     find_tables() already recovers those cells intact and the result is already
     computed for table candidates, so table regions are replaced by that grid
-    rendering while surrounding prose keeps its normal reading order.
+    rendering while surrounding prose keeps its normal reading order. Rotated
+    cards and overlapping callouts retain native line groups, rather than the
+    cross-block word reconstruction that can fuse unrelated text.
     """
     raw = raw_text if raw_text is not None else (page.get_text("text", sort=True) or "")
     usable = [
@@ -1179,19 +1275,17 @@ def table_aware_page_text(page, grid_candidates, raw_text=None):
         if candidate.get("extraction_method") == "pymupdf_find_tables"
         and (candidate.get("accessible_table_markdown") or "").strip()
     ]
-    if not usable:
+    # Non-grid heuristic candidates still have no cell structure to rewrite.
+    if not usable and grid_candidates:
         return raw
 
     try:
+        text_pieces, needs_layout = _intact_display_text_pieces(page)
+        if not usable and not needs_layout:
+            return raw
         table_rects = [fitz.Rect(candidate["rect"]) for candidate in usable]
         pieces = []
-        for block in page.get_text("blocks") or []:
-            if len(block) < 5:
-                continue
-            rect = fitz.Rect(block[:4])
-            body = str(block[4]).strip()
-            if not body:
-                continue
+        for rect, body in text_pieces:
             area = _rect_area(rect)
             if area > 0 and any(
                 _rect_area(rect & table_rect) / area >= TABLE_BLOCK_CONTAINMENT_RATIO
@@ -1262,7 +1356,8 @@ def _extract_document(document, output_dir, budget):
         # Detect grid tables BEFORE assembling page text: the same candidates feed
         # the table-aware text assembly and the table-candidate pass below, so
         # find_tables() runs once per page rather than twice.
-        grid_table_candidates = likely_table_candidates(page)
+        rejected_table_rects = []
+        grid_table_candidates = likely_table_candidates(page, rejected_table_rects)
         # The OCR-density decision stays on the RAW embedded text. should_ocr_page
         # has hard character thresholds (40, and 220 on image-dominant pages), so
         # feeding it table-aware text would let markdown syntax -- pipes and the
@@ -1363,7 +1458,9 @@ def _extract_document(document, output_dir, budget):
         crop_index = 1
         table_rects = []
         table_candidates = list(grid_table_candidates)
-        table_candidates.extend(fallback_table_candidates(page, [candidate["rect"] for candidate in table_candidates]))
+        table_candidates.extend(fallback_table_candidates(
+            page, [candidate["rect"] for candidate in table_candidates] + rejected_table_rects,
+        ))
         table_candidates = merge_related_table_candidates(table_candidates, page.rect)
         for table_candidate in table_candidates:
             detected_rect = table_candidate["rect"]
@@ -1436,8 +1533,35 @@ def _extract_document(document, output_dir, budget):
                 table_rects.append(table_rect)
                 crop_index += 1
 
+        visual_rects = list(table_rects)
+        # A rejected grid still marks source artwork worth retaining. Its bbox
+        # is already in display coordinates, including on rotated pages; keep
+        # the complete region without inventing table headers or relationships.
+        for rejected_rect in rejected_table_rects:
+            region = expanded_rect(rejected_rect, page.rect)
+            if any(rect_intersection_ratio(region, existing) > 0.45 for existing in visual_rects):
+                continue
+            crop = save_page_crop(
+                page,
+                region,
+                output_dir,
+                f"page-{page_number}-visual-crop-{crop_index}.png",
+                "page_region",
+                {
+                    "pageNumber": page_number,
+                    "source_kind": "page_region",
+                    "candidate_type": "rejected_table_region",
+                },
+                budget,
+                warnings,
+            )
+            if crop:
+                images.append(crop)
+                visual_rects.append(region)
+                crop_index += 1
+
         vector_region = likely_vector_region(page)
-        if vector_region and not any(rect_intersection_ratio(vector_region, table_rect) > 0.45 for table_rect in table_rects):
+        if vector_region and not any(rect_intersection_ratio(vector_region, existing) > 0.45 for existing in visual_rects):
             crop = save_page_crop(
                 page,
                 vector_region,

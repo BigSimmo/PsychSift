@@ -1603,24 +1603,18 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // for the owning segment's hydration, just like portal adoption does.
     const syncReserve = (pending: boolean) => syncHydratedComposerReserve(composerSlotId, pending);
 
-    if (!composerSlotId || !searchComposerVisible) {
-      // No page-owned slot at this route, or the shell suppressed the composer:
-      // reset the portal state and collapse any SSR mode-home reserve band.
-      // Deferred to a microtask (not requestAnimationFrame) so it stays off the
-      // synchronous effect body without being frame-gated — headless CI can starve rAF.
-      let cancelled = false;
-      const observer = composerSlotId ? observeDesktopComposerSlots(() => syncReserve(false)) : null;
-      queueMicrotask(() => {
-        if (cancelled) return;
-        syncReserve(false);
-        setDesktopComposerPortalActive(false);
-        setDesktopComposerPortalHost(null);
-        setDesktopComposerPortalFallback(false);
-        setHomeComposerMediaEligible(false);
-      });
+    let cancelled = false;
+    const resetPortal = () => {
+      syncReserve(false);
+      setDesktopComposerPortalActive(false);
+      setDesktopComposerPortalHost(null);
+      setDesktopComposerPortalFallback(false);
+      setHomeComposerMediaEligible(false);
+    };
+    if (!composerSlotId) {
+      queueMicrotask(() => !cancelled && resetPortal());
       return () => {
         cancelled = true;
-        observer?.disconnect();
       };
     }
 
@@ -1633,17 +1627,18 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // Hero slots retain their existing all/sm-up ownership. Generic page slots
     // start at sm so tablets and desktops share normal-flow search behaviour,
     // while phone docks remain unchanged.
-    const host = document.createElement("div");
-    // Layout-transparent so the composer lays out as a direct child of the slot.
-    host.style.display = "contents";
+    const host = searchComposerVisible ? document.createElement("div") : null;
+    if (host) host.style.display = "contents";
 
-    const mediaQuery = window.matchMedia(
-      composerSlotKind === "home"
-        ? heroComposerBreakpoint === "sm-up"
-          ? modeHomeComposerSmUpMediaQuery
-          : modeHomeComposerMediaQuery
-        : desktopPageComposerMediaQuery,
-    );
+    const mediaQuery = searchComposerVisible
+      ? window.matchMedia(
+          composerSlotKind === "home"
+            ? heroComposerBreakpoint === "sm-up"
+              ? modeHomeComposerSmUpMediaQuery
+              : modeHomeComposerMediaQuery
+            : desktopPageComposerMediaQuery,
+        )
+      : null;
 
     let retryTimeout: number | null = null;
     let portalFailureStartedAt: number | null = null;
@@ -1659,6 +1654,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     // their React segment hydrates. Adopting the slot before that injects a
     // display:contents host into still-unhydrated RSC HTML (React #418).
     const syncTarget = () => {
+      if (!searchComposerVisible || !host || !mediaQuery) {
+        syncReserve(false);
+        return;
+      }
       if (composerSlotKind === "home") {
         setHomeComposerMediaEligible(mediaQuery.matches);
       }
@@ -1721,28 +1720,24 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     };
 
     const observer = observeDesktopComposerSlots(syncTarget);
-    syncTarget();
-    mediaQuery.addEventListener("change", syncTarget);
+    if (!searchComposerVisible) {
+      queueMicrotask(() => !cancelled && resetPortal());
+    } else {
+      syncTarget();
+      mediaQuery?.addEventListener("change", syncTarget);
+    }
     return () => {
+      cancelled = true;
       if (retryTimeout !== null) window.clearTimeout(retryTimeout);
       observer.disconnect();
-      mediaQuery.removeEventListener("change", syncTarget);
-      host.parentNode?.removeChild(host);
-      if (composerSlotId) {
-        // Ready-gate, same as adoption: only a slot whose own segment has
-        // hydrated is ours to clear. This cleanup also runs on an ordinary
-        // dependency re-run, and stripping the SSR marker there leaves a window
-        // in which the DOM lacks an attribute the page's client render still
-        // produces — a page segment hydrating inside it logs a
-        // `data-composer-reserve` mismatch (client "pending" vs server null).
-        // Hydration readiness is observed by the effect body, so its pending
-        // clear still runs once the owning segment is safe to mutate. A real
-        // unmount takes the slot element with it.
+      mediaQuery?.removeEventListener("change", syncTarget);
+      host?.parentNode?.removeChild(host);
+      if (searchComposerVisible) {
         syncHydratedComposerReserve(composerSlotId, false);
+        setDesktopComposerPortalActive(false);
+        setDesktopComposerPortalHost(null);
+        setDesktopComposerPortalFallback(false);
       }
-      setDesktopComposerPortalActive(false);
-      setDesktopComposerPortalHost(null);
-      setDesktopComposerPortalFallback(false);
     };
   }, [desktopHomeComposerSlotId, desktopPageComposerSlotId, heroComposerBreakpoint, searchComposerVisible]);
 
@@ -2370,6 +2365,10 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                 id="global-search-input"
                 name="query"
                 data-testid="global-search-input"
+                autoComplete="off"
+                spellCheck={false}
+                data-gramm="false"
+                data-enable-grammarly="false"
                 autoFocus={queryInputAutoFocus}
                 disabled={searchSetupNotReady}
                 title={searchSetupNotReady ? "Search setup not ready" : undefined}
@@ -2757,7 +2756,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
                   onClick={() => setModeSheetView("modes")}
                   aria-label="Back to all modes"
                   data-testid="app-mode-popover-back"
-                  className="grid size-8 shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
+                  className="grid size-tap shrink-0 place-items-center rounded-md text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text-heading)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[color:var(--focus)]"
                 >
                   <ArrowLeft aria-hidden="true" className="size-icon-md" />
                 </button>

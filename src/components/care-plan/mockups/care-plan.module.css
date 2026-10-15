@@ -414,7 +414,7 @@
 
 .appRoot .definitionTerm {
   color: var(--text-muted);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;

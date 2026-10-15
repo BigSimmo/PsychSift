@@ -951,7 +951,7 @@ export function ModeActionPopup({
             onKeyDown={handleModeButtonKeyDown}
             onClick={() => canSwitchMode && setModeSelectorOpen((current) => !current)}
             className={cn(
-              "-mx-1.5 flex max-w-full items-center gap-1 rounded-lg px-1.5 py-0.5 text-left transition",
+              "-mx-1.5 flex min-h-tap max-w-full items-center gap-1 rounded-lg px-1.5 py-0.5 text-left transition",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]",
               canSwitchMode ? "hover:bg-[color:var(--surface-subtle)]" : "cursor-default",
             )}

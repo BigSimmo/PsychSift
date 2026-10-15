@@ -112,8 +112,15 @@ export function CalculatorSheet({
       if (target && target.isConnected && typeof target.focus === "function" && canRestoreFocusTo(target)) {
         target.focus();
       }
+      if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+        window.requestAnimationFrame(() => {
+          if (target && target.isConnected && typeof target.focus === "function" && canRestoreFocusTo(target)) {
+            target.focus();
+          }
+        });
+      }
     };
-  }, [calc.id, isOpen]);
+  }, [isOpen]);
 
   // Switching calculators in place keeps this sheet mounted, so reset its scroll
   // on calc change — otherwise the next one opens at the prior sheet's offset

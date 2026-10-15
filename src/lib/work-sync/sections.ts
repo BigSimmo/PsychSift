@@ -70,7 +70,7 @@ export const WORK_SYNC_ACCOUNT_STORES: Readonly<Record<WorkSyncSection, WorkSync
  * not sit on a ward computer for the next person (`src/lib/cme/device-record.ts`).
  */
 export function skipsSharedDevice(section: WorkSyncSection): boolean {
-  return section === "cpdApplications";
+  return section === "cpdApplications" || section === "teachingTermTracker" || section === "teachingExamPrep";
 }
 
 /** Every section but the quick note is stored on the device as JSON; the note is its own text. */

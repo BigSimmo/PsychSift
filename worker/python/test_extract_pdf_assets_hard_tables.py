@@ -14,6 +14,7 @@ import re
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(__file__))
 import extract_pdf_assets as extractor
@@ -126,6 +127,147 @@ class EmptyCellTests(unittest.TestCase):
         self.assertLess(text.index("Twice-weekly FBC"), red)
         self.assertIn("Stop clozapine and seek haematology advice", text)
         self.assertLess(red, text.index("Stop clozapine"), "the stop instruction belongs to the red row only")
+
+
+class MatrixValidationTests(unittest.TestCase):
+    def test_vertical_spanning_cells_preserve_a_genuine_sparse_matrix(self):
+        document = fitz.open()
+        try:
+            page = document.new_page()
+            for x in (40, 200, 360, 560):
+                page.draw_line((x, 80), (x, 200))
+            for y in (80, 200):
+                page.draw_line((40, y), (560, y))
+            for y in (120, 160):
+                page.draw_line((200, y), (360, y))
+            page.insert_text((50, 100), "Group A")
+            page.insert_text((210, 100), "First instruction")
+            page.insert_text((210, 140), "Second instruction")
+            page.insert_text((210, 180), "Third instruction")
+            page.insert_text((370, 100), "Shared timing")
+            found = page.find_tables().tables
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0].extract(), [
+                ["Group A", "First instruction", "Shared timing"],
+                [None, "Second instruction", None],
+                [None, "Third instruction", None],
+            ])
+            candidates = extractor.likely_table_candidates(page)
+            self.assertEqual(len(candidates), 1)
+            text = extractor.table_aware_page_text(page, candidates)
+            for value in ("Group A", "First instruction", "Second instruction", "Third instruction", "Shared timing"):
+                self.assertEqual(text.count(value), 1)
+            self.assertLess(text.index("First instruction"), text.index("Second instruction"))
+            self.assertLess(text.index("Second instruction"), text.index("Third instruction"))
+        finally:
+            document.close()
+
+    def test_sparse_frame_is_not_a_table_even_with_a_nominal_grid_and_caption(self):
+        rows = [["Split", "", "heading", ""], ["All examples in one cell", "", "", ""], ["", "Footer", "", ""]]
+        markdown = extractor.table_rows_to_markdown(rows)
+        self.assertFalse(extractor.real_table_candidate("Table 99", "Illustrations", markdown, 3, 4, rows))
+        table = SimpleNamespace(bbox=(10, 10, 580, 400), extract=lambda: rows)
+        page = SimpleNamespace(
+            find_tables=lambda: SimpleNamespace(tables=[table]),
+            get_text=lambda kind: [],
+        )
+        self.assertEqual(extractor.likely_table_candidates(page), [])
+
+    def test_sparse_frame_cannot_be_readmitted_by_text_grid_fallback(self):
+        blocks = [
+            (10, 10, 580, 30, "Split | heading | |"),
+            (10, 40, 580, 60, "All examples in one cell | | |"),
+            (10, 70, 580, 90, "| Footer | |"),
+        ]
+        page = SimpleNamespace(rect=fitz.Rect(0, 0, 595, 842), get_text=lambda kind: blocks)
+        self.assertEqual(extractor.fallback_table_candidates(page, []), [])
+
+    def test_multiline_cards_and_tabbed_bullets_are_not_fallback_rows(self):
+        blocks = [
+            (30, 60, 180, 100, "EXAMPLE A\n111 ml | 1.1%\n"),
+            (230, 60, 380, 100, "EXAMPLE B\n222 ml | 2.2%\n"),
+            (30, 160, 380, 200, "EXAMPLE C\n333 ml | 3.3%\nEXAMPLE D\n444 ml | 4.4%\n"),
+            (30, 260, 540, 280, "•\t First independent advice sentence.\n"),
+            (30, 300, 540, 320, "•\t Second independent advice sentence.\n"),
+        ]
+        page = SimpleNamespace(rect=fitz.Rect(0, 0, 595, 842), get_text=lambda kind: blocks)
+        self.assertEqual(extractor.fallback_table_candidates(page, []), [])
+
+    def test_original_delimited_lines_remain_valid_fallback_rows(self):
+        blocks = [(30, 60, 540, 120, "Result | Action | Timing\nExample A | Review | Day 3\nExample B | Withhold | Day 5\n")]
+        page = SimpleNamespace(rect=fitz.Rect(0, 0, 595, 842), get_text=lambda kind: blocks)
+        candidates = extractor.fallback_table_candidates(page, [])
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["table_rows"], [
+            ["Result", "Action", "Timing"],
+            ["Example A", "Review", "Day 3"],
+            ["Example B", "Withhold", "Day 5"],
+        ])
+
+    def test_outline_reference_and_recommendation_labels_are_not_columns(self):
+        examples = (
+            ["1.\tIntroduction", "1.1\tAim", "1.2\tScope"],
+            ["134.\tFirst reference begins here", "135.\tSecond reference begins here"],
+            ["A.\tFirst recommendation begins here", "B.\tSecond recommendation begins here"],
+        )
+        for lines in examples:
+            with self.subTest(lines=lines):
+                blocks = [(30, 60 + 40 * i, 540, 80 + 40 * i, line) for i, line in enumerate(lines)]
+                blocks.append((30, 250, 540, 290, "Continuation completes the preceding paragraph.\n"))
+                page = SimpleNamespace(rect=fitz.Rect(0, 0, 595, 842), get_text=lambda kind: blocks)
+                self.assertEqual(extractor.fallback_table_candidates(page, []), [])
+
+    def test_decimal_numeric_columns_remain_eligible(self):
+        blocks = [(30, 60, 540, 120, "Value\tResult\n1.3\t2.7\n2.4\t3.8\n")]
+        page = SimpleNamespace(rect=fitz.Rect(0, 0, 595, 842), get_text=lambda kind: blocks)
+        candidates = extractor.fallback_table_candidates(page, [])
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["table_rows"][1], ["1.3", "2.7"])
+
+    def test_explicit_pipe_decimal_to_text_columns_remain_eligible(self):
+        blocks = [(30, 60, 540, 120, "Value | Action | Timing\n1.3 | Review | Day 3\n2.4 | Withhold | Day 5\n")]
+        page = SimpleNamespace(rect=fitz.Rect(0, 0, 595, 842), get_text=lambda kind: blocks)
+        candidates = extractor.fallback_table_candidates(page, [])
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["table_rows"][1], ["1.3", "Review", "Day 3"])
+
+    def test_rejected_grid_cannot_be_readmitted_in_either_coordinate_frame(self):
+        for rotation in (0, 90):
+            with self.subTest(rotation=rotation):
+                matrix = fitz.Matrix(0, 1, -1, 0, 800, 0) if rotation else fitz.Identity
+                display_rect = fitz.Rect(590, 80, 790, 220)
+                blocks = [
+                    (*tuple(fitz.Rect(610, y, 770, y + 20) * ~matrix), text)
+                    for y, text in ((100, "Alpha | 25 units"), (160, "Beta | 75 units"))
+                ]
+                table = SimpleNamespace(bbox=tuple(display_rect), extract=lambda: [["Only one populated cell", ""], ["", ""]])
+                page = SimpleNamespace(
+                    rect=fitz.Rect(0, 0, 800, 500),
+                    rotation_matrix=matrix,
+                    find_tables=lambda: SimpleNamespace(tables=[table]),
+                    get_text=lambda kind: blocks,
+                )
+                rejected = []
+                self.assertEqual(extractor.likely_table_candidates(page, rejected), [])
+                self.assertEqual(rejected, [display_rect])
+                # The source lines would otherwise pass the weaker heuristic.
+                candidates = extractor.fallback_table_candidates(page, [])
+                self.assertEqual(len(candidates), 1)
+                self.assertGreater(candidates[0]["rect"].x0, 590)
+                self.assertEqual(extractor.fallback_table_candidates(page, rejected), [])
+
+    def test_repeated_matrix_accepts_merged_headers_and_empty_cells(self):
+        rows = [["Shared heading", None, None], ["Result", "Action", "Timing"], ["Example A", "", "Day 3"], ["Example B", "Review", ""]]
+        markdown = extractor.table_rows_to_markdown(rows)
+        self.assertTrue(extractor.real_table_candidate(None, None, markdown, 4, 3, rows))
+        table = SimpleNamespace(bbox=(10, 10, 580, 400), extract=lambda: rows)
+        page = SimpleNamespace(
+            find_tables=lambda: SimpleNamespace(tables=[table]),
+            get_text=lambda kind: [],
+        )
+        candidates = extractor.likely_table_candidates(page)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["table_rows"], [["Shared heading", "", ""], *rows[1:]])
 
 
 class MergedHeaderTests(unittest.TestCase):

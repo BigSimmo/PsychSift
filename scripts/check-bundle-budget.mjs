@@ -69,6 +69,7 @@ const root = process.env.BUNDLE_BUDGET_ROOT
   ? path.resolve(process.env.BUNDLE_BUDGET_ROOT)
   : path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CHUNKS_DIR = path.join(root, ".next", "static", "chunks");
+const BUILD_ID_PATH = path.join(root, ".next", "BUILD_ID");
 const BUDGET_PATH = path.join(root, "bundle-budget.json");
 const APP_BUILD_MANIFEST_PATH = path.join(root, ".next", "app-build-manifest.json");
 const BUILD_MANIFEST_PATH = path.join(root, ".next", "build-manifest.json");
@@ -1003,7 +1004,7 @@ export function runBundleBudgetCheck(argv = process.argv.slice(2)) {
     return 1;
   }
 
-  if (!existsSync(CHUNKS_DIR)) {
+  if (!existsSync(CHUNKS_DIR) || !existsSync(BUILD_ID_PATH)) {
     if (refreshBaseline) {
       console.error(
         `[bundle-budget] FAIL — no build output at ${path.relative(root, CHUNKS_DIR)}; cannot refresh baseline without a build. Run \`npm run build\` first.`,

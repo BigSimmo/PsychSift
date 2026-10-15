@@ -68,7 +68,7 @@ function NoFiguresPlaceholder() {
 export function CmeStateNotice({
   state,
   year,
-  heading,
+  heading = "CPD",
   onRetry,
 }: {
   readonly state: Exclude<CmeLoadState, "ready">;

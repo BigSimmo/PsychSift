@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ON_CALL_VIEW_TITLES, type OnCallPageView } from "@/components/on-call/on-call-section-identity";
 import { OnCallFreshnessBadge } from "@/components/on-call/on-call-freshness-badge";
@@ -13,6 +13,7 @@ import { FormField } from "@/components/ui/form-field";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { Sheet } from "@/components/ui/sheet";
 import { TextField } from "@/components/ui/text-field";
+import { useDirtyStateGuard } from "@/components/ui/use-dirty-state-guard";
 import { cn, fieldControlPlain, InlineNotice, textMuted } from "@/components/ui-primitives";
 import { parseApiErrorResponse } from "@/lib/api-client-error";
 import { isComplianceEntry, ON_CALL_ADMIN_CATEGORIES, ON_CALL_COMPLIANCE_CATEGORIES } from "@/lib/on-call/compliance";
@@ -782,6 +783,13 @@ export function OnCallEntryEditor({
       setFormShapeAnnouncement("");
     }
   }
+
+  const initialDraft = useMemo(
+    () => buildInitialDraft(section, entry, createAsRoleExplainer, createAsCompliance),
+    [section, entry, createAsRoleExplainer, createAsCompliance],
+  );
+  const isDirty = open && JSON.stringify(draft) !== JSON.stringify(initialDraft);
+  useDirtyStateGuard(isDirty && busy === null);
 
   const fieldSpecs = detailFieldsFor(section, draft.isCompliance);
   const freshness = entry ? onCallEntryFreshness(entry) : null;

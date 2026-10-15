@@ -486,7 +486,7 @@ export function Sheet({
           "flex min-w-0 w-full flex-col overflow-hidden border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] text-[color:var(--text)] shadow-[var(--shadow-elevated)] pb-safe",
           "transition duration-[var(--duration-moderate)] motion-reduce:transition-none sm:duration-[var(--duration-quick)]",
           placement === "left"
-            ? "h-full max-h-full max-w-[min(22rem,calc(100vw-1rem))] rounded-r-2xl border-y-0 border-l-0 pt-safe pl-safe sm:max-h-dvh sm:max-w-[22rem] sm:rounded-l-none sm:rounded-r-2xl sm:pb-0 sm:pl-0"
+            ? "h-full max-h-full max-w-[min(20rem,calc(100vw-3rem))] rounded-r-2xl border-y-0 border-l-0 pt-safe pl-safe sm:max-h-dvh sm:max-w-[20rem] sm:rounded-l-none sm:rounded-r-2xl sm:pb-0 sm:pl-0"
             : placement === "right"
               ? "h-full max-h-full max-w-[min(32rem,calc(100vw-1rem))] rounded-l-2xl border-y-0 border-r-0 pt-safe pr-safe sm:max-h-dvh sm:max-w-[32rem] sm:rounded-l-2xl sm:rounded-r-none sm:pb-0 sm:pr-0"
               : placement === "responsive-right"

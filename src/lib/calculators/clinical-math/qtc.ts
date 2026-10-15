@@ -9,8 +9,8 @@ export function calculateQtc(input: QtcInput): QtcResult {
   const errors: string[] = [];
   const alerts: string[] = [];
 
-  if (!Number.isFinite(input.qtMs) || input.qtMs <= 0 || input.qtMs > 1000) {
-    errors.push("QT interval must be greater than zero and within physiological range (<=1000 ms)");
+  if (!Number.isFinite(input.qtMs) || input.qtMs < 150 || input.qtMs > 800) {
+    errors.push("QT interval must be within physiological range (150–800 ms; enter milliseconds, not seconds)");
   }
 
   let rrSeconds: number;
@@ -23,6 +23,9 @@ export function calculateQtc(input: QtcInput): QtcResult {
     input.rrIntervalSeconds > 0
   ) {
     rrSeconds = input.rrIntervalSeconds;
+    if (rrSeconds < 0.24 || rrSeconds > 3.0) {
+      errors.push("RR interval must be between 0.24 and 3.00 seconds (convert milliseconds to seconds first)");
+    }
     hr = 60 / rrSeconds;
   } else if (input.heartRateBpm !== undefined && Number.isFinite(input.heartRateBpm) && input.heartRateBpm > 0) {
     hr = input.heartRateBpm;
@@ -41,8 +44,8 @@ export function calculateQtc(input: QtcInput): QtcResult {
     };
   }
 
-  if (hr > 250) {
-    errors.push("Heart rate exceeds physiological range (>250 bpm)");
+  if (hr < 20 || hr > 250) {
+    errors.push("Heart rate must be within physiological range (20–250 bpm)");
   }
 
   if (errors.length > 0) {

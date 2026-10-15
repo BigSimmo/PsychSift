@@ -4,8 +4,13 @@
   "kind": "area",
   "name": "Delivery and assurance",
   "owns": "Getting a change safely from branch to live: CI, git hooks, gates, budgets, containers, deploy config and test tooling.",
-  "canonicalDocs": ["docs/agents/verification-gates.md", "docs/testing.md", "docs/deployment-architecture.md"],
+  "canonicalDocs": [
+    "docs/agents/verification-gates.md",
+    "docs/testing.md",
+    "docs/deployment-architecture.md"
+  ],
   "paths": [
+    ".coderabbit.yaml",
     ".docker/buildx.toml",
     ".dockerignore",
     ".editorconfig",
@@ -181,6 +186,7 @@
     "src/lib/answer-wire-budget-guard.js",
     "src/lib/deep-memory-preparation.ts",
     "src/lib/document-ingress-safety.ts",
+    "src/lib/form-catalog-constants.ts",
     "src/lib/ingestion-generation-evidence.ts",
     "src/lib/ingestion-provider-egress.ts",
     "src/lib/local-project-guard.ts",
@@ -223,6 +229,7 @@
     "tests/deploy-migration-gate.test.ts",
     "tests/deployment-rag-activation.test.ts",
     "tests/diff-integrity.test.ts",
+    "tests/dirty-guards-and-external-links.test.ts",
     "tests/edge-provider-egress.test.ts",
     "tests/empty-catch-disposition.test.ts",
     "tests/final-merge-audit.test.ts",
@@ -234,6 +241,7 @@
     "tests/helpers/**",
     "tests/http-readiness.test.ts",
     "tests/installed-lock-parity.test.ts",
+    "tests/landmarks-headings-and-wiring.test.ts",
     "tests/layout-tolerance.test.ts",
     "tests/lib-layering.test.ts",
     "tests/lighthouse-baseline-browser-pin.test.ts",

@@ -53,12 +53,14 @@ export {
 } from "@/lib/developer-area/link-access-shared";
 
 /**
- * Cookie path. Scoped to `/mockups` rather than `/` so this credential is never
- * transmitted on a clinical request — it has no business being attached to a
- * search, a document read, or an API call, and a cookie that is never sent
- * cannot leak from those requests' logs or proxies.
+ * Cookie paths. Each cookie is scoped to one developer-gated subtree so the
+ * credential is not sent with unrelated clinical or API requests.
  */
-export const DEVELOPER_ACCESS_COOKIE_PATH = "/mockups";
+export const DEVELOPER_ACCESS_COOKIE_PATHS = [
+  "/admin/developer-hub",
+  "/mockups/development",
+  "/mockups/care-plan",
+] as const;
 
 /**
  * One year. Deliberately inside the ~400-day ceiling Chrome and Safari clamp

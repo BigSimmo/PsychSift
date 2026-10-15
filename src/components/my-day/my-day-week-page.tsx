@@ -13,7 +13,6 @@ import { MyDayFrame } from "@/components/my-day/my-day-frame";
 import { listNames } from "@/components/my-day/my-day-page-parts";
 import { clashWithShifts } from "@/components/my-day/my-day-clash";
 import { AreaIcon, DateBlock, QuietFoot, quietCard } from "@/components/my-day/my-day-quiet";
-import { hoursText, MonthView, MyDaySegmented, StripDay, type DayDetail } from "@/components/my-day/my-day-today-cards";
 import { cmeRoutineItemsThrough } from "@/components/my-day/sources/cme";
 import { useMyDayItems } from "@/components/my-day/use-my-day-items";
 import { kindOf } from "@/components/roster/roster-format";
@@ -30,13 +29,15 @@ import type { CmeRoutine } from "@/lib/cme/routines";
 import type { MyDayItem, MyDaySourceMode } from "@/lib/my-day/model";
 import { dueCountsByDate } from "@/lib/my-day/dashboard";
 import { hoursBars, kindsByDate as kindsByDateOf, mondayIndex } from "@/lib/my-day/figures";
-import { duePerthDate, mergeMyDayItems } from "@/lib/my-day/merge";
+import { mergeMyDayItems } from "@/lib/my-day/merge";
 import { perthWeekday, shiftTitle, weekdayTime } from "@/lib/my-day/quiet-figures";
 import { myDayItemWeekDate, myDayWeekDates, myDayWeekDayLabel, myDayWeekRangeLabel } from "@/lib/my-day/week";
 import { DEFAULT_REMINDER_SETTINGS, type ReminderSettings } from "@/lib/reminders/settings";
 import { addDaysToDate, perthDateOf, perthTimeOf } from "@/lib/roster/shifts/perth-time";
 import { zonedDateOf } from "@/lib/work-time/format";
 import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
+
+import { hoursText, StripDay } from "@/components/my-day/my-day-strip-day";
 
 /** The signed-out sample, downloaded only when a signed-out visitor opens this page. */
 const MyDayWeekSample = dynamic(
@@ -82,23 +83,6 @@ export function MyDayWeekPage({ now }: { now?: Date } = {}) {
       {(at) => <MyDayWeekBody now={at} />}
     </MyDayFrame>
   );
-}
-
-type WeekView = "week" | "month";
-
-interface WeekViewProps {
-  readonly view: WeekView;
-  readonly onView: (view: WeekView) => void;
-  /** The month the calendar shows ("2026-11"), or null for this month. */
-  readonly shownMonth: string | null;
-  readonly onMonth: (month: string) => void;
-}
-
-/** The last day of a month ("2026-10" to "2026-10-31"). */
-function monthEnd(month: string): string {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const days = new Date(Date.UTC(year!, monthNumber!, 0)).getUTCDate();
-  return `${month}-${String(days).padStart(2, "0")}`;
 }
 
 function MyDayWeekBody({ now }: { now: Date }) {
@@ -430,25 +414,11 @@ function entriesOn(
   ]);
 }
 
-/** A row of the month's chosen day, in the same words as the agenda. */
-function dayDetail(entry: AgendaEntry): DayDetail {
-  return {
-    key: entry.key,
-    mode: entry.identity,
-    title: entry.time && entry.time !== "All day" ? `${entry.title} ${entry.time}` : entry.title,
-    subtitle: [entry.state, entry.area, entry.detail, entry.clash].filter(Boolean).join(" · ") || undefined,
-    passed: entry.shape === "passed",
-    href: entry.href,
-    actionLabel: "Open",
-  };
-}
-
 /**
- * Week or Month. Week: the seven days as a strip (the same codes as Today),
- * then one card with a date block per day and its timed rows, then a pointer
- * to Roster. Month: the calendar of shifts and due dates, and the chosen
- * day's rows. Drawn from whatever shifts, sessions and items it is given: the
- * reader's own, or the signed-out sample.
+ * Week: the seven days as a strip (the same codes as Today), then one card with
+ * a date block per day and its timed rows, then a pointer to Roster. Drawn from
+ * whatever shifts, sessions and items it is given: the reader's own, or the
+ * signed-out sample.
  */
 export function MyDayWeekDays({
   now,
@@ -459,10 +429,6 @@ export function MyDayWeekDays({
   reminders,
   rosterKnown,
   hoursPartial = false,
-  view = "week",
-  onView,
-  shownMonth = null,
-  onMonth,
   notices,
 }: {
   readonly now: Date;
@@ -475,19 +441,16 @@ export function MyDayWeekDays({
   readonly rosterKnown: boolean;
   /** Team shifts failed or are still refreshing: a partial roster cannot support an honest hours total. */
   readonly hoursPartial?: boolean;
-  /** Notices drawn under the Week and Month switch. */
+  /** Notices drawn above the week strip. */
   readonly notices?: ReactNode;
-} & Partial<WeekViewProps>) {
+}) {
   const { zone } = useWorkTimeZone();
   const today = zonedDateOf(now, zone);
   const dates = useMemo(() => myDayWeekDates(today), [today]);
   const lastDate = dates[dates.length - 1]!;
-  const month = shownMonth ?? today.slice(0, 7);
-  // CPD routines are listed as far ahead as the page shows.
-  const through = view === "month" && monthEnd(month) > lastDate ? monthEnd(month) : lastDate;
   const merged = useMemo(
-    () => mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, through, now, reminders)]),
-    [items, cmeRoutines, through, now, reminders],
+    () => mergeMyDayItems([items, cmeRoutineItemsThrough(cmeRoutines, lastDate, now, reminders)]),
+    [items, cmeRoutines, lastDate, now, reminders],
   );
   const entriesByDay = useMemo(
     () =>
@@ -525,159 +488,123 @@ export function MyDayWeekDays({
         zonedDateOf(Date.parse(shift.endsAt) - 1, zone) === date,
     );
   const at = now.getTime();
-  const detailFor = (date: string): DayDetail[] =>
-    entriesOn(date, shifts, sessions, merged, (item) => {
-      // What is already late waits on today, as in the week.
-      const due = duePerthDate(item.due);
-      return due !== null && due < today ? today : due;
-    }).map(dayDetail);
 
   return (
     <div className="grid min-w-0 gap-2.5">
-      {onView ? (
-        <MyDaySegmented
-          options={[
-            ["week", "Week"],
-            ["month", "Month"],
-          ]}
-          value={view}
-          onChange={onView}
-          label="Show the week or the month"
-          testId="my-day-week-view"
-        />
-      ) : null}
       {notices}
-      {view === "month" ? (
-        <MonthView
-          today={today}
-          kindsByDate={rosterKnown ? kindsByDate : null}
-          dueByDate={dueByDate}
-          detailFor={detailFor}
-          onMonth={onMonth}
-        />
-      ) : (
-        <>
-          {/* From 1024px the agenda below is seven day columns with their own dates, so the strip would repeat them. */}
-          <ol role="list" className="grid grid-cols-7 gap-1 text-center lg:hidden" data-testid="my-day-week-strip">
-            {dates.map((date) => (
-              <StripDay
-                key={date}
-                date={date}
-                today={today}
-                kinds={rosterKnown ? (kindsByDate.get(date) ?? []) : null}
-                due={dueByDate.get(date) ?? 0}
-              />
-            ))}
-          </ol>
+      {/* From 1024px the agenda below is seven day columns with their own dates, so the strip would repeat them. */}
+      <ol role="list" className="grid grid-cols-7 gap-1 text-center lg:hidden" data-testid="my-day-week-strip">
+        {dates.map((date) => (
+          <StripDay
+            key={date}
+            date={date}
+            today={today}
+            kinds={rosterKnown ? (kindsByDate.get(date) ?? []) : null}
+            due={dueByDate.get(date) ?? 0}
+          />
+        ))}
+      </ol>
 
-          <ul
-            role="list"
-            data-testid="my-day-week-agenda"
+      <ul
+        role="list"
+        data-testid="my-day-week-agenda"
+        className={cn(
+          quietCard,
+          "grid min-w-0 px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
+          // Desktop (usefulness audit, 11 Oct 2026): the week as seven day columns, not one long list.
+          "lg:grid-cols-7 lg:px-0 lg:[&>li+li]:border-t-0 lg:[&>li+li]:border-l",
+        )}
+      >
+        {dates.map((date) => {
+          const entries = entriesByDay.get(date) ?? [];
+          const isToday = date === today;
+          const nowIndex = isToday ? entries.findIndex((entry) => entry.startsAt !== null && entry.startsAt > at) : -1;
+          const ending = entries.length === 0 ? endsOn(date) : undefined;
+          return (
+            <li
+              key={date}
+              data-testid={`my-day-week-day-${date}`}
+              className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 py-2 lg:grid-cols-1 lg:content-start lg:gap-y-1 lg:px-2 lg:py-3"
+            >
+              <h2 className="sr-only">{myDayWeekDayLabel(date, today)}</h2>
+              <span className="pt-1">
+                <DateBlock number={Number(date.slice(8, 10))} word={perthWeekday(date)} today={isToday} />
+              </span>
+              {entries.length > 0 ? (
+                <ul role="list" className="grid min-w-0">
+                  {entries.map((entry, index) => (
+                    <Fragment key={entry.key}>
+                      {index === nowIndex ? <NowLine now={now} /> : null}
+                      <AgendaRow
+                        entry={entry}
+                        done={(entry.endsAt ?? entry.startsAt ?? Number.POSITIVE_INFINITY) <= at}
+                      />
+                    </Fragment>
+                  ))}
+                  {isToday && nowIndex === -1 && entries.some((entry) => entry.startsAt !== null) ? (
+                    <NowLine now={now} />
+                  ) : null}
+                </ul>
+              ) : (
+                <p
+                  className="flex min-h-10 items-center text-xs text-[color:var(--text-muted)]"
+                  data-testid={`my-day-week-empty-${date}`}
+                >
+                  {!rosterKnown
+                    ? "Roster not loaded, so shifts are not shown"
+                    : ending
+                      ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
+                      : "Nothing on"}
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="grid min-w-0 gap-2.5 lg:grid-cols-2">
+        {rosterKnown && !hoursPartial ? (
+          // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same Monday-to-Sunday week as Hours.
+          <Link
+            href="/my-day/hours"
+            data-testid="my-day-week-hours"
             className={cn(
               quietCard,
-              "grid min-w-0 px-3 [&>li+li]:border-t [&>li+li]:border-[color:var(--work-line)]",
-              // Desktop (usefulness audit, 11 Oct 2026): the week as seven day columns, not one long list.
-              "lg:grid-cols-7 lg:px-0 lg:[&>li+li]:border-t-0 lg:[&>li+li]:border-l",
+              focusRing,
+              "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
             )}
           >
-            {dates.map((date) => {
-              const entries = entriesByDay.get(date) ?? [];
-              const isToday = date === today;
-              const nowIndex = isToday
-                ? entries.findIndex((entry) => entry.startsAt !== null && entry.startsAt > at)
-                : -1;
-              const ending = entries.length === 0 ? endsOn(date) : undefined;
-              return (
-                <li
-                  key={date}
-                  data-testid={`my-day-week-day-${date}`}
-                  className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] gap-x-2 py-2 lg:grid-cols-1 lg:content-start lg:gap-y-1 lg:px-2 lg:py-3"
-                >
-                  <h2 className="sr-only">{myDayWeekDayLabel(date, today)}</h2>
-                  <span className="pt-1">
-                    <DateBlock number={Number(date.slice(8, 10))} word={perthWeekday(date)} today={isToday} />
-                  </span>
-                  {entries.length > 0 ? (
-                    <ul role="list" className="grid min-w-0">
-                      {entries.map((entry, index) => (
-                        <Fragment key={entry.key}>
-                          {index === nowIndex ? <NowLine now={now} /> : null}
-                          <AgendaRow
-                            entry={entry}
-                            done={(entry.endsAt ?? entry.startsAt ?? Number.POSITIVE_INFINITY) <= at}
-                          />
-                        </Fragment>
-                      ))}
-                      {isToday && nowIndex === -1 && entries.some((entry) => entry.startsAt !== null) ? (
-                        <NowLine now={now} />
-                      ) : null}
-                    </ul>
-                  ) : (
-                    <p
-                      className="flex min-h-10 items-center text-xs text-[color:var(--text-muted)]"
-                      data-testid={`my-day-week-empty-${date}`}
-                    >
-                      {!rosterKnown
-                        ? "Roster not loaded, so shifts are not shown"
-                        : ending
-                          ? `${shiftTitle(kindOf(ending))} ends ${perthTimeOf(ending.endsAt)} · nothing else on`
-                          : "Nothing on"}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-
-          <div className="grid min-w-0 gap-2.5 lg:grid-cols-2">
-            {rosterKnown && !hoursPartial ? (
-              // Hours left the main tabs (usefulness audit, 11 Oct 2026): one line here, over the same Monday-to-Sunday week as Hours.
-              <Link
-                href="/my-day/hours"
-                data-testid="my-day-week-hours"
-                className={cn(
-                  quietCard,
-                  focusRing,
-                  "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
-                )}
-              >
-                <AreaIcon mode="my-day" icon={Clock} />
-                <span className="grid min-w-0 flex-1">
-                  <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
-                    {`${hoursText(rosteredHours)} h rostered this week`}
-                  </span>
-                  <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
-                </span>
-                <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
-              </Link>
-            ) : null}
-            <Link
-              href="/roster"
-              aria-label="Open Roster: all your shifts, swaps, leave and your team"
-              data-testid="my-day-week-footer"
-              className={cn(
-                quietCard,
-                focusRing,
-                "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
-              )}
-            >
-              <AreaIcon mode="roster" icon={CalendarDays} />
-              <span className="grid min-w-0 flex-1">
-                <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">
-                  All your shifts are in Roster
-                </span>
-                <span className="text-2xs text-[color:var(--text-muted)]">Swaps, leave and your team</span>
+            <AreaIcon mode="my-day" icon={Clock} />
+            <span className="grid min-w-0 flex-1">
+              <span className="text-sm-minus font-bold text-[color:var(--work-ink)] nums">
+                {`${hoursText(rosteredHours)} h rostered this week`}
               </span>
-              <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
-            </Link>
-          </div>
-          <div className="px-1">
-            <QuietFoot icon={Info}>
-              From Roster, Teaching, CPD and Admin. Each item opens the page that owns it.
-            </QuietFoot>
-          </div>
-        </>
-      )}
+              <span className="text-2xs text-[color:var(--text-muted)]">Hours by week and fortnight, not pay</span>
+            </span>
+            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+          </Link>
+        ) : null}
+        <Link
+          href="/roster"
+          aria-label="Open Roster: all your shifts, swaps, leave and your team"
+          data-testid="my-day-week-footer"
+          className={cn(
+            quietCard,
+            focusRing,
+            "flex min-h-12 min-w-0 items-center gap-2.5 px-3 py-2.5 text-inherit no-underline",
+          )}
+        >
+          <AreaIcon mode="roster" icon={CalendarDays} />
+          <span className="grid min-w-0 flex-1">
+            <span className="text-sm-minus font-bold text-[color:var(--work-ink)]">All your shifts are in Roster</span>
+            <span className="text-2xs text-[color:var(--text-muted)]">Swaps, leave and your team</span>
+          </span>
+          <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-[color:var(--text-muted)]" />
+        </Link>
+      </div>
+      <div className="px-1">
+        <QuietFoot icon={Info}>From Roster, Teaching, CPD and Admin. Each item opens the page that owns it.</QuietFoot>
+      </div>
     </div>
   );
 }

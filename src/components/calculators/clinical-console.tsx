@@ -87,7 +87,10 @@ export function CalculatorsClinicalConsoleMockup() {
   const [activeId, setActiveId] = useState<string>("phq9");
   const [session, setSession] = useState<SessionAnswers>({});
 
-  const calc = useMemo(() => calculators.find((entry) => entry.id === activeId) ?? calculators[0], [activeId]);
+  const calc: CalculatorFixture = useMemo(
+    () => calculators.find((entry) => entry.id === activeId) ?? calculators[0],
+    [activeId],
+  );
   const answers = session[calc.id] ?? {};
   const derived = deriveCalculator(calc, answers);
 
@@ -223,6 +226,10 @@ export function CalculatorsClinicalConsoleMockup() {
             {derived.started && derived.result.guidance ? (
               <p className="text-sm-minus font-medium leading-5 text-[color:var(--text)]">{derived.result.guidance}</p>
             ) : null}
+            <p className="text-2xs font-medium leading-4 text-[color:var(--text-muted)]">
+              {calc.disclaimer ??
+                "Clinical reference — not validated decision support. Confirm scoring and interpretation against the source instrument."}
+            </p>
           </section>
 
           <FlagNotice flags={derived.flags} provisional={!derived.complete} />

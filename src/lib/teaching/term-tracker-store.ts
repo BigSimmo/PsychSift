@@ -7,6 +7,7 @@ import {
   TEACHING_EXAM_PREP_STORAGE_KEY,
   TEACHING_TERM_TRACKER_STORAGE_KEY,
 } from "@/lib/account-scoped-browser-state";
+import { isSharedDevice, SHARED_DEVICE_CHANGE_EVENT } from "@/lib/alerts/shared-device";
 import {
   isValidExamPrep,
   isValidTermTracker,
@@ -31,6 +32,9 @@ import { announceWorkSyncChange } from "@/lib/work-sync/sections";
 const listeners = new Set<() => void>();
 const memory = new Map<string, string>();
 subscribeAccountTransition(() => memory.clear());
+if (typeof window !== "undefined") {
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, () => memory.clear());
+}
 
 function notify(): void {
   for (const listener of listeners) listener();
@@ -39,15 +43,20 @@ function notify(): void {
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
   window.addEventListener("storage", onChange);
+  window.addEventListener(SHARED_DEVICE_CHANGE_EVENT, onChange);
   const unsubscribeTransition = subscribeAccountTransition(onChange);
   return () => {
     listeners.delete(onChange);
     window.removeEventListener("storage", onChange);
+    window.removeEventListener(SHARED_DEVICE_CHANGE_EVENT, onChange);
     unsubscribeTransition();
   };
 }
 
 function read(key: string): string | null {
+  if (isSharedDevice()) {
+    return memory.get(key) ?? null;
+  }
   try {
     const stored = window.localStorage.getItem(key);
     if (stored === null) memory.delete(key);
@@ -59,6 +68,10 @@ function read(key: string): string | null {
 
 function write(key: string, value: string): void {
   memory.set(key, value);
+  if (isSharedDevice()) {
+    notify();
+    return;
+  }
   try {
     window.localStorage.setItem(key, value);
   } catch {
@@ -68,6 +81,12 @@ function write(key: string, value: string): void {
   }
   notify();
   announceWorkSyncChange(key);
+}
+
+export function saveTermTrackerState(state: TermTrackerState): void {
+  if (isValidTermTracker(state)) {
+    write(TEACHING_TERM_TRACKER_STORAGE_KEY, JSON.stringify(state));
+  }
 }
 
 const serverSnapshot = () => null;
@@ -113,10 +132,10 @@ function useDeviceRecord<T>(
   return { state: hydrated ? stored : null, update };
 }
 
-export function useTermTrackerStore(sample: TermTrackerState | null): DeviceRecord<TermTrackerState> {
+export function useTermTrackerStore(sample: TermTrackerState | null = null): DeviceRecord<TermTrackerState> {
   return useDeviceRecord(TEACHING_TERM_TRACKER_STORAGE_KEY, parseTermTracker, isValidTermTracker, sample);
 }
 
-export function useExamPrepStore(sample: ExamPrepState | null): DeviceRecord<ExamPrepState> {
+export function useExamPrepStore(sample: ExamPrepState | null = null): DeviceRecord<ExamPrepState> {
   return useDeviceRecord(TEACHING_EXAM_PREP_STORAGE_KEY, parseExamPrep, isValidExamPrep, sample);
 }

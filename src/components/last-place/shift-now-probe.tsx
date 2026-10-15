@@ -12,7 +12,7 @@ import { summariseToday } from "@/lib/roster/today";
  * "on now" rule My Day uses for its hero.
  */
 export function ShiftNowProbe({ onResult }: { readonly onResult: (onShiftNow: boolean) => void }) {
-  const roster = useRosterShifts();
+  const roster = useRosterShifts(undefined, { skipWhenUnauthenticated: true });
   const reported = useRef(false);
   useEffect(() => {
     if (reported.current) return;

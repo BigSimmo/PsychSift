@@ -83,7 +83,7 @@ describe("collapsed rail marks the active mode (#03ARD6)", () => {
     expect(within(rail).queryByRole("navigation", { name: "Current mode" })).toBeNull();
   });
 
-  it("marks only the library link for Favourites when the library is shown", () => {
+  it("gives Favourites one current slot when the library is available (the rail has no library nav)", () => {
     const rail = renderRail("favourites", true);
 
     const current = currentItems(rail);

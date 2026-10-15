@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, FileText, Search, TriangleAlert } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Copy, ExternalLink, FileText, Search, TriangleAlert } from "lucide-react";
 
 import { cardSurface } from "@/components/card-recipes";
 import { PageHeader } from "@/components/ui/page-header";
@@ -11,6 +11,7 @@ import { missingValuePhrase } from "@/components/ui/missing-value";
 import { Tabs } from "@/components/ui/tabs";
 import { BrowserPrintButton, PrintOutput } from "@/components/ui/print-output";
 import { cn } from "@/components/ui-primitives";
+import { therapyNeedsReview } from "@/lib/therapies";
 import { therapyRecordHref, type TherapyBriefDuration } from "@/lib/therapy-compass-navigation";
 
 import { useTcBindings } from "../bindings";
@@ -45,6 +46,27 @@ const BRIEF_DURATION: Record<TherapyBriefDuration, { label: string; text: (thera
   },
 };
 
+export function buildBriefCopy(
+  brief: Therapy | (Pick<Therapy, "name" | "reviewStatus"> & Partial<Therapy>),
+  durationLabel = "5-minute",
+  steps: string[] = parseSteps(brief.briefVersion ?? null, 6),
+): string {
+  const scripts = brief.clinicianScripts ?? [];
+  return [
+    `${brief.name} — ${durationLabel} intervention`,
+    ...(therapyNeedsReview(brief) ? ["[Awaiting clinical review — verify against primary guidelines]"] : []),
+    "",
+    ...steps.map((st, i) => `${i + 1}. ${st}`),
+    ...(scripts.length
+      ? [
+          "",
+          "Clinician script:",
+          ...scripts.slice(0, 2).map((c) => (c.scriptType ? `${c.scriptType}: ${c.body ?? ""}` : (c.body ?? ""))),
+        ]
+      : []),
+  ].join("\n");
+}
+
 export function BriefScreen() {
   const b = useTcBindings();
   const t = b.selectedTherapy;
@@ -63,6 +85,7 @@ export function BriefScreen() {
   const { notice, saved, toggleFavourite } = useTherapyFavourite(t?.slug ?? null);
   if (b.loading || !t) return <LoadingState label="Loading brief interventions…" />;
 
+  const needsReview = therapyNeedsReview(t);
   const duration = BRIEF_DURATION[b.briefTab as TherapyBriefDuration] ?? BRIEF_DURATION["5min"];
   const durationLabel = duration.label;
   const durationText = duration.text(t);
@@ -73,20 +96,7 @@ export function BriefScreen() {
   const duplicatesFullProtocol = Boolean(
     durationText && t.deliverySteps && durationText.trim() === t.deliverySteps.trim(),
   );
-  const interventionText = [
-    `${t.name} — ${durationLabel} intervention`,
-    "",
-    ...steps.map((st, i) => `${i + 1}. ${st}`),
-    ...(t.clinicianScripts.length
-      ? [
-          "",
-          "Clinician script:",
-          ...t.clinicianScripts
-            .slice(0, 2)
-            .map((c) => (c.scriptType ? `${c.scriptType}: ${c.body ?? ""}` : (c.body ?? ""))),
-        ]
-      : []),
-  ].join("\n");
+  const interventionText = buildBriefCopy(t, durationLabel, steps);
 
   return (
     <>
@@ -176,15 +186,19 @@ export function BriefScreen() {
                             {x.bestUsedFor ?? x.category}
                           </span>
                         </span>
-                        <TriangleAlert
-                          aria-hidden="true"
-                          strokeWidth={1.8}
-                          className={
-                            x.reviewStatus === "reviewed"
-                              ? "size-icon-sm flex-none text-[color:var(--success-text)]"
-                              : "size-icon-sm flex-none text-[color:var(--warning-text)]"
-                          }
-                        />
+                        {x.reviewStatus === "reviewed" ? (
+                          <CheckCircle2
+                            aria-hidden="true"
+                            strokeWidth={1.8}
+                            className="size-icon-sm flex-none text-[color:var(--success-text)]"
+                          />
+                        ) : (
+                          <AlertTriangle
+                            aria-hidden="true"
+                            strokeWidth={1.8}
+                            className="size-icon-sm flex-none text-[color:var(--warning-text)]"
+                          />
+                        )}
                       </InteractiveRow>
                     );
                   })}
@@ -206,8 +220,21 @@ export function BriefScreen() {
                       <span className="text-2xs font-semibold py-0.5 px-2.5 rounded-sm bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent-hover)] border border-[color:var(--clinical-accent-border)]">
                         {durationLabel} mode
                       </span>
-                      <span className="text-2xs font-semibold py-0.5 px-2.5 rounded-sm bg-[color:var(--warning-bg)] text-[color:var(--warning-text)] border border-[color:var(--warning-border)]">
-                        {t.reviewStatus === "reviewed" ? "Reviewed" : "Clinician review required"}
+                      <span
+                        data-testid="therapy-brief-review-badge"
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-2xs font-semibold py-0.5 px-2.5 rounded-sm border",
+                          needsReview
+                            ? "bg-[color:var(--warning-bg)] text-[color:var(--warning-text)] border-[color:var(--warning-border)]"
+                            : "bg-[color:var(--success-bg)] text-[color:var(--success-text)] border-[color:var(--success-border)]",
+                        )}
+                      >
+                        {needsReview ? (
+                          <AlertTriangle aria-hidden="true" className="size-icon-xs flex-none" />
+                        ) : (
+                          <CheckCircle2 aria-hidden="true" className="size-icon-xs flex-none" />
+                        )}
+                        {needsReview ? "Awaiting clinical review" : "Reviewed"}
                       </span>
                     </div>
                     {/*

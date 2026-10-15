@@ -1,10 +1,11 @@
 "use client";
 
-import { Heart, SlidersHorizontal } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
-import type { SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
+import { SidebarAppearanceMenu, type SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
+import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -64,6 +65,7 @@ function WorkRailClinical() {
       href={appModeHomeHref(lastMode)}
       className="work-rail__item"
       aria-label={`Clinical, ${appModeDefinition(lastMode).label}`}
+      title={`Clinical: ${appModeDefinition(lastMode).label}`}
       data-testid="work-rail-clinical"
     >
       <span className="work-rail__pill" aria-hidden="true">
@@ -78,8 +80,11 @@ function WorkRailClinical() {
 
 /**
  * The tablet rail (owner pick "Burger and rail", 7 Oct 2026): from 768 px a
- * narrow column down the left edge with your initial, the seven work areas
- * with what is waiting in each, then Favourites and Settings. The menu button
+ * narrow column down the left edge, built like the Clinical rail (owner
+ * request, 15 Oct 2026: both slim rails match): the brand mark over a rule,
+ * the way back to Clinical where Clinical has New chat, the work areas with
+ * what is waiting in each, then a rule and Appearance, Settings and your
+ * initial at the foot. Favourites lives in the side menu, not here. The menu button
  * is hidden there, and the header's left slot stays free for the back arrow
  * on inner areas and form steps.
  */
@@ -96,16 +101,12 @@ export function WorkRail({
   const routeVisible = useWorkModeRouteVisible();
   return (
     <nav aria-label="Work areas" className="work-rail" data-testid="work-rail">
-      <Link
-        href="/my-day/profile"
-        className="work-rail__avatar"
-        data-signed-in={identity.signedIn ? "true" : "false"}
-        aria-label={identity.signedIn ? `Work profile, ${identity.displayName}` : "Work profile and sign-in"}
-        data-testid="work-rail-profile"
-      >
-        <span aria-hidden="true">{identity.initials}</span>
-      </Link>
+      <span className="work-rail__brand" aria-hidden="true">
+        <BrandMark tone="emphasis" optical="chrome" className="h-7 w-7" />
+      </span>
+      <span className="work-rail__rule" aria-hidden="true" />
       <WorkRailClinical />
+      <span className="work-rail__rule" aria-hidden="true" />
       <ul className="work-rail__list">
         {WORK_SIDE_AREAS.filter((entry) => routeVisible(entry.href)).map((entry) => {
           const current = entry.id === currentArea;
@@ -119,6 +120,7 @@ export function WorkRail({
                 aria-current={current ? "true" : undefined}
                 data-mode-identity={WORK_AREAS[entry.id].identity}
                 data-testid={`work-rail-area-${entry.id}`}
+                title={entry.label}
                 className="work-rail__item"
               >
                 <span className="work-rail__pill" aria-hidden="true">
@@ -140,22 +142,41 @@ export function WorkRail({
         })}
       </ul>
       <span className="work-rail__spacer" />
+      <span className="work-rail__rule" aria-hidden="true" />
       <ul className="work-rail__list">
         <li>
-          <Link href="/my-day/favourites" className="work-rail__item" data-testid="work-rail-favourites">
-            <span className="work-rail__pill" aria-hidden="true">
-              <Heart aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-            </span>
-            <span className="work-rail__label">Favourites</span>
-          </Link>
+          <SidebarAppearanceMenu railClassName="work-rail__item" />
         </li>
         <li>
-          <button type="button" onClick={onOpenSettings} className="work-rail__item" data-testid="work-rail-settings">
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="work-rail__item"
+            title="Settings"
+            data-testid="work-rail-settings"
+          >
             <span className="work-rail__pill" aria-hidden="true">
-              <SlidersHorizontal aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+              <SettingsIcon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
             </span>
             <span className="work-rail__label">Settings</span>
           </button>
+        </li>
+        <li>
+          <Link
+            href="/my-day/profile"
+            className="work-rail__item"
+            aria-label={identity.signedIn ? `Work profile, ${identity.displayName}` : "Work profile and sign-in"}
+            title={identity.signedIn ? identity.displayName : "Work profile and sign-in"}
+            data-testid="work-rail-profile"
+          >
+            <span
+              className="work-rail__avatar"
+              data-signed-in={identity.signedIn ? "true" : "false"}
+              aria-hidden="true"
+            >
+              {identity.initials}
+            </span>
+          </Link>
         </li>
       </ul>
     </nav>

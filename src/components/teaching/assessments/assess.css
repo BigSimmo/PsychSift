@@ -943,6 +943,11 @@ select.assess-txt {
   min-height: var(--spacing-tap, 3rem);
   resize: none;
 }
+@media (max-width: 639px) {
+  .assess-txt {
+    font-size: 1rem;
+  }
+}
 .assess-txt::placeholder {
   color: var(--work-ink-muted);
 }
@@ -1126,8 +1131,26 @@ select.assess-txt {
   .assess-slot > *::before,
   .assess-diff > div,
   .assess-call,
-  .assess-undo {
+  .assess-undo,
+  .assess-cb,
+  .assess-rd,
+  .assess-sw {
     border: 1px solid CanvasText;
+  }
+  .assess-rate > label:has(:checked),
+  .assess-opt:has(:checked),
+  .assess-cb[data-on],
+  .assess-opt:has(:checked) .assess-rd,
+  .assess-tg:has(:checked) .assess-sw {
+    border-color: Highlight;
+    outline: 2px solid Highlight;
+  }
+  .assess-sw::after {
+    border: 1px solid Canvas;
+    background: CanvasText;
+  }
+  .assess-tg:has(:checked) .assess-sw::after {
+    background: Highlight;
   }
   .assess-stepbar > i[data-state="done"],
   .assess-meter > i {
