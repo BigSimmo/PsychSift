@@ -325,8 +325,10 @@ describe("specifier sign-off", () => {
                 reviewedContentSha256: null,
               });
           }
-    document.stats.itemsPendingClinicianReview += 1;
     const beforeViews = collectionOf("specifier", document);
+    const pendingBefore = beforeViews.filter(
+      (record: Json) => record.kind === "item" && record.status !== "reviewed",
+    ).length;
     const view = beforeViews.find((record: Json) => record.id === target.id);
     expect(view).toBeTruthy();
     const signed = finalizeClinicalReview(view, "specifier", {
@@ -343,7 +345,7 @@ describe("specifier sign-off", () => {
       (record: Json, index: number) => JSON.stringify(record) !== JSON.stringify(beforeViews[index]),
     );
     expect(changed.map((record: Json) => record.id)).toEqual([view.id]);
-    expect(next.stats.itemsPendingClinicianReview).toBe(document.stats.itemsPendingClinicianReview - 1);
+    expect(next.stats.itemsPendingClinicianReview).toBe(pendingBefore - 1);
   });
 
   it("sends a signed definition back for review when its text is edited", () => {
@@ -361,6 +363,29 @@ describe("specifier sign-off", () => {
     });
     const edited = { ...signed, definition: { ...(signed.definition as Json), meaning: "Edited." } };
     expect(recordPinState(edited, "specifier")).toBe("stale");
+  });
+
+  it("offers product-stamped sign-offs for re-signing and refuses a reviewer without a full name", () => {
+    const stampedIds = new Set(
+      specifiersContent.categories.flatMap((category) =>
+        category.disorders.flatMap((disorder) =>
+          disorder.groups.flatMap((group) =>
+            group.items
+              .filter((item) => (item.review as Json).reviewedBy === "PsychSift" && item.definitionStatus === "defined")
+              .map((item) => String(item.review.rowKey)),
+          ),
+        ),
+      ),
+    );
+    const productStamped = records().filter((record: Json) => stampedIds.has(String(record.id)));
+    expect(productStamped.length).toBeGreaterThan(0);
+    for (const record of productStamped) expect(record).toMatchObject({ status: "drafted", reviewedBy: null });
+
+    for (const reviewedBy of ["PsychSift", "Josh", "Dr Smith"]) {
+      expect(() =>
+        finalizeClinicalReview(productStamped[0], "specifier", { reviewedBy, reviewedAt: REVIEWED_AT, now: NOW }),
+      ).toThrow(/full name/);
+    }
   });
 });
 

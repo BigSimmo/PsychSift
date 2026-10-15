@@ -175,7 +175,11 @@ function isPlainRecord(value) {
 // attributions (for example, "PsychSift") are not clinician sign-offs.
 function isNamedSpecifierReviewer(value) {
   if (typeof value !== "string") return false;
-  const words = value.trim().replace(/\s+/g, " ").split(" ").filter((word) => /\p{L}/u.test(word));
+  const words = value
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
   return nameWords.length >= 2 && !nameWords.some((word) => /^(?:psychsift|system|pending|placeholder)$/i.test(word));
@@ -531,9 +535,15 @@ function specifierView(native, placement) {
     sourceVerificationStatus: review.sourceVerificationStatus ?? null,
     sourceFamily: review.sourceFamily ?? null,
     status,
-    reviewedBy: review.reviewedBy ?? null,
-    reviewedAt: review.reviewedAt ?? null,
-    reviewedContentSha256: review.reviewedContentSha256 ?? null,
+    // A product-attributed stamp ("PsychSift") is not a signature, so the view carries none and
+    // the record is offered for a named clinician to sign.
+    ...(status === "reviewed" || review.clinicianReviewStatus !== "clinician-reviewed"
+      ? {
+          reviewedBy: review.reviewedBy ?? null,
+          reviewedAt: review.reviewedAt ?? null,
+          reviewedContentSha256: review.reviewedContentSha256 ?? null,
+        }
+      : { reviewedBy: null, reviewedAt: null, reviewedContentSha256: null }),
   };
 }
 
@@ -919,7 +929,9 @@ export function signOffQueue(kind, records, context = {}) {
   const waiting = records.filter(
     (record) =>
       (record?.status === "drafted" ||
-        (resolved.kind === "specifier" && record?.status === "reviewed" && !isNamedSpecifierReviewer(record?.reviewedBy)) ||
+        (resolved.kind === "specifier" &&
+          record?.status === "reviewed" &&
+          !isNamedSpecifierReviewer(record?.reviewedBy)) ||
         (record?.status === "reviewed" && recordPinState(record, resolved, context) === "stale")) &&
       !indigenousContentIn(record, resolved, context),
   );
@@ -949,6 +961,11 @@ export function finalizeClinicalReview(record, kind, { reviewedBy, reviewedAt, c
   if (!isPlainRecord(record)) throw new TypeError("A clinical record must be an object.");
   const attributionProblem = reviewerAttributionProblem(reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
+  if (resolved.kind === "specifier" && !isNamedSpecifierReviewer(reviewedBy)) {
+    throw new Error(
+      "A specifier sign-off needs the clinician's full name (a first name and surname), because the site treats anything else as not signed off.",
+    );
+  }
   const timestampProblem = utcTimestampProblem(reviewedAt, now);
   if (timestampProblem) throw new Error(timestampProblem);
   const eligibility = signOffEligibilityProblem(record, resolved, context);
@@ -982,15 +999,6 @@ export function applyClinicalReview(document, kind, reviewed) {
       counts: {
         ...document.exportMetadata.counts,
         sections: nextRecords.length,
-        reviewed: tally("reviewed"),
-        drafted: tally("drafted"),
-        pending: tally("pending"),
-      },
-    };
-  }
-  return next;
-}
-tions: nextRecords.length,
         reviewed: tally("reviewed"),
         drafted: tally("drafted"),
         pending: tally("pending"),
