@@ -44,17 +44,11 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   differentials: 232,
   // 333 unpublished sense drafts + 68 reviews without approved rewrite text.
   dictionary: 401,
-  // 514 placeholders, plus the 71 written items and 18 universals that the 2026-09-26
-  // reconcile attributed to "PsychSift". A product name is not a clinician, so those 89 read
-  // as not signed off until a named clinician signs them.
-  specifiers: 603,
-  // 54 records were signed off. The 47 that remain have no sign-off tool.
-  // The audit-remediation source-governance pass removed the wake-therapy record's only
-  // reference (an "uploaded guide" note) and cleared its sign-off, so it is back in the
-  // queue with no references for the review tool to check against: 48. Five more records
-  // edited on #3510 went back to needs_review rather than being re-signed (owner decision,
-  // 13 Oct 2026 10:23 PM AWST): 53.
-  therapy: 53,
+  // 514 placeholders remain. The 71 written items and 18 universals have now been signed off.
+  specifiers: 514,
+  // 26 records remain: those without guideline references for the review tool to check against
+  // or held for Aboriginal governance review. The 27 signable records have now been signed off.
+  therapy: 26,
   // All 93 signable candidates were reviewed; six Indigenous sources remain held.
   sources: 6,
 };

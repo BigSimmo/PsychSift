@@ -26,14 +26,14 @@ const raw = JSON.parse(readFileSync("src/data/therapies-source.json", "utf8")) a
   TherapyRecord[] | { therapies: TherapyRecord[] };
 const records = Array.isArray(raw) ? raw : raw.therapies;
 
-describe("therapy records edited on #3510 await a fresh sign-off", () => {
-  it.each(EDITED_ON_3510)("%s is needs_review with no carried-over sign-off", (slug) => {
+describe("therapy records edited on #3510 carry a fresh post-#3510 sign-off", () => {
+  it.each(EDITED_ON_3510)("%s is reviewed with a fresh post-#3510 sign-off and content pin", (slug) => {
     const record = records.find((item) => item.slug === slug);
     expect(record, slug).toBeDefined();
-    expect(record!.reviewStatus).toBe("needs_review");
-    expect(record!.reviewedBy).toBeNull();
-    expect(record!.reviewedAt).toBeNull();
-    expect(record!.reviewedContentSha256).toBeNull();
-    expect(Object.values(record!.reviewChecklist).some(Boolean)).toBe(false);
+    expect(record!.reviewStatus).toBe("reviewed");
+    expect(record!.reviewedBy).toBe("Psych Sift");
+    expect(record!.reviewedAt! >= "2026-10-15").toBe(true);
+    expect(record!.reviewedContentSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(Object.values(record!.reviewChecklist).every(Boolean)).toBe(true);
   });
 });

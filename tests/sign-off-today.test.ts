@@ -111,13 +111,10 @@ describe("the real queue", () => {
       .filter((family) => SIGN_OFF_TODAY_FAMILY_ORDER.includes(family.id))
       .flatMap((family) => family.rows)
       .filter((item) => item.signOff !== null);
-    // Measured 2026-10-09. Statutory forms are signed. The 22 Therapy records
-    // that gained guideline references on 2026-10-09 are the only signable
-    // rows; everything else still waiting is an Indigenous governance hold or
-    // has no sign-off tool. A change in this set should update this pin.
-    // 13 Oct 2026: +5 Therapy records edited on #3510 went back to needs_review
-    // (owner decision, 10:23 PM AWST) and are signable again.
-    expect(signable.map((item) => item.family)).toEqual(Array(27).fill("therapy"));
+    // Measured 2026-10-16. Statutory forms and the 27 signable Therapy records
+    // are signed. Everything else still waiting is an Indigenous governance hold
+    // or has no sign-off tool. A change in this set should update this pin.
+    expect(signable.map((item) => item.family)).toEqual([]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {

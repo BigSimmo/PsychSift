@@ -38,7 +38,7 @@ import { repositorySourceReferences } from "@/lib/sources/repository-providers";
  * all read it without a second file.
  */
 
-const NOW = new Date("2026-10-02T06:00:00.000Z");
+const NOW = new Date(Math.max(Date.now(), Date.parse("2026-10-16T06:00:00.000Z")));
 const REVIEWED_AT = "2026-09-25T05:00:00.000Z";
 const REVIEWER = "Dr Clinical Owner";
 const ATTESTATION_FIELDS = ["attestedBy", "attestedAt", "attestedAgainstSha256"];
