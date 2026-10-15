@@ -18,9 +18,9 @@ export function couldBelongToAnswerPilot(request, queryDigest) {
   if (!request || typeof request !== "object") return true;
   if (request.ownerId === OWNER_ID || request.documentId === DOCUMENT_ID) return true;
   if (Array.isArray(request.resolvedDocumentIds) && request.resolvedDocumentIds.includes(DOCUMENT_ID)) return true;
-  // An unrestricted scope (resolvedDocumentIds undefined, e.g. "All documents") has not excluded
-  // the pilot document, so it cannot be positively cleared.
-  if (!Array.isArray(request.resolvedDocumentIds)) return true;
+  // An unrestricted scope (resolvedDocumentIds undefined, e.g. "All documents") is judged on owner
+  // and query alone, exactly as pilotIdentityMatches judges it while the ticket is valid. Refusing
+  // it here would make a stale ticket stricter than a live one and fail every All-documents Answer.
   const hint = configuredPilotQueryDigest();
   // An unreadable ticket gives no query to compare, so nothing can be positively cleared and
   // every request is refused until the setting is fixed. An expired but readable ticket clears

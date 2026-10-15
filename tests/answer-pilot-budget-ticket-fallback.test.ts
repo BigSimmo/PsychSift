@@ -54,12 +54,20 @@ describe("answer pilot ticket fallback", () => {
     expect(work).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses an unrestricted (undefined) document scope when the ticket has expired", async () => {
+  it("answers an unrelated All-documents (undefined scope) request when the ticket has expired, as a valid ticket would", async () => {
+    vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const work = vi.fn(async () => "answered");
+    await expect(runAnswerWithPilotBudget(request({ resolvedDocumentIds: undefined }), work)).resolves.toBe("answered");
+    expect(work).toHaveBeenCalledTimes(1);
+  });
+
+  it("still refuses an All-documents request from the pilot owner when the ticket has expired", async () => {
     vi.stubEnv("CONTROLLED_ANSWER_PILOT_TICKET_JSON", expiredTicket);
     const work = vi.fn(async () => "answered");
-    await expect(runAnswerWithPilotBudget(request({ resolvedDocumentIds: undefined }), work)).rejects.toBeInstanceOf(
-      AnswerPilotBudgetError,
-    );
+    await expect(
+      runAnswerWithPilotBudget(request({ resolvedDocumentIds: undefined, ownerId: PILOT_OWNER_ID }), work),
+    ).rejects.toBeInstanceOf(AnswerPilotBudgetError);
     expect(work).not.toHaveBeenCalled();
   });
 
@@ -88,7 +96,7 @@ describe("answer pilot ticket fallback", () => {
     expect(couldBelongToAnswerPilot({ documentId: PILOT_DOCUMENT_ID }, "b".repeat(64))).toBe(true);
     expect(couldBelongToAnswerPilot({ resolvedDocumentIds: [PILOT_DOCUMENT_ID] }, "b".repeat(64))).toBe(true);
     expect(couldBelongToAnswerPilot(request(), PILOT_QUERY_DIGEST)).toBe(true);
-    expect(couldBelongToAnswerPilot(request({ resolvedDocumentIds: undefined }), "b".repeat(64))).toBe(true);
+    expect(couldBelongToAnswerPilot(request({ resolvedDocumentIds: undefined }), "b".repeat(64))).toBe(false);
     expect(couldBelongToAnswerPilot(request({ resolvedDocumentIds: ["x"] }), "b".repeat(64))).toBe(false);
     expect(couldBelongToAnswerPilot(null, "b".repeat(64))).toBe(true);
   });
