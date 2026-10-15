@@ -131,3 +131,36 @@ describe("ingestion RPC contract", () => {
     }
   });
 });
+
+describe("fenced ingestion SQL follow-ups", () => {
+  const schemaSql = readFileSync("supabase/schema.sql", "utf8");
+  const followup = readFileSync("supabase/migrations/20261015200000_fenced_ingestion_followups.sql", "utf8");
+  const helperBody = (sql: string) => {
+    const starts = [
+      ...sql.matchAll(
+        /create (?:or replace )?function ingestion_generation_evidence\.assert_deep_memory_staging_owner\(/g,
+      ),
+    ];
+    const start = starts.at(-1)?.index ?? -1;
+    expect(start).toBeGreaterThan(-1);
+    return sql.slice(start, sql.indexOf("end $$;", start));
+  };
+  const patchAllowList = (sql: string) => {
+    const start = sql.lastIndexOf("create or replace function public.patch_ingestion_document_state(p_fence jsonb");
+    expect(start).toBeGreaterThan(-1);
+    return sql.slice(start, sql.indexOf("end $$;", start));
+  };
+
+  it("treats a staged row missing its lease or job id as not owned (null-safe ownership check)", () => {
+    for (const sql of [schemaSql, followup]) {
+      const body = helperBody(sql);
+      expect(body).not.toMatch(/and not \(producer = 'local-worker'/);
+      expect(body.match(/\) is not true\)/g)?.length).toBe(3);
+    }
+  });
+
+  it("lets the worker record extraction_provenance through the fenced document patch", () => {
+    expect(readFileSync("worker/main.ts", "utf8")).toContain("extraction_provenance:");
+    for (const sql of [schemaSql, followup]) expect(patchAllowList(sql)).toContain("'extraction_provenance'");
+  });
+});

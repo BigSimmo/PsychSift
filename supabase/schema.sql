@@ -30307,7 +30307,7 @@ begin
   v_document_id := (p_fence->>'document_id')::uuid;
   if jsonb_typeof(p_state) is distinct from 'object' or jsonb_typeof(p_metadata) is distinct from 'object'
     or exists(select 1 from jsonb_object_keys(p_state) k where k <> all(array['status','error_message']))
-    or exists(select 1 from jsonb_object_keys(p_metadata) k where k <> all(array['indexed_at','cover_image_id','rag_enrichment_version','rag_indexing_version','rag_memory_version','rag_memory_updated_at','rag_enrichment_updated_at','enrichment_status','enrichment_error','section_count','memory_card_count','extraction_quality','index_quality_score','index_quality_issues','index_quality_metrics','optional_index_write_issues','indexing_v3_agent_status','indexing_v3_agent_last_error','indexing_v3_agent_repair_reason','indexing_v3_agent_updated_at','completion_gate_missing','embedding_model','page_count','ocr_page_count','needs_ocr_page_count','text_character_count','extracted_image_count','searchable_image_count','skipped_image_count','skipped_image_reasons','image_type_counts','extraction_warnings','document_embedding_field_types','shadow_extraction','index_generation_id']))
+    or exists(select 1 from jsonb_object_keys(p_metadata) k where k <> all(array['indexed_at','cover_image_id','rag_enrichment_version','rag_indexing_version','rag_memory_version','rag_memory_updated_at','rag_enrichment_updated_at','enrichment_status','enrichment_error','section_count','memory_card_count','extraction_quality','index_quality_score','index_quality_issues','index_quality_metrics','optional_index_write_issues','indexing_v3_agent_status','indexing_v3_agent_last_error','indexing_v3_agent_repair_reason','indexing_v3_agent_updated_at','completion_gate_missing','embedding_model','page_count','ocr_page_count','needs_ocr_page_count','text_character_count','extracted_image_count','searchable_image_count','skipped_image_count','skipped_image_reasons','image_type_counts','extraction_warnings','document_embedding_field_types','shadow_extraction','extraction_provenance','index_generation_id']))
     or (p_metadata ? 'index_generation_id' and p_metadata->>'index_generation_id' is distinct from p_fence->>'expected_generation_id')
     or (p_state ? 'status' and coalesce(p_state->>'status','') not in ('queued','processing','indexed','failed')) then raise exception 'invalid_ingestion_document_patch'; end if;
   update public.documents set status=case when p_state ? 'status' then p_state->>'status' else status end,
@@ -34222,26 +34222,26 @@ begin
       select 1 from public.document_sections
       where document_id = v_document_id
         and (artifact_generation_id = p_artifact_generation or index_generation_id = p_artifact_generation)
-        and not (producer = 'local-worker' and artifact_generation_id = p_artifact_generation
+        and (producer = 'local-worker' and artifact_generation_id = p_artifact_generation
           and index_generation_id = p_artifact_generation
           and metadata->>'ingestion_lease_token' = p_fence->>'lease_token'
-          and metadata->>'ingestion_job_id' = p_fence->>'job_id'))
+          and metadata->>'ingestion_job_id' = p_fence->>'job_id') is not true)
     or exists(
       select 1 from public.document_memory_cards
       where document_id = v_document_id
         and (artifact_generation_id = p_artifact_generation or index_generation_id = p_artifact_generation)
-        and not (producer = 'local-worker' and artifact_generation_id = p_artifact_generation
+        and (producer = 'local-worker' and artifact_generation_id = p_artifact_generation
           and index_generation_id = p_artifact_generation
           and metadata->>'ingestion_lease_token' = p_fence->>'lease_token'
-          and metadata->>'ingestion_job_id' = p_fence->>'job_id'))
+          and metadata->>'ingestion_job_id' = p_fence->>'job_id') is not true)
     or exists(
       select 1 from public.document_index_units
       where document_id = v_document_id
         and (artifact_generation_id = p_artifact_generation or index_generation_id = p_artifact_generation)
-        and not (producer = 'local-worker' and artifact_generation_id = p_artifact_generation
+        and (producer = 'local-worker' and artifact_generation_id = p_artifact_generation
           and index_generation_id = p_artifact_generation
           and metadata->>'ingestion_lease_token' = p_fence->>'lease_token'
-          and metadata->>'ingestion_job_id' = p_fence->>'job_id'))
+          and metadata->>'ingestion_job_id' = p_fence->>'job_id') is not true)
   then raise exception 'deep_memory_staging_generation_conflict'; end if;
 end $$;
 
