@@ -1,4 +1,5 @@
 import { createSearchTelemetry } from "@/lib/rag/rag-search-telemetry";
+import { sourceBoundAlcoholSummaryApplies } from "@/lib/rag/rag-source-bound-alcohol-summary";
 import {
   buildAdaptiveAnswerPlan,
   formatAdaptiveAnswerPlanLine,
@@ -2324,6 +2325,7 @@ async function answerQuestionWithScopeUncoalesced(
   let checkedContextCallerSignal = args.signal;
   const loadCheckedPublishedOriginal =
     args.loadRegisteredPublishedOriginalSectionLayout &&
+    sourceBoundAlcoholSummaryApplies(args.query) &&
     queryClass === "broad_summary" &&
     !args.documentId &&
     !args.documentIds?.length

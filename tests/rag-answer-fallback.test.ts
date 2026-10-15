@@ -132,6 +132,7 @@ async function answerFromTextSources(
   generatedAnswer?: GeneratedAnswerAttempt | GeneratedAnswerAttempt[],
   options: {
     sourceOnly?: boolean;
+    loadRegisteredPublishedOriginalSectionLayout?: import("../src/lib/rag/rag-source-block").RegisteredPublishedOriginalSectionLayoutLookup;
     queryMode?: Parameters<typeof import("../src/lib/clinical-query-mode").queryForClinicalMode>[1];
     captureGovernedQueryPlan?: (plan: RagQueryPlan, policy: string | undefined) => void;
     captureCoverageBoundary?: (
@@ -639,6 +640,7 @@ async function answerFromTextSources(
     ...(options.repeatRequest ? { accessScope: { includePublic: true }, allowGlobalSearch: true } : {}),
     sourcePolicyConflicts: options.sourcePolicyConflicts,
     loadReviewedSourcePolicyInput: options.reviewedPolicyFixture?.load,
+    loadRegisteredPublishedOriginalSectionLayout: options.loadRegisteredPublishedOriginalSectionLayout,
     onProgress: options.captureProgress,
     signal: options.signal,
     ...(options.governed || options.reviewedPolicyFixture
@@ -719,6 +721,119 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
   vi.unstubAllEnvs();
+});
+
+describe("registered original-layout query applicability", () => {
+  const applicableQuery =
+    "What does the NHMRC summary recommend about alcohol for healthy adults, people under 18, pregnancy and breastfeeding?";
+
+  function evidence() {
+    const published = source({
+      id: "00000000-0000-4000-8000-000000000005",
+      document_id: "00000000-0000-4000-8000-000000000002",
+      title: "Alcohol guidance summary",
+      section_heading: "Alcohol guidance",
+      section_path: ["Alcohol guidance"],
+      content:
+        "Alcohol guidance for healthy adults, people under 18, pregnancy and breastfeeding requires attention to each population. Discuss the person's alcohol use during assessment.",
+      source_metadata: {
+        ...source().source_metadata,
+        index_generation_id: "00000000-0000-4000-8000-000000000003",
+        public_corpus: true,
+        corpus_scope: "australian_public",
+        publication_approval_id: "00000000-0000-4000-8000-000000000004",
+        publication_manifest_version: 2,
+        publication_manifest_digest: "a".repeat(64),
+        publication_reviewed_state_digest: "b".repeat(64),
+        publication_reviewed_index_generation_id: "00000000-0000-4000-8000-000000000003",
+        source_catalogue_key: "nhmrc",
+        source_policy_version: "synthetic-v1",
+        publication_source_policy_version: "synthetic-v1",
+      } as SearchResult["source_metadata"],
+    });
+    const ordinary = source({
+      id: "00000000-0000-4000-8000-000000000006",
+      document_id: published.document_id,
+      title: published.title,
+      section_heading: "Alcohol assessment",
+      section_path: ["Alcohol assessment"],
+      chunk_index: 1,
+      content:
+        "Alcohol guidance for healthy adults, people under 18, pregnancy and breastfeeding should be discussed in context. Record the person's questions and arrange follow-up.",
+    });
+    return { published, ordinary };
+  }
+
+  function refusingLoader() {
+    const error = new Error("Synthetic registered layout binding failure");
+    error.name = "OriginalSectionLayoutBindingError";
+    return vi.fn(async () => {
+      throw error;
+    });
+  }
+
+  it("keeps unrelated broad queries on ordinary packing with mixed V2 and ordinary evidence", async () => {
+    const { published, ordinary } = evidence();
+    const load = refusingLoader();
+    const captureInput = vi.fn();
+    const query = "Summarise alcohol guidance.";
+    const { classifyRagQuery } = await import("../src/lib/clinical-search");
+    expect(classifyRagQuery(query).queryClass).toBe("broad_summary");
+
+    await answerFromTextSources(query, [published, ordinary], undefined, {
+      loadRegisteredPublishedOriginalSectionLayout: load,
+      forceGenerationRoute: true,
+      captureInput,
+    });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(captureInput).toHaveBeenCalled();
+    expect(
+      captureInput.mock.calls.some(([input]) => input.includes(published.content) && input.includes(ordinary.content)),
+    ).toBe(true);
+  });
+
+  it("refuses mixed V2 and ordinary evidence for the applicable four-population question", async () => {
+    const { published, ordinary } = evidence();
+    const load = refusingLoader();
+    const captureInput = vi.fn();
+
+    await expect(
+      answerFromTextSources(applicableQuery, [published, ordinary], undefined, {
+        loadRegisteredPublishedOriginalSectionLayout: load,
+        forceGenerationRoute: true,
+        captureInput,
+      }),
+    ).rejects.toMatchObject({ name: "OriginalSectionLayoutBindingError" });
+
+    expect(load).not.toHaveBeenCalled();
+    expect(captureInput).not.toHaveBeenCalled();
+  });
+
+  it("still invokes the strict loader and propagates its failure for an applicable V2-only selection", async () => {
+    const { published } = evidence();
+    const load = refusingLoader();
+    const captureInput = vi.fn();
+
+    await expect(
+      answerFromTextSources(applicableQuery, [published], undefined, {
+        loadRegisteredPublishedOriginalSectionLayout: load,
+        forceGenerationRoute: true,
+        captureInput,
+      }),
+    ).rejects.toMatchObject({
+      name: "OriginalSectionLayoutBindingError",
+      message: "Synthetic registered layout binding failure",
+    });
+
+    expect(load).toHaveBeenCalledOnce();
+    expect(load).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedResults: [expect.objectContaining({ id: published.id, content: published.content })],
+      }),
+    );
+    expect(captureInput).not.toHaveBeenCalled();
+  });
 });
 
 it("packs governed source-only evidence before exposing extractive artifacts", async () => {

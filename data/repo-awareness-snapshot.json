@@ -11219,6 +11219,14 @@
         "checks": "GitHub merged exact head, clean status, no Git operation, no open PR claim, bundle verify ok SHA256 18D9CFFD334278987D8FCCBED5F34125148BFF98C83D39287268103A5326BD2A"
       },
       {
+        "date": "2026-10-15",
+        "ref": "PR #3546 / codex/ingestion-rag-pilot-handover-20261014",
+        "head": "4492b380bddbf2215d27e487837b83682e37ca73",
+        "scope": "PR3546 bot findings and merge readiness",
+        "outcome": "CHANGES REQUIRED. First review fixes committed locally4492b380bd: PDF provenance/TXT layout, pilot scope/storage, receipt/cache admission, clinical admission, upload CSRF, isolated malformed claims. Independent bounded reviews ACCEPT; two import cycles repaired mechanically in next local batch. Ordinary worker persistence and Edge provider adapter remain incomplete; configured pilot-ticket global refusal pending owner decision. No merge authority; auto-merge OFF.",
+        "checks": "Fresh focused offline: API221, clinical28, budget33, receipt19, PDF/TXT30, worker rejection40 with five other suites previously88 total, registry98 plus corrected census1, RAG266, XLSX97, candidate37, Edge current RPC contracts18. Deno check PASS. FullCI3839 had72 failing cases; repaired complete head not yet observed in hostedCI. Combined architecture/compiler pending. No repeated hosted Answer/Copy, providers, paid canary, SQL or deployment."
+      },
+      {
         "date": "2026-07-13",
         "ref": "claude/pia3-doc-residual-cache",
         "head": "4494a830df6682ce5edcaf61d6a178af162b50d7",
@@ -25113,6 +25121,14 @@
         "scope": "Production UI favourites-hub hydration flake fix",
         "outcome": "FIXED. Hosted Production UI failed once after main sync on favourites hub strict-mode duplicate (`getByTestId('favourites-hub')` -> 2). Applied existing `expectSingleSettledOwner` guard to favourites smoke asserts. Not a product regression from this PR's unique delta.",
         "checks": "Prior tip hosted Static/Unit/Build/Safety PASS; Production UI 322/323 then fail on favourites hydration; fix pushed; no provider-backed checks."
+      },
+      {
+        "date": "2026-10-15",
+        "ref": "PR #3546 / codex/ingestion-rag-pilot-handover-20261014",
+        "head": "e87b9d5c313e42f7beef5a197d4d1a3aba33bb3a",
+        "scope": "Clinical governing section-heading two-file delta vs e87b9d5c31",
+        "outcome": "ACCEPT by independent clinical-governance reviewer. Finite adverse governing section headings rejected across all three procedure builders; ordinary clinical prohibitions and historical-symptom headings retained. No answer text, citation identity or same-document pairing changes. Source f5f4bc410eb8752c432df2203951b0fc1ffdbe961791bfb0b75ea1b63845ae2d; test e66cd2301defbd4c57537fe7af5b5d0cd8b24b9d34d37002e87f7ebd6436ba43.",
+        "checks": "Fresh admission63PASS; independent review reused result without duplicate tests and verified hashes before/after. Finite lexical guard only, not general obsolete-source or clinical release approval. No provider, SQL or deployment."
       },
       {
         "date": "2026-07-31",
