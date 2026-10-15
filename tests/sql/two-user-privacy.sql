@@ -215,29 +215,29 @@ create temp table owner_rule (
   update_col text default null
 ) on commit drop;
 insert into owner_rule values
-  ('public.documents', 'owner_id', 'owner_id'),
-  ('public.document_pages', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.document_images', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.document_chunks', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.document_table_facts', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.document_embedding_fields', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.document_index_units', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.ingestion_jobs', '(select d.owner_id from public.documents d where d.id = document_id)', null),
-  ('public.document_labels', 'owner_id', 'owner_id'),
-  ('public.document_summaries', 'owner_id', 'owner_id'),
-  ('public.document_sections', 'owner_id', 'owner_id'),
-  ('public.document_memory_cards', 'owner_id', 'owner_id'),
-  ('public.document_index_quality', 'owner_id', 'owner_id'),
-  ('public.import_batches', 'owner_id', 'owner_id'),
-  ('public.image_caption_cache', 'owner_id', 'owner_id'),
-  ('public.rag_queries', 'owner_id', 'owner_id'),
-  ('public.rag_query_misses', 'owner_id', 'owner_id'),
-  ('public.rag_aliases', 'coalesce(owner_id, $me)', 'owner_id'),
-  ('public.rag_retrieval_logs', 'owner_id', 'owner_id'),
-  ('public.storage_cleanup_jobs', 'owner_id', 'owner_id'),
-  ('public.user_favourite_sets', 'user_id', 'user_id'),
-  ('public.user_favourites', 'user_id', 'user_id'),
-  ('public.user_preferences', 'user_id', 'user_id'),
+  ('public.documents', 'owner_id', 'owner_id', null),
+  ('public.document_pages', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.document_images', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.document_chunks', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.document_table_facts', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.document_embedding_fields', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.document_index_units', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.ingestion_jobs', '(select d.owner_id from public.documents d where d.id = document_id)', null, null),
+  ('public.document_labels', 'owner_id', 'owner_id', null),
+  ('public.document_summaries', 'owner_id', 'owner_id', null),
+  ('public.document_sections', 'owner_id', 'owner_id', null),
+  ('public.document_memory_cards', 'owner_id', 'owner_id', null),
+  ('public.document_index_quality', 'owner_id', 'owner_id', null),
+  ('public.import_batches', 'owner_id', 'owner_id', null),
+  ('public.image_caption_cache', 'owner_id', 'owner_id', null),
+  ('public.rag_queries', 'owner_id', 'owner_id', null),
+  ('public.rag_query_misses', 'owner_id', 'owner_id', null),
+  ('public.rag_aliases', 'coalesce(owner_id, $me)', 'owner_id', null),
+  ('public.rag_retrieval_logs', 'owner_id', 'owner_id', null),
+  ('public.storage_cleanup_jobs', 'owner_id', 'owner_id', null),
+  ('public.user_favourite_sets', 'user_id', 'user_id', null),
+  ('public.user_favourites', 'user_id', 'user_id', null),
+  ('public.user_preferences', 'user_id', 'user_id', null),
   ('storage.objects', '(storage.foldername(name))[1]::uuid', null, 'metadata');
 grant select on owner_rule to authenticated;
 
@@ -275,6 +275,7 @@ end $$;
 create function pg_temp.check_isolation(p_me text, p_other text) returns void language plpgsql as $$
 declare r record; v_me uuid := pg_temp.uid(p_me); v_other uuid := pg_temp.uid(p_other);
   v_own bigint; v_foreign bigint; v_rows bigint; v_expr text;
+  v_row jsonb; v_cols text; v_refused boolean;
 begin
   for r in select rel, owner_expr, owner_col, update_col from owner_rule order by rel::text loop
     v_expr := replace(r.owner_expr, '$me', quote_literal(v_me) || '::uuid');
@@ -292,25 +293,34 @@ begin
       if v_rows > 0 then raise exception 'PRIVACY LEAK: doctor % changed % of doctor %''s rows in %', p_me, v_rows, p_other, r.rel; end if;
     exception when insufficient_privilege then null;
     end;
-    -- An INSERT policy must not let a doctor plant a new row under the other doctor's owner.
+    -- An INSERT policy must not let a doctor plant a new row in the other doctor's name. Clone one
+    -- of your own rows, point it at the other doctor (owner column, parent document, or storage
+    -- folder) and insert it. Only a row-level security refusal counts: Postgres checks the policy
+    -- before constraints, so any other error or a success means the policy let the row through.
+    -- Fixture documents share their owner's id, so the other doctor's document id is v_other.
+    execute format('select to_jsonb(t) from %s t where %s = %L::uuid limit 1', r.rel, v_expr, v_me) into v_row;
+    if r.owner_col is not null then v_row := v_row || jsonb_build_object(r.owner_col, v_other); end if;
+    if v_row ? 'document_id' then v_row := v_row || jsonb_build_object('document_id', v_other); end if;
+    if r.rel = 'storage.objects'::regclass then
+      v_row := v_row || jsonb_build_object('name', v_other || '/planted.txt', 'owner', v_other);
+    end if;
+    select string_agg(quote_ident(a.attname), ', ' order by a.attnum) into v_cols
+    from pg_attribute a
+    where a.attrelid = r.rel and a.attnum > 0 and not a.attisdropped and a.attgenerated = ''
+      and a.attidentity = '' and a.attname <> 'id';
+    v_refused := false;
     begin
-      if r.rel = 'public.documents'::regclass then
-        execute format($sql$
-          insert into %s (id, owner_id, title, file_name, file_type, storage_path, status)
-          values (gen_random_uuid(), %L::uuid, 'Cross-owner insert probe', 'probe.txt', 'text/plain',
-                  %L || '/probe.txt', 'indexed')$sql$, r.rel, v_other, v_other);
-      elsif r.rel = 'storage.objects'::regclass then
-        execute format($sql$
-          insert into %s (bucket_id, name, owner)
-          values ('clinical-documents', %L || '/cross-owner-probe-' || gen_random_uuid() || '.txt', %L::uuid)$sql$,
-          r.rel, v_other, v_other);
-      end if;
-      get diagnostics v_rows = row_count;
-      if v_rows > 0 then
-        raise exception 'PRIVACY LEAK: doctor % inserted % row(s) for doctor % in %', p_me, v_rows, p_other, r.rel;
-      end if;
-    exception when insufficient_privilege then null;
+      execute format('insert into %1$s (%2$s) select %2$s from jsonb_populate_record(null::%1$s, %3$L::jsonb)',
+        r.rel, v_cols, v_row);
+    exception
+      when insufficient_privilege then v_refused := true;
+      when others then
+        raise exception 'PRIVACY LEAK: doctor %''s row for doctor % got past the % insert policy (then: %)',
+          p_me, p_other, r.rel, sqlerrm;
     end;
+    if not v_refused then
+      raise exception 'PRIVACY LEAK: doctor % inserted a row for doctor % in %', p_me, p_other, r.rel;
+    end if;
 
     begin
       execute format('delete from %s where %s is distinct from %L::uuid', r.rel, v_expr, v_me);
