@@ -17,7 +17,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-10-15.intact-layout-v5"
+EXTRACTOR_VERSION = "2026-10-16.bounded-ocr-detail-v6"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -29,6 +29,8 @@ MAX_TABLE_TEXT_CHARS = 24000
 TARGET_CROP_DPI = 220
 TARGET_COVER_MAX_WIDTH = 480
 MAX_RENDER_SCALE = 4.0
+TARGET_OCR_DPI = 450
+MAX_OCR_RENDER_SCALE = TARGET_OCR_DPI / 72
 MIN_USEFUL_RENDER_SCALE = 0.25
 
 # Audit L12: embedded image streams are copied out of the PDF as-is, and their
@@ -184,12 +186,12 @@ def normalize_embedded_image(document, xref, extracted, budget, max_bytes=MAX_EM
     )
 
 
-def bounded_render_scale(rect, desired_scale, max_pixels):
+def bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_RENDER_SCALE):
     width = float(rect.width)
     height = float(rect.height)
     if not all(math.isfinite(value) and value > 0 for value in (width, height, desired_scale)):
         return None
-    scale = min(float(desired_scale), MAX_RENDER_SCALE)
+    scale = min(float(desired_scale), max_scale)
     scale = min(scale, math.sqrt(max_pixels / (width * height)))
     if not math.isfinite(scale) or scale < MIN_USEFUL_RENDER_SCALE:
         return None
@@ -209,8 +211,12 @@ def bounded_render_scale(rect, desired_scale, max_pixels):
 
 
 def maybe_ocr_page(page, budget):
+    # OCR needs the source glyph detail that thumbnail/crop rendering can omit.
+    # Keep its larger target separate from other renders and bounded by the
+    # caller's existing pixel limit; a 4M budget does not promise 450 DPI.
     render_scale = bounded_render_scale(
-        page.rect, 2.0, budget.limits["maxRenderPixels"]
+        page.rect, MAX_OCR_RENDER_SCALE, budget.limits["maxRenderPixels"],
+        max_scale=MAX_OCR_RENDER_SCALE,
     )
     if render_scale is None:
         return "", f"render_skipped: OCR page {page.number + 1} has unsafe geometry"
@@ -237,7 +243,8 @@ def maybe_ocr_page(page, budget):
             return "", f"render_skipped: OCR page {page.number + 1} exceeded the rounded pixel limit"
         image = Image.open(io.BytesIO(pix.tobytes("png")))
         return pytesseract.image_to_string(
-            image, timeout=budget.limits["ocrPageTimeoutSeconds"]
+            image, config=f"--dpi {round(render_scale * 72)}",
+            timeout=budget.limits["ocrPageTimeoutSeconds"]
         ), None
     except Exception as exc:
         return "", f"OCR failed on page {page.number + 1}: {type(exc).__name__}: {exc}"

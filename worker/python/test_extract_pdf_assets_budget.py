@@ -85,7 +85,73 @@ class PdfExtractionBudgetTests(unittest.TestCase):
             )
         self.assertEqual(text, "text")
         self.assertIsNone(warning)
-        self.assertEqual(calls, [{"timeout": 60}])
+        self.assertEqual(calls, [{"config": "--dpi 450", "timeout": 60}])
+
+    def test_ocr_detail_is_separate_from_other_renders_and_stays_pixel_bounded(self):
+        rect = Rect(452, 317)
+        self.assertEqual(extractor.bounded_render_scale(rect, 6.25, 6_000_000), 4.0)
+        detail = extractor.bounded_render_scale(
+            rect, extractor.MAX_OCR_RENDER_SCALE, 6_000_000,
+            max_scale=extractor.MAX_OCR_RENDER_SCALE,
+        )
+        self.assertEqual(detail, 6.25)
+        limited = extractor.bounded_render_scale(
+            rect, extractor.MAX_OCR_RENDER_SCALE, 4_000_000,
+            max_scale=extractor.MAX_OCR_RENDER_SCALE,
+        )
+        self.assertLess(limited, detail)
+        import math
+        self.assertLessEqual(math.ceil(rect.width * limited) * math.ceil(rect.height * limited), 4_000_000)
+
+    def test_ocr_uses_bounded_detail_and_reports_its_actual_dpi_to_engine(self):
+        calls = []
+        matrices = []
+        pytesseract = types.SimpleNamespace(
+            pytesseract=types.SimpleNamespace(tesseract_cmd=None),
+            image_to_string=lambda _image, **kwargs: calls.append(kwargs) or "observed text",
+        )
+        pil = types.SimpleNamespace(Image=types.SimpleNamespace(open=lambda _stream: object()))
+
+        class Page:
+            number = 0
+            rect = Rect(452, 317)
+
+            def get_pixmap(self, **kwargs):
+                matrices.append(kwargs["matrix"])
+                return types.SimpleNamespace(width=2000, height=1500, tobytes=lambda _format: b"png")
+
+        with patch.dict(sys.modules, {"pytesseract": pytesseract, "PIL": pil}):
+            for pixels in (6_000_000, 4_000_000):
+                text, warning = extractor.maybe_ocr_page(
+                    Page(), extractor.ExtractionBudget(limits(maxRenderPixels=pixels))
+                )
+                self.assertEqual(text, "observed text")
+                self.assertIsNone(warning)
+        self.assertEqual(matrices[0].a, 6.25)
+        self.assertLess(matrices[1].a, 6.25)
+        self.assertEqual(calls[0], {"config": "--dpi 450", "timeout": 60})
+        self.assertEqual(calls[1]["config"], f"--dpi {round(matrices[1].a * 72)}")
+
+    def test_ocr_rounded_pixel_overflow_never_reaches_engine(self):
+        pytesseract = types.SimpleNamespace(
+            pytesseract=types.SimpleNamespace(tesseract_cmd=None),
+            image_to_string=lambda *_args, **_kwargs: self.fail("over-budget image reached OCR"),
+        )
+        pil = types.SimpleNamespace(Image=types.SimpleNamespace(open=lambda _stream: self.fail("over-budget image decoded")))
+
+        class Page:
+            number = 0
+            rect = Rect(452, 317)
+
+            def get_pixmap(self, **_kwargs):
+                return types.SimpleNamespace(width=3000, height=2001)
+
+        with patch.dict(sys.modules, {"pytesseract": pytesseract, "PIL": pil}):
+            text, warning = extractor.maybe_ocr_page(
+                Page(), extractor.ExtractionBudget(limits(maxRenderPixels=6_000_000))
+            )
+        self.assertEqual(text, "")
+        self.assertIn("rounded pixel limit", warning)
 
     def test_crop_completeness_penalizes_page_edge_clipping(self):
         page = type("PageRect", (), {"x0": 0, "y0": 0, "x1": 200, "y1": 200, "width": 200, "height": 200})()
