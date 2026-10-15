@@ -56,8 +56,12 @@ export function PhoneFocusClearance() {
   useEffect(() => {
     const phone = window.matchMedia(phoneMediaQuery);
     let settle: { observer: ResizeObserver; timer: number } | null = null;
+    // A reader who starts scrolling during the settle window has moved on, so stop pulling the
+    // page back to the focused control.
+    const userScrollEvents = ["wheel", "touchstart", "pointerdown"] as const;
     const stopSettling = () => {
       if (!settle) return;
+      for (const type of userScrollEvents) window.removeEventListener(type, stopSettling, true);
       settle.observer.disconnect();
       window.clearTimeout(settle.timer);
       settle = null;
@@ -90,6 +94,9 @@ export function PhoneFocusClearance() {
       // Border box, so the reserve padding collapsing counts as a resize.
       observer.observe(content, { box: "border-box" });
       settle = { observer, timer: window.setTimeout(stopSettling, settleWindowMs) };
+      for (const type of userScrollEvents) {
+        window.addEventListener(type, stopSettling, { capture: true, passive: true });
+      }
     };
     document.addEventListener("focusin", onFocusIn);
     return () => {

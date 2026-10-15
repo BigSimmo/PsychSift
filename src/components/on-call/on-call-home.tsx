@@ -343,6 +343,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                 handbookLoading={handbookLoading}
                 rosterLoading={shifts.status === "loading"}
                 rosterError={shifts.status === "error"}
+                rosterSignedOut={shifts.status === "signed-out"}
                 now={now}
               />
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
