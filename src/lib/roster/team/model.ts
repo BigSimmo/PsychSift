@@ -391,6 +391,9 @@ const openPostSchema = z
     siteId: nullableOptional(uuid),
     minGrade: nullableOptional(z.enum(["intern", "resident", "registrar", "fellow", "consultant"])),
     urgent: z.boolean().optional(),
+    // One random key per date the phone posts, sent again when it retries that date after a lost
+    // answer, so the retry answers with the shift already saved (roster_open_post_once).
+    postKey: uuid.optional(),
   })
   .strict()
   .superRefine((value, context) => {

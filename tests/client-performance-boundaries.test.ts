@@ -58,10 +58,13 @@ describe("fixture-free client performance boundaries", () => {
     expect(source("src/components/clinical-dashboard/dashboard-documents-drawer.tsx")).toContain(
       'from "@/components/clinical-dashboard/library-health-strip"',
     );
-    expect(dashboard).toContain("includeSetup: true, includeDashboardData: false");
-    expect(dashboard).toContain("dashboardDataSurfaceVisible && !dashboardDataLoadedRef.current");
-    expect(dashboard).toContain("administrationSurfaceVisible && !administrationDataLoadedRef.current");
-    expect(dashboard).toContain("userStartedIngestion && activeIndexingWork");
+    // The loading and polling decisions live in the library hook the dashboard calls.
+    const library = source("src/components/clinical-dashboard/use-dashboard-library-data.ts");
+    expect(dashboard).toContain("useDashboardLibraryRefresh({");
+    expect(library).toContain("includeSetup: true, includeDashboardData: false");
+    expect(library).toContain("dashboardDataSurfaceVisible && !dashboardDataLoadedRef.current");
+    expect(library).toContain("administrationSurfaceVisible && !administrationDataLoadedRef.current");
+    expect(library).toContain("userStartedIngestion && activeIndexingWork");
   });
 
   it("retains PDF.js as an on-demand import", () => {

@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-15T17:35:16.505Z",
+  "generated_at": "2026-10-15T23:31:52.942Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "5a043a4c544ffefcbe6c91d1002103d6dd995084a17f44ba40799b59f70eba07",
-  "replay_seconds": 33,
+  "schema_sha256": "067f617ef440b12532d63d7a4e89054919da9258e403c1beaace99a7578033f2",
+  "replay_seconds": 34,
   "snapshot": {
     "views": [
       {
@@ -9202,6 +9202,58 @@
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
+        "name": "roster_open_post_keys",
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "post_key",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "posted_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
         "name": "roster_open_shifts",
         "columns": [
           {
@@ -16010,6 +16062,18 @@
         "def_hash": "590bcff136e7af842298b48ee261e3f2"
       },
       {
+        "def": "CREATE INDEX roster_open_post_keys_open_shift_idx ON public.roster_open_post_keys USING btree (open_shift_id)",
+        "name": "roster_open_post_keys_open_shift_idx",
+        "table": "roster_open_post_keys",
+        "def_hash": "b6bf535bf8cb73f1cd9c8a0c01519b13"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX roster_open_post_keys_pkey ON public.roster_open_post_keys USING btree (service_id, post_key)",
+        "name": "roster_open_post_keys_pkey",
+        "table": "roster_open_post_keys",
+        "def_hash": "5747b4e8b8ecd35fa92d19e91d40b72a"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_open_shifts_live_assignment_idx ON public.roster_open_shifts USING btree (assignment_id) WHERE ((status = ANY (ARRAY['reported'::text, 'open'::text, 'claimed'::text])) AND (assignment_id IS NOT NULL))",
         "name": "roster_open_shifts_live_assignment_idx",
         "table": "roster_open_shifts",
@@ -19933,6 +19997,14 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ca06394dd5c4556e65af5a771fc47841",
+        "signature": "public.roster_open_post_once(uuid,uuid,uuid,jsonb)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "2c12e7f103e1b697134442322ee25fd3",
@@ -23646,6 +23718,21 @@
         "def": "FOREIGN KEY (service_id, user_id) REFERENCES public.on_call_service_members(service_id, user_id) ON DELETE CASCADE",
         "name": "roster_member_roles_service_id_user_id_fkey",
         "table": "roster_member_roles"
+      },
+      {
+        "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_open_shifts(id) ON DELETE CASCADE",
+        "name": "roster_open_post_keys_open_shift_id_fkey",
+        "table": "roster_open_post_keys"
+      },
+      {
+        "def": "PRIMARY KEY (service_id, post_key)",
+        "name": "roster_open_post_keys_pkey",
+        "table": "roster_open_post_keys"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "roster_open_post_keys_service_id_fkey",
+        "table": "roster_open_post_keys"
       },
       {
         "def": "FOREIGN KEY (assignment_id) REFERENCES public.roster_assignments(id) ON DELETE CASCADE",

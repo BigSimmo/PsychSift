@@ -203,12 +203,15 @@ describe("the dashboard", () => {
     expect(log).toHaveAttribute("href", "/cme/new?year=2026");
     expect(log).toHaveAttribute("data-cme-log-trigger");
     // work-mode redesign, owner request 6 Oct 2026: filled buttons are the kit's primary
-    // variant. The dock carries Log an activity and is the only one: the next
+    // variant. The summary card carries Log an activity and is the only one: the next
     // step's own Log is a grey row pill (design audit D08, 13 Oct 2026). No floating + Log.
     const filled = [...container.querySelectorAll('a[data-variant="primary"], button[data-variant="primary"]')];
     expect(filled.map((node) => node.textContent)).toEqual(["Log an activity"]);
     expect(screen.getByTestId("cme-next-log")).toHaveAttribute("data-variant", "grey");
-    expect(log.closest(".work-dock")).not.toBeNull();
+    // Owner request 15 Oct 2026: the dock covered list rows at 390px, so the button moved into the
+    // summary card and the page has no floating dock.
+    expect(log.closest('[data-testid="cme-year-summary"]')).not.toBeNull();
+    expect(container.querySelector(".work-dock")).toBeNull();
   });
 
   it("says nothing about pace in January and points at the plan instead", () => {
