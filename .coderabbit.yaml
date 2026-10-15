@@ -1,0 +1,8 @@
+# CodeRabbit repository settings. These override the dashboard settings.
+#
+# CodeRabbit reviews every pull request and its comments are advisory. It must
+# never act as a merge barrier: it does not submit "Request changes" reviews,
+# so a pull request is never held waiting for an "@coderabbitai approve".
+# Owner decision, 2026-10-15.
+reviews:
+  request_changes_workflow: false
