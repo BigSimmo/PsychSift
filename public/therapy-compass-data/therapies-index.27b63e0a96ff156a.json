@@ -76,17 +76,11 @@
     "name": "Adolescent-focused psychotherapy for anorexia nervosa",
     "category": "Eating Disorder Therapies",
     "bestUsedFor": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Trauma",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
       "Eating/body image",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
       "Multi-session"
     ],
     "aliases": []
@@ -96,16 +90,13 @@
     "name": "Advocacy-informed therapeutic work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Trauma",
-      "Psychosis",
-      "Eating/body image",
       "Crisis/risk",
-      "ACT",
-      "Group programme"
+      "Personality/interpersonal",
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -140,17 +131,10 @@
     "bestUsedFor": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT.",
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
       "Anxiety",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
-      "Pain/somatic",
-      "CBT",
-      "Single session"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -202,19 +186,11 @@
     "bestUsedFor": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent.",
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
-      "Pain/somatic",
-      "Crisis/risk",
-      "Grief/loss",
       "Behavioural activation",
-      "CBT",
-      "Micro skill"
+      "Multi-session"
     ],
     "aliases": [
       "BA"
@@ -250,9 +226,8 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Personality/interpersonal",
+      "Multi-session"
     ],
     "aliases": [
       "BCT-SUD"
@@ -369,12 +344,8 @@
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
       "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -534,16 +505,8 @@
     "tags": [
       "Mood",
       "Anxiety",
-      "Trauma",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "Behavioural activation",
       "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "CBT"
@@ -559,12 +522,8 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
       "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -624,17 +583,9 @@
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Anxiety",
-      "Trauma",
       "Psychosis",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "Emotional regulation",
       "CBT",
-      "Micro skill"
+      "Multi-session"
     ],
     "aliases": [
       "CBTp"
@@ -1097,16 +1048,10 @@
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
       "Emotional regulation",
       "Distress tolerance",
+      "Crisis/risk",
       "DBT",
       "Group programme"
     ],
@@ -1436,11 +1381,7 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -1474,10 +1415,7 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -1547,13 +1485,7 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "Behavioural activation",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -1715,11 +1647,6 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
       "Group programme"
     ],
     "aliases": []
@@ -1826,21 +1753,12 @@
     "name": "Habit reversal training / CBIT",
     "category": "OCD & Exposure Therapies",
     "bestUsedFor": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Anxiety",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
       "Neurodevelopmental",
-      "Eating/body image",
-      "Pain/somatic",
-      "Crisis/risk",
-      "CBT",
-      "Micro skill"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -2488,11 +2406,7 @@
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
-      "Anxiety",
-      "Psychosis",
       "Substance use",
-      "Crisis/risk",
-      "CBT",
       "Multi-session"
     ],
     "aliases": [
@@ -2509,9 +2423,6 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "CBT",
       "Group programme"
     ],
     "aliases": []
@@ -2670,12 +2581,8 @@
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Psychosis",
       "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "PMT"
@@ -2691,8 +2598,6 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
       "Group programme"
     ],
     "aliases": []
@@ -2777,10 +2682,7 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -2894,19 +2796,13 @@
     "slug": "problem-solving-therapy-pst",
     "name": "Problem-Solving Therapy (PST)",
     "category": "Foundational & Engagement Therapies",
-    "bestUsedFor": "Most useful for less severe depression, stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
+    "bestUsedFor": "Most useful for stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "CBT",
-      "Single session"
+      "Multi-session"
     ],
     "aliases": [
       "PST"
@@ -3200,16 +3096,7 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "Grief/loss",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -3434,15 +3321,8 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Pain/somatic",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "STPP"
@@ -3658,21 +3538,14 @@
     "name": "STAIR (Skills Training in Affective and Interpersonal Regulation)",
     "category": "Trauma Therapies",
     "bestUsedFor": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
       "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Substance use",
-      "Neurodevelopmental",
-      "Crisis/risk",
       "Emotional regulation",
-      "Distress tolerance",
-      "CBT",
-      "Group programme"
+      "Personality/interpersonal",
+      "Multi-session"
     ],
     "aliases": [
       "Skills Training in Affective and Interpersonal Regulation"
@@ -3717,21 +3590,14 @@
     "name": "Structured clinical management",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available.",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
       "Crisis/risk",
       "Emotional regulation",
-      "DBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -3892,18 +3758,11 @@
     "bestUsedFor": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central.",
     "reviewStatus": "needs_review",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Pain/somatic",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Single session"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -4069,10 +3928,7 @@
     "briefInterventionAvailable": false,
     "tags": [
       "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "TSF"
