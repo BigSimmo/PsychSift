@@ -1,3 +1,11 @@
+-- Replay wrapper, added 2026-10-15 when this already-applied migration was recorded on main.
+-- Live applied this body inside one external transaction on 2026-10-13 and never re-runs it.
+-- A fresh chain (CI Migration replay, Supabase Preview) runs each file outside a transaction,
+-- where LOCK TABLE fails (SQLSTATE 25P01) and SET LOCAL is ignored, so the body is wrapped in
+-- begin/commit here. The one grant below gives service_role on a fresh chain the same privileges
+-- live already had on document_strict_gate_status, which the preimage checks pin; on live it is a no-op.
+begin;
+grant all on table public.document_strict_gate_status to service_role;
 -- CANDIDATE ONLY. External transaction body; reviewed operator cutover required.
 -- No production application, provider action, deployment or migration history authority.
 -- bounded transaction settings
@@ -5636,3 +5644,5 @@ $$;
 -- legacy generic admission denial authority
 alter function public.create_uploaded_document_with_ingestion_job(jsonb,integer) owner to postgres;
 revoke all on function public.create_uploaded_document_with_ingestion_job(jsonb,integer) from public,anon,authenticated,service_role;
+
+commit;
