@@ -7,6 +7,7 @@ import {
   planSeal,
   readManifest,
   resealAllowed,
+  resealBlockedWithoutApproval,
 } from "../scripts/check-migration-immutability.mjs";
 
 /**
@@ -77,6 +78,21 @@ describe("migration sealing is append-only", () => {
     expect(plan.refused).toBe(true);
     expect(plan.missing).toEqual(["b"]);
     expect(plan.versions).toEqual(previous);
+  });
+
+  it("refuses a reseal that rewrites or drops sealed entries until the owner's approval is named", () => {
+    const env = (extra: Record<string, string> = {}) => ({ NODE_ENV: "test", ...extra }) as NodeJS.ProcessEnv;
+    const edited = planSeal({ a: "1" }, { a: "2" }, { allowReseal: true });
+    const dropped = planSeal({ a: "1", b: "2" }, { a: "1" }, { allowReseal: true });
+    const appendOnly = planSeal({ a: "1" }, { a: "1", b: "2" }, { allowReseal: true });
+    expect(resealBlockedWithoutApproval(edited, { env: env() })).toBe(true);
+    expect(resealBlockedWithoutApproval(dropped, { env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "  " }) })).toBe(true);
+    expect(resealBlockedWithoutApproval(appendOnly, { env: env() })).toBe(false);
+    expect(
+      resealBlockedWithoutApproval(edited, {
+        env: env({ MIGRATION_RESEAL_OWNER_APPROVAL: "owner, in chat, 2026-10-15" }),
+      }),
+    ).toBe(false);
   });
 
   it("allows exceptional restoration only with an explicit reseal opt-in", () => {

@@ -22,11 +22,12 @@
  * only. It refuses `edited` and `missing` entries so an applied-history rewrite cannot clear this
  * gate by resealing the rewritten bytes. The genuine exception — restoring a file to the bytes
  * production actually holds — requires an explicit one-time override:
- *   ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
- *   (or `node scripts/check-migration-immutability.mjs --write --allow-reseal`)
+ *   MIGRATION_RESEAL_OWNER_APPROVAL="<who approved, when>" ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
+ *   (or `node scripts/check-migration-immutability.mjs --write --allow-reseal`, with the same approval variable)
  * That path prints every existing entry it changes; the manifest diff and the reason for it must
  * land in front of a reviewer. Resealing also needs the owner's explicit permission for that specific
- * reseal (AGENTS.md, Supabase project safety).
+ * reseal (AGENTS.md, Supabase project safety); without MIGRATION_RESEAL_OWNER_APPROVAL the script
+ * refuses before writing anything.
  *
  * Usage:
  *   npm run check:migration-immutability     verify (exit 1 on any violation)
@@ -91,6 +92,17 @@ export function compareMigrations(sealed, current) {
 /** True when the caller explicitly opted into rewriting already-sealed hashes. */
 export function resealAllowed({ argv = process.argv, env = process.env } = {}) {
   return argv.includes("--allow-reseal") || env.ALLOW_MIGRATION_RESEAL === "true";
+}
+
+/**
+ * True when a reseal would rewrite or drop an already-sealed entry and no owner approval is
+ * recorded. Resealing needs the owner's explicit permission for that specific reseal (AGENTS.md,
+ * Supabase project safety), so the caller must name it in MIGRATION_RESEAL_OWNER_APPROVAL before
+ * anything is written.
+ */
+export function resealBlockedWithoutApproval(plan, { env = process.env } = {}) {
+  const rewritesSealedEntries = plan.edited.length > 0 || plan.missing.length > 0;
+  return rewritesSealedEntries && !(env.MIGRATION_RESEAL_OWNER_APPROVAL ?? "").trim();
 }
 
 /**
@@ -162,6 +174,17 @@ export function seal({ argv = process.argv, env = process.env, write = writeMani
         "run `npm run migrations:seal` to record that new file. If you are deliberately restoring " +
         "a file to what production holds, rerun with ALLOW_MIGRATION_RESEAL=true " +
         "(`npm run migrations:reseal`) and say why in the commit message.",
+    );
+    return 1;
+  }
+  if (resealBlockedWithoutApproval(plan, { env })) {
+    console.error("Migration reseal refused: it needs the owner's explicit permission first.");
+    for (const name of plan.edited) console.error(`- would reseal an already-shipped migration: ${name}`);
+    for (const name of plan.missing) console.error(`- would drop an already-shipped migration: ${name}`);
+    console.error("");
+    console.error(
+      "Ask the owner for a yes to this specific reseal (AGENTS.md, Supabase project safety), then " +
+        "rerun with MIGRATION_RESEAL_OWNER_APPROVAL set to who approved it and when.",
     );
     return 1;
   }
