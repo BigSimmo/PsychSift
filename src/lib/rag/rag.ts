@@ -267,7 +267,7 @@ export {
   rankMemoryCardsForAnswer,
   scoreValue,
 } from "@/lib/rag/rag-answer-support";
-import { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
+import { type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
 export { retrievalPlanForQueryClass, type SearchChunksArgs, type SearchTelemetry } from "@/lib/rag/rag-contracts";
 import { observeRagAnswer, recordRagQueryForAnswer, retrievalLogMetadata } from "@/lib/rag/rag-programme-telemetry";
 import {

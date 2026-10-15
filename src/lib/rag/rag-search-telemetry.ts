@@ -2,7 +2,6 @@ import { retrievalPlanForQueryClass, type SearchTelemetry } from "@/lib/rag/rag-
 import { buildRetrievalIntent } from "@/lib/retrieval-selection";
 import type { RagQueryClass } from "@/lib/types";
 
-
 /** Create the baseline telemetry shared by normal and fail-closed retrieval paths. */
 export function createSearchTelemetry(query: string, queryClass: RagQueryClass): SearchTelemetry {
   return {

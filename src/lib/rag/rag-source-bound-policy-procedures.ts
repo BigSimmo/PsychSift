@@ -4,7 +4,6 @@ import { sourceTextForClinicalProsePreservingBreaks } from "@/lib/source-text-sa
 import type { AnswerSection, RagQueryClass, SearchResult } from "@/lib/types";
 import { atomicNmhsClozapineRedRangeSegment, reflowBoundedSourceLines } from "@/lib/rag/rag-source-segmentation";
 
-
 const sourceBoundActiveCommunityEdProcedureQueries = new Set([
   "how are active community patients in ed managed",
   "active community pt in ed guidance",

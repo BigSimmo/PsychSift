@@ -8,7 +8,6 @@ import { citationFromResult as resultCitation } from "@/lib/citations";
 import type { RagAnswer, SearchResult } from "@/lib/types";
 import { sourceDirectlySupportsAnswerText } from "@/lib/rag/rag-claim-support";
 
-
 export type OriginalSectionFinalizationContext = {
   checkedOriginalSectionLayout?: CheckedOriginalSectionLayout;
   contract?: RagAnswerGenerationContract;
