@@ -52,6 +52,7 @@ describe("WaMhaFormPrint (#C4CFFP)", () => {
     const root = screen.getByTestId("wa-mha-form-print-root");
     expect(root).not.toHaveTextContent(/Smith|UMRN-|Reynolds|Voluntary options exhausted|intravenous/);
     expect(root).not.toHaveTextContent("Obtained and documented in clinical record.");
+    expect(root).not.toHaveTextContent(/consent obtained/i);
     expect(screen.getAllByText(/Not entered/).length).toBeGreaterThanOrEqual(6);
   });
 

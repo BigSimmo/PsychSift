@@ -41,7 +41,8 @@ const FORM_METADATA = {
     act: "Mental Health Act 2014 (WA)",
     sections: "Sections 61, 89, 90, 131",
     purpose: "Compulsory inpatient treatment in a general hospital setting due to physical health needs",
-    threshold: "Criteria met; Chief Psychiatrist consent obtained; physical health transfer risk is significant",
+    threshold:
+      "Criteria met; Chief Psychiatrist involvement required (status shown below); physical health transfer risk is significant",
     destination: "General Hospital",
     statutoryNotes: [
       "Authorises compulsory inpatient treatment in a general hospital setting.",
