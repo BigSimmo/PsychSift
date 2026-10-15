@@ -15,14 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 697
+- Records: 699
 - Distinct ref cells: 449
-- Distinct reviewed heads: 679
+- Distinct reviewed heads: 681
 - Date range: `2026-08-12` to `2026-10-15`
 
 Records per date, newest first:
 
-- `2026-10-15` — 1 record
+- `2026-10-15` — 3 records
 - `2026-10-14` — 1 record
 - `2026-10-13` — 2 records
 - `2026-10-11` — 1 record
@@ -77,7 +77,9 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-15 | codex/ingestion-rag-pilot-handover-20261014 | Uncommitted admin pilot shared announcement correction; file SHA256 0f76deaa4d8d9ad46139d0… | Independent frontend source review ACCEPT; visible message and polite… | [263f1f06](branch-review-records/263f1f0680e9d5cda1bed9bb2a62853d3a34b78b5ad60054971520fdc884cf1c.record.md) |
 | 2026-10-15 | codex/ingestion-rag-pilot-handover-20261014 | Uncommitted native-PDF layout v5 producer 352d178978ef9086df1df708aa71266538076a2f5050a526… | Independent technical P1/P2 closure and qualified representative-sourc… | [6d2fd2e8](branch-review-records/6d2fd2e81761e17d32bb56bd41261efe8f9239ef266cf85a512c1021f889dd4b.record.md) |
+| 2026-10-15 | PR #3546 / codex/ingestion-rag-pilot-handover-20261014 | bounded OCR detail source safety and independent whole-table fidelity | ACCEPT by independent ingestion-worker and clinical-governance reviewe… | [7c72c71e](branch-review-records/7c72c71e0806655f9c5223a2a42aa255d84ff820805f3f6a50edea27cc174ac2.record.md) |
 | 2026-10-14 | PR #3546 / codex/ingestion-rag-pilot-handover-20261014 | PR3546 preserved-main conflict and source restoration | Qualified source acceptance: SQL, RAG, extractor and neutral table res… | [b32b5aa5](branch-review-records/b32b5aa5dbcc4482fe841337047d0a7d116861f8446e56b47d8cf9b6f1334055.record.md) |
 | 2026-10-13 | codex/pr3509-preserved-source-guard-20261013 | PR3509 final guard snapshot acceptance | Independent exact-head static acceptance: both strict-mode findings re… | [14a8c580](branch-review-records/14a8c5800f92feed60b9ab5772a77b93f718a0e7abcecfe2cd927fb4d8358e4a.record.md) |
 | 2026-10-13 | codex/pr3509-preserved-source-guard-20261013 | PR3509 preserved-source admission guard | Blocked: independent review found missing-object admission and latest-… | [92c47408](branch-review-records/92c47408e0c8e08f48bd977ed8d9cc0b8968505dffd33d2143f64e5952aa9393.record.md) |
