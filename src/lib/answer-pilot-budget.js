@@ -88,8 +88,12 @@ export async function runAnswerWithPilotBudget(request, answerWork) {
   let ticket;
   try {
     ticket = await loadServerAnswerPilotTicket();
-  } catch {
-    throw new AnswerPilotBudgetError("answer_pilot_ticket_load_failed");
+  } catch (error) {
+    // A stale or malformed optional pilot configuration must not take down Answer.
+    console.warn("Answer pilot ticket inactive", {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return answerWork();
   }
   if (!ticket) return answerWork();
   const identity = pilotIdentityMatches(ticket, request);
