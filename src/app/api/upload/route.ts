@@ -602,7 +602,9 @@ export async function POST(request: Request) {
             image_paths: [],
           });
           if (cleanupLedgerError) {
-            logger.error("Upload cleanup ledger insert failed", { message: cleanupLedgerError.message });
+            logger.error("Upload cleanup ledger insert failed; orphaned object requires manual reconciliation", {
+              message: cleanupLedgerError.message,
+            });
           }
         }
       } catch (cleanupError) {
@@ -622,10 +624,12 @@ export async function POST(request: Request) {
             image_paths: [],
           });
           if (cleanupLedgerError) {
-            logger.error("Upload cleanup ledger insert failed", { message: cleanupLedgerError.message });
+            logger.error("Upload cleanup ledger insert failed; orphaned object requires manual reconciliation", {
+              message: cleanupLedgerError.message,
+            });
           }
         } catch (cleanupLedgerError) {
-          logger.error("Upload cleanup ledger insert failed", {
+          logger.error("Upload cleanup ledger insert failed; orphaned object requires manual reconciliation", {
             message: cleanupLedgerError instanceof Error ? cleanupLedgerError.message : String(cleanupLedgerError),
           });
         }

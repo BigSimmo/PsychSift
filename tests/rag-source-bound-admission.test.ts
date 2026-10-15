@@ -79,6 +79,14 @@ describe("alcohol summary query admission", () => {
     expect(renderSourceBoundAlcoholSummary).toHaveBeenCalledOnce();
     expect(renderSourceBoundAlcoholSummary).toHaveBeenCalledWith(expect.objectContaining({ answer: text }), [evidence]);
   });
+
+  it.each([
+    "Summarise the alcohol guideline for healthy adults only.",
+    "Summarise the alcohol guideline during pregnancy.",
+  ])("keeps narrow guideline scope on ordinary finalization despite broad classification: %s", (query) => {
+    finalizeRagAnswerQuality(input(), query, "broad_summary", [evidence]);
+    expect(renderSourceBoundAlcoholSummary).not.toHaveBeenCalled();
+  });
 });
 
 const procedures = [
@@ -121,6 +129,39 @@ describe.each(procedures)("$name source-context admission", ({ title, build, fir
     const result = build({ query: title, results: results("Do not leave the patient alone. ") });
     expect(result).not.toBeNull();
     expect(result?.citationChunkIds).toEqual(["first", "second"]);
+  });
+
+  it.each([
+    "Current procedure",
+    "Historical symptoms and current clinical assessment",
+    "Clinical procedure — do not leave the patient alone",
+  ])("retains an ordinary governing section heading: %s", (heading) => {
+    const inputs = results("Do not leave the patient alone. ").map((result) => ({
+      ...result,
+      section_heading: heading,
+    }));
+    const result = build({ query: title, results: inputs });
+    expect(result).not.toBeNull();
+    expect(result?.citationChunkIds).toEqual(["first", "second"]);
+  });
+
+  it.each([
+    "Historical instructions",
+    "Rejected procedure",
+    "Superseded policy",
+    "Quoted for comparison",
+    "Quoted procedure for comparison",
+    "Historical",
+    "Rejected",
+    "Superseded",
+  ])("refuses an adverse governing section heading: %s", (heading) => {
+    for (const position of [0, 1]) {
+      const inputs = results().map((result, index) => ({
+        ...result,
+        section_heading: index === position ? heading : "Current procedure",
+      }));
+      expect(build({ query: title, results: inputs })).toBeNull();
+    }
   });
 
   it.each([

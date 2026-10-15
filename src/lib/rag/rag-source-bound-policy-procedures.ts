@@ -64,7 +64,17 @@ function boundedSourceText(result: SearchResult) {
   );
   const rejectedHeading =
     /(?:^|[.!?]\s+)(?:rejected|superseded|obsolete|withdrawn|historical|hypothetical|quotation|quoted(?: for comparison)?)\s*[:—-]/i;
-  return governingContext.test(text) || rejectedHeading.test(text) ? "" : text;
+  // An extracted governing heading can carry the same rejection outside the body.
+  // Require an adverse label, rather than rejecting ordinary clinical heading words.
+  const governingSectionHeading = new RegExp(
+    `^${adverse}(?:\\s+(?:${procedure}|for comparison)\\b|\\s*[:—-]|\\s*$)`,
+    "i",
+  );
+  return governingContext.test(text) ||
+    rejectedHeading.test(text) ||
+    governingSectionHeading.test(normalizeSectionText(result.section_heading ?? ""))
+    ? ""
+    : text;
 }
 
 function isActiveCommunityEdProcedureSource(result: SearchResult) {
