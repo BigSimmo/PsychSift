@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "0f007792-605d-4f25-af8d-89f7c2ed95be",
+  "createdOn": "2026-10-15",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "issue",
+    "summary": "PR 3538 raised every bundle size budget without a recorded approval",
+    "detail": "bundle-budget.json total production budget rose about 8 percent and compressed about 17 percent, and all 13 route budgets rose 2 to 10 percent, while the comment still cites only the 13 Oct approval for two routes. Measure the real sizes and either find the growth or record the owner approval for the new baseline.",
+    "source": "PR 3538 review, 15 Oct 2026",
+    "issueUlid": "01M4ZM797AVHR3TJ7Y3CWK3H4T"
+  }
+}
