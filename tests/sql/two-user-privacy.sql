@@ -269,6 +269,15 @@ do $$ declare r record; begin
 end $$;
 
 -- Totals as the owner, before either doctor acts.
+-- Known gap, recorded rather than hidden: these owner policies check only owner_id, not that the
+-- parent document is yours. Browser roles have no grant on these tables (part 1), so nothing can
+-- reach this today. The test fails if this list stops matching what the probe finds.
+create temp table known_parent_document_gap(rel regclass primary key);
+insert into known_parent_document_gap values
+  ('public.document_labels'), ('public.document_memory_cards'), ('public.document_sections');
+create temp table parent_document_gap_seen(rel regclass primary key);
+grant select on known_parent_document_gap to authenticated;
+grant select, insert on parent_document_gap_seen to authenticated;
 create temp table owner_totals on commit drop as select rel, 0::bigint as total from owner_rule;
 do $$ declare r record; v bigint; begin
   for r in select rel from owner_rule loop
@@ -280,7 +289,7 @@ end $$;
 create function pg_temp.check_isolation(p_me text, p_other text) returns void language plpgsql as $$
 declare r record; v_me uuid := pg_temp.uid(p_me); v_other uuid := pg_temp.uid(p_other);
   v_own bigint; v_foreign bigint; v_rows bigint; v_expr text;
-  v_row jsonb; v_cols text; v_refused boolean;
+  v_base jsonb; v_row jsonb; v_cols text; v_refused boolean; v_variant int; v_detail text;
 begin
   for r in select rel, owner_expr, owner_col, update_col from owner_rule order by rel::text loop
     v_expr := replace(r.owner_expr, '$me', quote_literal(v_me) || '::uuid');
@@ -298,34 +307,52 @@ begin
       if v_rows > 0 then raise exception 'PRIVACY LEAK: doctor % changed % of doctor %''s rows in %', p_me, v_rows, p_other, r.rel; end if;
     exception when insufficient_privilege then null;
     end;
-    -- An INSERT policy must not let a doctor plant a new row in the other doctor's name. Clone one
-    -- of your own rows, point it at the other doctor (owner column, parent document, or storage
-    -- folder) and insert it. Only a row-level security refusal counts: Postgres checks the policy
+    -- An INSERT policy must not let a doctor plant a new row in the other doctor's name, or hang
+    -- their own row off the other doctor's document. Clone one of your own rows and insert it twice:
+    -- first with everything (owner column, parent document, storage folder) pointed at the other
+    -- doctor, then, where the row has both an owner column and a parent document, with only the
+    -- parent document moved. Only a row-level security refusal counts: Postgres checks the policy
     -- before constraints, so any other error or a success means the policy let the row through.
+    -- A successful insert is undone straight away so row totals stay exact.
     -- Fixture documents share their owner's id, so the other doctor's document id is v_other.
-    execute format('select to_jsonb(t) from %s t where %s = %L::uuid limit 1', r.rel, v_expr, v_me) into v_row;
-    if r.owner_col is not null then v_row := v_row || jsonb_build_object(r.owner_col, v_other); end if;
-    if v_row ? 'document_id' then v_row := v_row || jsonb_build_object('document_id', v_other); end if;
-    if r.rel = 'storage.objects'::regclass then
-      v_row := v_row || jsonb_build_object('name', v_other || '/planted.txt', 'owner', v_other);
-    end if;
+    execute format('select to_jsonb(t) from %s t where %s = %L::uuid limit 1', r.rel, v_expr, v_me) into v_base;
     select string_agg(quote_ident(a.attname), ', ' order by a.attnum) into v_cols
     from pg_attribute a
     where a.attrelid = r.rel and a.attnum > 0 and not a.attisdropped and a.attgenerated = ''
       and a.attidentity = '' and a.attname <> 'id';
-    v_refused := false;
-    begin
-      execute format('insert into %1$s (%2$s) select %2$s from jsonb_populate_record(null::%1$s, %3$L::jsonb)',
-        r.rel, v_cols, v_row);
-    exception
-      when insufficient_privilege then v_refused := true;
-      when others then
-        raise exception 'PRIVACY LEAK: doctor %''s row for doctor % got past the % insert policy (then: %)',
-          p_me, p_other, r.rel, sqlerrm;
-    end;
-    if not v_refused then
-      raise exception 'PRIVACY LEAK: doctor % inserted a row for doctor % in %', p_me, p_other, r.rel;
-    end if;
+    for v_variant in 1..(case when r.owner_col is not null and v_base ? 'document_id' then 2 else 1 end) loop
+      v_row := v_base;
+      if r.owner_col is not null and v_variant = 1 then v_row := v_row || jsonb_build_object(r.owner_col, v_other); end if;
+      if v_row ? 'document_id' then v_row := v_row || jsonb_build_object('document_id', v_other); end if;
+      if r.rel = 'storage.objects'::regclass then
+        v_row := v_row || jsonb_build_object('name', v_other || '/planted.txt', 'owner', v_other);
+      end if;
+      v_refused := false; v_detail := null;
+      begin
+        execute format('insert into %1$s (%2$s) select %2$s from jsonb_populate_record(null::%1$s, %3$L::jsonb)',
+          r.rel, v_cols, v_row);
+        raise exception using errcode = 'PX001', message = 'probe row inserted';
+      exception
+        when insufficient_privilege then v_refused := true;
+        when sqlstate 'PX001' then null;
+        when others then
+          -- A non-policy error means the policy already let the row through.
+          if v_variant = 2 then
+            v_detail := sqlerrm;
+          else
+            raise exception 'PRIVACY LEAK: doctor %''s row for doctor % got past the % insert policy (then: %)',
+              p_me, p_other, r.rel, sqlerrm;
+          end if;
+      end;
+      if not v_refused and v_variant = 2 and r.rel in (select rel from known_parent_document_gap) then
+        insert into parent_document_gap_seen values (r.rel) on conflict do nothing;
+      elsif not v_refused and v_variant = 2 then
+        raise exception 'PRIVACY LEAK: doctor % attached their own row to doctor %''s document in % (then: %)',
+          p_me, p_other, r.rel, coalesce(v_detail, 'inserted');
+      elsif not v_refused then
+        raise exception 'PRIVACY LEAK: doctor % inserted a row for doctor % in %', p_me, p_other, r.rel;
+      end if;
+    end loop;
 
     begin
       execute format('delete from %s where %s is distinct from %L::uuid', r.rel, v_expr, v_me);
@@ -369,6 +396,15 @@ select pg_temp.assert_true((select count(*) from public.documents where owner_id
   and (select count(*) from public.documents where owner_id = pg_temp.uid('b')) = 1,
   'each doctor must still own exactly their own document');
 
+-- The parent-document gap list must match what the probe found, both ways: a new gap fails, and a
+-- fixed policy fails until its table comes off the list.
+select pg_temp.assert_true(not exists (
+  (select rel from known_parent_document_gap except select rel from parent_document_gap_seen)
+  union all
+  (select rel from parent_document_gap_seen except select rel from known_parent_document_gap)
+), 'known_parent_document_gap no longer matches the probe; found: ' || coalesce((
+  select string_agg(rel::text, ', ' order by rel::text) from parent_document_gap_seen), 'none'));
+
 select 'TWO_USER_PRIVACY_SQL_PASS: browser roles fail closed on every table, function allowlist, '
-  || 'admin functions refuse doctors, owner policies isolate two doctors' as result;
+  || 'admin functions refuse doctors, owner policies isolate two doctors (3 known parent-document gaps)' as result;
 rollback;
