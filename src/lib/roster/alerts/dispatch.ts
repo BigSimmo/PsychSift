@@ -36,18 +36,9 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
   try {
     const result = resultOf(event.result);
     if (result.status === "cancelled" || result.status === "expired") return;
-    // A replay is suppressed only after the deferred alert work recorded a receipt. If the
-    // request succeeded but the after-response work was killed, the retry is the recovery path.
-    if (result.replayed === true && result.openShiftId) {
-      const { data: receipt, error } = await client
-        .from("roster_open_post_alerts")
-        .select("delivered_at")
-        .eq("service_id", event.serviceId)
-        .eq("open_shift_id", result.openShiftId)
-        .maybeSingle();
-      if (error) throw error;
-      if (receipt?.delivered_at) return;
-    }
+    // A repeat of a post the server had already saved (the phone never heard back the first time):
+    // its alerts went out with the first post, so they are never sent twice.
+    if (result.replayed === true) return;
     // The overview checks the actor's team access. G3's manager list is the
     // only authority for manager alerts; active membership is checked below.
     const overview = await rosterRead(client, event.actorId, event.serviceId, "overview");
@@ -129,26 +120,12 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
     ].slice(0, 500);
     const active = await activeRecipientIds(client, event.serviceId, candidateIds);
     const eligible = candidateIds.filter((id) => active.has(id));
-    if (!eligible.length) {
-      if (action === "open.post" && result.status === "open" && result.openShiftId) {
-        await client.from("roster_open_post_alerts").upsert(
-          { service_id: event.serviceId, open_shift_id: result.openShiftId, delivered_at: new Date().toISOString() },
-          { onConflict: "service_id,open_shift_id" },
-        );
-      }
-      return;
-    }
+    if (!eligible.length) return;
     const quiet =
       type === "changed"
         ? new Set<string>()
         : await recipientsOnNightNow(client, event.actorId, event.serviceId, eligible);
-    const delivery = await sendRosterAlerts(client, eligible, type, quiet);
-    if (action === "open.post" && result.status === "open" && result.openShiftId && delivery.failed === 0) {
-      await client.from("roster_open_post_alerts").upsert(
-        { service_id: event.serviceId, open_shift_id: result.openShiftId, delivered_at: new Date().toISOString() },
-        { onConflict: "service_id,open_shift_id" },
-      );
-    }
+    await sendRosterAlerts(client, eligible, type, quiet);
   } catch {
     // A phone alert must never turn a successful roster change into an error.
     // No identity, endpoint or payload is logged here.

@@ -4387,24 +4387,6 @@ export type Database = {
         };
         Relationships: [];
       };
-      roster_open_post_alerts: {
-        Row: {
-          delivered_at: string;
-          open_shift_id: string;
-          service_id: string;
-        };
-        Insert: {
-          delivered_at?: string;
-          open_shift_id: string;
-          service_id: string;
-        };
-        Update: {
-          delivered_at?: string;
-          open_shift_id?: string;
-          service_id?: string;
-        };
-        Relationships: [];
-      };
       roster_open_shifts: {
         Row: {
           assignment_id: string | null;

@@ -34186,22 +34186,11 @@ create table public.roster_open_post_keys (
   service_id uuid not null references public.on_call_services (id) on delete cascade,
   post_key uuid not null,
   open_shift_id uuid not null references public.roster_open_shifts (id) on delete cascade,
-  posted_by uuid references auth.users (id) on delete set null,
+  posted_by uuid,
   created_at timestamptz not null default now(),
   primary key (service_id, post_key)
 );
 create index roster_open_post_keys_open_shift_idx on public.roster_open_post_keys (open_shift_id);
-
-create table public.roster_open_post_alerts (
-  service_id uuid not null references public.on_call_services (id) on delete cascade,
-  open_shift_id uuid not null references public.roster_open_shifts (id) on delete cascade,
-  delivered_at timestamptz not null default now(),
-  primary key (service_id, open_shift_id)
-);
-
-alter table public.roster_open_post_alerts enable row level security;
-revoke all on table public.roster_open_post_alerts from public, anon, authenticated;
-grant select, insert, update, delete on table public.roster_open_post_alerts to service_role;
 
 alter table public.roster_open_post_keys enable row level security;
 revoke all on table public.roster_open_post_keys from public, anon, authenticated;
@@ -34231,12 +34220,7 @@ begin
     -- A key is only ever replayed for the person who first sent it.
     if v_key.posted_by is distinct from p_actor_id then raise exception 'roster_conflict'; end if;
     select status into v_status from public.roster_open_shifts where id = v_key.open_shift_id;
-    -- A cancelled/expired shift must not make the client believe this date was posted.
-    if v_status is null or v_status not in ('reported', 'open', 'claimed') then
-      delete from public.roster_open_post_keys where service_id = p_service_id and post_key = p_post_key;
-    else
-      return jsonb_build_object('openShiftId', v_key.open_shift_id, 'status', v_status, 'replayed', true);
-    end if;
+    return jsonb_build_object('openShiftId', v_key.open_shift_id, 'status', v_status, 'replayed', true);
   end if;
 
   v_result := public.roster_command(p_actor_id, p_service_id, 'open.post', coalesce(p_payload, '{}'::jsonb));
