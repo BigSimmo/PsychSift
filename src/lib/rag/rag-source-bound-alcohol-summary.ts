@@ -114,7 +114,20 @@ export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationS
       return matches.length === 1 ? { text: text.replace(matches[0][0], " "), claim: matches[0][0] } : null;
     };
     const scope = consume(adultClause, /\bhealthy (?:adults|men and women) aged \d+ years (?:and over|or older)\b/);
-    const week = scope && consume(scope.text, /\b(?:no more than|at most) \d+ standard drinks? (?:a|per|each) week\b/);
+    // An affirmative limiting instruction must govern the upper-bound tuple;
+    // negation or other instructions remain unconsumed and refuse recovery.
+    const imperative =
+      scope &&
+      consume(
+        scope.text,
+        /\blimit (?:alcohol(?: intake| consumption)?|drinking) to(?=\s+(?:no more than|at most) \d+ standard drinks? (?:a|per|each) week\b)/,
+      );
+    const week =
+      scope &&
+      consume(
+        imperative ? imperative.text : scope.text,
+        /\b(?:no more than|at most) \d+ standard drinks? (?:a|per|each) week\b/,
+      );
     const day =
       week &&
       consume(
@@ -167,15 +180,34 @@ export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationS
       remaining,
       /\b(?:for (?:women who are breastfeeding|breastfeeding women),? not drinking(?: alcohol)? is safest for (?:their|the) baby|not drinking(?: alcohol)? is safest while breastfeeding)\b/,
     );
+    const maternalQualification =
+      breastfeedingClause &&
+      consume(
+        breastfeedingClause.text,
+        /\bno safe (?:amount|level)(?: of alcohol)? has been identified (?:in|during) pregnancy (?:or|and) breastfeeding\b/,
+      );
     if (
       !breastfeedingClause ||
       !sourceDirectlySupportsAnswerText(breastfeedingClause.claim, maternal) ||
-      !/^(?:and\b|[\s,;:.])*$/i.test(breastfeedingClause.text)
+      // The combined qualification must be supported by the source's explicit
+      // pregnant-and-breastfeeding amount statement, not its pregnancy-only fact.
+      (maternalQualification &&
+        !sourceDirectlySupportsAnswerText(maternalQualification.claim, {
+          ...maternal,
+          content: maternalNoSafe,
+          adjacent_context: null,
+          retrieval_synopsis: null,
+          table_facts: [],
+          index_unit: null,
+        })) ||
+      !/^(?:and\b|[\s,;:.])*$/i.test(maternalQualification ? maternalQualification.text : breastfeedingClause.text)
     )
       return reject();
     const risk = answer.answerSections?.length === 1 ? answer.answerSections[0] : undefined;
     // The model's heading/kind is presentation, not evidence. Consume only the two
     // adult qualifications already supported above; rebuild them from source text.
+    // Absence of a model section is allowed only here: the pinned, independently
+    // verified source sentences still supply every required outgoing qualification.
     const noSafeClaim =
       risk &&
       consume(
@@ -189,12 +221,13 @@ export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationS
         /\b(?:not drinking(?: alcohol)?|abstaining) is the best way to reduce alcohol-related harm\b/,
       );
     if (
-      !risk ||
-      risk.supportLevel !== "direct" ||
-      risk.citation_chunk_ids.length !== 1 ||
-      risk.citation_chunk_ids[0] !== adult.id ||
-      !abstentionClaim ||
-      !/^[\s,;:.]*$/.test(abstentionClaim.text)
+      (answer.answerSections?.length ?? 0) > 0 &&
+      (!risk ||
+        risk.supportLevel !== "direct" ||
+        risk.citation_chunk_ids.length !== 1 ||
+        risk.citation_chunk_ids[0] !== adult.id ||
+        !abstentionClaim ||
+        !/^[\s,;:.]*$/.test(abstentionClaim.text))
     )
       return reject();
     const pregnancyNoSafe = sentence(
