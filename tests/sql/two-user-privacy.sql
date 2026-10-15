@@ -315,7 +315,10 @@ begin
     -- before constraints, so any other error or a success means the policy let the row through.
     -- A successful insert is undone straight away so row totals stay exact.
     -- Fixture documents share their owner's id, so the other doctor's document id is v_other.
-    execute format('select to_jsonb(t) from %s t where %s = %L::uuid limit 1', r.rel, v_expr, v_me) into v_base;
+    -- Storage objects are probed once per bucket, so a policy scoped to one bucket can't hide.
+    for v_base in execute format(
+      'select distinct on (%3$s) to_jsonb(t) from %1$s t where %2$s = %4$L::uuid order by %3$s',
+      r.rel, v_expr, case when r.rel = 'storage.objects'::regclass then 't.bucket_id' else '1' end, v_me) loop
     select string_agg(quote_ident(a.attname), ', ' order by a.attnum) into v_cols
     from pg_attribute a
     where a.attrelid = r.rel and a.attnum > 0 and not a.attisdropped and a.attgenerated = ''
@@ -325,7 +328,7 @@ begin
       if r.owner_col is not null and v_variant = 1 then v_row := v_row || jsonb_build_object(r.owner_col, v_other); end if;
       if v_row ? 'document_id' then v_row := v_row || jsonb_build_object('document_id', v_other); end if;
       if r.rel = 'storage.objects'::regclass then
-        v_row := v_row || jsonb_build_object('name', v_other || '/planted.txt', 'owner', v_other);
+        v_row := v_row || jsonb_build_object('name', v_other || '/planted-' || (v_base->>'bucket_id') || '.txt', 'owner', v_other);
       end if;
       v_refused := false; v_detail := null;
       begin
@@ -352,6 +355,7 @@ begin
       elsif not v_refused then
         raise exception 'PRIVACY LEAK: doctor % inserted a row for doctor % in %', p_me, p_other, r.rel;
       end if;
+    end loop;
     end loop;
 
     begin
