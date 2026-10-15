@@ -37,6 +37,8 @@ describe("isNamedPerson", () => {
     for (const name of [
       "PsychSift",
       "psychsift",
+      "Psych Sift",
+      "Psych-Sift",
       "System",
       "Locally reviewed",
       "Dr Jane",

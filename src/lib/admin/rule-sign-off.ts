@@ -129,6 +129,9 @@ export function isNamedPerson(name: string | null | undefined): boolean {
   if (typeof name !== "string") return false;
   const trimmed = name.trim().replace(/\s+/g, " ");
   if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  // Spacing and punctuation do not turn a product name into a person ("Psych Sift", "Psych-Sift").
+  const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
+  if (squashed === "psychsift") return false;
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));

@@ -50,7 +50,7 @@ function signed(record: SourceAcquisitionRecord): SourceAcquisitionRecord {
   const reviewed = { ...record, validationStatus: "locally_reviewed" as const };
   return {
     ...reviewed,
-    attestedBy: "Fixture Owner",
+    attestedBy: "Dr Alex Morgan",
     attestedAt: "2026-10-03T00:00:00.000Z",
     attestedAgainstSha256: acquisitionAttestedContentSha256(reviewed),
   };
@@ -81,6 +81,12 @@ describe("medication source links", () => {
 
   it("hides an unconfirmed record", () => {
     expect(medicationSourceLinks("clozapine", { links, records: [candidate()] })).toEqual([]);
+  });
+
+  it("hides a record attested by a product name rather than a person", () => {
+    expect(medicationSourceLinks("clozapine", { links, records: [adoptedSigned()] })).not.toEqual([]);
+    const productName = { ...adoptedSigned(), attestedBy: "Psych Sift" };
+    expect(medicationSourceLinks("clozapine", { links, records: [productName] })).toEqual([]);
   });
 
   it("hides a reviewed record that carries no attestation", () => {

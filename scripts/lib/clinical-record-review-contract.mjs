@@ -107,7 +107,10 @@ export function newSignatureAttributionProblem(value) {
   const trimmed = value.trim().replace(/\s+/g, " ");
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = trimmed.split(" ").filter((word) => /\p{L}/u.test(word) && !titles.has(word.toLowerCase()));
-  if (NOT_A_PERSON.has(trimmed.toLowerCase()) || nameWords.length < 2) {
+  // Spacing and punctuation are ignored, so "Psych Sift" and "Psych-Sift" are refused too.
+  const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
+  const productName = [...NOT_A_PERSON].some((entry) => entry.replace(/[^\p{L}]/gu, "") === squashed);
+  if (productName || nameWords.length < 2) {
     return 'reviewedBy must be your own full name as it should appear publicly (your given name and surname), not a product, role or single name such as "PsychSift".';
   }
   return null;
@@ -236,6 +239,9 @@ export function isNamedSpecifierReviewer(value) {
   if (typeof value !== "string") return false;
   const trimmed = value.trim().replace(/\s+/g, " ");
   if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  // Spacing and punctuation do not turn a product name into a person ("Psych Sift", "Psych-Sift").
+  const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
+  if (squashed === "psychsift") return false;
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
