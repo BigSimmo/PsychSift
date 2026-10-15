@@ -88,11 +88,21 @@ function EmergencyRoute({
           onClick={recordCall}
           aria-label={`Call ${title}${primaryWhere ? ` ${primaryWhere}` : ""}, emergency, ${spokenOnCallNumber(primary.display)}`}
           data-testid={`${testId}-call`}
-          className={cn(onCallFilledButton, focusRing, "justify-start")}
+          className={cn(onCallFilledButton, focusRing, "justify-start py-1.5")}
         >
           <Phone aria-hidden="true" strokeWidth={1.75} className="size-icon-md shrink-0" />
-          <span className={cn(modeNumberText, "font-semibold")}>{primary.display}</span>
-          {primaryWhere ? <span className="text-sm font-normal">{primaryWhere}</span> : null}
+          {/* Keep each dialable segment intact while allowing a long route to wrap. */}
+          <span className="grid min-w-0 text-left">
+            <span className={cn(modeNumberText, "font-semibold")}>
+              {primary.display.split(", then ext ").map((segment, index) => (
+                <span key={segment} className="whitespace-nowrap">
+                  {index > 0 ? ", then ext " : null}
+                  {segment}
+                </span>
+              ))}
+            </span>
+            {primaryWhere ? <span className="text-sm font-normal">{primaryWhere}</span> : null}
+          </span>
         </a>
       ) : null}
       {dial && (deskOnly || !primary?.tel) && !extension ? (

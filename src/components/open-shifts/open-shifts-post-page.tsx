@@ -109,6 +109,10 @@ export function OpenShiftsPostPage() {
   const [unanswered, setUnanswered] = useState<
     Record<string, { readonly ids: readonly string[]; readonly at: number; readonly serviceId: string }>
   >({});
+  // One post key per date being posted, by everything that was sent. A retry of a date whose answer was
+  // lost sends the same key, so the server answers with the shift that post already saved instead of saving
+  // a second one. A key is dropped once its date is posted; changing anything in the shift makes a new key.
+  const postKeys = useRef<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);
@@ -255,6 +259,8 @@ export function OpenShiftsPostPage() {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
       }
+      const postKey = postKeys.current[signature(on)] ?? crypto.randomUUID();
+      postKeys.current[signature(on)] = postKey;
       const result = await postRosterAction(team.serviceId, {
         action: "open.post",
         startsAt: onTimes.startsAt,
@@ -264,10 +270,12 @@ export function OpenShiftsPostPage() {
         siteId: site || null,
         minGrade: level || null,
         urgent,
+        postKey,
       } as RosterAction);
       if (result.ok) {
         attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
         nowDone[signature(on)] = result.result.openShiftId ?? "";
+        delete postKeys.current[signature(on)];
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat

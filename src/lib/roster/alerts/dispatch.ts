@@ -23,6 +23,7 @@ function resultOf(value: unknown): {
   status?: string;
   swapId?: string;
   openShiftId?: string;
+  replayed?: boolean;
   recipientIds?: string[];
   changedUserIds?: string[];
   swapsCancelled?: { requesterId?: string; counterpartyId?: string }[];
@@ -35,6 +36,9 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
   try {
     const result = resultOf(event.result);
     if (result.status === "cancelled" || result.status === "expired") return;
+    // A repeat of a post the server had already saved (the phone never heard back the first time):
+    // its alerts went out with the first post, so they are never sent twice.
+    if (result.replayed === true) return;
     // The overview checks the actor's team access. G3's manager list is the
     // only authority for manager alerts; active membership is checked below.
     const overview = await rosterRead(client, event.actorId, event.serviceId, "overview");
