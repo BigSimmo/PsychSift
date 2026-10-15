@@ -1155,7 +1155,7 @@ async function searchChunksWithTiming(
   // admin client that default, and the keyword RPC can take 30-48 s on the live corpus, so it
   // was aborted and returned nothing for 9 of the 36 golden cases (eval canaries from 11 Oct).
   // 90 s clears the slowest observed keyword call while still bounding a stalled request,
-  // including the query-correction RPC that does not carry the caller's abort signal.
+  // including the query-correction RPC.
   const supabase = createAdminClient({ timeoutMs: SEARCH_SUPABASE_TIMEOUT_MS });
   // Source-only retrieval never calls embeddings.
   const sourceOnlyRetrieval = isSourceOnlyMode();
@@ -1341,10 +1341,14 @@ async function searchChunksWithTiming(
   ) {
     // RC6: correct a would-be unsupported typo once before retrieval short-circuits.
     if (!args.typoCorrected && !sourceOnlyRetrieval) {
-      const { data: corrected } = await supabase.rpc("correct_clinical_query_terms", {
+      // Carry the caller's abort signal so a cancelled search does not leave this call running
+      // until the 90 s client deadline.
+      let correctionQuery = supabase.rpc("correct_clinical_query_terms", {
         input_query: retrievalQuery,
         min_sim: 0.45,
       });
+      if (args.signal) correctionQuery = correctionQuery.abortSignal(args.signal);
+      const { data: corrected } = await correctionQuery;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
         const correctedSearch = await searchChunksWithTelemetry({
           ...args,
