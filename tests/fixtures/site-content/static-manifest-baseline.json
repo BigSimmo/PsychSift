@@ -1,8 +1,8 @@
 {
   "version": "clinical-kb-site-static-manifest-v1",
-  "gitSha": "26d8fffbc96d3fea5bacaef7d7b5a466de01efd8",
+  "gitSha": "83a74403a87e8df075c48e18e239d9e7eb0ea714",
   "registryVersion": "site-content-registry-v1",
-  "generatedAt": "2026-10-14T03:56:24.679Z",
+  "generatedAt": "2026-10-15T11:46:33.063Z",
   "records": [
     {
       "logicalId": "calculators:auditc",
@@ -4245,10 +4245,10 @@
       "route": "/specifiers/specifier-dis-dissociative-identity-disorder-features-with-without-possession-form",
       "contentHash": "0459c6b51ac5e4d3355352b265cdcdee1a4aed3bda1a473bdd55363047236acd",
       "lineageDigest": "a288fff344c08fbef5ea33445626f9ae98caf48f3e0f8cc146cfeda21a79370e",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-dis-dissociative-identity-disorder-severity-current-severity",
@@ -4278,10 +4278,10 @@
       "route": "/specifiers/specifier-dis-trance-disorder-icd-11-features-with-without-possession",
       "contentHash": "baec4433a2522ac1c74c343fc3692efce675447e67e1171ae57991f081eb350d",
       "lineageDigest": "d8b91fef17846445d4ae137fa5bde58f3b35e3f0450dac7fc2cac46139dab369",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-dis-trance-disorder-icd-11-severity-current-severity",
@@ -4300,10 +4300,10 @@
       "route": "/specifiers/specifier-eat-anorexia-nervosa-course-severity-extreme-bmi-below-15",
       "contentHash": "952bebfe29e20ed6771ad4d1eb11175b5c66d815a7d68ebab8c51e496cb33d77",
       "lineageDigest": "63a79bbc367d77a136be0b9d3ad27ae34a6b8643fff02f0a58819c303055dd85",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-anorexia-nervosa-course-severity-in-full-remission",
@@ -4333,10 +4333,10 @@
       "route": "/specifiers/specifier-eat-anorexia-nervosa-course-severity-mild-bmi-17-or-above",
       "contentHash": "b4135bc8756c36252f6293cff9139029fc27df18c2774d31473ffd901e10ab99",
       "lineageDigest": "0b8f05dffbadbea2552f8d74b424196792427ed0a4cb0f41b5e99261c6470f4b",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-anorexia-nervosa-course-severity-moderate-bmi-16-16-99",
@@ -4344,10 +4344,10 @@
       "route": "/specifiers/specifier-eat-anorexia-nervosa-course-severity-moderate-bmi-16-16-99",
       "contentHash": "2fe5efa40d9364f0309d5e46cce2c93ecd2a4f7a97717f94978bb54867baa625",
       "lineageDigest": "e1c2b3ea9e67face9270488cde0104dea4ff15e32d38fd4c54e6b04ade7f1f25",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-anorexia-nervosa-course-severity-severe-bmi-15-15-99",
@@ -4355,10 +4355,10 @@
       "route": "/specifiers/specifier-eat-anorexia-nervosa-course-severity-severe-bmi-15-15-99",
       "contentHash": "a301fd0492734fe630cfb028fe6f0d0b0d3faf5d57fe30d532b75c65384d0d6f",
       "lineageDigest": "b65da7458d4f6fc805f2cedab401fdd508b511f7fe07c99c7b4eee51fc66e6ab",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-anorexia-nervosa-type-binge-eating-purging-type",
@@ -4410,10 +4410,10 @@
       "route": "/specifiers/specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-related-to-aversive-consequences-of-eating",
       "contentHash": "4aad238f560419e7c388e5218e287463cf3cc8f0343a63c9b51ca0fb0b331131",
       "lineageDigest": "6460df61c78a3ab9820550563e6159ed55b00065d9323decb69dc2f365bf7ab3",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-restriction-based-on-sensory-characteristics",
@@ -4421,10 +4421,10 @@
       "route": "/specifiers/specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-avoidance-restriction-based-on-sensory-characteristics",
       "contentHash": "dda5f86910b582c418026bf6ba541addb23f79d391f805dcdef6b6602322bf27",
       "lineageDigest": "1faaeb936c25c76e08c91e56b35e06128c068a64d2eb7cd4d87557ba06f7cb35",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-inadequate-food-intake-associated-with-limited-availability",
@@ -4432,10 +4432,10 @@
       "route": "/specifiers/specifier-eat-avoidant-restrictive-food-intake-disorder-arfid-features-icd-11-with-inadequate-food-intake-associated-with-limited-availability",
       "contentHash": "df201df865e80ffcab06c87320271f64d7a693c580c8ec48e8aa487c9c79b9cb",
       "lineageDigest": "ee5ed73433765a4aa5e53cd26e5d0772c3eae545174e55e0b41c3ae7d34456b0",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-binge-eating-disorder-course-severity-extreme-14-or-more-episodes-week",
@@ -4443,10 +4443,10 @@
       "route": "/specifiers/specifier-eat-binge-eating-disorder-course-severity-extreme-14-or-more-episodes-week",
       "contentHash": "ebd49566b979ab68365265780d67a774bda0caa23effbff3bce0c2be1111f8ff",
       "lineageDigest": "cc9a9c12bc15e8bb487753d96d330d398b472270b6e6cfcdefe4f26d213211a8",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-binge-eating-disorder-course-severity-in-full-remission",
@@ -4476,10 +4476,10 @@
       "route": "/specifiers/specifier-eat-binge-eating-disorder-course-severity-mild-1-3-episodes-week",
       "contentHash": "f83d9a423b08432ecfcd3aca6f13547c688a3549474f07d31e155a36d3a9a84c",
       "lineageDigest": "27c151632da865147b7188e7ae02976b6aeaabb15b915d8af03a102a37736a3c",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-binge-eating-disorder-course-severity-moderate-4-7-episodes-week",
@@ -4487,10 +4487,10 @@
       "route": "/specifiers/specifier-eat-binge-eating-disorder-course-severity-moderate-4-7-episodes-week",
       "contentHash": "592d8b8b772fc1db2b34eb95381eb5ee214d30fd3d826f1647d5032762c5166d",
       "lineageDigest": "be81fc84503dd03ce98efc929f4ede6da7597f7fc75d24d27bcb5c13df4fbc4b",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-binge-eating-disorder-course-severity-severe-8-13-episodes-week",
@@ -4498,10 +4498,10 @@
       "route": "/specifiers/specifier-eat-binge-eating-disorder-course-severity-severe-8-13-episodes-week",
       "contentHash": "f5d142a6749bd533ce5a88184888209cf4be17b3fc7211de545084423ac6f0ad",
       "lineageDigest": "b75fa846ffac073a271b27337b16190bf31d79d81b43780adcae57522a006aad",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-bulimia-nervosa-course-severity-extreme-14-or-more-episodes-week",
@@ -4509,10 +4509,10 @@
       "route": "/specifiers/specifier-eat-bulimia-nervosa-course-severity-extreme-14-or-more-episodes-week",
       "contentHash": "960466c035e22839d011ba5351e19c125f3430ac1c68a2cec04eff7a7b59364a",
       "lineageDigest": "7bbc6864fb26f8590ce860bba2496e2108dae6bb00db1ddc1c012b790f78ce4e",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-bulimia-nervosa-course-severity-in-full-remission",
@@ -4542,10 +4542,10 @@
       "route": "/specifiers/specifier-eat-bulimia-nervosa-course-severity-mild-1-3-episodes-week",
       "contentHash": "0219107fbe062edd1ea59489d99e303060f935a682a4267a3a2a5d897ba01db6",
       "lineageDigest": "827768d86b4dc0a06f5dce1ae634a5623083a3ba13019cc7ae004c8b173977f7",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-bulimia-nervosa-course-severity-moderate-4-7-episodes-week",
@@ -4553,10 +4553,10 @@
       "route": "/specifiers/specifier-eat-bulimia-nervosa-course-severity-moderate-4-7-episodes-week",
       "contentHash": "15754d455247a1f1b46fa7e8de888a19b4666d88e1cef2c94504d017663d1ec9",
       "lineageDigest": "25f6c505f3a9e40a8ac618682255c6c8330a7f0c5a086293d161a9e4e2bb7018",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-bulimia-nervosa-course-severity-severe-8-13-episodes-week",
@@ -4564,10 +4564,10 @@
       "route": "/specifiers/specifier-eat-bulimia-nervosa-course-severity-severe-8-13-episodes-week",
       "contentHash": "35cef923285526d6f24aa22b5d7921afc92a45a88afadba59e3540d45b766f25",
       "lineageDigest": "d9c1ae18117da3668fcf50a9b35c18e3231574b3925b5c20ffab41e91a0556bb",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-eat-pica-course-severity-current-severity",
@@ -4707,10 +4707,10 @@
       "route": "/specifiers/specifier-gen-gender-incongruence-icd-11-subtypes-gender-incongruence-of-adolescence-or-adulthood",
       "contentHash": "147b55a6969b2d83e8ed12595913be02f32ff823049b367b60d7b0c20c887bb1",
       "lineageDigest": "f163fa2630c8fb26d769e69ead761debff3017488db3f123b0ebd08636ed63b6",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-gen-gender-incongruence-icd-11-subtypes-gender-incongruence-of-childhood",
@@ -4718,10 +4718,10 @@
       "route": "/specifiers/specifier-gen-gender-incongruence-icd-11-subtypes-gender-incongruence-of-childhood",
       "contentHash": "112dbd4231eb763b9dcf30a1da084b64fa3bb6c370f86e33e3b26c386aefb735",
       "lineageDigest": "0248306a1eed926cba1289c91987638d70ce5a1cd51f712acc9e72cddea4d059",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-bodily-distress-disorder-severity-mild",
@@ -4784,10 +4784,10 @@
       "route": "/specifiers/specifier-icd-catatonia-standalone-diagnosis-context-induced-by-psychoactive-substances-including-medications",
       "contentHash": "36fe11396eb23f0ebfe474b1eb25c1d39fbf11a0b5b41a6fd5a3ef3c5010156c",
       "lineageDigest": "0abab39a5f0c2615ac1a583ccff2dc2a8f73a9139b448f972623c3becd51e61d",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-catatonia-standalone-diagnosis-context-secondary-to-a-medical-condition-not-classified-elsewhere",
@@ -4795,10 +4795,10 @@
       "route": "/specifiers/specifier-icd-catatonia-standalone-diagnosis-context-secondary-to-a-medical-condition-not-classified-elsewhere",
       "contentHash": "a16fd9c0dbfc7f323c791a144665e3ffcaf4939a67ef920aff01047c36e67fd4",
       "lineageDigest": "0f02f8c6b102a0916cc541dee7911775bd4358b8492ee0b854adcbe4ceca12f4",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-complex-ptsd-self-organisation-affective-dysregulation-negative-self-concept-disturbances-in-relationships",
@@ -4806,10 +4806,10 @@
       "route": "/specifiers/specifier-icd-complex-ptsd-self-organisation-affective-dysregulation-negative-self-concept-disturbances-in-relationships",
       "contentHash": "4d8debb99d0a82263d7c5e839d1d2a75f1ce3b77b0d6f52328e2e9f4adbb05a9",
       "lineageDigest": "b31e5fd4b6f7fd4da12b6c9c1773abf5b1c240a9f97c1bbc6a6dccfee4913640",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-compulsive-sexual-behaviour-disorder-severity-current-severity",
@@ -4828,10 +4828,10 @@
       "route": "/specifiers/specifier-icd-gaming-disorder-severity-current-severity",
       "contentHash": "288783dbd6fd21a517f81e89e805188d3ed9ed7923c8477eb0cd56df3e49eb11",
       "lineageDigest": "a495064b62c6f23c72f8684e952f3db2f6d193eaf607fb8afcbf7ce6bb956cf0",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-gaming-disorder-type-predominantly-offline",
@@ -4839,10 +4839,10 @@
       "route": "/specifiers/specifier-icd-gaming-disorder-type-predominantly-offline",
       "contentHash": "0371ca2a37f224f07de445d2ba4ca48c92a95667215616030ec11c9a395210eb",
       "lineageDigest": "9195d67df4193110fdba2752356fd42ea7c90e092a9babd5299d1a6ad4b3eaec",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-gaming-disorder-type-predominantly-online",
@@ -4850,10 +4850,10 @@
       "route": "/specifiers/specifier-icd-gaming-disorder-type-predominantly-online",
       "contentHash": "cc3a0b6c81ff83a8dcdb49423d9d3ef73c6288736f6310b88319f74b0f7d275b",
       "lineageDigest": "0a1a2cf23fb1396d40c9bdd6ff617502f27e93d6649d744787d6aa9f173ce2a9",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-gender-incongruence-classification-reclassified-to-conditions-related-to-sexual-health-not-mental-disorders",
@@ -4861,10 +4861,10 @@
       "route": "/specifiers/specifier-icd-gender-incongruence-classification-reclassified-to-conditions-related-to-sexual-health-not-mental-disorders",
       "contentHash": "cf997feb2fbe5ba914a119e3a29c106bc6703cdf91e5281f8bc61d03fadd7b54",
       "lineageDigest": "78e42e845531d0c61cfa5296c814cd90d977ed8217e4d55b0957eac1c464d546",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-icd-olfactory-reference-disorder-insight-with-absent-insight",
@@ -4927,10 +4927,10 @@
       "route": "/specifiers/specifier-icd-trance-disorder-features-with-without-possession",
       "contentHash": "6468a23ce6de12aca8fb4f427fc6d2d411f45257316bab44d84a55bb78d992b8",
       "lineageDigest": "8485ef971735dca3b31b2293b638a2ad19441f6ffbf2befe14895112a91d2d1a",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-imp-conduct-disorder-emotions-with-limited-prosocial-emotions-lack-of-remorse-or-guilt-callous-and-lacking-empathy-unconcerned-about-performance-shallow-or-deficient-affect",
@@ -4949,10 +4949,10 @@
       "route": "/specifiers/specifier-imp-conduct-disorder-onset-adolescent-onset-type-no-symptoms-prior-to-age-10",
       "contentHash": "b7d589004b32ebf40011c1c6135d7c18f3178774f5fd8f7709f8d52a9a99b5ef",
       "lineageDigest": "a98d57f9c78d6962e62ad34710f7e918083e1d2e4dbd3681eab3ad42421ea8e7",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-imp-conduct-disorder-onset-childhood-onset-type-prior-to-age-10",
@@ -5048,10 +5048,10 @@
       "route": "/specifiers/specifier-imp-oppositional-defiant-disorder-severity-mild-confined-to-1-setting",
       "contentHash": "bab4bc3e9258425a25c9fdc9512b02c19ddee90288e333b39438491f3359f6dc",
       "lineageDigest": "833f766c04288c44ea43e90025033c82af78945b8659554a3cd98f30e5d66824",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-imp-oppositional-defiant-disorder-severity-moderate-2-settings",
@@ -5059,10 +5059,10 @@
       "route": "/specifiers/specifier-imp-oppositional-defiant-disorder-severity-moderate-2-settings",
       "contentHash": "248d6431267ac47daa147c85eb0b7d8a75e3537198b139b1898c350fa7ef2c40",
       "lineageDigest": "70067523f613d230a7b8309454189ab01ea43b646aaad6013469cd00b9eaf10e",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-imp-oppositional-defiant-disorder-severity-severe-3-settings",
@@ -5070,10 +5070,10 @@
       "route": "/specifiers/specifier-imp-oppositional-defiant-disorder-severity-severe-3-settings",
       "contentHash": "3fb8d1f3a8052761fab959a1aa7185abf0c0a10e51955401bdb6c860ebb14534",
       "lineageDigest": "ebccc22bd294e4e54fadf525cff4024974b761da3cffb2b5c59255c1c36a1852",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-imp-pyromania-severity-current-severity",
@@ -5147,10 +5147,10 @@
       "route": "/specifiers/specifier-ncg-delirium-course-activity-acute-hours-to-days",
       "contentHash": "240c5afebab41f4e03b153940b7b66f6c89050c90b5eb09002f3d6ed48a6e06e",
       "lineageDigest": "6f9898296a94c910125b1d526727d9f998deccb04838b5e3195c73abe9ebf141",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-ncg-delirium-course-activity-hyperactive",
@@ -5191,10 +5191,10 @@
       "route": "/specifiers/specifier-ncg-delirium-course-activity-persistent-weeks-to-months",
       "contentHash": "b4aba6d67ca5d42f6b9f18a10bc193bc0734acc67184edf6d3be0d283a82be5a",
       "lineageDigest": "59ec663f75be6eaa2079e1057bdd337baa0cdbb91bfdc21a0d65d5ea33d933ec",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-ncg-major-or-mild-neurocognitive-disorder-aetiology-due-to-alzheimer-s-disease-early-onset-65-late-onset-65",
@@ -6610,10 +6610,10 @@
       "route": "/specifiers/specifier-per-dsm-5-tr-alternative-model-section-iii-ampd-pathological-traits-detachment",
       "contentHash": "c1fa75da82e7874a36eac4a2e36072740fbdfbc31dd5dfba1a83858e7bdd1b65",
       "lineageDigest": "ad1bbc17f563e77d83b6e29ec47a0b942e063388b40ee59aeb9911fe92bde87b",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-dsm-5-tr-alternative-model-section-iii-ampd-pathological-traits-disinhibition",
@@ -6621,10 +6621,10 @@
       "route": "/specifiers/specifier-per-dsm-5-tr-alternative-model-section-iii-ampd-pathological-traits-disinhibition",
       "contentHash": "8ccd732819c0f12b3c931419d1bdf35d5010699efc482c4a8d5c4e3f6bbb1752",
       "lineageDigest": "35d399a6c91d82fb886d14bd34870a64ee81361cd6bef41f05aed3d89725b913",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-dsm-5-tr-alternative-model-section-iii-ampd-pathological-traits-negative-affectivity",
@@ -6632,10 +6632,10 @@
       "route": "/specifiers/specifier-per-dsm-5-tr-alternative-model-section-iii-ampd-pathological-traits-negative-affectivity",
       "contentHash": "abd6153095f187ea076d6614f268675d212308130909c8421e96d5fbb6711537",
       "lineageDigest": "5efe323494618f0ea7f3b396f133094802093b9a71ddcec85bfc35c9f7e2c52e",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-dsm-5-tr-alternative-model-section-iii-ampd-pathological-traits-psychoticism",
@@ -6698,10 +6698,10 @@
       "route": "/specifiers/specifier-per-icd-11-dimensional-model-pattern-borderline-pattern-qualifier",
       "contentHash": "882d2f7c2e61c20a2bf97afb78c0077567873487a27e1b827b92db352eca32c7",
       "lineageDigest": "cb97baa336fbdd4bc44afb3afc9154b858f9529111c20915ee4464008ef6137c",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-icd-11-dimensional-model-severity-mild",
@@ -6709,10 +6709,10 @@
       "route": "/specifiers/specifier-per-icd-11-dimensional-model-severity-mild",
       "contentHash": "9d7166028905d2e3a0683016b06a3b79439626bc6718bc586df7b2ecf722061a",
       "lineageDigest": "28e3f4c6198025f4679f05445b756f1aea7775ffbbb0e849fa35de052e7cd81c",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-icd-11-dimensional-model-severity-moderate",
@@ -6720,10 +6720,10 @@
       "route": "/specifiers/specifier-per-icd-11-dimensional-model-severity-moderate",
       "contentHash": "4cee10b7f0228e8c8b9510cb4bae57623671888e76963631c8918c8c602badfb",
       "lineageDigest": "b06fb7893319eab0d43a5e168fc67f80257db9cfc97a4567e78ff0b74bc2849b",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-icd-11-dimensional-model-severity-personality-difficulty-subthreshold",
@@ -6731,10 +6731,10 @@
       "route": "/specifiers/specifier-per-icd-11-dimensional-model-severity-personality-difficulty-subthreshold",
       "contentHash": "1ffb84920a52785d60cf58cd32bb25e1a6f7800da261ffaed316c56e245a3380",
       "lineageDigest": "adb660fc4a8d20575de8f5de775ca184e7419e1ab1e99c0f1d93755ec3f38e42",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-icd-11-dimensional-model-severity-severe",
@@ -6742,10 +6742,10 @@
       "route": "/specifiers/specifier-per-icd-11-dimensional-model-severity-severe",
       "contentHash": "09b16cea5e080b9c3809338e255b9fa19f9d4121b4e92998ea1149dc2a8dcdb3",
       "lineageDigest": "1b186b694bd2ede258cad91de3a68e4df63802ffcf7e4ef58c507b1a94d05857",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-icd-11-dimensional-model-trait-qualifiers-negative-affectivity-detachment-dissociality-disinhibition-anankastia",
@@ -6753,10 +6753,10 @@
       "route": "/specifiers/specifier-per-icd-11-dimensional-model-trait-qualifiers-negative-affectivity-detachment-dissociality-disinhibition-anankastia",
       "contentHash": "145252ef7844a2e93e6c25190ba723b9a5d4096794a600d43705aed4bed34b0b",
       "lineageDigest": "19a780950defc9d5426d5a42448aca10883cf3290d81d405c36d61fa62b3111f",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-per-personality-change-due-to-another-medical-condition-type-aggressive-type",
@@ -7523,10 +7523,10 @@
       "route": "/specifiers/specifier-slp-hypersomnolence-disorder-context-severity-mild-1-2-days-week",
       "contentHash": "10bc376dac46b0c1fd61df8f3ce0bd6912cae17dece7c2b23e9681b40bf76994",
       "lineageDigest": "f580e354ec46402755cec729781f83d185dfe8a4b84f6d57b9c1a7f7d6c8d072",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-hypersomnolence-disorder-context-severity-moderate-3-4-days-week",
@@ -7534,10 +7534,10 @@
       "route": "/specifiers/specifier-slp-hypersomnolence-disorder-context-severity-moderate-3-4-days-week",
       "contentHash": "8b173b3cd6943afd5f58ba6563a8c56a51cda08301367afc058aa36453877e4d",
       "lineageDigest": "f4a48cd8a283c0b091cff4999522aca77b8919334d0e2193ae5b7c8f95d6d3fd",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-hypersomnolence-disorder-context-severity-severe-5-7-days-week",
@@ -7545,10 +7545,10 @@
       "route": "/specifiers/specifier-slp-hypersomnolence-disorder-context-severity-severe-5-7-days-week",
       "contentHash": "2a00910cbcd8668ed8603901b0a486c5b2452d135b147756e3b2feab5e2c891a",
       "lineageDigest": "34d486b5056618b62070e6f0507aec8854e4e90e43a8149ec082d4e3631a6dc9",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-hypersomnolence-disorder-context-severity-with-another-sleep-disorder",
@@ -7589,10 +7589,10 @@
       "route": "/specifiers/specifier-slp-hypersomnolence-disorder-course-acute-less-than-1-month",
       "contentHash": "78cf0c1b12e01f1cab9a07c170ec173b5c1aec7dec85dd08530c08cf61ac4e80",
       "lineageDigest": "7cc80bc2877c2bb52f9cb5e7be8ffb0d55261be53a21ea94661fbce07daa8e3d",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-hypersomnolence-disorder-course-persistent-more-than-3-months",
@@ -7600,10 +7600,10 @@
       "route": "/specifiers/specifier-slp-hypersomnolence-disorder-course-persistent-more-than-3-months",
       "contentHash": "18134d1591b34ca067e6a420d5b0effa37ffc94365e15f84c79ecd6d6d1d5ad0",
       "lineageDigest": "b582f42d1f9cdcb49cb21a2100208bbfc4cf933975ddba124f9623bc19b3af16",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-hypersomnolence-disorder-course-subacute-1-3-months",
@@ -7611,10 +7611,10 @@
       "route": "/specifiers/specifier-slp-hypersomnolence-disorder-course-subacute-1-3-months",
       "contentHash": "7ec8bb983ff97795218883eadd158a37f8152dd5fbc5044a18b30d09a1f9fba9",
       "lineageDigest": "02626c965276c65fbf1bacaefb2e9d6cba7fecec185428fbd8a24d9755cc5922",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-insomnia-disorder-comorbidities-with-non-sleep-disorder-mental-comorbidity",
@@ -7666,10 +7666,10 @@
       "route": "/specifiers/specifier-slp-insomnia-disorder-course-persistent-3-months-or-more",
       "contentHash": "01a5a4cbc1f9639567112216c6fa5b51888555744f865d50cdf6b920904471e9",
       "lineageDigest": "ca58e1239dc54402eefc6a707f4efe3e532fdff01e6f6f585ca69258efe562d0",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-insomnia-disorder-course-recurrent-two-or-more-episodes-within-1-year",
@@ -7754,10 +7754,10 @@
       "route": "/specifiers/specifier-slp-nightmare-disorder-course-acute-less-than-1-month",
       "contentHash": "534fd4acc0038435361a2e1c3c63e93722c746d46971459f43178385320078aa",
       "lineageDigest": "e3719466ffc86a1ab56fc1e77f9b9c2782081a54773d17ba8c3866478985a8dd",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-nightmare-disorder-course-persistent-6-months-or-more",
@@ -7765,10 +7765,10 @@
       "route": "/specifiers/specifier-slp-nightmare-disorder-course-persistent-6-months-or-more",
       "contentHash": "7d40f025a8e34423399fad4e51069a4e4ef11bb13b8324ef2fc20a5badd90e4d",
       "lineageDigest": "aed6c1143a2119209e5d6ef88905f049e919d1972ed02fb29c30515903c9876e",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-nightmare-disorder-course-subacute-1-6-months",
@@ -7776,10 +7776,10 @@
       "route": "/specifiers/specifier-slp-nightmare-disorder-course-subacute-1-6-months",
       "contentHash": "e307a22f161238786b48d1948722a9afc95f68822f4a2b69defeb545726e4bee",
       "lineageDigest": "e26a35f22ff4152f96e645b4724f6020a0cf03c5ef19812be64abc84ecd1117d",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-slp-nightmare-disorder-features-severity-during-sleep-onset",
@@ -8040,10 +8040,10 @@
       "route": "/specifiers/specifier-som-functional-neurological-symptom-disorder-conversion-fnd-course-context-acute-episode-less-than-6-months",
       "contentHash": "375b82b0457b5ab9cbc7216865091f461eeedf5196ec8c5532e89b26eec3fcc2",
       "lineageDigest": "47c2d3d701a58a4dfb6e8170a1c593c626c2d3246fc14c7e95e8e779089e69a9",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-som-functional-neurological-symptom-disorder-conversion-fnd-course-context-persistent-6-months-or-more",
@@ -8051,10 +8051,10 @@
       "route": "/specifiers/specifier-som-functional-neurological-symptom-disorder-conversion-fnd-course-context-persistent-6-months-or-more",
       "contentHash": "275f15d9662ca50b932ffcae974cdf76c35b5de4d130ab2712889e05f07f54c1",
       "lineageDigest": "d0f7d3ddb52abf0ead350c4492e8227ceccbd06739802b4c8b6fdcf42f2491d3",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-som-functional-neurological-symptom-disorder-conversion-fnd-course-context-with-without-psychological-stressor",
@@ -8227,10 +8227,10 @@
       "route": "/specifiers/specifier-som-somatic-symptom-disorder-features-persistent-more-than-6-months",
       "contentHash": "e91981aae2d03c55068c9728a658cfeed2bb1995513e211e2c669a684f1189bd",
       "lineageDigest": "f1014c00ac35c312ad0b2bcfbd2057f43a28440e81b5b8ae36c982c1699f0fda",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-som-somatic-symptom-disorder-features-with-predominant-pain",
@@ -8249,10 +8249,10 @@
       "route": "/specifiers/specifier-som-somatic-symptom-disorder-severity-mild-1-criterion",
       "contentHash": "3174e0a37eda56c3d13d5599fcf853c1e543980eb6f4b38a3441a66bd090b366",
       "lineageDigest": "aec6e4ddb44d92e019601676b7215a00ef07f4d95fed170c5d48b41bc8379f01",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-som-somatic-symptom-disorder-severity-moderate-2-criteria",
@@ -8260,10 +8260,10 @@
       "route": "/specifiers/specifier-som-somatic-symptom-disorder-severity-moderate-2-criteria",
       "contentHash": "dd4cb2d58659beb280ae51802bc9c646237b9995a7bc3abfcfac1d8b0d1b4899",
       "lineageDigest": "b47ffb3d0654030021360b28172ec165ec11e29b8b1e1609afaf69a2e37533d8",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-som-somatic-symptom-disorder-severity-severe-2-criteria-multiple-severe-complaints",
@@ -8271,10 +8271,10 @@
       "route": "/specifiers/specifier-som-somatic-symptom-disorder-severity-severe-2-criteria-multiple-severe-complaints",
       "contentHash": "f05bbfa8b7d2856a2e190e928cba233622977c32714ea037e2401442b5c173c8",
       "lineageDigest": "8850802c832be49fb30c867fb68b81769e5544ffb11a2362d06575a89c6e2f12",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-gambling-disorder-course-episodic",
@@ -8359,10 +8359,10 @@
       "route": "/specifiers/specifier-sub-gaming-disorder-icd-11-severity-current-severity",
       "contentHash": "9ed3ae22b2ef24c942dcf9cd13171b8cd0b014f7cf68eb169b3c6ba8e51c873d",
       "lineageDigest": "e426e58622a319eadf67d2b1654ab4c1a69baa2bc09a8cc5e5e4bc838dd0176d",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-gaming-disorder-icd-11-type-predominantly-offline",
@@ -8370,10 +8370,10 @@
       "route": "/specifiers/specifier-sub-gaming-disorder-icd-11-type-predominantly-offline",
       "contentHash": "d453ad5f52a96b3d0257ac131b39d4045e93b9a584e680d997083aa937dca203",
       "lineageDigest": "67d824ded6386d23b900cbb53720d02d71047d3dad61bd9d41cdbb5b1395d1b9",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-gaming-disorder-icd-11-type-predominantly-online",
@@ -8381,10 +8381,10 @@
       "route": "/specifiers/specifier-sub-gaming-disorder-icd-11-type-predominantly-online",
       "contentHash": "be4f07f5a7ed836e61b785a0909e5632a652cdfc4f85808884e8c23ef13a2982",
       "lineageDigest": "ca7f671d1d53361c0080bc8c1d46e4f7de523812c911214e0e2c07d4e4031b57",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-substance-classes-with-use-disorders-classes-alcohol",
@@ -8557,10 +8557,10 @@
       "route": "/specifiers/specifier-sub-substance-use-disorders-general-specifiers-course-context-in-early-remission-at-least-3-months-but-less-than-12-months",
       "contentHash": "d0cc321ec89d06185e1a1a2e534cd646b2b1709eff5757ca386a59489011b2d2",
       "lineageDigest": "176bef8a8dfd6feab40843fe81853e3aecc2f71fd20a61d9ec28fa59d609a67a",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-substance-use-disorders-general-specifiers-course-context-in-sustained-remission-12-months-or-more",
@@ -8568,10 +8568,10 @@
       "route": "/specifiers/specifier-sub-substance-use-disorders-general-specifiers-course-context-in-sustained-remission-12-months-or-more",
       "contentHash": "3944c82dcf173f0aff7a3ea65a3ff34ddd5fcd1589fa74e2cbff0e2352fb83d5",
       "lineageDigest": "e82582489218b68faa51e5c254f213372a8b92f801d9002247d8e4a2a0a59bf3",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-substance-use-disorders-general-specifiers-course-context-on-maintenance-therapy",
@@ -8590,10 +8590,10 @@
       "route": "/specifiers/specifier-sub-substance-use-disorders-general-specifiers-severity-mild-2-3-symptoms",
       "contentHash": "4d9c37b70f5d7e1d143f668b9984533c23269ab204afbad0d6dd1441f67d25f9",
       "lineageDigest": "94444e6f2641b64c214393a58affbc644b698552d87747ff2c5ac1550d269d5a",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-substance-use-disorders-general-specifiers-severity-moderate-4-5-symptoms",
@@ -8601,10 +8601,10 @@
       "route": "/specifiers/specifier-sub-substance-use-disorders-general-specifiers-severity-moderate-4-5-symptoms",
       "contentHash": "435f408ab6191ebaa4a42d247b51dc3c339b9c94dbc4fdb0ecbc29482207b74b",
       "lineageDigest": "8c5ad163be1fb9667ab96456f4b67f69c4e16f1ca45055f3ad07d36ee67a3e0c",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sub-substance-use-disorders-general-specifiers-severity-severe-6-or-more-symptoms",
@@ -8612,10 +8612,10 @@
       "route": "/specifiers/specifier-sub-substance-use-disorders-general-specifiers-severity-severe-6-or-more-symptoms",
       "contentHash": "33e35000f24e038167379b6274749d63826ddfce5749213bead7fa16ad65f5d6",
       "lineageDigest": "0197a2c904c7a9569166d3550905e822d9a78f55006778313c1ae5b54fb234ea",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-sxd-compulsive-sexual-behaviour-disorder-icd-11-severity-current-severity",
@@ -9239,10 +9239,10 @@
       "route": "/specifiers/specifier-trm-adjustment-disorders-course-severity-acute-less-than-6-months",
       "contentHash": "b0a36152a00ff2ede17755bb714c9cb02fdc1fe2f5e8d6b134e06339b69830bf",
       "lineageDigest": "035e5909f47bb95119e536d82f354cc7512e0da519c8b3997e0ba7f3767d4c1c",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-trm-adjustment-disorders-course-severity-current-severity",
@@ -9261,10 +9261,10 @@
       "route": "/specifiers/specifier-trm-adjustment-disorders-course-severity-persistent-chronic-6-months-or-longer",
       "contentHash": "f8c58e333e61e53cfc468f3c392b36605bff8d1cd8b6472bb0f8fd6d2e93f628",
       "lineageDigest": "211c449861be9155bc4825e996ed67d92c89f824a040fb978311cac12ba5a12c",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-trm-adjustment-disorders-subtype-unspecified",
@@ -9338,10 +9338,10 @@
       "route": "/specifiers/specifier-trm-complex-ptsd-icd-11-features-with-disturbances-in-self-organisation-affective-dysregulation-negative-self-concept-disturbances-in-relationships",
       "contentHash": "a8e271133e615df4fa305114afc633758f92bb5abdb9d4af124ce0f7a8909613",
       "lineageDigest": "e1e39137728cdf93b7e822a11be0c2fabe9273b13d29283c5be79f2322f8755d",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-trm-complex-ptsd-icd-11-severity-current-severity",
@@ -9349,10 +9349,10 @@
       "route": "/specifiers/specifier-trm-complex-ptsd-icd-11-severity-current-severity",
       "contentHash": "21a561449c04f381cff27b7eda3261cf37820834e8f1be756e373748820a5168",
       "lineageDigest": "f8a2e826d822cad38e088c844aad74ebc57c667809f167410738c904cde86951",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-trm-disinhibited-social-engagement-disorder-course-severity-current-severity-mild-moderate-severe",
@@ -9382,10 +9382,10 @@
       "route": "/specifiers/specifier-trm-post-traumatic-stress-disorder-features-with-delayed-expression-full-criteria-not-met-until-at-least-6-months-after-the-event",
       "contentHash": "2b5e17d4eed2deb928e891ea0568d13608a052a01a1358c958de370673889901",
       "lineageDigest": "e56522afd9c5b9fc466c86addd9e37bff90a9b87d826b523025444aa5f04bbce",
-      "validationStatus": "locally_reviewed",
+      "validationStatus": "unverified",
       "sourceStatus": "current",
-      "eligible": true,
-      "exclusionReason": null
+      "eligible": false,
+      "exclusionReason": "validation_unverified"
     },
     {
       "logicalId": "specifiers:specifier-trm-post-traumatic-stress-disorder-features-with-dissociative-symptoms-depersonalisation-derealisation",
@@ -11896,5 +11896,5 @@
       "exclusionReason": null
     }
   ],
-  "staticManifestDigest": "c3248f125fb467f3092cacb857d63dd37030f7eb6319b716314612506c8adde1"
+  "staticManifestDigest": "4f448d4ad4b38b67d98e63a885de3b51365d9843f088f6b6bf48ac2ee184945d"
 }
