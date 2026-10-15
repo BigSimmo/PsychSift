@@ -225,7 +225,7 @@ export function checkDecisions({ repoRoot, dir = DECISIONS_DIR } = {}) {
 /** Read the retired-rules list loosely: only ids and decision pointers matter here. */
 function readRetiredRules(repoRoot) {
   const file = path.join(repoRoot, RETIRED_RULES_FILE);
-  if (!fs.existsSync(file)) return null;
+  if (!fs.existsSync(file)) return [];
   try {
     const data = JSON.parse(fs.readFileSync(file, "utf8"));
     return Array.isArray(data?.rules) ? data.rules : [];
@@ -248,7 +248,6 @@ function checkLinks({ repoRoot, dir, entries, errors }) {
     }
   }
   const rules = readRetiredRules(repoRoot);
-  if (rules === null) return;
   const byId = new Map(rules.filter((rule) => rule?.id).map((rule) => [rule.id, rule]));
   for (const entry of entries) {
     const file = `${dir}/${entry.fileName}`;
