@@ -75,18 +75,23 @@ export function useDashboardLibraryState() {
     batchesRef.current = batches;
   }, [batches]);
 
-  /** Clears everything the signed-in user loaded, on sign out or expiry. */
-  const resetForSignOut = useCallback(() => {
-    refreshInFlightRef.current = null;
+  /** Empties the document, job, batch and quality lists. */
+  const clearLibraryLists = useCallback(() => {
     setDocuments([]);
     setDocumentsPagination(null);
     setJobs([]);
     setBatches([]);
     setQualityItems([]);
+  }, []);
+
+  /** Clears everything the signed-in user loaded, on sign out or expiry. */
+  const resetForSignOut = useCallback(() => {
+    refreshInFlightRef.current = null;
+    clearLibraryLists();
     dashboardDataLoadedRef.current = false;
     administrationDataLoadedRef.current = false;
     setUserStartedIngestion(false);
-  }, []);
+  }, [clearLibraryLists]);
 
   return {
     refreshInFlightRef,
@@ -116,6 +121,7 @@ export function useDashboardLibraryState() {
     setUserStartedIngestion,
     nextRefreshDelayMs,
     setNextRefreshDelayMs,
+    clearLibraryLists,
     resetForSignOut,
   };
 }
@@ -197,6 +203,7 @@ export function useDashboardLibraryRefresh({
     setUserStartedIngestion,
     nextRefreshDelayMs,
     setNextRefreshDelayMs,
+    clearLibraryLists,
   } = library;
 
   const refresh: (options?: RefreshOptions) => Promise<void> = useCallback(
@@ -240,11 +247,7 @@ export function useDashboardLibraryRefresh({
           setLocalProjectReady(false);
           setApiUnavailable(true);
           setSetupWarning(unsafeLocalProjectMessage(localIdentity));
-          setDocuments([]);
-          setDocumentsPagination(null);
-          setJobs([]);
-          setBatches([]);
-          setQualityItems([]);
+          clearLibraryLists();
           setIndexingActive(false);
           setNextRefreshDelayMs(null);
           return;
@@ -283,11 +286,7 @@ export function useDashboardLibraryRefresh({
         }
 
         if (!nextDemoMode && !canUsePrivateApis) {
-          setDocuments([]);
-          setDocumentsPagination(null);
-          setJobs([]);
-          setBatches([]);
-          setQualityItems([]);
+          clearLibraryLists();
           setIndexingActive(routeIndexingActive);
           setNextRefreshDelayMs(routePollDelayMs);
           return;
@@ -335,11 +334,7 @@ export function useDashboardLibraryRefresh({
           (qualityResponse !== null && qualityResponse.status === 401)
         ) {
           markSessionExpired();
-          setDocuments([]);
-          setDocumentsPagination(null);
-          setJobs([]);
-          setBatches([]);
-          setQualityItems([]);
+          clearLibraryLists();
           setIndexingActive(false);
           setNextRefreshDelayMs(null);
           return;
@@ -422,6 +417,7 @@ export function useDashboardLibraryRefresh({
       authorizationHeader,
       batchesRef,
       canUsePrivateApis,
+      clearLibraryLists,
       clientDemoMode,
       dashboardDataLoadedRef,
       documentsRef,

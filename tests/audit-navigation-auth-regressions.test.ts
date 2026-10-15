@@ -380,7 +380,7 @@ describe("audit navigation and auth regressions", () => {
       { label: "private polling capability" },
     );
     expect(pollingContract).toContain("if (!nextDemoMode && !canUsePrivateApis) {");
-    expect(pollingContract).toContain("setDocuments([]);");
+    expect(pollingContract).toContain("clearLibraryLists();");
     expect(pollingContract).toContain("return;");
 
     // The label mutation moved out of ClinicalDashboard with the other per-document actions; the
