@@ -257,7 +257,7 @@
     },
     {
       "title": "Suicidal Behaviour",
-      "description": "Cross-cutting code: Current, in early remission, in sustained remission.",
+      "description": "DSM-5-TR codes suicidal behaviour as a condition that may be a focus of clinical attention: current (part of the present presentation) or history of (earlier in life). Section III proposes suicidal behaviour disorder with two specifiers only: current (not more than 12 months since the last attempt) and in early remission (12 to 24 months since the last attempt). There is no sustained remission specifier.",
       "review": {
         "rowKey": "universal:suicidal-behaviour",
         "contentHash": "c326aad1",
@@ -272,7 +272,7 @@
     },
     {
       "title": "Nonsuicidal Self-Injury",
-      "description": "Cross-cutting code: Current, in early remission, in sustained remission.",
+      "description": "DSM-5-TR codes nonsuicidal self-injury as a condition that may be a focus of clinical attention: current (part of the present presentation) or history of (earlier in life). Section III proposes nonsuicidal self-injury disorder with no remission specifiers.",
       "review": {
         "rowKey": "universal:nonsuicidal-self-injury",
         "contentHash": "819614e9",
@@ -5152,8 +5152,8 @@
                 {
                   "label": "Current severity",
                   "definition": {
-                    "meaning": "For Complex PTSD (ICD-11), current severity refers to current burden across PTSD symptom burden plus affect dysregulation, negative self-concept, relationship disturbance, impairment, and safety concerns.",
-                    "clinicalNote": "Rate the current burden using PTSD symptom burden plus affect dysregulation, negative self-concept, relationship disturbance, impairment, and safety concerns.",
+                    "meaning": "ICD-11 has no formal severity qualifier for Complex PTSD. Describe current severity clinically, using the burden of the core PTSD symptoms and of the three disturbances in self-organisation (affect dysregulation, negative self-concept and relationship disturbance), the degree of functional impairment and any safety concerns.",
+                    "clinicalNote": "Record this as a clinical description, not as a coded ICD-11 qualifier.",
                     "sourceFamily": "WHO ICD-11 CDDR/MMS",
                     "status": "defined"
                   },
@@ -5725,9 +5725,9 @@
                 {
                   "label": "Persistent (more than 6 months)",
                   "definition": {
-                    "meaning": "For Somatic Symptom Disorder, \"Persistent (more than 6 months)\" uses the stated threshold: more than 6 months.",
-                    "clinicalNote": "This is a duration threshold; current impairment, risk, and recurrence still need separate clinical documentation.",
-                    "sourceFamily": "Dataset threshold",
+                    "meaning": "For Somatic Symptom Disorder, \"persistent\" is specified when the course is characterised by severe symptoms, marked impairment and long duration (more than 6 months). Duration alone is not enough, because the diagnosis itself usually requires more than 6 months.",
+                    "clinicalNote": "Document severity and impairment as well as duration when using this specifier.",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6658,7 +6658,7 @@
         },
         {
           "name": "Bulimia Nervosa",
-          "icd11Context": "ICD-11 (6B81): Severity based on frequency.",
+          "icd11Context": "ICD-11 (6B81): no severity qualifiers. The frequency bands are DSM-5-TR specifiers.",
           "groups": [
             {
               "label": "Course/Severity",
@@ -6700,9 +6700,9 @@
                 {
                   "label": "Mild (1-3 episodes/week)",
                   "definition": {
-                    "meaning": "For Bulimia Nervosa, \"Mild (1-3 episodes/week)\" uses the stated threshold: 1-3 episodes/week.",
+                    "meaning": "For Bulimia Nervosa, \"Mild (1-3 episodes/week)\" means an average of 1 to 3 episodes of inappropriate compensatory behaviour per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, compensatory behaviours, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6720,9 +6720,9 @@
                 {
                   "label": "Moderate (4-7 episodes/week)",
                   "definition": {
-                    "meaning": "For Bulimia Nervosa, \"Moderate (4-7 episodes/week)\" uses the stated threshold: 4-7 episodes/week.",
+                    "meaning": "For Bulimia Nervosa, \"Moderate (4-7 episodes/week)\" means an average of 4 to 7 episodes of inappropriate compensatory behaviour per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, compensatory behaviours, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6740,9 +6740,9 @@
                 {
                   "label": "Severe (8-13 episodes/week)",
                   "definition": {
-                    "meaning": "For Bulimia Nervosa, \"Severe (8-13 episodes/week)\" uses the stated threshold: 8-13 episodes/week.",
+                    "meaning": "For Bulimia Nervosa, \"Severe (8-13 episodes/week)\" means an average of 8 to 13 episodes of inappropriate compensatory behaviour per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, compensatory behaviours, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6760,9 +6760,9 @@
                 {
                   "label": "Extreme (14 or more episodes/week)",
                   "definition": {
-                    "meaning": "For Bulimia Nervosa, \"Extreme (14 or more episodes/week)\" uses the stated threshold: 14 or more episodes/week.",
+                    "meaning": "For Bulimia Nervosa, \"Extreme (14 or more episodes/week)\" means an average of 14 or more episodes of inappropriate compensatory behaviour per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, compensatory behaviours, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6783,7 +6783,7 @@
         },
         {
           "name": "Binge-Eating Disorder",
-          "icd11Context": "ICD-11 (6B82): Severity based on frequency.",
+          "icd11Context": "ICD-11 (6B82): no severity qualifiers. The frequency bands are DSM-5-TR specifiers.",
           "groups": [
             {
               "label": "Course/Severity",
@@ -6825,9 +6825,9 @@
                 {
                   "label": "Mild (1-3 episodes/week)",
                   "definition": {
-                    "meaning": "For Binge-Eating Disorder, \"Mild (1-3 episodes/week)\" uses the stated threshold: 1-3 episodes/week.",
+                    "meaning": "For Binge-Eating Disorder, \"Mild (1-3 episodes/week)\" means an average of 1 to 3 binge-eating episodes per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6845,9 +6845,9 @@
                 {
                   "label": "Moderate (4-7 episodes/week)",
                   "definition": {
-                    "meaning": "For Binge-Eating Disorder, \"Moderate (4-7 episodes/week)\" uses the stated threshold: 4-7 episodes/week.",
+                    "meaning": "For Binge-Eating Disorder, \"Moderate (4-7 episodes/week)\" means an average of 4 to 7 binge-eating episodes per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6865,9 +6865,9 @@
                 {
                   "label": "Severe (8-13 episodes/week)",
                   "definition": {
-                    "meaning": "For Binge-Eating Disorder, \"Severe (8-13 episodes/week)\" uses the stated threshold: 8-13 episodes/week.",
+                    "meaning": "For Binge-Eating Disorder, \"Severe (8-13 episodes/week)\" means an average of 8 to 13 binge-eating episodes per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -6885,9 +6885,9 @@
                 {
                   "label": "Extreme (14 or more episodes/week)",
                   "definition": {
-                    "meaning": "For Binge-Eating Disorder, \"Extreme (14 or more episodes/week)\" uses the stated threshold: 14 or more episodes/week.",
+                    "meaning": "For Binge-Eating Disorder, \"Extreme (14 or more episodes/week)\" means an average of 14 or more binge-eating episodes per week. Severity may be raised to reflect other symptoms and the degree of functional disability.",
                     "clinicalNote": "This is a frequency-based severity anchor; also document impairment, medical risk, and safety concerns where relevant.",
-                    "sourceFamily": "Dataset threshold",
+                    "sourceFamily": "DSM-5-TR classification paraphrase",
                     "status": "defined"
                   },
                   "definitionStatus": "defined",
@@ -7150,7 +7150,7 @@
         },
         {
           "name": "Hypersomnolence Disorder",
-          "icd11Context": "ICD-11 (7A20): Idiopathic hypersomnia.",
+          "icd11Context": "ICD-11 (7A21): Idiopathic hypersomnia. The course and severity bands are DSM-5-TR specifiers.",
           "groups": [
             {
               "label": "Course",
@@ -10172,8 +10172,8 @@
                 {
                   "label": "Current severity",
                   "definition": {
-                    "meaning": "For Gaming Disorder (ICD-11), current severity refers to current burden across loss of control, persistence, craving or preoccupation, harms, impairment, and relapse/remission status.",
-                    "clinicalNote": "Rate the current burden using loss of control, persistence, craving or preoccupation, harms, impairment, and relapse/remission status.",
+                    "meaning": "ICD-11 has no formal severity qualifier for Gaming Disorder (6C51). Its only qualifiers are predominantly online and predominantly offline. Describe current severity clinically, using impaired control, increasing priority given to gaming, continuation despite harm, and the degree of functional impairment.",
+                    "clinicalNote": "Record this as a clinical description, not as a coded ICD-11 qualifier.",
                     "sourceFamily": "WHO ICD-11 CDDR/MMS",
                     "status": "defined"
                   },
@@ -10202,7 +10202,7 @@
       "disorders": [
         {
           "name": "Delirium",
-          "icd11Context": "ICD-11 (6D70): Specify acute vs persistent, and activity level.",
+          "icd11Context": "ICD-11 (6D70): delirium is coded by cause, for example due to a disease classified elsewhere or induced by a psychoactive substance. Acute versus persistent and activity level are DSM-5-TR specifiers.",
           "groups": [
             {
               "label": "Aetiology",
@@ -11992,8 +11992,8 @@
                 {
                   "label": "Current severity",
                   "definition": {
-                    "meaning": "For Gaming Disorder, current severity refers to current burden across loss of control, persistence, craving or preoccupation, harms, impairment, and relapse/remission status.",
-                    "clinicalNote": "Rate the current burden using loss of control, persistence, craving or preoccupation, harms, impairment, and relapse/remission status.",
+                    "meaning": "ICD-11 has no formal severity qualifier for Gaming Disorder (6C51). Its only qualifiers are predominantly online and predominantly offline. Describe current severity clinically, using impaired control, increasing priority given to gaming, continuation despite harm, and the degree of functional impairment.",
+                    "clinicalNote": "Record this as a clinical description, not as a coded ICD-11 qualifier.",
                     "sourceFamily": "WHO ICD-11 CDDR/MMS",
                     "status": "defined"
                   },
