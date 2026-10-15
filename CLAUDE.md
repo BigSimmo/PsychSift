@@ -33,6 +33,7 @@ its rules are in force whether or not you have opened it.
 | Test execution, focused/live, flake policy  | `docs/testing.md`                                                                                            |
 | Every maintained doc, categorised           | `docs/README.md`                                                                                             |
 | Outstanding work across sessions            | `docs/outstanding-issues.md` (`/issues`)                                                                     |
+| Owner decisions, and recording a new one    | `docs/decisions/README.md`                                                                                   |
 | Which area owns a file, and its key docs    | `docs/organisation/README.md` — the organisation map; `npm run check:organisation -- --files <path>`         |
 
 When adding to this file, add **orientation**. Policy belongs in `AGENTS.md`; deep structure

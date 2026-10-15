@@ -12,6 +12,14 @@
 //             for tidying and never fails a check (the organisation framework's "moving a file
 //             never turns a PR red" rule).
 //
+// Links between records are checked too, because a broken link is how a decision goes stale:
+//   - "superseded by <file>" on a Status line must name an entry that exists in this folder;
+//   - a "- **Retires:** `<id>`" line must name a rule in docs/organisation/retired-rules.json;
+//   - a retired rule's "decision" field must name an entry that exists in this folder.
+// An entry may cite "- **Source:** the owner, in chat" when the owner gave the decision in a
+// conversation and no repository file records it yet. Those are listed as unanchored (never an
+// error) so the entry can be pointed at its real source once the work lands.
+//
 // Exit codes follow scripts/check-organisation.mjs: 0 no errors (warnings may remain), 1 at least
 // one malformed entry, 2 the check could not run.
 import fs from "node:fs";
@@ -24,6 +32,11 @@ export const ENTRY_NAME = /^(\d{4}-\d{2}-\d{2})-([a-z0-9]+(?:-[a-z0-9]+)*)\.md$/
 
 const STATUS_LINE = /^- \*\*Status:\*\* decided (\d{4}-\d{2}-\d{2})\b(.*)$/m;
 const SOURCE_LINE = /^- \*\*Source:\*\* `([^`]+)`, find "([^"]+)"\s*$/m;
+const CHAT_SOURCE_LINE = /^- \*\*Source:\*\* the owner, in chat\s*$/m;
+const RETIRES_LINE = /^- \*\*Retires:\*\* (.*)$/m;
+const RETIRES_ID = /^`([a-z0-9]+(?:-[a-z0-9]+)*)`$/;
+const SUPERSEDED_BY = /;\s*superseded by\s+`?([^`\s;]+)`?/;
+export const RETIRED_RULES_FILE = "docs/organisation/retired-rules.json";
 const TITLE_LINE = /^# Decision: (\S.*)$/m;
 const PENDING_INBOX = /^docs\/outstanding-issues-inbox\/([^/]+\.json)$/;
 
@@ -62,18 +75,48 @@ export function parseDecisionEntry(fileName, markdown) {
   if (!status) problems.push('missing the "- **Status:** decided YYYY-MM-DD" line');
   else if (nameDate && date !== nameDate) problems.push(`the status date ${date} differs from the name's ${nameDate}`);
 
-  const source = SOURCE_LINE.exec(markdown);
+  const supersededBy = status ? (SUPERSEDED_BY.exec(status[2])?.[1] ?? null) : null;
+
+  const fromChat = CHAT_SOURCE_LINE.test(markdown);
+  const source = fromChat ? null : SOURCE_LINE.exec(markdown);
   const sourcePath = source?.[1] ?? null;
   const sourcePhrase = source?.[2]?.trim() ?? null;
-  if (!source) problems.push('missing the "- **Source:** `<path>`, find "<phrase>"" line');
-  else if (!isRepoRelative(sourcePath)) problems.push(`source ${sourcePath} is not a repository-relative path`);
+  if (!source && !fromChat)
+    problems.push('missing the "- **Source:** `<path>`, find "<phrase>"" line (or "- **Source:** the owner, in chat")');
+  else if (source && !isRepoRelative(sourcePath))
+    problems.push(`source ${sourcePath} is not a repository-relative path`);
+
+  const retires = [];
+  const retiresLine = RETIRES_LINE.exec(markdown);
+  if (retiresLine) {
+    for (const part of retiresLine[1].split(",")) {
+      const id = RETIRES_ID.exec(part.trim())?.[1];
+      if (id) retires.push(id);
+      else
+        problems.push(
+          `"Retires" must list retired-rule ids in backticks, comma separated; "${part.trim()}" is not one`,
+        );
+    }
+  }
 
   if (!markdown.includes(SOURCE_WINS)) problems.push(`missing the closing sentence "${SOURCE_WINS}"`);
 
   const summary = decisionSummary(markdown);
   if (!summary) problems.push("missing the decision itself: one or two plain sentences under the fields");
 
-  return { fileName, date, slug: name?.[2] ?? null, title, sourcePath, sourcePhrase, summary, problems };
+  return {
+    fileName,
+    date,
+    slug: name?.[2] ?? null,
+    title,
+    sourcePath,
+    sourcePhrase,
+    fromChat,
+    supersededBy,
+    retires,
+    summary,
+    problems,
+  };
 }
 
 /** The prose between the field list and the closing sentence. */
@@ -132,9 +175,10 @@ export function checkDecisions({ repoRoot, dir = DECISIONS_DIR } = {}) {
   const warnings = [];
   const entries = [];
   const records = [];
+  const unanchored = [];
   if (!fs.existsSync(absoluteDir)) {
     errors.push(`${dir}: the folder does not exist`);
-    return { entries, records, errors, warnings };
+    return { entries, records, errors, warnings, unanchored };
   }
   const names = fs
     .readdirSync(absoluteDir, { withFileTypes: true })
@@ -171,9 +215,67 @@ export function checkDecisions({ repoRoot, dir = DECISIONS_DIR } = {}) {
         );
       }
     }
+    if (entry.fromChat && entry.problems.length === 0) unanchored.push(file);
     entries.push(entry);
   }
-  return { entries, records, errors, warnings };
+  checkLinks({ repoRoot, dir, entries, errors });
+  return { entries, records, errors, warnings, unanchored };
+}
+
+/** Read the retired-rules list loosely: only ids and decision pointers matter here. */
+function readRetiredRules(repoRoot) {
+  const file = path.join(repoRoot, RETIRED_RULES_FILE);
+  if (!fs.existsSync(file)) return [];
+  try {
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    return Array.isArray(data?.rules) ? data.rules : [];
+  } catch {
+    // check:instructions reports a malformed list; here it simply has no ids to offer.
+    return [];
+  }
+}
+
+/**
+ * Every link between decision entries and retired rules must point at an entry that exists, and a
+ * retirement must be recorded both ways: the entry lists the rule under Retires and the rule's
+ * `decision` names that entry.
+ */
+function checkLinks({ repoRoot, dir, entries, errors }) {
+  const byName = new Map(entries.map((entry) => [entry.fileName, entry]));
+  for (const entry of entries) {
+    if (entry.supersededBy && !byName.has(entry.supersededBy)) {
+      errors.push(`${dir}/${entry.fileName}: superseded by ${entry.supersededBy}, which is not an entry in ${dir}`);
+    }
+  }
+  const rules = readRetiredRules(repoRoot);
+  const byId = new Map(rules.filter((rule) => rule?.id).map((rule) => [rule.id, rule]));
+  for (const entry of entries) {
+    const file = `${dir}/${entry.fileName}`;
+    for (const id of entry.retires) {
+      const rule = byId.get(id);
+      if (!rule) errors.push(`${file}: retires "${id}", which is not in ${RETIRED_RULES_FILE}`);
+      else if (rule.decision !== file)
+        errors.push(
+          typeof rule.decision === "string"
+            ? `${file}: retires "${id}", but that rule's decision points at ${rule.decision}`
+            : `${file}: retires "${id}", but that rule has no "decision" pointing back at this entry`,
+        );
+    }
+  }
+  for (const rule of rules) {
+    if (typeof rule?.decision !== "string") continue;
+    const target = rule.decision.startsWith(`${dir}/`) ? rule.decision.slice(dir.length + 1) : null;
+    const entry = target ? byName.get(target) : undefined;
+    if (!entry) {
+      errors.push(
+        `${RETIRED_RULES_FILE}: rule "${rule.id}" points at decision ${rule.decision}, which is not an entry in ${dir}`,
+      );
+    } else if (!entry.retires.includes(rule.id)) {
+      errors.push(
+        `${RETIRED_RULES_FILE}: rule "${rule.id}" points at decision ${rule.decision}, which does not list it under Retires`,
+      );
+    }
+  }
 }
 
 function main() {
@@ -191,9 +293,11 @@ function main() {
   } else {
     for (const error of result.errors) console.error(`error: ${error}`);
     for (const warning of result.warnings) console.warn(`warning: ${warning}`);
+    for (const file of result.unanchored)
+      console.log(`unanchored: ${file} cites the owner in chat; point it at the repository source once the work lands`);
     console.log(
       `decisions: ${result.entries.length} entries, ${result.records.length} full records, ` +
-        `${result.errors.length} errors, ${result.warnings.length} warnings`,
+        `${result.errors.length} errors, ${result.warnings.length} warnings, ${result.unanchored.length} unanchored`,
     );
   }
   return result.errors.length > 0 ? 1 : 0;
