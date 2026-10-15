@@ -9,7 +9,6 @@ import {
   type ProviderEgressDenialCode,
   type ProviderEgressPermit,
   type ProviderEgressPurpose,
-  // @ts-ignore -- Node's tsconfig rejects .ts import extensions that Deno requires; Deno accepts them, so expect-error would be unused there.
 } from "./document-ingress-safety.ts";
 
 declare const ingestionContextType: unique symbol;

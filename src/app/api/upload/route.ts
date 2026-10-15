@@ -16,7 +16,7 @@ import { planDocumentName, type DocumentNamePlan, type DocumentNameSupabase } fr
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { probeSupabaseHealth } from "@/lib/supabase/health";
-import { createSupabaseBearerServerClient, createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   assertTrustedAdministratorAssurance,
   assertTrustedDocumentStoragePath,
@@ -47,10 +47,6 @@ const correlationSchema = z
   .string()
   .uuid()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-
-function bearerAccessToken(request: Request) {
-  return request.headers.get("authorization")?.match(/^Bearer\s+([^\s]+)$/i)?.[1] ?? null;
-}
 
 function parseAuthority(value: string): TrustedAdmissionAuthority {
   try {
@@ -191,10 +187,14 @@ export async function POST(request: Request) {
     const administrator = await requireAuthenticatedUser(request, adminSupabase, { administrator: true });
     const uploadOwnerId = administrator.id;
     cleanupOwnerId = uploadOwnerId;
-    const bearer = bearerAccessToken(request);
-    const userSupabase = bearer ? createSupabaseBearerServerClient(bearer) : await createSupabaseServerClient();
+    // The user-context client (MFA claims + admission RPC) comes from the SameSite session
+    // cookie only, never from an Authorization header. The CSRF fallback in `@/lib/api-csrf`
+    // admits header-less requests on the premise that the session cookie is the only credential
+    // a mutating route accepts (tests/api-csrf-premise.test.ts). Requiring the cookie session
+    // here, and binding its claims to the administrator resolved above, keeps that premise true.
+    const userSupabase = await createSupabaseServerClient();
     if (!userSupabase) throw new AuthenticationError("Authenticated administrator session is required.");
-    const { data: claimsData, error: claimsError } = await userSupabase.auth.getClaims(bearer ?? undefined);
+    const { data: claimsData, error: claimsError } = await userSupabase.auth.getClaims();
     if (claimsError || !claimsData?.claims)
       throw new AuthenticationError("Verified administrator claims are required.");
     try {
@@ -635,7 +635,9 @@ export async function POST(request: Request) {
       error.kind === "rejected" &&
       /admission_replay_conflict|document_identity_conflict/.test(error.message)
     ) {
-      return NextResponse.json({ error: "Idempotency-Key conflicts with the admitted request." }, { status: 409 });
+      return publicErrorResponse("Idempotency-Key conflicts with the admitted request.", 409, {
+        code: "admission_replay_conflict",
+      });
     }
 
     return jsonError(error);

@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 import { env } from "@/lib/env";
@@ -59,17 +58,5 @@ export async function createSupabaseServerClient(options: SupabaseServerClientOp
         }
       },
     },
-  });
-}
-
-/** Retain an already-validated bearer identity on every user-context RPC. */
-export function createSupabaseBearerServerClient(accessToken: string) {
-  const token = accessToken.trim();
-  const config = publicSupabaseConfig();
-  if (!config || !token || /\s/.test(token))
-    throw new Error("A valid bearer-authenticated Supabase client is required.");
-  return createClient<Database>(config.url, config.key, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 }

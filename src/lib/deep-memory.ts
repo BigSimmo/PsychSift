@@ -1175,7 +1175,8 @@ async function upsertFencedDocumentDeepMemory(args: {
 
   // The RPC may have committed even when its response is lost. Never clean up
   // after invocation: committed rows now share the document generation, while
-  // genuinely staged leftovers remain invisible and are superseded later.
+  // genuinely staged leftovers remain invisible to retrieval. The fenced commit does
+  // not remove them; only the operator-run abandoned-generation cleanup does.
   const aliases = (modelProfile?.aliases ?? [])
     .filter((alias) => alias.confidence >= 0.65)
     .map((alias) => ({

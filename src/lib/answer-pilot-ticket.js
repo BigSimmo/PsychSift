@@ -8,6 +8,15 @@ const OWNER_ID = "3ea89594-b3a1-46b7-b570-33c198ce5524";
 const DOCUMENT_ID = "d69a6b9c-3e80-556a-b887-53d209238293";
 const PRICE_CARD_SHA256 = "A1BE62919DA8A18A5CF33177AF8C06F67CDC1ED607F7C6091D22ED47605CB77F";
 const ONE_HOUR_MS = 3_600_000;
+
+/**
+ * A ticket can only ever name this owner and document (parseTrustedTicket pins
+ * both). When a configured ticket is unreadable or expired, only requests that
+ * could belong to the pilot are refused; every other Answer keeps working.
+ */
+export function couldBelongToAnswerPilot(request) {
+  return request?.ownerId === OWNER_ID || request?.documentId === DOCUMENT_ID;
+}
 const CLAIM_WINDOW_SECONDS = 86_400;
 const expectedKeys = new Set([
   "version",

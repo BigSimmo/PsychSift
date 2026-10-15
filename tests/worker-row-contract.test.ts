@@ -12,9 +12,10 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 /**
- * A realistic `claim_ingestion_jobs` row. The top-level column list mirrors that function's
- * `returns table (...)` in supabase/schema.sql; `documents` is `to_jsonb(d.*)`, so the
- * fixture carries the full documents column set including fields the contract leaves unpinned.
+ * A realistic `claim_ingestion_jobs` row. The fenced claim RPC in supabase/schema.sql returns
+ * `setof jsonb`: the ingestion_jobs row (including its durable lease fence columns) plus
+ * `job_kind` and `documents`; `documents` is `to_jsonb(d.*)`, so the fixture carries the full
+ * documents column set including fields the contract leaves unpinned.
  */
 function claimedDocuments(overrides: Record<string, unknown> = {}) {
   return {
@@ -54,6 +55,13 @@ function claimedRow(overrides: Record<string, unknown> = {}) {
     max_attempts: 3,
     locked_at: "2026-08-17T00:00:00.000Z",
     locked_by: "worker-host-123",
+    lease_token: "2c4d6e8f-9999-4aaa-8bbb-000000000009",
+    lease_expected_generation_id: null,
+    lease_write_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
+    lease_authority_digest: `sha256:${"a".repeat(64)}`,
+    lease_expires_at: "2026-08-17T00:15:00.000Z",
+    lease_duration_seconds: 900,
+    job_kind: "document",
     documents: claimedDocuments(),
     ...overrides,
   };
@@ -64,6 +72,7 @@ function enrichmentChunk(overrides: Record<string, unknown> = {}) {
   return {
     id: "9c2f0d10-3333-4aaa-8bbb-000000000003",
     document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
+    index_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
     page_number: 14,
     chunk_index: 7,
     section_heading: "Lithium monitoring",
@@ -82,16 +91,23 @@ function enrichmentChunk(overrides: Record<string, unknown> = {}) {
 function enrichmentImage(overrides: Record<string, unknown> = {}) {
   return {
     id: "5e6f7a80-7777-4aaa-8bbb-000000000007",
+    document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
+    index_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
     page_number: 15,
     caption: "Lithium monitoring schedule table",
     image_type: "clinical_table",
     labels: ["lithium", "monitoring"],
     source_kind: "embedded",
     clinical_relevance_score: 0.9,
-    metadata: {},
+    metadata: { index_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006" },
     ...overrides,
   };
 }
+
+const enrichmentAuthority = {
+  documentId: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
+  indexGenerationId: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
+};
 
 describe("claimed job row contract", () => {
   it("accepts a realistic claimed row without mutating it", () => {
@@ -218,13 +234,10 @@ describe("claimed batch partition", () => {
     expect(accepted[0]).toBe(good);
     expect(rejected).toHaveLength(1);
     expect(rejected[0].error).toBeInstanceOf(WorkerRowShapeError);
-    expect(rejected[0].failable).toEqual({
-      id: "8e6f2b01-8888-4aaa-8bbb-000000000008",
-      document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
-      batch_id: null,
-      ownerId: "0b6c9e21-5555-4aaa-8bbb-000000000005",
-      documentStatus: "failed",
-    });
+    expect(rejected[0].error.issues.join("\n")).toContain("documents.metadata");
+    // Fenced leases: a rejected row carries no trustworthy fence, so it authorizes no
+    // mutation at all and is left to bounded lease recovery.
+    expect(rejected[0].failable).toBeNull();
   });
 
   it("yields no failable identity when even the job id is untrustworthy", () => {
@@ -233,27 +246,36 @@ describe("claimed batch partition", () => {
     expect(rejected[0].failable).toBeNull();
   });
 
-  it("tolerates a missing batch_id key when building the failable identity", () => {
+  it("rejects a row missing its batch_id key without inventing a failable identity", () => {
     const bad: Record<string, unknown> = claimedRow({ attempt_count: "1" });
     delete bad.batch_id;
-    const { rejected } = partitionClaimedJobRows([bad]);
-    expect(rejected[0].failable).toMatchObject({ batch_id: null });
+    const { accepted, rejected } = partitionClaimedJobRows([bad]);
+    expect(accepted).toEqual([]);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].error.issues.join("\n")).toMatch(/attempt_count/);
+    expect(rejected[0].failable).toBeNull();
   });
 
   it("preserves an indexed document status so a bad reindex row cannot demote a live index", () => {
-    // Mirrors preservedStatus in worker/behavior.ts: atomic reindex failures keep the
-    // document indexed rather than blanking a live index.
+    // Fenced leases: a rejected reindex row yields no mutation authority at all, so nothing
+    // can write a failed status over the live indexed document.
     const bad = claimedRow({
       attempt_count: "1",
       documents: claimedDocuments({ status: "indexed" }),
     });
-    const { rejected } = partitionClaimedJobRows([bad]);
-    expect(rejected[0].failable).toMatchObject({ documentStatus: "indexed" });
+    const { accepted, rejected } = partitionClaimedJobRows([bad]);
+    expect(accepted).toEqual([]);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].error).toBeInstanceOf(WorkerRowShapeError);
+    expect(rejected[0].failable).toBeNull();
   });
 
-  it("falls back to a null owner and failed status when documents is unreadable", () => {
-    const { rejected } = partitionClaimedJobRows([claimedRow({ documents: "corrupt" })]);
-    expect(rejected[0].failable).toMatchObject({ ownerId: null, documentStatus: "failed" });
+  it("yields no failable identity when documents is unreadable", () => {
+    const { accepted, rejected } = partitionClaimedJobRows([claimedRow({ documents: "corrupt" })]);
+    expect(accepted).toEqual([]);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].error.issues.join("\n")).toContain("documents");
+    expect(rejected[0].failable).toBeNull();
   });
 });
 
@@ -266,6 +288,8 @@ describe("enrichment read-back contracts", () => {
 
     expect(() => assertEnrichmentChunkRows(chunks)).not.toThrow();
     expect(() => assertEnrichmentImageRows(images)).not.toThrow();
+    expect(() => assertEnrichmentChunkRows(chunks, enrichmentAuthority)).not.toThrow();
+    expect(() => assertEnrichmentImageRows(images, enrichmentAuthority)).not.toThrow();
 
     expect(chunks).toEqual(chunksBefore);
     expect((chunks as unknown[])[0]).toBe(firstChunkReference);

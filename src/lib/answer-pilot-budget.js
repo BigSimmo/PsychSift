@@ -9,7 +9,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { PublicApiError } from "@/lib/http";
 import { createWireBudgetGuard } from "@/lib/answer-wire-budget-guard";
-import { loadServerAnswerPilotTicket } from "@/lib/answer-pilot-ticket";
+import { couldBelongToAnswerPilot, loadServerAnswerPilotTicket } from "@/lib/answer-pilot-ticket";
 
 const budgetScope = new AsyncLocalStorage();
 const generationScope = new AsyncLocalStorage();
@@ -89,7 +89,12 @@ export async function runAnswerWithPilotBudget(request, answerWork) {
   try {
     ticket = await loadServerAnswerPilotTicket();
   } catch {
-    throw new AnswerPilotBudgetError("answer_pilot_ticket_load_failed");
+    // An expired or malformed ticket left in configuration must not take Answer
+    // down for everyone. Requests that could belong to the pilot still fail
+    // closed, so an expired pilot can never dispatch outside its guard.
+    if (couldBelongToAnswerPilot(request)) throw new AnswerPilotBudgetError("answer_pilot_ticket_load_failed");
+    console.warn("answer_pilot_ticket_unusable: unrelated request answered without the pilot guard");
+    return answerWork();
   }
   if (!ticket) return answerWork();
   const identity = pilotIdentityMatches(ticket, request);

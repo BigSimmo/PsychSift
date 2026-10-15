@@ -173,8 +173,20 @@ describe("privacy readiness contract", () => {
 
   it("fails release closed on the remaining human and environment blockers", () => {
     const releaseErrors = validatePrivacyReadiness(manifest, { release: true, now: REGISTER_NOW });
-    expect(releaseErrors).toContain("PRIV-LEGAL-RAILWAY-DPA: release-blocking status pending");
-    expect(releaseErrors.filter((error: string) => error.includes("release-blocking status"))).toHaveLength(6);
+    // 5 Oct 2026: the OpenAI standard-agreement DPA and the executed Railway DPA were recorded
+    // verified on attributed external evidence (docs/governance/*-2026-10-05.md), leaving four
+    // human/environment blockers. Each remaining one is pinned so none can silently clear.
+    expect(releaseErrors).toEqual(
+      expect.arrayContaining([
+        "PRIV-PROVIDER-OPENAI-ZDR: release-blocking status pending",
+        "PRIV-LEGAL-APP8-CROSS-BORDER-BASIS: release-blocking status pending",
+        "PRIV-LEGAL-APP1-APP5-NOTICE: release-blocking status pending",
+        "PRIV-CLINICAL-PHI-MINIMISATION: release-blocking status partial",
+      ]),
+    );
+    expect(releaseErrors.filter((error: string) => error.includes("release-blocking status"))).toHaveLength(4);
+    expect(releaseErrors).not.toContain("PRIV-LEGAL-RAILWAY-DPA: release-blocking status pending");
+    expect(releaseErrors).not.toContain("PRIV-LEGAL-OPENAI-DPA: release-blocking status pending");
     expect(releaseErrors).not.toContain("PRIV-PROVIDER-PRODUCTION-HMAC-SECRET: release-blocking status partial");
     expect(releaseErrors).not.toContain("PRIV-PROVIDER-RETENTION-SCHEDULE-PARITY: release-blocking status partial");
     expect(packageJson.scripts["check:production-readiness"]).toContain("check:privacy-readiness:release");
@@ -202,7 +214,17 @@ describe("privacy readiness contract", () => {
     expect(byId.get("PRIV-PROVIDER-OPENAI-ZDR")).toMatchObject({
       externalEvidenceReference: expect.stringContaining("submitted and acknowledged by OpenAI"),
     });
-    expect(byId.get("PRIV-LEGAL-OPENAI-DPA")).toMatchObject({ status: "pending" });
+    // The OpenAI DPA is verified only on attributed external evidence, never on repository checks.
+    expect(byId.get("PRIV-LEGAL-OPENAI-DPA")).toMatchObject({
+      status: "verified",
+      verifiedByRole: "Authorised legal signatory",
+      externalEvidenceReference: expect.stringContaining("OPENAI-STD-20261005: owner-attested"),
+    });
+    expect(byId.get("PRIV-LEGAL-RAILWAY-DPA")).toMatchObject({
+      status: "verified",
+      verifiedByRole: "Authorised legal signatory",
+      externalEvidenceReference: expect.stringContaining("no sensitive-data suitability or release approval"),
+    });
     expect(byId.get("PRIV-PROVIDER-RETENTION-SCHEDULE-PARITY")).toMatchObject({
       status: "verified",
       verifiedByRole: "Database operations owner",

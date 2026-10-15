@@ -3,7 +3,6 @@ import {
   IngestionAttemptError,
   parseIngestionFence,
   type IngestionFence,
-  // @ts-ignore -- Node's tsconfig rejects .ts import extensions that Deno requires; Deno accepts them, so expect-error would be unused there.
 } from "../_shared/ingestion-attempt.ts";
 import {
   buildSourceAnchoredFallbackPayload,
@@ -16,21 +15,18 @@ import {
   type SourceAnchoredSummaryAuthority,
   type SourceAnchoredSummaryPayload,
   type PersistedSourceAnchoredSummaryProjection,
-  // @ts-ignore -- Node's tsconfig rejects .ts import extensions that Deno requires; Deno accepts them, so expect-error would be unused there.
 } from "../_shared/source-anchored-summary.ts";
 
 import {
   ProviderEgressDeniedError,
   type ProviderEgressBinding,
   type ProviderEgressPurpose,
-  // @ts-ignore -- Node's tsconfig rejects .ts import extensions that Deno requires; Deno accepts them, so expect-error would be unused there.
 } from "../_shared/document-ingress-safety.ts";
 import {
   assertIngestionProviderEgress,
   assertIngestionProviderEgressContextActive,
   IngestionProviderEgressRefusal,
   type IngestionProviderEgressContext,
-  // @ts-ignore -- Node's tsconfig rejects .ts import extensions that Deno requires; Deno accepts them, so expect-error would be unused there.
 } from "../_shared/ingestion-provider-egress.ts";
 
 export function edgeProviderEgressBinding(
