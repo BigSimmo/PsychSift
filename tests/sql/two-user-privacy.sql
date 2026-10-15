@@ -269,12 +269,10 @@ do $$ declare r record; begin
 end $$;
 
 -- Totals as the owner, before either doctor acts.
--- Known gap, recorded rather than hidden: these owner policies check only owner_id, not that the
--- parent document is yours. Browser roles have no grant on these tables (part 1), so nothing can
--- reach this today. The test fails if this list stops matching what the probe finds.
+-- Known gaps, recorded rather than hidden: tables whose owner policy checks owner_id but not that
+-- the parent document is yours. Empty since 20261015160000 tightened the last three. The test
+-- fails if this list stops matching what the probe finds.
 create temp table known_parent_document_gap(rel regclass primary key);
-insert into known_parent_document_gap values
-  ('public.document_labels'), ('public.document_memory_cards'), ('public.document_sections');
 create temp table parent_document_gap_seen(rel regclass primary key);
 grant select on known_parent_document_gap to authenticated;
 grant select, insert on parent_document_gap_seen to authenticated;
@@ -410,5 +408,5 @@ select pg_temp.assert_true(not exists (
   select string_agg(rel::text, ', ' order by rel::text) from parent_document_gap_seen), 'none'));
 
 select 'TWO_USER_PRIVACY_SQL_PASS: browser roles fail closed on every table, function allowlist, '
-  || 'admin functions refuse doctors, owner policies isolate two doctors (3 known parent-document gaps)' as result;
+  || 'admin functions refuse doctors, owner policies isolate two doctors' as result;
 rollback;
