@@ -16,7 +16,7 @@ import {
   candidateTableFactRowSchema,
   preparedRowSchema,
   retainedCandidateImages,
-} from "./candidate-chunks";
+} from "./candidate-row-contracts";
 import type { buildGenerationRetentionPacket } from "./generation-evidence";
 import type { ExtractedDocument } from "../src/lib/types";
 

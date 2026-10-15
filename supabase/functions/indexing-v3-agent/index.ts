@@ -6,7 +6,10 @@ import {
   assertIngestionProviderEgressContextActive,
   type IngestionProviderEgressContext,
 } from "../_shared/ingestion-provider-egress.ts";
-import { createUnavailableIngestionProviderEgressContext } from "../_shared/unavailable-ingestion-provider-egress.ts";
+import {
+  createUnavailableIngestionProviderEgressContext,
+  ingestionProviderEgressAvailability,
+} from "../_shared/unavailable-ingestion-provider-egress.ts";
 import {
   projectSourceAnchoredLabels,
   SOURCE_ANCHORED_MAX_CHUNKS,
@@ -1460,6 +1463,13 @@ Deno.serve({ port: Number(Deno.env.get("PORT") ?? "8000") }, async (req: Request
     }
     const unauthorized = await authorizeRequest(req);
     if (unauthorized) return unauthorized;
+
+    if (!ingestionProviderEgressAvailability.available) {
+      return Response.json(
+        { ok: false, error: ingestionProviderEgressAvailability.code, claimed: 0, processed: 0, failed: 0 },
+        { status: 503 },
+      );
+    }
 
     const url = new URL(req.url);
     const limit = parseAgentClaimLimit(url.searchParams.get("limit"));

@@ -5,6 +5,8 @@ import { extractDocument, parseExtractedDocumentPayload } from "@/lib/extractors
 import { validatePdfSourcePages } from "@/lib/extractors/pdf-source-provenance";
 import { boundedXlsxJson, inspectOriginalXlsxZip, xlsxCrc32 } from "@/lib/extractors/xlsx-original-zip";
 import { preflightOriginalXlsx } from "@/lib/extractors/xlsx-source-preflight";
+import * as xlsxContract from "@/lib/extractors/xlsx-source-contract";
+import * as legacyXlsxProvenance from "@/lib/extractors/xlsx-source-provenance";
 import {
   orderedXlsxReasons,
   xlsxFactsSha256,
@@ -57,6 +59,17 @@ const sourcePacket = (document: Awaited<ReturnType<typeof extract>>) =>
   xlsxPageSourceProvenanceSchema.parse(document.pages[0].metadata?.source_provenance);
 
 describe("bounded original XLSX source observations", () => {
+  it("preserves legacy schema and helper identities when sharing the lower source contract", () => {
+    const legacy = legacyXlsxProvenance as Record<string, unknown>;
+    const sharedPublicEntries = Object.entries(xlsxContract).filter(
+      ([name]) => name !== "sheetNamespaces" && name !== "relNamespaces",
+    );
+    expect(sharedPublicEntries.length).toBeGreaterThan(20);
+    for (const [name, value] of sharedPublicEntries) expect(legacy[name], name).toBe(value);
+    expect(legacy).not.toHaveProperty("sheetNamespaces");
+    expect(legacy).not.toHaveProperty("relNamespaces");
+  });
+
   it("traverses xmldom terminal text, CDATA, comment and processing-instruction nodes", async () => {
     const buffer = await sourceArchive(
       '\n<!-- synthetic terminal node --><?synthetic terminal?><row r="1"><c r="A1"><v><![CDATA[7]]></v></c></row>\n',

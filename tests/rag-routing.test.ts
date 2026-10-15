@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
   chooseAnswerRoute,
@@ -32,16 +33,44 @@ function source(overrides: Partial<SearchResult> = {}): SearchResult {
 
 describe("shadow query-plan orchestration", () => {
   it("threads query-plan identity through the real answer retrieval entrypoint", () => {
-    const source = readFileSync("src/lib/rag/rag.ts", "utf8");
-    const answerEntrypoint = source.indexOf("async function answerQuestionWithScopeUncoalesced");
-    const searchCall = source.indexOf("searchChunksWithTelemetry({", answerEntrypoint);
-    const searchCallEnd = source.indexOf("}),", searchCall);
-    const callSource = source.slice(searchCall, searchCallEnd);
+    const sourceFile = ts.createSourceFile(
+      "src/lib/rag/rag.ts",
+      readFileSync("src/lib/rag/rag.ts", "utf8"),
+      ts.ScriptTarget.Latest,
+      true,
+      ts.ScriptKind.TS,
+    );
+    const answerEntrypoint = sourceFile.statements.find(
+      (statement): statement is ts.FunctionDeclaration =>
+        ts.isFunctionDeclaration(statement) && statement.name?.text === "answerQuestionWithScopeUncoalesced",
+    );
+    expect(answerEntrypoint?.body).toBeDefined();
+    if (!answerEntrypoint?.body) throw new Error("Missing answer retrieval entrypoint");
 
-    expect(answerEntrypoint).toBeGreaterThan(-1);
-    expect(searchCall).toBeGreaterThan(answerEntrypoint);
-    expect(callSource).toContain("ragQueryPlanVersion: args.ragQueryPlanVersion");
-    expect(callSource).toContain("ragQueryPlanMode: args.ragQueryPlanMode");
+    const searchCalls: ts.CallExpression[] = [];
+    function visit(node: ts.Node) {
+      if (
+        ts.isCallExpression(node) &&
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "searchChunksWithTelemetry"
+      ) {
+        searchCalls.push(node);
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(answerEntrypoint.body);
+    expect(searchCalls).toHaveLength(1);
+    const searchArgs = searchCalls[0]?.arguments[0];
+    if (!searchArgs || !ts.isObjectLiteralExpression(searchArgs)) {
+      throw new Error("Missing answer retrieval argument object");
+    }
+    for (const field of ["ragQueryPlanVersion", "ragQueryPlanMode"]) {
+      const property = searchArgs.properties.find(
+        (entry): entry is ts.PropertyAssignment =>
+          ts.isPropertyAssignment(entry) && ts.isIdentifier(entry.name) && entry.name.text === field,
+      );
+      expect(property?.initializer.getText(sourceFile)).toBe(`args.${field}`);
+    }
   });
 
   it("keeps served variants identical while exposing only content-free shadow diagnostics", () => {

@@ -33,7 +33,7 @@ import {
   type XlsxSourceFacts,
   type XlsxStringRuns,
   type XlsxReasonCode,
-} from "./xlsx-source-provenance";
+} from "./xlsx-source-contract";
 
 const SS = new Set([
   "http://schemas.openxmlformats.org/spreadsheetml/2006/main",

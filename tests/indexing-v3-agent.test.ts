@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
+import { describe, expect, it, vi } from "vitest";
+import { ingestionProviderEgressAvailability } from "../supabase/functions/_shared/unavailable-ingestion-provider-egress";
 
 import { sourceFrom, sourceSegment } from "./helpers/source-contract";
 import {
@@ -189,7 +193,7 @@ describe("indexing-v3-agent behavior", () => {
     expect(edgeSource).toContain("metadata->>'source' = 'visual_intelligence'");
   });
 
-  it("replaces every generated enrichment family inside one database transaction", async () => {
+  it("replaces every generated enrichment family through one fenced database function", async () => {
     const edgeSource = String(
       await import("node:fs/promises").then((fs) =>
         fs.readFile(new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url), "utf8"),
@@ -200,16 +204,29 @@ describe("indexing-v3-agent behavior", () => {
         label: `indexing-v3-agent function ${name}`,
       });
 
-    for (const [name, nextName] of [
-      ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits"],
-      ["upsertSectionIndexUnits", "upsertVisualArtifacts"],
-      ["upsertVisualArtifacts", "upsertCoreEmbeddingFields"],
-      ["upsertCoreEmbeddingFields", "updateQuality"],
+    const schema = await import("node:fs/promises").then((fs) =>
+      fs.readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8"),
+    );
+    for (const [name, nextName, rpc] of [
+      ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits", "replace_indexing_v3_memory_cards"],
+      ["upsertSectionIndexUnits", "upsertVisualArtifacts", "replace_indexing_v3_sections"],
+      ["upsertVisualArtifacts", "upsertCoreEmbeddingFields", "replace_indexing_v3_visual_artifacts"],
+      ["upsertCoreEmbeddingFields", "updateQuality", "replace_indexing_v3_core_embeddings"],
     ]) {
       const body = functionBody(name, nextName);
-      expect(body).toContain("await sql.begin(async (tx) =>");
-      expect(body).toContain("await tx`");
-      expect(body.indexOf("delete from public.document_")).toBeLessThan(body.indexOf("insert into public.document_"));
+      expect(body).toContain(`await edgeMutation(job, "${rpc}"`);
+      expect(body).not.toMatch(/\b(?:delete from|insert into) public\.document_/i);
+      const replacement = sourceSegment(schema, `create or replace function public.${rpc}(`, "end $$;", {
+        label: `indexing-v3-agent atomic replacement ${rpc}`,
+      });
+      const fenceCheck = replacement.indexOf("public.assert_current_ingestion_attempt(p_fence,");
+      const deletion = replacement.indexOf("delete from public.document_");
+      const insertion = replacement.indexOf("insert into public.document_");
+      expect(fenceCheck).toBeGreaterThanOrEqual(0);
+      expect(deletion).toBeGreaterThan(fenceCheck);
+      expect(insertion).toBeGreaterThan(deletion);
+      expect(replacement).toContain("'indexing_v3_attempt_required'");
+      expect(replacement).not.toMatch(/exception\s+when/i);
     }
   });
 
@@ -220,9 +237,9 @@ describe("indexing-v3-agent behavior", () => {
   // which is exactly the arrangement the issue describes.
   //
   // This pins the ordering the refutation actually rests on. The `await embeddingBatch(...)`
-  // completes before `sql.begin` is entered, so an outage throws before any delete happens,
-  // and the delete and insert then share one transaction, so a failed insert rolls the
-  // delete back. Static source assertion like its neighbour, because index.ts is
+  // completes before the fenced replacement RPC, so an outage throws before any delete
+  // happens. The database function above performs the delete and insert atomically.
+  // Static source assertion like its neighbour, because index.ts is
   // Deno-runtime code Vitest cannot execute — worth saying plainly rather than implying
   // behavioural coverage that does not exist.
   it("calls OpenAI before it deletes anything, so an outage cannot empty a family", async () => {
@@ -244,10 +261,10 @@ describe("indexing-v3-agent behavior", () => {
     ]) {
       const body = functionBody(name, nextName);
       const embedding = body.indexOf("await embeddingBatch(");
-      const transaction = body.indexOf("await sql.begin(async (tx) =>");
+      const transaction = body.indexOf('await edgeMutation(job, "replace_indexing_v3_');
       expect(embedding, `${name} must call embeddingBatch`).toBeGreaterThanOrEqual(0);
-      expect(transaction, `${name} must open a transaction`).toBeGreaterThanOrEqual(0);
-      expect(embedding, `${name} must await OpenAI before opening the transaction`).toBeLessThan(transaction);
+      expect(transaction, `${name} must call the fenced replacement`).toBeGreaterThanOrEqual(0);
+      expect(embedding, `${name} must await OpenAI before the replacement`).toBeLessThan(transaction);
       // And no second embedding call inside the transaction, which would reintroduce the
       // reported failure mode for the part of the family written after it.
       expect(body.slice(transaction)).not.toContain("await embeddingBatch(");
@@ -324,6 +341,60 @@ describe("indexing-v3-agent behavior", () => {
 
 describe("indexing-v3-agent claimed-batch request loop (L13)", () => {
   type Job = { id: string };
+
+  it("refuses an unavailable adapter before claiming work while preserving method and authorization checks", async () => {
+    const source = readFileSync(new URL("../supabase/functions/indexing-v3-agent/index.ts", import.meta.url), "utf8");
+    const ast = ts.createSourceFile("index.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const serveCalls = ast.statements.flatMap((statement) => {
+      if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) return [];
+      const call = statement.expression;
+      return ts.isPropertyAccessExpression(call.expression) && call.expression.getText(ast) === "Deno.serve"
+        ? [call]
+        : [];
+    });
+    expect(serveCalls).toHaveLength(1);
+    const callback = serveCalls[0]!.arguments[1]!;
+    expect(ts.isArrowFunction(callback)).toBe(true);
+    const javascript = ts.transpileModule(`(${callback.getText(ast)})`, {
+      compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+    }).outputText;
+    const sql = vi.fn(() => {
+      throw new Error("claim must not run");
+    });
+    const processJob = vi.fn(() => {
+      throw new Error("processing must not run");
+    });
+    const markJobFailure = vi.fn(() => {
+      throw new Error("failure mutation must not run");
+    });
+    const authorizeRequest = vi.fn(async () => null as Response | null);
+    const handler = runInNewContext(javascript, {
+      Response,
+      isAllowedAgentMethod,
+      authorizeRequest,
+      ingestionProviderEgressAvailability,
+      sql,
+      processJob,
+      markJobFailure,
+    }) as (request: Request) => Promise<Response>;
+
+    expect((await handler(new Request("https://example.invalid/index", { method: "GET" }))).status).toBe(405);
+    expect(authorizeRequest).not.toHaveBeenCalled();
+    authorizeRequest.mockResolvedValueOnce(new Response("Unauthorized", { status: 401 }));
+    expect((await handler(new Request("https://example.invalid/index", { method: "POST" }))).status).toBe(401);
+    const unavailable = await handler(new Request("https://example.invalid/index", { method: "POST" }));
+    expect(unavailable.status).toBe(503);
+    expect(await unavailable.json()).toEqual({
+      ok: false,
+      error: "provider_egress_adapter_unavailable",
+      claimed: 0,
+      processed: 0,
+      failed: 0,
+    });
+    expect(sql).not.toHaveBeenCalled();
+    expect(processJob).not.toHaveBeenCalled();
+    expect(markJobFailure).not.toHaveBeenCalled();
+  });
 
   it("does not strand the rest of the claimed batch when recording one job's failure throws", async () => {
     const processed: string[] = [];

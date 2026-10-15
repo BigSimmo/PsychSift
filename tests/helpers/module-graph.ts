@@ -25,19 +25,21 @@ function sourceFiles() {
   return files;
 }
 
-export function parseModuleSource(sourceText: string) {
+export function parseModuleSource(sourceText: string, filePath = "fixture.tsx") {
   return parse(sourceText, {
     sourceType: "module",
     // @babel/parser 8 parses import attributes by default; the standalone
     // "importAttributes" plugin was removed (and is now a type error).
-    plugins: ["jsx", "typescript"],
+    // Plain TypeScript permits generic arrows without TSX's trailing comma.
+    // Match the file's language rather than parsing every .ts file as JSX.
+    plugins: /\.(?:ts|mts|cts)$/i.test(filePath) ? ["typescript"] : ["jsx", "typescript"],
   });
 }
 
-export function moduleSpecifiersFromSource(_filePath: string, sourceText: string) {
+export function moduleSpecifiersFromSource(filePath: string, sourceText: string) {
   const staticImports = new Set<string>();
   const dynamicImports = new Set<string>();
-  const source = parseModuleSource(sourceText);
+  const source = parseModuleSource(sourceText, filePath);
 
   for (const statement of source.program.body) {
     if (statement.type === "ImportDeclaration") {

@@ -41,7 +41,7 @@ export type ManagedNativeParentClosurePacket = {
 const refuse = (reason: string): never => {
   throw new Error(`managed_native_parent_closure_${reason}`);
 };
-const copy = <T,>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
+const copy = <T>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
 const same = (a: unknown, b: unknown) => generationEvidenceDigest(a) === generationEvidenceDigest(b);
 const key = (id: { family: string; key: string }) => `${id.family}:${id.key}`;
 const sorted = <T extends { family: string; rowId: string }>(rows: T[]) =>

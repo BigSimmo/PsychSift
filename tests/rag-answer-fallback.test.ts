@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import clozapineThresholdChunks from "./fixtures/clozapine-threshold-source-chunks.json";
 import lithiumLiveExcerpts from "./fixtures/lithium-monitoring-live-excerpts.json";
 import { citationFromResult } from "../src/lib/citations";
+import { legacyAnswerInstructionsCacheRevision } from "../src/lib/rag/rag-answer-instructions";
 import {
   answerRouteBudgetMs,
   answerRouteResultCanBeCached,
@@ -8012,7 +8013,9 @@ describe("P12A actual issued provider contract", () => {
       );
       expect(calls.length).toBeGreaterThan(0);
       for (const call of calls) {
-        expect(call.options.promptCacheKey).toBe(version);
+        expect(call.options.promptCacheKey).toBe(
+          candidate && adaptive ? version : `${version}:${legacyAnswerInstructionsCacheRevision}`,
+        );
         expect(call.schema.properties.answerSections.maxItems).toBe(sections);
         expect(String(call.options.instructions).includes("Follow the adaptive_answer contract")).toBe(
           candidate && adaptive,

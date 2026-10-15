@@ -56,6 +56,22 @@ function runtimeCycles(graph: Map<string, string[]>) {
 }
 
 describe("architecture boundaries", () => {
+  it("parses formatted TypeScript generic arrows while retaining their import edges", () => {
+    for (const file of ["fixture.ts", "fixture.mts"]) {
+      const parsed = moduleSpecifiersFromSource(
+        file,
+        'import { value } from "./runtime"; export const copy = <T>(input: T): T => input;',
+      );
+      expect([...parsed.staticImports]).toEqual(["./runtime"]);
+    }
+  });
+
+  it("retains JSX parsing for TSX without accepting JSX in plain TypeScript", () => {
+    const source = 'import { Widget } from "./widget"; export const render = () => <Widget />;';
+    expect([...moduleSpecifiersFromSource("fixture.tsx", source).staticImports]).toEqual(["./widget"]);
+    expect(() => moduleSpecifiersFromSource("fixture.ts", source)).toThrow();
+  });
+
   it("tracks statically resolvable dynamic imports", () => {
     const parsed = moduleSpecifiersFromSource(
       "fixture.ts",

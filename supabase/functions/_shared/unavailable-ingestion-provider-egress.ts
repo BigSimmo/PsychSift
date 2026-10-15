@@ -2,6 +2,12 @@
 import type { ProviderEgressBinding } from "./document-ingress-safety.ts";
 import { createIngestionProviderEgressContext } from "./ingestion-provider-egress.ts";
 
+/** This adapter cannot authorize dispatch; refuse before claiming work from its queue. */
+export const ingestionProviderEgressAvailability = Object.freeze({
+  available: false,
+  code: "provider_egress_adapter_unavailable",
+});
+
 /** Runtime has no trusted scanner adapter yet. Unknown observations never become clean findings. */
 export function createUnavailableIngestionProviderEgressContext(args: {
   binding: ProviderEgressBinding;
