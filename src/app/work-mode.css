@@ -2874,7 +2874,7 @@ html[data-work-frame] .app-toast-region {
   width: 4rem;
   height: 100%;
   overflow-y: auto;
-  padding: max(0.875rem, env(safe-area-inset-top)) 0 0.875rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) 0 0.75rem;
   border-right: 1px solid var(--border);
   background: var(--surface-lux, var(--surface));
   scrollbar-width: none;
@@ -2886,17 +2886,9 @@ html[data-work-frame] .app-toast-region {
   width: 2.25rem;
   height: 2.25rem;
   font-size: 0.75rem;
-}
-
-/* Signed in: initials on a calm grey disc, not a solid black (or, in dark
-   mode, glaring white) one. Signed out: the same soft "G" as the Clinical
-   rail and the side menu, so the account spot looks the same in every mode. */
-.work-rail__avatar[data-signed-in="true"] {
-  background: var(--text-muted);
-  color: var(--surface-raised);
-}
-
-.work-rail__avatar[data-signed-in="false"] {
+  font-weight: 700;
+  /* The same soft initial disc as the Clinical rail, signed in or not, so
+     the account spot looks the same in every mode. */
   border: 1px solid color-mix(in srgb, var(--clinical-accent-border) 60%, transparent);
   background: var(--clinical-accent-soft);
   color: var(--clinical-accent);
@@ -2916,6 +2908,24 @@ html[data-work-frame] .app-toast-region {
 .work-rail__spacer {
   flex: 1;
   min-height: 0.75rem;
+}
+
+/* The brand mark and the hairline rules, as on the Clinical rail: a 48 px
+   slot for the mark, and a 32 px rule between the groups. */
+.work-rail__brand {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+}
+
+.work-rail__rule {
+  flex: none;
+  width: 2rem;
+  height: 1px;
+  margin: calc(var(--spacing) * 1) 0;
+  background: var(--border);
 }
 
 /* A 48 px square: the tap target and the hover ground are the same box. */

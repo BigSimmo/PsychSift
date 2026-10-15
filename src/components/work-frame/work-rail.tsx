@@ -1,10 +1,11 @@
 "use client";
 
-import { Heart, SlidersHorizontal } from "lucide-react";
+import { Settings as SettingsIcon } from "lucide-react";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 
 import { SidebarAppearanceMenu, type SidebarIdentity } from "@/components/clinical-dashboard/ClinicalSidebar";
+import { BrandMark } from "@/components/clinical-dashboard/brand";
 import { rememberedWorkAreaPage, useWorkSideCounts } from "@/components/work-frame/work-frame-store";
 import { useNewWorkMode, useWorkModeRouteVisible } from "@/components/work-mode-launch/work-mode-launch-provider";
 import { appModeIcons } from "@/lib/app-mode-icons";
@@ -79,10 +80,11 @@ function WorkRailClinical() {
 
 /**
  * The tablet rail (owner pick "Burger and rail", 7 Oct 2026): from 768 px a
- * narrow column down the left edge with the way back to Clinical, the seven
- * work areas with what is waiting in each, then Favourites, Appearance,
- * Settings and your initial at the foot, the same order as the Clinical rail
- * (owner request, 15 Oct 2026). The menu button
+ * narrow column down the left edge, built like the Clinical rail (owner
+ * request, 15 Oct 2026: both slim rails match): the brand mark over a rule,
+ * the way back to Clinical where Clinical has New chat, the work areas with
+ * what is waiting in each, then a rule and Appearance, Settings and your
+ * initial at the foot. Favourites lives in the side menu, not here. The menu button
  * is hidden there, and the header's left slot stays free for the back arrow
  * on inner areas and form steps.
  */
@@ -99,7 +101,12 @@ export function WorkRail({
   const routeVisible = useWorkModeRouteVisible();
   return (
     <nav aria-label="Work areas" className="work-rail" data-testid="work-rail">
+      <span className="work-rail__brand" aria-hidden="true">
+        <BrandMark tone="emphasis" optical="chrome" className="h-7 w-7" />
+      </span>
+      <span className="work-rail__rule" aria-hidden="true" />
       <WorkRailClinical />
+      <span className="work-rail__rule" aria-hidden="true" />
       <ul className="work-rail__list">
         {WORK_SIDE_AREAS.filter((entry) => routeVisible(entry.href)).map((entry) => {
           const current = entry.id === currentArea;
@@ -135,20 +142,8 @@ export function WorkRail({
         })}
       </ul>
       <span className="work-rail__spacer" />
+      <span className="work-rail__rule" aria-hidden="true" />
       <ul className="work-rail__list">
-        <li>
-          <Link
-            href="/my-day/favourites"
-            className="work-rail__item"
-            title="Favourites"
-            data-testid="work-rail-favourites"
-          >
-            <span className="work-rail__pill" aria-hidden="true">
-              <Heart aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
-            </span>
-            <span className="work-rail__label">Favourites</span>
-          </Link>
-        </li>
         <li>
           <SidebarAppearanceMenu railClassName="work-rail__item" />
         </li>
@@ -161,7 +156,7 @@ export function WorkRail({
             data-testid="work-rail-settings"
           >
             <span className="work-rail__pill" aria-hidden="true">
-              <SlidersHorizontal aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
+              <SettingsIcon aria-hidden="true" className="size-icon-sm" strokeWidth={2} />
             </span>
             <span className="work-rail__label">Settings</span>
           </button>

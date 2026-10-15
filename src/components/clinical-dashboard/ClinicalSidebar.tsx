@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Sparkles,
   SunMedium,
+  SunMoon,
   Timer,
   type LucideIcon,
 } from "lucide-react";
@@ -706,7 +707,6 @@ export function SidebarAppearanceMenu({
     null,
   );
   const rail = Boolean(railClassName);
-  const PreferenceIcon = appearanceOptions.find((option) => option.value === preference)?.icon ?? MonitorCog;
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const firstItemRef = useRef<HTMLButtonElement>(null);
@@ -789,10 +789,10 @@ export function SidebarAppearanceMenu({
         title={rail ? `Appearance: ${appearanceLabel(preference)}` : undefined}
       >
         {rail ? (
-          <RailItemBody icon={PreferenceIcon} label="Appearance" />
+          <RailItemBody icon={SunMoon} label="Appearance" />
         ) : (
           <>
-            <SunMedium aria-hidden="true" className="h-4 w-4 shrink-0" />
+            <SunMoon aria-hidden="true" className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1 text-left">Appearance</span>
             <span className="text-xs font-medium text-[color:var(--text-muted)]">{appearanceLabel(preference)}</span>
             <ChevronRight
@@ -1377,7 +1377,6 @@ function ClinicalCollapsedRail({
   collapseLocked,
   identity,
   activeMode,
-  showAccountLibrary = false,
   onCollapsedChange,
   onNewChat,
   onOpenSettings,
@@ -1414,18 +1413,15 @@ function ClinicalCollapsedRail({
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
   // The rail is the one element that survives every route change, so it must answer
   // "where am I" with the mode itself, not with the generic More modes opener. When the
-  // active mode is not already a pinned shortcut (or the library's Favourites link), it
-  // gets its own slot — including Calculators and Favourites, which cannot be pinned.
-  // Exactly one rail item is ever marked current.
-  const activeModeInLibrary = showAccountLibrary && sidebarAccountLibraryItems.some((item) => item.id === activeMode);
-  // The "favourites" branch is reachable only when the library nav is hidden
-  // (showAccountLibrary false); otherwise Favourites is already lit there.
-  const currentModeItem =
-    pinnedModeIds.includes(activeMode) || activeModeInLibrary
-      ? undefined
-      : activeMode === "favourites"
-        ? sidebarAccountLibraryItems[0]
-        : sidebarModeItem(activeMode);
+  // active mode is not already a pinned shortcut, it gets its own slot — including
+  // Calculators and Favourites, which cannot be pinned. Favourites has no standing
+  // rail item (owner request, 15 Oct 2026: core items only); the open sidebar keeps
+  // it under Your library. Exactly one rail item is ever marked current.
+  const currentModeItem = pinnedModeIds.includes(activeMode)
+    ? undefined
+    : activeMode === "favourites"
+      ? sidebarAccountLibraryItems[0]
+      : sidebarModeItem(activeMode);
 
   function openModeEditor() {
     modeEditorReturnFocusRef.current = moreModesTriggerRef.current;
@@ -1542,28 +1538,6 @@ function ClinicalCollapsedRail({
           onOpen={openModeEditor}
           triggerRef={moreModesTriggerRef}
         />
-        {showAccountLibrary ? (
-          <>
-            <nav aria-label="Your library" className="grid justify-items-center gap-1">
-              {sidebarAccountLibraryItems.map((item) => {
-                const Icon = item.icon;
-                const active = activeMode === item.id;
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.href}
-                    className={railItem}
-                    aria-label={item.label}
-                    title={item.label}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    <RailItemBody icon={Icon} label={item.label} />
-                  </Link>
-                );
-              })}
-            </nav>
-          </>
-        ) : null}
       </div>
       {/* The foot, as on the original rail: Appearance, Settings, then the
           account initial at the very bottom, under a rule that mirrors the
