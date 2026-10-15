@@ -40,10 +40,12 @@ describe("decodeJobTransitionResult", () => {
   it("matches the shape the RPCs actually return", () => {
     // Both functions build their reply with jsonb_build_object on every return
     // path, so `ok` is always present. That is what makes its absence meaningful.
+    // The trailing newline anchors on the unfenced overload this worker calls. The
+    // fenced (jsonb) overload already applied to live is a separate definition.
     const complete = sourceSegment(
       schemaSource,
-      "create or replace function public.complete_ingestion_job(",
-      "create or replace function public.fail_or_retry_ingestion_job(",
+      "create or replace function public.complete_ingestion_job(\n",
+      "create or replace function public.fail_or_retry_ingestion_job(\n",
       { label: "complete_ingestion_job body" },
     );
     expect(complete).toContain("'ok', false, 'reason', 'lease_lost'");

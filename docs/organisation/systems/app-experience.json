@@ -335,6 +335,7 @@
     "tests/navigation-guards.test.ts",
     "tests/offline-line.test.ts",
     "tests/offline-pack-content.test.ts",
+    "tests/own-page-mode-home.test.ts",
     "tests/page-secondary-navigation.dom.test.tsx",
     "tests/patient-*",
     "tests/phone-*",

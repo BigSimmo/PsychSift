@@ -1,4 +1,4 @@
-import type { AppModeId } from "@/lib/app-modes";
+import { appModeSearchConfig, type AppModeId } from "@/lib/app-modes";
 
 /**
  * Decides whether a submitted shared-composer search belongs to the dashboard
@@ -163,6 +163,23 @@ export function standaloneModeHomeHref(mode: AppModeId): string | null {
     default:
       return null;
   }
+}
+
+/**
+ * The page a mode with nothing to search lives on, or `null` for a mode the
+ * shared home can serve.
+ *
+ * These modes (On Call, CPD, Teaching, Roster, My Day and the rest of Work,
+ * plus the Psychiatry and Medicines dashboards) declare no results surface, so
+ * the shared home at `/?mode=<id>` can only show them an empty search box whose
+ * query goes nowhere (owner report, 15 Oct 2026: a bare "CPD" search page that
+ * appeared "sometimes"). Every way onto that page must land on the mode's own
+ * page instead: the proxy for a typed or remembered `/?mode=<id>` link, the
+ * dashboard's mode switch, and the cold-`/` seed from the remembered mode.
+ */
+export function ownPageModeHomeHref(mode: AppModeId): string | null {
+  if (appModeSearchConfig(mode).resultsSurface !== "none") return null;
+  return standaloneModeHomeHref(mode);
 }
 
 /**

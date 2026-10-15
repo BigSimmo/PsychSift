@@ -165,3 +165,8 @@ b8d37288487663197c2197de3ec46f1783849f51:supabase/applied-migration-hashes.json:
 # filename containing "access", so generic-api-key read its SHA-256 as a key. The file was
 # renamed in the next commit; this pin covers only the original commit. No credential (PR #3427).
 a958fdce92f53571c02fa3ea2a03c61300122763:supabase/applied-migration-hashes.json:generic-api-key:303
+# False positives: medication catalogue labels ending in Thrush and Withdrawal
+# in the existing seed-data line of supabase/schema.sql. Recording the managed-ingestion
+# migrations rewrote the snapshot (CRLF to LF), so the unchanged line rescans as new.
+dd709e6fcc6bf8940272537e8afada52396af1a4:supabase/schema.sql:generic-api-key:13492
+2323e43ae1484f18f6e245034867095af84c5360:supabase/schema.sql:generic-api-key:13492

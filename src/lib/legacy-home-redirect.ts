@@ -1,3 +1,6 @@
+import { isAppModeId } from "@/lib/app-modes";
+import { ownPageModeHomeHref } from "@/lib/search-route-ownership";
+
 const legacyModePaths = {
   favourites: "/favourites",
   differentials: "/differentials",
@@ -25,6 +28,13 @@ const aliasOnlyModePaths = {
   tools: "/tools",
 } as const;
 
+/**
+ * Dropped when a mode forwards to its own page: `mode` is consumed by the
+ * pathname, and `run=1` would submit the draft on a page with nothing to
+ * search. A draft `q` and `focus` stay, so the page's composer can pick them up.
+ */
+const ownPageConsumedParams = ["mode", "run"] as const;
+
 type LegacyHomeRequestUrl = Pick<URL, "pathname" | "searchParams" | "toString">;
 
 /**
@@ -49,6 +59,19 @@ export function legacyHomeRedirectUrl(requestUrl: LegacyHomeRequestUrl, method: 
     // same query string the alias carried.
     aliasDestination.searchParams.delete("mode");
     return aliasDestination;
+  }
+
+  // A mode with nothing to search has no shared home: `/?mode=cme` showed an
+  // empty CPD search box whose query went nowhere. Send it to the mode's own
+  // page, keeping its own state (a CPD `year`, a Roster or My Day `view`, a
+  // Psychiatry `page`) and any draft for its composer.
+  const ownPage = isAppModeId(mode) ? ownPageModeHomeHref(mode) : null;
+  if (ownPage) {
+    const ownPageDestination = new URL(requestUrl.toString());
+    ownPageDestination.pathname = ownPage;
+    for (const consumed of ownPageConsumedParams) ownPageDestination.searchParams.delete(consumed);
+    ownPageDestination.hash = "";
+    return ownPageDestination;
   }
 
   const destinationPath = mode ? legacyModePaths[mode as keyof typeof legacyModePaths] : undefined;

@@ -56,10 +56,20 @@ export const INSTRUCTION_SCOPE = Object.freeze([
   ".agents/skills/",
   ".cursor/agents/",
   ".cursor/skills/",
+  // Orientation docs every tool is pointed at; a dropped rule restated here misleads just as much.
+  "README.md",
+  "CONTRIBUTING.md",
+  "CONTEXT.md",
+  "docs/README.md",
+  "docs/DOCS-SYSTEM.md",
+  "docs/codebase-index.md",
+  "docs/process-hardening.md",
+  "docs/testing.md",
+  ".codex/",
 ]);
 
 const PATHSPECS = INSTRUCTION_SCOPE.map((entry) => `:(literal)${entry.replace(/\/$/, "")}`);
-const RULE_KEYS = new Set(["id", "retired", "summary", "pattern", "allowedContext", "record"]);
+const RULE_KEYS = new Set(["id", "retired", "summary", "pattern", "allowedContext", "record", "decision"]);
 const REQUIRED_RULE_KEYS = ["id", "retired", "summary", "pattern", "allowedContext"];
 const EXCERPT_MAX = 160;
 
@@ -125,11 +135,18 @@ export function loadRetiredRules(text, source = RULES_FILE) {
     if ("record" in rule && (typeof rule.record !== "string" || rule.record.trim() === "")) {
       throw new BadInput(`${where}: "record", when present, must say where the repo records the retirement`);
     }
+    if (
+      "decision" in rule &&
+      (typeof rule.decision !== "string" || !/^docs\/decisions\/[^/]+\.md$/.test(rule.decision))
+    ) {
+      throw new BadInput(`${where}: "decision", when present, must be a docs/decisions/<entry>.md path`);
+    }
     return {
       id: rule.id,
       retired: rule.retired,
       summary: rule.summary,
       record: rule.record ?? null,
+      decision: rule.decision ?? null,
       pattern: rule.pattern,
       allowedContext: rule.allowedContext,
       regex: compile(rule.pattern, where, "pattern"),
