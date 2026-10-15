@@ -297,6 +297,19 @@ describe("decisions given in chat and links between records", () => {
     });
     expect(checkDecisions({ repoRoot: root }).errors).toEqual([
       'docs/decisions/2026-10-16-other.md: retires "old-merge-gate", but that rule\'s decision points at docs/decisions/2026-10-15-review-bot.md',
+      'docs/organisation/retired-rules.json: rule "old-merge-gate" points at decision docs/decisions/2026-10-15-review-bot.md, which does not list it under Retires',
+    ]);
+  });
+
+  it("fails a Retires link when the rule has no decision pointing back", () => {
+    const rules = JSON.parse(RETIRED_RULES);
+    delete rules.rules[0].decision;
+    const root = tempRepo({
+      "docs/organisation/retired-rules.json": JSON.stringify(rules),
+      "docs/decisions/2026-10-15-review-bot.md": chatEntry(["- **Retires:** `old-merge-gate`"]),
+    });
+    expect(checkDecisions({ repoRoot: root }).errors).toEqual([
+      'docs/decisions/2026-10-15-review-bot.md: retires "old-merge-gate", but that rule has no "decision" pointing back at this entry',
     ]);
   });
 

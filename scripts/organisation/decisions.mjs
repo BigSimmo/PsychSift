@@ -218,7 +218,7 @@ export function checkDecisions({ repoRoot, dir = DECISIONS_DIR } = {}) {
     if (entry.fromChat && entry.problems.length === 0) unanchored.push(file);
     entries.push(entry);
   }
-  checkLinks({ repoRoot, dir, names, entries, errors });
+  checkLinks({ repoRoot, dir, entries, errors });
   return { entries, records, errors, warnings, unanchored };
 }
 
@@ -235,11 +235,15 @@ function readRetiredRules(repoRoot) {
   }
 }
 
-/** Every link between decision entries and retired rules must point at something that exists. */
-function checkLinks({ repoRoot, dir, names, entries, errors }) {
-  const present = new Set(names);
+/**
+ * Every link between decision entries and retired rules must point at an entry that exists, and a
+ * retirement must be recorded both ways: the entry lists the rule under Retires and the rule's
+ * `decision` names that entry.
+ */
+function checkLinks({ repoRoot, dir, entries, errors }) {
+  const byName = new Map(entries.map((entry) => [entry.fileName, entry]));
   for (const entry of entries) {
-    if (entry.supersededBy && !present.has(path.basename(entry.supersededBy))) {
+    if (entry.supersededBy && !byName.has(path.basename(entry.supersededBy))) {
       errors.push(`${dir}/${entry.fileName}: superseded by ${entry.supersededBy}, which is not an entry in ${dir}`);
     }
   }
@@ -251,16 +255,25 @@ function checkLinks({ repoRoot, dir, names, entries, errors }) {
     for (const id of entry.retires) {
       const rule = byId.get(id);
       if (!rule) errors.push(`${file}: retires "${id}", which is not in ${RETIRED_RULES_FILE}`);
-      else if (typeof rule.decision === "string" && rule.decision !== file)
-        errors.push(`${file}: retires "${id}", but that rule's decision points at ${rule.decision}`);
+      else if (rule.decision !== file)
+        errors.push(
+          typeof rule.decision === "string"
+            ? `${file}: retires "${id}", but that rule's decision points at ${rule.decision}`
+            : `${file}: retires "${id}", but that rule has no "decision" pointing back at this entry`,
+        );
     }
   }
   for (const rule of rules) {
     if (typeof rule?.decision !== "string") continue;
     const target = rule.decision.startsWith(`${dir}/`) ? rule.decision.slice(dir.length + 1) : null;
-    if (!target || !present.has(target)) {
+    const entry = target ? byName.get(target) : undefined;
+    if (!entry) {
       errors.push(
         `${RETIRED_RULES_FILE}: rule "${rule.id}" points at decision ${rule.decision}, which is not an entry in ${dir}`,
+      );
+    } else if (!entry.retires.includes(rule.id)) {
+      errors.push(
+        `${RETIRED_RULES_FILE}: rule "${rule.id}" points at decision ${rule.decision}, which does not list it under Retires`,
       );
     }
   }
