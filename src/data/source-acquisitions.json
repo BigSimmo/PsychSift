@@ -1649,7 +1649,7 @@
     "expiryDate": null,
     "evidenceType": "professional_reference",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Lithium", "Monitoring", "Drug interactions"],
     "rung": 3,
@@ -1658,7 +1658,10 @@
     "disposition": "adopted",
     "dispositionReason": "Adopted 2026-10-15 for the lithium medicine page source link (owner request, Clinical sign-offs thread), always together with its 2020 correction. Marked current: still published by Australian Prescriber with no replacement recorded. Needs the owner's named sign-off before the page shows it.",
     "supersededBy": [],
-    "notes": "doi:10.18773/austprescr.2020.024. Must be read together with its 2020 correction (australian-prescriber-lithium-therapy-interactions-correction), which changes the non-thiazide diuretic statement. Australian Prescriber is registered as a catalogue-identity-only authority; this record reconfirms that identity rather than adding a second one."
+    "notes": "doi:10.18773/austprescr.2020.024. Must be read together with its 2020 correction (australian-prescriber-lithium-therapy-interactions-correction), which changes the non-thiazide diuretic statement. Australian Prescriber is registered as a catalogue-identity-only authority; this record reconfirms that identity rather than adding a second one.",
+    "attestedBy": "Psych Sift",
+    "attestedAt": "2026-10-15T17:09:45.124Z",
+    "attestedAgainstSha256": "7a241531b48bc649afe1e9c598d29ba96a9c8a420b47961520c03e7b0c786589"
   },
   {
     "id": "australian-prescriber-lithium-therapy-interactions-correction",
@@ -1674,7 +1677,7 @@
     "expiryDate": null,
     "evidenceType": "professional_reference",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Lithium", "Drug interactions"],
     "rung": 3,
@@ -1683,7 +1686,10 @@
     "disposition": "adopted",
     "dispositionReason": "Adopted 2026-10-15 alongside the article it corrects, for the lithium medicine page source link (owner request, Clinical sign-offs thread). Marked current with its parent. Needs the owner's named sign-off before the page shows it.",
     "supersededBy": [],
-    "notes": "doi:10.18773/austprescr.2020.041. Corrects the parent article: non-thiazide diuretics may alter lithium concentrations, not necessarily increase them."
+    "notes": "doi:10.18773/austprescr.2020.041. Corrects the parent article: non-thiazide diuretics may alter lithium concentrations, not necessarily increase them.",
+    "attestedBy": "Psych Sift",
+    "attestedAt": "2026-10-15T17:09:45.124Z",
+    "attestedAgainstSha256": "adcc120072cfeed859432df173ab29b9a4539b9dc10de6beaa2ee46bc0de7aca"
   },
   {
     "id": "dictionary-aihw-prisons-health-2025",
@@ -2688,7 +2694,7 @@
     "expiryDate": null,
     "evidenceType": "guideline",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": [
       "Clozapine",
@@ -2703,7 +2709,10 @@
     "disposition": "adopted",
     "dispositionReason": "Adopted 2026-10-15 for the clozapine medicine page source link (owner request, Clinical sign-offs thread). Current WA statewide guideline, Version 2 June 2024, next review due July 2027. Needs the owner's named sign-off before the page shows it.",
     "supersededBy": [],
-    "notes": "Cover states 'Version 2, June 2024'; approval page records approval by the Executive Director, Patient Safety and Clinical Quality on 9 July 2024, effective from July 2024, next review due 3 years from the effective date. publicationDate recorded at month precision because only 'June 2024' is printed on the cover; no exact day is given for the version itself. The document's own Appendix 5 (community titration table) states it is '*Adapted from The Maudsley Prescribing Guidelines in Psychiatry 14th Edition (2021)' — quoted content sourced from this WA guideline still carries that attribution verbatim in the clozapine record. The separate 'WA Clozapine Initiation and Titration Chart' (Appendix 1.1, a graphic/table PDF referenced by this guideline) was also fetched this session but could not be extracted as reliable text, so it was not used as a quote source; only the fully text-extractable Appendix 5 community titration table, Table 1 (re-titration after discontinuation) and Appendix 4 (myocarditis commencement-phase monitoring protocol) were quoted."
+    "notes": "Cover states 'Version 2, June 2024'; approval page records approval by the Executive Director, Patient Safety and Clinical Quality on 9 July 2024, effective from July 2024, next review due 3 years from the effective date. publicationDate recorded at month precision because only 'June 2024' is printed on the cover; no exact day is given for the version itself. The document's own Appendix 5 (community titration table) states it is '*Adapted from The Maudsley Prescribing Guidelines in Psychiatry 14th Edition (2021)' — quoted content sourced from this WA guideline still carries that attribution verbatim in the clozapine record. The separate 'WA Clozapine Initiation and Titration Chart' (Appendix 1.1, a graphic/table PDF referenced by this guideline) was also fetched this session but could not be extracted as reliable text, so it was not used as a quote source; only the fully text-extractable Appendix 5 community titration table, Table 1 (re-titration after discontinuation) and Appendix 4 (myocarditis commencement-phase monitoring protocol) were quoted.",
+    "attestedBy": "Psych Sift",
+    "attestedAt": "2026-10-15T17:09:45.124Z",
+    "attestedAgainstSha256": "238ed75474f48348f8b77ea0410acbf5cf203f14d7e475ce7fd1098b1ca9856d"
   },
   {
     "id": "rkpg-clozapine-policy-rejected-anc-wbc-mislabel",
