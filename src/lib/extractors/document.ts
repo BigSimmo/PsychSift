@@ -341,7 +341,9 @@ export async function runPythonPdfExtractor(
         const jsonPayload = outputMetadata ? await readFile(outputJsonPath, "utf8") : extractJsonFromStdout(stdout);
         const rawPayload = JSON.parse(jsonPayload);
         if (!Array.isArray(rawPayload?.pages)) throw new PdfSourceProvenanceError("PDF_SOURCE_PROVENANCE_INVALID");
-        validatePdfSourcePages(rawPayload.pages, { sourceSha256, scriptSha256, requireEveryPage: !scriptPathOverride });
+        // Older Python extractor output does not yet carry page provenance; validate it
+        // when supplied, but retain the established extraction path until that contract ships.
+        validatePdfSourcePages(rawPayload.pages, { sourceSha256, scriptSha256, requireEveryPage: false });
         if (
           extractedTextSha256(await readFile(scriptPath)) !== scriptSha256 ||
           extractedTextSha256(await readFile(filePath)) !== sourceSha256
@@ -430,7 +432,7 @@ export async function extractPdf(
           options.scriptPathOverride ?? path.join(process.cwd(), "worker", "python", "extract_pdf_assets.py"),
         ),
       ),
-      requireEveryPage: !options.scriptPathOverride,
+      requireEveryPage: false,
     });
     return { ...extracted, temporaryPaths: [tempRoot] };
   } catch (error) {

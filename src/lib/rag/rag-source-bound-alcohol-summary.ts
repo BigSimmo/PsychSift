@@ -6,7 +6,15 @@ const prose = (text: string) => text.normalize("NFKC").replace(/\*\*/g, "").repl
 const equal = (left: string, right: string) => prose(left).toLowerCase() === prose(right).toLowerCase();
 
 /** Finite source-wording recovery, never a support exemption or original-layout authority. */
-export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationSources: SearchResult[]) {
+export function renderSourceBoundAlcoholSummary(
+  answer: RagAnswer,
+  verificationSources: SearchResult[],
+  query: string,
+  queryClass: string,
+) {
+  // This renderer is a reviewed answer for the broad alcohol-guideline summary only;
+  // never rewrite an answer for an unrelated query merely because citations overlap.
+  if (queryClass !== "broad_summary" || !/\balcohol\b/i.test(query) || !/\bguideline\b/i.test(query)) return null;
   const ids = new Set(
     answer.citations.filter((citation) => citation.provenance !== "review_only").map((c) => c.chunk_id),
   );

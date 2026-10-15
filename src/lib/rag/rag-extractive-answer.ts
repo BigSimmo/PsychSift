@@ -5027,7 +5027,7 @@ export function finalizeRagAnswerQuality(
   const sourceRendering =
     contract.promptVersion === legacyAnswerGenerationContract.promptVersion &&
     contract.schemaVersion === legacyAnswerGenerationContract.schemaVersion
-      ? renderSourceBoundAlcoholSummary(answer, verificationSources ?? answer.sources)
+      ? renderSourceBoundAlcoholSummary(answer, verificationSources ?? answer.sources, query, queryClass)
       : null;
   const recoveredOriginal = recoverCheckedOriginalSectionRecommendation(
     sourceRendering?.answer ?? answer,
