@@ -312,6 +312,8 @@ describe("deterministic consumer refusals skip the classifier", () => {
       "alcohol withdrawal on holiday",
       "ADHD and gaming",
       "anorexia recipe",
+      "holiday leave for akathisia",
+      "restaurant meal with tranylcypromine",
     ]) {
       expect(isDeterministicNonClinicalConsumerRefusal(query, analyzeClinicalQuery(query)), query).toBe(false);
     }
