@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "ecbe4970-41ef-45e7-b731-6f31a5df480c",
+  "createdOn": "2026-10-15",
+  "action": "cancel",
+  "payload": {
+    "requestId": "b820ca6c-4882-4a09-85c7-a87505cb0f20",
+    "reason": "PR 3538 review (15 Oct 2026): the component exists with tests, but no page in the app renders it, so the item is not done for a clinician."
+  }
+}

@@ -11,6 +11,8 @@ const EDITED_ON_3510 = [
   "habit-reversal-training-cbit",
   "stair-skills-training-in-affective-and-interpersonal-regulation",
   "structured-clinical-management",
+  // Reset in the same change (#3538) as the records above, so it carries the same guard.
+  "wake-therapy-sleep-deprivation-chronotherapy",
 ];
 
 type TherapyRecord = {
