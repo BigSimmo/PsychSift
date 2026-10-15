@@ -395,7 +395,7 @@ function responseBody(
     ...(resolved.instructions ? { instructions: resolved.instructions } : {}),
     max_output_tokens: Math.max(resolved.maxOutputTokens, reasoningHeadroomFloor(resolvedReasoningEffort)),
     ...(isAnswerPilotBudgetActive() ? { service_tier: "default" as const } : {}),
-    store: resolved.store ?? env.OPENAI_STORE_RESPONSES,
+    store: isAnswerPilotBudgetActive() ? false : (resolved.store ?? env.OPENAI_STORE_RESPONSES),
     prompt_cache_key: resolved.promptCacheKey ?? promptCacheKeyFor(operation),
     ...(capabilities.usesPromptCacheOptions
       ? promptCacheTtl
