@@ -2626,8 +2626,10 @@ html[data-work-frame] .app-toast-region {
    "Burger and rail", 7 Oct 2026. Flat: white ground, hairlines, area
    colours only on the icon tiles and the current row.
    ------------------------------------------------------------------ */
+/* 320 px at most, matching the Clinical side menu (owner request, 15 Oct
+   2026: a slimmer menu that leaves more of the page in view). */
 .work-side-menu {
-  max-width: min(22rem, 86vw) !important;
+  max-width: min(20rem, calc(100vw - 3rem)) !important;
 }
 
 .work-side-menu__header {
@@ -2860,26 +2862,30 @@ html[data-work-frame] .app-toast-region {
   outline-offset: 2px;
 }
 
-/* The rail: 84 px, matching the layout's 5.25rem sidebar track. */
+/* The rail: 64 px, matching the layout's 4rem sidebar track. Icon only,
+   the original rail's look (owner request, 15 Oct 2026: slimmer, quieter,
+   only the core items). Each name is the item's hover title rather than a
+   caption printed under it. */
 .work-rail {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: calc(var(--spacing) * 1);
-  width: 5.25rem;
+  width: 4rem;
   height: 100%;
   overflow-y: auto;
-  padding: max(1.125rem, env(safe-area-inset-top)) 0.375rem 1rem;
+  padding: max(0.875rem, env(safe-area-inset-top)) 0 0.875rem;
   border-right: 1px solid var(--border);
-  background: var(--surface-subtle);
+  background: var(--surface-lux, var(--surface));
   scrollbar-width: none;
 }
 
-/* The rail's initial is a 44 px target, like every other rail item. */
+/* The account initial: a 36 px disc inside a 48 px rail item at the foot of
+   the rail, under Appearance and Settings, as on the Clinical rail. */
 .work-rail__avatar {
-  width: 2.75rem;
-  height: 2.75rem;
-  margin-bottom: calc(var(--spacing) * 3);
+  width: 2.25rem;
+  height: 2.25rem;
+  font-size: 0.75rem;
 }
 
 /* Signed in: initials on a calm grey disc, not a solid black (or, in dark
@@ -2894,11 +2900,9 @@ html[data-work-frame] .app-toast-region {
   border: 1px solid color-mix(in srgb, var(--clinical-accent-border) 60%, transparent);
   background: var(--clinical-accent-soft);
   color: var(--clinical-accent);
-  font-size: 0.75rem;
 }
 
-/* Rail glyphs at the header-control size (20 px), so the 84 px rail reads
-   like a tab bar rather than a column of specks. Both rails share it. */
+/* Rail glyphs at the header-control size (20 px). Both rails share it. */
 .work-rail__pill > svg {
   width: var(--spacing-icon-lg);
   height: var(--spacing-icon-lg);
@@ -2914,13 +2918,13 @@ html[data-work-frame] .app-toast-region {
   min-height: 0.75rem;
 }
 
+/* A 48 px square: the tap target and the hover ground are the same box. */
 .work-rail__item {
+  position: relative;
   display: grid;
-  justify-items: center;
-  gap: calc(var(--spacing) * 0.75);
-  width: 4.5rem;
-  min-height: 3.25rem;
-  padding: calc(var(--spacing) * 0.75) 0;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
   border-radius: var(--radius-lg);
   color: var(--text-muted);
 }
@@ -2929,13 +2933,20 @@ html[data-work-frame] .app-toast-region {
   position: relative;
   display: grid;
   place-items: center;
-  width: 3.25rem;
-  height: 2rem;
-  border-radius: var(--radius-pill);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: calc(var(--spacing) * 2.5);
+  transition:
+    background-color var(--duration-fast, 120ms) ease,
+    color var(--duration-fast, 120ms) ease;
+}
+
+.work-rail__item:hover {
+  color: var(--text-heading);
 }
 
 .work-rail__item:hover .work-rail__pill {
-  background: var(--surface);
+  background: var(--surface-subtle);
 }
 
 .work-rail__item[aria-current="true"] .work-rail__pill {
@@ -2943,23 +2954,18 @@ html[data-work-frame] .app-toast-region {
   color: var(--mode-identity);
 }
 
+/* The name is visually hidden but stays in the accessibility tree (the
+   Clinical rail's labels sit behind each link's own aria-label; the Work
+   rail's are the accessible name). Sighted readers get it from the item's
+   `title` on hover. A drawn tooltip would be clipped by the rail's own
+   scrolling column, so the platform tooltip is the one that always shows. */
 .work-rail__label {
-  max-width: 100%;
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  font-size: var(--text-xs, 0.75rem);
-  font-weight: 650;
-  /* One fixed line, held as a floor too: the label clips (overflow hidden),
-     so as a grid item its minimum height is otherwise zero, and inside the
-     Clinical rail's scrolling column "More" was squeezed and cut off. */
-  min-height: calc(var(--spacing) * 4);
-  line-height: calc(var(--spacing) * 4);
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
   white-space: nowrap;
-}
-
-.work-rail__item[aria-current="true"] .work-rail__label {
-  font-weight: 750;
-  color: var(--mode-identity-deep, var(--mode-identity));
 }
 
 /* The clinical rail wears the same items (ClinicalSidebar's collapsed rail),

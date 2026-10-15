@@ -1,3 +1,6 @@
+import { isAppModeId } from "@/lib/app-modes";
+import { ownPageModeHomeHref } from "@/lib/search-route-ownership";
+
 const legacyModePaths = {
   favourites: "/favourites",
   differentials: "/differentials",
@@ -49,6 +52,18 @@ export function legacyHomeRedirectUrl(requestUrl: LegacyHomeRequestUrl, method: 
     // same query string the alias carried.
     aliasDestination.searchParams.delete("mode");
     return aliasDestination;
+  }
+
+  // A mode with nothing to search has no shared home: `/?mode=cme` showed an
+  // empty CPD search box whose query went nowhere. Send it to the mode's own
+  // page, dropping the query string, which none of those pages reads.
+  const ownPage = isAppModeId(mode) ? ownPageModeHomeHref(mode) : null;
+  if (ownPage) {
+    const ownPageDestination = new URL(requestUrl.toString());
+    ownPageDestination.pathname = ownPage;
+    ownPageDestination.search = "";
+    ownPageDestination.hash = "";
+    return ownPageDestination;
   }
 
   const destinationPath = mode ? legacyModePaths[mode as keyof typeof legacyModePaths] : undefined;
