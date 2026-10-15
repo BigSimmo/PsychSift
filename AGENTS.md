@@ -73,6 +73,10 @@ For Codex review throttling, branch routing, review ledger append rules, and rev
 
 <!-- BEGIN:local-server-safety -->
 
+# When the owner makes a decision
+
+Record it in the repository in the same change, because chat history and each tool's memory reach no other tool. Change the one file that governs it, fix or link every other copy of the old wording, add a `docs/decisions/` entry, and add a `docs/organisation/retired-rules.json` entry when a rule is dropped or reversed. Read and follow [When the owner makes a decision](docs/agents/native-startup/recording-decisions.md) before acting in this area. The full policy remains in force.
+
 # Local server safety
 
 - If the user says `run`, execute `npm run ensure` and return the printed URL.

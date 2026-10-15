@@ -223,6 +223,108 @@ describe("checking a decisions folder", () => {
   });
 });
 
+function chatEntry(extraFields: string[] = [], status = "decided 2026-10-15"): string {
+  return [
+    "# Decision: Keep the review bot but stop it blocking merges",
+    "",
+    `- **Status:** ${status}`,
+    "- **Source:** the owner, in chat",
+    ...extraFields,
+    "",
+    "The review bot stays, but its reviews must not block a merge.",
+    "",
+    SOURCE_WINS,
+    "",
+  ].join("\n");
+}
+
+const RETIRED_RULES = JSON.stringify({
+  version: 1,
+  rules: [
+    {
+      id: "old-merge-gate",
+      retired: "2026-10-15",
+      summary: "The old merge gate was removed.",
+      pattern: "old merge gate",
+      allowedContext: "removed",
+      decision: "docs/decisions/2026-10-15-review-bot.md",
+    },
+  ],
+});
+
+describe("decisions given in chat and links between records", () => {
+  it("accepts an entry the owner gave in chat and lists it as unanchored", () => {
+    const parsed = parseDecisionEntry("2026-10-15-review-bot.md", chatEntry());
+    expect(parsed.problems).toEqual([]);
+    expect(parsed.fromChat).toBe(true);
+    const root = tempRepo({ "docs/decisions/2026-10-15-review-bot.md": chatEntry() });
+    const result = checkDecisions({ repoRoot: root });
+    expect(result.errors).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.unanchored).toEqual(["docs/decisions/2026-10-15-review-bot.md"]);
+  });
+
+  it("passes a Retires link to a rule that exists, and a rule pointing back at the entry", () => {
+    const root = tempRepo({
+      "docs/organisation/retired-rules.json": RETIRED_RULES,
+      "docs/decisions/2026-10-15-review-bot.md": chatEntry(["- **Retires:** `old-merge-gate`"]),
+    });
+    const result = checkDecisions({ repoRoot: root });
+    expect(result.errors).toEqual([]);
+    expect(result.entries[0]?.retires).toEqual(["old-merge-gate"]);
+  });
+
+  it("fails a Retires link to a rule that does not exist, and a malformed Retires line", () => {
+    const root = tempRepo({
+      "docs/organisation/retired-rules.json": RETIRED_RULES,
+      "docs/decisions/2026-10-15-review-bot.md": chatEntry(["- **Retires:** `no-such-rule`"]),
+      "docs/decisions/2026-10-16-other.md": chatEntry(["- **Retires:** old-merge-gate"], "decided 2026-10-16"),
+    });
+    const { errors } = checkDecisions({ repoRoot: root });
+    expect(errors).toContain(
+      'docs/decisions/2026-10-15-review-bot.md: retires "no-such-rule", which is not in docs/organisation/retired-rules.json',
+    );
+    expect(errors.some((error) => error.startsWith('docs/decisions/2026-10-16-other.md: "Retires" must list'))).toBe(
+      true,
+    );
+  });
+
+  it("fails a retired rule whose decision pointer names no entry", () => {
+    const root = tempRepo({
+      "docs/organisation/retired-rules.json": RETIRED_RULES,
+      "docs/decisions/2026-10-14-elsewhere.md": chatEntry([], "decided 2026-10-14"),
+    });
+    expect(checkDecisions({ repoRoot: root }).errors).toEqual([
+      'docs/organisation/retired-rules.json: rule "old-merge-gate" points at decision docs/decisions/2026-10-15-review-bot.md, which is not an entry in docs/decisions',
+    ]);
+  });
+
+  it("fails a superseded-by link to an entry that does not exist, and passes one that does", () => {
+    const root = tempRepo({
+      "docs/decisions/2026-10-14-older.md": chatEntry([], "decided 2026-10-14; superseded by 2026-10-15-missing.md"),
+      "docs/decisions/2026-10-13-oldest.md": chatEntry([], "decided 2026-10-13; superseded by 2026-10-14-older.md"),
+    });
+    expect(checkDecisions({ repoRoot: root }).errors).toEqual([
+      "docs/decisions/2026-10-14-older.md: superseded by 2026-10-15-missing.md, which is not an entry in docs/decisions",
+    ]);
+  });
+});
+
+describe("every tool is told how to record a decision", () => {
+  it("states the procedure in the always-loaded core and links its full text", () => {
+    const agents = fs.readFileSync(path.join(repoRoot, "AGENTS.md"), "utf8");
+    expect(agents).toContain("# When the owner makes a decision");
+    expect(agents).toContain("(docs/agents/native-startup/recording-decisions.md)");
+    expect(fs.existsSync(path.join(repoRoot, "docs/agents/native-startup/recording-decisions.md"))).toBe(true);
+  });
+
+  it("loads the same procedure natively for tools that read .agents/rules", () => {
+    const wrapper = fs.readFileSync(path.join(repoRoot, ".agents/rules/project-recording-decisions.md"), "utf8");
+    expect(wrapper).toContain("trigger: always_on");
+    expect(wrapper).toContain("../../docs/agents/native-startup/recording-decisions.md");
+  });
+});
+
 describe("the repository's decisions folder", () => {
   const result = checkDecisions({ repoRoot });
 
