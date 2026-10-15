@@ -386,10 +386,9 @@ export function DsmSearchPage({
 
   return (
     <div data-testid="dsm-search-page" className="min-h-full bg-[color:var(--background)]">
-      {/* Phone: the bottom pad is the floating search pill's height (3.25rem,
-          52px) plus 16px, so the last result card can scroll clear of the pill
-          even when the shell's own dock reserve has collapsed on scroll. */}
-      <div className={cn(pageContainer, "space-y-4 px-4 pt-4 pb-[calc(3.25rem+1rem)] sm:px-6 sm:py-6 lg:px-8")}>
+      {/* Phone dock clearance comes from the shell's own reserve, which also
+          collapses when the pill hides, so this page adds no bottom pad. */}
+      <div className={cn(pageContainer, "space-y-4 px-4 py-4 sm:px-6 sm:py-6 lg:px-8")}>
         <SearchResultsHeaderBand
           modeId="dsm"
           query={query}
