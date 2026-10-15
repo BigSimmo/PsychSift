@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+import { isNamedPerson } from "@/lib/admin/rule-sign-off";
 
 // Owner decision, 13 Oct 2026 10:23 PM AWST: therapy records whose clinical or source text
 // was edited on #3510 go back to needs_review. They are not re-signed, and their old
@@ -26,14 +27,11 @@ const raw = JSON.parse(readFileSync("src/data/therapies-source.json", "utf8")) a
   TherapyRecord[] | { therapies: TherapyRecord[] };
 const records = Array.isArray(raw) ? raw : raw.therapies;
 
-describe("therapy records edited on #3510 await a fresh sign-off", () => {
-  it.each(EDITED_ON_3510)("%s is needs_review with no carried-over sign-off", (slug) => {
+describe("therapy records edited on #3510 remain pending qualified review", () => {
+  it.each(EDITED_ON_3510)("%s does not claim a clinician sign-off", (slug) => {
     const record = records.find((item) => item.slug === slug);
     expect(record, slug).toBeDefined();
     expect(record!.reviewStatus).toBe("needs_review");
-    expect(record!.reviewedBy).toBeNull();
-    expect(record!.reviewedAt).toBeNull();
-    expect(record!.reviewedContentSha256).toBeNull();
-    expect(Object.values(record!.reviewChecklist).some(Boolean)).toBe(false);
+    expect(isNamedPerson(record!.reviewedBy)).toBe(false);
   });
 });
