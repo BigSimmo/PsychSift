@@ -533,6 +533,27 @@ html.dark[data-mode-identity="cme"] {
   gap: calc(var(--spacing) * 2.5);
 }
 
+/* "Log an activity" at the foot of the hero: a full-width white pill in the mode
+   colour (Teaching's hero action), replacing the Year page's floating dock. */
+.cpd-hero-log {
+  margin-top: calc(var(--spacing) * 3);
+}
+
+.work-hero .cpd-hero-log > .work-button[data-variant="primary"] {
+  display: flex;
+  width: 100%;
+  color: var(--work-hero-action-ink, var(--mode-identity));
+}
+
+.work-hero .cpd-hero-log > .work-button[data-variant="primary"]::before {
+  background: var(--work-hero-action-fill, var(--surface-raised));
+}
+
+.work-hero .cpd-hero-log > .work-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 .cpd-hero-kicker {
   font-size: var(--text-3xs);
   font-weight: 700;
@@ -952,6 +973,16 @@ a.cpd-months__col:focus-visible {
 .cpd-short::before {
   content: attr(data-short);
   content: attr(data-short) / "";
+}
+
+/* The Log keeps its floating dock, so the rows above it end with a reserve the
+   dock's height plus 16px: the last rows are never left under it. The height is
+   the dock's own box (work-mode.css .work-dock): its fade, the 48px button in
+   the capsule, and the home-bar padding. */
+.cpd-dock-reserve {
+  padding-bottom: calc(
+    1.5rem + var(--spacing-tap, 3rem) + var(--spacing) + max(0.875rem, var(--safe-area-bottom, 0px)) + 1rem
+  );
 }
 
 /* The dock's filled button keeps the 48px floor CPD holds to (min-h-12). */

@@ -49,7 +49,7 @@ function TileFace({ item }: { item: FavouriteItem }) {
         ) : null}
       </span>
       <span className="block w-full min-w-0">
-        <span className="line-clamp-2 break-words text-xs font-bold leading-tight text-[color:var(--work-ink)]">
+        <span className="line-clamp-2 break-words hyphens-auto text-xs font-bold leading-tight text-[color:var(--work-ink)]">
           {label}
         </span>
         <span

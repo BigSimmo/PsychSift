@@ -78,6 +78,16 @@ describe("mode home start list", () => {
     }
   });
 
+  it("shows a single-link empty home as the same Browse card list, not a bare link", () => {
+    render(<ModeHomeStartList modeId="services" />);
+    expect(screen.queryByTestId("mode-home-browse")).toBeNull();
+    expect(
+      within(screen.getByTestId("mode-home-browse-list"))
+        .getAllByRole("link")
+        .map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([["Browse all services", "/services/search"]]);
+  });
+
   it("keeps only the first Browse link once Continue has something", () => {
     recordRecentPage("/dsm/diagnoses/a", "Disorder A");
     render(<ModeHomeStartList modeId="dsm" />);

@@ -259,6 +259,19 @@ export function CmeCategoryLegend({
   );
 }
 
+/**
+ * "· 1 h today" after the year label. It wraps as one unit (nowrap), so a narrow
+ * phone never leaves "1 H" on one line and "TODAY" on the next.
+ */
+function TodayNote({ hours }: { readonly hours: number }) {
+  return (
+    <>
+      {" "}
+      <span data-testid="cme-audited-today" className="whitespace-nowrap">{`· ${formatHours(hours)} h today`}</span>
+    </>
+  );
+}
+
 export type CmeYearSummaryProps = {
   readonly year: number;
   /** Perth calendar date, `YYYY-MM-DD`. */
@@ -278,6 +291,8 @@ export type CmeYearSummaryProps = {
   readonly onOpenGap: () => void;
   /** The empty variant's one action ("Log your first activity"). */
   readonly firstLogAction?: ReactNode;
+  /** "Log an activity", drawn as a full-width white pill at the foot of the card once something is logged. */
+  readonly logAction?: ReactNode;
   /** Hours logged today, added to the kicker when above zero ("· 1 h today"): it replaced "About this year" (12 Oct 2026). */
   readonly todayHours?: number;
   /** Customise's "Year dates": off leaves the kicker as the bare year (a closed year still says so). */
@@ -299,7 +314,7 @@ export type CmeYearSummaryProps = {
  */
 export function CmeYearSummary(props: CmeYearSummaryProps) {
   const { year, today, loggedHours, targetHours, categoryHours, plan, weeklyHours, entries, closed, onOpenGap } = props;
-  const { firstLogAction, todayHours = 0, showTimeLeft = true } = props;
+  const { firstLogAction, logAction, todayHours = 0, showTimeLeft = true } = props;
 
   const label = showTimeLeft || closed ? cmeYearLabel({ year, today, closed }) : String(year);
 
@@ -308,9 +323,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
       <section data-testid="cme-year-summary" aria-label={`CPD hours for ${year}`} className={SUMMARY_CARD}>
         <div className={`${LABEL} nums`}>
           <span data-testid="cme-year-label">{label}</span>
-          {todayHours > 0 ? (
-            <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
-          ) : null}
+          {todayHours > 0 ? <TodayNote hours={todayHours} /> : null}
         </div>
         <p data-testid="cme-total-hours" className="m-0 flex items-baseline gap-1.5">
           {loggedHours > 0 ? (
@@ -332,6 +345,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
         >
           Set up your year
         </Link>
+        {logAction}
       </section>
     );
   }
@@ -373,9 +387,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
         <div className="min-w-0">
           <div className="cpd-hero-kicker nums">
             <span data-testid="cme-year-label">{label}</span>
-            {todayHours > 0 ? (
-              <span data-testid="cme-audited-today">{` · ${formatHours(todayHours)} h today`}</span>
-            ) : null}
+            {todayHours > 0 ? <TodayNote hours={todayHours} /> : null}
           </div>
           {/* Read as one sentence: "32.5 of 50 hours logged, 65 percent". */}
           <p data-testid="cme-total-hours" className="cpd-hero-big m-0" role="img" aria-label={spoken}>
@@ -388,6 +400,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
       <SummaryBar categoryHours={categoryHours} routineHours={routineHours} scale={scale} />
       <HeroLegend categoryHours={categoryHours} plan={plan} onOpenGap={onOpenGap} />
       <CmePacePanel plan={plan} weeklyHours={weeklyHours} entries={entries} year={year} onOpenGap={onOpenGap} />
+      {logAction ? <div className="cpd-hero-log">{logAction}</div> : null}
     </section>
   );
 }

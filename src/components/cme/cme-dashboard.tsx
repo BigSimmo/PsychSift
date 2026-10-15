@@ -83,7 +83,9 @@ import {
  * Simplify plan (12 Oct 2026): "What's left" shows its top three, then "See all in End of year"; the
  * copy and reflection chips and "About this year" went (they repeated What's left and the hero), and
  * today's hours moved into the hero's kicker.
- *   6. the floating dock: "Log an activity" (it opens the quick-log sheet).
+ *   6. "Log an activity" (it opens the quick-log sheet), a white pill at the foot of the summary card. It
+ *      was a floating dock until 15 Oct 2026, when the owner moved it into the card: at 390px the dock
+ *      covered list rows ("See all in End of year").
  *
  * What follows is the earlier (5 Oct) description, which still holds for the
  * data and the honest variants:
@@ -344,15 +346,24 @@ export function CmeDashboard({
               : { kind: "loaded", at: now }
         }
       />
-      {underBand ? (
-        <CmePageAction icon={SlidersHorizontal} label="Customise" href="/cme/customise" testId="cme-customise-action" />
-      ) : (
-        <div className="flex justify-end">
-          <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
-            Customise
-          </Button>
-        </div>
-      )}
+      {/* The status sits outside the page columns, so this row takes their width and side padding itself:
+          Customise stays inside the page gutter at 390px rather than running off the right edge. */}
+      <div data-page-width="wide" data-page-padded="" className="mx-auto box-border w-full px-3">
+        {underBand ? (
+          <CmePageAction
+            icon={SlidersHorizontal}
+            label="Customise"
+            href="/cme/customise"
+            testId="cme-customise-action"
+          />
+        ) : (
+          <div className="flex justify-end">
+            <Button variant="toolbar" size="sm" icon={Settings2} onClick={onOpenCustomise}>
+              Customise
+            </Button>
+          </div>
+        )}
+      </div>
     </>
   );
 
@@ -383,6 +394,7 @@ export function CmeDashboard({
       closed={Boolean(set.closedAt)}
       onOpenGap={() => setDetail("gap")}
       firstLogAction={nothingLogged ? logLink("Log your first activity", "work-button min-h-tap mt-2") : undefined}
+      logAction={nothingLogged ? undefined : logLink("Log an activity", "work-button min-h-tap w-full")}
       todayHours={shows("audited-today") ? loggedTodayHours : 0}
       showTimeLeft={shows("year-dates")}
     />
@@ -622,13 +634,6 @@ export function CmeDashboard({
       </CmeGroup>
     ) : null;
 
-  // The dock: the one filled button. Before anything is logged it lives in the empty card instead.
-  const dock = nothingLogged ? null : (
-    <div className="work-dock" role="group" aria-label="Actions">
-      <div className="work-dock__capsule">{logLink("Log an activity", "work-button min-h-tap")}</div>
-    </div>
-  );
-
   return (
     <main className="w-full" data-testid="cme-year-page">
       <div className="contents">{status}</div>
@@ -653,7 +658,6 @@ export function CmeDashboard({
             {trainingLink}
             {provenance}
           </div>
-          {dock}
         </WorkColumns>
       </div>
 

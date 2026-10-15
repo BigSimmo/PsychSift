@@ -98,6 +98,8 @@ describe("Now: the safety order", () => {
     );
     render(<OnCallHome now={IN_HOURS} />);
     order([
+      // The summary hero leads every Work page (Work standard, owner 15 Oct 2026).
+      "on-call-now-hero",
       "on-call-now-hospital",
       "on-call-now-emergency",
       // Your own numbers first, straight under the header (usefulness audit, 11 Oct 2026).
@@ -107,6 +109,11 @@ describe("Now: the safety order", () => {
       "on-call-now-shift-tools",
     ]);
     expect(screen.getByTestId("on-call-now-hospital")).toHaveTextContent("Synthetic Hospital");
+    // The hero's white pill rings the hospital's recorded switchboard, and nothing else.
+    const hero = screen.getByTestId("on-call-now-hero");
+    expect(hero).toHaveClass("work-hero");
+    expect(hero).toHaveTextContent("Right now · Synthetic Hospital");
+    expect(within(hero).getByRole("link", { name: /^Call switchboard, / })).toHaveAttribute("href", "tel:0890000000");
   });
 
   it("pins only this site's clinical Emergency rows, three at most, with the quiet red dot", async () => {

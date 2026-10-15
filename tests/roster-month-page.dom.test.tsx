@@ -131,6 +131,14 @@ describe("Roster Month tab", () => {
     expect(screen.getByText("On call tonight").className).not.toContain("truncate");
     // Team stays one tap away from Month (Open shifts fold moved Team out of the tabs).
     expect(screen.getByTestId("roster-month-who")).toHaveAttribute("href", "/roster/team");
+    // The lead is the page's summary hero (Work standard, owner 15 Oct 2026): a filled card, the
+    // shift's words as its headline, how soon it starts, and Who's on as the white pill.
+    const lead = screen.getByTestId("roster-month-lead");
+    expect(lead).toHaveClass("work-hero");
+    expect(lead).toHaveAccessibleName("Next shift");
+    expect(lead).toHaveTextContent("Next shift · Tue 6 Oct");
+    expect(lead).toHaveTextContent("21:00 to 08:00 · in 13 h 18 min");
+    expect(within(lead).getByRole("link", { name: "Who's on" })).toHaveClass("work-hero__action");
     const coming = screen.getByTestId("roster-month-coming");
     // Days and nights alike, in date order, each with its date and time; the lead shift is not repeated.
     const rows = within(coming).getAllByTestId("roster-month-coming-shift");
@@ -185,6 +193,20 @@ describe("Roster Month tab", () => {
     const items = within(screen.getByTestId("roster-month-coming")).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(items[1]).toHaveTextContent("Consultation liaison starts");
+  });
+
+  it("leads with the time left while on call now, then the shift times and the next shift", async () => {
+    ready([shift("oc5", "2026-10-05", "on_call", "17:00", "08:00", "2026-10-06"), shift("d8", "2026-10-08", "day")]);
+    render(<RosterMonthPage now={NOW} />);
+    const lead = screen.getByTestId("roster-month-lead");
+    expect(lead).toHaveAccessibleName("On call now");
+    expect(lead).toHaveTextContent("On call now · Mon 5 Oct");
+    expect(lead).toHaveTextContent("18 min left");
+    expect(lead).toHaveTextContent("17:00 to 08:00 · Next: Day Thu 8 08:00");
+    expect(within(lead).getByRole("link", { name: "Who's on" })).toHaveAttribute("href", "/roster/team");
+    // The day's sheet stays one tap away, as the slim line it replaced offered.
+    await userEvent.click(within(lead).getByRole("button", { name: "Open day" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
   it("names the day when the next shift is later than tomorrow", () => {

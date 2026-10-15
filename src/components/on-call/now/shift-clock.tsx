@@ -80,7 +80,7 @@ export function NowShiftClock({ context, now }: { readonly context: OnCallShiftC
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-2" data-testid="on-call-now-shift-clock">
       <div className="px-1">
-        <WorkSectionLabel id={headingId} count="From your roster">
+        <WorkSectionLabel id={headingId} count={<span className="font-sans tracking-normal">From your roster</span>}>
           {`Your shift · ${clock.periodLabel}`}
         </WorkSectionLabel>
       </div>

@@ -42,7 +42,9 @@ export function DsmCompareChrome({
         slotPlaceholder="Choose diagnosis"
         icon={BookOpenCheck}
         showEmptyState={false}
-        slotLayout="compact"
+        // Default slot layout, not the `compact` snap rail: at 390px the rail
+        // cut slot B off and pushed C off screen. Default stacks the slots full
+        // width on a phone and goes side by side once the strip is wide enough.
         onCommit={(ids) =>
           router.push(
             idsCompareHref(

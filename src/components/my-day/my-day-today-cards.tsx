@@ -488,16 +488,13 @@ export function HeroCard({
     const end = Date.parse(shift.endsAt);
     const at = now.getTime();
     if (running) {
-      const left = ringParts(end - at);
       const until = words.sub.split(" · ")[0] ?? words.sub;
+      const done = Math.min(1, Math.max(0, (at - start) / Math.max(1, end - start)));
       top = (
         <HeroTop
           ring={
-            <HeroRing
-              figure={left.figure}
-              word={left.rest ? `${left.rest} left` : "left"}
-              fraction={(at - start) / Math.max(1, end - start)}
-            />
+            // The title already says the time left, so the ring shows how much of the shift is done.
+            <HeroRing figure={`${Math.round(done * 100)}%`} word="done" fraction={done} />
           }
           eyebrow={`${words.eyebrow}${asOf}`}
           title={words.big}

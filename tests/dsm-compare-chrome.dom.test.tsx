@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("DsmCompareChrome", () => {
-  it("shows compact slot rail and inline starters when fewer than two diagnoses are selected", () => {
+  it("shows stacked slot tiles and inline starters when fewer than two diagnoses are selected", () => {
     render(
       <DsmCompareChrome
         selectedIds={[null, null, null]}
@@ -23,7 +23,9 @@ describe("DsmCompareChrome", () => {
       />,
     );
 
-    expect(screen.getAllByTestId("compare-slot-tile-compact")).toHaveLength(3);
+    // Default (stacking) tiles, not the compact phone rail that cut slot B off at 390px.
+    expect(screen.getAllByTestId("compare-slot-tile")).toHaveLength(3);
+    expect(screen.queryByTestId("compare-slot-tile-compact")).not.toBeInTheDocument();
     expect(screen.getByTestId("dsm-compare-starters")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "MDD vs GAD" })).toBeInTheDocument();
     expect(screen.queryByTestId("dsm-compare-picker")).not.toBeInTheDocument();

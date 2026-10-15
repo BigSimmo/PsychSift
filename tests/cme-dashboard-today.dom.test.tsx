@@ -208,12 +208,14 @@ describe("the summary's catch-up line", () => {
     expect(bar.querySelector('[data-category="routines"]')).not.toBeNull();
   });
 
-  it("sits in one card, with the one filled Log an activity button in the dock", () => {
-    render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
+  it("sits in one card, with the one filled Log an activity button inside it", () => {
+    const { container } = render(<CmeDashboard set={SET} entries={ENTRIES} now={NOW} />);
     const summary = screen.getByTestId("cme-year-summary");
-    // work-mode redesign, owner request 6 Oct 2026: the button moved from under the card to the dock.
+    // Owner request 15 Oct 2026: the button moved from the floating dock into the card, as a white
+    // pill, because the dock covered list rows at 390px.
     expect(summary.tagName).toBe("SECTION");
-    expect(screen.getByTestId("cme-log-activity").closest(".work-dock")).not.toBeNull();
+    expect(summary).toContainElement(screen.getByTestId("cme-log-activity"));
+    expect(container.querySelector(".work-dock")).toBeNull();
   });
 
   it("gives no weekly figure in the first four weeks", () => {

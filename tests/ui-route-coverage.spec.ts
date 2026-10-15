@@ -507,9 +507,9 @@ test.describe("previously uncovered production routes", () => {
           if (await remove.isVisible()) await remove.click({ timeout: 5_000 });
           await expect(currentPage).toHaveURL(/\/dsm\/compare\?ids=bipolar-ii-disorder$/, { timeout: 10_000 });
         }).toPass({ timeout: 40_000, intervals: [1_000, 2_000, 4_000] });
-        // Empty dashed panel is suppressed in favour of the compact slot rail
+        // Empty dashed panel is suppressed in favour of the slot tiles
         // and inline starter chips when fewer than two diagnoses remain.
-        await expect(currentPage.getByTestId("compare-slot-tile-compact").first()).toBeVisible();
+        await expect(currentPage.getByTestId("compare-slot-tile").first()).toBeVisible();
         await expect(currentPage.getByTestId("dsm-compare-starters").getByRole("link").first()).toBeVisible();
       },
     );

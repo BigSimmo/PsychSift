@@ -33,11 +33,17 @@ test("DSM mode nav Search returns to search results, not the shared home", async
   await expect(page).not.toHaveURL(/\/?mode=dsm/);
 });
 
-test("empty DSM compare shows compact slot rail and starter chips", async ({ page }) => {
+test("empty DSM compare stacks full-width slots and shows starter chips", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/dsm/compare", { waitUntil: "domcontentloaded" });
   await expect(visibleByTestId(page, "dsm-comparison-page")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId("compare-slot-tile-compact").first()).toBeVisible();
+  // Phone stacks slots A, B and C vertically so none is cut off at the edge.
+  const tiles = page.getByTestId("compare-slot-tile");
+  await expect(tiles).toHaveCount(3);
+  await expect(page.getByTestId("compare-slot-tile-compact")).toHaveCount(0);
+  const [first, second] = await Promise.all([tiles.nth(0).boundingBox(), tiles.nth(1).boundingBox()]);
+  expect(first && second && second.y >= first.y + first.height).toBe(true);
+  expect(first && second && Math.abs(second.x - first.x) <= 1).toBe(true);
   await expect(page.getByTestId("dsm-compare-starters").getByRole("link").first()).toBeVisible();
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { ChevronRight, Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, FileUp, Plus, TriangleAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
@@ -16,6 +16,7 @@ import {
   WorkCard,
   WorkDateRow,
   WorkEmpty,
+  WorkHero,
   WorkIconRow,
   WorkSectionLabel,
 } from "@/components/mode-kit/work";
@@ -376,43 +377,47 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
               : date === addDaysToDate(today, 1)
                 ? `${SHIFT_KIND_LABEL[kind]} tomorrow`
                 : `${SHIFT_KIND_LABEL[kind]} ${dayWords(date)}`;
-          const tag = onNow
-            ? `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`
-            : `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
-          // One slim line: My Day and On Call already show this shift in full (Work mode simplify plan,
-          // 12 Oct 2026). Tapping it opens the day; Who is on sits beside it, one tap from Team.
+          const left = `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`;
+          const startsIn = `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
+          const times = `${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`;
+          const next = upcoming[0];
+          const nextWords = next
+            ? `Next: ${SHIFT_KIND_LABEL[next.kind]} ${dayWords(perthDateOf(next.startsAt))} ${perthTimeOf(next.startsAt)}`
+            : null;
+          // The summary hero that leads every Work page (Work standard, owner 15 Oct 2026), in place
+          // of the slim white line: on now, the time left is the headline; otherwise the shift's own
+          // words ("On call tonight") are, with how soon it starts. Who's on is the white pill, and
+          // the day's sheet stays one tap away beside it.
           return (
-            <div className="flex min-w-0 items-stretch">
-              <button
-                type="button"
-                onClick={() => openDay(date)}
-                data-testid="roster-month-lead"
-                className={cn(
-                  focusRing,
-                  "flex min-h-12 min-w-0 flex-1 items-center gap-2.5 px-3.5 py-2 text-left text-[color:var(--text-heading)]",
-                )}
-              >
-                <RosterShiftChip kind={kind} />
-                <span className="grid min-w-0 flex-1">
-                  <span className="text-sm-minus leading-snug font-bold break-words">{title}</span>
-                  <span className="nums text-2xs text-[color:var(--text-muted)]">{`${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`}</span>
+            <WorkHero
+              testId="roster-month-lead"
+              aria-label={onNow ? title : "Next shift"}
+              eyebrow={`${onNow ? title : "Next shift"} · ${formatPerthDay(date)}`}
+              title={onNow ? <span className="nums">{left}</span> : <span className="break-words">{title}</span>}
+              sub={
+                <span className="nums">
+                  {(onNow ? [times, nextWords] : [times, startsIn]).filter(Boolean).join(" · ")}
                 </span>
-                <span className="nums shrink-0 text-2xs font-bold text-[color:var(--mode-identity)]">{tag}</span>
-                <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-[color:var(--text-muted)]" />
-              </button>
-              <Link
-                href="/roster/team"
-                data-testid="roster-month-who"
-                className={cn(
-                  focusRing,
-                  "flex min-h-12 shrink-0 items-center gap-1.5 border-l border-[color:var(--work-line)] px-3.5 text-xs font-bold text-[color:var(--mode-identity)]",
-                )}
-              >
-                <Users aria-hidden="true" className="size-icon-sm" />
-                {/* Icon only on the narrowest phones, so the shift line keeps to one line. */}
-                <span className="max-[23.75rem]:sr-only">Who is on</span>
-              </Link>
-            </div>
+              }
+              footer={
+                <div className="work-hero__actions">
+                  <Link href="/roster/team" data-testid="roster-month-who" className="work-hero__action">
+                    <Users aria-hidden="true" strokeWidth={2} className="size-icon-sm shrink-0" />
+                    {"Who's on"}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => openDay(date)}
+                    data-testid="roster-month-lead-day"
+                    data-variant="quiet"
+                    className="work-hero__action"
+                  >
+                    <CalendarDays aria-hidden="true" strokeWidth={2} className="size-icon-sm shrink-0" />
+                    Open day
+                  </button>
+                </div>
+              }
+            />
           );
         })()
       : null;
@@ -428,12 +433,8 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
     ) : null;
     return (
       <>
-        {leadRow || restRow ? (
-          <WorkCard>
-            {leadRow}
-            {restRow}
-          </WorkCard>
-        ) : null}
+        {leadRow}
+        {restRow ? <WorkCard>{restRow}</WorkCard> : null}
         {waitingSwap ? (
           <WorkCard testId="roster-month-swap">
             <div className="work-row">
