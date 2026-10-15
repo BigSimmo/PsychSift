@@ -265,8 +265,8 @@
         "sourceVerificationStatus": "source-needs-formal-review",
         "clinicianReviewStatus": "clinician-reviewed",
         "changedSinceReview": false,
-        "reviewedBy": "Psych Sift",
-        "reviewedAt": "2026-10-15T17:15:54.631Z",
+        "reviewedBy": "PsychSift",
+        "reviewedAt": "2026-09-26T17:27:24.455Z",
         "reviewedContentSha256": "41534273bcc7251227e9cdfea126dd6059b45fc241b456bccad4b5f6e38381f1"
       }
     },
@@ -280,8 +280,8 @@
         "sourceVerificationStatus": "source-needs-formal-review",
         "clinicianReviewStatus": "clinician-reviewed",
         "changedSinceReview": false,
-        "reviewedBy": "Psych Sift",
-        "reviewedAt": "2026-10-15T17:15:54.631Z",
+        "reviewedBy": "PsychSift",
+        "reviewedAt": "2026-09-26T17:27:24.455Z",
         "reviewedContentSha256": "1d3c4c938b449390863b69ad1d6cda150443cddf322a9824030547119c5ed5ba"
       }
     },
@@ -5164,8 +5164,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "047082a50902350623d9288b0b2642a30821f4df8a67241e5cd45e3b8e41841c"
                   }
                 }
@@ -5737,8 +5737,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "ff587b8585f633325301abf9f092ad75bc8f665b9a14cf1e4ca7f7b0a5af490f"
                   }
                 }
@@ -6712,8 +6712,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "62a78f6792164f20b1af585d6384e9dda0e44b1609512712d42d3605dedc305d"
                   }
                 },
@@ -6732,8 +6732,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "0886b518f5e68b385e192fe893681972a9c42411e02269e9d6bd6bb991a18c5e"
                   }
                 },
@@ -6752,8 +6752,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "35c5c15786292548d471d8f9b93ed440fbe1365e0fa7a88768f0b32cf061aa28"
                   }
                 },
@@ -6772,8 +6772,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "f14683ef6f0b12c5b10f1646ec92743b206b3eb44a2524ad3f10400c162ef51a"
                   }
                 }
@@ -6837,8 +6837,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "ee1532714e6ef49b376605db498b89c223eb665dc2018e32ca72ae32b5153ba2"
                   }
                 },
@@ -6857,8 +6857,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "1626c55304e855a1859a9ed0148106c2a90b7da673e6e26daadc00d716e5a2ec"
                   }
                 },
@@ -6877,8 +6877,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "f7f9b094e823261faec159fc3d9a57acc27ccbea7acd67effa95ee34ad850042"
                   }
                 },
@@ -6897,8 +6897,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "bacd40adf46d696923852be9e7a831523e1ba9a2937e2023fde0af808b7db676"
                   }
                 }
@@ -7170,8 +7170,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "232736f16aba4d5334f26c7189de9d5001469e67f7e3b14c8f2537f80894e4a7"
                   }
                 },
@@ -7190,8 +7190,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "aa091251ce088aecd4138701b1015cca8cb31f856ebd9a0dedde808dd0096d78"
                   }
                 },
@@ -7210,8 +7210,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "a82ec90b74627cf8ef6de561d7051892eb202a2ea47e9f8ea238a3c6524ddcd8"
                   }
                 }
@@ -7286,8 +7286,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "4ce1f181e2869f01f9abcd5584917bd13890ccb86fd15956ece5d99c0e3dacdf"
                   }
                 },
@@ -7306,8 +7306,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "67a86ccfb4cde7824247fdf465e0f2694f90ca75893884942d2204fa47c5feea"
                   }
                 },
@@ -7326,8 +7326,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "6561f42efdbb6c45bfac2dd1d543b01e3f331488eea008f72a8f11dd37d30eec"
                   }
                 }
@@ -10184,8 +10184,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "27d8e2b7d0dc837176b514373a744645def0139d2910217a92d3c42a76704d18"
                   }
                 }
@@ -10312,8 +10312,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "1a8ae7a3a85f219da3ca984fab99ef560fd602809b1c2137e4a97a3626801368"
                   }
                 },
@@ -10332,8 +10332,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "d8d6f8b50413eab44e7b8f470f0b43fe365f442a23406cb61fde1d45c7998786"
                   }
                 },
@@ -12004,8 +12004,8 @@
                     "sourceVerificationStatus": "source-verified",
                     "clinicianReviewStatus": "clinician-reviewed",
                     "changedSinceReview": false,
-                    "reviewedBy": "Psych Sift",
-                    "reviewedAt": "2026-10-15T17:15:54.631Z",
+                    "reviewedBy": "PsychSift",
+                    "reviewedAt": "2026-09-26T17:27:24.455Z",
                     "reviewedContentSha256": "19097bdd45738cd019a62d12fd5d62844733ca0cbe8e41ce11e0f6f654aaca64"
                   }
                 }
