@@ -441,7 +441,7 @@ function specifiersFamily(): SignOffFamily {
     name: "Specifiers",
     source: "data/specifiers-content.json",
     nativeField: "review.clinicianReviewStatus",
-    note: `The export's own stats record ${content.stats.itemsPendingClinicianReview} specifier items pending clinician review, and a further ${universals.length} of the ${content.universalSpecifiers.length} universal specifiers carry the same pending status outside the per-disorder catalogue. Both are listed here; the universals are the rows with no link, because no route renders one. Specifiers is an aide-memoire reference surface, not automated clinical decision support.`,
+    note: `The queue lists ${items.length} per-disorder specifier items pending clinician review, and a further ${universals.length} of the ${content.universalSpecifiers.length} universal specifiers carry the same pending status outside the per-disorder catalogue. Both are listed here; the universals are the rows with no link, because no route renders one. Specifiers is an aide-memoire reference surface, not automated clinical decision support.`,
     unrouted: universals.length > 0,
     rows: [...items, ...universals],
   };

@@ -4946,6 +4946,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-15-specifiers-need-a-named-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/api-jobs-ops-surface.md",
         "section": "root",
         "catalogued": true

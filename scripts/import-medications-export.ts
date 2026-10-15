@@ -28,9 +28,33 @@ function outputPath() {
   return path.resolve(process.cwd(), "data/medications-snapshot.json");
 }
 
+const CLOZAPINE_OVERVIEW =
+  "Antipsychotic for treatment-resistant schizophrenia. Treatment requires registration and blood monitoring through the clozapine monitoring service because of serious, potentially fatal adverse effects.";
+
 function normalizeRecord(record: MedicationExportRecord): MedicationExportRecord {
+  const slug = String(record.slug).trim().toLowerCase();
+  const sections = Array.isArray(record.sections) ? record.sections : [];
+  // Keep the clinically signed-off wording while the canonical Medications
+  // snapshot catches up; otherwise every refresh silently reintroduces the old overview.
+  const normalizedSections =
+    slug === "clozapine"
+      ? sections.map((section) => {
+          if (!section || typeof section !== "object" || Array.isArray(section)) return section;
+          const entry = section as { rows?: unknown[]; [key: string]: unknown };
+          return {
+            ...entry,
+            rows: Array.isArray(entry.rows)
+              ? entry.rows.map((row) =>
+                  row && typeof row === "object" && !Array.isArray(row) && (row as { key?: unknown }).key === "Overview"
+                    ? { ...row, val: CLOZAPINE_OVERVIEW }
+                    : row,
+                )
+              : entry.rows,
+          };
+        })
+      : sections;
   return {
-    slug: String(record.slug).trim().toLowerCase(),
+    slug,
     name: String(record.name).trim(),
     class: String(record.class ?? "").trim(),
     subclass: String(record.subclass ?? "").trim(),
@@ -39,7 +63,7 @@ function normalizeRecord(record: MedicationExportRecord): MedicationExportRecord
     tag: String(record.tag ?? "").trim(),
     schedule: String(record.schedule ?? "").trim(),
     stats: Array.isArray(record.stats) ? record.stats : [],
-    sections: Array.isArray(record.sections) ? record.sections : [],
+    sections: normalizedSections,
     quick: Array.isArray(record.quick) ? record.quick : [],
   };
 }
