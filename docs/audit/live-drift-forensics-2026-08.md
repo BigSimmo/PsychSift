@@ -1664,7 +1664,7 @@ the manifest sha still matches.
 insert a version before the remote tip must pass `--include-all`, and must confirm the pending set
 first — the flag applies _every_ locally-absent version, not just the intended one.
 
-**Post-merge runbook for the managed-ingestion reconciliation.** Watch the integration run after merge. If the apply reports an out-of-order rejection, or the live history still shows `20261013140000`–`20261013170000` as local-only, first link the checkout to production (`supabase link --project-ref sjrfecxgysukkwxsowpy`) so every command below targets the same project. Then run `supabase migration list --linked` and `supabase db push --linked --include-all --dry-run`, and confirm both show exactly those four #3538 migrations plus `20261014164220` as pending. In an authorised production window, run `supabase db push --linked --include-all`, then rerun the live-drift workflow and confirm that #3542 closes.
+**Post-merge runbook for the managed-ingestion reconciliation.** Watch the integration run after merge. If the apply reports an out-of-order rejection, or the live history still shows `20261013140000`–`20261013170000` as local-only, first run `supabase migration list --linked --project-ref <prod>` and confirm that the pending set is exactly those four #3538 migrations plus `20261014164220`. In an authorised production window, run `supabase db push --linked --project-ref <prod> --include-all`, then rerun both `npm run check:drift` and `npm run check:migration-history`. Confirm that #3542 closes and that the migration-history check reports no pending, local-only, remote-only, or preview blockers before closing the reconciliation.
 
 ## Phase 5 — Measure and close the loop
 
