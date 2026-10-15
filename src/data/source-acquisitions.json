@@ -1655,8 +1655,8 @@
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
-    "disposition": "adopted",
-    "dispositionReason": "Adopted 2026-10-15 for the lithium medicine page source link (owner request, Clinical sign-offs thread), always together with its 2020 correction. Marked current: still published by Australian Prescriber with no replacement recorded. Needs the owner's named sign-off before the page shows it.",
+    "disposition": "candidate",
+    "dispositionReason": "Held as a candidate pending the owner's named sign-off before adoption for the lithium medicine page source link.",
     "supersededBy": [],
     "notes": "doi:10.18773/austprescr.2020.024. Must be read together with its 2020 correction (australian-prescriber-lithium-therapy-interactions-correction), which changes the non-thiazide diuretic statement. Australian Prescriber is registered as a catalogue-identity-only authority; this record reconfirms that identity rather than adding a second one."
   },
@@ -1680,8 +1680,8 @@
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
-    "disposition": "adopted",
-    "dispositionReason": "Adopted 2026-10-15 alongside the article it corrects, for the lithium medicine page source link (owner request, Clinical sign-offs thread). Marked current with its parent. Needs the owner's named sign-off before the page shows it.",
+    "disposition": "candidate",
+    "dispositionReason": "Held as a candidate pending the owner's named sign-off before adoption alongside the lithium article it corrects.",
     "supersededBy": [],
     "notes": "doi:10.18773/austprescr.2020.041. Corrects the parent article: non-thiazide diuretics may alter lithium concentrations, not necessarily increase them."
   },
@@ -2700,8 +2700,8 @@
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Medications catalogue clozapine 'wa' quoted reference block (task 6b): titration schedule, restart-after-missed-doses steps and myocarditis monitoring timetable",
-    "disposition": "adopted",
-    "dispositionReason": "Adopted 2026-10-15 for the clozapine medicine page source link (owner request, Clinical sign-offs thread). Current WA statewide guideline, Version 2 June 2024, next review due July 2027. Needs the owner's named sign-off before the page shows it.",
+    "disposition": "candidate",
+    "dispositionReason": "Held as a candidate pending the owner's named sign-off before adoption for the clozapine medicine page source link.",
     "supersededBy": [],
     "notes": "Cover states 'Version 2, June 2024'; approval page records approval by the Executive Director, Patient Safety and Clinical Quality on 9 July 2024, effective from July 2024, next review due 3 years from the effective date. publicationDate recorded at month precision because only 'June 2024' is printed on the cover; no exact day is given for the version itself. The document's own Appendix 5 (community titration table) states it is '*Adapted from The Maudsley Prescribing Guidelines in Psychiatry 14th Edition (2021)' — quoted content sourced from this WA guideline still carries that attribution verbatim in the clozapine record. The separate 'WA Clozapine Initiation and Titration Chart' (Appendix 1.1, a graphic/table PDF referenced by this guideline) was also fetched this session but could not be extracted as reliable text, so it was not used as a quote source; only the fully text-extractable Appendix 5 community titration table, Table 1 (re-titration after discontinuation) and Appendix 4 (myocarditis commencement-phase monitoring protocol) were quoted."
   },
