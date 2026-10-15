@@ -56,9 +56,10 @@ export function PhoneFocusClearance() {
   useEffect(() => {
     const phone = window.matchMedia(phoneMediaQuery);
     let settle: { observer: ResizeObserver; timer: number } | null = null;
-    // A reader who starts scrolling during the settle window has moved on, so stop pulling the
-    // page back to the focused control.
-    const userScrollEvents = ["wheel", "touchstart", "pointerdown"] as const;
+    // A reader who scrolls, taps or presses a key during the settle window has moved on (Enter on
+    // an in-page jump link scrolls away from the still-focused link), so stop pulling the page
+    // back to the focused control.
+    const userScrollEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
     const stopSettling = () => {
       if (!settle) return;
       for (const type of userScrollEvents) window.removeEventListener(type, stopSettling, true);
