@@ -341,6 +341,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
                 hospitalPeriod={hospitalPeriod}
                 hospitalName={hospitalName}
                 handbookLoading={handbookLoading}
+                rosterLoading={shifts.status === "loading"}
                 now={now}
               />
               <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />

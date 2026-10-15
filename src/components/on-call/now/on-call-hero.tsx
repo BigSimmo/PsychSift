@@ -33,6 +33,7 @@ export function NowOnCallHero({
   hospitalPeriod,
   hospitalName,
   handbookLoading,
+  rosterLoading,
   now,
 }: {
   readonly context: OnCallShiftContext;
@@ -42,6 +43,7 @@ export function NowOnCallHero({
   readonly hospitalPeriod: OnCallPeriod | null;
   readonly hospitalName: string | null;
   readonly handbookLoading: boolean;
+  readonly rosterLoading: boolean;
   readonly now: Date;
 }) {
   const hospitalPhone = useOnCallHospitalPhone();
@@ -50,14 +52,22 @@ export function NowOnCallHero({
   const periodLabel = hospitalPeriod ? (hospitalPeriod === "after-hours" ? "After hours" : "In hours") : null;
   const dial = answer && answer.dial.kind !== "none" ? answer.dial : null;
   const route = dial ? onCallCallRoute(dial, answer?.mobileDial, hospitalPhone) : null;
-  const switchboardLine = dial ? `Switchboard ${dial.display}` : null;
+  const switchboardLine = route ? `Switchboard ${route.display}` : null;
+  const extensionLine =
+    dial?.kind === "extension"
+      ? `Hospital extension ${dial.display}`
+      : dial?.kind === "switchboard-extension" && route !== dial
+        ? `Handbook extension ${dial.display}`
+        : null;
 
   const eyebrow = [clock ? "On call now" : "Right now", hospitalName].filter(Boolean).join(" · ");
   const title = clock
     ? `${onCallDurationWords(clock.minutesLeft)} left`
     : cover && periodLabel
       ? `${periodLabel} until ${cover.until}`
-      : "No rostered shift on now";
+      : rosterLoading || handbookLoading
+        ? "Checking your shift…"
+        : "No rostered shift on now";
   const sub = [
     clock
       ? `${clock.periodLabel} shift ends ${clock.until}`
@@ -65,6 +75,7 @@ export function NowOnCallHero({
         ? `${onCallDurationWords(cover.minutesLeft)} to go`
         : null,
     switchboardLine,
+    extensionLine,
   ]
     .filter(Boolean)
     .join(" · ");
