@@ -23302,6 +23302,14 @@
         "checks": "Focused design-system + knip + mobile-chrome-paint + test-runner-safety PASS; ledger guard PASS after dedupe; hosted Static PR re-run pending; no provider-backed checks."
       },
       {
+        "date": "2026-10-15",
+        "ref": "codex/ingestion-rag-pilot-handover-20261014",
+        "head": "d22345dc7e34e3b0fc3de0c127285b34a047d72e",
+        "scope": "Uncommitted admin pilot shared announcement correction; file SHA256 0f76deaa4d8d9ad46139d0ba83a0973241669d582ce2517d1ede680ce2ddb5bb",
+        "outcome": "Independent frontend source review ACCEPT; visible message and polite singleton announcements preserved; no MFA, credential, network or baseline change",
+        "checks": "Scoped ESLint and source diff check passed. Design-system core contract passed at unchanged visibleLiveRegions17; wrapper gate tracked separately. No browser or real screen-reader execution claimed."
+      },
+      {
         "date": "2026-07-13",
         "ref": "origin/copilot/fix-failing-ci",
         "head": "d248707d09f62bb153d0eece69b4f7f4e8aeb7dc",

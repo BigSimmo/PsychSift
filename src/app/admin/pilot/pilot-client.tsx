@@ -2,6 +2,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { browserSupabaseClientFor } from "@/lib/supabase/browser-client";
+import { announce } from "@/components/ui/live-announcer";
 
 type ApprovedSourceKind = "txt" | "pdf";
 
@@ -69,6 +70,9 @@ export default function AdminPilot({ url, publishableKey }: { url: string; publi
   const [verifiedAt, setVerifiedAt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  useEffect(() => {
+    if (message) announce(message);
+  }, [message]);
   const [sourceKind, setSourceKind] = useState<ApprovedSourceKind>("pdf");
   const [admitted, setAdmitted] = useState<Record<ApprovedSourceKind, boolean>>({ txt: false, pdf: false });
   const correlation = useRef<Partial<Record<ApprovedSourceKind, string>>>({});
@@ -352,9 +356,7 @@ export default function AdminPilot({ url, publishableKey }: { url: string; publi
           </button>
         </form>
       </section>
-      <p role="status" aria-live="polite">
-        {message}
-      </p>
+      <p>{message}</p>
     </div>
   );
 }
