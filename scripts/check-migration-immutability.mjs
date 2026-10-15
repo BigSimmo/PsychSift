@@ -25,7 +25,8 @@
  *   ALLOW_MIGRATION_RESEAL=true npm run migrations:reseal
  *   (or `node scripts/check-migration-immutability.mjs --write --allow-reseal`)
  * That path prints every existing entry it changes; the manifest diff and the reason for it must
- * land in front of a reviewer.
+ * land in front of a reviewer. Resealing also needs the owner's explicit permission for that specific
+ * reseal (AGENTS.md, Supabase project safety).
  *
  * Usage:
  *   npm run check:migration-immutability     verify (exit 1 on any violation)
@@ -170,7 +171,8 @@ export function seal({ argv = process.argv, env = process.env, write = writeMani
   for (const name of plan.missing) console.log(`  - ${name} (removed)`);
   if (plan.edited.length > 0) {
     console.log("");
-    console.log("RESEALED AN ALREADY-SHIPPED MIGRATION. Say why in the commit message:");
+    console.log("RESEALED AN ALREADY-SHIPPED MIGRATION. This needs the owner's explicit permission");
+    console.log("for this specific reseal (AGENTS.md, Supabase project safety). Say why in the commit message:");
     for (const name of plan.edited) console.log(`  ! ${name}`);
     console.log("Editing an applied migration does not change the live database. If the live");
     console.log("schema must change, the change belongs in a NEW migration.");
