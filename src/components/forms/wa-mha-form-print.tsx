@@ -76,14 +76,16 @@ export function WaMhaFormPrint({
   treatingPsychiatrist = NOT_ENTERED,
   orderDateTime = NOT_ENTERED,
   expiryDateTime,
-  isChild = false,
+  isChild,
   leastRestrictiveReasoning = NOT_ENTERED,
   physicalHealthJustification = NOT_ENTERED,
   chiefPsychiatristConsent = false,
   className = "",
 }: WaMhaFormPrintProps) {
   const meta = FORM_METADATA[formCode];
-  const maxDays = isChild ? 14 : 21;
+  // Age class is unknown until the caller states it, so no age-specific period prints by default.
+  const ageClass = isChild === undefined ? NOT_ENTERED : isChild ? "Child" : "Adult";
+  const maxPeriod = isChild === undefined ? "Not determined" : `${isChild ? 14 : 21} days`;
 
   return (
     <div
@@ -91,6 +93,15 @@ export function WaMhaFormPrint({
       data-wa-mha-form-print="true"
       data-testid="wa-mha-form-print-root"
     >
+      <p
+        className="mb-4 border-2 border-[color:var(--text-heading)] p-2 text-sm font-bold"
+        data-print-header="true"
+        data-testid="form-not-for-use-warning"
+        role="note"
+      >
+        DRAFT, NOT FOR CLINICAL OR LEGAL USE. The statutory wording on this form has not been verified against the
+        Mental Health Act 2014 (WA).
+      </p>
       {/* Printable Form Header - ensured visible via @media print in print.css */}
       <header
         className="wa-mha-print-header form-print-header border-b-2 border-[color:var(--text-heading)] pb-4 mb-4"
@@ -133,7 +144,7 @@ export function WaMhaFormPrint({
               <strong>Facility Setting:</strong> {meta.destination}
             </span>
             <span>
-              <strong>Maximum Initial Period:</strong> {maxDays} days ({isChild ? "Child" : "Adult"})
+              <strong>Maximum Initial Period:</strong> {maxPeriod} ({ageClass})
             </span>
           </div>
           <p className="italic">{meta.purpose}</p>
@@ -152,7 +163,7 @@ export function WaMhaFormPrint({
                 <span className="font-semibold">Full Name:</span> {patientName}
               </td>
               <td className="w-1/3 p-1.5 border border-[color:var(--text-heading)]">
-                <span className="font-semibold">DOB:</span> {patientDob} ({isChild ? "Child" : "Adult"})
+                <span className="font-semibold">DOB:</span> {patientDob} ({ageClass})
               </td>
               <td className="w-1/3 p-1.5 border border-[color:var(--text-heading)]">
                 <span className="font-semibold">Identifier:</span> {patientId}
