@@ -261,8 +261,10 @@ function SectionRow({
               heading with no chevron and read as broken; say so plainly. */}
           <p className="mt-1 text-xs leading-5 text-[color:var(--text-muted)] sm:text-sm sm:leading-6">
             {section.summary.trim() ||
-              (section.items.length > 0 || (section.tone === "test" && record.investigations.length > 0)
-                ? "See the key distinction above"
+              // Items that repeat the hinge are hidden from the list, so point to where they are shown.
+              ((section.items.length > 0 || (section.tone === "test" && record.investigations.length > 0)) &&
+              cleanDifferentialItem(record.clinicalHinge)
+                ? `See the ${record.clinicalHingeScope === "presentation" ? "presentation" : "clinical"} hinge above`
                 : "None listed")}
           </p>
         </div>

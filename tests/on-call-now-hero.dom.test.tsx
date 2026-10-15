@@ -84,4 +84,40 @@ describe("NowOnCallHero", () => {
     expect(hero.querySelector("[data-placeholder]")).toHaveAttribute("aria-hidden", "true");
     expect(within(hero).queryByRole("link")).toBeNull();
   });
+
+  it("names the number the pill rings when an extension falls back to a mobile route", () => {
+    const answer = {
+      ...SWITCHBOARD!,
+      dial: {
+        kind: "extension",
+        display: "ext 55",
+        extension: "55",
+        tel: null,
+        copy: "55",
+        route: "hospital-phone",
+      },
+      mobileDial: {
+        kind: "direct",
+        display: "0400 000 000",
+        tel: "tel:0400000000",
+        copy: "0400000000",
+        route: "any-phone",
+      },
+    } as unknown as NonNullable<typeof SWITCHBOARD>;
+    render(
+      <NowOnCallHero
+        context={ROSTERED}
+        answer={answer}
+        hours={null}
+        hospitalPeriod={null}
+        hospitalName={null}
+        handbookLoading={false}
+        now={AT_0350}
+      />,
+    );
+    const hero = screen.getByTestId("on-call-now-hero");
+    expect(hero).toHaveTextContent("Switchboard 0400 000 000");
+    expect(hero).not.toHaveTextContent("ext 55");
+    expect(within(hero).getByRole("link", { name: /^Call switchboard, / })).toHaveAttribute("href", "tel:0400000000");
+  });
 });

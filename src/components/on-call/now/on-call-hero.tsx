@@ -33,7 +33,7 @@ export function NowOnCallHero({
   hospitalPeriod,
   hospitalName,
   handbookLoading,
-  rosterLoading,
+  rosterLoading = false,
   now,
 }: {
   readonly context: OnCallShiftContext;
@@ -43,7 +43,7 @@ export function NowOnCallHero({
   readonly hospitalPeriod: OnCallPeriod | null;
   readonly hospitalName: string | null;
   readonly handbookLoading: boolean;
-  readonly rosterLoading: boolean;
+  readonly rosterLoading?: boolean;
   readonly now: Date;
 }) {
   const hospitalPhone = useOnCallHospitalPhone();
@@ -52,12 +52,14 @@ export function NowOnCallHero({
   const periodLabel = hospitalPeriod ? (hospitalPeriod === "after-hours" ? "After hours" : "In hours") : null;
   const dial = answer && answer.dial.kind !== "none" ? answer.dial : null;
   const route = dial ? onCallCallRoute(dial, answer?.mobileDial, hospitalPhone) : null;
-  const switchboardLine = route ? `Switchboard ${route.display}` : null;
-  const extensionLine =
-    dial?.kind === "extension"
-      ? `Hospital extension ${dial.display}`
-      : dial?.kind === "switchboard-extension" && route !== dial
-        ? `Handbook extension ${dial.display}`
+  // The line names the number the pill actually rings. A bare extension with no
+  // mobile route can only be keyed from a hospital phone, so it says so.
+  const switchboardLine = route
+    ? `Switchboard ${route.display}`
+    : dial?.kind === "extension"
+      ? `Switchboard ${dial.display} from a hospital phone`
+      : dial
+        ? `Switchboard ${dial.display}`
         : null;
 
   const eyebrow = [clock ? "On call now" : "Right now", hospitalName].filter(Boolean).join(" · ");
@@ -75,7 +77,6 @@ export function NowOnCallHero({
         ? `${onCallDurationWords(cover.minutesLeft)} to go`
         : null,
     switchboardLine,
-    extensionLine,
   ]
     .filter(Boolean)
     .join(" · ");
