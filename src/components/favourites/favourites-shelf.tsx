@@ -49,7 +49,13 @@ function TileFace({ item }: { item: FavouriteItem }) {
         ) : null}
       </span>
       <span className="block w-full min-w-0">
-        <span className="line-clamp-2 break-words hyphens-auto text-xs font-bold leading-tight text-[color:var(--work-ink)]">
+        {/* Words wrap only at spaces (no break-words, no hyphens: Chromium splits unknown drug
+            names mid-word, "Acamprosa te"). Two lines, then an ellipsis; a single word too long
+            for the tile ends in an ellipsis rather than being cut in two (15 Oct 2026). */}
+        <span
+          data-testid="favourites-shelf-tile-name"
+          className="line-clamp-2 overflow-hidden text-ellipsis [overflow-wrap:normal] [word-break:normal] text-xs font-bold leading-tight text-[color:var(--work-ink)]"
+        >
           {label}
         </span>
         <span

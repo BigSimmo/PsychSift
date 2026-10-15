@@ -512,9 +512,10 @@
   fill: currentColor;
 }
 
+/* Full hero ink, not faded: the labels are small, so they keep their contrast
+   on the slate (design follow-up 15 Oct 2026). */
 .onHero .windowLabels {
   color: inherit;
-  opacity: 0.86;
 }
 
 .onHero .windowLabels b {

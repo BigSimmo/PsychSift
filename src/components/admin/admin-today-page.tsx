@@ -110,7 +110,8 @@ export function AdminTodayPage({ now: nowProp }: { now?: Date } = {}) {
   const load = adminLoadState(state);
   const bandShown = useModeBandShown();
   const dateEcho = formatZonedLongDay(today);
-  useModeBandHeading({ title: "Admin" });
+  // The date line over the title, as every other Work page has it (My Day, CPD, Roster, Teaching).
+  useModeBandHeading({ eyebrow: dateEcho, title: "Admin" });
 
   const own = useMemo(() => selectAdminOwnEntries(state), [state]);
   const shared = useMemo(() => selectAdminSharedEntries(state), [state]);

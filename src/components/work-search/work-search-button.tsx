@@ -14,6 +14,8 @@ import { isWorkSearchArea } from "@/lib/work-search/model";
 
 /** Remembered per device so the one-time "New" note never comes back once read. A convenience only. */
 const COACH_KEY = "psychsift:work-search-coach-seen";
+/** How long the one-time note stays before it goes by itself. */
+const COACH_SHOW_MS = 8000;
 
 function coachSeen(): boolean {
   try {
@@ -78,7 +80,7 @@ function prefetchWhenIdle(): () => void {
  * the header names `header-trailing`) has room for it beside the bell: 20.75rem is the bell,
  * the gap and the 18rem pill, less the grid gap it may lean into. Measured in rem, so at large
  * text sizes the control stays a round icon rather than running under the mode switcher. It opens a full-screen search across Roster, Teaching, CPD, Admin and On Call.
- * The first time it appears, a small "New" note points at it until dismissed.
+ * The first time it appears, a small "New" note points at it for a few seconds, once per device.
  *
  * Keys (work-mode redesign, ideas list #3): "/" or Ctrl K (Command K on a Mac) opens
  * it from anywhere on a work page that is not a text field, and "?" shows the list.
@@ -97,11 +99,25 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
 
   useEffect(() => {
     if (!coach) return;
+    // On a wide screen the note hangs below the header over the top of the page (it covered
+    // CPD's Customise button and the My Day heading, 15 Oct 2026). So it is shown once only:
+    // counted as read as soon as it appears, and it goes by itself after a few seconds, or
+    // at the reader's first tap, key or scroll, whichever comes first.
+    markCoachSeen();
+    const setAsideNow = () => setSetAside(true);
     const onPointerDown = (event: PointerEvent) => {
-      if (!coachRef.current?.contains(event.target as Node)) setSetAside(true);
+      if (!coachRef.current?.contains(event.target as Node)) setAsideNow();
     };
+    const timer = window.setTimeout(setAsideNow, COACH_SHOW_MS);
     document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("keydown", setAsideNow, true);
+    window.addEventListener("scroll", setAsideNow, { capture: true, passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("keydown", setAsideNow, true);
+      window.removeEventListener("scroll", setAsideNow, { capture: true });
+    };
   }, [coach]);
   const buttonRef = useRef<HTMLButtonElement>(null);
 

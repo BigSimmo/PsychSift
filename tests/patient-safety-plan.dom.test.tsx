@@ -45,6 +45,23 @@ describe("PatientSafetyPlan — incomplete-plan draft guard", () => {
     expect(screen.getByRole("heading", { name: /Safety plan generator/i })).toBeTruthy();
   });
 
+  it("draws each step's count as a plain tinted number, not an input-like box, and names it for screen readers", () => {
+    render(<PatientSafetyPlan />);
+    const counts = screen.getAllByTestId("safety-plan-step-count");
+    // Six steps plus Reasons for living, all empty on a blank plan.
+    expect(counts).toHaveLength(7);
+    for (const count of counts) {
+      const className = count.getAttribute("class") ?? "";
+      expect(className).not.toMatch(/(?:^|\s)border(?:\s|$|-)/);
+      expect(className).not.toContain("shadow");
+      expect(className).toContain("rounded-full");
+      expect(className).toContain("text-xs");
+    }
+    expect(counts[0].textContent).toBe("00 entries");
+    expect(within(counts[0]).getByText("0 entries")).toHaveClass("sr-only");
+    expect(counts.at(-1)?.textContent).toBe("00 reasons");
+  });
+
   it("flags the patient copy as a draft until every step is complete", async () => {
     render(<PatientSafetyPlan />);
 
