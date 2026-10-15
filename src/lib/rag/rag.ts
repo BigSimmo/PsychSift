@@ -355,6 +355,9 @@ function asReviewOnlyCitations(citations: readonly Citation[]): Citation[] {
   return citations.map((citation) => ({ ...citation, provenance: "review_only" as const }));
 }
 
+// Search deadline for the admin client. See searchChunksWithTiming for why it exceeds the shared 30 s default.
+const SEARCH_SUPABASE_TIMEOUT_MS = 90_000;
+
 const confidenceOrder = {
   unsupported: 0,
   low: 1,
@@ -1148,11 +1151,12 @@ async function searchChunksWithTiming(
     recordSearchScoreTelemetry(telemetry, []);
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
-  // No client-side deadline here. PR #3454 (11 Oct 2026) gave the shared admin client a
-  // 30 s default, and the keyword RPC can take 30-48 s on the live corpus, so it was
-  // aborted and returned nothing for 9 of the 36 golden cases (eval canaries from 11 Oct).
-  // Search keeps the caller's own abort signal, as it did before that change.
-  const supabase = createAdminClient({ timeoutMs: null });
+  // Longer deadline than the shared 30 s default. PR #3454 (11 Oct 2026) gave the shared
+  // admin client that default, and the keyword RPC can take 30-48 s on the live corpus, so it
+  // was aborted and returned nothing for 9 of the 36 golden cases (eval canaries from 11 Oct).
+  // 90 s clears the slowest observed keyword call while still bounding a stalled request,
+  // including the query-correction RPC that does not carry the caller's abort signal.
+  const supabase = createAdminClient({ timeoutMs: SEARCH_SUPABASE_TIMEOUT_MS });
   // Source-only retrieval never calls embeddings.
   const sourceOnlyRetrieval = isSourceOnlyMode();
   if (args.forceEmbedding && sourceOnlyRetrieval) {
