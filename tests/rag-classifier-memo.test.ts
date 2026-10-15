@@ -298,5 +298,22 @@ describe("deterministic consumer refusals skip the classifier", () => {
     const analysis = analyzeClinicalQuery(query);
     expect(isDeterministicNonClinicalConsumerRefusal(query, analysis)).toBe(false);
     await rag.analyzeQueryWithClassifierFallback(query, analysis);
+    expect(mock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the classifier for consumer words beside a clinical term the guard pattern lacks", async () => {
+    const { analyzeClinicalQuery } = await loadWithClassifierMock(vi.fn(async () => classifierResponse()));
+    const { isDeterministicNonClinicalConsumerRefusal } = await import("../src/lib/rag/rag-query-guard");
+
+    for (const query of [
+      "kitchen safety in dementia",
+      "gaming addiction in teenagers",
+      "insomnia after holiday travel",
+      "alcohol withdrawal on holiday",
+      "ADHD and gaming",
+      "anorexia recipe",
+    ]) {
+      expect(isDeterministicNonClinicalConsumerRefusal(query, analyzeClinicalQuery(query)), query).toBe(false);
+    }
   });
 });

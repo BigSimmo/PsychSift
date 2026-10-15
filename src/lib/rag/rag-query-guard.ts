@@ -113,12 +113,22 @@ function isNonClinicalConsumerQuery(query: string, analysis: ClinicalQueryAnalys
 }
 
 /**
+ * Clinical words the classifier can use to rescue a query that also contains a consumer word
+ * ("kitchen safety in dementia", "gaming addiction in teenagers"). Any match keeps the classifier
+ * in the loop, so the latency bypass below only ever applies to plainly non-clinical questions.
+ */
+const classifierRescueClinicalTermPattern =
+  /\b(?:dementia|delirium|cognitive|alzheimer'?s?|adhd|add|autis(?:m|tic)|asd|eating|anorexi(?:a|c)|bulimi(?:a|c)|binge|arfid|addict(?:ion|ed|ive)?|gambl(?:ing|er)|gaming|alcohol|drink(?:ing)?|withdrawal|substance|drugs?|cannabis|methamphetamine|meth|opioids?|benzodiazepines?|nicotine|vap(?:e|ing)|insomnia|sleep|nightmares?|ocd|obsessi(?:ve|on)|compulsi(?:ve|on)|panic|phobi(?:a|c)|stress|grief|mood|personality|borderline|bpd|aggressi(?:on|ve)|violence|agitation|risk|safety|pregnan(?:t|cy)|perinatal|postnatal|postpartum|child(?:ren)?|adolescents?|teen(?:ager)?s?|youth|elderly|older|aged|carers?|clinical|clinician|doctor|nurse|hospital|mental|health|tablets?|capsules?|mg|side effects?|nutrition(?:al)?|malnutrition|weight|bmi|diet)\b/i;
+
+/**
  * True when the deterministic analysis already refuses the query as a non-clinical consumer
- * question (coffee machine, recipe, air fryer). `analyzeQueryWithClassifierFallback` uses it to
- * skip the LLM classifier: the refusal does not need the model, and asking it cost these
- * refusals 1.5 to 6.4 s of the 4 s unsupported-route budget (eval canary run 38419027058).
+ * question (coffee machine, recipe, air fryer) and it holds no clinical word the classifier could
+ * use to rescue it. `analyzeQueryWithClassifierFallback` uses it to skip the LLM classifier:
+ * asking the model cost these refusals 1.5 to 6.4 s of the 4 s unsupported-route budget (eval
+ * canary run 38419027058).
  */
 export function isDeterministicNonClinicalConsumerRefusal(query: string, analysis: ClinicalQueryAnalysis) {
+  if (classifierRescueClinicalTermPattern.test(query)) return false;
   return unsupportedSoftTailEligible(analysis) && isNonClinicalConsumerQuery(query, analysis);
 }
 

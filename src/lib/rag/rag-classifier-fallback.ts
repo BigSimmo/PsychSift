@@ -187,8 +187,8 @@ export async function analyzeQueryWithClassifierFallback(
     hasAdversarialManipulationIntent(query) ||
     unavailableDocumentNoisePattern.test(query) ||
     (clearlyOutsideCorpusMedicalPattern.test(query) && analysis.documentTitleTerms.length === 0) ||
-    // A consumer question the pattern guard already refuses ("best coffee machine") is refused
-    // by the short-circuit whatever the model says, so waiting on the model only adds latency.
+    // A plainly non-clinical consumer question ("best coffee machine") with no clinical word the
+    // model could rescue it on: the classifier would only add latency before the same refusal.
     isDeterministicNonClinicalConsumerRefusal(query, analysis)
   ) {
     return { ...analysis, needsClassifierFallback: false } satisfies ClinicalQueryAnalysis;
