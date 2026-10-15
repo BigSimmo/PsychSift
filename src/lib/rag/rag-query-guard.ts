@@ -112,6 +112,37 @@ function isNonClinicalConsumerQuery(query: string, analysis: ClinicalQueryAnalys
   return true;
 }
 
+/**
+ * Every word a query may contain and still skip the classifier. The list is deliberately closed:
+ * a list of clinical words to look out for can never be complete ("holiday leave for akathisia"),
+ * so any word not listed here, clinical or not, keeps the classifier in the loop and the bypass
+ * fails safe. It covers everyday shopping and household questions only.
+ */
+const plainlyNonClinicalWords = new Set(
+  (
+    "a an the and or of for to in on at with my me i we our your you it is are be can should would could " +
+    "what which who where when how why do does did please give tell show find recommend recommendation " +
+    "best good cheap cheapest top new buy buying purchase price prices cost review reviews compare " +
+    "small large big home house kitchen coffee machine espresso air fryer recipe recipes oats overnight " +
+    "high protein breakfast dinner lunch meal cook cooking bake baking cake hotel restaurant holiday " +
+    "flight flights booking airline car finance mortgage insurance laptop phone sale television tv show " +
+    "washing vacuum cleaner"
+  ).split(" "),
+);
+
+/**
+ * True when the deterministic analysis already refuses the query as a non-clinical consumer
+ * question (coffee machine, recipe, air fryer) and every word in it is plainly non-clinical, so the
+ * classifier has nothing it could rescue the query on. `analyzeQueryWithClassifierFallback` uses it
+ * to skip the LLM classifier: asking the model cost these refusals 1.5 to 6.4 s of the 4 s
+ * unsupported-route budget (eval canary run 38419027058).
+ */
+export function isDeterministicNonClinicalConsumerRefusal(query: string, analysis: ClinicalQueryAnalysis) {
+  const words = query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  if (words.length === 0 || !words.every((word) => plainlyNonClinicalWords.has(word))) return false;
+  return unsupportedSoftTailEligible(analysis) && isNonClinicalConsumerQuery(query, analysis);
+}
+
 export function shouldShortCircuitUnsupportedSearch(query: string, analysis: ClinicalQueryAnalysis) {
   if (unavailableDocumentNoisePattern.test(query)) return true;
   if (clearlyOutsideCorpusMedicalPattern.test(normalizeGuardQuery(query)) && analysis.documentTitleTerms.length === 0)

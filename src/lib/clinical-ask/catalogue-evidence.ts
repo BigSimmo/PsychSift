@@ -188,20 +188,26 @@ function specifierEvidence(request: ClinicalAskRequest) {
     .map((item, index) => ({ item, rank: rankedLabels.get(item.label) ?? rankedLabels.size + index }))
     .sort((left, right) => left.rank - right.rank)
     .slice(0, RESULT_LIMIT);
-  return candidates.map(({ item }) =>
-    evidence(request, item.slug, {
+  return candidates.map(({ item }) => {
+    const clinicianReviewed = isSpecifierClinicianReviewed(item.review);
+    return evidence(request, item.slug, {
       title: item.label,
       // Same defect as the DSM label above: a fallback must not assert an
       // authority the item does not carry. The review state below is derived.
       publisher: item.definition?.sourceFamily || "Specifier catalogue",
       href: `/specifiers/${item.slug}`,
-      extract: text([item.disorderName, item.definition?.meaning, item.definition?.clinicalNote, item.icd11Context]),
+      // Keep the structural context searchable, but never send unsigned
+      // definition wording to synthesis.
+      extract: text([
+        item.disorderName,
+        clinicianReviewed ? item.definition?.meaning : undefined,
+        clinicianReviewed ? item.definition?.clinicalNote : undefined,
+        item.icd11Context,
+      ]),
       reviewState:
-        item.review.sourceVerificationStatus.includes("needs") || !isSpecifierClinicianReviewed(item.review)
-          ? "needs_review"
-          : "reviewed",
-    }),
-  );
+        item.review.sourceVerificationStatus.includes("needs") || !clinicianReviewed ? "needs_review" : "reviewed",
+    });
+  });
 }
 
 function therapyEvidence(request: ClinicalAskRequest) {

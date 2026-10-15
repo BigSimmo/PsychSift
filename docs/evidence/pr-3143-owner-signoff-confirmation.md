@@ -1,5 +1,9 @@
 # PR #3143: clinical owner's sign-off confirmation
 
+> **Superseded for DSM specifiers on 15 October 2026.** The owner chose to show the specifiers
+> stamped `PsychSift` as not signed off until he re-signs each one in his own name. See
+> [`../decisions/2026-10-15-specifiers-need-a-named-sign-off.md`](../decisions/2026-10-15-specifiers-need-a-named-sign-off.md).
+
 On 2 October 2026, Josh, PsychSift's clinical owner, confirmed in the PR-completion
 request: "I have signed off on all of these so make that clear."
 

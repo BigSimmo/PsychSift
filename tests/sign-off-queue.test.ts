@@ -11,7 +11,7 @@ import {
   isDefinitionReviewClinicallyApproved,
 } from "@/lib/dictionary-editorial/definition-reviews";
 import { acquisitionReviewQueue } from "@/lib/sources/acquisition-ledger";
-import { isSpecifierClinicianReviewed, loadSpecifiersContent } from "@/lib/specifiers-content";
+import { isSpecifierClinicianReviewed, loadSpecifiersContent, specifierCatalogItems } from "@/lib/specifiers-content";
 import { formulationConcepts, formulationGuides } from "@/lib/formulation-concepts";
 import { conceptReviewState } from "@/lib/formulation-review-status";
 
@@ -44,8 +44,10 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   differentials: 232,
   // 333 unpublished sense drafts + 68 reviews without approved rewrite text.
   dictionary: 401,
-  // The 89 written items and universals were signed off; 514 placeholders remain.
-  specifiers: 514,
+  // 514 placeholders, plus the 71 written items and 18 universals that the 2026-09-26
+  // reconcile attributed to "PsychSift". A product name is not a clinician, so those 89 read
+  // as not signed off until a named clinician signs them.
+  specifiers: 603,
   // 54 records were signed off. The 47 that remain have no sign-off tool.
   // The audit-remediation source-governance pass removed the wake-therapy record's only
   // reference (an "uploaded guide" note) and cleared its sign-off, so it is back in the
@@ -198,12 +200,14 @@ describe("clinical sign-off queue", () => {
     );
     expect(content.universalSpecifiers.length).toBe(content.stats.universalSpecifiers);
     expect(universals.map((row) => row.id)).toEqual(unsignedUniversals.map((specifier) => specifier.review.rowKey));
-    expect(specifiers.rows.length).toBe(content.stats.itemsPendingClinicianReview + universals.length);
+    const unsignedItems = specifierCatalogItems().filter((item) => !isSpecifierClinicianReviewed(item.review));
+    expect(specifiers.rows.length).toBe(unsignedItems.length + universals.length);
     // Unlinked on purpose: publicSpecifierRecords() is curated records plus
     // specifierCatalogItems(), and a universal is in neither, so /specifiers/<slug>
     // would not resolve for one.
     expect(universals.every((row) => row.href === null)).toBe(true);
-    expect(universals.every((row) => row.nativeStatus.includes("clinician-review-pending"))).toBe(true);
+    // Pending, or stamped "clinician-reviewed" by a product name rather than a named clinician.
+    expect(universals.every((row) => /^clinician-review(?:-pending|ed) /.test(row.nativeStatus))).toBe(true);
   });
 
   it("gives every row an id, a title, a sign-off requirement and either a real route or none", () => {
