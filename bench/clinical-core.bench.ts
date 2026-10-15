@@ -3,8 +3,8 @@
 // search. Every fixture is synthetic and built once outside the measured callbacks,
 // so the benchmarks never touch the network, Supabase or a provider.
 //
-// Run locally with `npm run bench`; CI runs them under the CodSpeed CPU simulation
-// instrument (.github/workflows/codspeed.yml).
+// Run locally with `npm run bench`. There is no CI workflow for them: the CodSpeed
+// workflow was removed on 2026-10-15 because it was never authenticated.
 import { withCodSpeed } from "@codspeed/tinybench-plugin";
 import { Bench } from "tinybench";
 import { rankAnswerEvidence } from "@/lib/answer-ranking";
