@@ -44,14 +44,36 @@ function revealIfCovered(target: HTMLElement) {
  * check one frame later catches an engine focus scroll that lands after `focusin`. Engines that
  * already cleared the dock never reach `scrollIntoView`. Pointer focus (not `:focus-visible`) is
  * left alone so a tap or click is never scrolled away between press and release.
+ *
+ * Layout can still move after that frame: the reveal scroll hides the dock, and the shell's
+ * bottom reserve then animates to zero, or a late section above the results finishes loading.
+ * Either can carry an already-revealed control back under the dock or off screen. So for a short
+ * settle window the content box is watched, and the control is re-revealed whenever it resizes.
  */
+const settleWindowMs = 1200;
+
 export function PhoneFocusClearance() {
   useEffect(() => {
     const phone = window.matchMedia(phoneMediaQuery);
+    let settle: { observer: ResizeObserver; timer: number } | null = null;
+    // A reader who scrolls, taps or presses a key during the settle window has moved on (Enter on
+    // an in-page jump link scrolls away from the still-focused link), so stop pulling the page
+    // back to the focused control.
+    const userScrollEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+    const stopSettling = () => {
+      if (!settle) return;
+      for (const type of userScrollEvents) window.removeEventListener(type, stopSettling, true);
+      settle.observer.disconnect();
+      window.clearTimeout(settle.timer);
+      settle = null;
+    };
     const onFocusIn = (event: FocusEvent) => {
+      stopSettling();
       if (!phone.matches) return;
       const target = event.target;
-      if (!(target instanceof HTMLElement) || !target.closest(".phone-scroll-surface")) return;
+      if (!(target instanceof HTMLElement)) return;
+      const surface = target.closest<HTMLElement>(".phone-scroll-surface");
+      if (!surface) return;
       // Keyboard focus only. A press focuses its control on pointerdown, before the release that
       // makes the click; scrolling there moves the control out from under the pointer, so the
       // release lands elsewhere and the click (a form submit, say) never happens.
@@ -61,9 +83,27 @@ export function PhoneFocusClearance() {
         if (document.activeElement !== target) return;
         revealIfCovered(target);
       });
+      if (typeof ResizeObserver === "undefined") return;
+      const content = surface.querySelector<HTMLElement>('[data-testid="mobile-composer-reserve-pad"]') ?? surface;
+      const observer = new ResizeObserver(() => {
+        if (document.activeElement !== target) {
+          stopSettling();
+          return;
+        }
+        revealIfCovered(target);
+      });
+      // Border box, so the reserve padding collapsing counts as a resize.
+      observer.observe(content, { box: "border-box" });
+      settle = { observer, timer: window.setTimeout(stopSettling, settleWindowMs) };
+      for (const type of userScrollEvents) {
+        window.addEventListener(type, stopSettling, { capture: true, passive: true });
+      }
     };
     document.addEventListener("focusin", onFocusIn);
-    return () => document.removeEventListener("focusin", onFocusIn);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      stopSettling();
+    };
   }, []);
 
   return null;

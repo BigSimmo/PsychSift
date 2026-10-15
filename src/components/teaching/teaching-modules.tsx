@@ -43,7 +43,7 @@ export function TeachingContextBar({
       {teams.length === 1 ? (
         <span className="flex min-w-0 items-center gap-2 text-xs font-bold text-[color:var(--text-heading)]">
           <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[color:var(--mode-identity)]" />
-          <span className="truncate">{teams[0].name}</span>
+          <span className="min-w-0 break-words">{teams[0].name}</span>
         </span>
       ) : (
         <Select

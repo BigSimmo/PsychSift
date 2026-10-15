@@ -174,10 +174,12 @@ export function NowRightNow({
                 </div>
                 <p className={cn(modeNumberText, "relative h-4 text-xs font-semibold text-[color:var(--text)]")}>
                   <span className="absolute left-0">{cover.from}</span>
-                  {/* "Now" sits under the dot, kept clear of both ends. */}
+                  {/* "Now" sits under the dot, kept clear of both ends. The clamp is in ch so it scales with the
+                      text: an end label is at most 5ch ("17:00"), "Now 19:12" is about 9ch wide (4.5ch each side
+                      of its centre), so an 11ch centre leaves at least 1.5ch between them. */}
                   <span
                     className="absolute -translate-x-1/2 whitespace-nowrap"
-                    style={{ left: `clamp(4.5rem, ${cover.progress}%, calc(100% - 4.5rem))` }}
+                    style={{ left: `clamp(11ch, ${cover.progress}%, calc(100% - 11ch))` }}
                   >
                     {`Now ${cover.nowTime}`}
                   </span>

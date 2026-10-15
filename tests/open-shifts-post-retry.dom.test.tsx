@@ -164,6 +164,55 @@ describe("Posting a shift", () => {
     expect(mocks.post).toHaveBeenCalledTimes(2);
   });
 
+  it("after a post gets no answer, a retry sends the same post key, so the server answers with the saved shift", async () => {
+    const SAVED = "5e000000-0000-4000-8000-0000000000b4";
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { openShiftId: SAVED, status: "open", replayed: true },
+    });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+
+    // The re-read doesn't show the shift yet (it went live just after the read), so the date is sent again.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    mocks.state = { ...mocks.state, readAt: new Date() };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
+
+    expect(mocks.post).toHaveBeenCalledTimes(2);
+    const first = mocks.post.mock.calls[0]![1] as { postKey?: string };
+    const retry = mocks.post.mock.calls[1]![1] as { postKey?: string };
+    expect(first.postKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(retry.postKey).toBe(first.postKey);
+    expect(mocks.push.mock.calls[0]![0]).toContain(SAVED);
+  });
+
+  it("gives a deliberate new post its own key once the last one went live", async () => {
+    mocks.post.mockResolvedValue({
+      ok: true,
+      result: { ok: true, openShiftId: "5e000000-0000-4000-8000-0000000000b5" },
+    });
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
+    cleanup();
+    // A fresh visit to the post page is a new post: it never reuses an earlier visit's key.
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+    const [first, second] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+
   it("after a post gets no answer, doesn't post to another team while the first team can't be read", async () => {
     const OTHER = "5e000000-0000-4000-8000-000000000020";
     mocks.state = { ...mocks.state, shifts: [] };
