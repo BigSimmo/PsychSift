@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { appModeSelectionHref, isAppModeId, isAppModeVisible } from "@/lib/app-modes";
-import { dashboardOwnedModeHomeModeId } from "@/lib/search-route-ownership";
+import { dashboardOwnedModeHomeModeId, ownPageModeHomeHref } from "@/lib/search-route-ownership";
 import { DEFAULT_APP_MODE } from "@/components/clinical-dashboard/use-last-app-mode";
 import { landingModeForPreference, readAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import { readSearchNavigationContext } from "@/lib/search-navigation-context";
@@ -194,6 +194,11 @@ export function useHomeModeSeed({
     homeModeSeededRef.current = true;
     if (landingModeForPreference(readAppPreferences().landing)) return;
     if (lastAppMode === DEFAULT_APP_MODE) return;
+    // A remembered Work or dashboard mode (CPD, On Call…) has nothing to search,
+    // so seeding it here painted an empty search page under that mode's name
+    // every time `/` opened cold, from the logo or after an update reload. `/`
+    // is the clinical home: leave it on the default mode.
+    if (ownPageModeHomeHref(lastAppMode)) return;
     // Carry the rest of the URL through. Seeding only runs when the URL names no
     // mode or query, but `focus=1` and the scope/queryMode context can still be
     // present — rewriting without them silently dropped a requested composer
