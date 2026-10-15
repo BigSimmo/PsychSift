@@ -25,6 +25,7 @@ import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ROSTER_OPEN_SHIFT_KINDS, type RosterAction } from "@/lib/roster/team/model";
 
 import { ConfirmSheet } from "./open-shifts-confirm";
+import { forgetPostKey, postKeyFor } from "./open-shifts-post-keys";
 import { SignInAction } from "./open-shifts-sign-in";
 import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
@@ -109,9 +110,10 @@ export function OpenShiftsPostPage() {
   const [unanswered, setUnanswered] = useState<
     Record<string, { readonly ids: readonly string[]; readonly at: number; readonly serviceId: string }>
   >({});
-  // One post key per date being posted, by everything that was sent. A retry of a date whose answer was
-  // lost sends the same key, so the server answers with the shift that post already saved instead of saving
-  // a second one. A key is dropped once its date is posted; changing anything in the shift makes a new key.
+  // One post key per date being posted, by everything that was sent, also kept for this tab so it survives a
+  // reload. A retry of a date whose answer was lost sends the same key, so the server answers with the shift
+  // that post already saved instead of saving a second one. A key is dropped once its date is posted;
+  // changing anything in the shift makes a new key.
   const postKeys = useRef<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
@@ -259,8 +261,7 @@ export function OpenShiftsPostPage() {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
       }
-      const postKey = postKeys.current[signature(on)] ?? crypto.randomUUID();
-      postKeys.current[signature(on)] = postKey;
+      const postKey = postKeyFor(signature(on), postKeys.current);
       const result = await postRosterAction(team.serviceId, {
         action: "open.post",
         startsAt: onTimes.startsAt,
@@ -275,7 +276,7 @@ export function OpenShiftsPostPage() {
       if (result.ok) {
         attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
         nowDone[signature(on)] = result.result.openShiftId ?? "";
-        delete postKeys.current[signature(on)];
+        forgetPostKey(signature(on), postKeys.current);
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat

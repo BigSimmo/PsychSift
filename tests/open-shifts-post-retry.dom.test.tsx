@@ -65,6 +65,7 @@ function liveShift(): PostedShift {
 }
 
 beforeEach(() => {
+  window.sessionStorage.clear();
   mocks.post.mockReset();
   mocks.push.mockReset();
   mocks.state = {
@@ -190,6 +191,34 @@ describe("Posting a shift", () => {
     expect(first.postKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(retry.postKey).toBe(first.postKey);
     expect(mocks.push.mock.calls[0]![0]).toContain(SAVED);
+  });
+
+  it("after a post gets no answer and the page is reloaded, the retry still sends the same post key", async () => {
+    const SAVED = "5e000000-0000-4000-8000-0000000000b6";
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { openShiftId: SAVED, status: "open", replayed: true },
+    });
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+
+    // Reload: the page starts again from nothing but the tab's storage, and the same shift is posted.
+    cleanup();
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
+
+    const [first, retry] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(retry).toBe(first);
+    expect(mocks.push.mock.calls[0]![0]).toContain(SAVED);
+    // Confirmed, so the key is gone and a later post of the same shift would be a new one.
+    expect(window.sessionStorage.getItem("psychsift:open-shifts:post-keys-v1")).toBeNull();
   });
 
   it("gives a deliberate new post its own key once the last one went live", async () => {

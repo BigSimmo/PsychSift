@@ -34203,6 +34203,10 @@ create table public.roster_open_post_keys (
   primary key (service_id, post_key)
 );
 create index roster_open_post_keys_open_shift_idx on public.roster_open_post_keys (open_shift_id);
+-- Deleting an account clears its id from the post keys too (20261015181500_roster_open_post_keys_posted_by_fk.sql).
+alter table public.roster_open_post_keys
+  add constraint roster_open_post_keys_posted_by_fkey
+  foreign key (posted_by) references auth.users (id) on delete set null;
 
 alter table public.roster_open_post_keys enable row level security;
 revoke all on table public.roster_open_post_keys from public, anon, authenticated;
