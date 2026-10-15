@@ -2785,17 +2785,29 @@ html[data-motion="reduced"] .shared-compare-tray-layer[data-scroll-hidden="true"
 /* The tap area. The box above is ~18px, far under the 48px tap rule, and it cannot
    grow without growing the line box. This invisible square, centred on the mark,
    takes the tap instead: absolutely positioned, so it changes neither the visible
-   size nor the text flow (audit D05, 2026-10-13). Adjacent marks in a cluster
-   overlap here; the later mark paints last and takes a tap in the overlap, which
-   still opens a source of that same sentence. */
+   size nor the text flow (audit D05, 2026-10-13).
+
+   Inside a cluster the squares used to overlap and the later mark painted last, so
+   a tap on the right half of "1" opened source 2. Now each side between two marks
+   stops halfway across the gap, so every tap lands on the mark drawn under the
+   finger. Only the outer sides of a cluster reach out to the full tap width; the
+   full height stays on every mark. */
 .answer-source-mark::before {
   content: "";
   position: absolute;
-  left: 50%;
   top: 50%;
-  width: max(100%, var(--spacing-tap));
+  left: calc(-1 * max(0px, (var(--spacing-tap) - 100%) / 2));
+  right: calc(-1 * max(0px, (var(--spacing-tap) - 100%) / 2));
   height: var(--spacing-tap);
-  transform: translate(-50%, -50%);
+  transform: translateY(-50%);
+}
+
+.answer-source-mark + .answer-source-mark::before {
+  left: calc(-0.5 * var(--answer-mark-gap));
+}
+
+.answer-source-mark:has(+ .answer-source-mark)::before {
+  right: calc(-0.5 * var(--answer-mark-gap));
 }
 
 /* The partial-support glyph. One glyph reads at this size; a dotted underline

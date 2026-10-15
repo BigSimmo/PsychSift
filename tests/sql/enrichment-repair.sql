@@ -42,18 +42,28 @@ insert into public.document_index_quality(document_id, quality_score, extraction
 select id, 1, 'good' from cases where n in (4, 6, 7, 8);
 
 insert into public.indexing_v3_agent_jobs(document_id, status, enrichment_status, attempt_count, max_attempts,
-  locked_by, locked_at, created_at, updated_at)
+  locked_by, locked_at, created_at, updated_at, lease_token, lease_expected_generation_id,
+  lease_write_generation_id, lease_authority_digest, lease_expires_at, lease_duration_seconds)
 select id, case n when 1 then 'needs_enrichment_artifacts' when 2 then 'failed' when 7 then 'processing' else 'pending' end,
   case n when 1 then 'needs_enrichment_artifacts' when 2 then 'failed' when 7 then 'processing' else 'pending' end,
   case when n in (1, 2, 3) then 3 else 1 end, 3,
   case when n = 7 then 'synthetic-worker' end, case when n = 7 then now() end,
-  now() - interval '2 hours', now() - interval '2 hours'
+  now() - interval '2 hours', now() - interval '2 hours',
+  -- A processing row must carry the full lease tuple (indexing_v3_agent_jobs_lease_tuple).
+  case when n = 7 then gen_random_uuid() end, case when n = 7 then gen_random_uuid() end,
+  case when n = 7 then gen_random_uuid() end, case when n = 7 then 'sha256:' || repeat('0', 64) end,
+  case when n = 7 then now() + interval '1 hour' end, case when n = 7 then 3600 end
 from cases where n in (1, 2, 3, 6, 7);
-insert into public.ingestion_jobs(document_id, status, stage, next_run_at, created_at, locked_at, locked_by)
+insert into public.ingestion_jobs(document_id, status, stage, next_run_at, created_at, locked_at, locked_by,
+  lease_token, lease_write_generation_id, lease_authority_digest, lease_expires_at, lease_duration_seconds)
 select id, case when n = 8 then 'processing' else 'pending' end, 'queued',
   case when n = 5 then now() + interval '1 day' else now() end,
   now() - interval '2 hours', case when n = 8 then now() - interval '2 hours' end,
-  case when n = 8 then 'expired-worker' end
+  case when n = 8 then 'expired-worker' end,
+  -- Full lease tuple (ingestion_jobs_lease_tuple), expired an hour ago.
+  case when n = 8 then gen_random_uuid() end, case when n = 8 then gen_random_uuid() end,
+  case when n = 8 then 'sha256:' || repeat('0', 64) end,
+  case when n = 8 then now() - interval '1 hour' end, case when n = 8 then 3600 end
 from cases where n in (4, 5, 8);
 create temp table before_documents as select d.* from public.documents d join cases c on c.id = d.id where n in (4, 5, 6, 7);
 create temp table before_jobs as select j.* from public.ingestion_jobs j join cases c on c.id = j.document_id where n in (4, 5);

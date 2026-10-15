@@ -1,6 +1,7 @@
 -- Behaviour checks for the combined Roster DB PR, run against a disposable replay of files 1-5.
 -- Every block raises on a wrong answer, so a clean run prints only the final line.
 -- Run: psql -v ON_ERROR_STOP=1 -1 -f tests/sql/roster-behaviour.sql   (never against a live database)
+begin;
 create temp table ids (k text primary key, v uuid) on commit drop;
 grant all on ids to service_role;
 
@@ -543,3 +544,7 @@ $delete_account$;
 set local role service_role;
 
 select 'roster behaviour: all checks passed' as result;
+
+-- The local runner and CI use psql -1, but the explicit begin and rollback mean a direct psql -f run
+-- (without -1) also leaves no synthetic fixtures behind.
+rollback;

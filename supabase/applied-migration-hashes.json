@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-15T11:24:23.374Z",
+  "sealed_at": "2026-10-15T15:57:11.538Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -311,6 +311,7 @@
     "20261013160000_teaching_assessments_and_milestones.sql": "adb491df9ace7fa9cbf20091d14e8411df216a53935e7b95f7dcd23d1fd5776b",
     "20261013170000_force_rls_control_plane.sql": "46d746dd78ed0c62489d72244ffc70b38dc08e3adb7d62ef360482dcb7214a85",
     "20261013200007_managed_native_pdf_terminal_append.sql": "94ac297bad4a1f9d28fcb13d018237df081aa5b3da328073be8c9e17774bd292",
-    "20261014164220_validate_managed_ingestion_historical_reconciliation.sql": "8ffd75292620e82065300eb1e1d008c229545dde37826862820bfd6ea1314587"
+    "20261014164220_validate_managed_ingestion_historical_reconciliation.sql": "8ffd75292620e82065300eb1e1d008c229545dde37826862820bfd6ea1314587",
+    "20261015160000_document_child_policies_check_parent_owner.sql": "71210bbc5aecdca74bee2ae32181ba2861e65017ca1a5e87995aa8e557946094"
   }
 }

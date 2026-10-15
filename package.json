@@ -80,6 +80,7 @@
     "test:e2e:visual:update": "node scripts/run-playwright.mjs --config=playwright.visual.config.ts --update-snapshots",
     "test:e2e:style-contract": "node scripts/run-playwright.mjs tests/ui-style-contract.spec.ts --project=chromium",
     "test:cross-tenant:staging": "node scripts/run-tsx.mjs scripts/test-cross-tenant-staging.ts",
+    "test:sql": "node scripts/run-tsx.mjs scripts/test-sql-behaviour.ts",
     "worktrees:report": "node scripts/clean-worktree.mjs",
     "worktrees:inventory": "node scripts/worktree-inventory.mjs",
     "clean:worktree": "npm run worktrees:report",

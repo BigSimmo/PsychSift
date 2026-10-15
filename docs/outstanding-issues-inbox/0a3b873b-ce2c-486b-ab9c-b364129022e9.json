@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "0a3b873b-ce2c-486b-ab9c-b364129022e9",
+  "createdOn": "2026-10-15",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "Remove PR 3538 leftovers once the 30-day dead-code window passes (after 13 Nov 2026)",
+    "detail": "The /api/proxy route only replies authenticated and nothing calls it. scripts/recalculate-answer-support-labels.ts and its test are run by nothing. The 11 developer tool pages under src/app/mockups/development are now unreachable duplicates of /admin/developer-hub. The safe-number editor, attendance roster, QR check-in helper and clinical note editor are unwired; wire or remove each, and the note editor needs a privacy review before use. The clinical-math calculators need ideal body weight guidance, a corrected lithium dialysis label, a consistent 1.2 mmol/L boundary and tablet-strength rounding before any use.",
+    "source": "PR 3538 review, 15 Oct 2026",
+    "issueUlid": "01M4ZM796108216B8VGP235CHK"
+  }
+}

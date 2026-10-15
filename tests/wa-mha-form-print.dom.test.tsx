@@ -46,6 +46,31 @@ describe("WaMhaFormPrint (#C4CFFP)", () => {
     expect(screen.getAllByText(/Chief Psychiatrist Consent/i).length).toBeGreaterThanOrEqual(1);
   });
 
+  it("prints blank fields as gaps, never as invented patient, clinician or consent content", () => {
+    render(<WaMhaFormPrint formCode="6B" />);
+
+    const root = screen.getByTestId("wa-mha-form-print-root");
+    expect(root).not.toHaveTextContent(/Smith|UMRN-|Reynolds|Voluntary options exhausted|intravenous/);
+    expect(root).not.toHaveTextContent("Obtained and documented in clinical record.");
+    expect(root).not.toHaveTextContent(/consent obtained/i);
+    expect(screen.getAllByText(/Not entered/).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("prints no age-specific period until the age class is stated, and always shows the not-for-use warning", () => {
+    render(<WaMhaFormPrint formCode="6A" />);
+
+    expect(screen.getByTestId("form-not-for-use-warning")).toHaveTextContent(/not for clinical or legal use/i);
+    const statutory = screen.getByTestId("statutory-metadata");
+    expect(statutory).toHaveTextContent("Not determined (Not entered)");
+    expect(statutory).not.toHaveTextContent("21 days (Adult)");
+  });
+
+  it("prints the adult period when the age class is stated", () => {
+    render(<WaMhaFormPrint formCode="6A" isChild={false} />);
+
+    expect(screen.getByTestId("statutory-metadata")).toHaveTextContent("21 days (Adult)");
+  });
+
   it("print.css enforces visible display for form headers, titles, and statutory metadata in @media print", () => {
     const cssPath = resolve(process.cwd(), "src/styles/print.css");
     const printCss = readFileSync(cssPath, "utf8");

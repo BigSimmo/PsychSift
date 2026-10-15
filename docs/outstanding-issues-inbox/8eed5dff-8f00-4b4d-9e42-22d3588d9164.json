@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8eed5dff-8f00-4b4d-9e42-22d3588d9164",
+  "createdOn": "2026-10-15",
+  "action": "add",
+  "payload": {
+    "pri": "P1",
+    "type": "issue",
+    "summary": "Unwired WA MHA Form 6A/6B print component carries unverified statutory text",
+    "detail": "src/components/forms/wa-mha-form-print.tsx (PR #3538) says Form 6B needs Chief Psychiatrist consent, while src/lib/form-register.ts calls the 6B attachment a report to the Chief Psychiatrist. Section lists, the 7-day pre-expiry examination and copy recipients are unverified, and it prints WA Government branding. Fabricated default patient, clinician and consent values were removed on 15 Oct. Nothing renders it. Delete it once the 30-day dead-code window passes (after 13 Nov 2026) unless legal and clinical sign-off is obtained first.",
+    "source": "PR 3538 review, 15 Oct 2026",
+    "issueUlid": "01M4ZM793BWFYDV65NNBHBP53K"
+  }
+}

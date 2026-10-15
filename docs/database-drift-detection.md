@@ -240,6 +240,9 @@ belongs in a NEW migration.
 changed, so the exception lands in front of a reviewer rather than passing silently. The one
 legitimate use is restoring a file to the bytes production actually holds, which is what introduced
 this guard.
+Even then, a reseal needs the owner's explicit permission for that specific reseal (`AGENTS.md`,
+"Supabase project safety"). The script refuses before writing anything unless
+`MIGRATION_RESEAL_OWNER_APPROVAL` names who approved it and when.
 
 ## Guard-migration contract
 
