@@ -25,6 +25,19 @@ const failClosedInternationalGovernedRetrievalV3 = readFileSync(
   new URL("../supabase/migrations/20260901130000_fail_closed_unactivated_international_retrieval.sql", import.meta.url),
   "utf8",
 ).replace(/\s+/g, " ");
+// The effective match_governed_candidate_chunks_v3 body: 20260901130000 plus the text-only
+// prefilter (it may only add that one WHERE predicate, so the 0901 assertions still describe it).
+const textOnlyPrefilterGovernedRetrievalV3 = readFileSync(
+  new URL("../supabase/migrations/20261015180000_prefilter_text_only_governed_retrieval.sql", import.meta.url),
+  "utf8",
+).replace(/\s+/g, " ");
+const textOnlyPrefilterPredicate =
+  " and ( query_embedding is not null or ( admitted.tsq is not null and (chunk.search_tsv @@ admitted.tsq or document.title_search_tsv @@ admitted.tsq) ) )";
+function governedCandidateV3Body(sql: string) {
+  const start = sql.indexOf("create or replace function public.match_governed_candidate_chunks_v3(");
+  const end = sql.indexOf("revoke all on function public.match_governed_candidate_chunks_v3(", start);
+  return sql.slice(start, end);
+}
 const siteContentHealthMigration = readFileSync(
   new URL("../supabase/migrations/20260824123000_add_site_content_health_probe.sql", import.meta.url),
   "utf8",
@@ -196,7 +209,7 @@ describe("governed corpus retrieval v3 schema", () => {
       "document.metadata->>'corpus_scope' in ('australian_public', 'international_supplementary')",
     );
     expect(candidateFunction).not.toContain("from public.document_publication_approvals approval");
-    expect(schema.slice(schemaStart, schemaEnd)).toBe(candidateFunction);
+    expect(schema.slice(schemaStart, schemaEnd)).toBe(governedCandidateV3Body(textOnlyPrefilterGovernedRetrievalV3));
   });
 
   it("emits canonical registry metadata and mirrors the effective function in the final schema", () => {
@@ -214,7 +227,23 @@ describe("governed corpus retrieval v3 schema", () => {
     const schemaFunction = schema.slice(schemaStart, schemaEnd);
     expect(migrationFunction).toContain("'source_kind', 'registry_record'");
     expect(migrationFunction).not.toContain("'source_kind', 'site_content_release_record'");
-    expect(schemaFunction).toBe(migrationFunction);
+    expect(schemaFunction).toBe(governedCandidateV3Body(textOnlyPrefilterGovernedRetrievalV3));
+  });
+
+  it("changes only the text-only prefilter predicate on top of 20260901130000", () => {
+    // Compare with SQL line comments removed, so the explanatory comment beside the predicate is ignored.
+    const withoutComments = (file: string) =>
+      readFileSync(new URL(`../supabase/migrations/${file}`, import.meta.url), "utf8")
+        .replace(/--[^\n]*/g, "")
+        .replace(/\s+/g, " ");
+    const base = governedCandidateV3Body(
+      withoutComments("20260901130000_fail_closed_unactivated_international_retrieval.sql"),
+    );
+    const prefiltered = governedCandidateV3Body(
+      withoutComments("20261015180000_prefilter_text_only_governed_retrieval.sql"),
+    );
+    expect(prefiltered).toContain(textOnlyPrefilterPredicate);
+    expect(prefiltered.replace(textOnlyPrefilterPredicate, "")).toBe(base);
   });
 });
 
