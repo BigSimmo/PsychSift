@@ -27,6 +27,22 @@ describe("WaMhaFormPrint (#C4CFFP)", () => {
     const statutory = screen.getByTestId("statutory-metadata");
     expect(statutory).toHaveTextContent("Sections 55, 56, 72, 89, 90, 120, 123, 131");
     expect(statutory).toHaveTextContent("Authorised Hospital");
+    expect(screen.getByTestId("form-print-use-warning")).toHaveTextContent("NOT FOR USE YET");
+    expect(statutory).toHaveTextContent("Age Classification: Not established");
+    expect(statutory).not.toHaveTextContent("Maximum Initial Period:");
+  });
+
+  it("leaves the age classification and maximum period unspecified when age is unknown", () => {
+    render(<WaMhaFormPrint formCode="6A" />);
+
+    expect(screen.getByTestId("statutory-metadata")).toHaveTextContent("Age Classification: Not established");
+    expect(screen.getByTestId("statutory-metadata")).not.toHaveTextContent(/Maximum Initial Period/);
+  });
+
+  it("prints the adult classification and maximum period when explicitly supplied", () => {
+    render(<WaMhaFormPrint formCode="6A" isChild={false} />);
+
+    expect(screen.getByTestId("statutory-metadata")).toHaveTextContent("21 days (Adult)");
   });
 
   it("renders Form 6B with general hospital setting and Chief Psychiatrist consent", () => {
