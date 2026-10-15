@@ -529,6 +529,50 @@ begin
   end if;
 end $needs_stale$;
 
+-- Open shifts: a posted gap goes live once per key. Sending the same key again (the phone never
+-- heard back) answers with the shift already saved; another member can't use that key; a new key
+-- is a deliberate second opening for the same slot.
+do $open_post_once$
+declare
+  svc uuid := pg_temp.id('svc');
+  k1 uuid := gen_random_uuid();
+  k2 uuid := gen_random_uuid();
+  gap jsonb := jsonb_build_object('startsAt', date_trunc('day', now()) + interval '40 days',
+    'endsAt', date_trunc('day', now()) + interval '40 days 8 hours 30 minutes', 'shiftCode', 'DX', 'kind', 'day');
+  first jsonb; again jsonb; second jsonb;
+begin
+  perform pg_temp.expect_error(format('select public.roster_open_post_once(%L,%L,null,%L)',
+    pg_temp.id('mgr'), svc, gap), 'roster_invalid_request');
+  first := public.roster_open_post_once(pg_temp.id('mgr'), svc, k1, gap);
+  if first ->> 'status' is distinct from 'open' or first ? 'replayed' then raise exception 'post once: first post got %', first; end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 1 then
+    raise exception 'post once: the first post did not save exactly one shift';
+  end if;
+  again := public.roster_open_post_once(pg_temp.id('mgr'), svc, k1, gap);
+  if again ->> 'openShiftId' is distinct from first ->> 'openShiftId' or again ->> 'status' is distinct from 'open'
+     or (again ->> 'replayed')::boolean is not true then
+    raise exception 'post once: the same key did not replay the first post, got %', again;
+  end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 1 then
+    raise exception 'post once: the same key saved a second shift';
+  end if;
+  perform pg_temp.expect_error(format('select public.roster_open_post_once(%L,%L,%L,%L)',
+    pg_temp.id('lee'), svc, k1, gap), 'roster_conflict');
+  second := public.roster_open_post_once(pg_temp.id('mgr'), svc, k2, gap);
+  if second ->> 'openShiftId' is not distinct from first ->> 'openShiftId' or second ? 'replayed' then
+    raise exception 'post once: a new key did not post a second opening, got %', second;
+  end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 2 then
+    raise exception 'post once: expected two openings for two keys';
+  end if;
+  -- A member who isn't a manager is still refused a gap, and the refused key is not kept.
+  perform pg_temp.expect_error(format('select public.roster_open_post_once(%L,%L,%L,%L)',
+    pg_temp.id('lee'), svc, gen_random_uuid(), gap), 'roster_role_denied');
+  if (select count(*) from public.roster_open_post_keys where service_id = svc) <> 2 then
+    raise exception 'post once: expected one kept key per saved post';
+  end if;
+end $open_post_once$;
+
 -- 14. Deleting a doctor's account is never blocked by a Roster table.
 reset role;
 do $delete_account$
