@@ -380,7 +380,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           const left = `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`;
           const startsIn = `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
           const times = `${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`;
-          const next = upcoming[0];
+          const next = upcoming.find((shift) => Date.parse(shift.startsAt) > now.getTime());
           const nextWords = next
             ? `Next: ${SHIFT_KIND_LABEL[next.kind]} ${dayWords(perthDateOf(next.startsAt))} ${perthTimeOf(next.startsAt)}`
             : null;
