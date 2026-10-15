@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { retrieveCatalogueEvidence } from "@/lib/clinical-ask/catalogue-evidence";
+import { isSpecifierClinicianReviewed, specifierCatalogItems } from "@/lib/specifiers-content";
 import { clinicalAskCases } from "./fixtures/clinical-ask-cases";
 
 describe("retrieveCatalogueEvidence", () => {
@@ -49,6 +50,23 @@ describe("retrieveCatalogueEvidence", () => {
     expect(evidence.map((item) => item.id)).toEqual(
       [...evidence].sort((left, right) => left.title.localeCompare(right.title)).map((item) => item.id),
     );
+  });
+
+  it("never sends an unsigned specifier definition to synthesis", async () => {
+    const unsigned = specifierCatalogItems().find(
+      (item) => item.definition?.meaning && !isSpecifierClinicianReviewed(item.review),
+    );
+    expect(unsigned).toBeDefined();
+    const request = clinicalAskCases.find(({ mode }) => mode === "specifiers")!;
+    const evidence = await retrieveCatalogueEvidence(
+      { ...request, question: unsigned!.label },
+      new AbortController().signal,
+    );
+
+    const match = evidence.find((item) => item.href === `/specifiers/${unsigned!.slug}`);
+    expect(match).toBeDefined();
+    expect(match!.reviewState).toBe("needs_review");
+    expect(match!.extract).not.toContain(unsigned!.definition!.meaning);
   });
 
   it("fails with AbortError before catalogue work", async () => {
