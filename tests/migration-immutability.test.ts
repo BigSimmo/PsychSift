@@ -117,7 +117,7 @@ describe("migration sealing is append-only", () => {
       expect(readSealedVersions(versionless)).toBeNull();
       expect(readSealedVersions(good)).toEqual({ "a.sql": "1" });
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     }
   });
 
