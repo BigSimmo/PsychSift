@@ -356,9 +356,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     // #212 T4: per-row fail-soft validation. A batch-wide throw here would bypass the job
     // lifecycle entirely â€” the run-loop claim catch backs off and repolls (and exits the
     // process under --once) â€” while the RPC has already committed leases and attempt_count
-    // increments for every row, orphaning valid siblings. A row that fails the contract is
-    // failed terminally instead (a shape mismatch is deterministic; retrying reruns the same
-    // to_jsonb over the same columns) and never reaches processJob.
+    // increments for every row, orphaning valid siblings. Rejected rows are left for bounded
+    // lease recovery because their shape does not provide a trustworthy durable fence.
     const { accepted, rejected } = partitionClaimedJobRows(data ?? []);
     for (const job of accepted) registerClaimedJobAttempt(job, attempts, documentAttempts);
     for (const rejection of rejected) await terminallyFailRejectedClaimedRow(rejection);
@@ -439,7 +438,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   }
 
   async function resetDocumentIndex(documentId: string, generation: string) {
-    await mutation(attemptForDocument(documentId), "reset_ingestion_attempt_artifacts", { p_generation: generation });
+    await mutation(attemptForDocument(documentId), "reset_document_index", { p_document_id: documentId });
   }
 
   async function commitDocumentIndexGeneration(args: {
@@ -1713,7 +1712,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         } else {
           await updateDocument(job.document_id, job.documents.owner_id, { status: "processing", error_message: null });
         }
-        await resetDocumentIndex(job.document_id, job.lease_write_generation_id);
+        if (!atomicReindex) await resetDocumentIndex(job.document_id, job.lease_write_generation_id);
       }
       const buffer = await downloadDocument(job.documents.storage_path);
       await updateJobProgress(job.id, { stage: "extracting text/images", progress: 20 });
