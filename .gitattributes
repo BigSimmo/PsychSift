@@ -1,4 +1,9 @@
 * text=auto eol=lf
+supabase/schema.sql -text
+supabase/migrations/20261013075944_administrator_txt_fenced_runtime_cutover.sql -text
+supabase/migrations/20261013144347_managed_generation_quality_repair_ownership.sql -text
+supabase/migrations/20261013200007_managed_native_pdf_terminal_append.sql -text
+supabase/migrations/20261014164220_validate_managed_ingestion_historical_reconciliation.sql -text
 *.json text eol=lf
 tests/fixtures/** text eol=lf
 scripts/fixtures/** text eol=lf
