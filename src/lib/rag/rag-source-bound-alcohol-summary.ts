@@ -14,7 +14,7 @@ export function renderSourceBoundAlcoholSummary(
 ) {
   // This renderer is a reviewed answer for the broad alcohol-guideline summary only;
   // never rewrite an answer for an unrelated query merely because citations overlap.
-  if (queryClass !== "broad_summary" || !/\balcohol\b/i.test(query) || !/\bguideline\b/i.test(query)) return null;
+  if (queryClass !== "broad_summary" || !/\balcohol\b/i.test(query) || !/\bguidelines?\b/i.test(query)) return null;
   const ids = new Set(
     answer.citations.filter((citation) => citation.provenance !== "review_only").map((c) => c.chunk_id),
   );

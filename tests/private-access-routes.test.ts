@@ -5650,7 +5650,12 @@ describe("private document API access", () => {
       }),
     );
     const reader = response.body?.getReader();
-    await reader?.read();
+    // The pilot-budget wrapper loads its ticket before generation starts, so read
+    // until generation is actually running (its ranking progress event) before cancelling.
+    for (let reads = 0; reads < 20 && answerQuestionWithScope.mock.calls.length === 0; reads += 1) {
+      const chunk = await reader?.read();
+      if (!chunk || chunk.done) break;
+    }
     await reader?.cancel();
 
     expect(response.status).toBe(200);

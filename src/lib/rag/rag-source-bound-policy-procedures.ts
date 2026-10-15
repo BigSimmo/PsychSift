@@ -63,7 +63,6 @@ function isActiveCommunityEdProcedureSource(result: SearchResult) {
 function activeCommunityEdProcessEvidence(result: SearchResult) {
   if (!isActiveCommunityEdProcedureSource(result)) return false;
   const text = boundedSourceText(result);
-  if (/\b(?:not|never|do not|does not|rejected|rejects|contraindicated|not recommended)\b/i.test(text)) return false;
   return (
     /\bconsumer will be triaged by the Triage Nurse at the AHS ED\b/i.test(text) &&
     /\bED Mental Health Liaison Nurse \(EDMHLN\) will provide a mental health assessment as required\b/i.test(text) &&
@@ -77,7 +76,6 @@ function activeCommunityEdProcessEvidence(result: SearchResult) {
 function activeCommunityEdAccessEvidence(result: SearchResult) {
   if (!isActiveCommunityEdProcedureSource(result)) return false;
   const text = boundedSourceText(result);
-  if (/\b(?:not|never|do not|does not|rejected|rejects|contraindicated|not recommended)\b/i.test(text)) return false;
   return (
     /\bconsumers active with Armadale Mental Health Service \(AMHS\) are assessed by the most appropriate mental health clinician available\b/i.test(
       text,
