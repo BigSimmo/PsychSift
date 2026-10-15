@@ -171,6 +171,26 @@ function isPlainRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// Keep the review tool aligned with the site's specifier gate. Product or role
+// attributions (for example, "PsychSift") are not clinician sign-offs.
+function isNamedSpecifierReviewer(value) {
+  if (typeof value !== "string") return false;
+  const words = value.trim().replace(/\s+/g, " ").split(" ").filter((word) => /\p{L}/u.test(word));
+  const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
+  const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
+  return nameWords.length >= 2 && !nameWords.some((word) => /^(?:psychsift|system|pending|placeholder)$/i.test(word));
+}
+
+function isSpecifierClinicianReviewed(review) {
+  return (
+    review?.clinicianReviewStatus === "clinician-reviewed" &&
+    isNamedSpecifierReviewer(review?.reviewedBy) &&
+    typeof review?.reviewedAt === "string" &&
+    UTC_ISO_TIMESTAMP.test(review.reviewedAt) &&
+    Number.isFinite(Date.parse(review.reviewedAt))
+  );
+}
+
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (!isPlainRecord(value)) return value;
@@ -490,7 +510,11 @@ function specifierView(native, placement) {
   const signable = placement.kind === "universal" || native.definitionStatus === "defined";
   const status =
     review.clinicianReviewStatus === "clinician-reviewed"
-      ? "reviewed"
+      ? isSpecifierClinicianReviewed(review)
+        ? "reviewed"
+        : signable
+          ? "drafted"
+          : "pending"
       : review.clinicianReviewStatus === "clinician-review-pending"
         ? signable
           ? "drafted"
@@ -542,7 +566,7 @@ function writeSpecifierReview(document, view) {
   const items = categories.flatMap((category) =>
     category.disorders.flatMap((disorder) => disorder.groups.flatMap((group) => group.items)),
   );
-  const pending = items.filter((item) => item?.review?.clinicianReviewStatus !== "clinician-reviewed").length;
+  const pending = items.filter((item) => !isSpecifierClinicianReviewed(item?.review)).length;
   const stats = isPlainRecord(document.stats)
     ? { ...document.stats, itemsPendingClinicianReview: pending }
     : document.stats;
@@ -895,6 +919,7 @@ export function signOffQueue(kind, records, context = {}) {
   const waiting = records.filter(
     (record) =>
       (record?.status === "drafted" ||
+        (resolved.kind === "specifier" && record?.status === "reviewed" && !isNamedSpecifierReviewer(record?.reviewedBy)) ||
         (record?.status === "reviewed" && recordPinState(record, resolved, context) === "stale")) &&
       !indigenousContentIn(record, resolved, context),
   );
@@ -957,6 +982,15 @@ export function applyClinicalReview(document, kind, reviewed) {
       counts: {
         ...document.exportMetadata.counts,
         sections: nextRecords.length,
+        reviewed: tally("reviewed"),
+        drafted: tally("drafted"),
+        pending: tally("pending"),
+      },
+    };
+  }
+  return next;
+}
+tions: nextRecords.length,
         reviewed: tally("reviewed"),
         drafted: tally("drafted"),
         pending: tally("pending"),
