@@ -58,7 +58,8 @@ const EXPECTED: Record<SignOffFamilyId, number> = {
   // faults, so the sign-off made on the earlier wording no longer applies: still 53.
   therapy: 53,
   // All 93 signable candidates were reviewed; six Indigenous sources remain held.
-  sources: 6,
+  // +3 medicine sources adopted 15 Oct and waiting for a named sign-off.
+  sources: 9,
 };
 
 describe("clinical sign-off queue", () => {

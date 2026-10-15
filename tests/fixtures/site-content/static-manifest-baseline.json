@@ -1,8 +1,8 @@
 {
   "version": "clinical-kb-site-static-manifest-v1",
-  "gitSha": "81fd9bc9a0a3c12c6b74b27622c24e796e41f217",
+  "gitSha": "0d2b0f4fde048fa7ee5a2e86cbcc5aaa5a8a259d",
   "registryVersion": "site-content-registry-v1",
-  "generatedAt": "2026-10-15T18:38:02.756Z",
+  "generatedAt": "2026-10-15T18:42:08.196Z",
   "records": [
     {
       "logicalId": "calculators:auditc",
