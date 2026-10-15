@@ -380,7 +380,11 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           const left = `${formatSpanUntil(Date.parse(leadDisplay.endsAt) - now.getTime())} left`;
           const startsIn = `in ${formatSpanUntil(Date.parse(leadDisplay.startsAt) - now.getTime())}`;
           const times = `${perthTimeOf(leadDisplay.startsAt)} to ${perthTimeOf(leadDisplay.endsAt)}`;
-          const next = upcoming.find((shift) => Date.parse(shift.startsAt) > now.getTime());
+          // Search every loaded shift, not the three-row Coming up list, so shifts that overlap the
+          // lead cannot fill the list and hide a later one.
+          const next = nextShifts(monthShifts, now, monthShifts.length, leadShown).find(
+            (shift) => Date.parse(shift.startsAt) > now.getTime(),
+          );
           const nextWords = next
             ? `Next: ${SHIFT_KIND_LABEL[next.kind]} ${dayWords(perthDateOf(next.startsAt))} ${perthTimeOf(next.startsAt)}`
             : null;
@@ -407,7 +411,11 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
                   </Link>
                   <button
                     type="button"
-                    onClick={() => openDay(date)}
+                    onClick={() => {
+                      // The lead shift can sit outside the month on screen; load its own month first.
+                      setMonth(monthKeyOf(date));
+                      openDay(date);
+                    }}
                     data-testid="roster-month-lead-day"
                     data-variant="quiet"
                     className="work-hero__action"

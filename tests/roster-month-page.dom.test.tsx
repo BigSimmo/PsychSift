@@ -209,6 +209,18 @@ describe("Roster Month tab", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("still names the next shift when other shifts overlapping the lead fill the Coming up rows", () => {
+    ready([
+      shift("oc5", "2026-10-05", "on_call", "17:00", "08:00", "2026-10-06"),
+      shift("x1", "2026-10-05", "day", "09:00", "17:00", "2026-10-06"),
+      shift("x2", "2026-10-05", "day", "09:30", "17:00", "2026-10-06"),
+      shift("x3", "2026-10-05", "day", "10:00", "17:00", "2026-10-06"),
+      shift("d8", "2026-10-08", "day"),
+    ]);
+    render(<RosterMonthPage now={NOW} />);
+    expect(screen.getByTestId("roster-month-lead")).toHaveTextContent("Next: Day Thu 8 08:00");
+  });
+
   it("names the day when the next shift is later than tomorrow", () => {
     ready([shift("n9", "2026-10-09", "night", "21:00", "08:30", "2026-10-10")]);
     render(<RosterMonthPage now={NOW} />);
