@@ -111,7 +111,10 @@ export function newSignatureAttributionProblem(value) {
   const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
   const productName = [...NOT_A_PERSON].some((entry) => entry.replace(/[^\p{L}]/gu, "") === squashed);
   // A role word anywhere ("Clinical Team", "Governance Committee") is not a person either.
-  const roleWord = nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
+  const roleWord = nameWords.some((word) => {
+    const normalized = word.toLowerCase().replace(/[^\p{L}]/gu, "");
+    return normalized && NOT_A_PERSON.has(normalized);
+  });
   if (productName || roleWord || nameWords.length < 2) {
     return 'reviewedBy must be your own full name as it should appear publicly (your given name and surname), not a product, role or single name such as "PsychSift".';
   }
@@ -247,7 +250,13 @@ export function isNamedSpecifierReviewer(value) {
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
-  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
+  return (
+    nameWords.length >= 2 &&
+    !nameWords.some((word) => {
+      const normalized = word.toLowerCase().replace(/[^\p{L}]/gu, "");
+      return normalized && NOT_A_PERSON.has(normalized);
+    })
+  );
 }
 
 function isSpecifierClinicianReviewed(review) {
