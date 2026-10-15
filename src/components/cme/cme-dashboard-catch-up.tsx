@@ -370,7 +370,7 @@ export function CmeYearSummary(props: CmeYearSummaryProps) {
           <p data-testid="cme-empty-target-line" className="work-empty__body">
             {`Your target is ${formatHours(targetHours)} h for ${year}. Log your first activity and it shows here.`}
           </p>
-          {firstLogAction}
+          {firstLogAction ?? logAction}
         </div>
       </section>
     );
