@@ -70,7 +70,8 @@ export async function rosterReadTeams(client: AdminClient, actorId: string): Pro
 }
 
 function withoutPostKey(payload: Record<string, unknown>): Record<string, unknown> {
-  const { postKey: _postKey, ...rest } = payload;
+  const rest = { ...payload };
+  delete rest.postKey;
   return rest;
 }
 

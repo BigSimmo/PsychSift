@@ -343,7 +343,8 @@ describe("writing to a team", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ result: { openShiftId: OPEN, status: "open", replayed: true } });
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
-    const { action: _action, ...payload } = gap;
+    const payload = { ...gap } as Partial<typeof gap>;
+    delete payload.action;
     expect(mocks.rpc).toHaveBeenCalledWith("roster_open_post_once", {
       p_actor_id: ALEX,
       p_service_id: SERVICE,
