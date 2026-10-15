@@ -15947,6 +15947,23 @@ as $$
     cross join site_authority
     where record.pending_event_sequence is not null
   ),
+  text_match_ids as (
+    -- Keep the two GIN probes separate so either index can select candidates.
+    select chunk.id
+    from public.document_chunks chunk
+    cross join admitted
+    where query_embedding is null
+      and admitted.tsq is not null
+      and chunk.search_tsv @@ admitted.tsq
+    union
+    select chunk.id
+    from public.documents document
+    join public.document_chunks chunk on chunk.document_id = document.id
+    cross join admitted
+    where query_embedding is null
+      and admitted.tsq is not null
+      and document.title_search_tsv @@ admitted.tsq
+  ),
   document_candidates as (
     select
       chunk.id,
@@ -16038,6 +16055,7 @@ as $$
     from public.document_chunks chunk
     join public.documents document on document.id = chunk.document_id
     cross join admitted
+    left join text_match_ids matched on matched.id = chunk.id
     where document.owner_id is null
       and document.status = 'indexed'
       and public.is_committed_document_generation(chunk.index_generation_id, document.index_generation_id)
@@ -17663,6 +17681,23 @@ as $$
     cross join site_authority
     where record.pending_event_sequence is not null
   ),
+  text_match_ids as (
+    -- Keep the two GIN probes separate so either index can select candidates.
+    select chunk.id
+    from public.document_chunks chunk
+    cross join admitted
+    where query_embedding is null
+      and admitted.tsq is not null
+      and chunk.search_tsv @@ admitted.tsq
+    union
+    select chunk.id
+    from public.documents document
+    join public.document_chunks chunk on chunk.document_id = document.id
+    cross join admitted
+    where query_embedding is null
+      and admitted.tsq is not null
+      and document.title_search_tsv @@ admitted.tsq
+  ),
   document_candidates as (
     select
       chunk.id,
@@ -17754,17 +17789,12 @@ as $$
     from public.document_chunks chunk
     join public.documents document on document.id = chunk.document_id
     cross join admitted
+    left join text_match_ids matched on matched.id = chunk.id
     where document.owner_id is null
       -- Text-only calls (match_document_chunks_text_v3) can only return text-matched rows, so
       -- filter here, before the per-row labels, summary, images and jsonb work, instead of
       -- building every eligible public chunk first. Hybrid calls with an embedding are unchanged.
-      and (
-        query_embedding is not null
-        or (
-          admitted.tsq is not null
-          and (chunk.search_tsv @@ admitted.tsq or document.title_search_tsv @@ admitted.tsq)
-        )
-      )
+      and (query_embedding is not null or matched.id is not null)
       and document.status = 'indexed'
       and public.is_committed_document_generation(chunk.index_generation_id, document.index_generation_id)
       and (document_filters is null or document.id = any(document_filters))
