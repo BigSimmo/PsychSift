@@ -1348,9 +1348,10 @@ async function searchChunksWithTiming(
         min_sim: 0.45,
       });
       if (args.signal) correctionQuery = correctionQuery.abortSignal(args.signal);
-      const { data: corrected } = await correctionQuery;
-      // A cancelled call resolves with an error rather than throwing; stop before the empty
-      // short-circuit result below is written to the search cache.
+      const { data: corrected, error: correctionError } = await correctionQuery;
+      // A cancelled or failed call resolves with an error rather than throwing; do not treat it
+      // as an uncorrected query or write the empty short-circuit result to the search cache.
+      if (correctionError) throw correctionError;
       throwIfAborted(args.signal);
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
         const correctedSearch = await searchChunksWithTelemetry({
