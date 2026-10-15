@@ -908,19 +908,14 @@ def repeated_populated_table_geometry(rows, source_rows):
 def real_table_candidate(label, title, table_text, row_count=0, column_count=0, rows=None, repeated_geometry=False):
     # A poster's frame can produce a nominal grid with nearly every cell empty.
     # Repeated populated columns establish a matrix; generated Markdown bars do not.
+    if not repeated_geometry and sum(sum(bool(str(cell or "").strip()) for cell in row) >= 2 for row in rows or []) < 2:
+        return False
     metrics = table_text_metrics(table_text)
     combined = " ".join([label or "", title or "", table_text or ""]).lower()
     known_table_heading = bool(label) or (title or "").lower() in (
         "roles and responsibilities",
         "recommended pharmacological treatment options",
     )
-    populated_rows = sum(sum(bool(str(cell or "").strip()) for cell in row) >= 1 for row in rows or [])
-    if (
-        not repeated_geometry
-        and sum(sum(bool(str(cell or "").strip()) for cell in row) >= 2 for row in rows or []) < 2
-        and not (known_table_heading and populated_rows >= 2 and metrics["line_count"] >= 2)
-    ):
-        return False
 
     if known_table_heading and metrics["line_count"] >= 2:
         return True
