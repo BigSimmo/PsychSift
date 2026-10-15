@@ -50,9 +50,9 @@ import {
   THERAPY_REVIEW_CHECKS,
   assertValidTherapyReviewRecords,
   finalizeTherapyReview,
-  publicReviewerAttributionProblem,
   therapyReviewedContentSha256,
 } from "./lib/therapy-review-contract.mjs";
+import { newSignatureAttributionProblem } from "./lib/clinical-record-review-contract.mjs";
 import { createPrompt } from "./lib/confirm.mjs";
 import { INDIGENOUS_CONTENT_RULE, indigenousContentTerm } from "./lib/indigenous-content.mjs";
 import { parseExcludeList, renderSignOffPack, signOffPackCode } from "./lib/sign-off-pack.mjs";
@@ -237,7 +237,7 @@ function normalizeAnswer(value) {
  * explicit yes answers and the exact final confirmation.
  */
 export async function conductTherapyReview({ record, reviewedBy, ask, commit, now = () => new Date(), output }) {
-  const attributionProblem = publicReviewerAttributionProblem(reviewedBy);
+  const attributionProblem = newSignatureAttributionProblem(reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
 
   const answers = {};
@@ -300,7 +300,7 @@ export function therapyPackCode(records) {
  */
 export function renderTherapyPack(records, { reviewedBy, generatedAt = new Date().toISOString() } = {}) {
   if (reviewedBy !== undefined) {
-    const attributionProblem = publicReviewerAttributionProblem(reviewedBy);
+    const attributionProblem = newSignatureAttributionProblem(reviewedBy);
     if (attributionProblem) throw new Error(attributionProblem);
   }
   const packRecords = therapyPackRecords(records);
@@ -360,7 +360,7 @@ export async function conductTherapyBatchReview({
   output,
   now = () => new Date(),
 }) {
-  const attributionProblem = publicReviewerAttributionProblem(reviewedBy);
+  const attributionProblem = newSignatureAttributionProblem(reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
 
   const packRecords = therapyPackRecords(records);
@@ -660,7 +660,7 @@ export async function main(argv = process.argv.slice(2), io = {}) {
   const { raw, records } = readCanonicalSource();
   assertValidTherapyReviewRecords(records);
   if (args.reviewedBy !== undefined) {
-    const attributionProblem = publicReviewerAttributionProblem(args.reviewedBy);
+    const attributionProblem = newSignatureAttributionProblem(args.reviewedBy);
     if (attributionProblem) throw new Error(attributionProblem);
   }
   if (args.pack) {

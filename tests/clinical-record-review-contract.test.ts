@@ -793,3 +793,14 @@ describe("review-clinical-record CLI", () => {
     expect(output.text()).toContain("Next: 3C");
   });
 });
+
+describe("newSignatureAttributionProblem", () => {
+  it("refuses a product, role or single name for a new signature, and accepts a full name", async () => {
+    const { newSignatureAttributionProblem } = await import("../scripts/lib/clinical-record-review-contract.mjs");
+    for (const name of ["PsychSift", "psychsift", "Dr Simpson", "Josh", "Clinician"]) {
+      expect(newSignatureAttributionProblem(name)).toMatch(/full name/);
+    }
+    expect(newSignatureAttributionProblem("Dr Alex Morgan")).toBeNull();
+    expect(newSignatureAttributionProblem("<your full name>")).toMatch(/example/);
+  });
+});

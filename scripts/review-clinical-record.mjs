@@ -49,7 +49,7 @@ import {
   clinicalReviewConfirmation,
   collectionOf,
   finalizeClinicalReview,
-  reviewerAttributionProblem,
+  newSignatureAttributionProblem,
   recordId,
   recordKinds,
   indigenousContentIn,
@@ -413,7 +413,7 @@ export async function conductClinicalReview({
   now = () => new Date(),
   output,
 }) {
-  const attributionProblem = reviewerAttributionProblem(reviewedBy);
+  const attributionProblem = newSignatureAttributionProblem(reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
   const eligibility = signOffEligibilityProblem(record, kind, context);
   if (eligibility) throw new Error(eligibility);
@@ -653,7 +653,7 @@ export async function conductClinicalBatchReview({
   output,
   now = () => new Date(),
 }) {
-  const attributionProblem = reviewerAttributionProblem(reviewedBy);
+  const attributionProblem = newSignatureAttributionProblem(reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
   const waiting = packRecords(kind, records, context);
   const waitingCodes = waiting.map((record) => recordId(record, kind));
@@ -832,7 +832,7 @@ function regenerateFormsReviewSheet(root, errorOutput) {
 
 async function runBatch(args, { input, output, errorOutput, root }) {
   if (!args.reviewedBy) throw new Error("--write needs --reviewed-by with your public display name.");
-  const attributionProblem = reviewerAttributionProblem(args.reviewedBy);
+  const attributionProblem = newSignatureAttributionProblem(args.reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
   const prettier = await loadFormatter();
   const kind = args.kind;
@@ -894,7 +894,7 @@ export async function main(argv = process.argv.slice(2), io = {}) {
 
   if (!args.write) {
     if (args.reviewedBy !== undefined) {
-      const problem = reviewerAttributionProblem(args.reviewedBy);
+      const problem = newSignatureAttributionProblem(args.reviewedBy);
       if (problem) throw new Error(problem);
     }
     if (args.pack) {
@@ -943,7 +943,7 @@ export async function main(argv = process.argv.slice(2), io = {}) {
     );
   }
   if (!args.reviewedBy) throw new Error("--write needs --reviewed-by with your public display name.");
-  const attributionProblem = reviewerAttributionProblem(args.reviewedBy);
+  const attributionProblem = newSignatureAttributionProblem(args.reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
 
   const prettier = await loadFormatter();
