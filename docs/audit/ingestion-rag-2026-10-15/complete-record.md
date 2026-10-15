@@ -218,7 +218,6 @@ This follow-up is locally accepted and uncommitted. It does not update the serve
 
 The latest explicit testing ceiling is **USD38**. Retained reservations remain **USD31.8506993**; no further paid request or reservation has been made. The browser account and approved TXT scope are prepared for the controlled Answer/copy test. The actual Railway read-only preflight confirmed the target, absent ticket and empty staged patch; its null change counter remains unavailable rather than zero. Independently reviewed one-key cleanup uses `skipDeploys:true`, followed by a separately approved same-build app restart. RAG owns the single pending activation/cleanup approval question because the latest budget approval explicitly excluded deployment. No app restart, worker activation, bulk ingestion or re-indexing has occurred. The same private checkpoint and receipt retain the detailed evidence; Notion remains unsynced.
 
-
 ## Answer correction and current-main reconciliation — 15 October 2026
 
 The subsequent hosted test returned a genuine completed model response, but its finalizer withheld the positive Answer. An initial empty clipboard observation is retained; a single unpaid retest copied the existing refusal and warnings successfully. That is not positive clinical Answer acceptance. The temporary ticket was removed and the prior app image restored healthy.
