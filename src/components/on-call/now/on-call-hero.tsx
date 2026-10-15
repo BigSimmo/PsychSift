@@ -34,6 +34,7 @@ export function NowOnCallHero({
   hospitalName,
   handbookLoading,
   rosterLoading = false,
+  rosterError = false,
   now,
 }: {
   readonly context: OnCallShiftContext;
@@ -44,6 +45,8 @@ export function NowOnCallHero({
   readonly hospitalName: string | null;
   readonly handbookLoading: boolean;
   readonly rosterLoading?: boolean;
+  /** The roster read failed, so an empty shift list proves nothing. */
+  readonly rosterError?: boolean;
   readonly now: Date;
 }) {
   const hospitalPhone = useOnCallHospitalPhone();
@@ -69,7 +72,9 @@ export function NowOnCallHero({
       ? `${periodLabel} until ${cover.until}`
       : rosterLoading || handbookLoading
         ? "Checking your shift…"
-        : "No rostered shift on now";
+        : rosterError
+          ? "Couldn't load your roster"
+          : "No rostered shift on now";
   const sub = [
     clock
       ? `${clock.periodLabel} shift ends ${clock.until}`

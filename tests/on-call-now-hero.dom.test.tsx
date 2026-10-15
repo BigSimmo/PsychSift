@@ -88,6 +88,25 @@ describe("NowOnCallHero", () => {
     expect(within(hero).queryByRole("link")).toBeNull();
   });
 
+  it("says the roster could not be loaded, not that no shift is on, when the read fails", () => {
+    render(
+      <NowOnCallHero
+        context={NO_SHIFT}
+        answer={null}
+        hours={null}
+        hospitalPeriod={null}
+        hospitalName={null}
+        handbookLoading={false}
+        rosterLoading={false}
+        rosterError
+        now={AT_0350}
+      />,
+    );
+    const hero = screen.getByTestId("on-call-now-hero");
+    expect(hero).toHaveTextContent("Couldn't load your roster");
+    expect(hero).not.toHaveTextContent("No rostered shift on now");
+  });
+
   it("says it is checking the shift, not that none is on, while the roster loads", () => {
     render(
       <NowOnCallHero
