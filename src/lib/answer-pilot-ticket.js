@@ -14,8 +14,29 @@ const ONE_HOUR_MS = 3_600_000;
  * both). When a configured ticket is unreadable or expired, only requests that
  * could belong to the pilot are refused; every other Answer keeps working.
  */
-export function couldBelongToAnswerPilot(request) {
-  return request?.ownerId === OWNER_ID || request?.documentId === DOCUMENT_ID;
+export function couldBelongToAnswerPilot(request, queryDigest) {
+  if (!request || typeof request !== "object") return true;
+  if (request.ownerId === OWNER_ID || request.documentId === DOCUMENT_ID) return true;
+  if (Array.isArray(request.resolvedDocumentIds) && request.resolvedDocumentIds.includes(DOCUMENT_ID)) return true;
+  const hint = configuredPilotQueryDigest();
+  // An unreadable ticket gives no query to compare, so nothing can be positively cleared and
+  // every request is refused until the setting is fixed. An expired but readable ticket clears
+  // any request whose query digest differs.
+  if (hint === undefined) return false;
+  return hint === null || hint === queryDigest;
+}
+
+// Best-effort read of the configured ticket's query digest for the unusable-ticket path only.
+// undefined: no ticket configured. null: configured but unreadable (refuse query-unknown cases).
+function configuredPilotQueryDigest() {
+  const raw = process.env[TICKET_SOURCE];
+  if (raw === undefined) return undefined;
+  try {
+    const digest = JSON.parse(raw)?.querySha256;
+    return typeof digest === "string" && /^[a-f0-9]{64}$/.test(digest) ? digest : null;
+  } catch {
+    return null;
+  }
 }
 const CLAIM_WINDOW_SECONDS = 86_400;
 const expectedKeys = new Set([

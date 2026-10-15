@@ -67,7 +67,10 @@ export async function runPreparedAnswerPilotGeneration(input, schema, options, g
 function pilotIdentityMatches(ticket, request) {
   const digest = queryDigest(request.query);
   const related =
-    request.ownerId === ticket.ownerId || request.documentId === ticket.documentId || digest === ticket.querySha256;
+    request.ownerId === ticket.ownerId ||
+    request.documentId === ticket.documentId ||
+    (Array.isArray(request.resolvedDocumentIds) && request.resolvedDocumentIds.includes(ticket.documentId)) ||
+    digest === ticket.querySha256;
   if (!related) return "unrelated";
   const exact =
     !request.summaryMode &&
@@ -92,7 +95,8 @@ export async function runAnswerWithPilotBudget(request, answerWork) {
     // An expired or malformed ticket left in configuration must not take Answer
     // down for everyone. Requests that could belong to the pilot still fail
     // closed, so an expired pilot can never dispatch outside its guard.
-    if (couldBelongToAnswerPilot(request)) throw new AnswerPilotBudgetError("answer_pilot_ticket_load_failed");
+    if (couldBelongToAnswerPilot(request, queryDigest(String(request?.query ?? ""))))
+      throw new AnswerPilotBudgetError("answer_pilot_ticket_load_failed");
     console.warn("answer_pilot_ticket_unusable: unrelated request answered without the pilot guard");
     return answerWork();
   }
