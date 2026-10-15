@@ -107,34 +107,64 @@
     {
       "id": "PRIV-LEGAL-OPENAI-DPA",
       "evidenceClass": "legal",
-      "status": "pending",
+      "status": "verified",
       "accountableRole": "Authorised legal signatory",
       "evidenceReferences": [
         "docs/openai-cross-border-basis.md",
         "docs/operator-backlog.md",
         "docs/outstanding-issues-inbox/applied/1836d32f-6db8-45f2-bc71-f429b22f5a1c.json"
       ],
-      "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewedAt": "2026-10-05",
+      "reviewExpiresAt": "2026-12-01",
       "statusHistory": [
-        { "status": "pending", "date": "2026-08-23" },
-        { "status": "pending", "date": "2026-09-01" },
-        { "status": "pending", "date": "2026-09-26" }
-      ]
+        {
+          "status": "pending",
+          "date": "2026-08-23"
+        },
+        {
+          "status": "pending",
+          "date": "2026-09-01"
+        },
+        {
+          "status": "pending",
+          "date": "2026-09-26"
+        },
+        {
+          "status": "verified",
+          "date": "2026-10-05"
+        }
+      ],
+      "externalEvidenceReference": "OPENAI-STD-20261005: owner-attested standard-contract applicability and acceptance; Services Agreement and incorporated DPA effective 2026-01-01; docs/governance/openai-standard-agreement-evidence-2026-10-05.md",
+      "verifiedByRole": "Authorised legal signatory"
     },
     {
       "id": "PRIV-LEGAL-RAILWAY-DPA",
       "evidenceClass": "legal",
-      "status": "pending",
+      "status": "verified",
       "accountableRole": "Authorised legal signatory",
       "evidenceReferences": ["docs/openai-cross-border-basis.md", "docs/privacy-impact-assessment.md"],
-      "reviewedAt": "2026-09-26",
-      "reviewExpiresAt": "2035-12-31",
+      "reviewedAt": "2026-10-05",
+      "reviewExpiresAt": "2026-12-01",
       "statusHistory": [
-        { "status": "pending", "date": "2026-08-23" },
-        { "status": "pending", "date": "2026-09-01" },
-        { "status": "pending", "date": "2026-09-26" }
-      ]
+        {
+          "status": "pending",
+          "date": "2026-08-23"
+        },
+        {
+          "status": "pending",
+          "date": "2026-09-01"
+        },
+        {
+          "status": "pending",
+          "date": "2026-09-26"
+        },
+        {
+          "status": "verified",
+          "date": "2026-10-05"
+        }
+      ],
+      "externalEvidenceReference": "RAILWAY-DPA-20261005: direct owner confirmation and read-only DocuSign envelope history Completed for Railway Corporation Data Processing Addendum on 2026-10-05; secure signed copy retained by owner; docs/governance/railway-dpa-completion-evidence-2026-10-05.md; execution evidence only for public references and wholly invented examples, excluding real-patient cases and voice; no sensitive-data suitability or release approval",
+      "verifiedByRole": "Authorised legal signatory"
     },
     {
       "id": "PRIV-LEGAL-APP8-CROSS-BORDER-BASIS",
