@@ -194,9 +194,20 @@ export function createPublishedOriginalReceiptCapture() {
       }
       const receipt = Object.freeze({ geometry: geometry(row), pathPresent, storedPath, metadata });
       const prior = receipts.get(rowKey);
-      if (receipts.has(rowKey) && (prior === null || JSON.stringify(prior) !== JSON.stringify(receipt)))
+      // Absence of a supplementary read is not contradictory evidence. Only enrich
+      // otherwise identical receipts; real conflicts remain permanently poisoned.
+      if (
+        prior === null ||
+        (prior !== undefined &&
+          (prior.geometry !== receipt.geometry ||
+            prior.pathPresent !== receipt.pathPresent ||
+            JSON.stringify(prior.metadata) !== JSON.stringify(receipt.metadata) ||
+            (prior.storedPath !== undefined &&
+              receipt.storedPath !== undefined &&
+              JSON.stringify(prior.storedPath) !== JSON.stringify(receipt.storedPath))))
+      )
         receipts.set(rowKey, null);
-      else receipts.set(rowKey, receipt);
+      else receipts.set(rowKey, prior?.storedPath !== undefined ? prior : receipt);
     } catch {
       receipts.set(rowKey, null);
     }

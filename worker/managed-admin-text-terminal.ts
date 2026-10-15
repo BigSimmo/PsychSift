@@ -118,7 +118,7 @@ const refuse = (reason: string): never => {
   throw new Error(`managed_admin_text_${reason}`);
 };
 const same = (a: unknown, b: unknown) => generationEvidenceDigest(a) === generationEvidenceDigest(b);
-const copy = <T>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
+const copy = <T,>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
 
 function inspectSource(args: SourceInput) {
   if (args.originalBytes.length > 2097152) return refuse("source_size");

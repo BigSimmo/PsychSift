@@ -20,9 +20,11 @@ describe("public content and account authorization model", () => {
     const uploadRoute = source("src/app/api/upload/route.ts");
     const authCheck = uploadRoute.indexOf("requireAuthenticatedUser(request, adminSupabase, { administrator: true })");
     const formRead = uploadRoute.indexOf("request.formData()");
-    const storageWrite = uploadRoute.indexOf(".upload(storagePath, buffer");
+    const storageWrite = uploadRoute.indexOf("await uploadTrustedDocumentBytes(");
 
     expect(authCheck).toBeGreaterThan(-1);
+    expect(formRead).toBeGreaterThan(-1);
+    expect(storageWrite).toBeGreaterThan(-1);
     expect(authCheck).toBeLessThan(formRead);
     expect(authCheck).toBeLessThan(storageWrite);
     expect(uploadRoute).not.toContain("publicUploadsEnabled");

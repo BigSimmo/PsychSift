@@ -3,7 +3,6 @@ import {
   IngestionAttemptError,
   parseIngestionFence,
   type IngestionFence,
-  // @ts-expect-error -- Node's tsconfig disallows .ts module extensions; Deno requires this explicit extension.
 } from "../_shared/ingestion-attempt.ts";
 import {
   buildSourceAnchoredFallbackPayload,
@@ -16,21 +15,18 @@ import {
   type SourceAnchoredSummaryAuthority,
   type SourceAnchoredSummaryPayload,
   type PersistedSourceAnchoredSummaryProjection,
-  // @ts-expect-error -- Node's tsconfig disallows .ts module extensions; Deno requires this explicit extension.
 } from "../_shared/source-anchored-summary.ts";
 
 import {
   ProviderEgressDeniedError,
   type ProviderEgressBinding,
   type ProviderEgressPurpose,
-  // @ts-expect-error -- Node's tsconfig disallows .ts module extensions; Deno requires this explicit extension.
 } from "../_shared/document-ingress-safety.ts";
 import {
   assertIngestionProviderEgress,
   assertIngestionProviderEgressContextActive,
   IngestionProviderEgressRefusal,
   type IngestionProviderEgressContext,
-  // @ts-expect-error -- Node's tsconfig disallows .ts module extensions; Deno requires this explicit extension.
 } from "../_shared/ingestion-provider-egress.ts";
 
 export function edgeProviderEgressBinding(

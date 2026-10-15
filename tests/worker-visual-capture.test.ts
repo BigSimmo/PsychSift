@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const workerSource = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
+const behaviorSource = readFileSync(new URL("../worker/behavior.ts", import.meta.url), "utf8");
+const fencedSql = readFileSync(
+  new URL("../supabase/migrations/20261013075944_administrator_txt_fenced_runtime_cutover.sql", import.meta.url),
+  "utf8",
+);
 const extractorSource = readFileSync(new URL("../worker/python/extract_pdf_assets.py", import.meta.url), "utf8");
 
 describe("worker visual capture hardening", () => {
@@ -16,8 +21,8 @@ describe("worker visual capture hardening", () => {
     expect(workerSource).toContain(
       "embedding: assertEmbeddingDim(fieldEmbeddings[index], `document_embedding_fields.section_context.${index}`)",
     );
-    expect(workerSource).toContain(
-      "embedding: assertEmbeddingDim(unitEmbeddings[start + index], `document_index_units.visual.${start + index}`)",
+    expect(workerSource).toMatch(
+      /embedding:\s*assertEmbeddingDim\(\s*unitEmbeddings\[start \+ index\],\s*`document_index_units\.visual\.\$\{start \+ index\}`/,
     );
     expect(workerSource).toContain(
       "embedding: assertEmbeddingDim(additionalEmbeddings[index], `document_embedding_fields.${field.field_type}`)",
@@ -41,50 +46,78 @@ describe("worker visual capture hardening", () => {
   });
 
   it("fails closed when the lease-fenced commit RPC is unavailable and keeps image uploads generation-scoped", () => {
-    expect(workerSource).toContain("p_job_id: args.jobId");
-    expect(workerSource).toContain("p_worker_id: workerId");
+    expect(workerSource).toContain('mutation(attemptForJob(args.jobId), "commit_document_index_generation"');
+    expect(workerSource).toContain("p_generation: args.indexGenerationId");
+    expect(behaviorSource).toContain("p_fence: attempt.fence");
+    expect(behaviorSource).toContain("attempt.handoff(result.data, payload.p_generation)");
     expect(workerSource).not.toContain("await replacePageRows(args.documentId, args.pages)");
     // The commit RPC prunes stale/legacy generation rows and upserts index quality atomically
     // server-side; the worker must surface any RPC failure (fail closed) rather than run a
     // client-side fallback that could partially write after an error.
-    expect(workerSource).toContain('if (error) throw supabaseStageError("commit_document_index_generation", error)');
+    const mutation = behaviorSource.slice(
+      behaviorSource.indexOf("export async function runIngestionMutation("),
+      behaviorSource.indexOf("export function claimedJobFence("),
+    );
+    expect(mutation).toContain("if (result.error) throw new Error(result.error.message)");
+    expect(mutation).toContain("attempt.cancel();");
+    expect(mutation).toContain("throw error;");
     expect(workerSource).not.toContain("deleteStaleIndexGenerationRows");
-    expect(workerSource).toContain("`${imagePrefix}/${indexGenerationId}/image-${index + 1}${ext}`");
+    expect(workerSource).toContain("generation: indexGenerationId");
+    expect(behaviorSource).toContain(
+      "`${args.attempt.fence.document_id}/${args.attempt.fence.lease_token}/${args.generation}/`",
+    );
+    expect(behaviorSource).toContain("!prepared.storage_path.startsWith(prefix)");
+    expect(behaviorSource).toContain("args.upload(prepared.storage_path, { upsert: false })");
     expect(workerSource).toContain('indexing_v3_agent_repair_reason: "core_index_committed"');
     expect(workerSource).toContain("indexing_v3_agent_repair_reason: null");
   });
 
   it("uses the strict completion RPC when inline enrichment succeeds", () => {
     expect(workerSource).toContain("async function completeStrictEnrichmentJob(job: JobRow)");
-    expect(workerSource).toContain("complete_strict_enrichment_job");
+    expect(workerSource).toContain("return runIngestionStrictCompletion(");
+    expect(behaviorSource).toContain('rpc("complete_strict_enrichment_job", { ...payload, p_fence: attempt.fence })');
     expect(workerSource).toContain('p_agent_version: "visual-core-v3"');
     expect(workerSource).toContain('p_visual_indexing_version: "visual-v3"');
     expect(workerSource).toContain('strictCompletion.missing.includes("strict_completion_rpc_failed")');
     expect(workerSource).toContain("indexing_v3_agent_repair_reason: strictCompletionRepairReason");
   });
 
-  it("logs fallback import-batch update failures when RPC-based refresh is unavailable", () => {
-    expect(workerSource).toContain("Import batch status fallback update failed");
-    expect(workerSource).toContain("update import batch status fallback");
-    expect(workerSource).toContain("const { error: fallbackUpdateError } = await supabase");
+  it("keeps batch status updates inside fenced terminal transitions", () => {
+    expect(workerSource).toContain('mutation(attemptForJob(job.id), "complete_ingestion_job"');
+    expect(workerSource).toContain('mutation(attemptForJob(args.job.id), "fail_or_retry_ingestion_job"');
+    expect(workerSource).not.toContain('.from("import_batches")');
+    for (const name of ["complete_ingestion_job", "fail_or_retry_ingestion_job"]) {
+      const start = fencedSql.indexOf(`create or replace function public.${name}(`);
+      const body = fencedSql.slice(start, fencedSql.indexOf("end $$;", start));
+      expect(body).toContain("v_locked := public.assert_current_ingestion_attempt(p_fence,");
+      expect(body.indexOf("if v_locked is null then return")).toBeLessThan(
+        body.indexOf("update public.import_batches"),
+      );
+      expect(body).toContain("v_batch := (v_locked->'job'->>'batch_id')::uuid");
+      expect(body).toContain("update public.import_batches set status=");
+    }
   });
 
-  it("invalidates stale image caption cache entries by policy, prompt, and context versions", () => {
-    expect(workerSource).toContain('const imageCaptionCacheVersion = "clinical-image-caption-cache-v2"');
-    expect(workerSource).toContain('const visionClassificationPromptVersion = "clinical-image-classification-v1"');
-    expect(workerSource).toContain("metadata.image_caption_cache_version !== imageCaptionCacheVersion");
-    expect(workerSource).toContain("metadata.image_policy_version !== clinicalImagePolicyVersion");
-    expect(workerSource).toContain("metadata.visual_intelligence_version !== visualIntelligenceVersion");
-    expect(workerSource).toContain("metadata.caption_context_hash !== contextHash");
+  it("refuses legacy caption cache reuse without admission and source identity", () => {
+    const start = workerSource.indexOf("batch.map(async (task) => {");
+    const caption = workerSource.slice(start, workerSource.indexOf("resolvedTasks.push(...batchResults)", start));
+    expect(caption).toContain("const classificationCacheHit = false");
+    expect(caption).toContain("ingestionEgress: providerContextForJob(job)");
+    expect(workerSource).not.toContain('.from("image_caption_cache")');
   });
 
-  it("redacts captions before cache writes", () => {
+  it("redacts captions and structured profile content before fenced image persistence", () => {
     expect(workerSource).toContain("function redactImageClassification");
-    expect(workerSource).toContain("const classification = redactImageClassification(args.classification);");
+    expect(workerSource).toContain("caption: redactCaptionIdentifiers(cleanString(classification.caption))");
     expect(workerSource).toContain("let classification = redactImageClassification(resolved.classification);");
     expect(workerSource).toContain("caption: classification.caption");
-    expect(workerSource).toContain("const structuredProfile = normalizeStructuredVisualProfile(");
-    expect(workerSource).toContain("redactCaptionMetadataValue(metadata.structured_visual_profile)");
+    expect(workerSource).toMatch(
+      /structured_visual_profile: normalizeStructuredVisualProfile\(\s*redactCaptionMetadataValue\(/,
+    );
+    expect(workerSource).toContain("persistIngestionImage({");
+    expect(
+      workerSource.indexOf("let classification = redactImageClassification(resolved.classification);"),
+    ).toBeLessThan(workerSource.indexOf("await persistIngestionImage({"));
   });
 
   it("computes perceptual duplicate groups before caption budget selection", () => {

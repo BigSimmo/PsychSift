@@ -467,14 +467,15 @@ describe("worker/main.ts + env + image contract (source text)", () => {
     expect(finalMetadataIndex).toBeGreaterThan(shadowCallIndex);
     expect(finalWriteIndex).toBeGreaterThan(finalMetadataIndex);
     expect(workerMain).toContain('if (env.WORKER_DOCUMENT_EXTRACTOR_MODE === "shadow") {');
-    // Fail-open: the stage update before the shadow run must swallow a lost lease, otherwise
-    // shadow mode could fail a job whose generation is already committed.
-    const shadowStageUpdate = workerMain.slice(
+    // Shadow extraction may fail open, but loss of mutation authority must stop later writes.
+    const shadowStage = workerMain.slice(
       workerMain.indexOf('await updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)"'),
-      workerMain.indexOf("const shadowHeartbeat = setInterval("),
+      workerMain.indexOf("const repair = enrichmentRepairDecision("),
     );
-    expect(shadowStageUpdate).toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\}\s*,?\s*\)/);
-    // The record travels only inside finalMetadata (deep-merged by apply_document_metadata_patch).
+    expect(shadowStage).toContain("finally {");
+    expect(shadowStage).toContain("attempt.check();");
+    expect(shadowStage).not.toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\}\s*,?\s*\)/);
+    // The aggregate record travels only inside the final fenced metadata patch.
     expect(workerMain.match(/shadow_extraction: shadowExtraction/g)).toHaveLength(1);
     expect(workerMain).toContain("...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {})");
     // Legacy extraction is timed so the record can compare like with like.

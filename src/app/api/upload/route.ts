@@ -9,6 +9,7 @@ import {
   publicErrorResponse,
   PublicApiError,
 } from "@/lib/http";
+import { apiMutationCsrfVerdict } from "@/lib/api-csrf";
 import { logger } from "@/lib/logger";
 import { writeAuditLog } from "@/lib/audit";
 import { consumeSubjectApiRateLimit, rateLimitJsonResponse } from "@/lib/api-rate-limit";
@@ -177,6 +178,10 @@ async function duplicateUploadResponse(args: {
 }
 
 export async function POST(request: Request) {
+  const csrf = apiMutationCsrfVerdict(request.headers, new URL(request.url).host);
+  if (!csrf.allowed) {
+    return publicErrorResponse("Cross-site request blocked.", 403, { code: "cross_site_forbidden" });
+  }
   let supabase: ReturnType<typeof createAdminClient> | null = null;
   let uploadedPath: string | null = null;
   let cleanupOwnerId = "";
@@ -635,7 +640,9 @@ export async function POST(request: Request) {
       error.kind === "rejected" &&
       /admission_replay_conflict|document_identity_conflict/.test(error.message)
     ) {
-      return NextResponse.json({ error: "Idempotency-Key conflicts with the admitted request." }, { status: 409 });
+      return publicErrorResponse("Idempotency-Key conflicts with the admitted request.", 409, {
+        code: "admission_replay_conflict",
+      });
     }
 
     return jsonError(error);

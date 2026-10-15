@@ -162,6 +162,8 @@ export async function POST(request: Request) {
           ...registeredPublicAnswerOptions({
             requesterId: access.ownerId,
             accessScope,
+            queryMode: answerBody.queryMode,
+            summaryMode: answerBody.summaryMode,
             explicitDocumentIds:
               answerBody.documentIds ?? (answerBody.documentId ? [answerBody.documentId] : undefined),
             resolvedDocumentIds: scope.documentIds,

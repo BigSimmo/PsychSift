@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   WorkerRowShapeError,
   assertClaimedJobRow,
   assertEnrichmentChunkRows,
   assertEnrichmentImageRows,
   partitionClaimedJobRows,
+  failRejectedClaimedJobRow,
 } from "../worker/row-contracts";
 
 vi.mock("@/lib/logger", () => ({
@@ -54,6 +56,12 @@ function claimedRow(overrides: Record<string, unknown> = {}) {
     max_attempts: 3,
     locked_at: "2026-08-17T00:00:00.000Z",
     locked_by: "worker-host-123",
+    lease_token: "7d5e1a90-4444-4aaa-8bbb-000000000014",
+    lease_expected_generation_id: null,
+    lease_write_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
+    lease_authority_digest: `sha256:${"a".repeat(64)}`,
+    lease_expires_at: "2099-01-01T00:00:00.000Z",
+    lease_duration_seconds: 300,
     documents: claimedDocuments(),
     ...overrides,
   };
@@ -64,6 +72,7 @@ function enrichmentChunk(overrides: Record<string, unknown> = {}) {
   return {
     id: "9c2f0d10-3333-4aaa-8bbb-000000000003",
     document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
+    index_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
     page_number: 14,
     chunk_index: 7,
     section_heading: "Lithium monitoring",
@@ -82,6 +91,8 @@ function enrichmentChunk(overrides: Record<string, unknown> = {}) {
 function enrichmentImage(overrides: Record<string, unknown> = {}) {
   return {
     id: "5e6f7a80-7777-4aaa-8bbb-000000000007",
+    document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
+    index_generation_id: "1a2b3c4d-6666-4aaa-8bbb-000000000006",
     page_number: 15,
     caption: "Lithium monitoring schedule table",
     image_type: "clinical_table",
@@ -218,12 +229,11 @@ describe("claimed batch partition", () => {
     expect(accepted[0]).toBe(good);
     expect(rejected).toHaveLength(1);
     expect(rejected[0].error).toBeInstanceOf(WorkerRowShapeError);
-    expect(rejected[0].failable).toEqual({
-      id: "8e6f2b01-8888-4aaa-8bbb-000000000008",
+    expect(rejected[0].failable?.fence).toMatchObject({
+      job_id: "8e6f2b01-8888-4aaa-8bbb-000000000008",
       document_id: "3f1a2b6c-1111-4aaa-8bbb-000000000001",
-      batch_id: null,
-      ownerId: "0b6c9e21-5555-4aaa-8bbb-000000000005",
-      documentStatus: "failed",
+      worker_id: "worker-host-123",
+      lease_token: bad.lease_token,
     });
   });
 
@@ -237,10 +247,10 @@ describe("claimed batch partition", () => {
     const bad: Record<string, unknown> = claimedRow({ attempt_count: "1" });
     delete bad.batch_id;
     const { rejected } = partitionClaimedJobRows([bad]);
-    expect(rejected[0].failable).toMatchObject({ batch_id: null });
+    expect(rejected[0].failable?.fence.job_id).toBe(bad.id);
   });
 
-  it("preserves an indexed document status so a bad reindex row cannot demote a live index", () => {
+  it("leaves document status preservation to the server locked document", async () => {
     // Mirrors preservedStatus in worker/behavior.ts: atomic reindex failures keep the
     // document indexed rather than blanking a live index.
     const bad = claimedRow({
@@ -248,12 +258,92 @@ describe("claimed batch partition", () => {
       documents: claimedDocuments({ status: "indexed" }),
     });
     const { rejected } = partitionClaimedJobRows([bad]);
-    expect(rejected[0].failable).toMatchObject({ documentStatus: "indexed" });
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    await failRejectedClaimedJobRow(rejected[0], "worker-host-123", rpc);
+    expect(rpc).toHaveBeenCalledWith("fail_or_retry_ingestion_job", {
+      p_fence: rejected[0].failable?.fence,
+      p_batch_id: null,
+      p_retry: false,
+      p_stage: "failed shape contract",
+      p_error_message: rejected[0].error.message,
+      p_next_run_at: null,
+    });
   });
 
-  it("falls back to a null owner and failed status when documents is unreadable", () => {
+  it("uses only the job fence when documents is unreadable", () => {
     const { rejected } = partitionClaimedJobRows([claimedRow({ documents: "corrupt" })]);
-    expect(rejected[0].failable).toMatchObject({ ownerId: null, documentStatus: "failed" });
+    expect(rejected[0].failable?.fence.document_id).toBe(claimedRow().document_id);
+    expect(rejected[0].failable).not.toHaveProperty("ownerId");
+    expect(rejected[0].failable).not.toHaveProperty("documentStatus");
+  });
+});
+
+describe("rejected claim terminal transition", () => {
+  it.each([
+    { lease_token: "bad" },
+    { lease_authority_digest: "sha256:bad" },
+    { lease_expected_generation_id: "bad" },
+    { document_id: "bad" },
+    { locked_by: "different-worker" },
+    { lease_expires_at: "2020-01-01T00:00:00.000Z" },
+    { lease_expires_at: "bad" },
+  ])("never dispatches with invalid, expired, or foreign authority: %j", async (overrides) => {
+    const { rejected } = partitionClaimedJobRows([claimedRow({ documents: null, ...overrides })]);
+    const rpc = vi.fn();
+    expect(await failRejectedClaimedJobRow(rejected[0], "worker-host-123", rpc)).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("terminally fails only a valid fence with bad payload, without deriving payload authority", async () => {
+    const { accepted, rejected } = partitionClaimedJobRows([
+      claimedRow({ documents: { id: "another-document", owner_id: "untrusted", status: "indexed" } }),
+      claimedRow(),
+    ]);
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
+    expect(await failRejectedClaimedJobRow(rejected[0], "worker-host-123", rpc)).toBe(true);
+    expect(accepted).toHaveLength(1);
+    expect(rpc.mock.calls[0][1].p_fence.document_id).toBe(claimedRow().document_id);
+    expect(rpc.mock.calls[0][1]).not.toHaveProperty("p_document_status");
+  });
+
+  it("honours server lease loss without falling back to an unfenced write", async () => {
+    const good = claimedRow();
+    const { accepted, rejected } = partitionClaimedJobRows([claimedRow({ documents: null }), good]);
+    const rpc = vi.fn().mockResolvedValue({ data: { ok: false, reason: "lease_lost" }, error: null });
+    await expect(failRejectedClaimedJobRow(rejected[0], "worker-host-123", rpc)).rejects.toThrow("lease_lost");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(accepted).toEqual([good]);
+  });
+});
+
+describe("worker claim rejection isolation", () => {
+  it.each([
+    { data: { ok: false, reason: "lease_lost" }, error: null },
+    { data: null, error: { message: "synthetic transport failure" } },
+    { data: { unexpected: true }, error: null },
+  ])("returns valid siblings when the rejected row transition fails: %j", async (transition) => {
+    const { createWorkerRuntime } = await import("../worker/main");
+    const good = claimedRow();
+    const bad = claimedRow({ id: "8e6f2b01-8888-4aaa-8bbb-000000000008", documents: null });
+    const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+      if (name === "claim_ingestion_jobs") {
+        good.locked_by = String(args.p_worker_id);
+        bad.locked_by = good.locked_by;
+        return { data: [bad, good], error: null };
+      }
+      if (name === "fail_or_retry_ingestion_job") return transition;
+      throw new Error(`Unexpected RPC ${name}`);
+    });
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const runtime = createWorkerRuntime({ client: { rpc } as unknown as SupabaseClient });
+      expect(await runtime.claimJobs()).toEqual([good]);
+      expect(runtime.attemptForJob(good.id).signal.aborted).toBe(false);
+      expect(() => runtime.attemptForJob(bad.id)).toThrow("ingestion_attempt_required");
+      expect(rpc.mock.calls.map(([name]) => name)).toEqual(["claim_ingestion_jobs", "fail_or_retry_ingestion_job"]);
+    } finally {
+      warning.mockRestore();
+    }
   });
 });
 

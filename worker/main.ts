@@ -54,6 +54,7 @@ import {
   assertEnrichmentChunkRows,
   assertEnrichmentImageRows,
   partitionClaimedJobRows,
+  failRejectedClaimedJobRow,
   type RejectedClaimedJobRow,
 } from "./row-contracts";
 import {
@@ -366,10 +367,18 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   }
 
   async function terminallyFailRejectedClaimedRow(rejection: RejectedClaimedJobRow) {
-    // A rejected row has no trustworthy durable fence. Leave it to bounded lease recovery.
-    console.warn("Claimed job row failed the shape contract; leaving to stale reclaim", {
-      issues: rejection.error.issues,
-    });
+    try {
+      if (
+        await failRejectedClaimedJobRow(rejection, workerId, (name, payload) => ingestionRpcClient.rpc(name, payload))
+      )
+        return;
+      console.warn("Claimed job row failed the shape contract without a current worker fence", {
+        issues: rejection.error.issues,
+      });
+    } catch (error) {
+      // A stale/replaced fence or a transport failure must not strand valid siblings.
+      console.warn("Rejected claimed job terminal transition failed", safeErrorLogDetails(error));
+    }
   }
 
   async function downloadDocument(storagePath: string) {

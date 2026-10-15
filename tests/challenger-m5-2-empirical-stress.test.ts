@@ -66,7 +66,9 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
     it("verifies CLI check-clinical-hazard-controls.mjs exits with code 1 when a sealed path is tampered", () => {
       // Create a temporary tampered copy in memory and write to a temporary JSON file to test CLI subprocess execution
       const tampered = structuredClone(manifest);
-      const testPath = "src/lib/answer-verification.ts";
+      const exceptedPaths = new Set((manifest.driftExceptions ?? []).map((entry: { path: string }) => entry.path));
+      const testPath = citedRegisterPaths(manifest).find((entry: string) => !exceptedPaths.has(entry));
+      if (!testPath) throw new Error("Tamper proof requires an unexcepted sealed control path");
       tampered.reviewedPathDigests[testPath] = "0".repeat(64);
 
       const tempManifestPath = path.join(PROJECT_ROOT, "docs/clinical-hazard-controls.tamper-test.json");

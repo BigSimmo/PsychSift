@@ -173,8 +173,11 @@ describe("privacy readiness contract", () => {
 
   it("fails release closed on the remaining human and environment blockers", () => {
     const releaseErrors = validatePrivacyReadiness(manifest, { release: true, now: REGISTER_NOW });
-    expect(releaseErrors).toContain("PRIV-LEGAL-RAILWAY-DPA: release-blocking status pending");
-    expect(releaseErrors.filter((error: string) => error.includes("release-blocking status"))).toHaveLength(6);
+    expect(releaseErrors).toContain("PRIV-PROVIDER-OPENAI-ZDR: release-blocking status pending");
+    expect(releaseErrors).toContain("PRIV-LEGAL-APP8-CROSS-BORDER-BASIS: release-blocking status pending");
+    expect(releaseErrors).toContain("PRIV-LEGAL-APP1-APP5-NOTICE: release-blocking status pending");
+    expect(releaseErrors).toContain("PRIV-CLINICAL-PHI-MINIMISATION: release-blocking status partial");
+    expect(releaseErrors.filter((error: string) => error.includes("release-blocking status"))).toHaveLength(4);
     expect(releaseErrors).not.toContain("PRIV-PROVIDER-PRODUCTION-HMAC-SECRET: release-blocking status partial");
     expect(releaseErrors).not.toContain("PRIV-PROVIDER-RETENTION-SCHEDULE-PARITY: release-blocking status partial");
     expect(packageJson.scripts["check:production-readiness"]).toContain("check:privacy-readiness:release");
@@ -202,7 +205,14 @@ describe("privacy readiness contract", () => {
     expect(byId.get("PRIV-PROVIDER-OPENAI-ZDR")).toMatchObject({
       externalEvidenceReference: expect.stringContaining("submitted and acknowledged by OpenAI"),
     });
-    expect(byId.get("PRIV-LEGAL-OPENAI-DPA")).toMatchObject({ status: "pending" });
+    expect(byId.get("PRIV-LEGAL-OPENAI-DPA")).toMatchObject({
+      status: "verified",
+      externalEvidenceReference: expect.stringContaining("OPENAI-STD-20261005: owner-attested"),
+    });
+    expect(byId.get("PRIV-LEGAL-RAILWAY-DPA")).toMatchObject({
+      status: "verified",
+      externalEvidenceReference: expect.stringContaining("DocuSign envelope history Completed"),
+    });
     expect(byId.get("PRIV-PROVIDER-RETENTION-SCHEDULE-PARITY")).toMatchObject({
       status: "verified",
       verifiedByRole: "Database operations owner",

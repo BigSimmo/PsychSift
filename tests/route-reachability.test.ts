@@ -34,6 +34,10 @@ const srcRoot = path.join(repoRoot, "src");
 
 /** Intentionally-unlinked static page routes, each with the reason it is exempt. */
 const REACHABILITY_ALLOWLIST = new Map<string, string>([
+  [
+    "/admin/pilot",
+    "Operator deep link for the controlled ingestion pilot; server administrator authorization and client MFA remain required. It is deliberately outside ordinary navigation while bulk ingestion is held.",
+  ],
   // Usefulness audit, 11 Oct 2026: Set up Work left My Day's More menu.
   [
     "/my-day/setup",

@@ -33,8 +33,9 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   the gate did not ask. Note the canary pair for an ingestion change belongs around the
   RE-INDEX, not around the merge: the new code cannot alter any retrieval result until documents
   are re-ingested.
-- `src/lib/document-index-units.ts`, `src/lib/model-index-extraction.ts`, `src/lib/deep-memory.ts`
-  — the second producer of retrieval inputs, and not reached by `src/lib/rag/**` because all three
+- `src/lib/document-index-units.ts`, `src/lib/model-index-extraction.ts`, `src/lib/deep-memory.ts`,
+  `src/lib/deep-memory-preparation.ts`
+  — the second producer of retrieval inputs, and not reached by `src/lib/rag/**` because these modules
   sit one directory up. `searchIndexUnitCandidates` (`rag-candidate-sources.ts`) queries
   `match_document_index_units_hybrid_v2` unconditionally in the candidate fan-out, so the index
   units these modules build and embed — tables, workflows, algorithms, aliases, typed signals —
@@ -43,7 +44,8 @@ Code and ground truth whose edits change (or re-measure) retrieval/ranking behav
   ranking surface outright rather than only an input to one. Added 2026-09-16 after Codex review
   on PR #2832 pointed out that gating raw chunk extraction alone left the structured-evidence
   producers open. The re-index note above applies here too: index units change only when
-  documents are re-ingested.
+  documents are re-ingested. The copied preparation helper builds sections and memory cards for
+  managed ingestion and retains the same retrieval-input protection.
 - `src/lib/retrieval-rpc-rollout.ts`, `src/lib/clinical-evidence-haystack.ts`,
   `src/lib/cross-document-synthesis.ts`, `src/lib/corpus-grounding.ts`, `src/lib/keyword-query.ts`
   — retrieval inputs outside `src/lib/rag/**`: which RPC version the fan-out calls, the image

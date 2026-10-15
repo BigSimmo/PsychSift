@@ -5,6 +5,18 @@ import type { RagAnswer, SearchResult } from "@/lib/types";
 const prose = (text: string) => text.normalize("NFKC").replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
 const equal = (left: string, right: string) => prose(left).toLowerCase() === prose(right).toLowerCase();
 
+/** Match explicit four-population scope; excluded populations cannot authorize expansion. */
+export function sourceBoundAlcoholSummaryApplies(query: string) {
+  return (
+    !/\b(?:only|not|excluding|exclude|except|rather than|instead of)\b/i.test(query) &&
+    /\balcohol\b/i.test(query) &&
+    /\bhealthy adults\b/i.test(query) &&
+    /\bunder\s+18\b/i.test(query) &&
+    /pregnan/i.test(query) &&
+    /breastfeed/i.test(query)
+  );
+}
+
 /** Finite source-wording recovery, never a support exemption or original-layout authority. */
 export function renderSourceBoundAlcoholSummary(answer: RagAnswer, verificationSources: SearchResult[]) {
   const ids = new Set(

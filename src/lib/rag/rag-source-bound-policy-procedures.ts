@@ -48,10 +48,23 @@ export function comparisonSourceLabel(result: SearchResult) {
 }
 
 function boundedSourceText(result: SearchResult) {
-  return reflowBoundedSourceLines(sourceTextForClinicalProsePreservingBreaks(result.content ?? ""))
+  const text = reflowBoundedSourceLines(sourceTextForClinicalProsePreservingBreaks(result.content ?? ""))
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+  // These finite builders assert current procedures. A governing rejection,
+  // historical label or quotation cannot become an instruction through phrase matching.
+  // Ordinary clinical prohibitions (for example, "do not leave alone") are not a veto.
+  const procedure = "(?:procedures?|instructions?|recommendations?|statements?|polic(?:y|ies)|guidelines?)";
+  const adverse =
+    "(?:rejected|superseded|obsolete|withdrawn|historical|hypothetical|quoted|quotation|not current|not applicable)";
+  const governingContext = new RegExp(
+    `\\b(?:${adverse}[^.!?;]{0,80}\\b${procedure}|${procedure}[^.!?;]{0,80}\\b${adverse}|(?:do not|must not|never) (?:follow|apply|use)[^.!?;]{0,40}\\b${procedure})\\b`,
+    "i",
+  );
+  const rejectedHeading =
+    /(?:^|[.!?]\s+)(?:rejected|superseded|obsolete|withdrawn|historical|hypothetical|quotation|quoted(?: for comparison)?)\s*[:—-]/i;
+  return governingContext.test(text) || rejectedHeading.test(text) ? "" : text;
 }
 
 function isActiveCommunityEdProcedureSource(result: SearchResult) {

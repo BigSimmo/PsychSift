@@ -16,13 +16,14 @@
 //     used. Pinning the trusted set to a configured canonical host is possible, but it changes
 //     how every production request is judged and cannot be verified from outside that topology.
 //
-// BUT THE REASONING HAS A PREMISE, and it is the whole thing: the session cookie must be the ONLY
-// credential a mutating route accepts. The moment one authenticates by a bearer token or an API
-// key -- something a browser can be made to attach, or that travels without Fetch Metadata -- the
-// "no headers means not a browser" rule stops being safe and starts being a bypass.
+// The administrator upload also supports native bearer clients. Unlike a session cookie, an
+// Authorization header is not attached automatically to a cross-site form submission; browser
+// fetches that set it need CORS permission. Browser metadata must still be checked for both
+// credential forms. Upload therefore applies the shared verdict inside its handler as well as
+// through the proxy; private-access-routes.test.ts exercises hostile bearer and cookie requests.
 //
-// Nothing stated that premise and nothing checked it. This does. It is a scan rather than a note,
-// because a note does not go red.
+// Keep new direct Authorization readers review-visible. The single explicit upload case below
+// must retain its route-level rejection before authentication, MFA verification and writes.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
@@ -68,19 +69,34 @@ describe("the premise the CSRF fallback rests on", () => {
     expect(routes.some(({ source }) => MUTATION_HANDLER.test(source))).toBe(true);
   });
 
-  it("has no mutating route that authenticates by an Authorization header", () => {
+  it("requires explicit route-level CSRF protection for the administrator bearer upload", () => {
+    const upload = routes.find(({ rel }) => rel === "src/app/api/upload/route.ts")!.source;
+    expect(upload).toContain('import { apiMutationCsrfVerdict } from "@/lib/api-csrf"');
+    const handler = upload.indexOf("export async function POST");
+    const guard = upload.indexOf("apiMutationCsrfVerdict(request.headers, new URL(request.url).host)", handler);
+    const rejection = upload.indexOf('code: "cross_site_forbidden"', guard);
+    const auth = upload.indexOf("await requireAuthenticatedUser", handler);
+    expect(guard).toBeGreaterThan(handler);
+    expect(rejection).toBeGreaterThan(guard);
+    expect(rejection).toBeLessThan(auth);
+    expect(upload.slice(guard, auth)).toContain("if (!csrf.allowed)");
+  });
+
+  it("has no other mutating route that directly reads an Authorization header", () => {
     const offenders = routes
       .filter(({ rel }) => !isWebhook(rel))
+      // Upload accepts a native bearer client, verifies recent administrator MFA, and applies
+      // the same CSRF verdict in the handler. Its rejection paths are exercised in
+      // private-access-routes.test.ts; it is not exempt from the proxy guard.
+      .filter(({ rel }) => rel !== "src/app/api/upload/route.ts")
       .filter(({ source }) => MUTATION_HANDLER.test(source) && READS_AUTHORIZATION.test(source))
       .map(({ rel }) => rel);
 
     expect(
       offenders,
-      "A mutating route now reads an Authorization header. The CSRF check allows a request with " +
-        "no Fetch Metadata, no Origin and no Referer, on the grounds that only a browser can be " +
-        "made to forge a request and only the SameSite session cookie travels automatically. A " +
-        "bearer-authenticated mutation breaks that reasoning: either exempt the route explicitly " +
-        "and say why, or tighten apiMutationCsrfVerdict. Do not simply add it to this list.",
+      "A new mutating route directly reads an Authorization header. Review its credential and CSRF " +
+        "boundary and prove browser-origin rejection before adding an explicit case. Native bearer " +
+        "support must not bypass the proxy or the route-level CSRF guard.",
     ).toEqual([]);
   });
 

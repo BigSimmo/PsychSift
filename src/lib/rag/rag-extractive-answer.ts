@@ -38,7 +38,10 @@ export {
 import { adaptiveAnswerLimits, answerWithinLimits } from "@/lib/rag/rag-answer-contract-limits";
 import { type CheckedOriginalSectionAuthority as CheckedOriginalSectionLayout } from "@/lib/rag/rag-source-block";
 import { buildSourceConflictSection } from "@/lib/rag/source-conflict-section";
-import { renderSourceBoundAlcoholSummary } from "@/lib/rag/rag-source-bound-alcohol-summary";
+import {
+  renderSourceBoundAlcoholSummary,
+  sourceBoundAlcoholSummaryApplies,
+} from "@/lib/rag/rag-source-bound-alcohol-summary";
 import { classifyRagFallbackReason, publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
 import type { SearchChunksArgs } from "@/lib/rag/rag-contracts";
 import type {
@@ -5025,6 +5028,7 @@ export function finalizeRagAnswerQuality(
 ): RagAnswer {
   context = { ...context, contract };
   const sourceRendering =
+    sourceBoundAlcoholSummaryApplies(query) &&
     contract.promptVersion === legacyAnswerGenerationContract.promptVersion &&
     contract.schemaVersion === legacyAnswerGenerationContract.schemaVersion
       ? renderSourceBoundAlcoholSummary(answer, verificationSources ?? answer.sources)

@@ -257,7 +257,7 @@ const ragRankingPatterns = [
   // tables, workflows, algorithms, aliases, typed signals -- decide what that branch can surface.
   // deep-memory.ts also exports applyMemoryCardBoosts, which rescores SearchResult[] in that same
   // path, so it is a ranking surface outright. Added 2026-09-16 on Codex review of PR #2832.
-  /^src\/lib\/(?:document-index-units|model-index-extraction|deep-memory)\.ts$/,
+  /^src\/lib\/(?:document-index-units|model-index-extraction|deep-memory(?:-preparation)?)\.ts$/,
   // Inputs to retrieval and ordering that sat outside every pattern above. retrieval-rpc-rollout
   // picks which RPC version the candidate fan-out calls; clinical-evidence-haystack feeds
   // clinical-search scoring; cross-document-synthesis is read by retrieval-selection and the
@@ -1496,6 +1496,8 @@ function selfTest() {
   assert.equal(classifyPullRequestFiles(["src/lib/document-index-units.ts"]).ragRanking, true);
   assert.equal(classifyPullRequestFiles(["src/lib/model-index-extraction.ts"]).ragRanking, true);
   assert.equal(classifyPullRequestFiles(["src/lib/deep-memory.ts"]).ragRanking, true);
+  // Copied section/card builders still produce retrieval inputs during managed ingestion.
+  assert.equal(classifyPullRequestFiles(["src/lib/deep-memory-preparation.ts"]).ragRanking, true);
   // Retrieval inputs added 2026-09-25: RPC version choice, scoring helpers, and the producers
   // of enrichment, image-caption, embedding-field, table-fact and assertion rows.
   for (const file of [

@@ -181,7 +181,7 @@ surface, read `docs/rag-behaviour/` (README → behaviour-map → refuted-approa
   editing, even for incidental changes. The same applies to retrieval-input producers outside `src/lib/rag/**`: text producers (`src/lib/chunking.ts`,
   `src/lib/extractors/**`, `worker/python/extract_pdf_assets.py`), structured-evidence producers
   (`src/lib/document-index-units.ts`, `src/lib/model-index-extraction.ts`,
-  `src/lib/deep-memory.ts`, `applyMemoryCardBoosts`), retrieval RPC version choice
+  `src/lib/deep-memory.ts`, `src/lib/deep-memory-preparation.ts`, `applyMemoryCardBoosts`), retrieval RPC version choice
   and scoring helpers (`src/lib/retrieval-rpc-rollout.ts`, `clinical-evidence-haystack.ts`,
   `cross-document-synthesis.ts`, `corpus-grounding.ts`, `keyword-query.ts`), and enrichment, image-caption, embedding-field, table-fact, and assertion producers
   (`src/lib/document-enrichment.ts`, `visual-intelligence.ts`, `image-filtering.ts`,

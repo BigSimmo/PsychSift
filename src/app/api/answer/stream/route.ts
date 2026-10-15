@@ -254,6 +254,8 @@ function streamAnswer(
                     ...registeredPublicAnswerOptions({
                       requesterId: ownerId,
                       accessScope,
+                      queryMode: body.queryMode,
+                      summaryMode: body.summaryMode,
                       explicitDocumentIds: body.documentIds ?? (body.documentId ? [body.documentId] : undefined),
                       resolvedDocumentIds: scope?.documentIds,
                       signal,

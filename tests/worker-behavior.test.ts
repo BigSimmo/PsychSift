@@ -133,12 +133,16 @@ describe("vision per-image error isolation (L12)", () => {
     );
     const window = sourceSegment(
       source,
-      "classification = await classifyAndCaptionImageFromBase64({",
+      "classification = await runIngestionPreparedWork(",
       "return { task, classification",
       {
         label: "worker per-task vision call",
       },
     );
+    expect(window).toContain('"heartbeat_ingestion_job"');
+    expect(window).toContain("classifyAndCaptionImageFromBase64({");
+    expect(window).toContain("ingestionEgress: providerContextForJob(job)");
+    expect(window).toContain("rethrowTerminalProviderError(error)");
     expect(window).toContain("visionImageRejectionSkipReason(");
     expect(window).toContain("visionRejectedClassification(");
   });

@@ -1,4 +1,5 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -12,6 +13,7 @@ import {
 import { extractPdf, parseExtractedDocumentPayload } from "@/lib/extractors/document";
 import { buildDocumentPageRowsForPersistence } from "../worker/behavior";
 import { PDFParse } from "pdf-parse";
+import { resolvePythonBin } from "@/lib/python-bin";
 
 function packet(): PdfPageSourceProvenance {
   const hash = extractedTextSha256("synthetic page");
@@ -59,6 +61,106 @@ function payload(source: unknown = packet()) {
 }
 
 describe("native PDF source-only provenance", () => {
+  it("keeps producer OCR and unknown-runtime observations unverified without running OCR", () => {
+    const result = spawnSync(
+      resolvePythonBin(),
+      [
+        "-c",
+        `import json, sys
+sys.path.insert(0, "worker/python")
+import extract_pdf_assets as extractor
+geometry = {"pageRect": [0, 0, 400, 500], "cropBox": [0, 0, 400, 500], "mediaBox": [0, 0, 400, 500], "rotation": 0}
+identity = {"sourceContentSha256": "sha256:" + "a" * 64, "producer": {"contractVersion": "pdf-native-page-source-v1", "route": "python_pdf", "scriptSha256": "sha256:" + "b" * 64, "pythonVersion": None, "pymupdfVersion": "synthetic-runtime"}}
+print(json.dumps([extractor.page_source_provenance(geometry, 1, "native", "returned", used, needed, identity) for used, needed in [(True, False), (False, True)]]))
+`,
+      ],
+      { encoding: "utf8", timeout: 10_000 },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    const observations = JSON.parse(result.stdout) as unknown[];
+    expect(observations).toHaveLength(2);
+    for (const observation of observations) {
+      expect(pdfPageSourceProvenanceSchema.parse(observation)).toMatchObject({
+        nativeTextSha256: extractedTextSha256("native"),
+        structuralDisposition: "unverified",
+        reasonCodes: ["pdf_ocr_unverified", "pdf_runtime_identity_unknown"],
+        ocr: { status: "unverified", confidence: null, comparison: "not_compared" },
+        textIdentity: { originalExtractedTextSha256: extractedTextSha256("returned") },
+      });
+    }
+  });
+
+  it("accepts actual default native producer output with bound source, script and observed geometry", async () => {
+    const fixture = spawnSync(
+      resolvePythonBin(),
+      [
+        "-c",
+        `import base64, hashlib, json, pymupdf as fitz
+document = fitz.open()
+for index in range(2):
+    page = document.new_page(width=400, height=500)
+    page.insert_textbox(fitz.Rect(30, 40, 360, 420), ("Synthetic administrative reference text for native extraction. " * 8), fontsize=10)
+    if index:
+        page.set_cropbox(fitz.Rect(10, 20, 390, 480))
+        page.set_rotation(90)
+source = document.tobytes()
+expected = [{"nativeTextSha256": "sha256:" + hashlib.sha256(page.get_text("text", sort=True).encode("utf-8")).hexdigest(), "pageRect": list(page.rect), "cropBox": list(page.cropbox), "mediaBox": list(page.mediabox), "rotation": page.rotation} for page in document]
+print(json.dumps({"source": base64.b64encode(source).decode("ascii"), "expected": expected}))
+document.close()
+`,
+      ],
+      { encoding: "utf8", timeout: 10_000 },
+    );
+    expect(fixture.status, fixture.stderr).toBe(0);
+    const input = JSON.parse(fixture.stdout) as {
+      source: string;
+      expected: Array<{
+        nativeTextSha256: string;
+        pageRect: number[];
+        cropBox: number[];
+        mediaBox: number[];
+        rotation: number;
+      }>;
+    };
+    const bytes = Buffer.from(input.source, "base64");
+    const fallback = vi.spyOn(PDFParse.prototype, "getText");
+    let extracted: Awaited<ReturnType<typeof extractPdf>> | undefined;
+    try {
+      extracted = await extractPdf(bytes);
+      expect(extracted.pages).toHaveLength(2);
+      expect(fallback).not.toHaveBeenCalled();
+      const scriptHash = extractedTextSha256(
+        await readFile(path.join(process.cwd(), "worker", "python", "extract_pdf_assets.py")),
+      );
+      for (const [index, page] of extracted.pages.entries()) {
+        const provenance = pdfPageSourceProvenanceSchema.parse(page.metadata?.source_provenance);
+        const { nativeTextSha256, ...pageGeometry } = input.expected[index];
+        expect(page.text.length).toBeGreaterThan(220);
+        expect(provenance).toMatchObject({
+          physicalPageNumber: index + 1,
+          sourceContentSha256: extractedTextSha256(bytes),
+          producer: { scriptSha256: scriptHash, pythonVersion: expect.any(String), pymupdfVersion: expect.any(String) },
+          pageGeometry,
+          nativeTextSha256,
+          structuralDisposition: index ? "unverified" : "retained",
+          reasonCodes: index ? ["pdf_geometry_transform_unverified"] : [],
+          ocr: { status: "not_requested", comparison: "not_applicable" },
+          textIdentity: {
+            originalExtractedTextSha256: extractedTextSha256(page.text),
+            persistedTextSha256: extractedTextSha256(page.text),
+            normalizationApplied: false,
+            metadataNormalizationApplied: false,
+          },
+        });
+      }
+      expect(parseExtractedDocumentPayload(JSON.stringify(extracted)).pages).toEqual(extracted.pages);
+    } finally {
+      fallback.mockRestore();
+      for (const temporaryPath of extracted?.temporaryPaths ?? [])
+        await rm(temporaryPath, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it("retains strict observations through JSON roundtrip", () => {
     const parsed = parseExtractedDocumentPayload(JSON.stringify(payload()));
     expect(parsed).toEqual(payload());

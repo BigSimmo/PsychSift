@@ -171,7 +171,7 @@ function validateSource(job: JobRow, source: ApprovedAdminSource): ApprovedAdmin
     !source.catalogueKey ||
     (source.sourceFamily === "native_pdf"
       ? source.sourceSectionLayout !== undefined
-      : source.sourceSectionLayout?.sourceSha256 !== source.sourceSha256)
+      : source.sourceSectionLayout !== undefined && source.sourceSectionLayout.sourceSha256 !== source.sourceSha256)
   )
     return refuse();
   const expectation = parseSourceExpectation(source.sourceExpectation);
@@ -365,7 +365,8 @@ export function createAdminSourceRuntimeOptions(
           !same(latest.sourceExpectation, source.sourceExpectation) ||
           !latest.sourceExpectationWitnessBytes.equals(source.sourceExpectationWitnessBytes) ||
           latest.sourceFamily !== source.sourceFamily ||
-          (source.sourceFamily !== "native_pdf" && !same(latest.sourceSectionLayout, source.sourceSectionLayout))
+          (source.sourceFamily !== "native_pdf" &&
+            !same(latest.sourceSectionLayout ?? null, source.sourceSectionLayout ?? null))
         )
           return refuse();
         const result = await context.mutation("retain_ingestion_generation_artifacts", {
@@ -394,7 +395,8 @@ export function createAdminSourceRuntimeOptions(
         !same(latest.sourceExpectation, source.sourceExpectation) ||
         !latest.sourceExpectationWitnessBytes.equals(source.sourceExpectationWitnessBytes) ||
         latest.sourceFamily !== source.sourceFamily ||
-        (source.sourceFamily !== "native_pdf" && !same(latest.sourceSectionLayout, source.sourceSectionLayout))
+        (source.sourceFamily !== "native_pdf" &&
+          !same(latest.sourceSectionLayout ?? null, source.sourceSectionLayout ?? null))
       )
         return refuse();
       const first = await context.mutation("begin_ingestion_generation_evidence", {

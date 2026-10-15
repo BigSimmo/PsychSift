@@ -1505,7 +1505,7 @@ export function decodeWholeOriginalSupplierReadback(args: {
     )
       refuse("readback_group_population_mismatch");
   }
-  const ordered = <T>(items: T[], identity: (item: T) => string) =>
+  const ordered = <T,>(items: T[], identity: (item: T) => string) =>
     [...items].sort((a, b) => identity(a).localeCompare(identity(b)));
   const units = z.array(unitDeclarationSchema).parse(inventory.units);
   unique(

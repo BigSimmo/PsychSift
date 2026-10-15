@@ -253,12 +253,32 @@ function mockRuntime(client: ReturnType<typeof createSupabaseMock>) {
         headers: { "content-type": "application/json" },
       }),
   }));
+  const userClient = {
+    auth: {
+      getClaims: vi.fn(async () => ({
+        data: {
+          claims: {
+            sub: userId,
+            role: "authenticated",
+            aal: "aal2",
+            app_metadata: { site_role: "administrator" },
+            amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) }],
+          },
+        },
+        error: null,
+      })),
+    },
+  };
+  vi.doMock("@/lib/supabase/server", () => ({
+    createSupabaseBearerServerClient: () => userClient,
+    createSupabaseServerClient: async () => userClient,
+  }));
   vi.doMock("@/lib/rag/rag", () => ({
     invalidateRagCachesForDocumentMutation: vi.fn(),
     invalidateRagCachesForOwner: vi.fn(),
   }));
   vi.doMock("@/lib/audit", () => ({ writeAuditLog: vi.fn() }));
-  return { createAdminClient, requireAuthenticatedUser };
+  return { createAdminClient, requireAuthenticatedUser, userClient };
 }
 
 function authenticatedRequest(path: string, init?: RequestInit) {
@@ -832,14 +852,9 @@ describe("API validation contracts", () => {
       ],
       error: null,
     };
-    const uploadClient = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
-      if (call.table === "documents" && call.operation === "insert" && call.single) {
-        return { data: null, error: { message: "insert failed" } };
-      }
-      return ok([]);
-    });
-    mockRuntime(uploadClient);
+    const uploadClient = createSupabaseMock();
+    const uploadRuntime = mockRuntime(uploadClient);
+    uploadRuntime.userClient.auth.getClaims.mockRejectedValueOnce(new Error("claims provider unavailable"));
     const uploadRoute = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));

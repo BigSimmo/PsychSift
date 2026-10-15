@@ -1,6 +1,5 @@
 // Deno requires explicit local extensions; Node accepts this type-only import.
 import type { ProviderEgressBinding } from "./document-ingress-safety.ts";
-// @ts-expect-error -- Node's tsconfig disallows .ts module extensions; Deno requires this explicit extension.
 import { createIngestionProviderEgressContext } from "./ingestion-provider-egress.ts";
 
 /** Runtime has no trusted scanner adapter yet. Unknown observations never become clean findings. */

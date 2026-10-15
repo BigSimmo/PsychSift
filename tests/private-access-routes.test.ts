@@ -8,6 +8,31 @@ const otherDocumentId = "22222222-2222-4222-8222-222222222222";
 const imageId = "33333333-3333-4333-8333-333333333333";
 const token = "valid-token";
 
+const uploadAuthority = {
+  version: 1,
+  sourceRole: "clinical_guideline",
+  authorityBasis: "administrator_template",
+  licencePolicy: "review_required",
+  rightsEvidenceRef: "registry:synthetic:guideline",
+  publisher: "Synthetic publisher",
+  jurisdiction: "Australia",
+  publicationDate: "2026-01-02",
+  effectiveDate: "2026-02-03",
+  reviewDate: null,
+  expiryDate: null,
+  currentness: "unknown",
+  supersedesDocumentId: null,
+  purpose: "clinical_retrieval",
+  supportedFeatures: ["text"],
+  providerProcessing: "forbidden",
+};
+
+function uploadForm() {
+  const form = new FormData();
+  form.set("authority", JSON.stringify(uploadAuthority));
+  return form;
+}
+
 function documentDetailRow(overrides: Record<string, unknown> = {}) {
   return {
     id: documentId,
@@ -218,6 +243,9 @@ const defaultQueryResolver: QueryResolver = (call) => {
 function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
   const calls: QueryCall[] = [];
   const resolveWithDefaultScope: QueryResolver = (call) => {
+    if (call.table === "documents" && call.selected === "id,title,description,file_name,storage_path,metadata") {
+      return ok(null);
+    }
     const customResult = resolve(call);
     if (
       call.table === "documents" &&
@@ -301,7 +329,8 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
         error: null,
       };
     }
-    if (name === "create_uploaded_document_with_ingestion_job") {
+    if (name === "admit_administrator_document") {
+      if (args?.p_replay_only) return ok({ outcome: "not_found" });
       const document = (args?.p_document ?? {}) as Record<string, unknown>;
       const documentCall: QueryCall = {
         table: "documents",
@@ -333,7 +362,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
         status: "pending",
         stage: "queued",
         progress: 0,
-        max_attempts: args?.p_max_attempts,
+        max_attempts: document.max_attempts,
       };
       const jobCall: QueryCall = {
         table: "ingestion_jobs",
@@ -351,11 +380,14 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       if (jobResult.error) return jobResult;
 
       return ok({
-        document: insertedDocument,
+        outcome: "created",
+        admission_event_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        document: { ...insertedDocument, id: document.id },
         job: {
-          id: "job-1",
           ...jobPayload,
           ...(typeof jobResult.data === "object" && jobResult.data ? jobResult.data : {}),
+          id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          document_id: document.id,
         },
       });
     }
@@ -365,7 +397,22 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
     return ok([]);
   });
   const client = {
-    auth: { getUser, admin: { listUsers } },
+    auth: {
+      getUser,
+      admin: { listUsers },
+      getClaims: vi.fn(async () => ({
+        data: {
+          claims: {
+            sub: userId,
+            role: "authenticated",
+            aal: "aal2",
+            app_metadata: { site_role: "administrator" },
+            amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) }],
+          },
+        },
+        error: null,
+      })),
+    },
     calls,
     from: vi.fn((table: string) => {
       const call: QueryCall = {
@@ -450,6 +497,10 @@ function mockRuntime(
   }));
   vi.doMock("@/lib/supabase/admin", () => ({
     createAdminClient: () => client,
+  }));
+  vi.doMock("@/lib/supabase/server", () => ({
+    createSupabaseBearerServerClient: () => client,
+    createSupabaseServerClient: async () => client,
   }));
   if (ragMock) {
     vi.doMock("@/lib/rag/rag", () => ragMock);
@@ -567,7 +618,7 @@ describe("private document API access", () => {
     const client = createSupabaseMock();
     mockRuntime(client, undefined, { localNoAuth: true });
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["hello"], "guideline.txt", { type: "text/plain" }));
 
     const response = await POST(
@@ -587,14 +638,14 @@ describe("private document API access", () => {
     const client = createSupabaseMock();
     mockRuntime(client, undefined, { localNoAuth: true });
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["hello"], "guideline.txt", { type: "text/plain" }));
 
     const response = await POST(
       localPortRequest(4298, "/api/upload", {
         method: "POST",
         headers: {
-          referer: "http://localhost:3000/",
+          referer: "http://localhost:4298/",
         },
         body: formData,
       }),
@@ -1561,7 +1612,7 @@ describe("private document API access", () => {
     const client = createSupabaseMock();
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -1586,7 +1637,7 @@ describe("private document API access", () => {
     );
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -1615,7 +1666,7 @@ describe("private document API access", () => {
     const proxyHeader = signProxyAuthPayload(
       Buffer.from(JSON.stringify({ id: userId, appMetadata: { site_role: "administrator" } })).toString("base64"),
     );
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     try {
@@ -1639,6 +1690,54 @@ describe("private document API access", () => {
     }
   });
 
+  it.each<[string, Record<string, string>]>([
+    ["bearer", { "sec-fetch-site": "cross-site" }],
+    ["bearer", { origin: "https://untrusted.example" }],
+    ["cookie", { "sec-fetch-site": "cross-site" }],
+    ["cookie", { origin: "https://untrusted.example" }],
+  ])(
+    "rejects %s uploads with hostile browser metadata before authentication or storage",
+    async (credential, headers) => {
+      const client = createSupabaseMock();
+      mockRuntime(client);
+      const { POST } = await import("../src/app/api/upload/route");
+      const makeRequest = credential === "bearer" ? authenticatedRequest : authenticatedCookieRequest;
+      const uploadRequest = makeRequest("/api/upload", { method: "POST", headers, body: new FormData() });
+      const formData = vi.spyOn(uploadRequest, "formData");
+      const response = await POST(uploadRequest);
+      expect(response.status).toBe(403);
+      expect(await payload(response)).toMatchObject({ code: "cross_site_forbidden" });
+      expect(client.auth.getUser).not.toHaveBeenCalled();
+      expect(client.storageMocks.upload).not.toHaveBeenCalled();
+      expect(formData).not.toHaveBeenCalled();
+      expect(client.calls).toHaveLength(0);
+    },
+  );
+
+  it("rejects uploads without verified recent MFA before parsing or storage", async () => {
+    const client = createSupabaseMock();
+    client.auth.getClaims.mockResolvedValueOnce({
+      data: {
+        claims: {
+          sub: userId,
+          role: "authenticated",
+          aal: "aal1",
+          app_metadata: { site_role: "administrator" },
+          amr: [],
+        },
+      },
+      error: null,
+    });
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const uploadRequest = authenticatedRequest("/api/upload", { method: "POST", body: new FormData() });
+    const formData = vi.spyOn(uploadRequest, "formData");
+    expect((await POST(uploadRequest)).status).toBe(403);
+    expect(formData).not.toHaveBeenCalled();
+    expect(client.storageMocks.upload).not.toHaveBeenCalled();
+    expect(client.calls).toHaveLength(0);
+  });
+
   it("fails closed for administrator uploads when the durable limiter is unavailable", async () => {
     const client = createSupabaseMock();
     client.rpc.mockImplementation(async (name: string) =>
@@ -1646,7 +1745,7 @@ describe("private document API access", () => {
     );
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -1765,7 +1864,7 @@ describe("private document API access", () => {
       body: new FormData(),
       signal: controller.signal,
     });
-    const form = new FormData();
+    const form = uploadForm();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
     vi.spyOn(uploadRequest, "formData").mockImplementation(async () => {
       controller.abort();
@@ -1791,7 +1890,7 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const form = new FormData();
+    const form = uploadForm();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -1836,12 +1935,12 @@ describe("private document API access", () => {
     expect(rejectedResponse.status).toBe(503);
     expect(rejectedFormData).not.toHaveBeenCalled();
 
-    const form = new FormData();
+    const form = uploadForm();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
     resolveForm(form);
     expect((await firstResponsePromise).status).toBe(201);
 
-    const afterRelease = new FormData();
+    const afterRelease = uploadForm();
     afterRelease.set("file", new File(["%PDF-1.7 revised\n%%EOF"], "second.pdf", { type: "application/pdf" }));
     const afterResponse = await POST(authenticatedRequest("/api/upload", { method: "POST", body: afterRelease }));
     expect(afterResponse.status).toBe(201);
@@ -1866,7 +1965,7 @@ describe("private document API access", () => {
     const failedResponse = await POST(failedRequest);
     expect(failedResponse.status).toBe(400);
 
-    const form = new FormData();
+    const form = uploadForm();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
     const admittedResponse = await POST(
       authenticatedRequest("/api/upload", {
@@ -1880,7 +1979,7 @@ describe("private document API access", () => {
     expect(client.storageMocks.upload).toHaveBeenCalledTimes(1);
   });
 
-  it("cleans up document and storage when aborted after the atomic upload enqueue", async () => {
+  it("preserves admitted document and storage when the client aborts after atomic admission", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
@@ -1892,18 +1991,18 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const form = new FormData();
+    const form = uploadForm();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
       authenticatedRequest("/api/upload", { method: "POST", body: form, signal: controller.signal }),
     );
 
-    expect(response.status).toBe(499);
+    expect(response.status).toBe(201);
     expect(client.calls.filter((call) => call.table === "documents" && call.operation === "insert")).toHaveLength(1);
     expect(client.calls.some((call) => call.table === "ingestion_jobs" && call.operation === "insert")).toBe(true);
-    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(1);
-    expect(client.storageMocks.remove).toHaveBeenCalledTimes(1);
+    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(0);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
   });
 
   it("stores uploaded documents with owner_id and a user-scoped storage path", async () => {
@@ -1919,7 +2018,7 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
     formData.set("title", "Guideline");
 
@@ -1957,7 +2056,7 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "WACHS-anything.pdf", { type: "application/pdf" }));
     formData.set("title", "WACHS lithium spoof");
 
@@ -2004,7 +2103,7 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7 revised\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -2037,7 +2136,7 @@ describe("private document API access", () => {
     const client = createSupabaseMock((call) => (call.table === "documents" ? ok(duplicate) : ok([])));
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -3305,13 +3404,13 @@ describe("private document API access", () => {
     expect(client.calls.some((call) => call.operation === "update" || call.operation === "insert")).toBe(false);
   });
 
-  it("cleans up uploaded storage when document insert fails", async () => {
+  it("preserves uploaded storage when admission fails with an unknown commit outcome", async () => {
     const client = createSupabaseMock((call) =>
       call.table === "documents" && call.operation === "insert" ? fail("document insert failed") : ok([]),
     );
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -3320,13 +3419,34 @@ describe("private document API access", () => {
         body: formData,
       }),
     );
-    const uploadPath = client.storageMocks.upload.mock.calls[0]?.[0] as string;
+    expect(client.storageMocks.upload).toHaveBeenCalledTimes(1);
 
     expect(response.status).toBe(500);
-    expect(client.storageMocks.remove).toHaveBeenCalledWith([uploadPath]);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
   });
 
-  it("cleans up uploaded storage when job insert fails", async () => {
+  it("returns a validated conflict envelope for a rejected admission replay", async () => {
+    const client = createSupabaseMock(() => ok([]));
+    const defaultRpc = client.rpc.getMockImplementation()!;
+    client.rpc.mockImplementation(async (name, args) =>
+      name === "admit_administrator_document" ? fail("admission_replay_conflict") : defaultRpc(name, args),
+    );
+    mockRuntime(client);
+    const { POST } = await import("../src/app/api/upload/route");
+    const form = uploadForm();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: form }));
+    expect(response.status).toBe(409);
+    expect(await payload(response)).toMatchObject({
+      error: "Idempotency-Key conflicts with the admitted request.",
+      code: "admission_replay_conflict",
+    });
+    expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(client.storageMocks.upload).not.toHaveBeenCalled();
+    expect(client.calls.some((call) => call.operation === "insert")).toBe(false);
+  });
+
+  it("cleans up uploaded storage when admission is definitively rejected", async () => {
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "insert") {
         return fail("job insert failed");
@@ -3335,8 +3455,9 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
-      if (name === "create_uploaded_document_with_ingestion_job") {
-        return fail("job insert failed");
+      if (name === "admit_administrator_document") {
+        if (args?.p_replay_only) return ok({ outcome: "not_found" });
+        return fail("invalid_trusted_document_input");
       }
       if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") {
         return {
@@ -3353,7 +3474,7 @@ describe("private document API access", () => {
       return ok([]);
     });
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -3369,28 +3490,20 @@ describe("private document API access", () => {
     expect(client.calls.some((call) => call.table === "documents" && call.operation === "delete")).toBe(false);
   });
 
-  it("still runs catch cleanup when post-enqueue cleanup calls return non-throwing errors", async () => {
+  it("records storage cleanup failures when a pre-admission upload is aborted", async () => {
     const controller = new AbortController();
-    const client = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "insert") {
-        controller.abort();
-        return ok({ id: documentId });
-      }
-      if (call.table === "ingestion_jobs" && call.operation === "insert") {
-        return ok({ id: "job-1", document_id: documentId });
-      }
-      if (call.table === "documents" && call.operation === "delete") {
-        return fail("document cleanup returned error");
-      }
-      return ok([]);
-    });
+    const client = createSupabaseMock(() => ok([]));
     client.storageMocks.remove.mockResolvedValue({
       data: [],
       error: { message: "storage cleanup returned error" },
     });
+    client.storageMocks.upload.mockImplementation(async () => {
+      controller.abort();
+      return { data: { path: "uploaded" }, error: null };
+    });
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
-    const formData = new FormData();
+    const formData = uploadForm();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
 
     const response = await POST(
@@ -3404,8 +3517,12 @@ describe("private document API access", () => {
     const documentDeletes = client.calls.filter((call) => call.table === "documents" && call.operation === "delete");
 
     expect(response.status).toBe(499);
-    expect(documentDeletes).toHaveLength(1);
+    expect(documentDeletes).toHaveLength(0);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([uploadPath]);
+    expect(client.calls.some((call) => call.table === "storage_cleanup_jobs" && call.operation === "insert")).toBe(
+      true,
+    );
+    expect(client.calls.some((call) => call.table === "documents" && call.operation === "insert")).toBe(false);
   });
 
   it("does not return document details for an unowned document", async () => {
@@ -5543,8 +5660,13 @@ describe("private document API access", () => {
   });
 
   it("aborts streamed answer generation when the response body is cancelled", async () => {
+    let markStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      markStarted = resolve;
+    });
     const answerQuestionWithScope = vi.fn(
       async ({ signal, onProgress }: { signal?: AbortSignal; onProgress?: (event: unknown) => void }) => {
+        markStarted();
         onProgress?.({
           stage: "ranking",
           resultCount: 1,
@@ -5582,6 +5704,7 @@ describe("private document API access", () => {
     );
     const reader = response.body?.getReader();
     await reader?.read();
+    await started;
     await reader?.cancel();
 
     expect(response.status).toBe(200);

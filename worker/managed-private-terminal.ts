@@ -98,7 +98,7 @@ const responseSchema = z
       .strict(),
   })
   .strict();
-const copy = <T>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
+const copy = <T,>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
 const same = (a: unknown, b: unknown) => generationEvidenceDigest(a) === generationEvidenceDigest(b);
 const refuse = (reason: string): never => {
   throw new Error(`managed_private_terminal_${reason}`);

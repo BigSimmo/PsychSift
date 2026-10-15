@@ -9,7 +9,6 @@ import {
   type ProviderEgressDenialCode,
   type ProviderEgressPermit,
   type ProviderEgressPurpose,
-  // @ts-expect-error Deno requires explicit local extensions.
 } from "./document-ingress-safety.ts";
 
 declare const ingestionContextType: unique symbol;

@@ -4,7 +4,11 @@
   "kind": "area",
   "name": "Delivery and assurance",
   "owns": "Getting a change safely from branch to live: CI, git hooks, gates, budgets, containers, deploy config and test tooling.",
-  "canonicalDocs": ["docs/agents/verification-gates.md", "docs/testing.md", "docs/deployment-architecture.md"],
+  "canonicalDocs": [
+    "docs/agents/verification-gates.md",
+    "docs/testing.md",
+    "docs/deployment-architecture.md"
+  ],
   "paths": [
     ".coderabbit.yaml",
     ".docker/buildx.toml",
@@ -257,6 +261,7 @@
     "tests/primary-checkout-lease.test.ts",
     "tests/production-readiness-offline.test.ts",
     "tests/property-*",
+    "tests/published-original-request-evidence.test.ts",
     "tests/qr-check-in-helper.dom.test.tsx",
     "tests/railway-config.test.ts",
     "tests/reconciliation-*",

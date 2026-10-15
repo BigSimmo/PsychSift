@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { queryClassForClinicalMode, type ClinicalQueryMode } from "@/lib/clinical-query-mode";
 import { createRegisteredPublishedAdminSourcePlanResolver } from "@/lib/registered-published-admin-source-plan";
 import type { RetrievalAccessScope } from "@/lib/owner-scope";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -20,6 +21,7 @@ type RegisteredPublicAnswerInput = {
   explicitDocumentIds?: readonly string[];
   resolvedDocumentIds?: readonly string[];
   summaryMode?: boolean;
+  queryMode?: ClinicalQueryMode;
   signal?: AbortSignal;
 };
 
@@ -75,6 +77,16 @@ export function registeredPublicAnswerOptions(
   const requesterId = input.requesterId;
   if (!requesterId || !input.accessScope.includePublic || input.summaryMode) return;
   if (input.accessScope.ownerId !== requesterId || !z.uuid().safeParse(requesterId).success) return bindingFailure();
+
+  // The loader runs only for unscoped broad summaries. Automatic classification
+  // can change during retrieval, so uncertain auto requests still need fresh receipts.
+  const modeQueryClass = queryClassForClinicalMode(input.queryMode ?? "auto");
+  if (
+    input.explicitDocumentIds?.length ||
+    input.resolvedDocumentIds?.length ||
+    (modeQueryClass !== null && modeQueryClass !== "broad_summary")
+  )
+    return;
 
   // Detach server restrictions once; never derive identity/restrictions from callback rows.
   const explicitDocumentIds = input.explicitDocumentIds && [...input.explicitDocumentIds];

@@ -116,7 +116,7 @@ function literal(bytes: Buffer) {
   }
 }
 const same = (a: unknown, b: unknown) => generationEvidenceDigest(a) === generationEvidenceDigest(b);
-const detach = <T>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
+const detach = <T,>(value: T): T => JSON.parse(generationEvidenceBytes(value).toString("utf8")) as T;
 
 /**
  * Configure only from an independently authorized server/pilot scope and frozen original plan.
