@@ -836,6 +836,7 @@ function ClinicalDashboardContent({
   const { refresh, loadMoreDocuments } = useDashboardLibraryRefresh({
     library,
     authEpoch,
+    ownerId: auth.session?.user.id ?? null,
     authStatus,
     authorizationHeader,
     authBoundFetch,

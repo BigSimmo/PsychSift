@@ -140,6 +140,8 @@ export type DashboardLibraryState = ReturnType<typeof useDashboardLibraryState>;
 type DashboardLibraryRefreshOptions = {
   library: DashboardLibraryState;
   authEpoch: number;
+  /** The signed-in user's id, or null when signed out. */
+  ownerId: string | null;
   authStatus: string;
   authorizationHeader: Record<string, string> | undefined;
   authBoundFetch: (
@@ -168,6 +170,7 @@ type DashboardLibraryRefreshOptions = {
 export function useDashboardLibraryRefresh({
   library,
   authEpoch,
+  ownerId,
   authStatus,
   authorizationHeader,
   authBoundFetch,
@@ -513,18 +516,22 @@ export function useDashboardLibraryRefresh({
   );
   const needsSetupRecheck = useMemo(() => setupNeedsSlowRecheck(setupChecks), [setupChecks]);
 
-  // The auth epoch changes only when the signed-in owner changes (sign in,
-  // sign out, or a direct account switch). Clear the previous owner's library
-  // straight away rather than leaving it on screen until the next refresh. A
-  // layout effect, so the cleared lists commit before the browser paints.
-  const libraryEpochRef = useRef(authEpoch);
-  useLayoutEffect(() => {
+  useEffect(() => {
     dashboardDataLoadedRef.current = false;
     administrationDataLoadedRef.current = false;
-    if (libraryEpochRef.current === authEpoch) return;
-    libraryEpochRef.current = authEpoch;
+  }, [administrationDataLoadedRef, authEpoch, dashboardDataLoadedRef]);
+
+  // When the signed-in owner changes (including a direct switch from one
+  // account to another), clear the previous owner's library in the same
+  // commit that first shows the new owner. Keyed on the owner id rather than
+  // the auth epoch, which is bumped a render later, and run as a layout effect
+  // so the old lists are never painted under the new account.
+  const libraryOwnerRef = useRef(ownerId);
+  useLayoutEffect(() => {
+    if (libraryOwnerRef.current === ownerId) return;
+    libraryOwnerRef.current = ownerId;
     clearLibraryLists();
-  }, [administrationDataLoadedRef, authEpoch, clearLibraryLists, dashboardDataLoadedRef]);
+  }, [clearLibraryLists, ownerId]);
 
   useEffect(() => {
     refresh({ includeSetup: true, includeDashboardData: false, includeDocumentMeta: false }).catch(() => undefined);
