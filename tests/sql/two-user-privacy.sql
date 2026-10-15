@@ -232,15 +232,19 @@ insert into owner_rule values
   ('storage.objects', '(storage.foldername(name))[1]::uuid', null);
 grant select on owner_rule to authenticated;
 
+-- A policy with no TO clause is stored as PUBLIC (role oid 0) and applies to both browser roles.
+-- Extension schemas (pg_cron's own cron.job policies) are outside the app's data and not checked.
 select pg_temp.assert_true(not exists (
   select distinct p.polrelid from pg_policy p
-  where exists (select 1 from unnest(p.polroles) r where r in ('anon'::regrole, 'authenticated'::regrole))
+  where exists (select 1 from unnest(p.polroles) r where r = 0 or r in ('anon'::regrole, 'authenticated'::regrole))
+    and (select c.relnamespace from pg_class c where c.oid = p.polrelid) in ('public'::regnamespace, 'storage'::regnamespace)
     and p.polrelid not in (select rel from owner_rule)
     -- A blanket deny is not an owner policy: it is proved by the refusal check further down.
     and p.polname <> 'cme_evidence_no_direct_access'
 ), 'a browser-role policy has no two-user coverage here; add its table to owner_rule: ' || coalesce((
   select string_agg(distinct p.polrelid::regclass::text, ', ') from pg_policy p
-  where exists (select 1 from unnest(p.polroles) r where r in ('anon'::regrole, 'authenticated'::regrole))
+  where exists (select 1 from unnest(p.polroles) r where r = 0 or r in ('anon'::regrole, 'authenticated'::regrole))
+    and (select c.relnamespace from pg_class c where c.oid = p.polrelid) in ('public'::regnamespace, 'storage'::regnamespace)
     and p.polrelid not in (select rel from owner_rule) and p.polname <> 'cme_evidence_no_direct_access'), ''));
 
 -- Simulate the broadest browser grant a future change could add. Rolled back with everything else.
