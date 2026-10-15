@@ -42,7 +42,7 @@ const FORM_METADATA = {
     sections: "Sections 61, 89, 90, 131",
     purpose: "Compulsory inpatient treatment in a general hospital setting due to physical health needs",
     threshold:
-      "Criteria met; Chief Psychiatrist involvement required (status shown below); physical health transfer risk is significant",
+      "Criteria met; Chief Psychiatrist consent required (status shown below); physical health transfer risk is significant",
     destination: "General Hospital",
     statutoryNotes: [
       "Authorises compulsory inpatient treatment in a general hospital setting.",
