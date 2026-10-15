@@ -160,8 +160,17 @@ for (const diagnosis of dsmDiagnoses) {
   }
 }
 
+// Plain clinical names a clinician types that never appear in the catalogue text. Search has
+// no stemming, so "depression" cannot reach "depressive" and Major depressive disorder was
+// missing from a search for "depression" while incidental mentions filled the list.
+const DSM_CLINICAL_SEARCH_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  "major-depressive-disorder": ["depression", "major depression", "clinical depression"],
+  "persistent-depressive-disorder-dysthymia": ["chronic depression"],
+};
+
 function dsmDiagnosisAliases(diagnosis: DsmDiagnosis) {
   const aliases = new Set<string>();
+  for (const alias of DSM_CLINICAL_SEARCH_ALIASES[diagnosis.slug] ?? []) aliases.add(normalizeSearchText(alias));
   const parenthetical = PARENTHETICAL_ABBREV_RE.exec(diagnosis.title)?.[1];
   if (parenthetical) aliases.add(normalizeSearchText(parenthetical));
   const initialism = dsmTitleInitialism(diagnosis.title);
