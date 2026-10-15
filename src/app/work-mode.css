@@ -1737,7 +1737,7 @@ a.work-hero:focus-visible {
   gap: calc(var(--spacing) * 1.5);
   padding: 0 calc(var(--spacing) * 4.5);
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--work-hero-action-fill, var(--surface-raised));
   color: var(--work-hero-action-ink, var(--mode-identity));
   font: inherit;
@@ -1749,8 +1749,8 @@ a.work-hero:focus-visible {
 }
 
 .work-hero__action[data-variant="quiet"] {
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
   background: color-mix(in srgb, currentColor 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
   color: inherit;
 }
 
