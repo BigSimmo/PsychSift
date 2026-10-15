@@ -1,5 +1,4 @@
 * text=auto eol=lf
-supabase/schema.sql -text
 supabase/migrations/20261013075944_administrator_txt_fenced_runtime_cutover.sql -text
 supabase/migrations/20261013144347_managed_generation_quality_repair_ownership.sql -text
 supabase/migrations/20261013200007_managed_native_pdf_terminal_append.sql -text
