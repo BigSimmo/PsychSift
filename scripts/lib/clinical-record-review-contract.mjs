@@ -110,7 +110,9 @@ export function newSignatureAttributionProblem(value) {
   // Spacing and punctuation are ignored, so "Psych Sift" and "Psych-Sift" are refused too.
   const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
   const productName = [...NOT_A_PERSON].some((entry) => entry.replace(/[^\p{L}]/gu, "") === squashed);
-  if (productName || nameWords.length < 2) {
+  // A role word anywhere ("Clinical Team", "Governance Committee") is not a person either.
+  const roleWord = nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
+  if (productName || roleWord || nameWords.length < 2) {
     return 'reviewedBy must be your own full name as it should appear publicly (your given name and surname), not a product, role or single name such as "PsychSift".';
   }
   return null;

@@ -70,7 +70,7 @@ function reviewedRecord(overrides: Record<string, unknown> = {}) {
   const record = pendingRecord(overrides);
   return finalizeTherapyReview(record, {
     answers: yesAnswers(),
-    reviewedBy: "Clinical Governance Committee",
+    reviewedBy: "Dr Alex Morgan",
     reviewedAt: REVIEWED_AT,
     now: NOW,
   });
@@ -190,7 +190,7 @@ describe("Therapy review source contract", () => {
   });
 
   it.each([
-    ["reviewedBy", "Clinical Governance Committee"],
+    ["reviewedBy", "Dr Alex Morgan"],
     ["reviewedAt", REVIEWED_AT],
     ["reviewedContentSha256", "a".repeat(64)],
   ])("rejects stale or partial %s metadata on needs_review", (key, value) => {
@@ -317,12 +317,12 @@ describe("Therapy review source contract", () => {
 
   it.each([
     "Dr Jane Smith (Consultant Psychiatrist)",
-    "Therapy Clinical Governance Committee",
+    "Therapy Dr Alex Morgan",
     "Clinical owner: J Smith",
     "Dr Na Li",
     "Dr Na Li (Clinical reviewer)",
     "Dr Maria Testa (Consultant Psychiatrist)",
-    "Test Valley Clinical Governance Committee",
+    "Test Valley Dr Alex Morgan",
     "Test Valley GP Governance Committee",
   ])("accepts display-approved public attribution %s", (value) => {
     expect(publicReviewerAttributionProblem(value)).toBeNull();
@@ -349,7 +349,7 @@ describe("Therapy review source contract", () => {
     expect(() =>
       finalizeTherapyReview(reviewedRecord(), {
         answers: yesAnswers(),
-        reviewedBy: "Another Clinical Owner",
+        reviewedBy: "Dr Jamie Lee",
         reviewedAt: REVIEWED_AT,
         now: NOW,
       }),
@@ -373,7 +373,7 @@ describe("Therapy clinician-input workflow", () => {
   });
 
   it("accepts --walk only as a write mode and never alongside one --slug", () => {
-    expect(parseTherapyReviewArgs(["--write", "--walk", "--reviewed-by", "Dr Clinical Owner"])).toMatchObject({
+    expect(parseTherapyReviewArgs(["--write", "--walk", "--reviewed-by", "Dr Sam Taylor"])).toMatchObject({
       write: true,
       walk: true,
     });
@@ -418,7 +418,7 @@ describe("Therapy clinician-input workflow", () => {
     const commit = vi.fn();
     const result = await conductTherapyReview({
       record: pendingRecord(),
-      reviewedBy: "Clinical Governance Committee",
+      reviewedBy: "Dr Alex Morgan",
       ask: sequenceAsk(["yes", "skip"]),
       commit,
       now: () => NOW,
@@ -430,7 +430,7 @@ describe("Therapy clinician-input workflow", () => {
 
   it("refuses a non-TTY walk before changing the source", () => {
     const before = readFileSync(SOURCE, "utf8");
-    const result = spawnSync(process.execPath, [SCRIPT, "--write", "--walk", "--reviewed-by", "Dr Clinical Owner"], {
+    const result = spawnSync(process.execPath, [SCRIPT, "--write", "--walk", "--reviewed-by", "Dr Sam Taylor"], {
       cwd: ROOT,
       encoding: "utf8",
       input: "",
@@ -447,7 +447,7 @@ describe("Therapy clinician-input workflow", () => {
     const commit = vi.fn();
     const result = await conductTherapyReview({
       record,
-      reviewedBy: "Clinical Governance Committee",
+      reviewedBy: "Dr Alex Morgan",
       ask,
       commit,
       now: () => NOW,
@@ -465,7 +465,7 @@ describe("Therapy clinician-input workflow", () => {
     const commit = vi.fn();
     const result = await conductTherapyReview({
       record,
-      reviewedBy: "Clinical Governance Committee",
+      reviewedBy: "Dr Alex Morgan",
       ask: sequenceAsk(["yes", "quit"]),
       commit,
       now: () => NOW,
@@ -482,7 +482,7 @@ describe("Therapy clinician-input workflow", () => {
     const commit = vi.fn();
     const result = await conductTherapyReview({
       record,
-      reviewedBy: "Clinical Governance Committee",
+      reviewedBy: "Dr Alex Morgan",
       ask: sequenceAsk([...Array(7).fill("yes"), "REVIEW another-slug"]),
       commit,
       now: () => NOW,
@@ -501,7 +501,7 @@ describe("Therapy clinician-input workflow", () => {
       const commit = vi.fn();
       const result = await conductTherapyReview({
         record,
-        reviewedBy: "Clinical Governance Committee",
+        reviewedBy: "Dr Alex Morgan",
         ask: sequenceAsk([...Array(7).fill("yes"), confirmation]),
         commit,
         now: () => NOW,
@@ -518,7 +518,7 @@ describe("Therapy clinician-input workflow", () => {
     const commit = vi.fn();
     const result = await conductTherapyReview({
       record,
-      reviewedBy: "Clinical Governance Committee",
+      reviewedBy: "Dr Alex Morgan",
       ask: sequenceAsk([...Array(7).fill("yes"), "REVIEW fixture-therapy"]),
       commit,
       now: () => NOW,
@@ -527,7 +527,7 @@ describe("Therapy clinician-input workflow", () => {
     expect(commit).toHaveBeenCalledTimes(1);
     expect(result.record).toMatchObject({
       reviewStatus: "reviewed",
-      reviewedBy: "Clinical Governance Committee",
+      reviewedBy: "Dr Alex Morgan",
       reviewedAt: NOW.toISOString(),
     });
     expect(therapyReviewProblems([result.record], { now: NOW })).toEqual([]);
@@ -663,7 +663,7 @@ describe("Therapy clinician-input workflow", () => {
         "--slug",
         "acceptance-and-commitment-therapy-act",
         "--reviewed-by",
-        "Clinical Governance Committee",
+        "Dr Alex Morgan",
       ],
       { cwd: ROOT, encoding: "utf8" },
     );
@@ -696,7 +696,7 @@ describe("Therapy clinician-input workflow", () => {
 });
 
 describe("Therapy batch sign-off from a review pack (owner decision 2026-09-26)", () => {
-  const OWNER = "Dr Clinical Owner";
+  const OWNER = "Dr Sam Taylor";
 
   function packFixture() {
     return [

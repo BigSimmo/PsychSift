@@ -46,7 +46,7 @@ import { conceptReviewState, mechanismReviewState } from "@/lib/formulation-revi
 
 const NOW = new Date(Math.max(Date.now(), Date.parse("2026-10-07T00:00:00.000Z")));
 const REVIEWED_AT = "2026-09-25T05:00:00.000Z";
-const REVIEWER = "Dr Clinical Owner";
+const REVIEWER = "Dr Sam Taylor";
 const context = { curated: curatedDifferentials, sourceLibrary: formulationContent.sourceLibrary };
 
 type Json = Record<string, unknown>;
