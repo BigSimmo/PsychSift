@@ -1936,7 +1936,10 @@ describe("private document API access", () => {
     expect(client.storageMocks.upload).toHaveBeenCalledTimes(1);
   });
 
-  it("cleans up document and storage when aborted after the atomic upload enqueue", async () => {
+  // Admission is atomic and idempotent: once the document and its job are committed, a client
+  // abort no longer rolls them back. Deleting an admitted row would race the worker that may
+  // already hold its job, so the route keeps it and reports success.
+  it("keeps the admitted document and job when the client aborts after the atomic upload enqueue", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
@@ -1956,11 +1959,11 @@ describe("private document API access", () => {
       authenticatedRequest("/api/upload", { method: "POST", body: form, signal: controller.signal }),
     );
 
-    expect(response.status).toBe(499);
+    expect(response.status).toBe(201);
     expect(client.calls.filter((call) => call.table === "documents" && call.operation === "insert")).toHaveLength(1);
     expect(client.calls.some((call) => call.table === "ingestion_jobs" && call.operation === "insert")).toBe(true);
-    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(1);
-    expect(client.storageMocks.remove).toHaveBeenCalledTimes(1);
+    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(0);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
   });
 
   it("stores uploaded documents with owner_id and a user-scoped storage path", async () => {
@@ -3437,20 +3440,15 @@ describe("private document API access", () => {
     expect(client.calls.some((call) => call.table === "documents" && call.operation === "delete")).toBe(false);
   });
 
-  it("still runs catch cleanup when post-enqueue cleanup calls return non-throwing errors", async () => {
+  it("still records a cleanup ledger row when pre-admission storage cleanup returns a non-throwing error", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "insert") {
-        controller.abort();
-        return ok({ id: documentId });
-      }
-      if (call.table === "ingestion_jobs" && call.operation === "insert") {
-        return ok({ id: "job-1", document_id: documentId });
-      }
-      if (call.table === "documents" && call.operation === "delete") {
-        return fail("document cleanup returned error");
-      }
+      if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
       return ok([]);
+    });
+    client.storageMocks.upload.mockImplementation(async () => {
+      controller.abort();
+      return { data: { path: "uploaded" }, error: null };
     });
     client.storageMocks.remove.mockResolvedValue({
       data: [],
@@ -3470,11 +3468,15 @@ describe("private document API access", () => {
       }),
     );
     const uploadPath = client.storageMocks.upload.mock.calls[0]?.[0] as string;
-    const documentDeletes = client.calls.filter((call) => call.table === "documents" && call.operation === "delete");
+    const ledgerInserts = client.calls.filter(
+      (call) => call.table === "storage_cleanup_jobs" && call.operation === "insert",
+    );
 
     expect(response.status).toBe(499);
-    expect(documentDeletes).toHaveLength(1);
+    expect(client.calls.some((call) => call.table === "documents" && call.operation === "insert")).toBe(false);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([uploadPath]);
+    expect(ledgerInserts).toHaveLength(1);
+    expect((ledgerInserts[0]?.insertPayload as { document_paths: string[] }).document_paths).toEqual([uploadPath]);
   });
 
   it("does not return document details for an unowned document", async () => {

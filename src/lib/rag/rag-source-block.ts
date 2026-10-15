@@ -203,6 +203,12 @@ export function createPublishedOriginalReceiptCapture() {
   };
   const projectSelectedResults = (rows: readonly Readonly<SearchResult>[]): SearchResult[] | null => {
     if (!rows.some((row) => receipts.has(key(row)) || claimedV2(row))) return null;
+    // A mixed selection (a row that never claimed V2, or rows from more than one document) cannot
+    // be delivered as one document's original sections. It takes baseline packing, as every
+    // non-summary query already does, instead of failing the whole answer. Integrity failures
+    // inside a wholly V2, single-document selection still fail closed below.
+    if (rows.some((row) => !claimedV2(row) && !receipts.has(key(row)))) return null;
+    if (new Set(rows.map((row) => row.document_id)).size > 1) return null;
     if (rows.length < 1 || rows.length > 6 || new Set(rows.map((row) => key(row))).size !== rows.length)
       return layoutFailure();
     let tuple: string | undefined;

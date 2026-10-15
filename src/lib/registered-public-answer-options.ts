@@ -24,7 +24,6 @@ type RegisteredPublicAnswerInput = {
 };
 
 type RegisteredPublicAnswerOptions = {
-  skipCache: true;
   loadRegisteredPublishedOriginalSectionLayout: RegisteredPublishedOriginalSectionLayoutLookup;
 };
 
@@ -66,8 +65,9 @@ async function boundedRead<T>(
 /**
  * Server-only composition. No explicit document is needed: nomination happens only AFTER
  * ordinary ranking/selection, from the entire detached selected set and genuine V2 facts.
- * The callback conservatively bypasses answer and retrieval caches to obtain current request-local
- * authority. This is a first-TXT tradeoff, not a publication-safe cache implementation.
+ * answerQuestionWithScope keeps the callback only for an unscoped broad summary, the one query
+ * class that can use it, and bypasses answer and retrieval caches for that request alone so the
+ * request-local authority is current. Every other signed-in answer keeps its caches.
  */
 export function registeredPublicAnswerOptions(
   input: RegisteredPublicAnswerInput,
@@ -178,5 +178,5 @@ export function registeredPublicAnswerOptions(
       return bindingFailure();
     }
   };
-  return { skipCache: true, loadRegisteredPublishedOriginalSectionLayout };
+  return { loadRegisteredPublishedOriginalSectionLayout };
 }

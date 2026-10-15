@@ -2072,11 +2072,30 @@ export async function answerQuestion(query: string, documentId?: string) {
   return answerQuestionWithScope({ query, documentId, allowGlobalSearch: true });
 }
 /** Answer question with scope. */
+/**
+ * Original-section delivery runs only for an unscoped broad summary (see loadCheckedPublishedOriginal
+ * below). An ineligible request drops the loader so it keeps the answer, coalescing and retrieval
+ * caches; an eligible one bypasses them so its request-local layout authority is current. A
+ * pre-retrieval misclassification only ever falls back to baseline packing, never to unchecked
+ * original-section delivery.
+ */
+export function withOriginalSectionEligibility(args: AnswerQuestionWithScopeArgs): AnswerQuestionWithScopeArgs {
+  if (!args.loadRegisteredPublishedOriginalSectionLayout) return args;
+  const queryMode = args.queryMode ?? "auto";
+  const eligible =
+    !args.documentId &&
+    !args.documentIds?.length &&
+    (queryClassForClinicalMode(queryMode) ??
+      classifyRagQuery(queryForClinicalMode(args.query, queryMode)).queryClass) === "broad_summary";
+  return eligible ? { ...args, skipCache: true } : { ...args, loadRegisteredPublishedOriginalSectionLayout: undefined };
+}
+
 export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs): Promise<RagAnswer> {
   const startedAt = Date.now();
   throwIfAborted(args.signal);
   args = withRagProgrammeRollout(args);
   args = await loadReviewedPolicyRequest(args, undefined, startedAt);
+  args = withOriginalSectionEligibility(args);
   const coalescingEnabled =
     !isAnswerPilotBudgetActive() &&
     !args.loadRegisteredPublishedOriginalSectionLayout &&
