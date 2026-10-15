@@ -113,6 +113,7 @@ describe("site-content synchronization planning", () => {
     const metadataChanged = {
       ...sourceRecord("medications:metadata", "Same reusable text"),
       publicMetadataFingerprint: "metadata-v2",
+      lineageFingerprint: "lineage-v2",
     };
     const changed = sourceRecord("medications:changed", "New text");
     const removed = sourceRecord("medications:removed", "Retired text");
@@ -122,7 +123,8 @@ describe("site-content synchronization planning", () => {
       publicationFingerprint: entry.record.publicationVersion,
       contentHash: entry.record.contentHash,
       governanceFingerprint: entry.governanceFingerprint,
-      lineageFingerprint: entry.lineageFingerprint,
+      lineageFingerprint:
+        entry.record.logicalId === "medications:metadata" ? "lineage-v1" : entry.lineageFingerprint,
       publicMetadataFingerprint: "metadata-v1",
       normalizedText: entry.record.body,
       documentId: entry.documentId,

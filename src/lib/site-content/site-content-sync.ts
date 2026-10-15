@@ -239,7 +239,6 @@ export function planSiteContentSync(input: SiteContentSyncInput): SiteContentSyn
       existing.contentHash === source.record.contentHash &&
       existing.publicationFingerprint === source.record.publicationVersion &&
       existing.governanceFingerprint === source.governanceFingerprint &&
-      existing.lineageFingerprint === source.lineageFingerprint &&
       existing.documentId === source.documentId &&
       existing.chunkId === source.chunkId &&
       existing.embeddingFingerprint === input.embedding.fingerprint &&
