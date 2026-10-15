@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { isAbortError } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
 import { type RefreshOptions } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
@@ -38,10 +38,12 @@ export function useDashboardBulkActions({
 }: DashboardBulkActionsOptions) {
   const [bulkActionStatus, setBulkActionStatus] = useState<string | null>(null);
   const [bulkActionBusy, setBulkActionBusy] = useState(false);
+  const activeBulkRequestsRef = useRef(0);
 
   const bulkReindexSelected = useCallback(
     async (mode: "enrichment" | "full" | "retry_failed") => {
       if (!selectedDocumentIds.length) return;
+      activeBulkRequestsRef.current += 1;
       setBulkActionBusy(true);
       setBulkActionStatus(null);
       try {
@@ -70,7 +72,8 @@ export function useDashboardBulkActions({
         if (isAbortError(error)) return;
         setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkReindexFailed);
       } finally {
-        setBulkActionBusy(false);
+        activeBulkRequestsRef.current -= 1;
+        if (activeBulkRequestsRef.current === 0) setBulkActionBusy(false);
       }
     },
     [
@@ -88,6 +91,7 @@ export function useDashboardBulkActions({
   const bulkUpdateMetadata = useCallback(
     async (metadata: Record<string, unknown>) => {
       if (!selectedDocumentIds.length || Object.keys(metadata).length === 0) return;
+      activeBulkRequestsRef.current += 1;
       setBulkActionBusy(true);
       setBulkActionStatus(null);
       try {
@@ -112,7 +116,8 @@ export function useDashboardBulkActions({
         if (isAbortError(error)) return;
         setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkMetadataUpdateFailed);
       } finally {
-        setBulkActionBusy(false);
+        activeBulkRequestsRef.current -= 1;
+        if (activeBulkRequestsRef.current === 0) setBulkActionBusy(false);
       }
     },
     [authBoundFetch, authorizationHeader, isAuthEpochCurrent, markSessionExpired, refresh, selectedDocumentIds],
