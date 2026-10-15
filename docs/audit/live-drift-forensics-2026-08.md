@@ -1664,6 +1664,8 @@ the manifest sha still matches.
 insert a version before the remote tip must pass `--include-all`, and must confirm the pending set
 first — the flag applies _every_ locally-absent version, not just the intended one.
 
+**Post-merge runbook for the managed-ingestion reconciliation.** Watch the integration run after merge. If the apply reports an out-of-order rejection, or the live history still shows `20261013140000`–`20261013170000` as local-only, first link the checkout to production (`supabase link --project-ref sjrfecxgysukkwxsowpy`) so migration commands target the intended project. Before running either npm check, explicitly configure `NEXT_PUBLIC_SUPABASE_URL` to the production URL and `SUPABASE_SERVICE_ROLE_KEY` to the matching production project key; verify the URL/project identity and key/project pairing independently (the npm checks use these environment credentials, not the CLI link). Then run `supabase migration list --linked` and `supabase db push --linked --include-all --dry-run`, and confirm both show exactly those four #3538 migrations plus `20261014164220` as pending. In an authorised production window, run `supabase db push --linked --include-all`, then run both `npm run check:drift` and `npm run check:migration-history` with those verified production credentials. Require both production check results: confirm that #3542 closes and that the migration-history check reports no pending, local-only, remote-only, or preview blockers before closing the reconciliation.
+
 ## Phase 5 — Measure and close the loop
 
 _Partially run 2026-08-14 (incident scope); full close-out still requires the remaining phases._

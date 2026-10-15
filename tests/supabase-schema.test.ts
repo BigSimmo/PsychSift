@@ -3520,7 +3520,9 @@ describe("Owner deletion must not republish private rows (#ZBAC9D)", () => {
     if (start < 0) return null;
     const end = rawSchema.indexOf("\n);", start);
     const block = rawSchema.slice(start, end);
-    const match = /owner_id uuid[^\n]*references auth\.users\(id\) on delete (set null|restrict|cascade)/.exec(block);
+    const match = /^\s*owner_id uuid[^\n]*references auth\.users\(id\) on delete (set null|restrict|cascade)/m.exec(
+      block,
+    );
     return match ? match[1] : null;
   }
 

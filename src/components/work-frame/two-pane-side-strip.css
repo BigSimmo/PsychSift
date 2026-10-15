@@ -6,7 +6,7 @@
 .two-pane-menu,
 .two-pane-rail {
   /* The rail's width matches the shell's md sidebar column. */
-  --two-pane-rail-width: 5.25rem;
+  --two-pane-rail-width: 4rem;
   --two-pane-rail-edge: inset -1px 0 0 var(--border);
 }
 

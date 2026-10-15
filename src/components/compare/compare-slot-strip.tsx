@@ -12,7 +12,7 @@ import { cn } from "@/components/ui-primitives";
 /**
  * Slot columns follow the slot count against the strip's own width, not the
  * viewport's. A viewport breakpoint is the wrong signal here because the desktop
- * sidebar takes 20rem when expanded and 5.25rem when collapsed, so the same
+ * sidebar takes 16.5rem when expanded and 4rem when collapsed, so the same
  * `lg` viewport hands this strip either ~876px or ~640px. Keying off `lg`
  * truncated titles in the expanded state — the fault this layout exists to
  * prevent.
