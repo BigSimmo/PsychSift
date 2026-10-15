@@ -5370,11 +5370,17 @@ create policy "labels owner read" on public.document_labels
   using ((select auth.uid()) = owner_id);
 create policy "labels owner manual insert" on public.document_labels
   for insert to authenticated
-  with check ((select auth.uid()) = owner_id and source = 'manual');
+  with check (
+    (select auth.uid()) = owner_id and source = 'manual'
+    and exists (select 1 from public.documents d where d.id = document_id and d.owner_id = (select auth.uid()))
+  );
 create policy "labels owner manual update" on public.document_labels
   for update to authenticated
   using ((select auth.uid()) = owner_id and source = 'manual')
-  with check ((select auth.uid()) = owner_id and source = 'manual');
+  with check (
+    (select auth.uid()) = owner_id and source = 'manual'
+    and exists (select 1 from public.documents d where d.id = document_id and d.owner_id = (select auth.uid()))
+  );
 create policy "labels owner manual delete" on public.document_labels
   for delete to authenticated
   using ((select auth.uid()) = owner_id and source = 'manual');
@@ -5386,12 +5392,18 @@ create policy "summaries owner read" on public.document_summaries
 create policy "document sections owner all" on public.document_sections
   for all to authenticated
   using ((select auth.uid()) = owner_id)
-  with check ((select auth.uid()) = owner_id);
+  with check (
+    (select auth.uid()) = owner_id
+    and exists (select 1 from public.documents d where d.id = document_id and d.owner_id = (select auth.uid()))
+  );
 
 create policy "document memory cards owner all" on public.document_memory_cards
   for all to authenticated
   using ((select auth.uid()) = owner_id)
-  with check ((select auth.uid()) = owner_id);
+  with check (
+    (select auth.uid()) = owner_id
+    and exists (select 1 from public.documents d where d.id = document_id and d.owner_id = (select auth.uid()))
+  );
 
 create policy "image caption cache owner all" on public.image_caption_cache
   for all to authenticated

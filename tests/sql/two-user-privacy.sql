@@ -269,12 +269,10 @@ do $$ declare r record; begin
 end $$;
 
 -- Totals as the owner, before either doctor acts.
--- Known gap, recorded rather than hidden: these owner policies check only owner_id, not that the
--- parent document is yours. Browser roles have no grant on these tables (part 1), so nothing can
--- reach this today. The test fails if this list stops matching what the probe finds.
+-- Known gaps, recorded rather than hidden: tables whose owner policy checks owner_id but not that
+-- the parent document is yours. Empty since 20261015160000 tightened the last three. The test
+-- fails if this list stops matching what the probe finds.
 create temp table known_parent_document_gap(rel regclass primary key);
-insert into known_parent_document_gap values
-  ('public.document_labels'), ('public.document_memory_cards'), ('public.document_sections');
 create temp table parent_document_gap_seen(rel regclass primary key);
 grant select on known_parent_document_gap to authenticated;
 grant select, insert on parent_document_gap_seen to authenticated;
@@ -376,6 +374,24 @@ begin
       exception when insufficient_privilege then null;
       end;
     end if;
+
+    -- A doctor must not move an existing child row they own onto another doctor's document.
+    -- Unlike the owner-change probe above, the row's owner remains unchanged, so this directly
+    -- exercises the parent-document condition in the UPDATE policy. Any constraint error means
+    -- the policy let the update through and must not be mistaken for a refusal.
+    if r.rel in ('public.document_labels'::regclass, 'public.document_sections'::regclass,
+                 'public.document_memory_cards'::regclass) then
+      begin
+        execute format('update %s set document_id = %L::uuid where %I = %L::uuid',
+          r.rel, v_other, r.owner_col, v_me);
+        get diagnostics v_rows = row_count;
+        if v_rows > 0 then
+          raise exception 'PRIVACY LEAK: doctor % moved % row(s) to doctor %''s document in %',
+            p_me, v_rows, p_other, r.rel;
+        end if;
+      exception when insufficient_privilege then null;
+      end;
+    end if;
   end loop;
 end $$;
 grant execute on function pg_temp.check_isolation(text, text) to authenticated;
@@ -410,5 +426,5 @@ select pg_temp.assert_true(not exists (
   select string_agg(rel::text, ', ' order by rel::text) from parent_document_gap_seen), 'none'));
 
 select 'TWO_USER_PRIVACY_SQL_PASS: browser roles fail closed on every table, function allowlist, '
-  || 'admin functions refuse doctors, owner policies isolate two doctors (3 known parent-document gaps)' as result;
+  || 'admin functions refuse doctors, owner policies isolate two doctors' as result;
 rollback;
