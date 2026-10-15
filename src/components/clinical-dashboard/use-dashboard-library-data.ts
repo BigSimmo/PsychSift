@@ -1,6 +1,15 @@
 "use client";
 
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   hasActiveIndexingWork,
@@ -506,9 +515,10 @@ export function useDashboardLibraryRefresh({
 
   // The auth epoch changes only when the signed-in owner changes (sign in,
   // sign out, or a direct account switch). Clear the previous owner's library
-  // straight away rather than leaving it on screen until the next refresh.
+  // straight away rather than leaving it on screen until the next refresh. A
+  // layout effect, so the cleared lists commit before the browser paints.
   const libraryEpochRef = useRef(authEpoch);
-  useEffect(() => {
+  useLayoutEffect(() => {
     dashboardDataLoadedRef.current = false;
     administrationDataLoadedRef.current = false;
     if (libraryEpochRef.current === authEpoch) return;
