@@ -89,6 +89,10 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  // Pin the clock to midday in Perth, so alerts made "minutes ago" stay under Today.
+  // On the real clock this file failed in the first minutes after Perth midnight.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T04:00:00.000Z"));
   window.localStorage.clear();
   resetExampleDataForTests();
   worker.shown = [];
@@ -108,6 +112,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
   cleanup();
   window.localStorage.clear();
 });

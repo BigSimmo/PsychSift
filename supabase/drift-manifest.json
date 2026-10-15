@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-14T16:34:21.177Z",
+  "generated_at": "2026-10-15T15:56:45.785Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "325bfcfa402062f2c4b2c023fa4de623061820172dcfbb3b346c73d21a263286",
+  "schema_sha256": "e561ea277c34ddec08d6b676ebcb8603c0e98b04e0ca311c9fbf4a4f49246895",
   "replay_seconds": 38,
   "snapshot": {
     "views": [
@@ -17357,7 +17357,7 @@
         "table": "document_labels",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text))"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_labels.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "UPDATE",
@@ -17369,7 +17369,7 @@
         "table": "document_labels",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text))"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_labels.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "SELECT",
@@ -17393,7 +17393,7 @@
         "table": "document_memory_cards",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "(( SELECT auth.uid() AS uid) = owner_id)"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_memory_cards.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "SELECT",
@@ -17429,7 +17429,7 @@
         "table": "document_sections",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "(( SELECT auth.uid() AS uid) = owner_id)"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_sections.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "SELECT",
