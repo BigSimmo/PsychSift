@@ -243,7 +243,7 @@ function readRetiredRules(repoRoot) {
 function checkLinks({ repoRoot, dir, entries, errors }) {
   const byName = new Map(entries.map((entry) => [entry.fileName, entry]));
   for (const entry of entries) {
-    if (entry.supersededBy && !byName.has(path.basename(entry.supersededBy))) {
+    if (entry.supersededBy && !byName.has(entry.supersededBy)) {
       errors.push(`${dir}/${entry.fileName}: superseded by ${entry.supersededBy}, which is not an entry in ${dir}`);
     }
   }

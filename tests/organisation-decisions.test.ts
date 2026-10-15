@@ -323,6 +323,22 @@ describe("decisions given in chat and links between records", () => {
     ]);
   });
 
+  it("fails a superseded-by link to a full record or a path, which must be a bare entry name", () => {
+    const root = tempRepo({
+      "docs/decisions/abc123-full-record.md": "# Decision: a full record\n",
+      "docs/decisions/2026-10-15-review-bot.md": chatEntry(),
+      "docs/decisions/2026-10-13-a.md": chatEntry([], "decided 2026-10-13; superseded by abc123-full-record.md"),
+      "docs/decisions/2026-10-14-b.md": chatEntry(
+        [],
+        "decided 2026-10-14; superseded by elsewhere/2026-10-15-review-bot.md",
+      ),
+    });
+    expect(checkDecisions({ repoRoot: root }).errors).toEqual([
+      "docs/decisions/2026-10-13-a.md: superseded by abc123-full-record.md, which is not an entry in docs/decisions",
+      "docs/decisions/2026-10-14-b.md: superseded by elsewhere/2026-10-15-review-bot.md, which is not an entry in docs/decisions",
+    ]);
+  });
+
   it("fails a superseded-by link to an entry that does not exist, and passes one that does", () => {
     const root = tempRepo({
       "docs/decisions/2026-10-14-older.md": chatEntry([], "decided 2026-10-14; superseded by 2026-10-15-missing.md"),
