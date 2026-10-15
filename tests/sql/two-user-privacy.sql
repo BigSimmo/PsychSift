@@ -142,13 +142,17 @@ select pg_temp.assert_true(not exists (
 select pg_temp.assert_true(not (select prosecdef from pg_proc where oid = 'public.is_visible_document_page(uuid, uuid, text)'::regprocedure),
   'is_visible_document_page must stay an ordinary (not SECURITY DEFINER) helper');
 
-create function pg_temp.expect_admin_refusal(p_sql text) returns void language plpgsql as $$ begin
-  execute p_sql;
+create function pg_temp.expect_admin_refusal(p_sql text) returns void language plpgsql as $$
+begin
+  begin
+    execute p_sql;
+  exception when others then
+    if sqlerrm not like '%administrator%' then
+      raise exception 'expected an administrator refusal, got "%" from %', sqlerrm, p_sql;
+    end if;
+    return;
+  end;
   raise exception 'PRIVACY LEAK: an ordinary doctor ran an administrator function: %', p_sql;
-exception when others then
-  if sqlerrm not like '%administrator%' then
-    raise exception 'expected an administrator refusal, got "%" from %', sqlerrm, p_sql;
-  end if;
 end $$;
 grant execute on function pg_temp.expect_admin_refusal(text) to authenticated;
 
@@ -204,7 +208,12 @@ select b, id || '/fixture.' || b, id from people, (values ('clinical-documents')
 -- How to tell whose row it is, per table. `$me` is the acting doctor; shared rows (an alias with
 -- no owner) count as the actor's own. Every table carrying a browser-role policy must be listed
 -- here, so a new owner policy cannot ship without two-user coverage.
-create temp table owner_rule (rel regclass primary key, owner_expr text not null, owner_col text) on commit drop;
+create temp table owner_rule (
+  rel regclass primary key,
+  owner_expr text not null,
+  owner_col text,
+  update_col text default null
+) on commit drop;
 insert into owner_rule values
   ('public.documents', 'owner_id', 'owner_id'),
   ('public.document_pages', '(select d.owner_id from public.documents d where d.id = document_id)', null),
@@ -229,7 +238,7 @@ insert into owner_rule values
   ('public.user_favourite_sets', 'user_id', 'user_id'),
   ('public.user_favourites', 'user_id', 'user_id'),
   ('public.user_preferences', 'user_id', 'user_id'),
-  ('storage.objects', '(storage.foldername(name))[1]::uuid', null);
+  ('storage.objects', '(storage.foldername(name))[1]::uuid', null, 'metadata');
 grant select on owner_rule to authenticated;
 
 -- A policy with no TO clause is stored as PUBLIC (role oid 0) and applies to both browser roles.
@@ -267,7 +276,7 @@ create function pg_temp.check_isolation(p_me text, p_other text) returns void la
 declare r record; v_me uuid := pg_temp.uid(p_me); v_other uuid := pg_temp.uid(p_other);
   v_own bigint; v_foreign bigint; v_rows bigint; v_expr text;
 begin
-  for r in select rel, owner_expr, owner_col from owner_rule order by rel::text loop
+  for r in select rel, owner_expr, owner_col, update_col from owner_rule order by rel::text loop
     v_expr := replace(r.owner_expr, '$me', quote_literal(v_me) || '::uuid');
     execute format('select count(*) filter (where %1$s = %2$L::uuid), count(*) filter (where %1$s is distinct from %2$L::uuid) from %3$s',
       v_expr, v_me, r.rel) into v_own, v_foreign;
@@ -276,12 +285,33 @@ begin
 
     -- Changing or deleting the other doctor's rows must touch nothing.
     begin
-      execute format('update %s set %s = %s where %s = %L::uuid',
-        r.rel, coalesce(r.owner_col, 'document_id'), coalesce(r.owner_col, 'document_id'), v_expr, v_other);
+      execute format('update %s set %I = %I where %s = %L::uuid',
+        r.rel, coalesce(r.update_col, r.owner_col, 'document_id'),
+        coalesce(r.update_col, r.owner_col, 'document_id'), v_expr, v_other);
       get diagnostics v_rows = row_count;
       if v_rows > 0 then raise exception 'PRIVACY LEAK: doctor % changed % of doctor %''s rows in %', p_me, v_rows, p_other, r.rel; end if;
-    exception when insufficient_privilege or undefined_column then null;
+    exception when insufficient_privilege then null;
     end;
+    -- An INSERT policy must not let a doctor plant a new row under the other doctor's owner.
+    begin
+      if r.rel = 'public.documents'::regclass then
+        execute format($sql$
+          insert into %s (id, owner_id, title, file_name, file_type, storage_path, status)
+          values (gen_random_uuid(), %L::uuid, 'Cross-owner insert probe', 'probe.txt', 'text/plain',
+                  %L || '/probe.txt', 'indexed')$sql$, r.rel, v_other, v_other);
+      elsif r.rel = 'storage.objects'::regclass then
+        execute format($sql$
+          insert into %s (bucket_id, name, owner)
+          values ('clinical-documents', %L || '/cross-owner-probe-' || gen_random_uuid() || '.txt', %L::uuid)$sql$,
+          r.rel, v_other, v_other);
+      end if;
+      get diagnostics v_rows = row_count;
+      if v_rows > 0 then
+        raise exception 'PRIVACY LEAK: doctor % inserted % row(s) for doctor % in %', p_me, v_rows, p_other, r.rel;
+      end if;
+    exception when insufficient_privilege then null;
+    end;
+
     begin
       execute format('delete from %s where %s is distinct from %L::uuid', r.rel, v_expr, v_me);
       get diagnostics v_rows = row_count;
