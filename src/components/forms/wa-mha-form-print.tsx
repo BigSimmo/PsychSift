@@ -52,25 +52,34 @@ const FORM_METADATA = {
   },
 } as const;
 
+// A blank field prints as a visible gap, never as invented patient, clinician or clinical content.
+const NOT_ENTERED = "Not entered";
+
 /**
  * Printable leaf component for WA Mental Health Act 2014 Form 6A and 6B (#C4CFFP).
  *
  * Designed to ensure form headers, titles, and statutory metadata print visibly
  * without rendering blank under browser print media rules.
+ *
+ * NOT FOR USE YET. Nothing renders this component. Its statutory text (section lists, the
+ * 6B Chief Psychiatrist wording, examination timing and copy recipients) has not been checked
+ * against the Act, and the app's own forms register describes the 6B attachment as a report to
+ * the Chief Psychiatrist rather than a consent. It needs legal and clinical sign-off before it
+ * is wired into any page.
  */
 export function WaMhaFormPrint({
   formCode,
-  patientName = "Smith, John",
-  patientDob = "1985-04-12",
-  patientId = "UMRN-984210",
-  facilityName = "Perth Mental Health Service",
-  treatingPsychiatrist = "Dr. C. Reynolds (Consultant Psychiatrist)",
-  orderDateTime = new Date().toISOString().slice(0, 16).replace("T", " "),
+  patientName = NOT_ENTERED,
+  patientDob = NOT_ENTERED,
+  patientId = NOT_ENTERED,
+  facilityName = NOT_ENTERED,
+  treatingPsychiatrist = NOT_ENTERED,
+  orderDateTime = NOT_ENTERED,
   expiryDateTime,
   isChild = false,
-  leastRestrictiveReasoning = "Voluntary options exhausted; severe risk of serious deterioration without inpatient compulsory treatment.",
-  physicalHealthJustification = "Requires active intravenous therapy and cardiac monitoring requiring general medical ward detention.",
-  chiefPsychiatristConsent = true,
+  leastRestrictiveReasoning = NOT_ENTERED,
+  physicalHealthJustification = NOT_ENTERED,
+  chiefPsychiatristConsent = false,
   className = "",
 }: WaMhaFormPrintProps) {
   const meta = FORM_METADATA[formCode];
