@@ -1340,6 +1340,7 @@ async function searchChunksWithTiming(
     shouldApplyUnsupportedSearchShortCircuit(retrievalQuery, queryAnalysis, ragAliasExpansions)
   ) {
     // RC6: correct a would-be unsupported typo once before retrieval short-circuits.
+    let correctionFailed = false;
     if (!args.typoCorrected && !sourceOnlyRetrieval) {
       // Carry the caller's abort signal so a cancelled search does not leave this call running
       // until the 90 s client deadline.
@@ -1348,10 +1349,13 @@ async function searchChunksWithTiming(
         min_sim: 0.45,
       });
       if (args.signal) correctionQuery = correctionQuery.abortSignal(args.signal);
-      const { data: corrected } = await correctionQuery;
+      const { data: corrected, error: correctionError } = await correctionQuery;
       // A cancelled call resolves with an error rather than throwing; stop before the empty
       // short-circuit result below is written to the search cache.
       throwIfAborted(args.signal);
+      // A failed or timed-out correction is not proof the query has no match, so the empty
+      // result below must not be cached.
+      if (correctionError) correctionFailed = true;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
         const correctedSearch = await searchChunksWithTelemetry({
           ...args,
@@ -1371,6 +1375,7 @@ async function searchChunksWithTiming(
     recordSearchScoreTelemetry(telemetry, []);
     // Skip only when a reachable classifier could have produced a nondeterministic soft-tail zero.
     if (
+      !correctionFailed &&
       !shouldSkipUnsupportedSoftTailCacheWrite(retrievalQuery, queryAnalysis, {
         openAiApiKeyPresent: Boolean(env.OPENAI_API_KEY),
       })
