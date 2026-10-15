@@ -128,7 +128,9 @@ const NOT_A_PERSON = new Set([
 export function isNamedPerson(name: string | null | undefined): boolean {
   if (typeof name !== "string") return false;
   const trimmed = name.trim().replace(/\s+/g, " ");
-  if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  const normaliseRejectedName = (value: string) => value.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+  const rejected = normaliseRejectedName(trimmed);
+  if ([...NOT_A_PERSON].some((entry) => normaliseRejectedName(entry) === rejected)) return false;
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
