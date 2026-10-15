@@ -588,7 +588,10 @@ function GlobalStandaloneSearchShellBody({
     !(browserOffline && isDockedModeHomePath(pathname));
   // `/tools` owns its catalogue controls rather than a shared composer. Keep
   // the sidebar's cross-guide search usable by returning to Answer first.
-  const openSidebarSearch = pathname === "/tools" ? () => startNewAnswerChat() : () => focusComposerInput(inputRef);
+  // Pages without a mounted composer (Tools, document and information pages)
+  // open a fresh search instead, so the sidebar and rail Search never do nothing.
+  const openSidebarSearch = () =>
+    pathname !== "/tools" && inputRef.current?.isConnected ? focusComposerInput(inputRef) : startNewAnswerChat();
   const heroOwnsPhoneComposer = isStandaloneModeHome && mobileHomeComposerPlacement === "hero";
   // This flag controls sm+ padding for standalone mode homes. Tools has no
   // shared composer, so it cannot reserve floating-composer space. Phone

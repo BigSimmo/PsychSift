@@ -702,7 +702,9 @@ export function SidebarAppearanceMenu({
 }: { rowItem?: string; railClassName?: string } = {}) {
   const { preference, setPreference } = useTheme();
   const [open, setOpen] = useState(false);
-  const [railMenuPosition, setRailMenuPosition] = useState<{ left: number; bottom: number } | null>(null);
+  const [railMenuPosition, setRailMenuPosition] = useState<{ left: number; bottom: number; maxHeight: number } | null>(
+    null,
+  );
   const rail = Boolean(railClassName);
   const PreferenceIcon = appearanceOptions.find((option) => option.value === preference)?.icon ?? MonitorCog;
   const rootRef = useRef<HTMLDivElement>(null);
@@ -721,7 +723,12 @@ export function SidebarAppearanceMenu({
 
   function openMenu() {
     const rect = rail ? triggerRef.current?.getBoundingClientRect() : undefined;
-    if (rect) setRailMenuPosition({ left: rect.right + 8, bottom: Math.max(8, window.innerHeight - rect.bottom) });
+    if (rect) {
+      // The menu grows up from the trigger's foot; cap its height so a short
+      // window scrolls the options instead of pushing the heading off the top.
+      const bottom = Math.max(8, window.innerHeight - rect.bottom);
+      setRailMenuPosition({ left: rect.right + 8, bottom, maxHeight: Math.max(0, window.innerHeight - bottom - 8) });
+    }
     setOpen(true);
   }
 
@@ -805,7 +812,7 @@ export function SidebarAppearanceMenu({
           style={rail && railMenuPosition ? railMenuPosition : undefined}
           className={cn(
             "z-30 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] p-1.5 shadow-[var(--shadow-overlay)]",
-            rail ? "fixed w-64" : "absolute bottom-[calc(100%+0.5rem)] left-0 right-0",
+            rail ? "fixed w-64 overflow-y-auto" : "absolute bottom-[calc(100%+0.5rem)] left-0 right-0",
           )}
         >
           <div className="px-2 py-1.5">

@@ -28,6 +28,9 @@ const aliasOnlyModePaths = {
   tools: "/tools",
 } as const;
 
+/** Parameters only the shared search home reads, dropped when a mode forwards to its own page. */
+const searchHomeOnlyParams = ["mode", "q", "run", "focus"] as const;
+
 type LegacyHomeRequestUrl = Pick<URL, "pathname" | "searchParams" | "toString">;
 
 /**
@@ -56,12 +59,14 @@ export function legacyHomeRedirectUrl(requestUrl: LegacyHomeRequestUrl, method: 
 
   // A mode with nothing to search has no shared home: `/?mode=cme` showed an
   // empty CPD search box whose query went nowhere. Send it to the mode's own
-  // page, dropping the query string, which none of those pages reads.
+  // page. `mode` is consumed by the pathname and the search-home parameters
+  // have nowhere to go, but the page's own state (a CPD `year`, a Roster or
+  // My Day `view`, a Psychiatry `page`) rides along.
   const ownPage = isAppModeId(mode) ? ownPageModeHomeHref(mode) : null;
   if (ownPage) {
     const ownPageDestination = new URL(requestUrl.toString());
     ownPageDestination.pathname = ownPage;
-    ownPageDestination.search = "";
+    for (const consumed of searchHomeOnlyParams) ownPageDestination.searchParams.delete(consumed);
     ownPageDestination.hash = "";
     return ownPageDestination;
   }
