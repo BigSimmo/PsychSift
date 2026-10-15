@@ -31,6 +31,7 @@ import specifiersContent from "../data/specifiers-content.json";
 import { curatedDifferentials } from "@/lib/differential-curated";
 import { curatedProvenanceFor, curatedProvenanceLabel } from "@/lib/differential-detail";
 import { conceptReviewState, mechanismReviewState } from "@/lib/formulation-review-status";
+import { isSpecifierClinicianReviewed } from "@/lib/specifiers-content";
 
 /**
  * The sign-off kinds added for the Differentials overlays and the Formulation library.

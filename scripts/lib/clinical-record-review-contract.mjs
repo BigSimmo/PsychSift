@@ -512,13 +512,14 @@ function specifierRecords(document) {
 function specifierView(native, placement) {
   const review = isPlainRecord(native.review) ? native.review : {};
   const signable = placement.kind === "universal" || native.definitionStatus === "defined";
+  const unnamedStamp = review.clinicianReviewStatus === "clinician-reviewed" && !isSpecifierClinicianReviewed(review);
   const status =
     review.clinicianReviewStatus === "clinician-reviewed"
-      ? isSpecifierClinicianReviewed(review)
-        ? "reviewed"
-        : signable
+      ? unnamedStamp
+        ? signable
           ? "drafted"
           : "pending"
+        : "reviewed"
       : review.clinicianReviewStatus === "clinician-review-pending"
         ? signable
           ? "drafted"
