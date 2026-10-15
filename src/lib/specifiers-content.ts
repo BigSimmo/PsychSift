@@ -21,6 +21,7 @@
 
 import specifiersContent from "../../data/specifiers-content.json";
 
+import { isNamedPerson } from "@/lib/admin/rule-sign-off";
 import { findSpecifier, specifierRecords, type SpecifierRecord } from "@/lib/specifiers";
 import {
   SPECIFIERS_IS_AUTOMATED_DECISION_SUPPORT,
@@ -70,15 +71,17 @@ function parsedReviewDate(value: string | null | undefined): Date | null {
 type SpecifierReviewFields = Pick<SpecifierReview, "clinicianReviewStatus" | "reviewedBy" | "reviewedAt">;
 
 /**
- * True only for a complete clinician sign-off: the reviewed status, a non-empty reviewer
- * name and a parseable ISO timestamp. Anything less fails closed to pending, so a partial or
- * hand-edited attestation can never make an entry read as reviewed.
+ * True only for a complete clinician sign-off: the reviewed status, a named person as reviewer
+ * (`isNamedPerson`, the same test the site-wide sign-off line uses) and a parseable ISO
+ * timestamp. Anything less fails closed to pending, so a partial or hand-edited attestation can
+ * never make an entry read as reviewed. A product attribution such as "PsychSift" is not a
+ * clinician: the 71 entries the 2026-09-26 reconcile stamped that way read as pending until a
+ * named clinician signs them.
  */
 export function isSpecifierClinicianReviewed(review: SpecifierReviewFields): boolean {
   return (
     review.clinicianReviewStatus === SPECIFIER_CLINICIAN_REVIEWED_STATUS &&
-    typeof review.reviewedBy === "string" &&
-    review.reviewedBy.trim().length > 0 &&
+    isNamedPerson(review.reviewedBy) &&
     parsedReviewDate(review.reviewedAt) !== null
   );
 }

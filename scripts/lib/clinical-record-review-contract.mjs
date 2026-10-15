@@ -171,6 +171,68 @@ function isPlainRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+// Keep the review tool aligned with the site's specifier gate: this mirrors isNamedPerson and its
+// NOT_A_PERSON list in src/lib/admin/rule-sign-off.ts (a parity test pins the two together).
+// Product or role attributions (for example, "PsychSift" or "Clinical Team") are not sign-offs.
+const NOT_A_PERSON = new Set([
+  "psychsift",
+  "system",
+  "admin",
+  "administrator",
+  "owner",
+  "the owner",
+  "claude",
+  "codex",
+  "agent",
+  "ai",
+  "bot",
+  "automation",
+  "locally reviewed",
+  "reviewed",
+  "clinician",
+  "psychiatrist",
+  "consultant",
+  "test",
+  "unknown",
+  "lead",
+  "director",
+  "registrar",
+  "manager",
+  "call",
+  "governance",
+  "committee",
+  "team",
+  "service",
+  "department",
+  "signed",
+  "unsigned",
+  "tbd",
+  "tba",
+  "pending",
+  "placeholder",
+  "example clinician",
+]);
+
+export function isNamedSpecifierReviewer(value) {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
+  const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
+  const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
+  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
+}
+
+function isSpecifierClinicianReviewed(review) {
+  return (
+    review?.clinicianReviewStatus === "clinician-reviewed" &&
+    isNamedSpecifierReviewer(review?.reviewedBy) &&
+    typeof review?.reviewedAt === "string" &&
+    UTC_ISO_TIMESTAMP.test(review.reviewedAt) &&
+    Number.isFinite(Date.parse(review.reviewedAt))
+  );
+}
+
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
   if (!isPlainRecord(value)) return value;
@@ -488,9 +550,14 @@ function specifierRecords(document) {
 function specifierView(native, placement) {
   const review = isPlainRecord(native.review) ? native.review : {};
   const signable = placement.kind === "universal" || native.definitionStatus === "defined";
+  const unnamedStamp = review.clinicianReviewStatus === "clinician-reviewed" && !isSpecifierClinicianReviewed(review);
   const status =
     review.clinicianReviewStatus === "clinician-reviewed"
-      ? "reviewed"
+      ? unnamedStamp
+        ? signable
+          ? "drafted"
+          : "pending"
+        : "reviewed"
       : review.clinicianReviewStatus === "clinician-review-pending"
         ? signable
           ? "drafted"
@@ -507,9 +574,15 @@ function specifierView(native, placement) {
     sourceVerificationStatus: review.sourceVerificationStatus ?? null,
     sourceFamily: review.sourceFamily ?? null,
     status,
-    reviewedBy: review.reviewedBy ?? null,
-    reviewedAt: review.reviewedAt ?? null,
-    reviewedContentSha256: review.reviewedContentSha256 ?? null,
+    // A product-attributed stamp ("PsychSift") is not a signature, so the view carries none and
+    // the record is offered for a named clinician to sign.
+    ...(status === "reviewed" || review.clinicianReviewStatus !== "clinician-reviewed"
+      ? {
+          reviewedBy: review.reviewedBy ?? null,
+          reviewedAt: review.reviewedAt ?? null,
+          reviewedContentSha256: review.reviewedContentSha256 ?? null,
+        }
+      : { reviewedBy: null, reviewedAt: null, reviewedContentSha256: null }),
   };
 }
 
@@ -542,7 +615,7 @@ function writeSpecifierReview(document, view) {
   const items = categories.flatMap((category) =>
     category.disorders.flatMap((disorder) => disorder.groups.flatMap((group) => group.items)),
   );
-  const pending = items.filter((item) => item?.review?.clinicianReviewStatus !== "clinician-reviewed").length;
+  const pending = items.filter((item) => !isSpecifierClinicianReviewed(item?.review)).length;
   const stats = isPlainRecord(document.stats)
     ? { ...document.stats, itemsPendingClinicianReview: pending }
     : document.stats;
@@ -895,6 +968,9 @@ export function signOffQueue(kind, records, context = {}) {
   const waiting = records.filter(
     (record) =>
       (record?.status === "drafted" ||
+        (resolved.kind === "specifier" &&
+          record?.status === "reviewed" &&
+          !isNamedSpecifierReviewer(record?.reviewedBy)) ||
         (record?.status === "reviewed" && recordPinState(record, resolved, context) === "stale")) &&
       !indigenousContentIn(record, resolved, context),
   );
@@ -924,6 +1000,11 @@ export function finalizeClinicalReview(record, kind, { reviewedBy, reviewedAt, c
   if (!isPlainRecord(record)) throw new TypeError("A clinical record must be an object.");
   const attributionProblem = reviewerAttributionProblem(reviewedBy);
   if (attributionProblem) throw new Error(attributionProblem);
+  if (resolved.kind === "specifier" && !isNamedSpecifierReviewer(reviewedBy)) {
+    throw new Error(
+      "A specifier sign-off needs the clinician's full name (a first name and surname), because the site treats anything else as not signed off.",
+    );
+  }
   const timestampProblem = utcTimestampProblem(reviewedAt, now);
   if (timestampProblem) throw new Error(timestampProblem);
   const eligibility = signOffEligibilityProblem(record, resolved, context);

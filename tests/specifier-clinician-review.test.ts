@@ -38,7 +38,7 @@ vi.mock("@/lib/specifiers-content", async (importOriginal) => {
   });
   const signed = {
     clinicianReviewStatus: "clinician-reviewed",
-    reviewedBy: "Dr Example",
+    reviewedBy: "Dr Alex Example",
     reviewedAt: "2026-09-26T03:00:00.000Z",
     reviewedContentSha256: "a".repeat(64),
   };
@@ -86,7 +86,7 @@ vi.mock("@/lib/dictionary-editorial/definition-reviews", async (importOriginal) 
         ...approved,
         clinicalApproval: {
           status: "approved",
-          reviewer: "Dr Example",
+          reviewer: "Dr Alex Example",
           reviewedAt: "2026-09-26T03:00:00.000Z",
           reviewedContentSha256: "a".repeat(64),
         },
@@ -114,18 +114,18 @@ describe("specifierClinicianReviewLabel", () => {
   it("names the reviewer and the Perth date for a complete sign-off, scoped to the definition", () => {
     const review = {
       clinicianReviewStatus: "clinician-reviewed",
-      reviewedBy: "Dr Example",
+      reviewedBy: "Dr Alex Example",
       // 20:30 UTC on the 25th is 04:30 on the 26th in Perth (UTC+8).
       reviewedAt: "2026-09-25T20:30:00.000Z",
       reviewedContentSha256: PIN,
     };
     expect(isSpecifierClinicianReviewed(review)).toBe(true);
-    expect(specifierClinicianReviewLabel(review)).toBe("Definition reviewed by Dr Example on 26 September 2026");
+    expect(specifierClinicianReviewLabel(review)).toBe("Definition reviewed by Dr Alex Example on 26 September 2026");
   });
 
   it("fails closed on a malformed or unparseable date", () => {
     for (const reviewedAt of ["not a date", "2026-13-45T00:00:00Z", "26/09/2026", "", null, undefined]) {
-      const review = { clinicianReviewStatus: "clinician-reviewed", reviewedBy: "Dr Example", reviewedAt };
+      const review = { clinicianReviewStatus: "clinician-reviewed", reviewedBy: "Dr Alex Example", reviewedAt };
       expect(specifierClinicianReviewLabel(review), String(reviewedAt)).toBe("Pending qualified review");
     }
   });
@@ -137,10 +137,18 @@ describe("specifierClinicianReviewLabel", () => {
     }
   });
 
+  it("fails closed when the reviewer is a product or role name, not a named clinician", () => {
+    for (const reviewedBy of ["PsychSift", "Dr Example", "System", "Clinician"]) {
+      const review = { clinicianReviewStatus: "clinician-reviewed", reviewedBy, reviewedAt: "2026-09-26T03:00:00Z" };
+      expect(isSpecifierClinicianReviewed(review), reviewedBy).toBe(false);
+      expect(specifierClinicianReviewLabel(review), reviewedBy).toBe("Pending qualified review");
+    }
+  });
+
   it("does not treat reviewer fields on a pending status as a sign-off", () => {
     const review = {
       clinicianReviewStatus: "clinician-review-pending",
-      reviewedBy: "Dr Example",
+      reviewedBy: "Dr Alex Example",
       reviewedAt: "2026-09-26T03:00:00Z",
     };
     expect(specifierClinicianReviewLabel(review)).toBe("Pending qualified review");
@@ -150,7 +158,7 @@ describe("specifierClinicianReviewLabel", () => {
 describe("dictionary definition review clinicalApproval", () => {
   const approval = {
     status: "approved",
-    reviewer: "Dr Example",
+    reviewer: "Dr Alex Example",
     reviewedAt: "2026-09-26T03:00:00.000Z",
     reviewedContentSha256: PIN,
   };
