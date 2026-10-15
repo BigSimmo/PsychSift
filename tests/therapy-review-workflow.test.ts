@@ -657,14 +657,7 @@ describe("Therapy clinician-input workflow", () => {
 
     const refused = spawnSync(
       process.execPath,
-      [
-        SCRIPT,
-        "--write",
-        "--slug",
-        "acceptance-and-commitment-therapy-act",
-        "--reviewed-by",
-        "Dr Alex Morgan",
-      ],
+      [SCRIPT, "--write", "--slug", "acceptance-and-commitment-therapy-act", "--reviewed-by", "Dr Alex Morgan"],
       { cwd: ROOT, encoding: "utf8" },
     );
     expect(refused.status).toBe(1);
