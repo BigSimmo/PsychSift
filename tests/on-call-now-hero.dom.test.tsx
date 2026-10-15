@@ -35,6 +35,7 @@ describe("NowOnCallHero", () => {
         hospitalPeriod={null}
         hospitalName="Synthetic Hospital"
         handbookLoading={false}
+        rosterLoading={false}
         now={AT_0350}
       />,
     );
@@ -58,6 +59,7 @@ describe("NowOnCallHero", () => {
         hospitalPeriod={null}
         hospitalName={null}
         handbookLoading={false}
+        rosterLoading={false}
         now={AT_0350}
       />,
     );
@@ -77,12 +79,31 @@ describe("NowOnCallHero", () => {
         hospitalPeriod={null}
         hospitalName={null}
         handbookLoading
+        rosterLoading={false}
         now={AT_0350}
       />,
     );
     const hero = screen.getByTestId("on-call-now-hero");
     expect(hero.querySelector("[data-placeholder]")).toHaveAttribute("aria-hidden", "true");
     expect(within(hero).queryByRole("link")).toBeNull();
+  });
+
+  it("says it is checking the shift, not that none is on, while the roster loads", () => {
+    render(
+      <NowOnCallHero
+        context={NO_SHIFT}
+        answer={null}
+        hours={null}
+        hospitalPeriod={null}
+        hospitalName={null}
+        handbookLoading={false}
+        rosterLoading
+        now={AT_0350}
+      />,
+    );
+    const hero = screen.getByTestId("on-call-now-hero");
+    expect(hero).toHaveTextContent("Checking your shift…");
+    expect(hero).not.toHaveTextContent("No rostered shift on now");
   });
 
   it("names the number the pill rings when an extension falls back to a mobile route", () => {
