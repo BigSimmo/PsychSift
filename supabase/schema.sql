@@ -17755,6 +17755,16 @@ as $$
     join public.documents document on document.id = chunk.document_id
     cross join admitted
     where document.owner_id is null
+      -- Text-only calls (match_document_chunks_text_v3) can only return text-matched rows, so
+      -- filter here, before the per-row labels, summary, images and jsonb work, instead of
+      -- building every eligible public chunk first. Hybrid calls with an embedding are unchanged.
+      and (
+        query_embedding is not null
+        or (
+          admitted.tsq is not null
+          and (chunk.search_tsv @@ admitted.tsq or document.title_search_tsv @@ admitted.tsq)
+        )
+      )
       and document.status = 'indexed'
       and public.is_committed_document_generation(chunk.index_generation_id, document.index_generation_id)
       and (document_filters is null or document.id = any(document_filters))
