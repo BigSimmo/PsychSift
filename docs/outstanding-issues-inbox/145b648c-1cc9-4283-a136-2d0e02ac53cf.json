@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "id": "145b648c-1cc9-4283-a136-2d0e02ac53cf",
+  "createdOn": "2026-10-15",
+  "action": "cancel",
+  "payload": {
+    "requestId": "9f54ed09-1500-4eba-90b1-0a25a148d3cf",
+    "reason": "PR 3538 review (15 Oct 2026): scripts/recalculate-answer-support-labels.ts is run by nothing and uses its own 0.82/0.64 thresholds that production does not use; its test checks that copy, not the live label logic. The separate storage-version done request stands."
+  }
+}
