@@ -1148,7 +1148,11 @@ async function searchChunksWithTiming(
     recordSearchScoreTelemetry(telemetry, []);
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
-  const supabase = createAdminClient();
+  // No client-side deadline here. PR #3454 (11 Oct 2026) gave the shared admin client a
+  // 30 s default, and the keyword RPC can take 30-48 s on the live corpus, so it was
+  // aborted and returned nothing for 9 of the 36 golden cases (eval canaries from 11 Oct).
+  // Search keeps the caller's own abort signal, as it did before that change.
+  const supabase = createAdminClient({ timeoutMs: null });
   // Source-only retrieval never calls embeddings.
   const sourceOnlyRetrieval = isSourceOnlyMode();
   if (args.forceEmbedding && sourceOnlyRetrieval) {
