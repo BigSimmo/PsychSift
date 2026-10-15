@@ -374,6 +374,24 @@ begin
       exception when insufficient_privilege then null;
       end;
     end if;
+
+    -- A doctor must not move an existing child row they own onto another doctor's document.
+    -- Unlike the owner-change probe above, the row's owner remains unchanged, so this directly
+    -- exercises the parent-document condition in the UPDATE policy. Any constraint error means
+    -- the policy let the update through and must not be mistaken for a refusal.
+    if r.rel in ('public.document_labels'::regclass, 'public.document_sections'::regclass,
+                 'public.document_memory_cards'::regclass) then
+      begin
+        execute format('update %s set document_id = %L::uuid where %I = %L::uuid',
+          r.rel, v_other, r.owner_col, v_me);
+        get diagnostics v_rows = row_count;
+        if v_rows > 0 then
+          raise exception 'PRIVACY LEAK: doctor % moved % row(s) to doctor %''s document in %',
+            p_me, v_rows, p_other, r.rel;
+        end if;
+      exception when insufficient_privilege then null;
+      end;
+    end if;
   end loop;
 end $$;
 grant execute on function pg_temp.check_isolation(text, text) to authenticated;
