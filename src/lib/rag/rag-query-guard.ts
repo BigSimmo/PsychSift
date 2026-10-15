@@ -112,6 +112,16 @@ function isNonClinicalConsumerQuery(query: string, analysis: ClinicalQueryAnalys
   return true;
 }
 
+/**
+ * True when the deterministic analysis already refuses the query as a non-clinical consumer
+ * question (coffee machine, recipe, air fryer). `analyzeQueryWithClassifierFallback` uses it to
+ * skip the LLM classifier: the refusal does not need the model, and asking it cost these
+ * refusals 1.5 to 6.4 s of the 4 s unsupported-route budget (eval canary run 38419027058).
+ */
+export function isDeterministicNonClinicalConsumerRefusal(query: string, analysis: ClinicalQueryAnalysis) {
+  return unsupportedSoftTailEligible(analysis) && isNonClinicalConsumerQuery(query, analysis);
+}
+
 export function shouldShortCircuitUnsupportedSearch(query: string, analysis: ClinicalQueryAnalysis) {
   if (unavailableDocumentNoisePattern.test(query)) return true;
   if (clearlyOutsideCorpusMedicalPattern.test(normalizeGuardQuery(query)) && analysis.documentTitleTerms.length === 0)

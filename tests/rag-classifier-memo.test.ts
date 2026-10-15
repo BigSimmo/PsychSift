@@ -269,3 +269,34 @@ describe("classifier verdict memoization", () => {
     expect(mock).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("deterministic consumer refusals skip the classifier", () => {
+  it("never calls the model for a consumer question the pattern guard already refuses", async () => {
+    const mock = vi.fn(async () => classifierResponse());
+    const { rag, analyzeClinicalQuery } = await loadWithClassifierMock(mock);
+    const { shouldShortCircuitUnsupportedSearch } = await import("../src/lib/rag/rag-query-guard");
+
+    for (const query of [
+      "What is the best coffee machine for my kitchen?",
+      "Which air fryer should I buy for a small kitchen?",
+      "Give me a recipe for high protein overnight oats.",
+    ]) {
+      const analysis = analyzeClinicalQuery(query);
+      const result = await rag.analyzeQueryWithClassifierFallback(query, analysis);
+      expect(result.needsClassifierFallback, query).toBe(false);
+      expect(shouldShortCircuitUnsupportedSearch(query, result), query).toBe(true);
+    }
+    expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("still asks the model when a consumer word sits beside psychiatric context", async () => {
+    const mock = vi.fn(async () => classifierResponse());
+    const { rag, analyzeClinicalQuery } = await loadWithClassifierMock(mock);
+    const { isDeterministicNonClinicalConsumerRefusal } = await import("../src/lib/rag/rag-query-guard");
+
+    const query = "kitchen safety for a patient with dementia and depression";
+    const analysis = analyzeClinicalQuery(query);
+    expect(isDeterministicNonClinicalConsumerRefusal(query, analysis)).toBe(false);
+    await rag.analyzeQueryWithClassifierFallback(query, analysis);
+  });
+});
