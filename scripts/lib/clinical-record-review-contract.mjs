@@ -171,18 +171,56 @@ function isPlainRecord(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-// Keep the review tool aligned with the site's specifier gate. Product or role
-// attributions (for example, "PsychSift") are not clinician sign-offs.
-function isNamedSpecifierReviewer(value) {
+// Keep the review tool aligned with the site's specifier gate: this mirrors isNamedPerson and its
+// NOT_A_PERSON list in src/lib/admin/rule-sign-off.ts (a parity test pins the two together).
+// Product or role attributions (for example, "PsychSift" or "Clinical Team") are not sign-offs.
+const NOT_A_PERSON = new Set([
+  "psychsift",
+  "system",
+  "admin",
+  "administrator",
+  "owner",
+  "the owner",
+  "claude",
+  "codex",
+  "agent",
+  "ai",
+  "bot",
+  "automation",
+  "locally reviewed",
+  "reviewed",
+  "clinician",
+  "psychiatrist",
+  "consultant",
+  "test",
+  "unknown",
+  "lead",
+  "director",
+  "registrar",
+  "manager",
+  "call",
+  "governance",
+  "committee",
+  "team",
+  "service",
+  "department",
+  "signed",
+  "unsigned",
+  "tbd",
+  "tba",
+  "pending",
+  "placeholder",
+  "example clinician",
+]);
+
+export function isNamedSpecifierReviewer(value) {
   if (typeof value !== "string") return false;
-  const words = value
-    .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
-    .filter((word) => /\p{L}/u.test(word));
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
-  return nameWords.length >= 2 && !nameWords.some((word) => /^(?:psychsift|system|pending|placeholder)$/i.test(word));
+  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
 }
 
 function isSpecifierClinicianReviewed(review) {
