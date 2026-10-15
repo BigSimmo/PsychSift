@@ -50,12 +50,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "ACT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["ACT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -142,9 +138,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -235,9 +229,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -305,14 +297,14 @@
     "evidenceNotes": "NICE NG69 eating-disorder recommendations state that if FT-AN is unacceptable, contraindicated, or ineffective for children and young people with anorexia nervosa, clinicians should consider individual CBT-ED or AFP-AN. (NICE) NICE NG69 specifies AFP-AN structure as 32–40 individual sessions over 12–18 months plus 8–12 additional family sessions, with review at 4 weeks and then every 3 months, and with focus on self-image, emotions, interpersonal processes, psychological formulation, anorexic behaviour as coping, fears about weight gain, and healthy eating/weight gain. (NICE) NICE public guidance summarises AFP as up to 40 sessions over 12–18 months, with possible parent/carer sessions, and with focus on fears about weight gain, nutrition/starvation, causes of anorexia, and behaviour change.",
     "limitations": "AFP-AN is not first-line ahead of FT-AN in current NICE sequencing. It is also not a substitute for medical stabilisation, nutritional rehabilitation, family/carer support, or specialist eating-disorder multidisciplinary care when physical risk is high. Comparative evidence generally supports family-based approaches more strongly for adolescent anorexia outcomes, so AFP-AN should be chosen deliberately rather than by default.",
     "references": "NICE NG69 eating-disorder recommendations state that if FT-AN is unacceptable, contraindicated, or ineffective for children and young people with anorexia nervosa, clinicians should consider individual CBT-ED or AFP-AN. (NICE) NICE NG69 specifies AFP-AN structure as 32–40 individual sessions over 12–18 months plus 8–12 additional family sessions, with review at 4 weeks and then every 3 months, and with focus on self-image, emotions, interpersonal processes, psychological formulation, anorexic behaviour as coping, fears about weight gain, and healthy eating/weight gain. (NICE) NICE public guidance summarises AFP as up to 40 sessions over 12–18 months, with possible parent/carer sessions, and with focus on fears about weight gain, nutrition/starvation, causes of anorexia, and behaviour change.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Personality/interpersonal",
@@ -323,9 +315,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -351,17 +341,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "aaa706bca8bd3e405ab1cc244cbc3d83376ff66dbe737aa63f398edd124f8c38"
   },
   {
     "slug": "advocacy-informed-therapeutic-work",
@@ -393,25 +383,16 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
     "limitations": "It is not a substitute for acute treatment, medication optimisation, or diagnosis-specific psychotherapy. It is also weak if the clinician focuses on advocacy language without practical follow-through, or if the main clinical driver is acute illness severity rather than external barriers. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Trauma", "Psychosis", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -437,17 +418,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "199f753824830f528853359b653f17db07f8432b252d7a2ee9ece23157652aad"
   },
   {
     "slug": "app-supported-therapy",
@@ -501,9 +482,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -571,14 +550,14 @@
     "evidenceNotes": null,
     "limitations": "Usually not enough alone for OCD, trauma syndromes needing trauma-focused work, psychosis, severe depression, severe personality pathology, or anxiety that is mainly maintained by cognitive or behavioural mechanisms that are not shifted by relaxation alone. It can also become unhelpful if used as constant safety behaviour rather than as a flexible skill.",
     "references": "Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18: \"If a person with GAD chooses a high-intensity psychological intervention, offer either CBT or applied relaxation.\" Not named for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -590,12 +569,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -621,14 +595,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "2a245e5f58e36b0b5c2a55816cd34dd8c456c7c07d824344a092c7a9e9634099"
   },
   {
     "slug": "arts-therapies-for-psychosis",
@@ -668,17 +645,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Personality/interpersonal",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Psychosis", "Personality/interpersonal", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -837,14 +805,14 @@
     "evidenceNotes": null,
     "limitations": "Usually not enough when the depression is psychotic, severely suicidal without adequate containment, clearly bipolar with emerging activation, or when another syndrome is the main driver. It is also weak if the clinician gives generic “stay busy” advice without activity monitoring, graded planning, and repeated review of avoidance.",
     "references": "Depression in adults: treatment and management, lists group and individual behavioural activation in Table 1 (less severe depression) and individual behavioural activation in Table 2 (more severe depression). Recommendations 1.5.2 and 1.6.1 state that all treatments in these tables can be used as first-line treatments. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -858,15 +826,8 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "BA"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["BA"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -891,14 +852,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "7923bf0e31ab58189ebea81b8a40547fee62e9bc870d0991c0506b37226c590c"
   },
   {
     "slug": "behavioural-couples-therapy-bct",
@@ -938,20 +902,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "BCT"
-    ],
+    "tags": ["Mood", "Trauma", "Substance use", "Crisis/risk", "ACT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["BCT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -1018,29 +971,17 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for detoxification, acute psychiatric care, or broader SUD treatment when the person is not yet ready to change. It also depends on the presence of a willing and appropriate partner, so it is not broadly applicable to all patients.",
     "references": "Alcohol-use disorders, recommendation 1.3.3.2: \"Offer behavioural couples therapy for harmful drinkers and people with mild alcohol dependence who have a regular partner who is willing to participate in treatment\". Alcohol only. Other substances are not covered by this guideline. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "BCT-SUD"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["BCT-SUD"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -1065,14 +1006,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "c7d5295f5386d78587263abf3cfc22ba4da28031fd1f9cc77a76b6900c119d25"
   },
   {
     "slug": "behavioural-parent-training",
@@ -1112,19 +1056,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Sleep",
-      "Substance use",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Sleep", "Substance use", "Neurodevelopmental", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1211,9 +1144,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1303,9 +1234,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1391,9 +1320,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1469,16 +1396,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Psychosis", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1546,28 +1465,16 @@
     "evidenceNotes": null,
     "limitations": "Carer interventions are not a substitute for patient treatment, family intervention, CBTp, medication review, or acute care. They are also weak if reduced to a one-off information dump without discussion, coping work, or follow-up. The meta-analytic evidence for caregiver psychoeducation is supportive but still not fully conclusive, so benefits should be described modestly.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.1.4.4: \"Offer a carer-focused education and support programme, which may be part of a family intervention for psychosis and schizophrenia, as early as possible to all carers.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) Bipolar disorder: assessment and management, recommendation 1.1.8 makes the same offer to carers of people with bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Mood", "Psychosis", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1593,14 +1500,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "0c1f02f2d360d38eeb06b3af016ffeed7c56607abf62f8a56694b4ebab168b08"
   },
   {
     "slug": "carer-focused-education-and-support-carer-psychoeducation-in-psychosis",
@@ -1640,16 +1550,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1734,9 +1636,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1826,9 +1726,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -1916,9 +1814,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -2006,9 +1902,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -2084,17 +1978,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Psychosis", "Neurodevelopmental", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -2181,12 +2066,8 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "CAT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CAT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -2253,14 +2134,14 @@
     "evidenceNotes": null,
     "limitations": "Usually not enough if severe mania, delirium, major intoxication or withdrawal, profound cognitive impairment, or marked psychotic disorganisation is preventing structured collaborative work. It is also weaker when the clinician uses generic CBT instead of the disorder-specific active ingredient the case actually needs.",
     "references": "Depression in adults: treatment and management, lists individual CBT in Tables 1 and 2 and group CBT in Table 1 as treatment options for depression. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18 offers CBT or applied relaxation for GAD, and recommendations 1.3.12 to 1.3.19 cover CBT for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -2275,15 +2156,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "CBT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CBT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -2308,14 +2182,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "b4d5d89692cdc5c1e2e952d64d9ce76b67a0d15020f177a0eedc8b8e44d1bc1e"
   },
   {
     "slug": "cognitive-behavioural-therapy-for-bipolar-depression-bipolar-relapse-prevention",
@@ -2347,29 +2224,16 @@
     "evidenceNotes": null,
     "limitations": "CBT is not clearly superior to all other adjunctive bipolar psychotherapies. A 2024 randomized clinical trial of adjuvant psychotherapies for relapse prevention did not show superiority of one psychotherapy over another, and the broader bipolar psychotherapy evidence base still contains much low- or very-low-quality evidence. CBT is also a poor fit when the patient is too manic, psychotic, or disorganised to use it.",
     "references": "Bipolar disorder: assessment and management, recommendation 1.6.1 offers adults with bipolar depression \"a choice of psychological intervention (cognitive behavioural therapy, interpersonal therapy or behavioural couples therapy)\". CBT is not named for relapse prevention, where recommendation 1.7.3 offers a structured intervention designed for bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Mood", "Psychosis", "Sleep", "Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -2395,14 +2259,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "e7377e0bde97924f65130fb9705f6f7bae2bd3d2bf4624b9cc715419269eca7c"
   },
   {
     "slug": "cognitive-behavioural-therapy-for-insomnia",
@@ -2456,9 +2323,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -2551,9 +2416,7 @@
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "CBT-I"
-    ],
+    "aliases": ["CBT-I"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -2617,14 +2480,14 @@
     "evidenceNotes": null,
     "limitations": "CBTp is not a replacement for acute containment, medical work-up, or indicated pharmacological treatment. It is also not mainly about persuading the patient that experiences are false. It is weaker when delivered in a generic CBT style without a psychosis-specific formulation, or when the patient is too acutely disorganised to use the model.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.4.4.1: \"Offer CBT to all people with psychosis or schizophrenia\". Recommendation 1.3.7.1 sets delivery at one to one over at least 16 planned sessions. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -2638,13 +2501,8 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "CBTp"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CBTp"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -2669,14 +2527,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "7b546b1aa641a6be03eb5d90dc695f5971090bf9794a3cc42b9602b72494920c"
   },
   {
     "slug": "cognitive-processing-therapy-cpt",
@@ -2716,21 +2577,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "CPT"
-    ],
+    "tags": ["Trauma", "Psychosis", "Eating/body image", "Crisis/risk", "Emotional regulation", "CBT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CPT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -2816,12 +2665,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "CRT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CRT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -2896,17 +2741,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "5-minute intervention"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Psychosis", "Eating/body image", "Crisis/risk", "ACT", "5-minute intervention"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3083,12 +2919,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "CT-PTSD"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CT-PTSD"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -3163,22 +2995,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
+    "tags": ["Mood", "Substance use", "Crisis/risk", "ACT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "CRAFT"
-    ],
+    "aliases": ["CRAFT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -3263,9 +3087,7 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3341,18 +3163,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Trauma", "Psychosis", "Substance use", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3441,9 +3253,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3529,9 +3339,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3607,20 +3415,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Substance use",
-      "CBT",
-      "Multi-session"
-    ],
+    "tags": ["Substance use", "CBT", "Multi-session"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "CM"
-    ],
+    "aliases": ["CM"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -3705,9 +3507,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3783,18 +3583,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Substance use", "Eating/body image", "Crisis/risk", "ACT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3885,9 +3675,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -3976,9 +3764,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4054,22 +3840,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Micro skill"
-    ],
+    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Micro skill"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "CET"
-    ],
+    "aliases": ["CET"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -4154,9 +3932,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4243,9 +4019,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4332,9 +4106,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4424,9 +4196,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4514,9 +4284,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4584,14 +4352,14 @@
     "evidenceNotes": null,
     "limitations": "DBT is not a substitute for acute containment, medical detoxification, or treatment of psychosis / mania / delirium. It is also weak if delivered as “DBT-informed support” without a real hierarchy, skills programme, behavioural analysis, and team structure.",
     "references": "Borderline personality disorder, recommendation 1.3.4.5: \"For women with borderline personality disorder for whom reducing recurrent self-harm is a priority, consider a comprehensive dialectical behaviour therapy programme.\" https://www.nice.org.uk/guidance/cg78/chapter/Recommendations. (NICE CG78) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.4 says to consider DBT adapted for adolescents (DBT-A) for children and young people with significant emotional dysregulation who self-harm frequently. It does not name DBT for adults. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -4606,13 +4374,8 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "DBT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["DBT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -4637,14 +4400,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "13a25ce1dcc1d449555a0e6ef60ee5242f91980993641c27748d057d85c42077"
   },
   {
     "slug": "dignity-therapy",
@@ -4684,19 +4450,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "Grief/loss",
-      "ACT",
-      "Single session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Eating/body image", "Crisis/risk", "Grief/loss", "ACT", "Single session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4772,17 +4527,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4873,9 +4619,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -4960,12 +4704,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "CBT-ED / CBT-E"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["CBT-ED / CBT-E"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -5048,12 +4788,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "FPT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["FPT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -5128,17 +4864,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Crisis/risk",
-      "Grief/loss",
-      "ACT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5227,9 +4954,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5305,18 +5030,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Crisis/risk",
-      "Grief/loss",
-      "ACT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5403,9 +5118,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5495,9 +5208,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5573,21 +5284,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "ERP"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["ERP"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -5662,22 +5361,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Eating/body image",
-      "Pain/somatic",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Eating/body image", "Pain/somatic", "Crisis/risk", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "ERP for Tics"
-    ],
+    "aliases": ["ERP for Tics"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -5760,9 +5451,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5848,9 +5537,7 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -5936,12 +5623,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "EMDR"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["EMDR"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -6008,28 +5691,16 @@
     "evidenceNotes": null,
     "limitations": "Family intervention is not a substitute for indicated individual treatment, medication, or acute containment. It is also a poor fit when there is no meaningful family contact, when involvement is unsafe, or when family sessions are attempted without a clear structure and purpose.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.4.4.2: \"Offer family intervention to all families of people with psychosis or schizophrenia who live with or are in close contact with the service user\". Recommendation 1.3.7.2 sets at least 10 planned sessions over 3 months to 1 year. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Psychosis", "Substance use", "Crisis/risk", "Emotional regulation", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6055,14 +5726,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "1a36c341bdbecfad2a07cf599680cfd35a3177c9bf2627c83cf198dc2d197b89"
   },
   {
     "slug": "family-problem-solving-interventions",
@@ -6112,9 +5786,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6182,27 +5854,16 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for indicated CBTp, antipsychotic treatment, acute containment, or a broader family intervention when the main problem is communication breakdown, repeated crisis escalation, or complex family dynamics. It is also weak if the family system is unsafe or too fragmented to use the information constructively.",
     "references": "Psychosis and schizophrenia in adults, does not name psychoeducation. Recommendation 1.3.7.2 says family intervention should \"have a specific supportive, educational or treatment function\", and recommendation 1.1.4.4 offers carers a carer-focused education and support programme. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Psychosis", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6228,14 +5889,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "e585084b2db3e3a8e4e0c3bd5086bbb8547c0dc00eba17253203473621901937"
   },
   {
     "slug": "family-therapy",
@@ -6275,18 +5939,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "Emotional regulation",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Psychosis", "Eating/body image", "Crisis/risk", "Emotional regulation", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6362,19 +6016,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Eating/body image",
-      "Crisis/risk",
-      "Grief/loss",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "FT-AN"
-    ],
+    "tags": ["Eating/body image", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["FT-AN"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -6449,18 +6093,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "FT-BN"
-    ],
+    "tags": ["Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["FT-BN"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -6527,14 +6162,14 @@
     "evidenceNotes": null,
     "limitations": "It is not a replacement for mood stabilisers, acute treatment, or more intensive psychotherapies when the main need is active bipolar depression, mania, or marked functional collapse. Evidence is stronger for relapse prevention, especially for overall or manic/hypomanic relapse, than for direct improvement in depressive symptoms, functioning, or quality of life. Group psychoeducation has stronger evidence than individual psychoeducation.",
     "references": "Bipolar disorder: assessment and management, recommendation 1.7.2: \"Offer a family intervention to people with bipolar disorder who are living, or in close contact, with their family\". Family-focused psychoeducation is not named. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Psychosis",
@@ -6545,12 +6180,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6576,14 +6206,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "2b06def925ac8a820ed7b5ddfc19f4bb3a9b1d1e6325c090128310d4c2e55894"
   },
   {
     "slug": "family-focused-therapy-for-bipolar-disorder-fft-bd",
@@ -6623,20 +6256,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "FFT-BD"
-    ],
+    "tags": ["Mood", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["FFT-BD"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -6711,20 +6333,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "FFT"
-    ],
+    "tags": ["Mood", "Psychosis", "Substance use", "Crisis/risk", "ACT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["FFT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -6811,9 +6422,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6903,9 +6512,7 @@
       "DBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -6981,18 +6588,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Anxiety",
-      "Trauma",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Anxiety", "Trauma", "Neurodevelopmental", "Eating/body image", "Crisis/risk", "CBT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7079,9 +6676,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7169,9 +6764,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7239,29 +6832,16 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for mood stabilisers, acute mania/depression treatment, or a more targeted psychotherapy when the main problem is active bipolar depression, mania, or major functional collapse. Evidence is stronger for relapse prevention, especially overall and manic/hypomanic relapse, than for direct improvement in depressive symptoms, quality of life, or functioning.",
     "references": "Bipolar disorder: assessment and management, recommendation 1.7.3 offers a structured psychological intervention (individual, group or family) designed for bipolar disorder with a published evidence-based manual, to prevent relapse. Recommendation 1.7.4 says these interventions should provide information about bipolar disorder. The word psychoeducation is not used. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Mood", "Psychosis", "Sleep", "Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7287,14 +6867,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "9c5e430c427334fb7f2c7932c2aa2d8f8b7f4c2aa97de4a10757d605ee6b9cac"
   },
   {
     "slug": "group-relapse-prevention-programmes",
@@ -7334,19 +6917,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Sleep",
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Sleep", "Substance use", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7432,9 +7004,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7523,9 +7093,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7601,16 +7169,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Eating/body image",
-      "Crisis/risk",
-      "Grief/loss",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Eating/body image", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7686,16 +7246,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7763,14 +7315,14 @@
     "evidenceNotes": "CDC Tourette treatment guidance describes CBIT as evidence-based behavioural therapy for Tourette syndrome and chronic tic disorders, including habit reversal, education, relaxation, and environmental/function-based strategies. (CDC) CDC CBIT article states CBIT can help people with tic disorders manage tics and notes medication is not the only treatment pathway. (CDC) MSD Manual Professional describes body-focused repetitive behaviour disorders and notes CBT, most often habit reversal training, including awareness training, stimulus control, and competing response training. (MSD Manuals) Body-focused repetitive behaviour interventions share a behavioural treatment logic with exposure therapies, but remain clinically distinct from OCD rituals.",
     "limitations": "Poor fit if the person cannot identify urges/triggers, cannot practise responses, or if the behaviour is primarily driven by acute psychosis, mania, delirium, intoxication, severe self-injury, or a medical/neurological condition needing different management. CBIT/HRT may reduce tics/habits but does not “cure” the underlying vulnerability.",
     "references": "CDC Tourette treatment guidance describes CBIT as evidence-based behavioural therapy for Tourette syndrome and chronic tic disorders, including habit reversal, education, relaxation, and environmental/function-based strategies. (CDC) CDC CBIT article states CBIT can help people with tic disorders manage tics and notes medication is not the only treatment pathway. (CDC) MSD Manual Professional describes body-focused repetitive behaviour disorders and notes CBT, most often habit reversal training, including awareness training, stimulus control, and competing response training. (MSD Manuals) Body-focused repetitive behaviour interventions share a behavioural treatment logic with exposure therapies, but remain clinically distinct from OCD rituals.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
@@ -7784,9 +7336,7 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -7812,17 +7362,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "20a9ec3167c7e0c06f57c249adb2e895d9e6c9d6a73e05bd99389c4a64ab207e"
   },
   {
     "slug": "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
@@ -7862,14 +7412,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Anxiety",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Mood", "Anxiety", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -7959,9 +7502,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8050,9 +7591,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8128,18 +7667,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8215,20 +7744,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Substance use",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "IMR-Style Interventions"
-    ],
+    "tags": ["Psychosis", "Substance use", "Neurodevelopmental", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["IMR-Style Interventions"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -8303,23 +7821,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Sleep",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Trauma", "Psychosis", "Sleep", "Crisis/risk", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "IRT"
-    ],
+    "aliases": ["IRT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -8407,9 +7916,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8496,9 +8003,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8574,14 +8079,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Multi-session"
-    ],
+    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Multi-session"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -8671,9 +8169,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8759,9 +8255,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8849,9 +8343,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -8927,18 +8419,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Anxiety",
-      "Trauma",
-      "Substance use",
-      "Eating/body image",
-      "Pain/somatic",
-      "CBT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Anxiety", "Trauma", "Substance use", "Eating/body image", "Pain/somatic", "CBT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -9033,9 +8515,7 @@
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "IPSRT"
-    ],
+    "aliases": ["IPSRT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -9120,12 +8600,8 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "IPT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["IPT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -9200,18 +8676,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Crisis/risk",
-      "Grief/loss",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -9287,19 +8753,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "Grief/loss",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Psychosis", "Sleep", "Substance use", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -9375,13 +8830,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Psychosis", "Substance use", "Crisis/risk", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -9460,20 +8909,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Personality/interpersonal",
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "MANTRA"
-    ],
+    "tags": ["Personality/interpersonal", "Substance use", "Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["MANTRA"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -9558,9 +8996,7 @@
       "ACT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -9655,9 +9091,7 @@
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "MBT"
-    ],
+    "aliases": ["MBT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -9741,12 +9175,8 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "MCT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["MCT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -9832,12 +9262,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "MBCT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["MBCT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -9929,9 +9355,7 @@
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "MBRP"
-    ],
+    "aliases": ["MBRP"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -10014,9 +9438,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -10104,9 +9526,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -10182,24 +9602,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Anxiety",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Mood", "Anxiety", "Sleep", "Substance use", "Crisis/risk", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "MBTI"
-    ],
+    "aliases": ["MBTI"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -10360,24 +9770,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "CBT",
-      "Single session"
-    ],
+    "tags": ["Trauma", "Psychosis", "Substance use", "Neurodevelopmental", "Crisis/risk", "CBT", "Single session"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "MET"
-    ],
+    "aliases": ["MET"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -10459,9 +9859,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -10529,31 +9927,17 @@
     "evidenceNotes": null,
     "limitations": "MI is not a full relapse-prevention programme and is not enough on its own when the main problem is severe dependence needing detoxification, medication, or structured CBT/behavioural treatment. NICE explicitly follows motivational intervention with recommendations to offer community interventions to promote abstinence or moderate drinking and prevent relapse.",
     "references": "Alcohol-use disorders, recommendation 1.3.1.1: \"For all people who misuse alcohol, carry out a motivational intervention as part of the initial assessment. The intervention should contain the key elements of motivational interviewing\". Alcohol only. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Anxiety",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "MI"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Anxiety", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["MI"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -10578,14 +9962,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "676f86de90cc22a61c3838fdf72d659ac7ac99e39f52bf314e4ec1d5982c9dc9"
   },
   {
     "slug": "multi-family-interventions",
@@ -10617,27 +10004,16 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for acute containment, CBTp, medication optimisation, or single-family work when the family’s needs are too complex, unsafe, or private for a group format. It is also weak if it becomes a loose support group without structured psychoeducation, problem-solving, or crisis planning.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.3.7.2 says family intervention should \"take account of the whole family's preference for either single-family intervention or multi-family group intervention\". It is a delivery format, not a separate recommendation. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -10663,14 +10039,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "f4bd3733a7846f1dae0237f1419861fe36e682133fb76342f2d50ef3ee461a98"
   },
   {
     "slug": "multidimensional-family-therapy",
@@ -10720,9 +10099,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -10798,19 +10175,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "MST"
-    ],
+    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["MST"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -10895,12 +10262,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "NET"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["NET"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -10975,18 +10338,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Personality/interpersonal", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11062,17 +10415,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11162,9 +10506,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11253,9 +10595,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11323,31 +10663,17 @@
     "evidenceNotes": null,
     "limitations": "PMT is not a primary treatment for severe psychosis, mania, delirium, or high-risk multisystem offending, and it is weaker when the main drivers are outside parental management, such as entrenched peer delinquency or major school/community-system failure.",
     "references": "Attention deficit hyperactivity disorder, recommendation 1.5.11 offers a parent-training programme when a child aged 5 or over with ADHD has symptoms of oppositional defiant disorder or conduct disorder, and 1.5.12 says to consider individual parent-training programmes. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "PMT"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Mood", "Psychosis", "Neurodevelopmental", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["PMT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -11372,14 +10698,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "dd2f6aa06b9846ede73f248d4dbb1dc86a3481a57f9caeb17589e349961f9cc3"
   },
   {
     "slug": "parent-training",
@@ -11411,26 +10740,16 @@
     "evidenceNotes": null,
     "limitations": "Parent training is not a substitute for acute risk management, safeguarding intervention, or more intensive multimodal work when the child’s difficulties are severe and complex. It is also a weaker fit in older adolescents, where the evidence is less established and other systemic interventions may be needed.",
     "references": "Attention deficit hyperactivity disorder, recommendation 1.5.7: \"Offer an ADHD-focused group parent-training programme to parents or carers of children under 5 years with ADHD as first-line treatment.\" Recommendation 1.5.11 covers ADHD with oppositional or conduct symptoms. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Neurodevelopmental", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11456,14 +10775,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "6287e551e1ef62f21cea1956846faae2ff52b49d28b11277685ff931de4960ac"
   },
   {
     "slug": "parent-and-child-training",
@@ -11503,12 +10825,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
+    "tags": ["Neurodevelopmental", "Crisis/risk", "ACT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -11587,14 +10904,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Trauma",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
+    "tags": ["Trauma", "Neurodevelopmental", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -11673,23 +10983,14 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 57,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
-      "Multi-session"
-    ],
+    "tags": ["Mood", "Psychosis", "Neurodevelopmental", "Crisis/risk", "ACT", "Multi-session"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
       "Missing last reviewed date",
       "Not clinically reviewed"
     ],
-    "aliases": [
-      "PCIT"
-    ],
+    "aliases": ["PCIT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -11761,15 +11062,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Substance use", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11837,27 +11131,16 @@
     "evidenceNotes": null,
     "limitations": "Peer support is not a first-line stand-alone treatment for acute psychosis, persistent delusional distress, severe suicidality, or major functional collapse. The evidence base is promising but heterogeneous, and umbrella-review quality is often low, so claims should stay modest.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.1.5.1: \"Consider peer support for people with psychosis or schizophrenia to help improve service user experience and quality of life.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Psychosis", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -11883,14 +11166,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "42a675e183a560a8eb7d6f19d10e9662c7af6943647567534f5fb400854fc8a4"
   },
   {
     "slug": "peer-led-groups",
@@ -11939,9 +11225,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12028,9 +11312,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12117,9 +11399,7 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12207,9 +11487,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12298,9 +11576,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12368,14 +11644,14 @@
     "evidenceNotes": null,
     "limitations": "Often not enough alone for PTSD, OCD, major psychosis, severe recurrent self-harm, or syndromes where the active mechanism clearly requires exposure, trauma processing, ERP, CBTp, or specialist personality treatment.",
     "references": "Depression in adults: treatment and management, lists individual problem-solving in Table 2 (more severe depression). In Table 1 problem-solving appears only as guided self-help material. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.3 offers adults who self-harm a CBT-informed psychological intervention, naming CBT or problem-solving therapy as examples. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -12386,15 +11662,8 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "PST"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["PST"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -12419,14 +11688,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "21f40bd4998a6c947cb78d74d29bb4276f9ef79ebcdfe10944e52358162190f3"
   },
   {
     "slug": "process-groups",
@@ -12478,9 +11750,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12556,21 +11826,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "PE"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Substance use", "Crisis/risk", "CBT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["PE"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -12655,9 +11913,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12746,9 +12002,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12835,9 +12089,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -12913,13 +12165,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Psychosis", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -12998,18 +12244,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Personality/interpersonal", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13095,9 +12331,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13173,17 +12407,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13259,17 +12484,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Substance use", "Eating/body image", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13358,9 +12574,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13436,17 +12650,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Trauma", "Psychosis", "Substance use", "Crisis/risk", "ACT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13522,15 +12727,7 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 57,
-    "tags": [
-      "Psychosis",
-      "Substance use",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "Grief/loss",
-      "CBT",
-      "Group programme"
-    ],
+    "tags": ["Psychosis", "Substance use", "Neurodevelopmental", "Crisis/risk", "Grief/loss", "CBT", "Group programme"],
     "warnings": [
       "No explicit patient-facing explanation in uploaded record",
       "No explicit last reviewed date in therapy card",
@@ -13688,14 +12885,14 @@
     "evidenceNotes": null,
     "limitations": "Not enough when the patient is still in an active untreated moderate-severe syndrome, when the real problem is ongoing psychosis, mania, severe substance instability, or when a more specific acute intervention is still needed. It is also weak if framed vaguely as “maintenance chats” without explicit relapse-prevention content.",
     "references": "Depression in adults: treatment and management, recommendation 1.8.5 says to consider group CBT or mindfulness-based cognitive therapy for relapse prevention in people who do not wish to continue antidepressants, and 1.8.6 says the course should have an explicit focus on relapse prevention skills. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -13709,10 +12906,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "Not clinically reviewed"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13738,14 +12932,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "aa56048b48dd61110efb63606255f9d76fcad66037cfe481dee1b9a10448e0a7"
   },
   {
     "slug": "relational-psychodynamic-therapies",
@@ -13800,9 +12997,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13888,9 +13083,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -13978,9 +13171,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14056,17 +13247,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Trauma",
-      "Psychosis",
-      "Crisis/risk",
-      "Grief/loss",
-      "ACT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Trauma", "Psychosis", "Crisis/risk", "Grief/loss", "ACT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14142,16 +13324,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Crisis/risk",
-      "ACT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Psychosis", "Crisis/risk", "ACT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14238,9 +13412,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14331,9 +13503,7 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14498,18 +13668,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Neurodevelopmental", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14596,12 +13756,8 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "STPP"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["STPP"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -14668,14 +13824,14 @@
     "evidenceNotes": null,
     "limitations": "STPP is not a substitute for urgent treatment of severe suicidality, psychotic depression, mania, or marked cognitive disorganisation. It may be less suitable when the person does not want to focus on painful feelings or close relationships, or when the depression is more clearly maintained by another mechanism. NICE explicitly warns that focusing on painful close/family experiences could initially be distressing.",
     "references": "Depression in adults: treatment and management, lists short-term psychodynamic psychotherapy (STPP) in Table 1 (less severe depression) and Table 2 (more severe depression). https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -14688,13 +13844,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "STPP"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["STPP"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -14719,14 +13870,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "1be853b76055b34831f4b5261e201cde441b848c89d25442b87fe92f7d748609"
   },
   {
     "slug": "skills-training-groups",
@@ -14777,9 +13931,7 @@
       "ACT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14855,18 +14007,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Anxiety",
-      "Sleep",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Anxiety", "Sleep", "Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -14951,9 +14093,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15039,12 +14179,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "SST"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["SST"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -15132,9 +14268,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15210,18 +14344,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 71,
-    "tags": [
-      "Anxiety",
-      "Sleep",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "ACT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "Not clinically reviewed"
-    ],
+    "tags": ["Anxiety", "Sleep", "Neurodevelopmental", "Eating/body image", "ACT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record", "Not clinically reviewed"],
     "aliases": [],
     "sources": [
       {
@@ -15304,9 +14428,7 @@
       "ACT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15392,9 +14514,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15470,18 +14590,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "SSCM"
-    ],
+    "tags": ["Eating/body image", "Crisis/risk", "CBT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["SSCM"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -15571,9 +14682,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15641,14 +14750,14 @@
     "evidenceNotes": "Trauma-informed skills work is commonly preparatory or adjunctive, with STAIR typically delivered over 10 weekly sessions drawing on cognitive, behavioural, and DBT-informed strategies. A 2024 systematic review of STAIR for complex trauma reported significant symptom reductions across seven studies, including improvements in disturbances in self-organisation, but found mixed results when compared with direct trauma-focused approaches. (ScienceDirect) The RESTORE pilot RCT studied enhanced STAIR versus treatment as usual for ICD-11 complex PTSD, supporting STAIR’s relevance to CPTSD while keeping claims appropriately cautious. (PubMed) Phoenix Australia PTSD Guidelines provide the Australian PTSD/CPTSD guideline frame and continue to prioritise evidence-based trauma-focused treatments for PTSD while recognising complexity in implementation. (Phoenix Australia)",
     "limitations": "STAIR is not the same as PE, CPT, EMDR, CT-PTSD, or TF-CBT, and should not be presented as the default first-line PTSD treatment when standard trauma-focused therapy is feasible and appropriate. It is also insufficient alone when PTSD remains dominated by unprocessed trauma memories and avoidance that require trauma-focused treatment.",
     "references": "Trauma-informed skills work is commonly preparatory or adjunctive, with STAIR typically delivered over 10 weekly sessions drawing on cognitive, behavioural, and DBT-informed strategies. A 2024 systematic review of STAIR for complex trauma reported significant symptom reductions across seven studies, including improvements in disturbances in self-organisation, but found mixed results when compared with direct trauma-focused approaches. (ScienceDirect) The RESTORE pilot RCT studied enhanced STAIR versus treatment as usual for ICD-11 complex PTSD, supporting STAIR’s relevance to CPTSD while keeping claims appropriately cautious. (PubMed) Phoenix Australia PTSD Guidelines provide the Australian PTSD/CPTSD guideline frame and continue to prioritise evidence-based trauma-focused treatments for PTSD while recognising complexity in implementation. (Phoenix Australia)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -15662,12 +14771,8 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "Skills Training in Affective and Interpersonal Regulation"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["Skills Training in Affective and Interpersonal Regulation"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -15692,17 +14797,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "58d8a15b0da877576e28d5bc0be5e0e4151da423fa149ffb3d831bfc227782d1"
   },
   {
     "slug": "strengths-based-case-management",
@@ -15742,15 +14847,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Substance use",
-      "Crisis/risk",
-      "ACT",
-      "Single session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Substance use", "Crisis/risk", "ACT", "Single session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15826,17 +14924,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Crisis/risk",
-      "ACT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "ACT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15904,14 +14993,14 @@
     "evidenceNotes": "BMC Psychiatry trial description of SCM as protocol-driven best current clinical practice, including crisis plans, pharmacotherapy, general psychiatric review, written information, weekly individual/group sessions, and 3-monthly medication review. (SpringerLink) Springer/Nature trial summary describing SCM as manualised supportive counselling plus case management, advocacy support, and problem-oriented psychotherapeutic interventions. (Springer) RCT comparing MBT with structured case management in a mainstream public health service. (PubMed) SCM provides a structured generalist personality-disorder model with explicit protocols, supervision, and active case management rather than unstructured supportive care.",
     "limitations": "Insufficient alone when the patient needs full DBT, MBT, schema therapy, TFP, inpatient containment, eating-disorder admission, substance withdrawal management, or acute psychosis/mania treatment. It can also fail if “structured” becomes only administrative structure without a therapeutic formulation and active problem-solving.",
     "references": "BMC Psychiatry trial description of SCM as protocol-driven best current clinical practice, including crisis plans, pharmacotherapy, general psychiatric review, written information, weekly individual/group sessions, and 3-monthly medication review. (SpringerLink) Springer/Nature trial summary describing SCM as manualised supportive counselling plus case management, advocacy support, and problem-oriented psychotherapeutic interventions. (Springer) RCT comparing MBT with structured case management in a mainstream public health service. (PubMed) SCM provides a structured generalist personality-disorder model with explicit protocols, supervision, and active case management rather than unstructured supportive care.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -15925,9 +15014,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -15953,17 +15040,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "0fa5684ed3740629bd4559d107333ac545bdcf67ec175823ff269d437ff1270b"
   },
   {
     "slug": "support-groups",
@@ -16014,9 +15101,7 @@
       "ACT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16104,9 +15189,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16193,9 +15276,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16282,12 +15363,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "Supported digital trauma-focused CBT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["Supported digital trauma-focused CBT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -16374,9 +15451,7 @@
       "CBT",
       "Micro skill"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16452,20 +15527,9 @@
     "sourceCompleteness": null,
     "indexCompleteness": 100,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Substance use",
-      "Eating/body image",
-      "Emotional regulation",
-      "CBT",
-      "Multi-session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "IPS"
-    ],
+    "tags": ["Psychosis", "Substance use", "Eating/body image", "Emotional regulation", "CBT", "Multi-session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["IPS"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -16551,9 +15615,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16621,14 +15683,14 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for urgent management of severe suicidality, psychotic depression, mania, or marked disorganisation. It is also weaker when the depression is better explained by another dominant mechanism or when the patient cannot use an affect-focused model. The direct depression trial base is supportive but still smaller than for some more guideline-prominent therapies.",
     "references": "Depression in adults: treatment and management, lists STPP and counselling in Tables 1 and 2. The counselling it means \"Uses an empirically validated protocol developed specifically for depression.\" Supportive-expressive therapy and psychodynamic counselling are not named. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Trauma",
@@ -16641,12 +15703,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16672,14 +15729,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "e05c04ff735f0c2c6071a8690f05d0434984c8d2c082d303ba548a9198f46df6"
   },
   {
     "slug": "systemic-family-therapy",
@@ -16719,16 +15779,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Psychosis",
-      "Eating/body image",
-      "ACT",
-      "Single session"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Psychosis", "Eating/body image", "ACT", "Single session"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16815,9 +15867,7 @@
       "ACT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16905,9 +15955,7 @@
       "ACT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -16997,9 +16045,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17087,12 +16133,8 @@
       "DBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "TFP"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["TFP"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -17178,12 +16220,8 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
-    "aliases": [
-      "TF-CBT"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["TF-CBT"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -17269,9 +16307,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17339,30 +16375,17 @@
     "evidenceNotes": null,
     "limitations": "TSF is not the best fit for every patient. It is usually less suitable when the patient is strongly opposed to a 12-step framework, is not pursuing abstinence, or mainly needs motivational work, contingency management, medication treatment, or coping-skills training. Evidence is strongest in AUD and much less definitive for broader SUDs. (cochrane.org)",
     "references": "Alcohol-use disorders, recommendation 1.3.1.7 says to \"give information on the value and availability of community support networks and self-help groups (for example, Alcoholics Anonymous or SMART Recovery)\". Twelve-step facilitation is not named. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
-    "tags": [
-      "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record",
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
-    "aliases": [
-      "TSF"
-    ],
+    "reviewCompleteness": 100,
+    "tags": ["Substance use", "Eating/body image", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
+    "aliases": ["TSF"],
     "sources": [
       {
         "title": "Single Therapies 3497889e8a228045b290cedd09a905bf.md",
@@ -17387,14 +16410,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-15T17:28:22.877Z",
+    "reviewedContentSha256": "c0227e26ae054c877d54087fd20d281e8705465654001e67bb8c52b0a9b5c165"
   },
   {
     "slug": "values-based-therapies",
@@ -17434,17 +16460,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Mood", "Trauma", "Psychosis", "Crisis/risk", "CBT", "Group programme"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17520,16 +16537,8 @@
     "sourceCompleteness": null,
     "indexCompleteness": 92,
     "reviewCompleteness": 100,
-    "tags": [
-      "Psychosis",
-      "Substance use",
-      "Grief/loss",
-      "CBT",
-      "Micro skill"
-    ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "tags": ["Psychosis", "Substance use", "Grief/loss", "CBT", "Micro skill"],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17615,9 +16624,7 @@
       "CBT",
       "Single session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17704,9 +16711,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17794,9 +16799,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17887,9 +16890,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -17977,9 +16978,7 @@
       "CBT",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -18069,9 +17068,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
@@ -18162,9 +17159,7 @@
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit patient-facing explanation in uploaded record"
-    ],
+    "warnings": ["No explicit patient-facing explanation in uploaded record"],
     "aliases": [],
     "sources": [
       {
