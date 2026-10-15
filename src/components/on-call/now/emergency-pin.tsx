@@ -91,9 +91,16 @@ function EmergencyRoute({
           className={cn(onCallFilledButton, focusRing, "justify-start py-1.5")}
         >
           <Phone aria-hidden="true" strokeWidth={1.75} className="size-icon-md shrink-0" />
-          {/* The number and its "then ext 55" stay on one line; "from your mobile" takes its own line beneath. */}
+          {/* Keep each dialable segment intact while allowing a long route to wrap. */}
           <span className="grid min-w-0 text-left">
-            <span className={cn(modeNumberText, "whitespace-nowrap font-semibold")}>{primary.display}</span>
+            <span className={cn(modeNumberText, "font-semibold")}>
+              {primary.display.split(", then ext ").map((segment, index) => (
+                <span key={segment} className="whitespace-nowrap">
+                  {index > 0 ? ", then ext " : null}
+                  {segment}
+                </span>
+              ))}
+            </span>
             {primaryWhere ? <span className="text-sm font-normal">{primaryWhere}</span> : null}
           </span>
         </a>
