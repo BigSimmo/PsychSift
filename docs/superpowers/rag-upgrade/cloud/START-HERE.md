@@ -34,18 +34,25 @@ raw_status=$?
 set -e
 ```
 
-For that legacy setup, exit 0 continues. Exit 1 blocks programme execution and
-requires the documented recovery and fresh task; the runbook's bounded local
-policy-repair exception remains separate from acceptance. Exit 2 continues only
-for the documented `OPENAI_BASE_URL`-alone restricted path: never run OpenAI clients
-from the raw parent or bypass the generated profile and `node`/`npm`/`npx` shims.
-No other inherited name may use that path. After its accepted raw boundary, run:
+For that selected setup, follow the [active raw-boundary and repair policy](../../../agents/codex-cloud-environment.md#raw-boundary-failure-and-local-policy-repair).
+Only exit 0 permits setup, maintenance, package installation and full runtime
+acceptance. Either failed status stops this programme lane. Exit 2 covers only
+the policy's known names (`GH_TOKEN` and `OPENAI_BASE_URL`, alone or together);
+it permits only the existing generated profile/shim path and separately authorised
+provider-free offline checks. Do not authenticate or invoke raw OpenAI/GitHub
+clients, or describe a scrubbed child as a raw-parent pass. Any permitted repair
+after exit 1 or 2 follows the active policy and does not establish phase acceptance.
 
 ```bash
-bash scripts/setup-codex-cloud.sh
-bash scripts/install-codex-cloud-command-shims.sh
-npm run check:codex-cloud
-CODEX_CLOUD_EXPECTED_BASE_SHA="$PACKAGE_BASE_SHA" npm run check:codex-cloud -- --runtime
+if [ "$raw_status" -eq 0 ]; then
+  bash scripts/setup-codex-cloud.sh
+  bash scripts/install-codex-cloud-command-shims.sh
+  npm run check:codex-cloud
+  CODEX_CLOUD_EXPECTED_BASE_SHA="$PACKAGE_BASE_SHA" npm run check:codex-cloud -- --runtime
+else
+  printf 'Raw boundary failed; follow the active repair policy before programme execution.\n' >&2
+  exit "$raw_status"
+fi
 ```
 
 For other host-managed environments, use the current host's supported readiness
