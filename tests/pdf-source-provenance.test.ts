@@ -1,4 +1,5 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -12,6 +13,23 @@ import {
 import { extractPdf, parseExtractedDocumentPayload } from "@/lib/extractors/document";
 import { buildDocumentPageRowsForPersistence } from "../worker/behavior";
 import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
+import { resolvePythonBin } from "@/lib/python-bin";
+
+const hasPyMuPDF = spawnSync(resolvePythonBin(), ["-c", "import pymupdf"], { encoding: "utf8" }).status === 0;
+
+/** Run extractPdf as production does (no scriptPathOverride) against a stand-in bundled script. */
+async function withBundledExtractor<T>(scriptSource: string, run: () => Promise<T>) {
+  const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-bundled-test-"));
+  await mkdir(path.join(root, "worker", "python"), { recursive: true });
+  await writeFile(path.join(root, "worker", "python", "extract_pdf_assets.py"), scriptSource);
+  const cwd = vi.spyOn(process, "cwd").mockReturnValue(root);
+  try {
+    return await run();
+  } finally {
+    cwd.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+}
 
 function packet(): PdfPageSourceProvenance {
   const hash = extractedTextSha256("synthetic page");
@@ -201,4 +219,77 @@ describe("native PDF source-only provenance", () => {
       }
     },
   );
+
+  it("refuses Python pages without provenance once every page is required", () => {
+    const pages = [
+      { pageNumber: 1, text: "synthetic page", metadata: {} },
+      { pageNumber: 2, text: "synthetic page two" },
+    ];
+    const identity = {
+      sourceSha256: packet().sourceContentSha256,
+      scriptSha256: packet().producer.scriptSha256,
+    };
+    expect(() => validatePdfSourcePages(pages, { ...identity, requireEveryPage: false })).not.toThrow();
+    expect(() => validatePdfSourcePages(pages, { ...identity, requireEveryPage: true })).toThrow(
+      "PDF_SOURCE_PROVENANCE_INVALID",
+    );
+    // One page carrying a valid packet does not excuse a sibling page that has none.
+    const mixed = [payload().pages[0], { pageNumber: 2, text: "synthetic page two" }];
+    expect(() => validatePdfSourcePages(mixed, { ...identity, requireEveryPage: true })).toThrow(
+      "PDF_SOURCE_PROVENANCE_INVALID",
+    );
+  });
+
+  it("refuses bundled-extractor output that omits provenance, without falling back", async () => {
+    const fallback = vi.spyOn(PdfjsFallbackParser.prototype, "getText");
+    try {
+      const legacyPayload = { pages: [{ pageNumber: 1, text: "synthetic page" }], images: [] };
+      await withBundledExtractor(
+        `import json, sys\nwith open(sys.argv[3], 'w') as handle:\n    json.dump(${JSON.stringify(legacyPayload)}, handle)\n`,
+        () =>
+          expect(extractPdf(Buffer.from("synthetic legacy payload source"))).rejects.toMatchObject({
+            code: "PDF_SOURCE_PROVENANCE_INVALID",
+          }),
+      );
+      expect(fallback).not.toHaveBeenCalled();
+    } finally {
+      fallback.mockRestore();
+    }
+  });
+
+  it("still uses the pdf.js fallback without provenance when the bundled extractor lacks its dependencies", async () => {
+    const pdf = await readFile(
+      path.join(process.cwd(), "worker", "python", "fixtures", "synthetic-lithium-monitoring.pdf"),
+    );
+    const extracted = await withBundledExtractor(
+      "import sys\nprint('PyMuPDF unavailable', file=sys.stderr)\nraise SystemExit(2)\n",
+      () => extractPdf(pdf),
+    );
+    try {
+      expect(extracted.pages.length).toBeGreaterThan(0);
+      expect(extracted.pages.map((page) => page.text).join(" ")).toMatch(/lithium/i);
+      expect(extracted.pages.some((page) => page.metadata?.source_provenance)).toBe(false);
+    } finally {
+      for (const root of extracted.temporaryPaths ?? []) await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it.runIf(hasPyMuPDF)("accepts the real Python extractor, which records provenance on every page", async () => {
+    const pdf = await readFile(
+      path.join(process.cwd(), "worker", "python", "fixtures", "synthetic-lithium-monitoring.pdf"),
+    );
+    const extracted = await extractPdf(pdf);
+    try {
+      expect(extracted.pages.length).toBeGreaterThan(0);
+      for (const page of extracted.pages) {
+        const provenance = pdfPageSourceProvenanceSchema.parse(page.metadata?.source_provenance);
+        expect(provenance.physicalPageNumber).toBe(page.pageNumber);
+        expect(provenance.sourceContentSha256).toBe(extractedTextSha256(pdf));
+        expect(provenance.textIdentity.persistedTextSha256).toBe(extractedTextSha256(page.text));
+        expect(provenance.textIdentity.originalExtractedTextSha256).toBe(extractedTextSha256(page.text));
+      }
+    } finally {
+      for (const root of extracted.temporaryPaths ?? []) await rm(root, { recursive: true, force: true });
+    }
+  });
 });

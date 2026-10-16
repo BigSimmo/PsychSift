@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "8e9cd355-c5a2-4aa8-ae30-9e477e0977cb",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#JCDCGK",
+    "outcome": "Native PDF page source provenance now emitted by worker/python/extract_pdf_assets.py and required for the bundled extractor (branch claude/ingestion-review-lbw6rf, 16 Oct). The 503 refusal before claiming was NOT shipped: indexing-v3-agent processJob completes jobs whose completion gate is already complete without any provider call, so refusing before the claim would strand those jobs; this matches the owner's 16 Oct decision to leave the repair job's provider calls off as is.",
+    "targetUlid": "01M51JRSM8JCDCGKRSM0ARAQYB"
+  }
+}
