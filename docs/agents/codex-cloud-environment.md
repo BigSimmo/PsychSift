@@ -135,7 +135,7 @@ Codex Cloud uses an isolated Linux container and does not inherit desktop creden
 
 - Default to `CODEX_CLOUD_ACCESS_PROFILE=offline` for ordinary/RAG work; use `connected` only with explicit provider authorization.
 - Personal Pro split control plane: Codex Cloud for code and GitHub connector; ChatGPT web for Railway and read-only Supabase metadata.
-- Acceptance: run `bash scripts/check-codex-cloud-raw-env.sh`, `npm run check:codex-cloud`, and `npm run check:codex-cloud -- --runtime` (with `CODEX_CLOUD_EXPECTED_BASE_SHA`). A failed raw-parent credential check blocks app execution and provider access, not explicitly requested local policy repair or scrubbed offline checks.
+- Acceptance: run `bash scripts/check-codex-cloud-raw-env.sh`, `npm run check:codex-cloud`, and `npm run check:codex-cloud -- --runtime` (with `CODEX_CLOUD_EXPECTED_BASE_SHA`). Exit 1 (`FAIL`/`STOP`) blocks app execution and provider access, not explicitly requested local policy repair or scrubbed offline checks; exit 2 (`FAIL-KNOWN`, only `OPENAI_BASE_URL`/`GH_TOKEN`) still fails the raw boundary but permits provider-free work, including app/runtime commands, through the generated profile and command shims.
 - Do not expose provider secrets (OpenAI, Supabase, Railway, GitHub PATs) in Cloud agent shells or committed config.
 - Authenticated live tests run via `.github/workflows/authenticated-live-tests.yml` with manual dispatch, never from Cloud agent shells.
 - Branch deletion helper `bash scripts/delete-codex-cloud-branch-with-pat.sh` is operator-only outside Cloud.

@@ -378,7 +378,9 @@ already-running process. Outcomes are name-scoped in the probe itself:
   `SUPABASE_SERVICE_ROLE_KEY`); application execution, live provider access, and full runtime
   acceptance remain blocked and require a fresh task once the environment source is cleared, while
   explicitly requested local policy, documentation, and configuration inspection and repair (plus
-  scrubbed offline checks through the profile and command shims) may proceed
+  scrubbed offline checks through the profile and command shims) may proceed; RAG specialist
+  phase launches are stricter and treat exit `1` as a hard stop requiring a fresh task, per the
+  RAG Cloud `START-HERE` launch guide
 - exit `2` / `FAIL-KNOWN` + `CONTINUE-RESTRICTED` — only the documented Personal Pro launcher-injected
   names `OPENAI_BASE_URL` and `GH_TOKEN`
 
@@ -457,9 +459,10 @@ separate lifecycles:
    local to that disposable container until committed, pushed, and merged (or selected as the
    starting branch for a new task).
 2. **Cloud environment settings (setup/maintenance scripts, environment variables, secrets, connectors):**
-   Configured in the Codex Cloud environment UI. Changes are captured when a fresh task container
-   is provisioned, or when setup is explicitly rerun in the existing container; they never apply
-   retroactively to already-running processes. Routine maintenance reuses the existing generated
+   Configured in the Codex Cloud environment UI. A fresh task container is required after Cloud
+   environment values or secrets change. Rerunning setup in an existing container reads only values
+   already available to that process; it does not retrieve updated UI values or secrets, and it
+   does not update already-running processes. Routine maintenance reuses the existing generated
    profile and only refreshes these settings if it falls back to full setup.
 3. **Existing chat context and running process state:**
    An open chat retains the instruction text already loaded into its conversation history, and a

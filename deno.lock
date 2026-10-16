@@ -312,7 +312,6 @@
         "npm:mammoth@^1.13.0",
         "npm:next@16.4.0",
         "npm:openai@^7.30.1",
-        "npm:pdf-parse@^2.4.5",
         "npm:pdfjs-dist@^6.4.299",
         "npm:pdfkit@~0.20.2",
         "npm:playwright-core@1.63.0",
