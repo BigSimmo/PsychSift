@@ -135,8 +135,6 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     { CODEX_CLOUD_ACCESS_PROFILE: "" },
     { CODEX_CLOUD_ACCESS_PROFILE: "synthetic-invalid-maintenance-profile" },
     { CODEX_CLOUD_ACCESS_PROFILE: "connected", RAG_PROVIDER_MODE: "live" },
-    { CODEX_CLOUD_ACCESS_PROFILE: "connected", RAG_PROVIDER_MODE: "" },
-    { CODEX_CLOUD_ACCESS_PROFILE: undefined, RAG_PROVIDER_MODE: "live" },
   ])("rejects inherited maintenance selectors before a cached profile can replace them: %j", (selectors) => {
     const test = fixture("missing");
     const profilePath = path.join(test.home, ".clinical-kb-codex-cloud.sh");
@@ -160,6 +158,59 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(existsSync(test.runtimeCalls)).toBe(false);
     expect(readFileSync(profilePath, "utf8")).toBe(profile);
     expect(readFileSync(test.configPath, "utf8")).toBe(test.config);
+  });
+
+  it.each([
+    { requested: "offline", cached: "offline", mode: "auto" },
+    { requested: undefined, cached: "offline", mode: "auto" },
+    { requested: undefined, cached: "offline", mode: "live" },
+    { requested: "connected", cached: "connected", mode: "" },
+    { requested: undefined, cached: "connected", mode: "" },
+  ])("pins maintenance RAG mode offline before profile and runtime work: %j", ({ requested, cached, mode }) => {
+    const test = fixture("missing");
+    writeFileSync(
+      path.join(test.home, ".clinical-kb-codex-cloud.sh"),
+      [
+        '[[ "$RAG_PROVIDER_MODE" = offline ]] || exit 94',
+        `export CODEX_CLOUD_ACCESS_PROFILE=${cached}`,
+        "export RAG_PROVIDER_MODE=offline",
+        "",
+      ].join("\n"),
+    );
+    const node = path.join(test.home, "bin/node");
+    writeFileSync(
+      node,
+      '#!/bin/bash\n[[ "$RAG_PROVIDER_MODE" = offline ]] || exit 93\nprintf "%s\\n" node >> "$CLOUD_POLICY_RUNTIME_CALLS"\nexit 127\n',
+    );
+
+    const result = test.run(
+      { CODEX_CLOUD_ACCESS_PROFILE: requested, RAG_PROVIDER_MODE: mode },
+      false,
+      "scripts/maintain-codex-cloud.sh",
+    );
+
+    // Stop inside the synthetic Node stub before any repository helper executes.
+    expect(result.status, result.stderr || result.stdout).toBe(127);
+    expect(result.stderr).not.toContain("ERROR");
+    expect(readFileSync(test.runtimeCalls, "utf8").trim()).toBe("node");
+  });
+
+  it("rejects inherited live RAG mode when the cached profile selects connected", () => {
+    const test = fixture("missing");
+    writeFileSync(
+      path.join(test.home, ".clinical-kb-codex-cloud.sh"),
+      "export CODEX_CLOUD_ACCESS_PROFILE=connected\nexport RAG_PROVIDER_MODE=offline\n",
+    );
+
+    const result = test.run(
+      { CODEX_CLOUD_ACCESS_PROFILE: undefined, RAG_PROVIDER_MODE: "live" },
+      false,
+      "scripts/maintain-codex-cloud.sh",
+    );
+
+    expect(result.status, result.stderr || result.stdout).toBe(1);
+    expect(result.stderr).toContain("must keep RAG_PROVIDER_MODE=offline");
+    expect(existsSync(test.runtimeCalls)).toBe(false);
   });
 
   it.each(["offline", "connected"])("rejects a cached profile that replaces an explicit %s selection", (requested) => {

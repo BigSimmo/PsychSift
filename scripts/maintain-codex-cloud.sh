@@ -30,9 +30,13 @@ if [[ "$requested_cloud_profile_set" = "yes" ]]; then
     *) fail "Unsupported CODEX_CLOUD_ACCESS_PROFILE; expected offline or connected." ;;
   esac
 fi
-if [[ "${RAG_PROVIDER_MODE+yes}" = "yes" && "$RAG_PROVIDER_MODE" != "offline" ]]; then
+requested_cloud_rag_mode="${RAG_PROVIDER_MODE:-offline}"
+if [[ "$requested_cloud_profile" = "connected" && "$requested_cloud_rag_mode" != "offline" ]]; then
   fail "The selected legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline."
 fi
+# Setup pins offline selections and normalizes empty connected modes to offline.
+# Keep the requested mode separately until the cached profile choice is known.
+export RAG_PROVIDER_MODE=offline
 
 runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
 if [[ ! -f "$runtime_profile" ]]; then
@@ -49,6 +53,9 @@ load_runtime_profile() {
   esac
   if [[ "$requested_cloud_profile_set" = "yes" && "$CODEX_CLOUD_ACCESS_PROFILE" != "$requested_cloud_profile" ]]; then
     fail "Cached CODEX_CLOUD_ACCESS_PROFILE differs from the requested profile; rerun setup with the intended profile."
+  fi
+  if [[ "$CODEX_CLOUD_ACCESS_PROFILE" = "connected" && "$requested_cloud_rag_mode" != "offline" ]]; then
+    fail "The selected legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline."
   fi
   [[ "${RAG_PROVIDER_MODE-}" = "offline" ]] ||
     fail "The cached legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline; rerun setup."

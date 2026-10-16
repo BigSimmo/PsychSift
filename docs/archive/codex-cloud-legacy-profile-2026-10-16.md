@@ -323,19 +323,23 @@ insertions, command shims, CLI installs, and remote repair are idempotent.
 
 ### Automatic setup diagnostics
 
-Cloud setup tracks its current phase. If a command fails, the error trap runs
-`npm run diagnose:codex-cloud` automatically and prints sanitized `ISSUE` and `FIX` lines after
+Cloud setup tracks its current phase. If a command fails, the error trap invokes
+`scripts/diagnose-codex-cloud.mjs --legacy-profile` automatically and prints sanitized `ISSUE` and `FIX` lines after
 the original error. The diagnostic checks the Node/npm contract, the active Cloud Python runtime,
 the runtime-specific Python lock header, and the failed setup phase without printing environment
 values or calling a provider. Run it manually in an agent shell when setup completed but the
 runtime later appears stale:
 
 ```bash
-npm run diagnose:codex-cloud
+npm run diagnose:codex-cloud -- --legacy-profile
 ```
 
-The command is Cloud-only: outside a `CODEX_CLOUD=1` shell it reports `NOT_APPLICABLE` rather than
-mistaking a desktop Python installation for Cloud runtime drift.
+Current diagnostics require explicit legacy selection: `--legacy-profile` or a configured
+`CODEX_CLOUD_ACCESS_PROFILE` (`offline` or `connected`). `CODEX_CLOUD=1` alone does not select the
+legacy profile. Without selection the command reports `PROFILE_NOT_SELECTED`; an invalid explicit
+profile fails rather than falling back. This keeps an unrelated host's Python installation from
+being treated as legacy Cloud runtime evidence. These invocation notes track the current executable;
+the dated operational observations in this archive remain historical.
 
 The production worker image and Codex Cloud deliberately use separate hashed Python locks because
 medspaCy 1.3.1 requires spaCy `<3.8` on Python 3.11 but `>=3.8` on Python 3.12. Production uses

@@ -50,8 +50,10 @@ that local branch names prove the absence of another implementation.
    byte-identical donor before its documented npm fallback. Use the current host's
    supported restoration route; do not force the legacy Cloud bootstrap or change
    manifests/lockfiles merely to prepare a checkout.
-5. Use `node scripts/check-base-freshness.mjs` when relevant to the task. Distinguish
-   comparison with a local tracking ref from a freshly authorised remote observation.
+5. When relevant, use `BASE_FRESHNESS_NO_FETCH=1 node scripts/check-base-freshness.mjs`
+   for the default local comparison. The command without that flag fetches `origin/main`;
+   run `node scripts/check-base-freshness.mjs` only with already-granted network/provider
+   authority. Distinguish the local tracking ref from a freshly authorised remote observation.
    If the base moved, assess relevant drift and the task's sync policy; do not discard
    a continuation or recreate a worktree automatically.
 6. Start or verify the app only for a task that needs it, following `AGENTS.md` local

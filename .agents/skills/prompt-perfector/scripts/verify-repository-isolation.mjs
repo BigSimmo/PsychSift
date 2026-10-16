@@ -23,11 +23,12 @@ function normalizePath(value) {
 }
 
 function parseArguments(argv) {
-  const options = { allowDirty: false, cloud: false, selfTest: false };
+  const options = { allowDirty: false, cloud: false, cloudHostAttested: false, selfTest: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--allow-dirty") options.allowDirty = true;
     else if (argument === "--cloud") options.cloud = true;
+    else if (argument === "--cloud-host-attested") options.cloudHostAttested = true;
     else if (argument === "--self-test") options.selfTest = true;
     else if (["--expected-repo", "--expected-branch", "--expected-head", "--expected-status-hash"].includes(argument)) {
       const value = argv[index + 1];
@@ -65,12 +66,14 @@ export function evaluateRepositoryState(state, options = {}) {
   const currentIndex = state.worktrees.findIndex(
     (worktree) => normalizePath(String(worktree.worktree)) === currentPath,
   );
+  const cloudEnvironment = options.cloudEnvironment === true || options.cloudHostAttested === true;
 
   if (!path.isAbsolute(state.root)) reasons.push("repository_path_not_absolute");
   if (!state.branch) reasons.push("detached_head");
   else if (protectedBranch(state.branch)) reasons.push("protected_branch");
   if (currentIndex < 0) reasons.push("unregistered_worktree");
   else if (currentIndex === 0 && !options.cloud) reasons.push("primary_worktree");
+  else if (currentIndex === 0 && options.cloud && !cloudEnvironment) reasons.push("cloud_environment_required");
   else if (currentIndex === 0 && options.cloud && state.worktrees.length !== 1)
     reasons.push("cloud_primary_requires_single_worktree");
   if (state.operations.length) reasons.push("git_operation_in_progress");
@@ -190,10 +193,39 @@ function runSelfTest() {
     expectedBranch: cloudBase.branch,
     expectedHead: head,
     cloud: true,
+    cloudEnvironment: true,
   };
   const cases = [
     ["safe secondary worktree", base, expected, true, ""],
     ["safe Cloud primary", cloudBase, cloudExpected, true, ""],
+    [
+      "attested Cloud primary without host marker",
+      cloudBase,
+      { ...cloudExpected, cloudEnvironment: false, cloudHostAttested: true },
+      true,
+      "",
+    ],
+    [
+      "Cloud primary missing host evidence and attestation",
+      cloudBase,
+      { ...expected, expectedRepo: cloudBase.root, cloud: true },
+      false,
+      "cloud_environment_required",
+    ],
+    [
+      "Cloud attestation without explicit mode",
+      cloudBase,
+      { ...cloudExpected, cloud: false, cloudEnvironment: false, cloudHostAttested: true },
+      false,
+      "primary_worktree",
+    ],
+    [
+      "Cloud primary without host signal",
+      cloudBase,
+      { ...cloudExpected, cloudEnvironment: false },
+      false,
+      "cloud_environment_required",
+    ],
     ["Cloud primary without explicit mode", cloudBase, { ...cloudExpected, cloud: false }, false, "primary_worktree"],
     ...["expectedRepo", "expectedBranch", "expectedHead"].map((key) => [
       `Cloud missing ${key}`,
@@ -257,6 +289,9 @@ function runSelfTest() {
     if (result.reason !== expectedReason)
       throw new Error(`${name}: expected reason=${expectedReason}, got ${result.reason}`);
   }
+  if (!parseArguments(["--cloud-host-attested"]).cloudHostAttested) {
+    throw new Error("explicit host attestation argument was not recognised");
+  }
   console.log(`prompt-perfector isolation self-test passed: ${cases.length}/${cases.length}`);
 }
 
@@ -279,6 +314,8 @@ function main() {
     if (options.selfTest) runSelfTest();
     else {
       const state = inspectRepository(process.cwd());
+      // Host markers are workflow hints, not proof of platform isolation.
+      options.cloudEnvironment = process.env.CODEX_CLOUD === "1" || process.env.CLAUDE_CODE_REMOTE === "true";
       const result = evaluateRepositoryState(state, options);
       emit(result, state, options);
       if (!result.safe) process.exitCode = 1;

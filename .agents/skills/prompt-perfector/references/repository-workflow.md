@@ -61,7 +61,19 @@ if ($LASTEXITCODE -ne 0) { throw 'Repository isolation verification failed.' }
 
 ### Codex Cloud checkout
 
-Use this mode when the current host or task configuration establishes a disposable Cloud task checkout. `--cloud` explicitly attests that workflow choice; the legacy `CODEX_CLOUD=1` marker is neither required nor sufficient. The verifier binds the choice to the expected repository, branch and `HEAD`, and permits a primary checkout only when it is the sole registered worktree, clean, and on a task-specific non-protected branch. Create a branch before verification if the supplied checkout is detached or protected. If current host evidence does not establish a disposable Cloud checkout, use the applicable local worktree workflow above.
+Use this mode when current host or task metadata establishes a disposable Cloud task checkout.
+`--cloud` selects that workflow; it alone does not satisfy the host-evidence guard. The CLI recognises
+`CODEX_CLOUD=1` or `CLAUDE_CODE_REMOTE=true` as workflow hints, not proof of platform isolation.
+Without either hint, pass `--cloud-host-attested` only after current task metadata establishes the
+disposable Cloud checkout. The legacy `CODEX_CLOUD=1` marker is neither required nor sufficient.
+Do not invent another host variable or install the legacy setup to satisfy this guard.
+
+The verifier binds the choice to the expected repository, branch and `HEAD`, and permits a primary
+checkout only when it is the sole registered worktree, clean, and on a task-specific non-protected
+branch. Create a branch before verification if the supplied checkout is detached or protected.
+Without host evidence or a supported metadata attestation, use the applicable local worktree workflow.
+The example below assumes current task metadata has established the disposable Cloud checkout;
+omit `--cloud-host-attested` when relying on one of the recognised host hints instead.
 
 ```bash
 test -z "$(git status --porcelain --untracked-files=all)" || { echo 'Cloud checkout is dirty.' >&2; exit 1; }
@@ -75,12 +87,12 @@ esac
 repo="$(git rev-parse --show-toplevel)"
 head="$(git rev-parse HEAD)"
 node .agents/skills/prompt-perfector/scripts/verify-repository-isolation.mjs \
-  --cloud --expected-repo "$repo" --expected-branch "$branch" --expected-head "$head"
+  --cloud --cloud-host-attested --expected-repo "$repo" --expected-branch "$branch" --expected-head "$head"
 ```
 
 4. Proceed only when the verifier emits `SAFE_TO_EDIT=true` and `PRECHECK_RESULT=SAFE`.
 5. Re-run the verifier immediately before editing. If any condition is unproved or changes unexpectedly, stop and request direction.
-6. For a same-task dirty continuation, first run the verifier without `--allow-dirty`, inventory every changed path, and record the emitted `SAFE_STATUS_HASH`. Re-run with `--allow-dirty --expected-status-hash <hash>` plus the same expected repo, branch, and `HEAD` values. Include `--cloud` in Cloud.
+6. For a same-task dirty continuation, first run the verifier without `--allow-dirty`, inventory every changed path, and record the emitted `SAFE_STATUS_HASH`. Re-run with `--allow-dirty --expected-status-hash <hash>` plus the same expected repo, branch, and `HEAD` values. Include `--cloud` in Cloud and retain the same established host evidence or metadata-backed `--cloud-host-attested` flag.
 
 The verifier is read-only and establishes workflow isolation; it does not provide an OS-level sandbox or protection from unrelated processes. `--cloud` does not detect or prove platform isolation, provider authorization or readiness of the legacy bootstrap. State those limits honestly.
 
