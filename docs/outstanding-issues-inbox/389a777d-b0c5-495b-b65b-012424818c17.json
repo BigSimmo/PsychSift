@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "389a777d-b0c5-495b-b65b-012424818c17",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#NHR0MM",
+    "outcome": "Fixed RosterWeekStrip multi-kind shift rendering and aria-label deduplication, restored the Perth calendar-day guard for allDay sessions in teaching-view-model.ts nextSession, and routed post-2028 and historical WA public holiday checks through isWaPublicHolidayDate across fairness.ts, calendar-model.ts, week-board.tsx, and roster-today-team.tsx (tests/roster-teaching-holiday-fixes.dom.test.tsx).",
+    "baseRowFingerprint": "93a830fc8ece5b8b99f40886821b82e1c2388586009d0b3988f676ad8585b348",
+    "targetUlid": "01M4T67NEHNHR0MM72GY0TM3HN"
+  }
+}
