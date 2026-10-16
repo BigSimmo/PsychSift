@@ -5,7 +5,7 @@
   "action": "update",
   "payload": {
     "id": "#54N8ZN",
-    "detail": "Remaining from PR 3546's CodeRabbit review: docs/design-system/evidence/admin-source-pilot.json records a passed browser and screen-reader proof against an earlier pilot-client digest; rerun the proof or mark it pending. Closed since: the XLSX per-sheet shared-string and style projection (branch claude/ingestion-review-lbw6rf, 16 Oct) and the paid canary pair (runs 119 vs 120, zero per-case rr regressions, 16 Oct).",
+    "detail": "Remaining from PR 3546's CodeRabbit review: docs/design-system/evidence/admin-source-pilot.json records a passed browser proof with checks for native labels, keyboard traversal, and polite status against an earlier pilot-client digest; screen-reader execution is not recorded and remains pending. Closed since: the XLSX per-sheet shared-string and style projection (branch claude/ingestion-review-lbw6rf, 16 Oct) and the paid canary pair (runs 119 vs 120, zero per-case rr regressions, 16 Oct).",
     "targetUlid": "01M520SQ7T54N8ZNCFC7KJ4HKC"
   }
 }
