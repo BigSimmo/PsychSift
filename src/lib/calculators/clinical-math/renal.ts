@@ -84,6 +84,8 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     };
   }
 
+  let effectiveWeightKg = input.weightKg;
+
   if (input.heightCm !== undefined) {
     if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
       const rawIbw = (input.sex === "male" ? 50 : 45.5) + 0.9 * (input.heightCm - 152.4);
@@ -92,14 +94,15 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
       const bmi = input.weightKg / (input.heightCm / 100) ** 2;
       if (ibwKg > 0 && input.weightKg > ibwKg && bmi >= 25) {
         const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
+        const isObeseExcess = input.weightKg > ibwKg * 1.2;
+        effectiveWeightKg = isObeseExcess ? abwKg : ibwKg;
         const ibwCrCl =
           Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
           100;
         const abwCrCl =
           Math.round(computeRawCrCl(input.age, abwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
           100;
-        const excessLabel =
-          input.weightKg > ibwKg * 1.2 ? "exceeds Ideal Body Weight by >20%" : "exceeds Ideal Body Weight";
+        const excessLabel = isObeseExcess ? "exceeds Ideal Body Weight by >20%" : "exceeds Ideal Body Weight";
         warnings.push(
           `Actual weight (${input.weightKg} kg) ${excessLabel} (Devine IBW: ${ibwKg.toFixed(1)} kg; Adjusted Body Weight: ${abwKg.toFixed(1)} kg). Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (CrCl ${ibwCrCl} mL/min) or Adjusted Body Weight (CrCl ${abwCrCl} mL/min) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.`,
         );
@@ -115,7 +118,7 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     );
   }
 
-  const crCl = computeRawCrCl(input.age, input.weightKg, input.sex, input.serumCreatinine, input.creatinineUnit);
+  const crCl = computeRawCrCl(input.age, effectiveWeightKg, input.sex, input.serumCreatinine, input.creatinineUnit);
 
   const rounded = Math.round(crCl * 100) / 100;
   if (!Number.isFinite(rounded)) {

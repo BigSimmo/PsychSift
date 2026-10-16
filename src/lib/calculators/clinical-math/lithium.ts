@@ -140,9 +140,10 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
     suggestedDoseMg / input.currentDoseMg > 2 ||
     predictedLevelMmolL >= 1.2
   ) {
-    const error = suggestedDoseMg <= 0
-      ? "Calculated dose rounds to zero; clinical review required"
-      : "Rounded dose exceeds safe dose or predicted lithium level limits and requires clinical review";
+    const error =
+      suggestedDoseMg <= 0
+        ? "Calculated dose rounds to zero; clinical review required"
+        : "Rounded dose exceeds safe dose or predicted lithium level limits and requires clinical review";
     return {
       isValid: false,
       suggestedDoseMg: null,

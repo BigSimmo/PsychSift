@@ -174,10 +174,29 @@ describe("countSkippedCases", () => {
       "def test_skipped_one():",
       "    assert True",
       "",
+      "@pytest.mark.skip(reason='whole class disabled')",
+      "class TestSuiteSkipped:",
+      "    def test_in_class_one(self):",
+      "        assert True",
+      "    def test_in_class_two(self):",
+      "        assert True",
+      "",
       "def test_active():",
       "    assert True",
     ].join("\n");
-    expect(countSkippedCases(pySource, "worker/python/test_extract.py")).toBe(1);
+    expect(countSkippedCases(pySource, "worker/python/test_extract.py")).toBe(3);
+
+    const suiteSkippedTs = [
+      'describe.skip("disabled suite", () => {',
+      '  it("one", () => {});',
+      '  it("two", () => {});',
+      '  it.each([1, 2, 3])("row %d", () => {});',
+      "});",
+      'describe.skipIf(true)("conditional skip suite", () => {',
+      '  it("three", () => {});',
+      "});",
+    ].join("\n");
+    expect(countSkippedCases(suiteSkippedTs, "tests/suite-skip.test.ts")).toBe(6);
   });
 });
 

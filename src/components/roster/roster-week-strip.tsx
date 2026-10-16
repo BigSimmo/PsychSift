@@ -108,7 +108,7 @@ export function RosterWeekStrip({
                 <RosterLetter kind={kind} />
                 <span
                   aria-hidden="true"
-                  className="nums pointer-events-none absolute -right-1 -bottom-1 grid min-w-4 place-items-center rounded border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-0.5 text-[10px] leading-3.5 font-medium text-[color:var(--text-heading)]"
+                  className="nums text-3xs pointer-events-none absolute -right-1 -bottom-1 grid min-w-4 place-items-center rounded border border-[color:var(--border-strong)] bg-[color:var(--surface-raised)] px-0.5 leading-3.5 font-medium text-[color:var(--text-heading)]"
                 >
                   +{distinctKinds.length - 1}
                 </span>

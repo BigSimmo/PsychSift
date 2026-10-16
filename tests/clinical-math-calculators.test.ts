@@ -116,6 +116,8 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
 
       expect(obeseWithHeight.isValid).toBe(true);
+      // Uses Adjusted Body Weight (82.2 kg): (140 - 50) * 82.2 * 1.23 / 100 = 91.00 mL/min
+      expect(obeseWithHeight.crClMlMin).toBeCloseTo(91.0, 1);
       expect(obeseWithHeight.warnings).toEqual(
         expect.arrayContaining([
           expect.stringMatching(

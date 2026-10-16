@@ -170,22 +170,81 @@ export function waPublicHolidaysByRule(year: number): string[] {
 
 const HISTORICAL_PUBLIC_HOLIDAYS = new Set([
   // Published WA dates for 2021 (Easter Sunday was not a public holiday).
-  "2021-01-01", "2021-01-26", "2021-03-01", "2021-04-02", "2021-04-05",
-  "2021-04-25", "2021-04-26", "2021-06-07", "2021-09-27", "2021-12-25",
-  "2021-12-26", "2021-12-27", "2021-12-28",
-  // Published WA dates for 2022, including the National Day of Mourning.
-  "2022-01-01", "2022-01-03", "2022-01-26", "2022-03-07", "2022-04-15",
-  "2022-04-18", "2022-04-25", "2022-06-06", "2022-09-22", "2022-09-26",
-  "2022-12-25", "2022-12-26", "2022-12-27", "2022-12-28",
+  "2021-01-01",
+  "2021-01-26",
+  "2021-03-01",
+  "2021-04-02",
+  "2021-04-05",
+  "2021-04-25",
+  "2021-04-26",
+  "2021-06-07",
+  "2021-09-27",
+  "2021-12-25",
+  "2021-12-26",
+  "2021-12-27",
+  "2021-12-28",
+  // Published WA dates for 2022, including the National Day of Mourning (Sunday Christmas gave Tuesday 27 Dec substitute only).
+  "2022-01-01",
+  "2022-01-03",
+  "2022-01-26",
+  "2022-03-07",
+  "2022-04-15",
+  "2022-04-17",
+  "2022-04-18",
+  "2022-04-25",
+  "2022-06-06",
+  "2022-09-22",
+  "2022-09-26",
+  "2022-12-25",
+  "2022-12-26",
+  "2022-12-27",
+  // Published WA dates for 2023.
+  "2023-01-01",
+  "2023-01-02",
+  "2023-01-26",
+  "2023-03-06",
+  "2023-04-07",
+  "2023-04-09",
+  "2023-04-10",
+  "2023-04-25",
+  "2023-06-05",
+  "2023-09-25",
+  "2023-12-25",
+  "2023-12-26",
+  // Published WA dates for 2024 (King's Birthday proclaimed as Monday 23 September 2024).
+  "2024-01-01",
+  "2024-01-26",
+  "2024-03-04",
+  "2024-03-29",
+  "2024-03-31",
+  "2024-04-01",
+  "2024-04-25",
+  "2024-06-03",
+  "2024-09-23",
+  "2024-12-25",
+  "2024-12-26",
+  // Published WA dates for 2025.
+  "2025-01-01",
+  "2025-01-26",
+  "2025-01-27",
+  "2025-03-03",
+  "2025-04-18",
+  "2025-04-20",
+  "2025-04-21",
+  "2025-04-25",
+  "2025-06-02",
+  "2025-09-29",
+  "2025-12-25",
+  "2025-12-26",
 ]);
 const ruleCache = new Map<number, ReadonlySet<string>>();
 
 function holidaysFor(year: number): ReadonlySet<string> {
   if (year >= 2026 && year <= WA_PUBLIC_HOLIDAYS_LAST_YEAR) return WA_PUBLIC_HOLIDAYS;
-  const historical = new Set([...HISTORICAL_PUBLIC_HOLIDAYS].filter((date) => date.startsWith(`${year}-`)));
-  if (historical.size > 0) return historical;
-  // The rules below are not a substitute for an historical proclamation list.
-  if (year < 2023) return new Set();
+  // Pre-2026 years use authoritative published dates only, never future proclamation heuristics.
+  if (year < 2026) {
+    return new Set([...HISTORICAL_PUBLIC_HOLIDAYS].filter((date) => date.startsWith(`${year}-`)));
+  }
   let set = ruleCache.get(year);
   if (!set) {
     set = new Set(waPublicHolidaysByRule(year));
