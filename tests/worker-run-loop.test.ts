@@ -6,6 +6,13 @@ import type { JobRow } from "../worker/types";
 function fakeJob(id = "job-1"): JobRow {
   return {
     id,
+    locked_by: "test-worker",
+    lease_token: "77777777-7777-4777-8777-777777777777",
+    lease_expected_generation_id: null,
+    lease_write_generation_id: "88888888-8888-4888-8888-888888888888",
+    lease_authority_digest: `sha256:${"a".repeat(64)}`,
+    lease_expires_at: "2026-09-09T12:00:00.000Z",
+    lease_duration_seconds: 2700,
     document_id: "doc-1",
     batch_id: null,
     attempt_count: 0,

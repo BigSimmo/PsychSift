@@ -1,0 +1,581 @@
+{
+  "schemaVersion": 1,
+  "objectiveId": "rag-source-ingestion-continuation-v1",
+  "preparedAtUtc": "2026-10-14T15:55:50.860600+00:00",
+  "purpose": "Public sanitized historical evidence pointers. Original files remain private; no raw artifact content is included. SHA256 identifies current bytes, not current-product proof.",
+  "artifactRoot": "20260907-continuation",
+  "freshness": "Evidence was executed at its recorded time; this publication reuses records and performs no new tests or provider calls.",
+  "counting": "Overlapping suites and successive snapshots must not be summed as independent tests.",
+  "entries": [
+    {
+      "artifact": "blocker-resolution-final-boundary.json",
+      "sha256": "63c025f2b662a25211f778dc661893c66eb90a2596276a5c4ef98aac99537ce1",
+      "bytes": 12617,
+      "status": "U02/U03/U07 prerequisite and bounded blocker repair locally proved; stable uncommitted stopping boundary; U08 handover ready",
+      "at": "2026-10-02T11:52:15.304270+00:00"
+    },
+    {
+      "artifact": "CURRENT-CHECKPOINT.md",
+      "sha256": "e6a7d7cca205ef83ca5acb779d4abc4196539e6f8f1dd8a2d2b1306a8bc47be6",
+      "bytes": 30710
+    },
+    {
+      "artifact": "file-restoration-20261009-v2/ordinary18-finalizer-copy-fix-v1/answer23-unsafe-negative-correction-v1/recorded-response-receipt.json",
+      "sha256": "d6d863111d391fb3a8b6c3ed1201c42b217a690c597d8767ecc6d08c4a2f6d2e",
+      "bytes": 96866,
+      "status": "PASS_RECORDED_QUALIFIER_COPY_AND_UNSAFE_OUTPUT_ABSENCE_NOT_HOSTED_ACCEPTANCE",
+      "at": "2026-10-14T14:39:07.919Z"
+    },
+    {
+      "artifact": "first-release-scope-and-deferrals-20260921.md",
+      "sha256": "8650047e6b5eb450794172a751bf5d8411d1f6e8885c49b6e9fcbcd6cfff6744",
+      "bytes": 11627
+    },
+    {
+      "artifact": "hosted-rollout-20261013/actual-hosted-pdf-ocr-independent-review-v3.json",
+      "sha256": "6bb0d686902ec82bb8f16d11f9d974bc324d1539926c1b93618582d77a4a586f",
+      "bytes": 28833,
+      "status": "ACTUAL_V3_SAME_INPUT_OCR_FAIL"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/actual-hosted-pdf-ocr-report-v3.json",
+      "sha256": "7766d0be1c1d82af563339f5e455d64d0d37eb6e674d544115bb3f3a1083e9db",
+      "bytes": 29809,
+      "status": "ACTUAL_SELECTED_NATIVE_AND_RASTER_OCR_OBSERVATIONS_REQUIRES_INDEPENDENT_REVIEW"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/actual-hosted-txt-retention-receipt.json",
+      "sha256": "613ea16d6c97bb8756db6b81ffe8194c2a3ce9b09f3848b70110b7ba29b132ef",
+      "bytes": 2837,
+      "status": "QUALIFIED_HOSTED_TXT_RETENTION_WITH_POST_COMPLETION_QUEUE_INCONSISTENCY",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/answer23-final-safety-adoption-20261014/root-adoption-receipt.json",
+      "sha256": "d3008d4535d66b228ecba704ee8cbd5a24f61a8f4ae2716971bfee222d98d1c2",
+      "bytes": 2105,
+      "status": "MINIMUM_ONE_RENDERER_SAFETY_DELTA_ADOPTED",
+      "at": "2026-10-14T14:47:08.647774+00:00"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/controlled-txt-already-completed-20261014.json",
+      "sha256": "001d7923384750e7b34682d2fbc5c162cfd6e8bee2534c80132d86916cb045cf",
+      "bytes": 1658,
+      "status": "AGREED_TXT_ALREADY_COMPLETED_NO_DUPLICATE_START",
+      "lastVerifiedUtc": "2026-10-14T15:28:20.983338+00:00"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/final-minimum-hosted-ready-20261014.json",
+      "sha256": "1768629dd1a7dd9cd8bc512e193f668202c06d2f0e15a5c1027b6c3ff5f76a50",
+      "bytes": 2407,
+      "status": "MINIMUM_CODE_CORRECTION_DEPLOYED_APP_READY",
+      "lastVerifiedUtc": "2026-10-14T15:15:06.970365+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/hosted-answer21-20261014/actual-refusal-receipt.json",
+      "sha256": "b4d747803736128308e60b25a02512ed71928c9ace8d260879a4216268687e50",
+      "bytes": 2234,
+      "status": "ACTUAL_HOSTED_CONTROLLED_REFUSAL_NO_DELIVERED_ANSWER"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/hosted-answer22-20261014/actual-refusal-receipt.json",
+      "sha256": "8e96ddefe630160e3fc1145ce28d096422b4ed62b8417158e27da7a4f484b93f",
+      "bytes": 1675,
+      "status": "ACTUAL_HOSTED_SEED_SECTION_REFUSAL_NO_ANSWER_MODEL_DISPATCH"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/hosted-answer23-20261014/actual-delivery-receipt.json",
+      "sha256": "98b660cc8cd3ed5a2f16acc7828089e7b7e6c45c8a61bb7dc6330b3a14a995d5",
+      "bytes": 3454,
+      "status": "ACTUAL_HOSTED_RESPONSE_CAPTURED_FOUR_PART_DELIVERY_FAILED"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/hosted-answer23-20261014/deployment-removal-incident.json",
+      "sha256": "a212f8c3e3ff629ea4537a09c69d0f5111f2f93043151e9b4df051eff8e4f47c",
+      "bytes": 1510,
+      "status": "RESTORED_PREVIOUSLY_ACCEPTED_APP"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/hosted-rollout-current-checkpoint.json",
+      "sha256": "78aad8b7e542bc949b9c7478b31c25280a357a9163f64aa1fbe2df3aa12c38f1",
+      "bytes": 73822,
+      "status": "MINIMUM_CODE_CORRECTION_DEPLOYED_APP_READY",
+      "at": "2026-10-14T15:15:06.970365+00:00",
+      "lastVerifiedUtc": "2026-10-14T15:41:24.747445+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/native-hosted-app-success-receipt.json",
+      "sha256": "42e031ea3b9c90f78427b2c7bfda9d5cfd636d50eeef35e4de94b01abe8fc8e3",
+      "bytes": 851,
+      "status": "HOSTED_APP_SUCCESS_HEALTH_ACCEPTANCE",
+      "at": "2026-10-13T20:42:43.504Z"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/native-provider-evidence-correction-20261014/independent-native-crop-closeout.json",
+      "sha256": "96dbfa34373b2faa1bde29012d7a7bbd45f73e90d1b576083ff8fa98963ecd34",
+      "bytes": 14192,
+      "status": "PASS_ACTUAL_PRIVATE_NATIVE_CROP_DESCRIPTOR_PROVENANCE_CAPTION_CLOSEOUT",
+      "lastVerified": "2026-10-14T10:43:37.389482+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/ocr-original-detail-450dpi-20261014/independent-ocr-readback.json",
+      "sha256": "cd8a83eb667bab0c0452305bbc51fc17e9ff024eddfaa6e626b411f4e9a24000",
+      "bytes": 62031,
+      "status": "FAIL_RAW_OCR_RATIO_HEADER_WITH_56_OF_56_VALUES_CORRECT",
+      "lastVerified": "2026-10-14T10:50:10.899423+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/ocr-original-detail-450dpi-psm6-20261014/independent-ocr-readback.json",
+      "sha256": "85541340898a1126d5ab8aa9d0ecb6e5d80c0bbb5808b3dc7f5b1d3b14b784cf",
+      "bytes": 52941,
+      "status": "FAIL_RAW_OCR_RATIO_HEADER_AND_PARENT_HEADING_WITH_56_OF_56_VALUES_CORRECT",
+      "lastVerified": "2026-10-14T10:55:41.773792+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "hosted-rollout-20261013/release-preparation/restricted-owner-adoption-20261014.json",
+      "sha256": "4da0f2ad8c5b416d914123bc1fd5cf76a6630c4d7a2e3ccedf165e8fedb46592",
+      "bytes": 2225,
+      "status": "FOUR_RESTRICTED_OWNER_OPERATING_DECISIONS_ADOPTED"
+    },
+    {
+      "artifact": "owner-scope-alignment-local-boundary.json",
+      "sha256": "f5303795716c3a7eedee3e54610ed3d128c784bc09fdcaaa3dcc0cd4af337b51",
+      "bytes": 6452,
+      "status": "QUALIFIED_LOCAL_OWNER_SCOPE_ALIGNMENT_ACCEPTANCE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U04-live-checkpoint.json",
+      "sha256": "6ecd8bfe9ad3c5e9cf761ac69897a05175a5bb8c7e57844e2ce14c8ce96992e3",
+      "bytes": 969960
+    },
+    {
+      "artifact": "U08-defender-synthetic-local-boundary.json",
+      "sha256": "b16f2c0115fefa7a7922861178700307c87def2e7d6ed23f92738b57f66b9c57",
+      "bytes": 2590,
+      "status": "QUALIFIED_EXACT_SYNTHETIC_ORIGINAL_MALWARE_OBSERVATION",
+      "at": "2026-10-04T21:27:12.815233+00:00"
+    },
+    {
+      "artifact": "U08-local-boundary.json",
+      "sha256": "0760db8c52e4fb2315f2e9eb9a91522a47a7596790c5d1e3087c2b2ce93cf171",
+      "bytes": 8634,
+      "status": "LOCAL_U08_DISPATCH_WIRING_ACCEPTED; staged programme still in progress",
+      "at": "2026-10-02T12:50:41.134350+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U08-malware-adapter-local-boundary.json",
+      "sha256": "c95d7c5c6b521d5bc4919506b48f7b1cc8b85e44559a587e4260d98204260da6",
+      "bytes": 3187,
+      "status": "QUALIFIED_LOCAL_WINDOWS_EXACT_BYTE_MALWARE_ADAPTER_ACCEPTANCE",
+      "at": "2026-10-04T21:49:53.140906+00:00"
+    },
+    {
+      "artifact": "U08-provider-authority-local-boundary.json",
+      "sha256": "92e29f1d3c44086675fc5f16fd7b632295900db28002f23638278500a9b372c9",
+      "bytes": 6706,
+      "status": "SOURCE_ONLY_ACCEPTANCE_SQL_RUNTIME_DEFERRED",
+      "lastVerified": "2026-10-04T20:06:32.487697+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U08-provider-authority-runtime-local-boundary.json",
+      "sha256": "6cf6b84b0623dfccebd96c47bfa60684bb295c69fe64155f3be5982e05107b0d",
+      "bytes": 6341,
+      "status": "QUALIFIED_LOCAL_NODE_AUTHORITY_FACTS_RUNTIME_ACCEPTANCE",
+      "lastVerified": "2026-10-04T21:11:42.219795+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U08-worker-loader-local-boundary.json",
+      "sha256": "1a6c4439f5997130f2f4abc434a220c27bb717a6ceb8d6dd187b38da36f775a7",
+      "bytes": 3938,
+      "status": "QUALIFIED_LOCAL_THIN_WORKER_LOADER_INTEGRATION_ACCEPTANCE",
+      "at": "2026-10-04T19:12:43.264049+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-admin-inspection-components-local-boundary.json",
+      "sha256": "2fa1fd01405f711d09f44e130b294c86f40a978d25366b54efa623482fdcbd18",
+      "bytes": 4707,
+      "status": "QUALIFIED_LOCAL_ADMIN_INSPECTION_COMPONENT_ACCEPTANCE",
+      "lastVerified": "2026-10-06T04:17:19.357Z",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-captioned-raster-ocr-local-boundary.json",
+      "sha256": "4614a4c41cd6a6f481a41246dd99b2d31b0766df445491b0b4b8774217a670ec",
+      "bytes": 5090,
+      "status": "QUALIFIED_LOCAL_CAPTIONED_RASTER_OCR_AND_RELEASE_FACT_PREPARATION",
+      "lastVerified": "2026-10-06T03:16:52.314304Z",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-local-boundary.json",
+      "sha256": "464b799b13e0683a3b911215253eaa2a0d33598d5380309a79c7b0583b0f2110",
+      "bytes": 6612,
+      "status": "Bounded DOCX source-only packet and native PDF diagnostic parser compatibility accepted locally; full U09 and staged first release remain In progress",
+      "at": "2026-10-02T14:04:08.192218+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-native-pdf-local-boundary.json",
+      "sha256": "d0a089c1784d29add4a89b448bc0f240aac70b754af5fef210b0bdd8ad76d946",
+      "bytes": 6991,
+      "status": "Native PDF source-only page identity and terminal provenance refusal locally accepted; full U09 and first release In progress",
+      "at": "2026-10-02T14:40:44.820928+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-txt-local-boundary.json",
+      "sha256": "b0c48d9ea7de13718150dc489395cc82000b5ac623e3f3b096ac3664e15fe300",
+      "bytes": 4748,
+      "status": "TXT whole-buffer byte identity, decoding uncertainty and terminal provenance refusal locally accepted; full U09 and first release In progress",
+      "at": "2026-10-02T15:21:37.605184+00:00",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-xlsx-candidate-local-boundary.json",
+      "sha256": "80102a9e63ba54130cada72d08917492e565bff7dc0bffd365d85d2e39f58794",
+      "bytes": 20730,
+      "status": "Stable reviewed local candidate; XLSX acceptance blocked by pending resource amendment",
+      "at": "2026-10-02T17:24:19.6173418Z",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U09-xlsx-local-boundary.json",
+      "sha256": "5c9ff007c48351f8ad6b21d11298e091abbd27f860a48bb4b8409239cfd3557a",
+      "bytes": 22558,
+      "status": "Qualified local acceptance of approved XLSX resource/source-identity/persistence subset; full U09 and first release In progress",
+      "at": "2026-10-02T18:31:02.2586984Z",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-admin-reference-atomic-answer-local-boundary.json",
+      "sha256": "fae69cc2a2cb6e6e9c9e6783e42ac367d08ff5339c9d1468305a4ee7cac9f4e7",
+      "bytes": 6314,
+      "status": "QUALIFIED_LOCAL_ADMIN_REFERENCE_SQL_AND_AUTHORED_ANSWER_ACCEPTANCE",
+      "objectiveId": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-admin-reference-public-local-boundary.json",
+      "sha256": "5125dc7fee8ec284115561332f4748a6532da7aefedc8ca1ce20c309565827dd",
+      "bytes": 8037,
+      "status": "QUALIFIED_LOCAL_ADMIN_REFERENCE_QUEUE_TERMINAL_PUBLIC_READER_AND_RAG_PACKER_ACCEPTANCE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-admin-reference-route-local-boundary.json",
+      "sha256": "8240bdcbc0f2d958d4bdd21a28692ad95f914f171f6432024b7d161d81498c22",
+      "bytes": 6205,
+      "status": "QUALIFIED_LOCAL_ADMIN_TXT_QUEUE_TERMINAL_AND_RAG_DATA_LINKAGE_ACCEPTANCE_ANSWER_INCOMPLETE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-admin-text-terminal-local-boundary.json",
+      "sha256": "c83c2a92234b66d0f9941121f6f15ef915fba406f386c545e5c73caa2dcaa40a",
+      "bytes": 6906,
+      "status": "QUALIFIED_LOCAL_ACTUAL_ADMIN_TXT_TERMINAL_AND_RECOVERY_ACCEPTANCE_RAG_UNACCEPTED",
+      "at": "2026-10-06T09:27:13.411445+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-invented-provider-pilot-local-boundary.json",
+      "sha256": "4b642a744a2868469251d179b03b05f9c998f6170d2a5bdc58b9cefa23bb2287",
+      "bytes": 6474,
+      "status": "QUALIFIED_PRIVATE_INVENTED_PROVIDER_PILOT_ACCEPTANCE",
+      "at": "2026-10-06T01:40:54.520Z",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-declared-source-local-boundary.json",
+      "sha256": "f07d7522f8e7a33b298c0e7eab5b132503f4c4c9e088a24e36f14d67bed119c5",
+      "bytes": 48548,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_INDEPENDENT_DECLARED_SOURCE_ASSOCIATIONS_PRIVATE_REPLAY_RECLAIM",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-fresh-native-local-boundary.json",
+      "sha256": "738bb8b7b4c7cfd3890711d4ed56fa146684b2647d4dec34288c58de62357555",
+      "bytes": 45767,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_FIXED_NATIVE_TABLE_PROJECTION_PRIVATE_STORAGE_REPLAY_RECLAIM",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-local-memory-caller-local-boundary.json",
+      "sha256": "304e9e292a08b14f8905930574fb9eba671ad55ce2794b4a8d8ab3fc080493fb",
+      "bytes": 5068,
+      "status": "QUALIFIED_LOCAL_CALLER_WIRING_ACCEPTANCE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-local-memory-local-boundary.json",
+      "sha256": "f29966e10b960b45142462727860df627351a8f8455f70270407f6e466148e20",
+      "bytes": 12116,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_PROVIDER_FREE_MEMORY_AND_PENDING_SCOPED_RELEASE_ROUTE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-native-parent-local-boundary.json",
+      "sha256": "eec4e710de7f1c712e939bfdf868b34fa44dcd7fd3ff5cd20da8c11ffa070d95",
+      "bytes": 4218,
+      "status": "QUALIFIED_LOCAL_NATIVE_PARENT_AND_CALLER_ACCEPTANCE",
+      "at": "2026-10-05T20:22:13.146Z",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-private-caller-local-boundary.json",
+      "sha256": "e23803662ad2a207d031633c795e4f6e30abfeda1b14bb8a0f3b24c8be94c38f",
+      "bytes": 7546,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_MANAGED_PRIVATE_PREPARATION_STORAGE_REPLAY_RECLAIM",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-vector-final-caller-local-boundary.json",
+      "sha256": "cee685fdc3f6f378f4744969080a7c64f6e1e5b05e9c604eaa21508b7c2ba59e",
+      "bytes": 3754,
+      "status": "QUALIFIED_LOCAL_MANAGED_VECTOR_CALLER_ACCEPTANCE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-managed-vector-final-local-boundary.json",
+      "sha256": "a186f4caf829cabaa8f96d369b8b3e3ea53115ceb1539d07ba7eaf54285fca89",
+      "bytes": 7521,
+      "status": "QUALIFIED_LOCAL_MANAGED_VECTOR_FINAL_ACCEPTANCE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-ordinary-manifest-assembly-local-boundary.json",
+      "sha256": "8b3cea5dd174f122e7a54876d96824cf23b583af2d8607151f43e994b8b0d88e",
+      "bytes": 6198,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_PURE_PREPARED_OUTPUT_ASSEMBLY",
+      "lastVerified": "2026-10-05T08:18:25.236104+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-ordinary-table-binding-local-boundary.json",
+      "sha256": "390fa515fc70bc8d110135226012a78a3d8ade107d7176756027dae37f8c82ac",
+      "bytes": 7287,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_DECLARED_TABLE_ROW_QUALIFICATION_ASSOCIATION",
+      "lastVerified": "2026-10-05T09:02:28.373348+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P1-local-boundary.json",
+      "sha256": "8c5760655f20bd97bbf43ab0ee0d7070ec19b40cd36b92a16477e49098872417",
+      "bytes": 11197,
+      "status": "P1 QUALIFIED LOCAL RETENTION/COMPATIBILITY BOUNDARY",
+      "at": "2026-10-03T03:00:26.524383+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2a-local-boundary.json",
+      "sha256": "713fcfc074e4278d6005ef1a7b6afc19e60c223bfae589e7952d47693e10d72b",
+      "bytes": 11823,
+      "status": "P2a QUALIFIED LOCAL EXTRACTED-IMAGE RETENTION BOUNDARY",
+      "at": "2026-10-03T04:11:08.179664+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2b-local-boundary.json",
+      "sha256": "0d072d5e78bcc75f83650cfb9b80bfeb98e945942528aacc835ac8e7a86b23a3",
+      "bytes": 6487,
+      "status": "P2b QUALIFIED LOCAL PURE TXT REPRESENTATION MAP ACCEPTED",
+      "at": "2026-10-03T05:55:50.876008+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2c-local-boundary.json",
+      "sha256": "be4975a4d2214c27411f05b2ff8d9a9367d3c9b5f1841d1af2f7202b3ba39e7b",
+      "bytes": 11705,
+      "status": "P2c QUALIFIED LOCAL INITIAL CLAIM PREREQUISITE ACCEPTED",
+      "at": "2026-10-03T12:37:40.859350+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2d-local-boundary.json",
+      "sha256": "6ab2b2dd04ff517b0a8229c1f77d82dcb2a3b392bc98c83a369d268108787237",
+      "bytes": 11093,
+      "status": "P2d QUALIFIED LOCAL PRIVATE EXTRACTION DIAGNOSTIC ACCEPTED",
+      "at": "2026-10-03T13:59:01.538466+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2e-local-boundary.json",
+      "sha256": "7731796bf82cd3eb45a054b7a80f193efb2501f7cf9d6d5c40fe45b284e0740b",
+      "bytes": 6304,
+      "status": "qualified_local_original_witness_and_native_transport_boundary",
+      "at": "2026-10-03T15:22:59.187622+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2f-local-boundary.json",
+      "sha256": "d3d6267d070e188bb3475d0f09d2b8db34ec87b3de0377f44135f91315ba6930",
+      "bytes": 6678,
+      "status": "qualified_local_failed_attempt_audit_boundary",
+      "at": "2026-10-03T16:22:43.307003+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2g-local-boundary.json",
+      "sha256": "5f1670ef527cd470f5b80f8f2a664addf2743e568942fdda8647ae56e6a2d174",
+      "bytes": 6892,
+      "status": "qualified_local_private_witness_readback_boundary",
+      "at": "2026-10-03T16:58:43.703003+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2h-local-boundary.json",
+      "sha256": "cf7f9d233e38ab41ca22af2f1754fa2c6f5a05283367425effb90bdb770a350c",
+      "bytes": 12042,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_P2H_TXT_PREPARED_FINAL_CHUNKS",
+      "at": "2026-10-03T19:03:00.265975+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2i-native-link-local-boundary.json",
+      "sha256": "e33805f3fe297c8c7d8c239fd45652bd66cb90111d95ea2060c463d0559bdfc8",
+      "bytes": 4389,
+      "status": "QUALIFIED_LOCAL_HOST_NATIVE_LINK_AND_TABLE_FACT_ACCEPTANCE",
+      "at": "2026-10-04T01:14:05.134246+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2j-local-boundary.json",
+      "sha256": "ea9f1b8cd7e33bf94d700fbac4cc3f5cddd70234f1c5e02157a792d8d60f6e69",
+      "bytes": 3366,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-03T23:42:44.515855+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2k-local-boundary.json",
+      "sha256": "dc7c4f5c2fb39203f308345d0fc0eceb0f271327f75b0d22d0f8aa1f8cc68bdd",
+      "bytes": 9347,
+      "status": "QUALIFIED_NEUTRAL_VISUAL_LOCAL_ACCEPTANCE_PRIVATE_SQL_DEFERRED",
+      "at": "2026-10-04T02:18:26.253339+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2k-scoped-local-boundary.json",
+      "sha256": "976d33ebeda6851c27c9dd4464962f1f381d45d738d3d84015a5177ef328237a",
+      "bytes": 11260,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-04T04:27:32.122335+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2l-local-boundary.json",
+      "sha256": "2d74ff58279be073fbedc1f8fc4755ca3a564924ebf381d1e09e99975636ca82",
+      "bytes": 9901,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-04T06:44:24.697126+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2m-local-boundary.json",
+      "sha256": "ce64bfa1b84f86e2850d10efc1ab664226ba413adf305ce78cfa398be4d77e42",
+      "bytes": 5815,
+      "status": "QUALIFIED_LOCAL_RETAINED_SYNTHETIC_ASSOCIATION_ACCEPTANCE",
+      "at": "2026-10-04T11:26:49.649971+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2n-local-boundary.json",
+      "sha256": "981f5d278576e96ab3fbace0560f054c05a7dcd0c3e9b2d9057a2513d5d914be",
+      "bytes": 6173,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-04T12:41:18.816841+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2o-local-boundary.json",
+      "sha256": "96282ff3a524491ff580c8ef680a5c2587f4bfdcd1b208387bb7bdb2e1da876b",
+      "bytes": 9778,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-04T13:48:28.855138+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-P2p-local-boundary.json",
+      "sha256": "eb445d5bfd628c0483f5666faa7e34b969a538371787e60d75584c85da3a3b0b",
+      "bytes": 5650,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-04T14:57:40.925104+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-private-terminal-local-boundary.json",
+      "sha256": "f407638e60315930e7cc413da7bf4af1302795ee7d4586c8d486a3c005130733",
+      "bytes": 5840,
+      "status": "QUALIFIED_LOCAL_PRIVATE_FIXTURE_TERMINAL_ACCEPTANCE",
+      "lastVerified": "2026-10-06T02:45:17.740722Z",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-public-metadata-local-boundary.json",
+      "sha256": "2f548cd1a1c8516e63d3256451918dea8faa42ac3933e988c1ecb9836c29d59e",
+      "bytes": 4784,
+      "status": "QUALIFIED_OWNER_ONLY_LOCAL_METADATA_RUNTIME_AND_PREPARED_DECODER_COMPATIBILITY",
+      "at": "2026-10-04T22:02:36.775904+00:00"
+    },
+    {
+      "artifact": "U10-representative-supplier-local-boundary.json",
+      "sha256": "343c9c1a06d7fbdea0559867a5a77fbc656d4f7dbb78005ae604da7fc1f5c47a",
+      "bytes": 8827,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_PRIVATE_PREPARED_SUPPLIER_STORAGE_AND_RECLAIM",
+      "lastVerified": "2026-10-05T11:21:16.740859+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U10-U12-terminal-serving-handover.md",
+      "sha256": "798f7ceed3bfe33025f7a3807d98bf28a883e00c62fbf115455c29ccc51ac02e",
+      "bytes": 39710
+    },
+    {
+      "artifact": "U10-vector-private-chunk-local-boundary.json",
+      "sha256": "c5a9c37fdba3c708416049db816c48cf9c6a01e63eace1493bad0a49ab663008",
+      "bytes": 5727,
+      "status": "QUALIFIED_LOCAL_VECTOR_PREPARATION_AND_PRIVATE_CHUNK_ACCEPTANCE",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U11-reader-adoption-local-boundary.json",
+      "sha256": "605e0b87cc496e3684328b32bf3661fc27ce9b801f7cbde84f3d4a7278c90c6e",
+      "bytes": 10852,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_READER_CALLER_UI",
+      "lastVerified": "2026-10-05T03:55:48.815155+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U11-recovery-identity-local-boundary.json",
+      "sha256": "2ec0aa4fb179a684261b862ac39d2cf20f85e88cb3d3913eee03072096d21118",
+      "bytes": 4209,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE",
+      "at": "2026-10-04T15:42:15.394602+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U11-technical-tasks-local-boundary.json",
+      "sha256": "b2c71474f6e7dda51f2edb86c2c812044c212834cdbe6b8af2b8484571a180df",
+      "bytes": 9302,
+      "status": "QUALIFIED_LOCAL_ACCEPTANCE_OWNER_ONLY_SQL_PREREQUISITE",
+      "at": "2026-10-05T02:42:30.036267+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    },
+    {
+      "artifact": "U13-full-shadow-plan-local-boundary.json",
+      "sha256": "a66701ca845fbdf983cdec67f9de6bb32bd3d9846cd5dea812c9537ba0fc75e5",
+      "bytes": 7896,
+      "status": "U13 QUALIFIED LOCAL PURE FULL-SHADOW DRY-RUN PLANNER ACCEPTED",
+      "at": "2026-10-03T13:59:01.538466+00:00",
+      "objective": "rag-source-ingestion-continuation-v1"
+    }
+  ]
+}

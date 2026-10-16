@@ -132,9 +132,10 @@ describe("privacy page interaction", () => {
   });
 
   /**
-   * Nothing in the application checks what an uploaded document contains, and
-   * `docs/privacy-impact-assessment.md` §2 classifies uploaded documents as
-   * possibly carrying PHI. The corpus claim must read as intent, not as fact.
+   * The application's content checks are bounded (the ingestion pilot's malware and
+   * identifier-shape checks), and `docs/privacy-impact-assessment.md` §2 classifies
+   * uploaded documents as possibly carrying PHI. The corpus claim must read as intent,
+   * not as fact.
    */
   it("states the guideline-only corpus as intent rather than an enforced fact", () => {
     render(<PrivacyQuietSignalPage />);
@@ -142,7 +143,17 @@ describe("privacy page interaction", () => {
     const { panel } = panelFor("Who can access your data");
     expect(panel.textContent).toContain("intended to hold guideline and reference material, not patient data");
     expect(panel.textContent).not.toContain("the corpus is guideline and reference material rather than patient data");
-    expect(panel.textContent).toContain("Nothing in the application inspects what a document actually contains");
+    // The ingestion pilot now runs bounded malware and identifier-shaped-content checks, so the
+    // page must no longer claim nothing inspects content, and must still disclaim those checks as
+    // a guarantee: the corpus being free of patient data stays an operator responsibility.
+    expect(panel.textContent).not.toContain("Nothing in the application inspects what a document actually contains");
+    expect(panel.textContent).toContain("bounded malware and identifier-shaped-content checks");
+    expect(panel.textContent).toContain(
+      "These limited checks do not guarantee de-identification, completeness, suitability or detection of all hidden content",
+    );
+    expect(panel.textContent).toContain(
+      "Operators remain responsible for checking the material and their authority to process and publish it",
+    );
   });
 
   /**

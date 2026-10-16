@@ -174,6 +174,7 @@
     "tests/profile-retrieval-rpcs.test.ts",
     "tests/property-numeric-token-preservation.test.ts",
     "tests/provenance-flow.test.ts",
+    "tests/published-original-request-evidence.test.ts",
     "tests/query-classification.test.ts",
     "tests/rag-*",
     "tests/ranking-*",

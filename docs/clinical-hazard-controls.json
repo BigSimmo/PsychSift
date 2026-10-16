@@ -192,6 +192,13 @@
   },
   "driftExceptions": [
     {
+      "path": "src/lib/answer-verification.ts",
+      "reason": "PR #3546 preserves the independently code-reviewed numeric age-unit correction (candidate SHA256 559b62cba08fedf9330e2bd907442de08cee204dbc6f395b99e2d849627eb5c2). Recorded-response delivery/copy and unsafe-output refusals passed; integrated hosted acceptance and owner hazard re-review remain pending. Preserve the prior seal and safety checks rather than imply renewed clinical approval.",
+      "recordedBy": "Codex ingestion engineering controller, PR #3546. Engineering drift record only; not clinical-owner approval or release signoff.",
+      "recordedOn": "2026-10-14",
+      "expiresOn": "2026-10-21"
+    },
+    {
       "path": "src/lib/clinical-safety.ts",
       "reason": "Drift predates the blocking gate. Safety-behaviour changes since the 2026-08-23 review (e.g. 41b5a025a escalate/monitoring matching, 64db243a9 stop-instruction labelling, 1aa717e88 no all-clear over a failed medication check) need clinical re-review, then a re-seal.",
       "recordedBy": "Engineering, Claude session 2026-09-25. Not a clinical review; the owner must re-review.",

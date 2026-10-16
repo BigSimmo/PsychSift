@@ -167,6 +167,38 @@ class QueryBuilder implements PromiseLike<QueryResult> {
   }
 }
 
+// A valid administrator-template authority: upload metadata tests must fail on the field they
+// vary, not on a missing authority.
+const uploadAuthorityJson = JSON.stringify({
+  version: 1,
+  sourceRole: "clinical_guideline",
+  authorityBasis: "administrator_template",
+  licencePolicy: "review_required",
+  rightsEvidenceRef: "synthetic-rights-evidence",
+  publisher: "Synthetic Publisher",
+  jurisdiction: "Australia",
+  publicationDate: null,
+  effectiveDate: null,
+  reviewDate: null,
+  expiryDate: null,
+  currentness: "current",
+  supersedesDocumentId: null,
+  purpose: "clinical_retrieval",
+  supportedFeatures: ["text"],
+  providerProcessing: "permitted",
+});
+
+/** Recent-MFA administrator claims, as the cookie-session user client would verify them. */
+function administratorClaims() {
+  return {
+    sub: userId,
+    role: "authenticated",
+    aal: "aal2",
+    app_metadata: { site_role: "administrator" },
+    amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) - 5 }],
+  };
+}
+
 function createSupabaseMock(resolve: QueryResolver = () => ok([])) {
   const calls: QueryCall[] = [];
   const upload = vi.fn(async () => ({ data: { path: "uploaded" }, error: null }));
@@ -191,7 +223,25 @@ function createSupabaseMock(resolve: QueryResolver = () => ok([])) {
       calls.push(call);
       return new QueryBuilder(call, resolve);
     }),
-    rpc: vi.fn(async (name: string) => {
+    rpc: vi.fn(async (name: string, args?: Record<string, unknown>) => {
+      if (name === "admit_administrator_document") {
+        // The atomic admission RPC replaced create_uploaded_document_with_ingestion_job. A
+        // replay-only probe finds nothing; a real admission is the document insert, so the
+        // test resolver still decides whether that insert fails.
+        if (args?.p_replay_only === true) return ok({ outcome: "not_found" });
+        const insertCall: QueryCall = {
+          table: "documents",
+          operation: "insert",
+          filters: [],
+          inFilters: [],
+          orFilters: [],
+          maybeSingle: false,
+          single: true,
+          insertPayload: args?.p_document,
+        };
+        calls.push(insertCall);
+        return resolve(insertCall);
+      }
       if (name === "consume_api_subject_rate_limit" || name === "consume_api_rate_limit") {
         return {
           data: [
@@ -237,6 +287,13 @@ function mockRuntime(client: ReturnType<typeof createSupabaseMock>) {
     requireServerEnv: () => undefined,
   }));
   vi.doMock("@/lib/supabase/admin", () => ({ createAdminClient }));
+  // The upload route's user-context client (MFA claims + admission RPC) is the cookie session.
+  vi.doMock("@/lib/supabase/server", () => ({
+    createSupabaseServerClient: vi.fn(async () => ({
+      auth: { getClaims: vi.fn(async () => ({ data: { claims: administratorClaims() }, error: null })) },
+      rpc: client.rpc,
+    })),
+  }));
   vi.doMock("@/lib/supabase/auth", () => ({
     AuthenticationError: class AuthenticationError extends Error {},
     requireAuthenticatedUser,
@@ -843,11 +900,13 @@ describe("API validation contracts", () => {
     const uploadRoute = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
     const uploadResponse = await uploadRoute.POST(
       authenticatedRequest("/api/upload", { method: "POST", body: formData }),
     );
     expect(uploadResponse.status).toBe(500);
     expect(await payload(uploadResponse)).toMatchObject({ error: "Request failed." });
+    expect(uploadClient.calls.some((call) => call.table === "documents" && call.operation === "insert")).toBe(true);
 
     const retryClient = createSupabaseMock((call) => {
       if (call.table === "ingestion_jobs" && call.operation === "select" && call.maybeSingle) {
@@ -908,6 +967,7 @@ describe("API validation contracts", () => {
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
     formData.set("title", "x".repeat(181));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: formData }));
     const body = await payload(response);
@@ -925,6 +985,7 @@ describe("API validation contracts", () => {
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
     formData.set("title", new File(["Guideline"], "title.txt", { type: "text/plain" }));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(authenticatedRequest("/api/upload", { method: "POST", body: formData }));
     const body = await payload(response);
