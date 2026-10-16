@@ -22,6 +22,7 @@ import {
   assertTrustedDocumentStoragePath,
   createTrustedDocumentAdmission,
   dispatchTrustedDocumentAdmission,
+  releaseSupersededDocumentObject,
   TrustedDocumentAdmissionDispatchError,
   TrustedDocumentStorageUploadError,
   trustedAdmissionDocumentId,
@@ -170,6 +171,37 @@ async function duplicateUploadResponse(args: {
     duplicateReason: "exact_content_hash",
     message: `Exact copy already exists as "${duplicate.title}"; no duplicate job was queued.`,
   });
+}
+
+async function releaseSupersededUpload(
+  supabase: ReturnType<typeof createAdminClient>,
+  args: { ownerId: string; documentId: string; supersededPath: string | null; committedPath: string },
+) {
+  if (!args.supersededPath) return;
+  const supersededPath = args.supersededPath;
+  // The admission is already durable, so a failure here is logged and never fails the upload.
+  const outcome = await releaseSupersededDocumentObject({
+    remove: (paths) => supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove(paths),
+    queueCleanup: (path) =>
+      supabase.from("storage_cleanup_jobs").insert({
+        document_bucket: env.SUPABASE_DOCUMENT_BUCKET,
+        document_paths: [path],
+        owner_id: args.ownerId,
+        status: "pending",
+        image_bucket: env.SUPABASE_IMAGE_BUCKET,
+        image_paths: [],
+      }),
+    ownerId: args.ownerId,
+    documentId: args.documentId,
+    supersededPath,
+    committedPath: args.committedPath,
+  }).catch(() => "unrecorded" as const);
+  if (outcome === "unrecorded") {
+    logger.error("Superseded upload object cleanup failed; object requires manual reconciliation", {
+      storagePath: supersededPath,
+      ownerId: args.ownerId,
+    });
+  }
 }
 
 export async function POST(request: Request) {
@@ -411,6 +443,7 @@ export async function POST(request: Request) {
       return publicErrorResponse(`Upload is paused. ${health.message}`, 503, { code: "upload_unavailable" });
 
     assertUploadNotAborted(request);
+    const intendedStoragePath = admissionStoragePath;
     let storageUpload;
     try {
       storageUpload = await uploadTrustedDocumentBytes({
@@ -432,6 +465,9 @@ export async function POST(request: Request) {
       throw storageError;
     }
     uploadedPath = storageUpload.storagePath;
+    // A collision left an identical object at the intended path; once this request's admission
+    // commits on the recovery sibling, that object is referenced by nothing.
+    const supersededStoragePath = storageUpload.collisionRecovered ? intendedStoragePath : null;
     if (storageUpload.storagePath !== admissionStoragePath) {
       admissionStoragePath = storageUpload.storagePath;
       documentPayload = { ...documentPayload, storage_path: admissionStoragePath };
@@ -474,6 +510,12 @@ export async function POST(request: Request) {
               resourceType: "document",
               resourceId: documentId,
               metadata: { fileType: file.type, fileSize: file.size },
+            });
+            await releaseSupersededUpload(adminSupabase, {
+              ownerId: uploadOwnerId,
+              documentId,
+              supersededPath: supersededStoragePath,
+              committedPath: admissionStoragePath,
             });
             return NextResponse.json({ document: recovered.document, job: recovered.job }, { status: 201 });
           }
@@ -582,6 +624,12 @@ export async function POST(request: Request) {
       // the user-controlled filename and content hash remain on the scoped document
       // record, not in the durable audit trail.
       metadata: { fileType: file.type, fileSize: file.size },
+    });
+    await releaseSupersededUpload(adminSupabase, {
+      ownerId: uploadOwnerId,
+      documentId,
+      supersededPath: supersededStoragePath,
+      committedPath: admissionStoragePath,
     });
 
     return NextResponse.json({ document, job }, { status: 201 });

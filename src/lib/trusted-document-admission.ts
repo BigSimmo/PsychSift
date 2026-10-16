@@ -345,6 +345,41 @@ export async function uploadTrustedDocumentBytes(
   return Object.freeze({ storagePath: recoveryPath, collisionRecovered: true });
 }
 
+type SupersededObjectOutcome = "skipped" | "removed" | "queued" | "unrecorded";
+
+/**
+ * After this request's own admission commits on a recovery sibling, the collided object at the
+ * intended path is referenced by nothing: the document id is fixed by the correlation id, so no
+ * other admission for it can commit any more. Remove it, or queue it on the cleanup ledger.
+ * Never call this before the admission is durable, or for a path the committed row still uses.
+ */
+export async function releaseSupersededDocumentObject(
+  args: Readonly<{
+    remove(paths: string[]): PromiseLike<{ error: { message: string } | null }>;
+    queueCleanup(path: string): PromiseLike<{ error: { message: string } | null }>;
+    ownerId: string;
+    documentId: string;
+    supersededPath: string;
+    committedPath: string;
+  }>,
+): Promise<SupersededObjectOutcome> {
+  const supersededPath = assertTrustedDocumentStoragePath(args.ownerId, args.documentId, args.supersededPath);
+  const committedPath = assertTrustedDocumentStoragePath(args.ownerId, args.documentId, args.committedPath);
+  if (supersededPath === committedPath) return "skipped";
+  try {
+    const { error } = await args.remove([supersededPath]);
+    if (!error) return "removed";
+  } catch {
+    // Fall through to the durable cleanup ledger.
+  }
+  try {
+    const { error } = await args.queueCleanup(supersededPath);
+    return error ? "unrecorded" : "queued";
+  } catch {
+    return "unrecorded";
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
