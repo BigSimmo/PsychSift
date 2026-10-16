@@ -27,8 +27,8 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { isNamedPerson } from "@/lib/admin/rule-sign-off";
 import { formRecords, type FormRecord } from "@/lib/forms";
@@ -124,6 +124,8 @@ export type FirstPublicationCliOptions = {
   formsReviewPath: string;
 };
 
+const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
 const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 function isValidReviewTimestamp(value: string | null | undefined): boolean {
@@ -196,6 +198,17 @@ function validateSignOffEntry(
       recordId,
       slug,
       reason: `reviewedContentSha256 ${JSON.stringify(review.reviewedContentSha256)} is missing or not a valid 64-character hex SHA-256 digest`,
+    };
+  }
+  // The pin covers the record its own id (service) or code (form) names, so that must be the
+  // record being published, not one the review was only matched to through a slug alias.
+  const reviewIdentity = kind === "service" ? review.id : review.code;
+  if (typeof reviewIdentity !== "string" || reviewIdentity.trim().toLowerCase() !== recordId.trim().toLowerCase()) {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason: `its review names ${JSON.stringify(reviewIdentity ?? null)}, not this record, so its sign-off does not cover it`,
     };
   }
   const pin = pinState(kind, review);
@@ -494,7 +507,7 @@ export async function runFirstPublicationCli(
     serviceReviews: loadDefaultServiceReviews(options.servicesReviewPath),
     formReviews: loadDefaultFormReviews(options.formsReviewPath),
     serviceSignOffContext:
-      options.kind === "form" ? undefined : await loadServiceSignOffContext("service", process.cwd()),
+      options.kind === "form" ? undefined : await loadServiceSignOffContext("service", REPOSITORY_ROOT),
   });
 
   if (options.out) {

@@ -152,6 +152,18 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     ).toThrow(/content changed since sign-off/);
   });
 
+  it("refuses a current sign-off that reaches a different form only through a slug alias", () => {
+    const otherForm = formRecords.find((form) => formCodeForRecord(form) !== "1A")!;
+    const signed = repositoryFormReview("1A");
+    expect(() =>
+      buildFirstPublicationCataloguePlan({
+        kind: "form",
+        forms: [otherForm],
+        formReviews: [{ ...signed, slug: otherForm.slug }],
+      }),
+    ).toThrow(/its review names "1A", not this record/);
+  });
+
   it("refuses a service sign-off when the curated records it pins were not loaded", () => {
     const sampleService = defaultServiceRecords()[0]!;
     const [review] = signedServiceReviews();
