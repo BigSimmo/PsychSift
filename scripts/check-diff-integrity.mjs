@@ -322,7 +322,12 @@ function scanPythonTests(source) {
     if (/^\s*@(?:pytest\.mark\.)?parametrize\s*\(/.test(decorator)) {
       pendingMultiplier *= countPythonParametrizeItems(decorator);
     }
-    if (/^\s*@(?:pytest\.mark\.|unittest\.)?skip\b/.test(decorator)) {
+    if (
+      /^\s*@(?:pytest\.mark\.(?:skip|skipif)|unittest\.(?:skip|skipIf|skipUnless)|skip|skipIf|skipUnless)\b/.test(
+        decorator,
+      ) &&
+      !/\bskip(?:if|If)\s*\(\s*False\b/.test(decorator)
+    ) {
       pendingSkip = true;
     }
   };
@@ -415,8 +420,8 @@ function namesACase(args) {
 }
 
 /**
- * Weight a curried `each`/`for` call by its inline array literal length when non-empty,
- * or 1 otherwise.
+ * Weight a curried `each`/`for` call by its inline array literal length,
+ * or 1 otherwise (for a table identifier).
  *
  * @param {string[]} members
  * @param {ts.NodeArray<ts.Expression>} args
@@ -425,7 +430,7 @@ function namesACase(args) {
 function curriedCaseWeight(members, args) {
   const isParameterized = members.some((member) => member === "each" || member === "for");
   const firstArg = args[0];
-  if (isParameterized && firstArg && ts.isArrayLiteralExpression(firstArg) && firstArg.elements.length > 0) {
+  if (isParameterized && firstArg && ts.isArrayLiteralExpression(firstArg)) {
     return firstArg.elements.length;
   }
   return 1;
@@ -444,7 +449,13 @@ function skippedSuiteCallback(node) {
   }
   if (ts.isCallExpression(node.expression)) {
     const curriedChain = calleeChain(node.expression.expression);
-    if (curriedChain && curriedChain.includes("describe") && curriedChain.includes("skipIf")) {
+    const condArg = node.expression.arguments[0];
+    if (
+      curriedChain &&
+      curriedChain.includes("describe") &&
+      curriedChain.includes("skipIf") &&
+      condArg?.kind !== ts.SyntaxKind.FalseKeyword
+    ) {
       const callback = node.arguments[1];
       return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback : null;
     }
@@ -457,7 +468,7 @@ function skippedSuiteCallback(node) {
  *
  * Counted (TS/JS): `test("…")`, `it("…")`, `test.skip/only/fixme/fails("…")`, and each
  * `test.each(...)` / `it.each(...)` / `test.for(...)` declaration (weighted by element
- * count when passed a non-empty inline array literal, or 1 for a table identifier).
+ * count when passed an inline array literal, or 1 for a table identifier).
  * Counted (Python): `def test_...(` declarations (outside comments/docstrings), weighted
  * by `@pytest.mark.parametrize` inline list length when present.
  *
@@ -500,8 +511,8 @@ export function countTestCases(source, fileName = "spec.ts") {
 }
 
 /**
- * Count skipped or fixme test/suite declarations (`.skip` / `.fixme` in TS/JS,
- * `@pytest.mark.skip` in Python).
+ * Count skipped or fixme test/suite declarations (`.skip` / `.fixme` / `.skipIf` in TS/JS,
+ * `@pytest.mark.skip` / `@pytest.mark.skipif` / `@unittest.skip*` in Python).
  *
  * @param {string} source
  * @param {string} [fileName]
@@ -531,9 +542,13 @@ export function countSkippedCases(source, fileName = "spec.ts") {
       if (chain && SKIP_ROOTS.has(chain[0]) && chain.length <= 3) {
         const members = chain.slice(1);
         const hasSkipOrFixme = members.some((member) => SKIP_MEMBERS.has(member));
+        const hasConditionalSkip =
+          members.includes("skipIf") &&
+          !members.includes("describe") &&
+          node.arguments[0]?.kind !== ts.SyntaxKind.FalseKeyword;
         const isHookOrStep = members.some((member) => HOOK_OR_STEP_MEMBERS.has(member));
         const isCurried = members.some((member) => CURRIED_MEMBERS.has(member));
-        if (hasSkipOrFixme && !isHookOrStep && (isCurried || namesACase(node.arguments))) {
+        if ((hasSkipOrFixme || hasConditionalSkip) && !isHookOrStep && (isCurried || namesACase(node.arguments))) {
           skipped += curriedCaseWeight(members, node.arguments);
         }
       }
@@ -722,7 +737,7 @@ export function assessTestFile({
 /**
  * Decide the diff as a whole: did the changed test files, taken together, lose coverage?
  *
- * @param {{ verdicts: { path: string, before: number, after: number }[], config: DiffIntegrityConfig }} input
+ * @param {{ verdicts: { path: string, before: number, after: number, skipped?: { before: number, after: number } }[], config: DiffIntegrityConfig }} input
  * @returns {{ before: number, after: number, removed: number, fraction: number, ok: boolean, approved: boolean, message?: string }}
  */
 export function assessAggregate({ verdicts, config }) {
@@ -731,13 +746,46 @@ export function assessAggregate({ verdicts, config }) {
   const removed = before - after;
   const fraction = before === 0 ? 0 : removed / before;
   const base = { before, after, removed, fraction };
-  if (removed < config.minRemovedCases) return { ...base, ok: true, approved: false };
-  if (fraction <= config.maxRemovedFraction) return { ...base, ok: true, approved: false };
+  const activeBefore = verdicts.reduce(
+    (sum, verdict) => sum + Math.max(0, verdict.before - (verdict.skipped?.before ?? 0)),
+    0,
+  );
+  const activeAfter = verdicts.reduce(
+    (sum, verdict) => sum + Math.max(0, verdict.after - (verdict.skipped?.after ?? 0)),
+    0,
+  );
+  const activeRemoved = activeBefore - activeAfter;
+  const activeFraction = activeBefore === 0 ? 0 : activeRemoved / activeBefore;
+  const totalDrop = removed >= config.minRemovedCases && fraction > config.maxRemovedFraction;
+  const activeDrop = activeRemoved >= config.minRemovedCases && activeFraction > config.maxRemovedFraction;
+  if (!totalDrop && !activeDrop) return { ...base, ok: true, approved: false };
   // An aggregate drop is excused only when every file that shrank is individually approved.
-  const shrunk = verdicts.filter((verdict) => verdict.before > verdict.after);
+  const shrunk = verdicts.filter((verdict) => {
+    const vActiveBefore = Math.max(0, verdict.before - (verdict.skipped?.before ?? 0));
+    const vActiveAfter = Math.max(0, verdict.after - (verdict.skipped?.after ?? 0));
+    return verdict.before > verdict.after || vActiveBefore > vActiveAfter;
+  });
   const allApproved =
-    shrunk.length > 0 && shrunk.every((verdict) => isApproved(config, verdict.path, verdict.before, verdict.after));
+    shrunk.length > 0 &&
+    shrunk.every((verdict) => {
+      const vActiveBefore = Math.max(0, verdict.before - (verdict.skipped?.before ?? 0));
+      const vActiveAfter = Math.max(0, verdict.after - (verdict.skipped?.after ?? 0));
+      return (
+        isApproved(config, verdict.path, verdict.before, verdict.after) ||
+        isApproved(config, verdict.path, vActiveBefore, vActiveAfter)
+      );
+    });
   if (allApproved) return { ...base, ok: true, approved: true };
+  if (!totalDrop && activeDrop) {
+    return {
+      ...base,
+      ok: false,
+      approved: false,
+      message:
+        `changed test files lost ${activeRemoved} of ${activeBefore} active test case(s) via new skip/fixme annotations (${(activeFraction * 100).toFixed(1)}%), over the ${(config.maxRemovedFraction * 100).toFixed(0)}% ceiling. ` +
+        "Record each intended reduction in diff-integrity.json so a reviewer sees it.",
+    };
+  }
   return {
     ...base,
     ok: false,

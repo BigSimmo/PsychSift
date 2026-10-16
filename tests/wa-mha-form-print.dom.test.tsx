@@ -47,7 +47,7 @@ describe("WaMhaFormPrint (#C4CFFP, #WFYDV6)", () => {
 
     expect(screen.getByText(/General Hospital Detention Justification/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Report to the Chief Psychiatrist/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText(/Chief Psychiatrist Consent/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Chief Psychiatrist Consent/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it("prints blank fields as gaps, never as invented patient, clinician or report content", () => {

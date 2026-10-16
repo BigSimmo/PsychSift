@@ -326,6 +326,14 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(mildTox.status).toBe("toxic");
       expect(mildTox.severity).toBe("moderate");
 
+      const exactSevereBoundary = evaluateLithiumLevel({
+        serumLevelMmolL: 2.0,
+        indication: "maintenance",
+        age: 40,
+      });
+      expect(exactSevereBoundary.status).toBe("toxic");
+      expect(exactSevereBoundary.severity).toBe("severe");
+
       const severeTox = evaluateLithiumLevel({
         serumLevelMmolL: 2.3,
         indication: "maintenance",

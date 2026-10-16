@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const MOJIBAKE_LATIN1_PATTERN = /\u00c3[\u0080-\u00bf]|\u00c2[\u00a0-\u00bf]|\u00e2[\u0080-\u009f]/;
+const MOJIBAKE_LATIN1_PATTERN = /[\u00c2-\u00f4][\u0080-\u00bf]/;
 const MOJIBAKE_CP1252_PATTERN = /â€|â†|â‰|â”|â–|âœ|Ã—|Â·|Â§/;
 
 describe("documentation governance: UTF-8 encoding, skill contracts, and token audit accuracy", () => {

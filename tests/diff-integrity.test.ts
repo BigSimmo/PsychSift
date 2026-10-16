@@ -77,7 +77,7 @@ describe("countTestCases", () => {
     expect(countTestCases('it.each([["a"], ["b"]])("case %s", () => {});')).toBe(2);
     expect(countTestCases('it.each([1, 2, 3, 4, 5])("case %i", () => {});')).toBe(5);
     expect(countTestCases('test.each(table)("case %i", () => {});')).toBe(1);
-    expect(countTestCases('test.each([])("empty %i", () => {});')).toBe(1);
+    expect(countTestCases('test.each([])("empty %i", () => {});')).toBe(0);
   });
 
   it("detects when rows are deleted from an inline it.each array literal", () => {

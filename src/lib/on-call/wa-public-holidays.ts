@@ -264,6 +264,21 @@ export function isWaPublicHolidayDate(dateKey: string): boolean {
   return holidaysFor(Number(dateKey.slice(0, 4))).has(dateKey);
 }
 
+class WaPublicHolidayDateSet extends Set<string> {
+  override has(value: string): boolean {
+    return isWaPublicHolidayDate(value);
+  }
+}
+
+/**
+ * `ReadonlySet<string>` view whose `.has(dateKey)` checks `isWaPublicHolidayDate(dateKey)`
+ * across historical (2021–2025), published (2026–2028), and rule-derived (>2028) WA holidays.
+ */
+export const WA_PUBLIC_HOLIDAY_DATES: ReadonlySet<string> = new WaPublicHolidayDateSet([
+  ...HISTORICAL_PUBLIC_HOLIDAYS,
+  ...WA_PUBLIC_HOLIDAYS,
+]);
+
 /**
  * Read in the work time zone, like `isOnCallOutOfHours` beside it in "Who do I
  * call now?": the two answers combine into one "in hours or not", so they must

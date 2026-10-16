@@ -45,12 +45,12 @@ const FORM_METADATA = {
     sections: "Sections 61, 89, 90, 131 (orientation summary — unverified)",
     purpose: "Compulsory inpatient treatment in a general hospital setting due to physical health needs",
     threshold:
-      "Criteria met; Report to the Chief Psychiatrist (Form 6B attachment) notification required (status shown below); physical health transfer risk is significant",
+      "Criteria met; Chief Psychiatrist consent required on Form 6B order and Form 6B attachment (Report to the Chief Psychiatrist) s65 reporting required; physical health transfer risk is significant",
     destination: "General Hospital",
     statutoryNotes: [
       "Authorises compulsory inpatient treatment in a general hospital setting.",
       "Adult initial period: up to 21 days; Child initial period: up to 14 days.",
-      "Requires Form 6B attachment: Report to the Chief Psychiatrist (post-order report/notification, not prior consent).",
+      "Requires documented Chief Psychiatrist consent on the Form 6B order, plus separate Form 6B attachment: Report to the Chief Psychiatrist (s65 reporting obligation).",
       "Ongoing justification for general hospital detention must be actively reviewed.",
     ],
   },
@@ -81,7 +81,7 @@ export function WaMhaFormPrint({
   isChild,
   leastRestrictiveReasoning = NOT_ENTERED,
   physicalHealthJustification = NOT_ENTERED,
-  chiefPsychiatristReportSubmitted,
+  chiefPsychiatristReportSubmitted = false,
   chiefPsychiatristConsent = false,
   className = "",
 }: WaMhaFormPrintProps) {
@@ -89,7 +89,7 @@ export function WaMhaFormPrint({
   // Age class is unknown until the caller states it, so no age-specific period prints by default.
   const ageClass = isChild === undefined ? NOT_ENTERED : isChild ? "Child" : "Adult";
   const maxPeriod = isChild === undefined ? "Not determined" : `${isChild ? 14 : 21} days`;
-  const reportSubmitted = chiefPsychiatristReportSubmitted ?? chiefPsychiatristConsent;
+  const reportSubmitted = chiefPsychiatristReportSubmitted;
 
   return (
     <div
@@ -207,6 +207,12 @@ export function WaMhaFormPrint({
               </p>
               <p className="mt-0.5">{physicalHealthJustification}</p>
               <p className="mt-1">
+                <strong>Chief Psychiatrist Consent (Form 6B Order):</strong>{" "}
+                {chiefPsychiatristConsent
+                  ? "Obtained prior to making this Form 6B order."
+                  : "Pending consent from Chief Psychiatrist"}
+              </p>
+              <p className="mt-1">
                 <strong>Report to the Chief Psychiatrist (Form 6B attachment):</strong>{" "}
                 {reportSubmitted ? "Submitted and documented in clinical record." : "Pending report/notification"}
               </p>
@@ -252,8 +258,8 @@ export function WaMhaFormPrint({
                 <span className="font-semibold">Date & Time Order Made:</span> {orderDateTime}
               </td>
               <td className="p-2 border border-[color:var(--text-heading)]">
-                <span className="font-semibold">Copies to (verify on gazetted form):</span> Patient, Mental Health
-                Tribunal, Chief Psychiatrist
+                <span className="font-semibold">Copies to:</span> See official gazetted form for recipient and filing
+                requirements.
               </td>
             </tr>
           </tbody>
