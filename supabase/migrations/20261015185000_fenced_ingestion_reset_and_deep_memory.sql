@@ -372,7 +372,7 @@ begin
       and artifact_generation_id is distinct from p_artifact_generation
       and artifact_generation_id is distinct from v_committed
       and ((index_generation_id = v_committed and producer = 'local-worker' and metadata->>'generated_by' = 'local-worker')
-        or (index_generation_id is null and artifact_generation_id is null
+        or ((index_generation_id is null or index_generation_id = v_committed) and artifact_generation_id is null
           and (producer = 'local-worker' or producer is null)
           and (metadata->>'generated_by' = 'local-worker'
             or (nullif(metadata->>'generated_by', '') is null
@@ -382,7 +382,7 @@ begin
       and artifact_generation_id is distinct from p_artifact_generation
       and artifact_generation_id is distinct from v_committed
       and ((index_generation_id = v_committed and producer = 'local-worker' and metadata->>'generated_by' = 'local-worker')
-        or (index_generation_id is null and artifact_generation_id is null
+        or ((index_generation_id is null or index_generation_id = v_committed) and artifact_generation_id is null
           and (producer = 'local-worker' or producer is null)
           and (metadata->>'generated_by' = 'local-worker'
             or (nullif(metadata->>'generated_by', '') is null
@@ -392,7 +392,7 @@ begin
       and artifact_generation_id is distinct from p_artifact_generation
       and artifact_generation_id is distinct from v_committed
       and ((index_generation_id = v_committed and producer = 'local-worker' and metadata->>'generated_by' = 'local-worker')
-        or (index_generation_id is null and artifact_generation_id is null
+        or ((index_generation_id is null or index_generation_id = v_committed) and artifact_generation_id is null
           and (producer = 'local-worker' or producer is null)
           and (metadata->>'generated_by' = 'local-worker'
             or (nullif(metadata->>'generated_by', '') is null
