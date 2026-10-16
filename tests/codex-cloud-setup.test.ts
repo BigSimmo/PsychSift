@@ -755,8 +755,8 @@ describe("Codex Cloud environment contract", () => {
     }
     expect(commandShims).toContain('nvm version "$expected_node_major"');
     expect(commandShims).toContain('node_bin="$NVM_DIR/versions/node/$resolved_node_version/bin"');
-    expect(commandShims).toContain('while [[ "\\$clean_path" == *":\\$HOME/.local/bin:"* ]]; do');
-    expect(commandShims).toContain('clean_path="\\${clean_path//:\\$HOME\\/.local\\/bin:/:}"');
+    expect(commandShims).toContain('IFS=: read -r -a path_entries <<< "\\$PATH"');
+    expect(commandShims).toContain('[[ "\\$path_entry" == "\\$HOME/.local/bin" ]] && continue');
     expect(commandShims).toContain('if [[ -n "\\$clean_path" ]]; then');
     expect(commandShims).toContain('export PATH="$node_bin"');
     expect(commandShims).toContain('. "$runtime_profile"');
@@ -771,8 +771,10 @@ describe("Codex Cloud environment contract", () => {
     expect(patDelete).toContain("core.hooksPath=/dev/null");
   });
 
-  it("removes every adjacent command-shim PATH entry", () => {
-    const home = temporaryDirectory("codex-cloud-shims-");
+  it("removes every adjacent command-shim PATH entry, including bracketed home paths", () => {
+    const homeRoot = temporaryDirectory("codex-cloud-shims-");
+    const home = path.join(homeRoot, "home[1]");
+    mkdirSync(home, { recursive: true });
     const bashHome = bashPathEntry(home);
     const nodeVersion = "v24.19.0";
     const nodeBin = path.join(home, ".nvm", "versions", "node", nodeVersion, "bin");
@@ -812,44 +814,6 @@ describe("Codex Cloud environment contract", () => {
     expect(resolvedPath).not.toContain(shimDir);
     expect(resolvedPath).toEqual(expect.arrayContaining(["/usr/bin", "/bin"]));
   }, 120_000);
-
-  it("finishes installing shims when the home path contains glob characters", () => {
-    // A home path such as /tmp/user[1] made the PATH cleanup loop spin forever, because the
-    // replacement treated the brackets as a pattern while the loop condition matched them literally.
-    const home = temporaryDirectory("codex-cloud-[shims]-");
-    const bashHome = bashPathEntry(home);
-    const nodeVersion = "v24.19.0";
-    const nodeBin = path.join(home, ".nvm", "versions", "node", nodeVersion, "bin");
-    mkdirSync(nodeBin, { recursive: true });
-    for (const command of ["node", "npm", "npx"]) {
-      const executable = path.join(nodeBin, command);
-      writeFileSync(
-        executable,
-        command === "node"
-          ? `#!/usr/bin/env bash\nif [[ "\${1:-}" = "-p" ]]; then printf "%s\\n" "${nodeVersion.slice(1)}"; fi\n`
-          : "#!/usr/bin/env bash\n",
-      );
-      chmodSync(executable, 0o755);
-    }
-    writeFileSync(
-      path.join(home, ".clinical-kb-codex-cloud.sh"),
-      [`export NVM_DIR="${bashHome}/.nvm"`, `nvm() { printf '${nodeVersion}\\n'; }`, ""].join("\n"),
-    );
-
-    const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      timeout: 30_000,
-      env: {
-        ...process.env,
-        HOME: bashHome,
-        PATH: `${bashHome}/.local/bin:${bashPathList(process.env.PATH || "")}`,
-      },
-    });
-
-    expect(install.error).toBeUndefined();
-    expect(install.status, install.stderr || install.stdout).toBe(0);
-  }, 60_000);
 
   it("prefers the exact Python 3.12 interpreter over an older python3 alias", () => {
     const home = temporaryDirectory("codex-cloud-python-home-");
