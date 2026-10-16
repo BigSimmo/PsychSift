@@ -13,6 +13,9 @@ cd "$repo_root"
 expected_node_major="$(tr -cd '0-9' < .node-version)"
 [[ -n "$expected_node_major" ]] || fail "Could not read the Node major from .node-version."
 
+expected_npm_major="$(sed -n 's/.*"npm"[[:space:]]*:[[:space:]]*"\([0-9][0-9]*\)\.x".*/\1/p' package.json | head -n 1)"
+[[ -n "$expected_npm_major" ]] || fail "Could not read the npm major from package.json engines.npm."
+
 runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
 [[ -f "$runtime_profile" ]] || fail "The generated Cloud runtime profile is unavailable; run setup first."
 
@@ -69,6 +72,12 @@ for command_name in node npm npx; do
       command_path="$node_bin/$command_name"
     else
       command_path="$(PATH="$fallback_path" command -v "$command_name" 2>/dev/null || true)"
+      # A PATH fallback may be an older installation, so it must meet the repository's npm range.
+      if [[ -x "$command_path" ]]; then
+        fallback_tool_version="$("$command_path" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+        [[ "${fallback_tool_version%%.*}" = "$expected_npm_major" ]] ||
+          fail "${command_name} ${expected_npm_major}.x is required (package.json engines.npm); the PATH fallback is ${fallback_tool_version:-unavailable}."
+      fi
     fi
   fi
   [[ -x "$command_path" ]] || fail "${command_name} is unavailable in Node ${expected_node_major}."
