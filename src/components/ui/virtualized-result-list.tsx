@@ -140,7 +140,9 @@ function detectGridColumns(element: HTMLElement | null): number | null {
     return null;
   }
   const tracks = template.split(/\s+/).filter((token) => /^\d+(\.\d+)?px$/.test(token));
-  return tracks.length > 0 ? tracks.length : null;
+  // Computed styles may expose implicit, fractional, or responsive tracks without
+  // pixel tokens. A grid with no measurable tracks is still one column at minimum.
+  return tracks.length > 0 ? tracks.length : 1;
 }
 
 function findFirstFocusableChild(root: HTMLElement): HTMLElement | null {
@@ -213,14 +215,22 @@ export function VirtualizedResultList<T>({
     }
 
     if (typeof window !== "undefined") {
-      const winScrollY = window.scrollY || document.documentElement?.scrollTop || 0;
       if (containerEl) {
-        const rect = containerEl.getBoundingClientRect();
-        if (rect.top < 0) {
-          return Math.max(0, -rect.top);
+        const containerRect = containerEl.getBoundingClientRect();
+        if (containerRect.top < 0) return Math.max(0, -containerRect.top);
+
+        let scroller = containerEl.parentElement;
+        while (scroller) {
+          if (scroller.scrollHeight > scroller.clientHeight && scroller.scrollTop > 0) break;
+          scroller = scroller.parentElement;
         }
+        if (scroller) {
+          const scrollerRect = scroller.getBoundingClientRect();
+          return Math.max(0, scrollerRect.top - containerRect.top);
+        }
+        return 0;
       }
-      return Math.max(0, winScrollY);
+      return 0;
     }
 
     return 0;
@@ -242,9 +252,18 @@ export function VirtualizedResultList<T>({
     const updateMetrics = () => {
       const containerEl = containerRef.current;
       const clientHeight = containerEl?.clientHeight ?? 0;
+      const computedOverflow = containerEl ? window.getComputedStyle(containerEl).overflowY : "visible";
+      const isScrollableContainer =
+        clientHeight > 0 &&
+        containerEl != null &&
+        containerEl.scrollHeight > clientHeight &&
+        (computedOverflow === "auto" || computedOverflow === "scroll");
       const winHeight = window.innerHeight || 0;
-      const resolvedViewport =
-        clientHeight > 0 ? clientHeight : winHeight > 0 ? Math.max(winHeight, viewportHeight) : viewportHeight;
+      const resolvedViewport = isScrollableContainer
+        ? clientHeight
+        : winHeight > 0
+          ? Math.max(winHeight, viewportHeight)
+          : viewportHeight;
       setMeasuredViewportHeight((prev) => (prev === resolvedViewport ? prev : resolvedViewport));
 
       const detectedCols = detectGridColumns(listRef.current);
@@ -452,6 +471,14 @@ export function VirtualizedResultList<T>({
       {windowRange.bottomSpacerHeight > 0 ? (
         <div
           aria-hidden="true"
+          data-testid="virtualized-list-bottom-spacer"
+          style={{ height: `${windowRange.bottomSpacerHeight}px` }}
+        />
+      ) : null}
+    </div>
+  );
+}
+     aria-hidden="true"
           data-testid="virtualized-list-bottom-spacer"
           style={{ height: `${windowRange.bottomSpacerHeight}px` }}
         />
