@@ -188,7 +188,6 @@ export {
 } from "@/lib/rag/rag-cache";
 import {
   checkedPublishedOriginalSectionLayoutForResults,
-  packCheckedPublishedOriginalSectionContext,
   buildContextSourceBlock,
   createGenerationContextPacker,
   governedContextPackingApplies,
@@ -212,6 +211,7 @@ import {
 } from "@/lib/rag/rag-source-block";
 import { buildRagQueryPlan } from "@/lib/rag/rag-query-plan";
 import { withOriginalSectionEligibility } from "@/lib/rag/rag-original-section-eligibility";
+import { createCheckedPublishedOriginalLoader } from "@/lib/rag/rag-published-original-loader";
 export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
 import {
   buildClinicalTextSearchQuery,
@@ -2359,45 +2359,14 @@ async function answerQuestionWithScopeUncoalesced(
     queryClass === "broad_summary" &&
     !args.documentId &&
     !args.documentIds?.length
-      ? async (selectedResults: SearchResult[], tokenBudget: number) => {
-          throwIfAborted(args.signal);
-          const projected = publishedReceiptCapture.projectSelectedResults(selectedResults);
-          if (!projected) return null;
-          const deadline = createAnswerRouteDeadline({
-            routeMode: "strong",
-            callerSignal: checkedContextCallerSignal,
-            startedAt,
-          });
-          try {
-            throwIfAborted(deadline.signal);
-            const layout = await deadline.race(
-              args.loadRegisteredPublishedOriginalSectionLayout!({
-                selectedResults: projected,
-                signal: deadline.signal,
-              }),
-            );
-            throwIfAborted(deadline.signal);
-            if (!layout) {
-              const error = new Error("Registered published original layout is unavailable.");
-              error.name = "OriginalSectionLayoutBindingError";
-              throw error;
-            }
-            return packCheckedPublishedOriginalSectionContext(projected, queryClass, tokenBudget, layout);
-          } catch (error) {
-            throwIfAborted(args.signal);
-            if (isAnswerRouteDeadlineExceeded(error)) {
-              const unavailable = new Error("Published original layout reached its time limit.");
-              unavailable.name = "OriginalSectionLayoutBindingError";
-              throw unavailable;
-            }
-            if (error instanceof Error && error.name === "OriginalSectionLayoutBindingError") throw error;
-            const unavailable = new Error("Published original layout binding could not be confirmed.");
-            unavailable.name = "OriginalSectionLayoutBindingError";
-            throw unavailable;
-          } finally {
-            deadline.dispose();
-          }
-        }
+      ? createCheckedPublishedOriginalLoader({
+          lookup: args.loadRegisteredPublishedOriginalSectionLayout,
+          capture: publishedReceiptCapture,
+          queryClass,
+          signal: args.signal,
+          callerSignal: () => checkedContextCallerSignal,
+          startedAt,
+        })
       : undefined;
   const contextPackerOptions = {
     loadCheckedPublishedOriginal,
