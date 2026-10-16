@@ -978,7 +978,11 @@ export function OnCallHandoverPage() {
 
                   <CallsToAdd patients={patients} onAdd={(next) => commit(next, null)} />
 
-                  <ClinicalNoteEditor key={scratchpadResetKey} label="Shift scratchpad (de-identified)" />
+                  <ClinicalNoteEditor
+                    key={scratchpadResetKey}
+                    label="Shift scratchpad (de-identified)"
+                    placeholder="Write a temporary de-identified note..."
+                  />
                 </>
               )}
             </>

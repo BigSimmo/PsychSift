@@ -6,7 +6,7 @@ import { focusRing } from "@/components/card-recipes";
 import { buttonFaceClass } from "@/components/ui/button-face";
 import { cn, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primitives";
 import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
-import { isSharedDevice } from "@/lib/alerts/shared-device";
+import { useSharedDevice } from "@/lib/alerts/shared-device";
 import { PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
 
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
@@ -44,13 +44,15 @@ export function ClinicalNoteEditor({
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(initialValue);
   const currentValue = isControlled ? controlledValue : internalValue;
-  const sharedDevice = isSharedDevice();
+  const sharedDevice = useSharedDevice();
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedValue, setLastSavedValue] = useState(currentValue);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   // Store selection state to restore across re-renders/saves
   const selectionRef = useRef<{
@@ -126,7 +128,7 @@ export function ClinicalNoteEditor({
       setInternalValue(newValue);
     }
     onChange?.(newValue);
-    setSaveStatus("unsaved");
+    if (onSave) setSaveStatus("unsaved");
 
     // Clear existing timer
     if (saveTimerRef.current) {
@@ -135,7 +137,7 @@ export function ClinicalNoteEditor({
     }
 
     // Suppress background auto-save on shared clinical devices
-    if (isSharedDevice()) {
+    if (sharedDevice) {
       return;
     }
 
@@ -154,7 +156,7 @@ export function ClinicalNoteEditor({
     isFocusedRef.current = false;
     recordSelection();
     // Save on blur if unsaved and not on a shared device
-    if (saveStatus === "unsaved" && !isSharedDevice()) {
+    if (saveStatus === "unsaved" && !sharedDevice) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
@@ -185,12 +187,11 @@ export function ClinicalNoteEditor({
       setInternalValue("");
       setLastSavedValue("");
       setSaveStatus("idle");
-      onChange?.("");
+      onChangeRef.current?.("");
     };
 
     if (typeof window !== "undefined") {
       window.addEventListener(ACCOUNT_TRANSITION_EVENT, clearEditorState);
-      window.addEventListener("account-scoped-browser-storage-clear", clearEditorState);
       window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
     }
 
@@ -201,11 +202,10 @@ export function ClinicalNoteEditor({
       }
       if (typeof window !== "undefined") {
         window.removeEventListener(ACCOUNT_TRANSITION_EVENT, clearEditorState);
-        window.removeEventListener("account-scoped-browser-storage-clear", clearEditorState);
         window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
       }
     };
-  }, [onChange]);
+  }, []);
 
   return (
     <div className={cn("clinical-note-editor flex flex-col gap-2", className)} data-testid="clinical-note-editor">
@@ -238,7 +238,8 @@ export function ClinicalNoteEditor({
                     ? "Unsaved changes"
                     : "Idle"}
           </span>
-          <button
+          {onSave ? (
+            <button
             type="button"
             onClick={() => performSave(currentValue)}
             disabled={readOnly || saveStatus === "saving" || saveStatus === "saved"}
@@ -246,7 +247,8 @@ export function ClinicalNoteEditor({
             data-testid="note-editor-save-btn"
           >
             Save now
-          </button>
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -257,7 +259,7 @@ export function ClinicalNoteEditor({
       ) : null}
 
       <textarea
-        id={`${instanceId}-textarea`}
+        i{`${instanceId}-textarea`}
         aria-describedby={`${instanceId}-status`}
         ref={textareaRef}
         value={currentValue}
@@ -283,4 +285,26 @@ export function ClinicalNoteEditor({
       />
     </div>
   );
+}
+);
+}
+}
+se"
+        data-enable-grammarly="false"
+      />
+    </div>
+  );
+}
+);
+}
+
+}
+}
+se"
+        data-enable-grammarly="false"
+      />
+    </div>
+  );
+}
+);
 }
