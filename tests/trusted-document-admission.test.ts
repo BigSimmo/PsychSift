@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   assertTrustedAdministratorAssurance,
   createTrustedDocumentAdmission,
+  releaseSupersededDocumentObject,
   dispatchTrustedDocumentAdmission,
   toTrustedDocumentAdmissionRpcPayload,
   TrustedDocumentAdmissionDispatchError,
@@ -524,5 +525,76 @@ describe("trusted document Storage upload recovery", () => {
     expect(result).toMatchObject({ kind: "outcome_unknown", storagePath: intendedStoragePath });
     expect(upload).toHaveBeenCalledOnce();
     expect(download).not.toHaveBeenCalled();
+  });
+});
+
+describe("superseded collision object release", () => {
+  const intended = `${administratorId}/documents/${documentId}/guideline.pdf`;
+  const recovery = `${administratorId}/documents/${documentId}/recovery-cccccccc-cccc-4ccc-8ccc-cccccccccccc-guideline.pdf`;
+  const ok: { error: null } = { error: null };
+  const failed = { error: { message: "storage unavailable" } };
+  type StorageResult = { error: { message: string } | null };
+  const release = (
+    remove: (paths: string[]) => PromiseLike<StorageResult>,
+    queueCleanup: (path: string) => PromiseLike<StorageResult>,
+    supersededPath = intended,
+  ) =>
+    releaseSupersededDocumentObject({
+      remove,
+      queueCleanup,
+      ownerId: administratorId,
+      documentId,
+      supersededPath,
+      committedPath: recovery,
+    });
+
+  it("removes the collided object once the recovery sibling is committed", async () => {
+    const remove = vi.fn(async () => ok);
+    const queueCleanup = vi.fn();
+    await expect(release(remove, queueCleanup)).resolves.toEqual({ outcome: "removed", failures: [] });
+    expect(remove).toHaveBeenCalledWith([intended]);
+    expect(queueCleanup).not.toHaveBeenCalled();
+  });
+
+  it("queues the object on the cleanup ledger when removal fails or throws", async () => {
+    for (const remove of [vi.fn(async () => failed), vi.fn(async () => Promise.reject(new Error("network")))]) {
+      const queueCleanup = vi.fn(async () => ok);
+      await expect(release(remove, queueCleanup)).resolves.toMatchObject({ outcome: "queued" });
+      expect(queueCleanup).toHaveBeenCalledWith(intended);
+    }
+  });
+
+  it("reports an unrecorded object, with both failure reasons, when removal and the ledger fail", async () => {
+    await expect(
+      release(
+        vi.fn(async () => failed),
+        vi.fn(async () => failed),
+      ),
+    ).resolves.toEqual({
+      outcome: "unrecorded",
+      failures: ["remove: storage unavailable", "queue: storage unavailable"],
+    });
+    await expect(
+      release(
+        vi.fn(async () => failed),
+        vi.fn(async () => Promise.reject(new Error("db"))),
+      ),
+    ).resolves.toEqual({ outcome: "unrecorded", failures: ["remove: storage unavailable", "queue: db"] });
+  });
+
+  it("never touches the path the committed document still uses", async () => {
+    const remove = vi.fn();
+    const queueCleanup = vi.fn();
+    await expect(release(remove, queueCleanup, recovery)).resolves.toEqual({ outcome: "skipped", failures: [] });
+    expect(remove).not.toHaveBeenCalled();
+    expect(queueCleanup).not.toHaveBeenCalled();
+  });
+
+  it("refuses a path outside this document's own storage prefix", async () => {
+    const remove = vi.fn();
+    await expect(
+      release(remove, vi.fn(), `${administratorId}/documents/dddddddd-dddd-4ddd-8ddd-dddddddddddd/guideline.pdf`),
+    ).rejects.toThrow();
+    expect(remove).not.toHaveBeenCalled();
   });
 });
