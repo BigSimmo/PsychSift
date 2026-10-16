@@ -579,7 +579,14 @@ reset role;
 do $delete_account$
 declare lee uuid := pg_temp.id('lee');
 begin
+  -- An open-shift post key that names them, so deleting the account has to clear it.
+  insert into public.roster_open_post_keys (service_id, post_key, open_shift_id, posted_by)
+  select service_id, gen_random_uuid(), open_shift_id, lee from public.roster_open_post_keys limit 1;
+  if not exists (select 1 from public.roster_open_post_keys where posted_by = lee) then
+    raise exception 'delete: no post key fixture to check';
+  end if;
   delete from auth.users where id = lee;
+  if exists (select 1 from public.roster_open_post_keys where posted_by = lee) then raise exception 'delete: post key still names them'; end if;
   if exists (select 1 from public.on_call_shifts where owner_id = lee) then raise exception 'delete: own shifts kept'; end if;
   if exists (select 1 from public.roster_publication_seen where user_id = lee) then raise exception 'delete: seen kept'; end if;
   if exists (select 1 from public.roster_assignments where user_id = lee) then raise exception 'delete: assignment still names them'; end if;

@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PostedShift, PostedShiftsState } from "@/components/open-shifts/use-posted-shifts";
+import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { gapTimes } from "@/lib/open-shifts/model";
 import { sampleListings } from "@/lib/open-shifts/sample";
 
@@ -65,6 +66,7 @@ function liveShift(): PostedShift {
 }
 
 beforeEach(() => {
+  window.sessionStorage.clear();
   mocks.post.mockReset();
   mocks.push.mockReset();
   mocks.state = {
@@ -115,6 +117,8 @@ describe("Posting a shift", () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
     expect(mocks.post).toHaveBeenCalledOnce();
     expect(mocks.push.mock.calls[0]![0]).toContain(liveShift().id);
+    // Confirmed from the list, so the saved key is gone and a later post of the same slot is a new one.
+    expect(window.sessionStorage.getItem("psychsift:open-shifts:post-keys-v1")).toBeNull();
   });
 
   it("after a post gets no answer, still sends it when the matching new shift was posted by someone else", async () => {
@@ -190,6 +194,124 @@ describe("Posting a shift", () => {
     expect(first.postKey).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(retry.postKey).toBe(first.postKey);
     expect(mocks.push.mock.calls[0]![0]).toContain(SAVED);
+  });
+
+  it("after a post gets no answer and the page is reloaded, the retry still sends the same post key", async () => {
+    const SAVED = "5e000000-0000-4000-8000-0000000000b6";
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValueOnce({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    mocks.post.mockResolvedValueOnce({
+      ok: true,
+      result: { openShiftId: SAVED, status: "open", replayed: true },
+    });
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Not posted/));
+
+    // Reload: the page starts again from nothing but the tab's storage, and the same shift is posted.
+    cleanup();
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
+
+    const [first, retry] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(retry).toBe(first);
+    expect(mocks.push.mock.calls[0]![0]).toContain(SAVED);
+    // Confirmed, so the key is gone and a later post of the same shift would be a new one.
+    expect(window.sessionStorage.getItem("psychsift:open-shifts:post-keys-v1")).toBeNull();
+  });
+
+  it("never reuses another person's post key after someone else signs in on the same tab", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // A different manager signs in without the page closing, and posts the same shift.
+    mocks.state = {
+      ...mocks.state,
+      actorId: "5e000000-0000-4000-8000-000000000002",
+      readAt: new Date(Date.now() + 1000),
+    };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+
+    const [first, second] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+
+  it("never replays an older post key after the same person signs out and back in on this tab", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // Sign out and back in as the same manager without the page closing, then post the same shift.
+    clearAccountScopedBrowserStorage();
+    mocks.state = { ...mocks.state, readAt: new Date(Date.now() + 1000) };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+
+    const [first, second] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+
+  it("when the account changes mid-post, stops, names what went live, and never sends that date again", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    let answerFirst: (value: unknown) => void = () => undefined;
+    mocks.post.mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)));
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Add another date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review and post 2 shifts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post all 2" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // Someone else signs in while the first date is still being sent, and then it goes live.
+    const first = mocks.state.actorId;
+    mocks.state = { ...mocks.state, actorId: "5e000000-0000-4000-8000-000000000002" };
+    view.rerender(<OpenShiftsPostPage />);
+    answerFirst({ ok: true, result: { openShiftId: "5e000000-0000-4000-8000-0000000000b7", status: "open" } });
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Posting stopped.*Already posted/));
+    expect(mocks.post).toHaveBeenCalledOnce();
+
+    // The first manager signs back in and tries again: only the date that never went out is sent.
+    mocks.state = { ...mocks.state, actorId: first, readAt: new Date(Date.now() + 1000) };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+    const sent = mocks.post.mock.calls.map((call) => (call[1] as { startsAt: string }).startsAt);
+    expect(sent[1]).not.toBe(sent[0]);
+  });
+
+  it("stops before the next date as soon as the account signs out, even before the team list catches up", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    let answerFirst: (value: unknown) => void = () => undefined;
+    mocks.post.mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)));
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Add another date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review and post 2 shifts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post all 2" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // The account signs out while the first date is still being sent; the team list has not re-read yet.
+    clearAccountScopedBrowserStorage();
+    answerFirst({ ok: true, result: { openShiftId: "5e000000-0000-4000-8000-0000000000b8", status: "open" } });
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Posting stopped/));
+    expect(mocks.post).toHaveBeenCalledOnce();
   });
 
   it("gives a deliberate new post its own key once the last one went live", async () => {

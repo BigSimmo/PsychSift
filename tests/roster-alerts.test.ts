@@ -139,6 +139,11 @@ describe("generic phone alerts", () => {
       result: { openShiftId: OPEN, status: "open" },
     });
     expect(mocks.open).toHaveBeenCalledWith(client, SERVICE, OPEN);
+    // The new post took the offer path: it read the week either side of the gap to find who to offer it to.
+    expect(mocks.read).toHaveBeenCalledWith(client, ALEX, SERVICE, "assignments", {
+      from: "2026-11-13",
+      to: "2026-11-27",
+    });
 
     vi.clearAllMocks();
     await dispatchRosterAlerts(client, {
