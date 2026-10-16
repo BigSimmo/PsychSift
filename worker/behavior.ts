@@ -67,7 +67,10 @@ export function ingestionFailureDecision(args: {
     };
   }
 
-  if (isRetryableIngestionError(error) && args.attemptCount < args.maxAttempts) {
+  if (
+    (isRetryableIngestionError(error) || isTransientDatabaseRejection(error)) &&
+    args.attemptCount < args.maxAttempts
+  ) {
     return {
       retry: true,
       documentStatus: args.atomicReindex ? "indexed" : "queued",
@@ -139,6 +142,16 @@ function confirmedRpcRejection(error: { message: string; code?: string | null })
   const code = typeof error.code === "string" ? error.code : "";
   if (!/^[0-9A-Z]{5}$/.test(code) || code.startsWith("08") || code.startsWith("57P")) return null;
   return new IngestionRpcRejectedError(error.message, code);
+}
+
+/**
+ * Deadlocks and serialization failures (class 40), resource exhaustion (class 53), lock
+ * timeouts (55P03) and statement timeouts (57014) roll back cleanly and are worth retrying.
+ */
+function isTransientDatabaseRejection(error: unknown) {
+  if (!(error instanceof IngestionRpcRejectedError)) return false;
+  const { code } = error;
+  return code.startsWith("40") || code.startsWith("53") || code === "55P03" || code === "57014";
 }
 
 type IngestionRpcResult = { data: unknown; error: { message: string; code?: string | null } | null };

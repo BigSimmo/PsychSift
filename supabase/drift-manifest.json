@@ -18822,7 +18822,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "2f7c24bdf3e46f049827c624e781b0fc",
+        "def_hash": "2a62e3c185b2d8d8d558c764517ab3c4",
         "signature": "public.commit_document_deep_memory_generation(jsonb,uuid,text,text,integer,integer,jsonb,jsonb,jsonb)"
       },
       {

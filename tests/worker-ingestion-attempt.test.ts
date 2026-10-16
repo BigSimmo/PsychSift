@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { IngestionAttempt, type IngestionFence } from "../supabase/functions/_shared/ingestion-attempt";
 import {
+  IngestionRpcRejectedError,
+  ingestionFailureDecision,
   registerClaimedJobAttempt,
   persistIngestionImage,
   runIngestionMutation,
@@ -293,5 +295,38 @@ describe("Node late image publication", () => {
     await expect(publication).rejects.toMatchObject({ code: "lease_lost" });
     expect(upload).toHaveBeenCalledWith(storagePath, { upsert: false });
     expect(rpc).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("transient database rejections retry", () => {
+  it.each(["40P01", "40001", "53300", "55P03", "57014"])("retries %s while attempts remain", (code) => {
+    const decision = ingestionFailureDecision({
+      error: new IngestionRpcRejectedError("deadlock detected", code),
+      attemptCount: 1,
+      maxAttempts: 3,
+      atomicReindex: false,
+    });
+    expect(decision.retry).toBe(true);
+    expect(decision.documentStatus).toBe("queued");
+  });
+
+  it("stops retrying once attempts run out", () => {
+    const decision = ingestionFailureDecision({
+      error: new IngestionRpcRejectedError("deadlock detected", "40P01"),
+      attemptCount: 3,
+      maxAttempts: 3,
+      atomicReindex: false,
+    });
+    expect(decision.retry).toBe(false);
+  });
+
+  it("still fails a permanent rejection on the first attempt", () => {
+    const decision = ingestionFailureDecision({
+      error: new IngestionRpcRejectedError("violates check constraint", "23514"),
+      attemptCount: 1,
+      maxAttempts: 3,
+      atomicReindex: false,
+    });
+    expect(decision.retry).toBe(false);
   });
 });
