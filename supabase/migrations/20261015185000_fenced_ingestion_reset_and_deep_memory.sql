@@ -374,7 +374,9 @@ begin
       and ((index_generation_id = v_committed and producer = 'local-worker' and metadata->>'generated_by' = 'local-worker')
         or (index_generation_id is null and artifact_generation_id is null
           and (producer = 'local-worker' or producer is null)
-          and coalesce(nullif(metadata->>'generated_by', ''), 'local-worker') = 'local-worker'));
+          and (metadata->>'generated_by' = 'local-worker'
+            or (nullif(metadata->>'generated_by', '') is null
+              and metadata->>'rag_indexing_version' in ('rag-deep-memory-v1', 'rag-deep-memory-v2')))));
   delete from public.document_index_units
     where document_id = v_document_id
       and artifact_generation_id is distinct from p_artifact_generation
@@ -382,7 +384,9 @@ begin
       and ((index_generation_id = v_committed and producer = 'local-worker' and metadata->>'generated_by' = 'local-worker')
         or (index_generation_id is null and artifact_generation_id is null
           and (producer = 'local-worker' or producer is null)
-          and coalesce(nullif(metadata->>'generated_by', ''), 'local-worker') = 'local-worker'));
+          and (metadata->>'generated_by' = 'local-worker'
+            or (nullif(metadata->>'generated_by', '') is null
+              and metadata->>'rag_indexing_version' in ('rag-deep-memory-v1', 'rag-deep-memory-v2')))));
   delete from public.document_sections
     where document_id = v_document_id
       and artifact_generation_id is distinct from p_artifact_generation
