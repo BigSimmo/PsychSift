@@ -258,6 +258,7 @@ describe("answer dump records", () => {
       },
     ] as unknown as RagAnswer["sources"]);
     expect(ranked.ranking).toEqual({
+      answer_evidence_score: null,
       hybrid_score: 0.6,
       rank_score: 1.3475,
       release_rank_score: 0.6,
@@ -266,6 +267,7 @@ describe("answer dump records", () => {
       match_reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"],
     });
     expect(bare.ranking).toEqual({
+      answer_evidence_score: null,
       hybrid_score: null,
       rank_score: null,
       release_rank_score: null,
@@ -273,6 +275,51 @@ describe("answer dump records", () => {
       final_rank: null,
       match_reasons: [],
     });
+  });
+
+  it("scores each dumped source with the answer-stage ranking that set the emitted order", () => {
+    const sources = [
+      {
+        id: "chunk-on-topic",
+        document_id: "doc-on-topic",
+        title: "Lithium Monitoring",
+        file_name: "lithium-monitoring.pdf",
+        page_number: 2,
+        chunk_index: 0,
+        section_heading: "Monitoring",
+        content: "Lithium monitoring requires serum levels, renal function and thyroid function.",
+        image_ids: [],
+        similarity: 0.4,
+        hybrid_score: 0.4,
+        images: [],
+        score_explanation: { rankScore: 0.4, finalScore: 0.4, finalRank: 2 },
+      },
+      {
+        id: "chunk-off-topic",
+        document_id: "doc-off-topic",
+        title: "Pressure Injury Prevention",
+        file_name: "pressure-injury.pdf",
+        page_number: 7,
+        chunk_index: 0,
+        section_heading: null,
+        content: "Complete the skin integrity form.",
+        image_ids: [],
+        similarity: 0.6,
+        hybrid_score: 0.6,
+        images: [],
+        score_explanation: { rankScore: 0.6, finalScore: 0.6, finalRank: 1 },
+      },
+    ] as unknown as RagAnswer["sources"];
+    const record = buildRagDiagnosticDumpRecord("answer-order", "What lithium monitoring is required?", {
+      ...answer,
+      queryClass: "document_lookup",
+      sources,
+    } as RagAnswer);
+    const [onTopic, offTopic] = record.sources;
+    expect(onTopic.ranking.final_rank).toBe(2);
+    expect(onTopic.ranking.answer_evidence_score).toEqual(expect.any(Number));
+    expect(offTopic.ranking.answer_evidence_score).toEqual(expect.any(Number));
+    expect(onTopic.ranking.answer_evidence_score!).toBeGreaterThan(offTopic.ranking.answer_evidence_score!);
   });
 
   it("redacts the question, answer, routing and section fields while preserving clinical prose", () => {
