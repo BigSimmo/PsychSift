@@ -46,7 +46,7 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
     status = "toxic";
     severity = "severe";
     clinicalGuidance.push(
-      "CRITICAL: Serum lithium >= 2.0 mmol/L represents severe toxicity requiring immediate cessation, urgent hospital admission, and toxicology/nephrology review. Haemodialysis decisions depend on clinical neurotoxicity, renal function, and higher thresholds (typically > 2.5 mmol/L with renal impairment/symptoms or > 4.0 mmol/L per toxicologic guidelines) rather than an automatic dialysis cutoff at 2.0 mmol/L.",
+      "CRITICAL: Serum lithium >= 2.0 mmol/L represents severe toxicity requiring immediate cessation, urgent hospital admission, and toxicology/nephrology review. Haemodialysis decisions depend on clinical neurotoxicity, renal function, and EXTRIP extracorporeal criteria (recommended for severe clinical signs regardless of level or > 4.0 mmol/L with impaired kidney function; suggested > 5.0 mmol/L or with significant confusion) rather than an automatic dialysis cutoff at 2.0 mmol/L.",
     );
   } else if (level >= 1.2) {
     status = "toxic";

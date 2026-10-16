@@ -99,6 +99,8 @@ describe("isWaPublicHolidayDate and post-2028 roster holiday recognition", () =>
     expect(isWaPublicHolidayDate("2022-12-28")).toBe(false);
     expect(isWaPublicHolidayDate("2024-09-23")).toBe(true);
     expect(isWaPublicHolidayDate("2024-09-30")).toBe(false);
+    expect(isWaPublicHolidayDate("2025-01-26")).toBe(false);
+    expect(isWaPublicHolidayDate("2025-01-27")).toBe(true);
     expect(isWaPublicHolidayDate("2028-01-01")).toBe(true);
     expect(isWaPublicHolidayDate("2029-01-01")).toBe(true);
     expect(isWaPublicHolidayDate("2029-01-02")).toBe(false);

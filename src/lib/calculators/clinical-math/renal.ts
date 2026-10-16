@@ -112,9 +112,9 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
         "Height outside adult Devine IBW range (120–230 cm); Ideal Body Weight not calculated. Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal or Adjusted Body Weight in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.",
       );
     }
-  } else if (input.weightKg >= 90) {
+  } else {
     warnings.push(
-      "Weight >= 90 kg (height omitted): Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (IBW) or Adjusted Body Weight (ABW) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium (provide heightCm to compute Devine IBW/ABW).",
+      "Height omitted (weight selection unassessed): Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (IBW) or Adjusted Body Weight (ABW) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium (provide heightCm to compute Devine IBW/ABW).",
     );
   }
 

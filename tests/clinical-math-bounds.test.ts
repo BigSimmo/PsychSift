@@ -248,15 +248,28 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       ).toBe(true);
     });
 
-    it("provides Devine IBW and Adjusted Body Weight warnings without breaking standard <90 kg backward compatibility", () => {
-      const standard = calculateCockcroftGault({
+    it("provides Devine IBW and Adjusted Body Weight warnings and flags unassessed weight selection when heightCm is omitted", () => {
+      const standardWithoutHeight = calculateCockcroftGault({
         age: 50,
         weightKg: 70,
         sex: "male",
         serumCreatinine: 100,
         creatinineUnit: "umol/L",
       });
-      expect(standard.warnings).toEqual([]);
+      expect(standardWithoutHeight.crClMlMin).toBeCloseTo(77.49, 1);
+      expect(standardWithoutHeight.warnings).toEqual([
+        expect.stringMatching(/Height omitted \(weight selection unassessed\)/i),
+      ]);
+
+      const standardWithHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 70,
+        heightCm: 175,
+        sex: "male",
+        serumCreatinine: 100,
+        creatinineUnit: "umol/L",
+      });
+      expect(standardWithHeight.warnings).toEqual([]);
 
       const withHeightOverweight = calculateCockcroftGault({
         age: 50,

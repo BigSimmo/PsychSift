@@ -225,7 +225,6 @@ const HISTORICAL_PUBLIC_HOLIDAYS = new Set([
   "2024-12-26",
   // Published WA dates for 2025.
   "2025-01-01",
-  "2025-01-26",
   "2025-01-27",
   "2025-03-03",
   "2025-04-18",
