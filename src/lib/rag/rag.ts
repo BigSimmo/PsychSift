@@ -210,6 +210,7 @@ import {
   type RawPublishedOriginalRowObserver,
 } from "@/lib/rag/rag-source-block";
 import { buildRagQueryPlan } from "@/lib/rag/rag-query-plan";
+import { withOriginalSectionEligibility } from "@/lib/rag/rag-original-section-eligibility";
 export { buildRagSourceBlock, truncateForModel } from "@/lib/rag/rag-source-block";
 import {
   buildClinicalTextSearchQuery,
@@ -244,6 +245,7 @@ import {
   createAnswerRouteDeadline,
   deadlineAllowsGenerationRetry,
   isAnswerRouteDeadlineExceeded,
+  retrievalDeadlineExceededAnswer,
 } from "@/lib/rag/rag-route-budget";
 import { fetchRelatedDocuments } from "@/lib/document-enrichment";
 import { boldHighYieldClinicalText, boldRagAnswerHighYieldText, rankAnswerEvidence } from "@/lib/answer-ranking";
@@ -2088,24 +2090,6 @@ export async function answerQuestion(query: string, documentId?: string) {
   return answerQuestionWithScope({ query, documentId, allowGlobalSearch: true });
 }
 /** Answer question with scope. */
-/**
- * Original-section delivery runs only for an unscoped broad summary (see loadCheckedPublishedOriginal
- * below). An ineligible request drops the loader so it keeps the answer, coalescing and retrieval
- * caches; an eligible one bypasses them so its request-local layout authority is current. A
- * pre-retrieval misclassification only ever falls back to baseline packing, never to unchecked
- * original-section delivery.
- */
-export function withOriginalSectionEligibility(args: AnswerQuestionWithScopeArgs): AnswerQuestionWithScopeArgs {
-  if (!args.loadRegisteredPublishedOriginalSectionLayout) return args;
-  const queryMode = args.queryMode ?? "auto";
-  const eligible =
-    !args.documentId &&
-    !args.documentIds?.length &&
-    (queryClassForClinicalMode(queryMode) ??
-      classifyRagQuery(queryForClinicalMode(args.query, queryMode)).queryClass) === "broad_summary";
-  return eligible ? { ...args, skipCache: true } : { ...args, loadRegisteredPublishedOriginalSectionLayout: undefined };
-}
-
 export async function answerQuestionWithScope(args: AnswerQuestionWithScopeArgs): Promise<RagAnswer> {
   const startedAt = Date.now();
   throwIfAborted(args.signal);
@@ -2305,26 +2289,7 @@ async function answerQuestionWithScopeUncoalesced(
     if (!isAnswerRouteDeadlineExceeded(error)) throw error;
     // Retrieval never produced a completed, admitted evidence set. Do not claim
     // that the corpus lacks an answer or release partially hydrated candidates.
-    return {
-      answer: "The search reached its time limit before source evidence could be confirmed. Please try again.",
-      grounded: false,
-      confidence: "unsupported",
-      citations: [],
-      sources: [],
-      answerSections: [],
-      modelUsed: null,
-      routingMode: "unsupported",
-      routingReason: "retrieval_deadline_exceeded",
-      fallbackReasonCode: "provider_timeout",
-      degradedMode: { active: true, reason: "The search reached its time limit." },
-      latencyTimings: {
-        search_latency_ms: Date.now() - searchStartedAt,
-        generation_latency_ms: 0,
-        route_budget_ms: retrievalDeadline.budgetMs,
-        route_deadline_exceeded: true,
-        total_latency_ms: Date.now() - startedAt,
-      },
-    };
+    return retrievalDeadlineExceededAnswer({ searchStartedAt, startedAt, budgetMs: retrievalDeadline.budgetMs });
   } finally {
     retrievalDeadline.dispose();
   }

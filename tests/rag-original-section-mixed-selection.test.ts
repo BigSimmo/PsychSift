@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { withOriginalSectionEligibility } from "../src/lib/rag/rag";
+import { withOriginalSectionEligibility } from "../src/lib/rag/rag-original-section-eligibility";
 import { createPublishedOriginalReceiptCapture } from "../src/lib/rag/rag-source-block";
 import type { SearchResult } from "../src/lib/types";
 
