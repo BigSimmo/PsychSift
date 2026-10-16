@@ -115,6 +115,8 @@ export function OpenShiftsPostPage() {
   // that post already saved instead of saving a second one. A key is dropped once its date is posted;
   // changing anything in the shift makes a new key.
   const postKeys = useRef<Record<string, string>>({});
+  // Keys belong to the signed-in person, so someone else signing in on this tab never reuses one.
+  const keyFor = (on: string) => `${state.actorId ?? ""}|${signature(on)}`;
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);
@@ -256,14 +258,14 @@ export function OpenShiftsPostPage() {
         attempts.push({ date: on, ok: true, openShiftId: live.id });
         nowDone[signature(on)] = live.id;
         // Confirmed from the list, so a later deliberate post of the same slot gets a new key.
-        forgetPostKey(signature(on), postKeys.current);
+        forgetPostKey(keyFor(on), postKeys.current);
         continue;
       }
       if (!onTimes) {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
       }
-      const postKey = postKeyFor(signature(on), postKeys.current);
+      const postKey = postKeyFor(keyFor(on), postKeys.current);
       const result = await postRosterAction(team.serviceId, {
         action: "open.post",
         startsAt: onTimes.startsAt,
@@ -278,7 +280,7 @@ export function OpenShiftsPostPage() {
       if (result.ok) {
         attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
         nowDone[signature(on)] = result.result.openShiftId ?? "";
-        forgetPostKey(signature(on), postKeys.current);
+        forgetPostKey(keyFor(on), postKeys.current);
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat

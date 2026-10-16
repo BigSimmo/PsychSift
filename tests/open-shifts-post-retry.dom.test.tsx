@@ -223,6 +223,30 @@ describe("Posting a shift", () => {
     expect(window.sessionStorage.getItem("psychsift:open-shifts:post-keys-v1")).toBeNull();
   });
 
+  it("never reuses another person's post key after someone else signs in on the same tab", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // A different manager signs in without the page closing, and posts the same shift.
+    mocks.state = {
+      ...mocks.state,
+      actorId: "5e000000-0000-4000-8000-000000000002",
+      readAt: new Date(Date.now() + 1000),
+    };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+
+    const [first, second] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+
   it("gives a deliberate new post its own key once the last one went live", async () => {
     mocks.post.mockResolvedValue({
       ok: true,
