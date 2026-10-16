@@ -45,7 +45,7 @@ const leadingClassificationBannerPattern = new RegExp(
   "gm",
 );
 const clinicalSignalPattern =
-  /\b(?:administer|anc|assess|baseline|blood|cease|contraindicat|dose|dosing|ecg|escalat|fbc|level|mg|mcg|mmol|monitor|neutrophil|prescrib|review|risk|symptom|threshold|titrate|toxicity|urgent|withhold|wbc)\b/i;
+  /\b(?:administer|anc|assess|baseline|blood|cease|contraindicat(?:e|ed|es|ing|ion|ions)|dose|dosing|ecg|escalat(?:e|ed|es|ing|ion|ions)|fbc|level|mg|mcg|mmol|monitor|neutrophil|prescrib(?:e|ed|es|ing|er|ers)|prescription|prescriptions|review|risk|symptom|threshold|titrate|toxicity|urgent|withhold|wbc)\b/i;
 const provenancePhrasePattern =
   /\b(?:Source mentions|Source excerpt|Source passage|Document title|File name|citation_chunk_id|document_id)\s*:?\s*/gi;
 const genericReferencePattern = /\s*(?:[-–]\s*)?refer to MIMS Product Information\.?/gi;
@@ -58,7 +58,7 @@ const answerMetaIntroPattern =
 const provenanceNoiseTermPattern =
   /\b(?:guideline|procedure|protocol|policy|appendix|source|evidence|document|file|page|scale|lunsers|liverpool university|rating scale|retrieved|excerpt|passage)\b/gi;
 const concreteClinicalActionPattern =
-  /\b(?:administer|arrange|assess|cease|check|complete|contact|document|escalat|follow\s*up|monitor|notify|record|refer|report|review|stop|withhold|dose|prescrib|titrate|(?:must|should|will)\s+be\s+(?:completed|recorded|documented))\b/i;
+  /\b(?:administer|arrange|assess|cease|check|complete|contact|document|escalat(?:e|ed|es|ing|ion|ions)|follow\s*up|monitor|notify|record|refer|report|review|stop|withhold|dose|prescrib(?:e|ed|es|ing|er|ers)|prescription|prescriptions|titrate|(?:must|should|will)\s+be\s+(?:completed|recorded|documented))\b/i;
 // Audit H2: threshold-bearing numerics (unit-bearing figures, ranges,
 // comparatives like "8 or below", decimals) mark a fragment as carrying
 // clinical VALUES. The noise heuristics below must never drop such a fragment:

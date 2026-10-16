@@ -1,8 +1,8 @@
-# Privacy Impact Assessment â€” PsychSift Production
+# Privacy Impact Assessment — PsychSift Production
 
 **Current status authority:** [`docs/governance/privacy-readiness.v1.json`](governance/privacy-readiness.v1.json). This narrative explains the assessment; the versioned register separates code proof from provider configuration, legal approval, and clinical acceptance. Pending external items in that register are not completed by technical controls described here.
 
-**Status:** Draft for governance approval Â· **Date:** 2026-07-06 Â· **Revised:** 2026-09-01
+**Status:** Draft for governance approval · **Date:** 2026-07-06 · **Revised:** 2026-09-01
 **Scope:** Clinical data flows through the PsychSift app (Next.js on Railway Singapore + Supabase Sydney + OpenAI), the live Supabase project `PsychSift Production` (`sjrfecxgysukkwxsowpy`), and the WA private-clinical deployment context.
 **Author:** Automated code-level assessment (multi-agent audit of `src/app/api/**`, `src/lib/*`, `supabase/schema.sql`, `supabase/migrations/**`), cross-checked against the live database.
 
@@ -63,7 +63,7 @@ approval.
 
 ## 1. Executive summary
 
-The app is a **clinical knowledge base** â€” it indexes clinical reference material (guidelines,
+The app is a **clinical knowledge base** — it indexes clinical reference material (guidelines,
 drug monographs, protocols) and answers clinician questions over that corpus with retrieval-augmented
 generation. It is **not** a patient record system. Provider-backed features do not ask for patient
 identifiers. The Safety Plan Generator accepts sensitive identifier-free working content and support
@@ -80,7 +80,7 @@ material.
 
 **What is already good:**
 
-- **Data residency**: the Supabase project runs in **`ap-southeast-2` (AWS Sydney, Australia)** â€”
+- **Data residency**: the Supabase project runs in **`ap-southeast-2` (AWS Sydney, Australia)** —
   clinical data at rest stays onshore. Confirmed live via the Supabase API (project region
   `ap-southeast-2`).
 - **Query redaction**: raw query text is **not** persisted **server-side** by default. Every log write
@@ -89,7 +89,7 @@ material.
   server-side statement only: the browser row in §2 and the browser-side retention note in §6 record
   that raw query text and the generated answer are held in `window.sessionStorage` for up to 12 hours
   (gap PIA-8).
-- **The M15 HMAC fix is present** ([src/lib/query-privacy.ts](../src/lib/query-privacy.ts)) â€” the
+- **The M15 HMAC fix is present** ([src/lib/query-privacy.ts](../src/lib/query-privacy.ts)) — the
   stored hash is a keyed HMAC-SHA256 pseudonym **when `RAG_QUERY_HASH_SECRET` is set** (see gap PIA-2).
 - **Retention is automated**: nightly `pg_cron` jobs purge `rag_queries` (30d) and
   `rag_retrieval_logs` (90d). **Verified running on live** (both jobs `active = true`) - verified
@@ -99,7 +99,7 @@ material.
 - Storage buckets are **private**; files are only reachable via short-lived (10 min) server-minted
   signed URLs after an ownership check.
 
-**Top gaps (full register in Â§10):**
+**Top gaps (full register in §10):**
 
 | ID     | Risk      | One-line                                                                                                                                                                                                                                                                |
 | ------ | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -122,14 +122,14 @@ material.
 
 | Data category                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Where it lives                                                                                                                                                                                                                                                               | Sensitivity                                                                                                                                  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Clinical reference corpus (documents, chunks, embeddings, images, tables)                                                                                                                                                                                                                                                                                                                                                                                                              | Supabase (Sydney) + storage buckets                                                                                                                                                                                                                                          | Lowâ€“Medium                                                                                                                                 | Published guidelines are not PHI; **uploaded** docs _could_ contain PHI.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Clinical reference corpus (documents, chunks, embeddings, images, tables)                                                                                                                                                                                                                                                                                                                                                                                                              | Supabase (Sydney) + storage buckets                                                                                                                                                                                                                                          | Low–Medium                                                                                                                                   | Published guidelines are not PHI; **uploaded** docs _could_ contain PHI.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Free-text clinical queries                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Processed by Railway (Singapore); hashed into Supabase logs (Sydney); sent to OpenAI (US) for retrieval embedding and, when selected, answer synthesis                                                                                                                       | **High (potential PHI)**                                                                                                                     | The primary incidental-PHI vector; embedding egress can occur even when the final answer is source-only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Generated answers                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `rag_queries.answer` (not persisted unless `RAG_PERSIST_ANSWER_TEXT`); short-lived `rag_response_cache.payload`                                                                                                                                                              | **High (derived from PHI query + corpus)**                                                                                                   | Durable answer log dropped at rest by default (PIA-3); expired cache rows have a bounded hourly purge when `pg_cron` is available.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Safety-plan working content                                                                                                                                                                                                                                                                                                                                                                                                                                                            | React memory in the current browser tab; user-directed clipboard, print, or PDF output                                                                                                                                                                                       | **High (sensitive health information)**                                                                                                      | No patient-identifier field; not sent to the application service or stored by PsychSift. Exported copies leave this boundary.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Answer threads and recent queries in the browser                                                                                                                                                                                                                                                                                                                                                                                                                                       | `window.sessionStorage`, owner-scoped keys `clinical-kb-answer-thread:<ownerId>` and `clinical-kb-recent-queries:<ownerId>`                                                                                                                                                  | **High (raw query text + derived answer)**                                                                                                   | Raw query text, generated answer, and source excerpts for up to 12 turns, 12-hour TTL; last 5 raw queries. Tab-scoped; see section 6.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | User identity                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Supabase Auth (`auth.users`), `owner_id` foreign keys                                                                                                                                                                                                                        | Medium (PII)                                                                                                                                 | Email + SSO identity; managed by Supabase Auth.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Audit trail                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `audit_logs`                                                                                                                                                                                                                                                                 | Medium                                                                                                                                       | Append-only, service-role-only, retained indefinitely by design.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Operational telemetry                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `rag_retrieval_logs`, ingestion job tables                                                                                                                                                                                                                                   | Lowâ€“Medium                                                                                                                                 | Redacted query text; per-owner.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Operational telemetry                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `rag_retrieval_logs`, ingestion job tables                                                                                                                                                                                                                                   | Low–Medium                                                                                                                                   | Redacted query text; per-owner.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | On Call compliance requirements (the account holder's own registration, indemnity, credentialing, mandatory training, CPD, Working with Children Check and police clearance)                                                                                                                                                                                                                                                                                                           | Supabase (Sydney): `on_call_entries.details` JSONB on rows whose `section` is `logistics`, owner-scoped. Held in active browser tab session memory with a 7-day TTL (`ON_CALL_CACHE_MAX_AGE_MS`); excluded from device `localStorage` persistence since PR #2994.            | **High (personal information about an identified individual; the clearance fields may also be sensitive information - see PIA-9)**           | Not patient data: these are recorded dates about the clinician using the app. Stored `is_personal` by the server whatever the request body says, withheld fail-closed from the anonymous shared read, kept off the printable card, and never sent to OpenAI. Plaintext localStorage caching was removed in PR #2994 (#KJF5J7); legacy keys are purged on first read. Added 2026-09-20; updated 2026-10-10; see PIA-9.                                                                                                                                                                            |
 | CPD record: the account holder's own activities (title, date, hours, category split, cost), free-text reflections, source links, development-plan goals, routines, drafts (with "waiting for supervisor/workforce" notes and follow-up dates), missed teaching sessions (title, minutes lost, optional reason), training periods and milestones (stage, rotation, FTE, dates), year snapshots and amendment reasons, and uploaded evidence files (certificates, receipts, assessments) | Supabase (Sydney): 14 `cme_*` tables, owner-scoped, service-role only; files in the private bucket `cme-private-evidence`. The unsaved log form is also held in the browser tab's `sessionStorage` until saved or the tab closes; Today's module order is in `localStorage`. | **High (personal information about an identified individual; free text and files may carry patient details despite controls, see PIA-11)**   | Not patient data by design. Never sent to OpenAI, never indexed, never read by retrieval, embedding or answer paths. Added 2026-09-20 onwards; see PIA-11.                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | CME private evidence uploads: professional certificates, registration receipts, supervisory assessments, attendance verification files (PDF, JPEG, PNG <= 10 MB)                                                                                                                                                                                                                                                                                                                       | Supabase (Sydney): `public.cme_evidence` table + private storage bucket `cme-private-evidence`. Served via 60-second signed URLs.                                                                                                                                            | **High (personal information about an identified clinician; potential incidental PHI if an uploaded certificate references a patient case)** | Not patient data by design. Mandatory upload confirmations (`redaction_confirmed`, `preview_confirmed`). Table privileges revoked from public/anon/authenticated (service-role only). Storage path namespaced `owner_id/entry_id/id`. Never OCR'd, captioned, indexed, or sent to OpenAI. User-directed removal marks tombstone with mandatory reason (3-500 chars), scrubs filename, and deletes storage object via `deleteOrQueueCmeEvidenceObject` (compensation queued to `storage_cleanup_jobs`). Added 2026-10-10; see PIA-11.                                                             |
@@ -201,7 +201,7 @@ to their originating shift generation so a newer shared stamp cannot revive an o
 Evidence: [tests/patient-label-storage.dom.test.tsx](../tests/patient-label-storage.dom.test.tsx).
 
 **Deployment context (from code):** the answer system prompt positions the assistant as _"an
-experienced psychiatrist in Perth"_ ([src/lib/rag/rag.ts](../src/lib/rag/rag.ts)) â€” i.e. a **WA psychiatry**
+experienced psychiatrist in Perth"_ ([src/lib/rag/rag.ts](../src/lib/rag/rag.ts)) — i.e. a **WA psychiatry**
 use case. Psychiatric context raises the sensitivity ceiling: mental-health information is squarely
 "sensitive information" and "health information" under the _Privacy Act 1988_ (Cth).
 
@@ -213,46 +213,46 @@ The end-to-end path for a single clinician query. **Bold** nodes are where PHI c
 
 ```
 Clinician browser
-   â”‚  POST /api/answer  { query: "<free text, may contain patient details>", ... }
-   â–¼
-[Next.js route â€” Railway Singapore]  src/app/api/answer/route.ts
-   â”‚  â€¢ auth resolved â†’ access.ownerId (or undefined for anon/public)
-   â”‚  â€¢ rate-limit bucket "answer"
-   â”‚  â€¢ resolveSearchScope() â†’ owner-scoped candidate document set
-   â–¼
+   │  POST /api/answer  { query: "<free text, may contain patient details>", ... }
+   ▼
+[Next.js route — Railway Singapore]  src/app/api/answer/route.ts
+   │  • auth resolved → access.ownerId (or undefined for anon/public)
+   │  • rate-limit bucket "answer"
+   │  • resolveSearchScope() → owner-scoped candidate document set
+   ▼
 [RAG pipeline]  answerQuestionWithScope()  src/lib/rag/rag.ts
-   â”‚
-   â”œâ”€â”€â–º(A) QUERY EMBEDDING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-   â”‚      raw query text â†’ OpenAI embeddings (text-embedding-3-small)    â”‚
-   â”‚      src/lib/openai.ts embedTextWithTelemetry                         â”‚  â–ºâ–º OpenAI API
-   â”‚                                                                     â”‚     (US region,
-   â”œâ”€â”€â–º(B) RETRIEVAL (Supabase RPCs, owner-filtered in SQL)             â”‚      api.openai.com)
-   â”‚      match_document_chunks* etc. â€” Sydney, never leaves AU          â”‚
-   â”‚                                                                     â”‚
-   â”œâ”€â”€â–º(C) ANSWER SYNTHESIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-   â”‚      **raw query verbatim** (answer-generation request builder)     â”‚
-   â”‚      + **retrieved chunk text** (buildRagSourceBlock)               â”‚
-   â”‚      + system instructions                                          â”‚
-   â”‚      â†’ OpenAI Responses API (Terra fast / Sol strong)              â”€â”˜
-   â”‚      store:false; GPT-5.6 prompt_cache_options.ttl:30m
-   â”‚
-   â”œâ”€â”€â–º(D) LOCAL LOGGING (Supabase, Sydney, owner-stamped)
-   â”‚      insertRagQuery()
-   â”‚        â€¢ query           = **hash placeholder** (queryTextForStorage)  â† redacted
-   â”‚        â€¢ normalized_query= **hash placeholder**                        â† redacted
-   â”‚        â€¢ answer          = null unless RAG_PERSIST_ANSWER_TEXT         â† dropped at rest (PIA-3)
-   â”‚        â€¢ source_chunk_ids= real chunk UUIDs                            â† owner's own data
-   â”‚        â€¢ metadata.query_hash = HMAC/SHA-256 (query-privacy.ts)
-   â”‚
-   â””â”€â”€â–º(E) RESPONSE CACHE (Supabase rag_response_cache, authenticated owner-scoped)
+   │
+   ├──►(A) QUERY EMBEDDING ─────────────────────────────────────────────┐
+   │      raw query text → OpenAI embeddings (text-embedding-3-small)    │
+   │      src/lib/openai.ts embedTextWithTelemetry                         │  ►► OpenAI API
+   │                                                                     │     (US region,
+   ├──►(B) RETRIEVAL (Supabase RPCs, owner-filtered in SQL)             │      api.openai.com)
+   │      match_document_chunks* etc. — Sydney, never leaves AU          │
+   │                                                                     │
+   ├──►(C) ANSWER SYNTHESIS ─────────────────────────────────────────────┤
+   │      **raw query verbatim** (answer-generation request builder)     │
+   │      + **retrieved chunk text** (buildRagSourceBlock)               │
+   │      + system instructions                                          │
+   │      → OpenAI Responses API (Terra fast / Sol strong)              ─┘
+   │      store:false; GPT-5.6 prompt_cache_options.ttl:30m
+   │
+   ├──►(D) LOCAL LOGGING (Supabase, Sydney, owner-stamped)
+   │      insertRagQuery()
+   │        • query           = **hash placeholder** (queryTextForStorage)  ← redacted
+   │        • normalized_query= **hash placeholder**                        ← redacted
+   │        • answer          = null unless RAG_PERSIST_ANSWER_TEXT         ← dropped at rest (PIA-3)
+   │        • source_chunk_ids= real chunk UUIDs                            ← owner's own data
+   │        • metadata.query_hash = HMAC/SHA-256 (query-privacy.ts)
+   │
+   └──►(E) RESPONSE CACHE (Supabase rag_response_cache, authenticated owner-scoped)
           payload = full answer, TTL ~5 min (RAG_ANSWER_CACHE_TTL_MS)
           disabled for anonymous answers; authenticated rows are keyed by owner_id
-   â–¼
-Clinician browser  â† answer + citations
+   ▼
+Clinician browser  ← answer + citations
 ```
 
 `/api/search` follows the same shape but writes `rag_queries` / `rag_query_misses` /
-`rag_retrieval_logs` (all redacted via the same helpers â€”
+`rag_retrieval_logs` (all redacted via the same helpers —
 [src/app/api/search/route.ts](../src/app/api/search/route.ts)).
 
 The browser request, answer pipeline, and ingestion worker are processed by Railway in Singapore. The
@@ -275,13 +275,13 @@ working content within the same local-only boundary.
 
 ### 4.1 What is sent
 
-| Payload         | Content                                                                                                                                       | Reference                                                              |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Embedding input | **Raw query text**, verbatim (normalized whitespace/case only)                                                                                | [src/lib/openai.ts](../src/lib/openai.ts) â†’ `embedTextWithTelemetry` |
-| Answer input    | **Raw query verbatim** (`Question:\n${args.query}`)                                                                                           | [src/lib/rag/rag.ts](../src/lib/rag/rag.ts)                            |
-| Answer input    | **Retrieved chunk text** (content, capped ~1800 chars, plus title/page/section/table-facts/captions)                                          | [src/lib/rag/rag.ts](../src/lib/rag/rag.ts)                            |
-| Instructions    | Static system prompt ("experienced psychiatrist in Perthâ€¦")                                                                                 | [src/lib/rag/rag.ts](../src/lib/rag/rag.ts)                            |
-| Metadata        | `{ operation }`; when configured, `safety_identifier` is an HMAC-SHA256 pseudonym of the authenticated owner. The raw owner id is never sent. | [src/lib/openai.ts](../src/lib/openai.ts)                              |
+| Payload         | Content                                                                                                                                       | Reference                                                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Embedding input | **Raw query text**, verbatim (normalized whitespace/case only)                                                                                | [src/lib/openai.ts](../src/lib/openai.ts) → `embedTextWithTelemetry` |
+| Answer input    | **Raw query verbatim** (`Question:\n${args.query}`)                                                                                           | [src/lib/rag/rag.ts](../src/lib/rag/rag.ts)                          |
+| Answer input    | **Retrieved chunk text** (content, capped ~1800 chars, plus title/page/section/table-facts/captions)                                          | [src/lib/rag/rag.ts](../src/lib/rag/rag.ts)                          |
+| Instructions    | Static system prompt ("experienced psychiatrist in Perth…")                                                                                   | [src/lib/rag/rag.ts](../src/lib/rag/rag.ts)                          |
+| Metadata        | `{ operation }`; when configured, `safety_identifier` is an HMAC-SHA256 pseudonym of the authenticated owner. The raw owner id is never sent. | [src/lib/openai.ts](../src/lib/openai.ts)                            |
 
 The app never _adds_ patient identifiers, but it does not scrub them either: **any PHI the clinician
 types into the query, or that exists in an indexed excerpt, is transmitted to OpenAI.**
@@ -293,7 +293,7 @@ types into the query, or that exists in an indexed excerpt, is transmitted to Op
   rollout target; `text-embedding-3-small` remains the embedding model
   ([src/lib/env.ts](../src/lib/env.ts), [.env.example](../.env.example)). Existing deployments
   with explicit model variables remain pinned until their configuration is changed.
-- **`store: false`** by default â€” responses are not retained in OpenAI's dashboard/store
+- **`store: false`** by default — responses are not retained in OpenAI's dashboard/store
   ([src/lib/openai.ts](../src/lib/openai.ts), [src/lib/env.ts](../src/lib/env.ts)).
 - **GPT-5.6 prompt caching:** the app sends `prompt_cache_options: { ttl: "30m" }`
   unless `OPENAI_PROMPT_CACHE_TTL=off`; it never sends the deprecated
@@ -303,12 +303,12 @@ types into the query, or that exists in an indexed excerpt, is transmitted to Op
 - **Safety identifier:** when `OPENAI_SAFETY_IDENTIFIER_SECRET` is configured, authenticated
   Responses requests carry a stable HMAC-SHA256 pseudonym. Anonymous and background requests omit
   it, and raw owner identifiers are never sent. Production readiness warns when the secret is absent.
-- **No `baseURL` override and no zero-data-retention (ZDR) header** are set in code â€” the client is a
+- **No `baseURL` override and no zero-data-retention (ZDR) header** are set in code — the client is a
   plain `new OpenAI({ apiKey, timeout, maxRetries })` ([src/lib/openai.ts](../src/lib/openai.ts)),
   so traffic goes to `api.openai.com` (US) under whatever data-processing terms attach to the API
   **account/organisation**.
 
-### 4.3 Data-processing terms â€” what code can and cannot tell us
+### 4.3 Data-processing terms — what code can and cannot tell us
 
 The code shows the _technical_ posture (US endpoint, `store:false`, model-aware prompt-cache
 configuration, optional HMAC safety identifier, no ZDR header).
@@ -333,7 +333,7 @@ of the most important privacy items before real patient use (PIA-1).
 
 ---
 
-## 5. Logging and redaction â€” per-table verification
+## 5. Logging and redaction — per-table verification
 
 All three log tables are **owner-stamped** and **RLS-enabled** (owner-read for authenticated users;
 service-role for writes). Redaction is applied centrally at every write site.
@@ -346,7 +346,7 @@ service-role for writes). Redaction is applied centrally at every write site.
 | `audit_logs`         | N/A (no query text)   | action/resource metadata only; the write boundary allowlists operational metadata and excludes user-controlled filenames/titles/content hashes ([audit.ts](../src/lib/audit.ts)). Migration `20260717163000` minimizes existing rows on deployment.            | `owner_id`, `action`, `resource_id`                                                                                     | service-role-only, [schema.sql](../supabase/schema.sql)                                                                                               |
 | `cme_evidence`       | N/A (file metadata)   | Mandatory user confirmations (`redaction_confirmed`, `preview_confirmed`); filename capped at 180 chars; files re-validated via Sharp; storage path strictly namespaced `owner_id/entry_id/id`. On owner removal, `file_name` is scrubbed to `'Removed file'`. | `storage_path`, `file_name`, `sha256`, `kind`, `removal_reason` (3–500 chars)                                           | service-role-only (revoked from public, anon, authenticated; select, insert, update on removed_at, removal_reason, file_name granted to service_role) |
 
-### 5.1 M15 HMAC query-hash fix â€” verified present, enforced in production
+### 5.1 M15 HMAC query-hash fix — verified present, enforced in production
 
 The audit's **M15** remediation is in the code
 ([src/lib/query-privacy.ts](../src/lib/query-privacy.ts)):
@@ -361,15 +361,15 @@ export function hashQueryText(query: string) {
 }
 ```
 
-- **When `RAG_QUERY_HASH_SECRET` is set:** the stored hash is a keyed HMAC-SHA256 â€” not
-  offline-reversible, not correlatable outside this deployment. âœ” This is the intended fix.
+- **When `RAG_QUERY_HASH_SECRET` is set:** the stored hash is a keyed HMAC-SHA256 — not
+  offline-reversible, not correlatable outside this deployment. ✔ This is the intended fix.
 - **When it is unset:** the code **silently falls back to unsalted SHA-256**. A short, low-entropy
-  clinical query ("john smith clozapine") is then **dictionary-reversible** â€” an attacker (or a
+  clinical query ("john smith clozapine") is then **dictionary-reversible** — an attacker (or a
   curious insider) with read access to the log tables can hash candidate patient/drug strings offline
   and match rows, and can correlate the same query across rows. This defeats the redaction it is
   meant to provide.
 
-**Status (PIA-2 â€” mitigated):** production now **fails closed** when the secret is absent.
+**Status (PIA-2 — mitigated):** production now **fails closed** when the secret is absent.
 `requireQueryHashSecret()` ([src/lib/env.ts](../src/lib/env.ts)) throws at server startup
 ([src/instrumentation.ts](../src/instrumentation.ts)) when `NODE_ENV=production` and
 `RAG_QUERY_HASH_SECRET` is unset, so a misconfigured clinical server refuses to boot rather than
@@ -389,7 +389,7 @@ revalidate presence and rotation ownership during the next approved credential r
 URLs, secrets (incl. `sb_secret_` / `sb_publishable_`), and emails from error details before they are
 logged, and `redactCaptionIdentifiers` strips emails/MRN/NHS-style ids/phone numbers from image
 captions ([privacy.ts](../src/lib/privacy.ts)). These are sound as far as they go, but they are
-**pattern-based** and do not attempt to redact free-text clinical narrative (names in prose, etc.) â€”
+**pattern-based** and do not attempt to redact free-text clinical narrative (names in prose, etc.) —
 which is why the query-hash approach (not raw storage) is the right primary control.
 
 ---
@@ -430,7 +430,7 @@ cache purge jobs onto the existing bounded hourly purge. The remaining retention
   below.
   Repeat this check for any secondary environment that retains real data.
 - The purge functions are installed conditionally (`if to_regnamespace('cron') is null then return`,
-  [migration 20260629060603](../supabase/migrations/20260629060603_rag_queries_retention.sql)) â€”
+  [migration 20260629060603](../supabase/migrations/20260629060603_rag_queries_retention.sql)) —
   fine on live (pg_cron present) but **preview/branch databases silently skip scheduling**. Not a
   production risk, but worth noting for any secondary environment that retains real data.
 
@@ -499,14 +499,14 @@ cover both overseas paths and their purposes.
 ## 8. Storage-bucket access paths
 
 - Buckets `clinical-documents` and `clinical-images` are **private**
-  ([docs/multi-user-auth-setup.md](multi-user-auth-setup.md) Â§7).
+  ([docs/multi-user-auth-setup.md](multi-user-auth-setup.md) §7).
 - No direct client storage access. Files are served only via **server-minted signed URLs** with a
   **10-minute TTL** (`signedUrlTtlSeconds = 60 * 10`,
   [documents/[id]/signed-url/route.ts](../src/app/api/documents/[id]/signed-url/route.ts),
   [images/[id]/signed-url/route.ts](../src/app/api/images/[id]/signed-url/route.ts)).
 - Every signed-URL mint is **preceded by an ownership check** on the parent document row
   (`withOwnerReadScope(...)` before `createSignedUrl`,
-  [documents/[id]/signed-url/route.ts](../src/app/api/documents/[id]/signed-url/route.ts)) â€” see the
+  [documents/[id]/signed-url/route.ts](../src/app/api/documents/[id]/signed-url/route.ts)) — see the
   companion tenancy review for the adversarial verification.
 - Storage objects are namespaced by owner (`${uploadOwnerId}/documents/${documentId}/...`,
   [upload/route.ts](../src/app/api/upload/route.ts)), and the DB additionally carries owner-scoped
@@ -521,30 +521,30 @@ cover both overseas paths and their purposes.
   ownership verification. Storage paths are strictly checked by DB constraint (`check (storage_path = owner_id::text || '/' || entry_id::text || '/' || id::text)`).
 
 Signed-URL handling is well-scoped. The residual consideration is only that a 10-minute URL, once
-minted, is bearer-usable by anyone it is shared with in that window â€” acceptable for this use case.
+minted, is bearer-usable by anyone it is shared with in that window — acceptable for this use case.
 
 ---
 
 ## 9. Assessment against Australian Privacy Act / WA health obligations
 
-**Framework.** Private-sector health service providers are **APP entities regardless of turnover** â€”
+**Framework.** Private-sector health service providers are **APP entities regardless of turnover** —
 the small-business exemption does **not** apply where health services are provided and health
 information is handled (_Privacy Act 1988_ (Cth), s6D(4)(b)). Health/mental-health information is
 **"sensitive information"** attracting the highest APP protections. WA has no equivalent of Victoria's
 _Health Records Act 2001_ or NSW's _HRIP Act 2002_ for the private sector; the _Privacy Act_ + APPs are
 the operative framework for a WA private clinician. (The WA _Privacy and Responsible Information Sharing
-Act 2024_ targets WA **public-sector** entities and may apply to public-health deployments â€” confirm
+Act 2024_ targets WA **public-sector** entities and may apply to public-health deployments — confirm
 with counsel if this is deployed inside a WA Health service.)
 
-| APP                                         | Obligation                                                                         | Status in this app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Gap                     |
-| ------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| **APP 1** â€” open & transparent management | Have a clear, up-to-date APP privacy policy                                        | A draft `/privacy` data-processing page ships, but it is explicitly governance-review-required and is not represented as the final approved APP privacy policy                                                                                                                                                                                                                                                                                                                                                                                        | PIA-5                   |
-| **APP 3** â€” collection of sensitive info  | Collect health info only with consent + where reasonably necessary                 | App does not solicit PHI; incidental entry remains possible. â€œDo not enter patient-identifiable informationâ€ notices now appear beside query/upload controls, but no governance-approved consent framework is claimed                                                                                                                                                                                                                                                                                                                              | PIA-5                   |
-| **APP 5** â€” notification of collection    | Tell individuals what's collected & disclosed (incl. overseas)                     | Draft point-of-entry notices and the `/privacy` page disclose Singapore application processing and model-provider use; final wording and legal/governance approval remain outstanding                                                                                                                                                                                                                                                                                                                                                                 | PIA-1, PIA-5            |
-| **APP 6** — use/disclosure                  | Use only for the primary purpose or a permitted secondary purpose                  | Query used for answer generation (primary). Log retention = quality/eval (secondary) — defensible but should be documented. On Call compliance records are disclosed to nobody but their owner, stored in tab session memory with a 7-day TTL, and excluded from device storage (mitigated in PR #2994); whether the clearance fields are sensitive information is unresolved (PIA-9). CME private evidence files are strictly owner-scoped portfolio documents, served via 60s signed URLs and never disclosed, indexed, or sent to OpenAI (PIA-11). | PIA-5, PIA-9, PIA-11    |
-| **APP 8** â€” cross-border disclosure       | Discloser stays accountable for the overseas recipient unless an exception applies | Current Platform evidence confirms OpenAI API sharing, API call logging, and optional hosted tools are disabled but does not substantiate ZDR; the executed DPA reference is also missing. Railway's Singapore processor contract remains unresolved, so the privacy adviser cannot close the whole-of-flow APP 8 basis.                                                                                                                                                                                                                              | **PIA-1**               |
-| **APP 11** — security & destruction         | Reasonable security; destroy/de-identify when no longer needed                     | Strong: Sydney data residency, RLS, private storage buckets (`clinical-documents`, `clinical-images`, `cme-private-evidence`), 60s/10m signed URLs, query hashing, default-null answer logs, owner-attested production HMAC evidence, owner-attested production/staging query/log/cache purge schedules, service worker network-only isolation for clinical data, and Developer Hub admin gating.                                                                                                                                                     | PIA-2/4, PIA-11, PIA-12 |
-| **NDB scheme** (Pt IIIC)                    | Notify OAIC + individuals of eligible breaches of health info                      | No documented breach-response runbook tied to these tables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Recommend adding        |
+| APP                                       | Obligation                                                                         | Status in this app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Gap                     |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **APP 1** — open & transparent management | Have a clear, up-to-date APP privacy policy                                        | A draft `/privacy` data-processing page ships, but it is explicitly governance-review-required and is not represented as the final approved APP privacy policy                                                                                                                                                                                                                                                                                                                                                                                        | PIA-5                   |
+| **APP 3** — collection of sensitive info  | Collect health info only with consent + where reasonably necessary                 | App does not solicit PHI; incidental entry remains possible. “Do not enter patient-identifiable information” notices now appear beside query/upload controls, but no governance-approved consent framework is claimed                                                                                                                                                                                                                                                                                                                                 | PIA-5                   |
+| **APP 5** — notification of collection    | Tell individuals what's collected & disclosed (incl. overseas)                     | Draft point-of-entry notices and the `/privacy` page disclose Singapore application processing and model-provider use; final wording and legal/governance approval remain outstanding                                                                                                                                                                                                                                                                                                                                                                 | PIA-1, PIA-5            |
+| **APP 6** — use/disclosure                | Use only for the primary purpose or a permitted secondary purpose                  | Query used for answer generation (primary). Log retention = quality/eval (secondary) — defensible but should be documented. On Call compliance records are disclosed to nobody but their owner, stored in tab session memory with a 7-day TTL, and excluded from device storage (mitigated in PR #2994); whether the clearance fields are sensitive information is unresolved (PIA-9). CME private evidence files are strictly owner-scoped portfolio documents, served via 60s signed URLs and never disclosed, indexed, or sent to OpenAI (PIA-11). | PIA-5, PIA-9, PIA-11    |
+| **APP 8** — cross-border disclosure       | Discloser stays accountable for the overseas recipient unless an exception applies | Current Platform evidence confirms OpenAI API sharing, API call logging, and optional hosted tools are disabled but does not substantiate ZDR; the executed DPA reference is also missing. Railway's Singapore processor contract remains unresolved, so the privacy adviser cannot close the whole-of-flow APP 8 basis.                                                                                                                                                                                                                              | **PIA-1**               |
+| **APP 11** — security & destruction       | Reasonable security; destroy/de-identify when no longer needed                     | Strong: Sydney data residency, RLS, private storage buckets (`clinical-documents`, `clinical-images`, `cme-private-evidence`), 60s/10m signed URLs, query hashing, default-null answer logs, owner-attested production HMAC evidence, owner-attested production/staging query/log/cache purge schedules, service worker network-only isolation for clinical data, and Developer Hub admin gating.                                                                                                                                                     | PIA-2/4, PIA-11, PIA-12 |
+| **NDB scheme** (Pt IIIC)                  | Notify OAIC + individuals of eligible breaches of health info                      | No documented breach-response runbook tied to these tables                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Recommend adding        |
 
 **Overall:** the _engineering_ controls for data-at-rest are strong and largely APP-11-aligned. The
 material shortfalls are **governance/contractual** (Railway's APP 8 cross-border terms and final approval
@@ -560,7 +560,7 @@ remaining items are compliance-posture and PHI-minimisation gaps.
 
 ## 10. Gap register (ranked by risk)
 
-### PIA-1 â€” Overseas Railway/OpenAI processing needs an approved contractual basis and notice **(High)**
+### PIA-1 — Overseas Railway/OpenAI processing needs an approved contractual basis and notice **(High)**
 
 - **Risk:** Health/PHI in requests, queries, excerpts, and ingestion material is processed by Railway
   in Singapore. Query text can reach OpenAI in the US for retrieval embedding even when the final
@@ -569,7 +569,7 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   production-project ZDR were verified on 2026-08-18, but a 2026-09-01 authenticated Platform review
   found no visible ZDR entitlement or configured retention type. A draft in-product provider
   disclosure now exists, reducing the
-  point-of-entry visibility gap, but it is not governance-approved legal wording â†’ APP 8 accountability
+  point-of-entry visibility gap, but it is not governance-approved legal wording → APP 8 accountability
   exposure and a residual APP 5 governance gap.
 - **Evidence:** the live app and worker are recorded in Railway Singapore
   ([deployment-architecture.md](deployment-architecture.md)); the OpenAI client uses
@@ -586,17 +586,17 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   governance approval. The remaining Railway contractual basis is captured decision-ready
   in **[docs/openai-cross-border-basis.md](openai-cross-border-basis.md)**, which also records that
   the app's egress endpoints (`/v1/responses`, `/v1/embeddings`) are **ZDR-eligible** and that OpenAI now
-  offers **Australia data residency** (storage) â€” an option that postdates this PIA. The OpenAI
+  offers **Australia data residency** (storage) — an option that postdates this PIA. The OpenAI
   DPA/ZDR steps are repository claims pending secure external references; Railway execution and
   whole-of-flow privacy-adviser sign-off also remain operator/legal, not code.
 
-### PIA-2 â€” Query-hash HMAC silently downgrades without the secret **(Mitigated)**
+### PIA-2 — Query-hash HMAC silently downgrades without the secret **(Mitigated)**
 
-- **Risk:** If `RAG_QUERY_HASH_SECRET` is unset in prod, stored query hashes are unsalted SHA-256 â†’
+- **Risk:** If `RAG_QUERY_HASH_SECRET` is unset in prod, stored query hashes are unsalted SHA-256 →
   dictionary-reversible and cross-row correlatable, defeating the redaction (undoes M15).
 - **Evidence:** [query-privacy.ts](../src/lib/query-privacy.ts); the secret is
   `z.string().min(16).optional()` in [env.ts](../src/lib/env.ts).
-- **Fix (landed):** `requireQueryHashSecret()` now makes the secret **mandatory in production** â€” it
+- **Fix (landed):** `requireQueryHashSecret()` now makes the secret **mandatory in production** — it
   fails closed at startup ([instrumentation.ts](../src/instrumentation.ts)) when `NODE_ENV=production` and
   the secret is missing, mirroring the `requireServerEnv` pattern. `check:production-readiness` asserts
   the boot guard is wired in and the secret is present; covered by
@@ -606,7 +606,7 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   secret values were neither emitted nor compared. Revalidate presence, ownership, and the rotation
   procedure during the next credential review; do not rotate solely to establish equality.
 
-### PIA-3 â€” Generated answers stored un-redacted in `rag_queries` **(Mitigated)**
+### PIA-3 — Generated answers stored un-redacted in `rag_queries` **(Mitigated)**
 
 - **Risk:** The `answer` column held the full generated text, which can restate patient specifics
   echoed from the query; the query itself is hashed but the answer was not. Owner-scoped (not
@@ -620,11 +620,11 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   reads the in-memory answer (`logQuery: false`) and never reads this column back
   ([scripts/eval-rag.ts](../scripts/eval-rag.ts), [scripts/eval-answer-quality.ts](../scripts/eval-answer-quality.ts),
   [scripts/promote-query-misses.ts](../scripts/promote-query-misses.ts)), so persistence-off does not
-  affect eval â€” confirming the pipeline has no real dependency on stored answer text. The flag is
+  affect eval — confirming the pipeline has no real dependency on stored answer text. The flag is
   additionally blocked in a production-like environment by `npm run check:production-readiness`.
 - **Residual cache copy:** The answer also lands in `rag_response_cache.payload`
   ([rag-cache.ts](../src/lib/rag/rag-cache.ts)). Its `expires_at` TTL (`RAG_ANSWER_CACHE_TTL_MS`, default
-  5 min) only gates **reads** â€” `sharedCacheSelector` filters on `expires_at`, while
+  5 min) only gates **reads** — `sharedCacheSelector` filters on `expires_at`, while
   `replaceSharedCacheRow` deletes only the _same_ cache key before inserting. Migration
   `20260713201542_consolidate_rag_response_cache_retention.sql` unschedules the duplicate unbounded
   job and keeps one hourly purge capped at 1,000 expired rows per invocation. This keeps
@@ -633,7 +633,7 @@ remaining items are compliance-posture and PHI-minimisation gaps.
 - **Historical cleanup:** a migration to null existing `rag_queries.answer` values is prepared but
   intentionally unexecuted pending deployment approval; this assessment does not claim live cleanup.
 
-### PIA-4 â€” Query-miss and response-cache purges active **(Mitigated)**
+### PIA-4 — Query-miss and response-cache purges active **(Mitigated)**
 
 - **Risk:** A secondary environment without the retention migrations or `pg_cron` can still accumulate
   hash-redacted misses and expired response-cache payloads.
@@ -645,7 +645,7 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   queried live on 2026-07-14: jobids 13 and 16 are active and the obsolete duplicate is absent.
 - **Fix:** Repeat the canonical job check for each secondary environment that retains real data.
 
-### PIA-5 â€” Draft notices/page ship; final approved privacy policy remains outstanding **(Medium)**
+### PIA-5 — Draft notices/page ship; final approved privacy policy remains outstanding **(Medium)**
 
 - **Risk:** The shipped draft point-of-entry notices and `/privacy` page explain collection, retention,
   and overseas/provider processing, but they are explicitly pending governance review and do not by
@@ -654,7 +654,7 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   APP privacy policy and retain the point-of-entry links/notices. Broader retention and breach-response
   documentation also remains outstanding. No legal approval is claimed here.
 
-### PIA-6 â€” OpenAI prompt-cache lifetime requires contractual confirmation **(Low-Medium)**
+### PIA-6 — OpenAI prompt-cache lifetime requires contractual confirmation **(Low-Medium)**
 
 - **Risk:** Query + retrieved excerpts can enter OpenAI prompt caches even with `store:false`.
   OpenAI documents prompt-cache application state on local GPU machines with a maximum 24-hour
@@ -666,14 +666,14 @@ remaining items are compliance-posture and PHI-minimisation gaps.
   data-residency terms. Keep `OPENAI_PROMPT_CACHE_TTL=off` available when governance requires the app
   to omit the extended GPT-5.6 TTL option; document that provider-default caching policy still applies.
 
-### PIA-7 â€” `RAG_PERSIST_RAW_QUERY_TEXT=true` stores raw PHI query text **(Low, config-gated)**
+### PIA-7 — `RAG_PERSIST_RAW_QUERY_TEXT=true` stores raw PHI query text **(Low, config-gated)**
 
 - **Risk:** Flipping the flag persists raw queries with only the 30-day purge as a safeguard.
 - **Evidence:** [query-privacy.ts](../src/lib/query-privacy.ts), [env.ts](../src/lib/env.ts).
 - **Fix:** Keep it **off** in production; if ever enabled, require a documented retention/consent basis
   and consider a shorter purge window for raw-text rows.
 
-### PIA-8 â€” Browser-side answer thread retains raw query text for 12 h on a shared workstation **(Low-Medium)**
+### PIA-8 — Browser-side answer thread retains raw query text for 12 h on a shared workstation **(Low-Medium)**
 
 - **Risk:** A completed answer keeps the raw query text, the generated answer, and the source excerpts
   for up to 12 turns in `window.sessionStorage` under `clinical-kb-answer-thread:<ownerId>` with a

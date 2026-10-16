@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "ba9e356d-1197-4ae8-af67-19e313a89275",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#CFHRJY",
+    "outcome": "Resolved in PR #3567 (5cbe4ec63a): added VirtualizedResultList (src/components/ui/virtualized-result-list.tsx) and wired document-search-results.tsx and differential-stream-workspace.tsx with DOM regression tests in tests/search-results-virtualization.dom.test.tsx.",
+    "baseRowFingerprint": "1f6cde3c1e999ed6da03fcebd1bcc413d9ae921ece541ff65fffda4f935f1df5",
+    "targetUlid": "01M4WDK09FCFHRJY1KW36CHJAA"
+  }
+}

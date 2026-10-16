@@ -5,6 +5,8 @@ export type EmbeddingPrefetch<T> = {
 
 export type EmbeddingPrefetchOptions = {
   signal?: AbortSignal;
+  timeoutMs?: number;
+  maxRetries?: number;
 };
 
 /** Keeps telemetry payloads from drifting when a retrieval starts an embedding warm-up. */

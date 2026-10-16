@@ -1,10 +1,23 @@
 "use client";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ChangeEvent,
+} from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { buttonFaceClass } from "@/components/ui/button-face";
 import { cn, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primitives";
+import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
+import { PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
 
@@ -20,6 +33,8 @@ export interface NoteEditorProps {
   label?: string;
 }
 
+const subscribeNoop = () => () => {};
+
 /**
  * Clinical Note Editor with debounced auto-save and caret preservation (#TDKF8T).
  *
@@ -33,13 +48,19 @@ export function ClinicalNoteEditor({
   onSave,
   debounceMs = 1000,
   readOnly = false,
-  placeholder = "Enter clinical note...",
+  placeholder = "Write de-identified clinical note (no patient name, DOB, or MRN)...",
   className = "",
   label = "Clinical Note",
 }: NoteEditorProps) {
+  const instanceId = useId();
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(initialValue);
   const currentValue = isControlled ? controlledValue : internalValue;
+  const sharedDevice = useSyncExternalStore(
+    subscribeNoop,
+    () => isSharedDevice(),
+    () => false,
+  );
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedValue, setLastSavedValue] = useState(currentValue);
@@ -95,6 +116,10 @@ export function ClinicalNoteEditor({
   const performSave = useCallback(
     async (textToSave: string) => {
       if (readOnly || textToSave === lastSavedValue) return;
+      if (checkPatientDetail(textToSave)) {
+        setSaveStatus("error");
+        return;
+      }
 
       // Capture caret position before triggering save
       recordSelection();
@@ -121,11 +146,25 @@ export function ClinicalNoteEditor({
       setInternalValue(newValue);
     }
     onChange?.(newValue);
+    if (checkPatientDetail(newValue)) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      setSaveStatus("error");
+      return;
+    }
     setSaveStatus("unsaved");
 
     // Clear existing timer
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    // Suppress background auto-save on shared clinical devices
+    if (isSharedDevice()) {
+      return;
     }
 
     // Schedule debounced auto-save
@@ -142,10 +181,11 @@ export function ClinicalNoteEditor({
   const handleBlur = () => {
     isFocusedRef.current = false;
     recordSelection();
-    // Save on blur if unsaved
-    if (saveStatus === "unsaved") {
+    // Save on blur if unsaved and not on a shared device
+    if (saveStatus === "unsaved" && !isSharedDevice()) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
       }
       performSave(currentValue);
     }
@@ -164,21 +204,46 @@ export function ClinicalNoteEditor({
   };
 
   useEffect(() => {
+    const clearEditorState = () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      selectionRef.current = { start: 0, end: 0, direction: "none" };
+      setInternalValue("");
+      setLastSavedValue("");
+      setSaveStatus("idle");
+      onChange?.("");
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(ACCOUNT_TRANSITION_EVENT, clearEditorState);
+      window.addEventListener("account-scoped-browser-storage-clear", clearEditorState);
+      window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
+    }
+
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener(ACCOUNT_TRANSITION_EVENT, clearEditorState);
+        window.removeEventListener("account-scoped-browser-storage-clear", clearEditorState);
+        window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
       }
     };
-  }, []);
+  }, [onChange]);
 
   return (
     <div className={cn("clinical-note-editor flex flex-col gap-2", className)} data-testid="clinical-note-editor">
       <div className="flex items-center justify-between text-xs">
-        <label htmlFor="clinical-note-textarea" className="font-semibold text-[color:var(--text)]">
+        <label htmlFor={`${instanceId}-textarea`} className="font-semibold text-[color:var(--text)]">
           {label}
         </label>
         <div className="flex items-center gap-2">
           <span
+            id={`${instanceId}-status`}
             className={cn(
               "rounded border px-2 py-0.5 font-mono text-xs",
               saveStatus === "saving"
@@ -213,8 +278,15 @@ export function ClinicalNoteEditor({
         </div>
       </div>
 
+      {sharedDevice ? (
+        <p className="text-xs text-[color:var(--text-muted)]" data-testid="note-editor-shared-device-notice">
+          Shared device mode: background auto-save is paused. Use Save now to save intentionally.
+        </p>
+      ) : null}
+
       <textarea
-        id="clinical-note-textarea"
+        id={`${instanceId}-textarea`}
+        aria-describedby={`${instanceId}-status`}
         ref={textareaRef}
         value={currentValue}
         onChange={handleChange}
@@ -231,7 +303,11 @@ export function ClinicalNoteEditor({
           focusRing,
         )}
         data-testid="note-editor-textarea"
+        autoComplete="off"
+        autoCorrect="off"
         spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
       />
     </div>
   );

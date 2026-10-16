@@ -916,6 +916,7 @@ export function RosterShiftsPage({ now: pinnedNow }: { readonly now?: Date } = {
           onClose={() => setAddView(null)}
           today={today}
           workplaces={workplaces}
+          existingShifts={shifts.shifts}
           hasTeam={enabledTeams.length > 0}
           onDates={() => {
             setAddView(null);

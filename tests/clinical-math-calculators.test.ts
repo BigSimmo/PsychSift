@@ -102,6 +102,43 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(pediatric.stage).toBeNull();
       expect(pediatric.errors).toEqual(expect.arrayContaining([expect.stringContaining("Schwartz")]));
     });
+
+    it("includes Devine Ideal Body Weight (IBW) and Adjusted Body Weight (ABW) warnings when overweight or weight >= 90 kg", () => {
+      // 50yo male, 175 cm -> Devine IBW = 50 + 0.9 * (175 - 152.4) = 70.3 kg
+      // Actual weight 100 kg (> 1.2 * IBW) -> ABW = 70.3 + 0.4 * (100 - 70.3) = 82.2 kg
+      const obeseWithHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 100,
+        heightCm: 175,
+        sex: "male",
+        serumCreatinine: 100,
+        creatinineUnit: "umol/L",
+      });
+
+      expect(obeseWithHeight.isValid).toBe(true);
+      // Uses Adjusted Body Weight (82.2 kg): (140 - 50) * 82.2 * 1.23 / 100 = 91.00 mL/min
+      expect(obeseWithHeight.crClMlMin).toBeCloseTo(91.0, 1);
+      expect(obeseWithHeight.warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringMatching(
+            /Devine IBW: 70\.3 kg; Adjusted Body Weight: 82\.2 kg.*Australian Therapeutic Guidelines/i,
+          ),
+        ]),
+      );
+
+      // Weight >= 90 kg with heightCm omitted -> warns about IBW/ABW for renally cleared drugs like lithium
+      const heavyWithoutHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 95,
+        sex: "female",
+        serumCreatinine: 90,
+        creatinineUnit: "umol/L",
+      });
+      expect(heavyWithoutHeight.isValid).toBe(true);
+      expect(heavyWithoutHeight.warnings).toEqual(
+        expect.arrayContaining([expect.stringMatching(/Australian Therapeutic Guidelines.*Ideal Body Weight/i)]),
+      );
+    });
   });
 
   describe("Renal Clearance: CKD-EPI 2021 eGFR", () => {
@@ -272,7 +309,15 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(result.targetRange).toEqual({ min: 0.8, max: 1.0 });
     });
 
-    it("flags toxic levels > 1.2 and severe toxicity > 2.0 mmol/L", () => {
+    it("flags toxic levels >= 1.2 and severe toxicity >= 2.0 mmol/L with accurate haemodialysis guidance", () => {
+      const boundaryTox = evaluateLithiumLevel({
+        serumLevelMmolL: 1.2,
+        indication: "maintenance",
+        age: 40,
+      });
+      expect(boundaryTox.status).toBe("toxic");
+      expect(boundaryTox.severity).toBe("moderate");
+
       const mildTox = evaluateLithiumLevel({
         serumLevelMmolL: 1.4,
         indication: "maintenance",
@@ -281,18 +326,28 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(mildTox.status).toBe("toxic");
       expect(mildTox.severity).toBe("moderate");
 
+      const exactSevereBoundary = evaluateLithiumLevel({
+        serumLevelMmolL: 2.0,
+        indication: "maintenance",
+        age: 40,
+      });
+      expect(exactSevereBoundary.status).toBe("toxic");
+      expect(exactSevereBoundary.severity).toBe("severe");
+
       const severeTox = evaluateLithiumLevel({
         serumLevelMmolL: 2.3,
         indication: "maintenance",
         age: 40,
       });
       expect(severeTox.status).toBe("toxic");
-      expect(severeTox.severity).toBe("severe_dialysis_threshold");
+      expect(severeTox.severity).toBe("severe");
+      expect(severeTox.clinicalGuidance[0]).toMatch(/haemodialysis decisions depend on clinical neurotoxicity/i);
+      expect(severeTox.clinicalGuidance[0]).toMatch(/rather than an automatic dialysis cutoff at 2\.0 mmol\/L/i);
     });
 
-    it("calculates proportional dose adjustment accurately", () => {
+    it("calculates proportional dose adjustment rounded to Australian 125 mg tablet increments by default", () => {
       // Current dose 750mg yields 0.5 mmol/L. Desired target 0.8 mmol/L.
-      // New dose = 750 * (0.8 / 0.5) = 1200 mg
+      // Raw dose = 750 * (0.8 / 0.5) = 1200 mg -> rounded to nearest 125 mg (half of 250 mg tablet) = 1250 mg
       const adjustment = calculateProportionalLithiumDose({
         currentDoseMg: 750,
         currentLevelMmolL: 0.5,
@@ -300,11 +355,48 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
 
       expect(adjustment.isValid).toBe(true);
-      expect(adjustment.suggestedDoseMg).toBe(1200);
+      expect(adjustment.rawDoseMg).toBe(1200);
+      expect(adjustment.suggestedDoseMg).toBe(1250);
+      expect(adjustment.warnings).toEqual(expect.arrayContaining([expect.stringContaining("125 mg -> 1250 mg")]));
       expect(adjustment.note).toContain("Linear kinetics");
+
+      // Supports explicit 50 mg or 225 mg (Quilonum SR 450 mg half-tablet) increments
+      const adjustment50 = calculateProportionalLithiumDose({
+        currentDoseMg: 750,
+        currentLevelMmolL: 0.5,
+        targetLevelMmolL: 0.8,
+        doseIncrementMg: 50,
+      });
+      expect(adjustment50.isValid).toBe(true);
+      expect(adjustment50.suggestedDoseMg).toBe(1200);
+
+      const adjustmentSr = calculateProportionalLithiumDose({
+        currentDoseMg: 900,
+        currentLevelMmolL: 0.5,
+        targetLevelMmolL: 0.75,
+        doseIncrementMg: 225,
+      });
+      expect(adjustmentSr.isValid).toBe(true);
+      expect(adjustmentSr.suggestedDoseMg).toBe(1350);
     });
 
-    it("withholds proportional dose suggestions when current lithium level is in the toxic range (>=1.2)", () => {
+    it("withholds proportional dose suggestions when current or target lithium level is >= 1.2 mmol/L", () => {
+      const boundaryToxicCurrent = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 1.2,
+        targetLevelMmolL: 0.8,
+      });
+      expect(boundaryToxicCurrent.isValid).toBe(false);
+      expect(boundaryToxicCurrent.suggestedDoseMg).toBeNull();
+      expect(boundaryToxicCurrent.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic range")]));
+
+      const boundaryToxicTarget = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 0.8,
+        targetLevelMmolL: 1.2,
+      });
+      expect(boundaryToxicTarget.isValid).toBe(false);
+      expect(boundaryToxicTarget.suggestedDoseMg).toBeNull();
       const toxicAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 1000,
         currentLevelMmolL: 1.5,
@@ -314,9 +406,17 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(toxicAdjustment.isValid).toBe(false);
       expect(toxicAdjustment.suggestedDoseMg).toBeNull();
       expect(toxicAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic range")]));
+
+      const toxicTarget = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 0.8,
+        targetLevelMmolL: 1.2,
+      });
+      expect(toxicTarget.isValid).toBe(false);
+      expect(toxicTarget.suggestedDoseMg).toBeNull();
     });
 
-    it("fails closed when calculated proportional dose rounds to zero mg", () => {
+    it("fails closed when calculated proportional dose rounds to zero mg or rounds above the 2000 mg/day ceiling", () => {
       const zeroAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 20,
         currentLevelMmolL: 0.8,
@@ -326,6 +426,19 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(zeroAdjustment.isValid).toBe(false);
       expect(zeroAdjustment.suggestedDoseMg).toBeNull();
       expect(zeroAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("rounds to zero")]));
+
+      // rawDose = 1100 * (0.9 / 0.5) = 1980 mg, but rounding to 225 mg increment yields 2025 mg > 2000 mg ceiling
+      const roundedAboveCeiling = calculateProportionalLithiumDose({
+        currentDoseMg: 1100,
+        currentLevelMmolL: 0.5,
+        targetLevelMmolL: 0.9,
+        tabletIncrementMg: 225,
+      });
+      expect(roundedAboveCeiling.isValid).toBe(false);
+      expect(roundedAboveCeiling.suggestedDoseMg).toBeNull();
+      expect(roundedAboveCeiling.errors).toEqual(
+        expect.arrayContaining([expect.stringContaining("outside safe limits")]),
+      );
     });
   });
 });

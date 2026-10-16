@@ -480,7 +480,13 @@ export const rosterActionSchema = z.union([
     })
     .strict(),
   swapIdAction("swap.accept"),
-  swapIdAction("swap.approve"),
+  z
+    .object({
+      action: z.literal("swap.approve"),
+      swapId: uuid,
+      acknowledgeRuleWarnings: z.boolean().optional(),
+    })
+    .strict(),
   swapIdAction("swap.decline"),
   swapIdAction("swap.cancel"),
   swapIdAction("swap.undo"),

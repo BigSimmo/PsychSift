@@ -12,6 +12,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import {
   applyMemoryBoostArtifacts,
   loadMemoryBoostArtifacts,
+  type ChunkLoadCache,
   type MemoryCardCache,
 } from "@/lib/rag/rag-candidate-sources";
 import { applySecondStageRerankIfNeeded } from "@/lib/rag/rag-second-stage";
@@ -61,13 +62,32 @@ export type PageVisualCache = {
   imagesById: Map<string, PageImageRow | null>;
 };
 
+export type PageVisualEvidenceCache = PageVisualCache;
+export type HydrationCacheBundle = DocumentRankingMetadataCache;
+
+/** Create page visual evidence cache. */
+export function createPageVisualEvidenceCache(): PageVisualEvidenceCache {
+  return {
+    pages: new Map(),
+    imagesById: new Map(),
+  };
+}
+
 /** Create document ranking metadata cache. */
 export function createDocumentRankingMetadataCache(): DocumentRankingMetadataCache {
   return {
     documentMetadata: new Map(),
     indexQuality: new Map(),
-    pageVisuals: { pages: new Map(), imagesById: new Map() },
+    pageVisuals: createPageVisualEvidenceCache(),
   };
+}
+
+function resolvePageVisualCache(
+  cache?: DocumentRankingMetadataCache | PageVisualEvidenceCache,
+): PageVisualCache | undefined {
+  if (!cache) return undefined;
+  if ("pages" in cache && "imagesById" in cache) return cache;
+  return cache.pageVisuals;
 }
 
 const PAGE_IMAGE_ROW_LIMIT = 80;
@@ -150,6 +170,7 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
   matchCount: number;
   metadataCache: DocumentRankingMetadataCache;
   cardCache: MemoryCardCache;
+  chunkLoadCache?: ChunkLoadCache;
   signal?: AbortSignal;
   measurePhase: <T>(phase: string, operation: () => Promise<T>) => Promise<T>;
 }) {
@@ -167,6 +188,7 @@ export async function hydrateCandidatesWithMetadataAndMemory(args: {
         documentIds: args.documentIds,
         matchCount: args.matchCount,
         cardCache: args.cardCache,
+        chunkLoadCache: args.chunkLoadCache,
       }),
     ]),
   );
@@ -292,7 +314,7 @@ export async function attachPageVisualEvidence(
   supabase: ReturnType<typeof createAdminClient>,
   results: SearchResult[],
   signal?: AbortSignal,
-  cache?: DocumentRankingMetadataCache,
+  cache?: DocumentRankingMetadataCache | PageVisualEvidenceCache,
 ): Promise<SearchResult[]> {
   signal?.throwIfAborted();
   const documentIds = Array.from(new Set(results.map((result) => result.document_id)));
@@ -315,36 +337,41 @@ export async function attachPageVisualEvidence(
     "id,document_id,page_number,storage_path,caption,bbox,image_type,searchable,clinical_relevance_score,source_kind,width,height,labels,metadata";
   // Within one search the same pages are hydrated several times (text lane, memory boost, final
   // selection). A page read that stayed under its row limit returned every qualifying row for each
-  // (document, page) pair it covered, so when a later call's pairs are all covered its rows are
-  // rebuilt from those lists with the same order and limit instead of another cross-region read.
-  const visualCache = cache?.pageVisuals;
-  const pairKeys = documentIds.flatMap((documentId) => pageNumbers.map((page) => pageVisualKey(documentId, page)));
-  const cachedPageRows =
-    visualCache && pageNumbers.length > 0 && pairKeys.every((key) => visualCache.pages.has(key))
-      ? pairKeys
-          .flatMap((key) => visualCache.pages.get(key) ?? [])
-          .sort((left, right) => right.clinical_relevance_score - left.clinical_relevance_score)
-          .slice(0, PAGE_IMAGE_ROW_LIMIT)
-      : null;
+  // (document, page) pair it covered, so when a later call's pairs are already covered or partially
+  // covered, only the missing (document, page) pairs are queried.
+  const visualCache = resolvePageVisualCache(cache);
+  const requestedPairsMap = new Map<string, { key: string; documentId: string; pageNumber: number }>();
+  for (const result of results) {
+    if (!result.page_number) continue;
+    const key = pageVisualKey(result.document_id, result.page_number);
+    if (!requestedPairsMap.has(key)) {
+      requestedPairsMap.set(key, { key, documentId: result.document_id, pageNumber: result.page_number });
+    }
+  }
+  const requestedPairs = Array.from(requestedPairsMap.values());
+  const missingPairs = visualCache ? requestedPairs.filter((pair) => !visualCache.pages.has(pair.key)) : requestedPairs;
+  const queryDocumentIds = Array.from(new Set(missingPairs.map((pair) => pair.documentId)));
+  const queryPageNumbers = Array.from(new Set(missingPairs.map((pair) => pair.pageNumber)));
+  const queryPairKeys = queryDocumentIds.flatMap((documentId) =>
+    queryPageNumbers.map((page) => pageVisualKey(documentId, page)),
+  );
   const missingImageIds = visualCache ? sourceImageIds.filter((id) => !visualCache.imagesById.has(id)) : sourceImageIds;
   const [pageData, directData] = await Promise.all([
-    cachedPageRows
-      ? Promise.resolve({ data: cachedPageRows, error: null })
-      : pageNumbers.length > 0
-        ? (() => {
-            let query = supabase
-              .from("document_images")
-              .select(selectColumns)
-              .in("document_id", documentIds)
-              .in("page_number", pageNumbers)
-              .eq("searchable", true)
-              .neq("image_type", "logo_decorative")
-              .order("clinical_relevance_score", { ascending: false })
-              .limit(PAGE_IMAGE_ROW_LIMIT);
-            if (signal) query = query.abortSignal(signal);
-            return query;
-          })()
-        : Promise.resolve({ data: [], error: null }),
+    missingPairs.length === 0
+      ? Promise.resolve({ data: [] as PageImageRow[], error: null })
+      : (() => {
+          let query = supabase
+            .from("document_images")
+            .select(selectColumns)
+            .in("document_id", queryDocumentIds)
+            .in("page_number", queryPageNumbers)
+            .eq("searchable", true)
+            .neq("image_type", "logo_decorative")
+            .order("clinical_relevance_score", { ascending: false })
+            .limit(PAGE_IMAGE_ROW_LIMIT);
+          if (signal) query = query.abortSignal(signal);
+          return query;
+        })(),
     missingImageIds.length > 0
       ? (() => {
           let query = supabase
@@ -361,10 +388,10 @@ export async function attachPageVisualEvidence(
   ]);
   signal?.throwIfAborted();
 
-  if (visualCache && !cachedPageRows && pageNumbers.length > 0 && !pageData.error) {
+  if (visualCache && missingPairs.length > 0 && !pageData.error) {
     const rows = (pageData.data ?? []) as PageImageRow[];
     if (rows.length < PAGE_IMAGE_ROW_LIMIT) {
-      const rowsByPair = new Map(pairKeys.map((key) => [key, [] as PageImageRow[]]));
+      const rowsByPair = new Map(queryPairKeys.map((key) => [key, [] as PageImageRow[]]));
       for (const row of rows) rowsByPair.get(pageVisualKey(row.document_id, row.page_number))?.push(row);
       for (const [key, pairRows] of rowsByPair) visualCache.pages.set(key, pairRows);
     }
@@ -373,6 +400,26 @@ export async function attachPageVisualEvidence(
     const fetchedById = new Map(((directData.data ?? []) as PageImageRow[]).map((row) => [row.id, row]));
     for (const id of missingImageIds) visualCache.imagesById.set(id, fetchedById.get(id) ?? null);
   }
+  const missingPairKeys = new Set(missingPairs.map((pair) => pair.key));
+  const pageRows =
+    visualCache && requestedPairs.every((pair) => visualCache.pages.has(pair.key))
+      ? requestedPairs
+          .flatMap((pair) => visualCache.pages.get(pair.key) ?? [])
+          .sort((left, right) => right.clinical_relevance_score - left.clinical_relevance_score)
+          .slice(0, PAGE_IMAGE_ROW_LIMIT)
+      : [
+          ...(visualCache
+            ? requestedPairs
+                .filter((pair) => visualCache.pages.has(pair.key))
+                .flatMap((pair) => visualCache.pages.get(pair.key) ?? [])
+            : []),
+          ...((pageData.data ?? []) as PageImageRow[]).filter((row) => {
+            const key = pageVisualKey(row.document_id, row.page_number);
+            return visualCache ? missingPairKeys.has(key) : requestedPairsMap.has(key);
+          }),
+        ]
+          .sort((left, right) => right.clinical_relevance_score - left.clinical_relevance_score)
+          .slice(0, PAGE_IMAGE_ROW_LIMIT);
   const directRows = visualCache
     ? sourceImageIds.flatMap((id) => {
         const row = visualCache.imagesById.get(id);
@@ -380,9 +427,10 @@ export async function attachPageVisualEvidence(
       })
     : ((directData.data ?? []) as PageImageRow[]);
   const directError = visualCache ? missingImageIds.length > 0 && directData.error : directData.error;
+  const pageError = visualCache ? missingPairs.length > 0 && pageData.error : pageData.error;
 
-  const data = [...((pageData.data ?? []) as PageImageRow[]), ...directRows];
-  if ((pageData.error && directError) || data.length === 0) return results;
+  const data = [...pageRows, ...directRows];
+  if ((pageError && directError) || data.length === 0) return results;
 
   const committedGenerationByDocument = new Map(
     results.map((result) => [result.document_id, committedIndexGeneration(result.source_metadata)] as const),

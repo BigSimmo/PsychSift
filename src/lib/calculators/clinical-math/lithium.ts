@@ -18,6 +18,8 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
       status: "invalid",
       isWithinTarget: false,
       severity: "none",
+      toxicitySeverity: "none",
+      requiresUrgentAction: false,
       targetRange: { min: 0, max: 0 },
       clinicalGuidance: ["Invalid lithium age or serum concentration; do not use this result for clinical decisions."],
     };
@@ -42,17 +44,17 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
   let severity: LithiumToxicitySeverity = "none";
   const clinicalGuidance: string[] = [];
 
-  if (level > 2.0) {
+  if (level >= 2.0) {
     status = "toxic";
-    severity = "severe_dialysis_threshold";
+    severity = "severe";
     clinicalGuidance.push(
-      "CRITICAL: Serum lithium > 2.0 mmol/L is a medical emergency. High risk of neurotoxicity, acute renal failure, and seizures. Immediate cessation, urgent hospital admission, and consideration of hemodialysis required.",
+      "CRITICAL: Serum lithium >= 2.0 mmol/L represents severe toxicity requiring immediate cessation, urgent hospital admission, and toxicology/nephrology review. Haemodialysis decisions depend on clinical neurotoxicity, renal function, and EXTRIP extracorporeal criteria (recommended for severe clinical signs regardless of level or > 4.0 mmol/L with impaired kidney function; suggested > 5.0 mmol/L or with significant confusion) rather than an automatic dialysis cutoff at 2.0 mmol/L.",
     );
-  } else if (level > 1.2) {
+  } else if (level >= 1.2) {
     status = "toxic";
     severity = "moderate";
     clinicalGuidance.push(
-      "TOXICITY ALERT: Serum lithium > 1.2 mmol/L. Withhold lithium, assess for dehydration, tremor, ataxia, dysarthria, and nausea. Check renal function (eGFR) and electrolytes.",
+      "TOXICITY ALERT: Serum lithium >= 1.2 mmol/L. Withhold lithium, assess for dehydration, tremor, ataxia, dysarthria, and nausea. Check renal function (eGFR) and electrolytes.",
     );
   } else if (level > maxTarget) {
     status = "supratherapeutic";
@@ -76,17 +78,21 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
     status,
     isWithinTarget,
     severity,
+    toxicitySeverity: severity,
+    requiresUrgentAction: status === "toxic",
     targetRange: { min: minTarget, max: maxTarget },
     clinicalGuidance,
   };
 }
 
+const VALID_DOSE_INCREMENTS = new Set([50, 125, 225, 250, 450]);
+
 /**
- * Calculates suggested proportional dose adjustment based on lithium's linear first-order pharmacokinetics.
- * Formula: New Dose = Current Dose * (Target Level / Current Level)
+ * Validates inputs for proportional lithium dose adjustment.
  */
-export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInput): LithiumDoseAdjustmentResult {
+export function validateLithiumDoseInput(input: LithiumDoseAdjustmentInput): string[] {
   const errors: string[] = [];
+  const incrementMg = input.doseIncrementMg ?? input.tabletIncrementMg ?? 125;
 
   if (!Number.isFinite(input.currentDoseMg) || input.currentDoseMg <= 0) {
     errors.push("Current dose must be greater than zero mg");
@@ -100,14 +106,30 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
   }
   if (!Number.isFinite(input.targetLevelMmolL) || input.targetLevelMmolL <= 0) {
     errors.push("Target lithium level must be greater than zero mmol/L");
-  } else if (input.targetLevelMmolL > 1.2) {
-    errors.push("Target lithium level must not exceed 1.2 mmol/L");
+  } else if (input.targetLevelMmolL >= 1.2) {
+    errors.push("Target lithium level must be below the toxic threshold (<1.2 mmol/L)");
   }
+  if (!VALID_DOSE_INCREMENTS.has(incrementMg)) {
+    errors.push("Dose increment must be a supported tablet strength fraction (50, 125, 225, or 250 mg)");
+  }
+
+  return errors;
+}
+
+/**
+ * Calculates suggested proportional dose adjustment based on lithium's linear first-order pharmacokinetics.
+ * Formula: New Dose = Current Dose * (Target Level / Current Level)
+ */
+export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInput): LithiumDoseAdjustmentResult {
+  const errors = validateLithiumDoseInput(input);
+  const warnings: string[] = [];
 
   if (errors.length > 0) {
     return {
       isValid: false,
       suggestedDoseMg: null,
+      rawDoseMg: null,
+      warnings,
       errors,
       note: "Invalid calculation inputs",
     };
@@ -115,29 +137,52 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
 
   const ratio = input.targetLevelMmolL / input.currentLevelMmolL;
   const rawDose = input.currentDoseMg * ratio;
-  // Fail closed on adjustments beyond a two-fold change or an unsafe absolute dose.
-  if (!Number.isFinite(ratio) || ratio < 0.5 || ratio > 2 || rawDose > 2000) {
+  const rawDoseMg = Math.round(rawDose);
+  const incrementMg = input.doseIncrementMg ?? input.tabletIncrementMg ?? 125;
+  const suggestedDoseMg = Math.round(rawDose / incrementMg) * incrementMg;
+  // Fail closed on adjustments beyond a two-fold change or an unsafe absolute dose (raw or rounded).
+  if (!Number.isFinite(ratio) || ratio < 0.5 || ratio > 2 || rawDose > 2000 || suggestedDoseMg > 2000) {
     return {
       isValid: false,
       suggestedDoseMg: null,
+      rawDoseMg: Number.isFinite(rawDoseMg) ? rawDoseMg : null,
+      warnings,
       errors: ["Calculated dose adjustment is outside safe limits and requires clinical review"],
       note: "Do not use an extreme proportional adjustment without specialist review.",
     };
   }
-  const suggestedDoseMg = Math.round(rawDose / 50) * 50;
-  if (suggestedDoseMg <= 0) {
+  const predictedLevelMmolL = input.currentLevelMmolL * (suggestedDoseMg / input.currentDoseMg);
+  if (
+    suggestedDoseMg <= 0 ||
+    suggestedDoseMg > 2000 ||
+    suggestedDoseMg / input.currentDoseMg < 0.5 ||
+    suggestedDoseMg / input.currentDoseMg > 2 ||
+    predictedLevelMmolL >= 1.2
+  ) {
+    const error =
+      suggestedDoseMg <= 0
+        ? "Calculated dose rounds to zero; clinical review required"
+        : "Rounded dose exceeds safe dose or predicted lithium level limits and requires clinical review";
     return {
       isValid: false,
       suggestedDoseMg: null,
-      errors: ["Calculated dose rounds to zero; clinical review required"],
-      note: "Calculated dose rounds to zero; clinical review required.",
+      rawDoseMg,
+      warnings,
+      errors: [error],
+      note: "Do not use a rounded dose that exceeds safe limits without specialist review.",
     };
   }
-
+  if (suggestedDoseMg !== rawDoseMg) {
+    warnings.push(
+      `Raw proportional dose (${rawDoseMg} mg) was rounded to the nearest practical Australian tablet increment (${incrementMg} mg -> ${suggestedDoseMg} mg; e.g. Lithicarb 250 mg IR half-tablet = 125 mg, Priadel/Quilonum SR 450 mg half-tablet = 225 mg).`,
+    );
+  }
   return {
     isValid: true,
     suggestedDoseMg,
+    rawDoseMg,
+    warnings,
     errors: [],
-    note: "Linear kinetics assumed. Confirm patient has reached steady state (>=5 days at current dose) and sample was drawn exactly 12 hours post-dose. Recheck trough 5-7 days after dosage modification.",
+    note: `Linear kinetics assumed (rounded to nearest ${incrementMg} mg tablet increment). Confirm patient has reached steady state (>=5 days at current dose) and sample was drawn exactly 12 hours post-dose. Recheck trough 5-7 days after dosage modification.`,
   };
 }

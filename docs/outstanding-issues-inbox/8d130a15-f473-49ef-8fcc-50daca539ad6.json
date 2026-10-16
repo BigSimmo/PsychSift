@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "8d130a15-f473-49ef-8fcc-50daca539ad6",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#WMGPSG",
+    "outcome": "Documented the deliberate !min-h-[48px] SSO button floor in docs/redesign/07-token-adoption-audit.md, codified ragRanking and canary-pair safeguards in .agents/skills/rag/SKILL.md and .agents/skills/reindex/SKILL.md, and losslessly repaired all double-encoded UTF-8 mojibake across docs/privacy-impact-assessment.md and docs/openai-cross-border-basis.md (tests/doc-governance-encoding-and-skills.test.ts).",
+    "baseRowFingerprint": "e352a1149754c44689061f1bb19e09f562972a1ed7c6993f65d0267e651ebfae",
+    "targetUlid": "01M4T67NPZWMGPSGFPRBRSPTZ0"
+  }
+}

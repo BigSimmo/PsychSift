@@ -291,6 +291,7 @@
         "src/app/(search-app)/teaching/assessments/export/page.tsx",
         "src/app/(search-app)/teaching/assessments/help/page.tsx",
         "src/app/(search-app)/teaching/assessments/record/page.tsx",
+        "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
         "src/app/(search-app)/my-day/favourites/page.tsx",
