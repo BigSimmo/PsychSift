@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "41d327c5-cb9b-4c13-ae22-ce79dc331a9c",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Upload: ambiguous admission plus retry can leave an orphan private-storage copy (follow-up to PR 3546)",
+    "detail": "After an ambiguous admission the retry path keeps the uploaded artifact, so a second byte-identical object can be left with no document. Fix by holding a storage_cleanup_jobs row or reusing the identical object. Database change, needs the owner's explicit permission.",
+    "source": "PR #3546 Gitar review; src/app/api/upload/route.ts preserveUploadedArtifact",
+    "issueUlid": "01M527JMD1DGV6BTJCQHJ9945Q"
+  }
+}
