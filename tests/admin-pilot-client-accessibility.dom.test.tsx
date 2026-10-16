@@ -18,6 +18,7 @@ vi.mock("@/lib/supabase/browser-client", () => ({
 }));
 vi.mock("@/components/ui/live-announcer", () => ({ announce }));
 vi.mock("next/image", () => ({
+  // eslint-disable-next-line @next/next/no-img-element -- Stand-in for next/image inside jsdom.
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
 
