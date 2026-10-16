@@ -33,6 +33,11 @@ function markCoachSeen() {
   }
 }
 
+/** The note itself only shows from 1024px (the `lg` breakpoint); below that only the ring does. */
+function noteVisible(): boolean {
+  return typeof window.matchMedia === "function" && window.matchMedia("(min-width: 64rem)").matches;
+}
+
 function subscribeNever() {
   return () => {};
 }
@@ -100,11 +105,15 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
   useEffect(() => {
     if (!coach) return;
     // On a wide screen the note hangs below the header over the top of the page (it covered
-    // CPD's Customise button and the My Day heading, 15 Oct 2026). So it is shown once only:
-    // counted as read as soon as it appears, and it goes by itself after a few seconds, or
-    // at the reader's first tap, key or scroll, whichever comes first.
-    markCoachSeen();
-    const setAsideNow = () => setSetAside(true);
+    // CPD's Customise button and the My Day heading, 15 Oct 2026). So it goes by itself after a
+    // few seconds, or at the reader's first tap, key or scroll, whichever comes first. It is
+    // counted as read only when it goes and only if the note was on screen: storing it as it
+    // appears would hide it at the next re-render (the stored value is read on every render),
+    // and a phone shows only the ring, so a phone visit must not use up the note.
+    const setAsideNow = () => {
+      if (noteVisible()) markCoachSeen();
+      setSetAside(true);
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (!coachRef.current?.contains(event.target as Node)) setAsideNow();
     };
