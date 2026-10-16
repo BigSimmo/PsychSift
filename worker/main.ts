@@ -1985,6 +1985,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
           } else {
             const vectorPacket = await produceManagedVectorFinalPacket(vectorInput);
             await stageManagedVectorFinal({ ...stageInput, packet: vectorPacket });
+            await completeJob(job, "managed native PDF vector ingestion completed");
+            return;
           }
           // Prepared bodies and private candidate rows are retained and read back.
           // Independent completeness, native fidelity and remaining producers still
