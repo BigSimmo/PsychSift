@@ -148,6 +148,7 @@ export function selectAnswerQualityCases(args: { caseIds?: string[]; intent?: st
 }
 
 const MAX_DIAGNOSTIC_SOURCES = 10;
+const MAX_DIAGNOSTIC_MATCH_REASONS = 48;
 const MAX_SOURCE_PREVIEW_CHARS = 800;
 const MAX_IMAGE_PREVIEW_CHARS = 800;
 const MAX_DIAGNOSTIC_QUESTION_CHARS = 1_000;
@@ -190,6 +191,10 @@ export function resolveLocalDiagnosticOutputPath(requestedPath: string, cwd = pr
     throw new Error("Diagnostic output must be a repo-local file under .local/ or output/.");
   }
   return resolvedPath;
+}
+
+function diagnosticScore(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? Number(value.toFixed(4)) : null;
 }
 
 export function buildBoundedRagSourceDiagnostics(sources: RagAnswer["sources"]) {
@@ -243,6 +248,18 @@ export function buildBoundedRagSourceDiagnostics(sources: RagAnswer["sources"]) 
       image_table_preview: imageTablePreview
         ? displaySafeDiagnosticText(imageTablePreview, MAX_IMAGE_PREVIEW_CHARS)
         : null,
+      // Ordering evidence: which scores and pipeline steps put this source at this rank, so a
+      // live misorder (e.g. a later rerank undoing a selection boost) is diagnosable offline.
+      ranking: {
+        hybrid_score: diagnosticScore(source.hybrid_score),
+        rank_score: diagnosticScore(source.score_explanation?.rankScore),
+        release_rank_score: diagnosticScore(source.score_explanation?.releaseRankScore),
+        final_score: diagnosticScore(source.score_explanation?.finalScore),
+        final_rank: source.score_explanation?.finalRank ?? null,
+        match_reasons: (source.match_explanation?.reasons ?? [])
+          .slice(0, MAX_DIAGNOSTIC_MATCH_REASONS)
+          .map((reason) => displaySafeDiagnosticText(reason, 120)),
+      },
       content_preview: displaySafeDiagnosticText(source.content, MAX_SOURCE_PREVIEW_CHARS),
     };
   });

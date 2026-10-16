@@ -225,6 +225,56 @@ describe("answer dump records", () => {
     expect(Object.keys(diagnostics[0])).not.toContain("document_id");
   });
 
+  it("records the scores and pipeline reasons behind each source's rank", () => {
+    const [ranked, bare] = buildBoundedRagSourceDiagnostics([
+      {
+        id: "chunk-ranked",
+        document_id: "doc-ranked",
+        title: "Assessment Documentation (AKG)",
+        file_name: "Assessment Documentation (AKG).pdf",
+        page_number: 3,
+        chunk_index: 0,
+        section_heading: null,
+        content: "Assessment documentation must be completed.",
+        image_ids: [],
+        similarity: 0.48,
+        hybrid_score: 0.600049,
+        images: [],
+        score_explanation: { rankScore: 1.34751, releaseRankScore: 0.6, finalScore: 1, finalRank: 4 },
+        match_explanation: { reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"] },
+      },
+      {
+        id: "chunk-bare",
+        document_id: "doc-bare",
+        title: "Bare",
+        file_name: "bare.pdf",
+        page_number: 1,
+        chunk_index: 0,
+        section_heading: null,
+        content: "Text.",
+        image_ids: [],
+        similarity: 0.5,
+        images: [],
+      },
+    ] as unknown as RagAnswer["sources"]);
+    expect(ranked.ranking).toEqual({
+      hybrid_score: 0.6,
+      rank_score: 1.3475,
+      release_rank_score: 0.6,
+      final_score: 1,
+      final_rank: 4,
+      match_reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"],
+    });
+    expect(bare.ranking).toEqual({
+      hybrid_score: null,
+      rank_score: null,
+      release_rank_score: null,
+      final_score: null,
+      final_rank: null,
+      match_reasons: [],
+    });
+  });
+
   it("redacts the question, answer, routing and section fields while preserving clinical prose", () => {
     const hostileAnswer = {
       ...answer,
