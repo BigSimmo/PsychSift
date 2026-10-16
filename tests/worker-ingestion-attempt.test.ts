@@ -125,7 +125,7 @@ describe("Node confirmed database rejection", () => {
     expect(attempt.signal.aborted).toBe(true);
   });
 
-  it.each([undefined, "", "08006", "57P01", "PGRST000"])(
+  it.each([undefined, "", "08006", "57P01", "40003", "PGRST000"])(
     "treats error code %s as uncertain and cancels",
     async (code) => {
       const attempt = new IngestionAttempt(fence);

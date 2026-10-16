@@ -135,12 +135,13 @@ export class IngestionRpcRejectedError extends Error {
 }
 
 /**
- * Only a Postgres SQLSTATE proves the statement ran and rolled back. Connection (class 08) and
- * operator-intervention (57P) codes, PostgREST gateway codes and missing codes stay uncertain.
+ * Only a Postgres SQLSTATE proves the statement ran and rolled back. Connection (class 08),
+ * operator-intervention (57P) and statement_completion_unknown (40003) codes, PostgREST gateway
+ * codes and missing codes stay uncertain.
  */
 function confirmedRpcRejection(error: { message: string; code?: string | null }) {
   const code = typeof error.code === "string" ? error.code : "";
-  if (!/^[0-9A-Z]{5}$/.test(code) || code.startsWith("08") || code.startsWith("57P")) return null;
+  if (!/^[0-9A-Z]{5}$/.test(code) || code.startsWith("08") || code.startsWith("57P") || code === "40003") return null;
   return new IngestionRpcRejectedError(error.message, code);
 }
 
