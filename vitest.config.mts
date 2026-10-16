@@ -76,14 +76,17 @@ const config = {
             functions: 94,
             lines: 94,
           },
-        "src/lib/rag/{rag,rag-extractive-answer,rag-comparison,rag-answer-support}.ts": {
-          // Measured 2026-08-14: 87.55/78.22/92.57/91.84. Branches raised
-          // 72 -> 76 (gap was 6.22pp, the largest in this file).
-          statements: 83,
-          branches: 76,
-          functions: 90,
-          lines: 88,
-        },
+        "src/lib/rag/{rag,rag-extractive-answer,rag-extractive-signals,rag-answer-shape-checks,rag-extractive-builder,rag-answer-quality-gate,rag-comparison,rag-answer-support}.ts":
+          {
+            // Measured 2026-08-14: 87.55/78.22/92.57/91.84. Branches raised
+            // 72 -> 76 (gap was 6.22pp, the largest in this file). The four
+            // extractive-answer parts were split out of rag-extractive-answer.ts
+            // on 2026-10-16 and stay under the same floor.
+            statements: 83,
+            branches: 76,
+            functions: 90,
+            lines: 88,
+          },
         "src/lib/{clinical-safety,source-governance,source-review,clinical-review-queue,answer-response}.ts": {
           // Measured 2026-08-14: 96.72/85.11/98.73/98.95.
           statements: 94,

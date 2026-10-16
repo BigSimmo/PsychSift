@@ -1,4 +1,4 @@
-import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
+import { isWaPublicHolidayDate } from "@/lib/on-call/wa-public-holidays";
 import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import type { RosterAssignment } from "./model";
 
@@ -20,7 +20,7 @@ export function fairnessCounts(assignments: readonly RosterAssignment[], window:
     };
     if (shift.kind === "night") row.nights++;
     if ([0, 6].includes(new Date(`${date}T00:00:00Z`).getUTCDay())) row.weekendShifts++;
-    if (WA_PUBLIC_HOLIDAYS.has(date)) row.publicHolidayShifts++;
+    if (isWaPublicHolidayDate(date)) row.publicHolidayShifts++;
     if (shift.kind !== "on_call") row.hours += (Date.parse(shift.endsAt) - Date.parse(shift.startsAt)) / 3_600_000;
     rows.set(shift.userId, row);
   }

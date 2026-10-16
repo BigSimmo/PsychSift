@@ -48,6 +48,11 @@ import {
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 import {
+  checkEpaClinicianName,
+  createEpaMagicLinkRequest,
+  revokeEpaMagicLinkToken,
+} from "@/lib/teaching/assessments/magic-link";
+import {
   EPA_FEEDBACK_MAX,
   EPA_REPLY_MAX,
   assessorName,
@@ -224,6 +229,8 @@ function RequestEpaSheet({
   const [epa, setEpa] = useState<EpaNumber>(pick);
   const [who, setWho] = useState<"sup" | "reg" | "guest">("sup");
   const [guest, setGuest] = useState<GuestKind | null>(null);
+  const [guestName, setGuestName] = useState("");
+  const [magicLinkCopied, setMagicLinkCopied] = useState<string | null>(null);
   const dup = pendingEpaRequest(s, epa);
   const why = who === "guest" && !guest ? "Choose their role first." : null;
   return (
@@ -268,10 +275,88 @@ function RequestEpaSheet({
               </WorkChip>
             ))}
           </WorkChips>
+          <AssessTextField
+            id="assess-request-guest-name"
+            label="Assessor name (optional)"
+            value={guestName}
+            onChange={setGuestName}
+            single
+          />
           <AssessNote>
             They get an emailed link and need no CLA account. Their EPA shows as Unapproved until your MEU approves
             them.
           </AssessNote>
+          <WorkButton
+            variant="secondary"
+            icon={Copy}
+            size="wide"
+            testId="epa-magic-link-copy"
+            disabled={!guest || checkEpaClinicianName(guestName) !== null}
+            onClick={async () => {
+              if (!guest) return;
+              const supervisorName =
+                guestName.trim() || GUEST_KINDS.find((item) => item.id === guest)?.name || "External supervisor";
+              const generated = createEpaMagicLinkRequest({
+                epaCode: epa,
+                traineeName: SAMPLE_DOCTOR.name,
+                supervisorName,
+                supervisorRole: guest,
+              });
+              try {
+                const registration = await fetch(
+                  `/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      epaCode: epa,
+                      traineeName: SAMPLE_DOCTOR.name,
+                      supervisorName,
+                      supervisorRole: guest,
+                    }),
+                  },
+                );
+                if (!registration.ok) {
+                  revokeEpaMagicLinkToken(generated.token);
+                  setMagicLinkCopied(
+                    registration.status === 401
+                      ? "Please sign in to register a supervisor link."
+                      : registration.status === 503
+                        ? "Supervisor links are temporarily unavailable. Try again."
+                        : "Could not register supervisor link. Try again.",
+                  );
+                  return;
+                }
+              } catch {
+                revokeEpaMagicLinkToken(generated.token);
+                setMagicLinkCopied("Could not register supervisor link. Try again.");
+                return;
+              }
+              const fullUrl =
+                typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;
+              let copied = false;
+              if (typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function") {
+                try {
+                  await navigator.clipboard.writeText(fullUrl);
+                  copied = true;
+                } catch {
+                  copied = false;
+                }
+              }
+              setMagicLinkCopied(
+                copied
+                  ? `Supervisor link ready (${generated.urlPath})`
+                  : `Clipboard unavailable — copy supervisor link manually: ${fullUrl}`,
+              );
+            }}
+          >
+            Copy supervisor link
+          </WorkButton>
+          {magicLinkCopied ? (
+            <p role="status" className="assess-note" data-center="">
+              <span>{magicLinkCopied}</span>
+            </p>
+          ) : null}
         </>
       ) : (
         <AssessNote>

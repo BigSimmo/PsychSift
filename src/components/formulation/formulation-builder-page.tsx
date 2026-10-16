@@ -352,7 +352,6 @@ export function FormulationBuilderPage({
     <FormulationPageShell>
       <InformationPageHeader
         className="border-b border-[color:var(--border)] pb-5"
-        eyebrow="Formulation builder"
         title="Build a formulation that can be tested"
         subtitle="Select candidate mechanisms, structure them with a clinical framework, challenge the hypothesis, then edit a de-identified draft."
       />

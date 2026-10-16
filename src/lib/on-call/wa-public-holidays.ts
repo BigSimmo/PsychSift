@@ -168,10 +168,82 @@ export function waPublicHolidaysByRule(year: number): string[] {
   return [...days].sort();
 }
 
+const HISTORICAL_PUBLIC_HOLIDAYS = new Set([
+  // Published WA dates for 2021 (Easter Sunday was not a public holiday).
+  "2021-01-01",
+  "2021-01-26",
+  "2021-03-01",
+  "2021-04-02",
+  "2021-04-05",
+  "2021-04-25",
+  "2021-04-26",
+  "2021-06-07",
+  "2021-09-27",
+  "2021-12-25",
+  "2021-12-26",
+  "2021-12-27",
+  "2021-12-28",
+  // Published WA dates for 2022, including the National Day of Mourning (Sunday Christmas gave Tuesday 27 Dec substitute only).
+  "2022-01-01",
+  "2022-01-03",
+  "2022-01-26",
+  "2022-03-07",
+  "2022-04-15",
+  "2022-04-17",
+  "2022-04-18",
+  "2022-04-25",
+  "2022-06-06",
+  "2022-09-22",
+  "2022-09-26",
+  "2022-12-25",
+  "2022-12-26",
+  "2022-12-27",
+  // Published WA dates for 2023.
+  "2023-01-01",
+  "2023-01-02",
+  "2023-01-26",
+  "2023-03-06",
+  "2023-04-07",
+  "2023-04-09",
+  "2023-04-10",
+  "2023-04-25",
+  "2023-06-05",
+  "2023-09-25",
+  "2023-12-25",
+  "2023-12-26",
+  // Published WA dates for 2024 (King's Birthday proclaimed as Monday 23 September 2024).
+  "2024-01-01",
+  "2024-01-26",
+  "2024-03-04",
+  "2024-03-29",
+  "2024-03-31",
+  "2024-04-01",
+  "2024-04-25",
+  "2024-06-03",
+  "2024-09-23",
+  "2024-12-25",
+  "2024-12-26",
+  // Published WA dates for 2025.
+  "2025-01-01",
+  "2025-01-27",
+  "2025-03-03",
+  "2025-04-18",
+  "2025-04-20",
+  "2025-04-21",
+  "2025-04-25",
+  "2025-06-02",
+  "2025-09-29",
+  "2025-12-25",
+  "2025-12-26",
+]);
 const ruleCache = new Map<number, ReadonlySet<string>>();
 
 function holidaysFor(year: number): ReadonlySet<string> {
-  if (year <= WA_PUBLIC_HOLIDAYS_LAST_YEAR) return WA_PUBLIC_HOLIDAYS;
+  if (year >= 2026 && year <= WA_PUBLIC_HOLIDAYS_LAST_YEAR) return WA_PUBLIC_HOLIDAYS;
+  // Pre-2026 years use authoritative published dates only, never future proclamation heuristics.
+  if (year < 2026) {
+    return new Set([...HISTORICAL_PUBLIC_HOLIDAYS].filter((date) => date.startsWith(`${year}-`)));
+  }
   let set = ruleCache.get(year);
   if (!set) {
     set = new Set(waPublicHolidaysByRule(year));
@@ -180,12 +252,37 @@ function holidaysFor(year: number): ReadonlySet<string> {
   return set;
 }
 
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Whether a calendar `YYYY-MM-DD` date key is a WA public holiday (published
+ * list through `WA_PUBLIC_HOLIDAYS_LAST_YEAR`, statutory rules for later years).
+ */
+export function isWaPublicHolidayDate(dateKey: string): boolean {
+  if (!DATE_KEY_PATTERN.test(dateKey)) return false;
+  return holidaysFor(Number(dateKey.slice(0, 4))).has(dateKey);
+}
+
+class WaPublicHolidayDateSet extends Set<string> {
+  override has(value: string): boolean {
+    return isWaPublicHolidayDate(value);
+  }
+}
+
+/**
+ * `ReadonlySet<string>` view whose `.has(dateKey)` checks `isWaPublicHolidayDate(dateKey)`
+ * across historical (2021–2025), published (2026–2028), and rule-derived (>2028) WA holidays.
+ */
+export const WA_PUBLIC_HOLIDAY_DATES: ReadonlySet<string> = new WaPublicHolidayDateSet([
+  ...HISTORICAL_PUBLIC_HOLIDAYS,
+  ...WA_PUBLIC_HOLIDAYS,
+]);
+
 /**
  * Read in the work time zone, like `isOnCallOutOfHours` beside it in "Who do I
  * call now?": the two answers combine into one "in hours or not", so they must
  * read the same clock, and both take the same `zone`.
  */
 export function isWaPublicHoliday(now: Date, zone: string = currentWorkTimeZone()): boolean {
-  const key = onCallLocalDateKey(now, zone);
-  return holidaysFor(Number(key.slice(0, 4))).has(key);
+  return isWaPublicHolidayDate(onCallLocalDateKey(now, zone));
 }

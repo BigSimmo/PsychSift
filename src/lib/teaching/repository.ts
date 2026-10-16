@@ -19,6 +19,7 @@ import {
   cpdSavedSchema,
   displayCodeSchema,
   displayCreatedSchema,
+  emptyTeachingResultSchema,
   exportResultSchema,
   groupDeletedSchema,
   groupMembersSetSchema,
@@ -331,9 +332,80 @@ export async function teachingServiceMutation(
       // `token` for the UI part's own link building, `path` for callers that only need the address.
       return { ...parseTeachingResult(displayCreatedSchema, data), token: secret, path: teachingDisplayPath(secret) };
     }
-    case "display.revoke":
-      await teachingCommand(client, actorId, serviceId, input.action, { linkHash: hashTeachingSecret(input.token) });
-      return {};
+    case "display.revoke": {
+      const tokenHash = hashTeachingSecret(input.token);
+      type DynamicQueryChain = {
+        select: (cols: string) => DynamicQueryChain;
+        eq: (col: string, val: string) => DynamicQueryChain;
+        is: (col: string, val: null) => DynamicQueryChain;
+        maybeSingle?: () => Promise<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
+      } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
+      const dynamicClient = client as unknown as { from?: (table: string) => DynamicQueryChain };
+      if (typeof dynamicClient.from === "function") {
+        const linkTable = dynamicClient.from("teaching_display_links");
+        if (linkTable && typeof linkTable.select === "function") {
+          const linkQuery = linkTable
+            .select("id, created_by, teaching_occurrences!inner(service_id)")
+            .eq("link_hash", tokenHash)
+            .eq("teaching_occurrences.service_id", serviceId);
+          const linkRes = typeof linkQuery.maybeSingle === "function" ? await linkQuery.maybeSingle() : await linkQuery;
+          if (linkRes?.error) throw teachingRpcError(linkRes.error);
+          const link = linkRes?.data;
+          const linkRow = (Array.isArray(link) ? link[0] : link) as { id?: string; created_by?: string | null } | null;
+          if (linkRow && (!linkRow.created_by || linkRow.created_by !== actorId)) {
+            const roleTable = dynamicClient.from("teaching_member_roles");
+            if (!roleTable || typeof roleTable.select !== "function") {
+              throw teachingRpcError({ message: "teaching_role_denied" });
+            }
+            const roleQuery = roleTable
+              .select("role, granted_at")
+              .eq("service_id", serviceId)
+              .eq("user_id", actorId)
+              .eq("role", "organiser")
+              .is("revoked_at", null);
+            const roleRes =
+              typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
+            if (roleRes?.error) throw teachingRpcError(roleRes.error);
+            const roleData = roleRes?.data;
+            const activeOrganiser = (Array.isArray(roleData) ? roleData[0] : roleData) as {
+              role?: string;
+              granted_at?: string | null;
+            } | null;
+            if (!activeOrganiser) {
+              throw teachingRpcError({ message: "teaching_role_denied" });
+            }
+            const memberTable = dynamicClient.from("on_call_service_members");
+            if (!memberTable || typeof memberTable.select !== "function") {
+              throw teachingRpcError({ message: "teaching_access_denied" });
+            }
+            const memberQuery = memberTable
+              .select("joined_at")
+              .eq("service_id", serviceId)
+              .eq("user_id", actorId)
+              .is("revoked_at", null);
+            const memberRes =
+              typeof memberQuery.maybeSingle === "function" ? await memberQuery.maybeSingle() : await memberQuery;
+            if (memberRes?.error) throw teachingRpcError(memberRes.error);
+            const memberData = memberRes?.data;
+            const activeMember = (Array.isArray(memberData) ? memberData[0] : memberData) as {
+              joined_at?: string | null;
+            } | null;
+            if (!activeMember) {
+              throw teachingRpcError({ message: "teaching_access_denied" });
+            }
+            const grantedMs = activeOrganiser.granted_at ? Date.parse(activeOrganiser.granted_at) : Number.NaN;
+            const joinedMs = activeMember.joined_at ? Date.parse(activeMember.joined_at) : Number.NaN;
+            if (!Number.isFinite(grantedMs) || !Number.isFinite(joinedMs) || grantedMs < joinedMs) {
+              throw teachingRpcError({ message: "teaching_role_denied" });
+            }
+          }
+        }
+      }
+      return parseTeachingResult(
+        emptyTeachingResultSchema,
+        await teachingCommand(client, actorId, serviceId, input.action, { linkHash: tokenHash }),
+      );
+    }
     case "series.save":
       return parseTeachingResult(
         seriesSavedSchema,

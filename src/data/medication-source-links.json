@@ -1,8 +1,58 @@
 {
-  "clozapine": ["tga-product-information-clozapine", "wa-health-clozapine-guideline-2024"],
+  "clozapine": ["wa-health-clozapine-guideline-2024", "tga-product-information-clozapine"],
   "lithium-carbonate-ir-sr": [
-    "tga-product-information-lithium-carbonate",
     "australian-prescriber-lithium-therapy-and-its-interactions",
-    "australian-prescriber-lithium-therapy-interactions-correction"
-  ]
+    "australian-prescriber-lithium-therapy-interactions-correction",
+    "tga-product-information-lithium-carbonate"
+  ],
+  "sodium-valproate-oral-iv": [
+    "tga-product-information-sodium-valproate",
+    "ranzcp-mood-disorders-clinical-practice-guideline"
+  ],
+  "carbamazepine": ["tga-product-information-carbamazepine", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "lamotrigine": ["tga-product-information-lamotrigine", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "aripiprazole-lai": ["tga-product-information-aripiprazole", "dictionary-australian-prescriber-movement-2019"],
+  "flupentixol-decanoate": [
+    "tga-product-information-flupentixol-decanoate",
+    "dictionary-australian-prescriber-movement-2019"
+  ],
+  "haloperidol-decanoate": [
+    "tga-product-information-haloperidol-decanoate",
+    "tga-product-information-haloperidol",
+    "dictionary-australian-prescriber-movement-2019"
+  ],
+  "olanzapine-pamoate-lai": [
+    "tga-product-information-olanzapine-pamoate",
+    "dictionary-australian-prescriber-movement-2019"
+  ],
+  "paliperidone-lai": [
+    "tga-product-information-paliperidone-palmitate",
+    "dictionary-australian-prescriber-movement-2019"
+  ],
+  "risperidone-lai": ["tga-product-information-risperidone", "dictionary-australian-prescriber-movement-2019"],
+  "zuclopenthixol-decanoate": [
+    "tga-product-information-zuclopenthixol-decanoate",
+    "dictionary-australian-prescriber-movement-2019"
+  ],
+  "zuclopenthixol-acetate": [
+    "tga-product-information-zuclopenthixol-acetate",
+    "dictionary-australian-prescriber-movement-2019"
+  ],
+  "methadone": [
+    "wa-monitored-medicines-prescribing-code",
+    "wa-health-scriptcheckwa",
+    "tga-product-information-methadone"
+  ],
+  "citalopram": ["tga-product-information-citalopram", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "escitalopram": ["tga-product-information-escitalopram", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "amisulpride": ["tga-product-information-amisulpride", "dictionary-australian-prescriber-movement-2019"],
+  "ziprasidone": ["tga-product-information-ziprasidone", "dictionary-australian-prescriber-movement-2019"],
+  "ziprasidone-im": ["tga-product-information-ziprasidone", "dictionary-australian-prescriber-movement-2019"],
+  "droperidol": ["tga-product-information-droperidol", "dictionary-australian-prescriber-movement-2019"],
+  "chlorpromazine": ["tga-product-information-chlorpromazine", "dictionary-australian-prescriber-movement-2019"],
+  "amitriptyline": ["tga-product-information-amitriptyline", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "clomipramine": ["tga-product-information-clomipramine", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "nortriptyline": ["tga-product-information-nortriptyline", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "phenelzine": ["tga-product-information-phenelzine", "ranzcp-mood-disorders-clinical-practice-guideline"],
+  "tranylcypromine": ["tga-product-information-tranylcypromine", "ranzcp-mood-disorders-clinical-practice-guideline"]
 }

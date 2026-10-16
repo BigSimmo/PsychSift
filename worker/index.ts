@@ -18,7 +18,8 @@ import { captureWorkerException, flushWorkerErrorTracking, initWorkerErrorTracki
 initWorkerErrorTracking();
 
 async function startWorker() {
-  await import("./main");
+  const { runWorkerMain } = await import("./main");
+  await runWorkerMain();
 }
 
 startWorker().catch(async (error) => {

@@ -1501,6 +1501,22 @@ jobs:
       - name: Verify Migration Replay
         run: supabase migration up --local
 
+      # Database behaviour tests (tests/sql), including the two-user privacy test that signs in
+      # as two synthetic doctors and proves neither can read or change the other's rows. Each
+      # file seeds synthetic rows and rolls back, so they share the replayed chain. The bare-image
+      # equivalent is `npm run test:sql`.
+      - name: Run database behaviour tests against the replayed chain
+        run: |
+          set -euo pipefail
+          db_container="$(docker ps --format '{{.Names}}' --filter 'name=^supabase_db_' | head -n 1)"
+          test -n "${db_container}"
+          for test_file in tests/sql/*.sql; do
+            echo "::group::${test_file}"
+            docker exec -i "${db_container}" \
+              psql -X -U postgres -d postgres -v ON_ERROR_STOP=1 -q -1 < "${test_file}"
+            echo "::endgroup::"
+          done
+
       # `drift:manifest` needs the same Docker-capable runner as migration
       # replay. Generating it here gives a schema-changing PR an authoritative
       # replacement artifact when the offline freshness check fails, rather

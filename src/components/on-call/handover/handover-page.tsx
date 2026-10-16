@@ -21,11 +21,13 @@ import {
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { ClinicalNoteEditor } from "@/components/clinical-notes/note-editor";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -41,7 +43,10 @@ import {
   ON_CALL_HANDOVER_NOT_SET_UP,
   ON_CALL_HANDOVER_TYPES,
   clearOnCallHandover,
+  readOnCallHandoverStoredExpiry,
   emptyOnCallHandoverDraft,
+  HANDOVER_SCRATCHPAD_STORAGE_KEY,
+  loadOnCallHandoverScratchpad,
   onCallHandoverCallsNotIn,
   onCallHandoverShiftDates,
   onCallHandoverDraftFromCall,
@@ -53,6 +58,7 @@ import {
   onCallHandoverStorageKey,
   removeOnCallHandoverPatient,
   saveOnCallHandoverPatient,
+  saveOnCallHandoverScratchpad,
   visibleOnCallHandover,
   type OnCallHandoverDraft,
   type OnCallHandoverPatient,
@@ -62,9 +68,12 @@ import {
 } from "@/lib/on-call/handover";
 import { ON_CALL_SHIFT_PICK_TTL_MS, useOnCallShiftPick } from "@/lib/on-call/shift-context";
 import {
+  clearExpiredPatientLabels,
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABELS_CLEARED_EVENT,
+  patientLabelStorageKey,
   startPatientLabelRetention,
+  subscribePatientLabelsCleared,
 } from "@/lib/patient-label-storage";
 
 /*
@@ -558,14 +567,31 @@ export function OnCallHandoverPage() {
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
   const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
+  const [scratchpadText, setScratchpadText] = useState<string>("");
+  const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
 
-  const reset = useCallback(() => {
+  // Read device storage only after mount, so the server render and first client render match.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setScratchpadText(loadOnCallHandoverScratchpad());
+    setScratchpadResetKey((key) => key + 1);
+  }, []);
+
+  // Starts a fresh patient form. The shift scratchpad is separate and survives this.
+  const resetForm = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
     setCurrentId(null);
     setCopiedWard("");
     setDraftExpiresAt(null);
     setMode("form");
   }, []);
+
+  // A wipe or shift end clears the scratchpad along with the form.
+  const reset = useCallback(() => {
+    resetForm();
+    setScratchpadText("");
+    setScratchpadResetKey((k) => k + 1);
+  }, [resetForm]);
 
   // A wipe (end of shift, sign-out, another user, another tab) also drops the half-typed record.
   useEffect(() => {
@@ -576,25 +602,33 @@ export function OnCallHandoverPage() {
     // Another tab's wipe reaches this one only as a `storage` event: a full clear
     // (key null) or the shift's expiry stamp being removed.
     const onStorage = (event: StorageEvent) => {
-      if (event.key === null || (event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY && event.newValue === null)) {
+      if (event.key === patientLabelStorageKey(HANDOVER_SCRATCHPAD_STORAGE_KEY)) {
+        setScratchpadText(loadOnCallHandoverScratchpad());
+        setScratchpadResetKey((key) => key + 1);
+      } else if (event.key === null || (event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY && event.newValue === null)) {
         onCleared();
       }
     };
-    window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
+    const unsubscribe = subscribePatientLabelsCleared(onCleared);
     window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
+      unsubscribe();
       window.removeEventListener("storage", onStorage);
     };
   }, [reset]);
 
+  const shiftExpiresAt = draftExpiresAt ?? view?.expiresAt ?? null;
+
   // The draft's shift ends while the page is open: clear it on time, not at the next keystroke.
   useEffect(() => {
-    if (draftExpiresAt === null) return;
+    if (shiftExpiresAt === null) return;
     const check = () => {
-      if (Date.now() >= draftExpiresAt) reset();
+      if (Date.now() >= shiftExpiresAt) {
+        clearExpiredPatientLabels();
+        reset();
+      }
     };
-    const timer = window.setTimeout(check, Math.max(0, draftExpiresAt - Date.now()));
+    const timer = window.setTimeout(check, Math.max(0, shiftExpiresAt - Date.now()));
     window.addEventListener("focus", check);
     window.addEventListener("pageshow", check);
     document.addEventListener("visibilitychange", check);
@@ -604,19 +638,47 @@ export function OnCallHandoverPage() {
       window.removeEventListener("pageshow", check);
       document.removeEventListener("visibilitychange", check);
     };
-  }, [draftExpiresAt, reset]);
+  }, [shiftExpiresAt, reset]);
 
   // The record being edited vanished (deleted in another tab, or it lapsed): start a fresh one.
   const currentGone = currentId !== null && view !== null && !patients.some((patient) => patient.id === currentId);
   useEffect(() => {
     if (!currentGone) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    reset();
-  }, [currentGone, reset]);
+    resetForm();
+  }, [currentGone, resetForm]);
+
+  // The view hides an expired shift, so a late timer also checks the stored stamp before writing.
+  const shiftHasEnded = useCallback(() => {
+    const expiresAt = shiftExpiresAt ?? readOnCallHandoverStoredExpiry();
+    return expiresAt !== null && Date.now() >= expiresAt;
+  }, [shiftExpiresAt]);
+
+  const persistScratchpad = useCallback(
+    (text: string) => {
+      if (shiftHasEnded()) {
+        clearExpiredPatientLabels();
+        reset();
+        setProblem("The shift has ended. This handover was cleared.");
+        return;
+      }
+      if (text.trim() !== "" && shiftExpiresAt === null) {
+        const started = startPatientLabelRetention();
+        if (started === null) {
+          setProblem("The shift expiry could not be set. This handover cannot be kept on this device.");
+          throw new Error("The shift expiry could not be set.");
+        }
+        setDraftExpiresAt(started);
+      }
+      saveOnCallHandoverScratchpad(text);
+    },
+    [shiftExpiresAt, shiftHasEnded, reset],
+  );
 
   /** Every change is kept as it is typed, so nothing is lost if the phone locks. */
   const commit = (next: OnCallHandoverDraft, id: string | null = currentId) => {
-    if (draftExpiresAt !== null && Date.now() >= draftExpiresAt) {
+    if (shiftHasEnded()) {
+      clearExpiredPatientLabels();
       reset();
       setProblem("The shift has ended. This handover was cleared.");
       return;
@@ -626,7 +688,7 @@ export function OnCallHandoverPage() {
       setProblem(null);
       return;
     }
-    let expiresAt = draftExpiresAt;
+    let expiresAt = shiftExpiresAt;
     if (expiresAt === null) {
       expiresAt = startPatientLabelRetention();
       if (expiresAt === null) {
@@ -634,10 +696,12 @@ export function OnCallHandoverPage() {
         return;
       }
       setDraftExpiresAt(expiresAt);
+    } else if (draftExpiresAt === null) {
+      setDraftExpiresAt(expiresAt);
     }
     const result = saveOnCallHandoverPatient(id, next);
     if (!result.ok) {
-      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) reset();
+      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) resetForm();
       setProblem(result.problem);
       return;
     }
@@ -732,7 +796,7 @@ export function OnCallHandoverPage() {
                 <h1 className={underBand ? "sr-only" : "text-2xl font-semibold text-[color:var(--text-heading)]"}>
                   Handover
                 </h1>
-                {patients.length > 0 && !confirmClear ? (
+                {(patients.length > 0 || scratchpadText.trim() !== "") && !confirmClear ? (
                   <button
                     type="button"
                     onClick={() => setConfirmClear(true)}
@@ -743,16 +807,18 @@ export function OnCallHandoverPage() {
                   </button>
                 ) : null}
               </div>
-              {patients.length > 0 && confirmClear ? (
+              {(patients.length > 0 || scratchpadText.trim() !== "") && confirmClear ? (
                 <div
                   className="grid min-w-0 gap-2 rounded-lg border border-[color:var(--border)] p-3 forced-colors:border"
                   role="group"
                   aria-label="Clear the handover"
                 >
                   <p className="text-sm text-[color:var(--text-heading)]">
-                    {patients.length === 1
-                      ? "Clear the one patient from this phone? This cannot be undone."
-                      : `Clear all ${patients.length} patients from this phone? This cannot be undone.`}
+                    {patients.length === 0
+                      ? "Clear the shift scratchpad from this phone? This cannot be undone."
+                      : `Clear ${patients.length === 1 ? "the one patient" : `all ${patients.length} patients`}${
+                          scratchpadText.trim() !== "" ? " and the shift scratchpad" : ""
+                        } from this phone? This cannot be undone.`}
                   </p>
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Button
@@ -766,7 +832,11 @@ export function OnCallHandoverPage() {
                       }}
                       testId="on-call-handover-clear-confirm"
                     >
-                      {patients.length === 1 ? "Clear the patient" : `Clear all ${patients.length} patients`}
+                      {patients.length === 0
+                        ? "Clear scratchpad"
+                        : `${patients.length === 1 ? "Clear the patient" : `Clear all ${patients.length} patients`}${
+                            scratchpadText.trim() !== "" ? " and scratchpad" : ""
+                          }`}
                     </Button>
                     <Button
                       variant="ghost"
@@ -974,6 +1044,27 @@ export function OnCallHandoverPage() {
                   </div>
 
                   <CallsToAdd patients={patients} onAdd={(next) => commit(next, null)} />
+
+                  <ClinicalNoteEditor
+                    key={scratchpadResetKey}
+                    label="Shift scratchpad (de-identified)"
+                    initialValue={scratchpadText}
+                    onChange={(text) => {
+                      setScratchpadText(text);
+                      // On a shared device only Save now keeps text, but clearing still removes any stored copy.
+                      if (isSharedDevice() && text.trim() !== "") return;
+                      try {
+                        persistScratchpad(text);
+                      } catch {
+                        // Handled by explicit save status
+                      }
+                    }}
+                    onSave={(text) => {
+                      // Save now is the deliberate save, so it keeps text even on a shared device.
+                      setScratchpadText(text);
+                      persistScratchpad(text);
+                    }}
+                  />
                 </>
               )}
             </>

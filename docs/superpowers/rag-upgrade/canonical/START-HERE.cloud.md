@@ -11,7 +11,7 @@ The user prompt must declare `TARGET_PHASE`, `PACKAGE_SOURCE_REF`, `PACKAGE_HEAD
 
 If target or UI effort is wrong, stop before substantive inspection. Cloud cannot raise its own effort. If confirmation is missing, request it once; continue after the user confirms.
 
-After the applicable host readiness checks below, run `node scripts/rag-phase-launch-check.mjs --target TARGET_PHASE --effort SELECTED_EFFORT` as the first programme-local validation. Add `--xhigh-confirmed` only when the user has confirmed xhigh selection, including in ordinary language. This flag records user attestation, not observed runtime effort; authoritative route evidence remains required. A failure stops phase execution.
+After the applicable host readiness checks below, run `node scripts/rag-phase-launch-check.mjs --target TARGET_PHASE --effort SELECTED_EFFORT` as the first programme-local validation. Ordinary-language user confirmation is sufficient; no additional CLI attestation is required. The helper validates declared target/effort, not observed runtime effort; authoritative route evidence remains required. A failure stops phase execution.
 
 ## Current host readiness and optional legacy setup
 

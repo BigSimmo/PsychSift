@@ -707,6 +707,7 @@ export function RosterTodayPage({ now: pinnedNow }: { readonly now?: Date } = {}
           onClose={() => setAddView(null)}
           today={today}
           workplaces={workplaces}
+          existingShifts={shifts.shifts}
           onImportFile={() => {
             setAddView(null);
             setImporting(true);

@@ -1,4 +1,6 @@
+import type { RawPublishedOriginalRowObserver } from "@/lib/rag/rag-source-block";
 import { rankClinicalResults } from "@/lib/clinical-search";
+import { env } from "@/lib/env";
 import { governedPublicRetrievalAccessScope } from "@/lib/owner-scope";
 import { embedTextWithTelemetry } from "@/lib/openai";
 import { searchGovernedCorpora } from "@/lib/rag/rag-candidate-sources";
@@ -90,6 +92,7 @@ export async function routeGovernedSearch(input: {
   queryPlan: RagQueryPlan;
   queryVariants: string[];
   telemetry: SearchTelemetry;
+  observeRawPublishedRow?: RawPublishedOriginalRowObserver;
 }): Promise<GovernedModeResult | null> {
   const { args, queryPlan, queryVariants, supabase, telemetry } = input;
   if (args.ragQueryPlanMode === "legacy") return null;
@@ -117,7 +120,11 @@ export async function routeGovernedSearch(input: {
     embedQuery: async (embeddingQuery, signal) => {
       const embeddingStartedAt = Date.now();
       try {
-        const result = await embedTextWithTelemetry(embeddingQuery, { signal });
+        const result = await embedTextWithTelemetry(embeddingQuery, {
+          signal,
+          timeoutMs: env.OPENAI_INTERACTIVE_EMBEDDING_TIMEOUT_MS,
+          maxRetries: 0,
+        });
         telemetry.embedding_cache_hit = result.cacheHit;
         return result.embedding;
       } finally {
@@ -133,6 +140,7 @@ export async function routeGovernedSearch(input: {
     answerSourcePolicy: args.answerSourcePolicy ?? queryPlan.sourcePolicy,
     signal: args.signal,
     maxRpcCalls: shadow ? 1 : 3,
+    observeRawPublishedRow: shadow ? undefined : input.observeRawPublishedRow,
     onRpcCall: () => {
       rpcCalls += 1;
     },

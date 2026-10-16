@@ -25,19 +25,26 @@ function sourceFiles() {
   return files;
 }
 
-export function parseModuleSource(sourceText: string) {
+// Plain TypeScript modules (.ts/.mts/.cts) cannot contain JSX, and TypeScript
+// itself parses them without it: there `<T>(value: T) => value` is a generic
+// arrow function, not an opening tag. Parsing them with the JSX plugin rejects
+// valid source, so JSX is enabled only where the language allows it.
+const nonJsxTypeScriptExtensions = new Set([".ts", ".mts", ".cts"]);
+
+export function parseModuleSource(sourceText: string, filePath?: string) {
+  const allowsJsx = !(filePath && nonJsxTypeScriptExtensions.has(path.extname(filePath)));
   return parse(sourceText, {
     sourceType: "module",
     // @babel/parser 8 parses import attributes by default; the standalone
     // "importAttributes" plugin was removed (and is now a type error).
-    plugins: ["jsx", "typescript"],
+    plugins: allowsJsx ? ["jsx", "typescript"] : ["typescript"],
   });
 }
 
-export function moduleSpecifiersFromSource(_filePath: string, sourceText: string) {
+export function moduleSpecifiersFromSource(filePath: string, sourceText: string) {
   const staticImports = new Set<string>();
   const dynamicImports = new Set<string>();
-  const source = parseModuleSource(sourceText);
+  const source = parseModuleSource(sourceText, filePath);
 
   for (const statement of source.program.body) {
     if (statement.type === "ImportDeclaration") {

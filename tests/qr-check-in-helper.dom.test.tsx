@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { QrCheckInHelper } from "@/components/teaching/qr-check-in-helper";
+import { TeachingCodeSheet } from "@/components/teaching/teaching-code-sheet";
 
 describe("QrCheckInHelper (#ZTDZ4Z)", () => {
   let mockTracks: { stop: ReturnType<typeof vi.fn> }[];
@@ -31,13 +32,20 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     delete window.BarcodeDetector;
   });
 
-  it("renders camera viewport fallback and typed-code input", () => {
+  it("renders camera viewport fallback and typed-code input with privacy attributes", () => {
     render(<QrCheckInHelper onScanCode={vi.fn()} />);
 
     expect(screen.getByTestId("qr-check-in-helper")).toBeInTheDocument();
     expect(screen.getByTestId("qr-viewport-fallback")).toBeInTheDocument();
     expect(screen.getByTestId("start-camera-scan-btn")).toBeInTheDocument();
-    expect(screen.getByTestId("qr-typed-code-input")).toBeInTheDocument();
+
+    const input = screen.getByTestId("qr-typed-code-input");
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveAttribute("id", "manual-session-code-input");
+    expect(input).toHaveAttribute("autocomplete", "off");
+    expect(input).toHaveAttribute("spellcheck", "false");
+    expect(input).toHaveAttribute("data-gramm", "false");
+    expect(input).toHaveAttribute("data-enable-grammarly", "false");
   });
 
   it("starts camera with mobile back camera constraints", async () => {
@@ -124,5 +132,113 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     });
 
     expect(onScan).toHaveBeenCalledWith("951753");
+  });
+
+  it("toggles QrCheckInHelper inside TeachingCodeSheet with hideManualEntry and enforces demo-mode guard", async () => {
+    vi.useFakeTimers();
+
+    class MockBarcodeDetector {
+      detect = vi.fn().mockResolvedValue([{ rawValue: "654321" }]);
+    }
+    // @ts-expect-error - assign mock detector
+    window.BarcodeDetector = MockBarcodeDetector;
+
+    render(
+      <TeachingCodeSheet
+        open={true}
+        onClose={vi.fn()}
+        session={{ serviceId: "svc-1", occurrenceId: "occ-1", hasJoinLink: false }}
+        live={false}
+        onDone={vi.fn()}
+      />,
+    );
+
+    const toggleBtn = screen.getByTestId("toggle-in-app-qr-scanner");
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByTestId("qr-check-in-helper")).toBeInTheDocument();
+    expect(screen.queryByTestId("qr-typed-code-fallback")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("start-camera-scan-btn"));
+    });
+
+    const video = screen.getByTestId("qr-camera-video") as HTMLVideoElement;
+    Object.defineProperty(video, "readyState", { value: 4, configurable: true });
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("The demo doesn't save check-ins.");
+  });
+
+  it("rejects invalid /teaching/c/ URLs and navigates on valid check-in tokens in live TeachingCodeSheet", async () => {
+    vi.useFakeTimers();
+    const validToken = `${"a".repeat(32)}r123456${"b".repeat(32)}`;
+    const detectMock = vi
+      .fn()
+      .mockResolvedValueOnce([{ rawValue: `${window.location.origin}/teaching/c/not-a-valid-token` }])
+      .mockResolvedValueOnce([{ rawValue: `${window.location.origin}/teaching/c/${validToken}/` }]);
+
+    class MockBarcodeDetector {
+      detect = detectMock;
+    }
+    // @ts-expect-error - assign mock detector
+    window.BarcodeDetector = MockBarcodeDetector;
+
+    const assignSpy = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, origin: "http://localhost:3000", assign: assignSpy },
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      render(
+        <TeachingCodeSheet
+          open={true}
+          onClose={vi.fn()}
+          session={{ serviceId: "svc-1", occurrenceId: "occ-1", hasJoinLink: false }}
+          live={true}
+          onDone={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("toggle-in-app-qr-scanner"));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("start-camera-scan-btn"));
+      });
+      const video = screen.getByTestId("qr-camera-video") as HTMLVideoElement;
+      Object.defineProperty(video, "readyState", { value: 4, configurable: true });
+
+      await act(async () => {
+        vi.advanceTimersByTime(350);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Scanned QR code is not a valid check-in link for this site.",
+      );
+      expect(assignSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("start-camera-scan-btn"));
+      });
+      const video2 = screen.getByTestId("qr-camera-video") as HTMLVideoElement;
+      Object.defineProperty(video2, "readyState", { value: 4, configurable: true });
+
+      await act(async () => {
+        vi.advanceTimersByTime(350);
+      });
+
+      expect(assignSpy).toHaveBeenCalledWith(`http://localhost:3000/teaching/c/${encodeURIComponent(validToken)}`);
+    } finally {
+      Object.defineProperty(window, "location", {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 });

@@ -33,6 +33,7 @@ import { useSavedRegistryFavourites } from "@/components/clinical-dashboard/use-
 import { cn } from "@/components/ui-primitives";
 import { appModeDefinition, filterCrossModesForSession, type AppModeId } from "@/lib/app-modes";
 import { appModeIcons } from "@/lib/app-mode-icons";
+import { modeMenuSideForMode } from "@/lib/phone-mode-groups";
 import {
   commandDropdownCanDisplay,
   commandDropdownMinimumWidthMediaQuery,
@@ -305,7 +306,15 @@ function SmartIntentCue({ active, modeLabel }: { active: boolean; modeLabel: str
   );
 }
 
-function SmartPromptRow({ examples, onPickExample }: { examples: string[]; onPickExample: (example: string) => void }) {
+function SmartPromptRow({
+  modeId,
+  examples,
+  onPickExample,
+}: {
+  modeId: AppModeId;
+  examples: string[];
+  onPickExample: (example: string) => void;
+}) {
   return (
     <AnswerSuggestionChips
       suggestions={examples}
@@ -314,6 +323,8 @@ function SmartPromptRow({ examples, onPickExample }: { examples: string[]; onPic
       testId="smart-search-prompt-row"
       layout="scroll"
       className="smart-search-prompt-row"
+      // Clinical keeps its square-ish control corners; pills are Work's shape.
+      chipShape={modeMenuSideForMode(modeId) === "clinical" ? "control" : "pill"}
     />
   );
 }
@@ -1264,6 +1275,7 @@ export function UniversalSearchCommandSurface({
       </div>
       {showHomeSuggestions ? (
         <SmartPromptRow
+          modeId={modeId}
           examples={config.examples}
           onPickExample={(example) => {
             onQueryChange(example);

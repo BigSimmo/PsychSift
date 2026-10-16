@@ -12,6 +12,8 @@ export type RenalStage =
 export type CockcroftGaultInput = {
   age: number;
   weightKg: number;
+  /** Optional height in cm (120–230 cm) for Devine Ideal Body Weight (IBW) and Adjusted Body Weight (ABW) guidance */
+  heightCm?: number;
   sex: BiologicalSex;
   serumCreatinine: number;
   creatinineUnit: CreatinineUnit;
@@ -21,6 +23,10 @@ export type CockcroftGaultResult = {
   isValid: boolean;
   crClMlMin: number | null;
   stage: RenalStage | null;
+  ibwKg?: number | null;
+  effectiveWeightKg?: number | null;
+  weightBasis?: "actual" | "ideal" | "adjusted";
+  lithiumClinicalNote?: string;
   errors: string[];
   warnings: string[];
 };
@@ -64,7 +70,7 @@ export type LithiumIndication = "maintenance" | "acute_mania";
 
 export type LithiumLevelStatus = "invalid" | "subtherapeutic" | "therapeutic" | "supratherapeutic" | "toxic";
 
-export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe_dialysis_threshold";
+export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe";
 
 export type LithiumLevelInput = {
   serumLevelMmolL: number;
@@ -76,19 +82,36 @@ export type LithiumLevelEvaluation = {
   status: LithiumLevelStatus;
   isWithinTarget: boolean;
   severity: LithiumToxicitySeverity;
+  toxicitySeverity?: LithiumToxicitySeverity;
+  requiresUrgentAction?: boolean;
   targetRange: { min: number; max: number };
+  /** False when no valid age was given, so the age-dependent target range is unknown. */
+  targetRangeKnown?: boolean;
   clinicalGuidance: string[];
 };
+
+export type LithiumDoseIncrementMg = 50 | 125 | 225 | 250;
 
 export type LithiumDoseAdjustmentInput = {
   currentDoseMg: number;
   currentLevelMmolL: number;
   targetLevelMmolL: number;
+  /**
+   * Practical tablet-strength rounding increment in mg.
+   * Defaults to 125 mg (half of a scored 250 mg Australian immediate-release lithium carbonate tablet;
+   * slow-release Quilonum SR is 450 mg / 225 mg half-tablet).
+   */
+  doseIncrementMg?: LithiumDoseIncrementMg;
+  tabletIncrementMg?: 50 | 125 | 225 | 250 | 450;
 };
+
+export type ProportionalLithiumDoseInput = LithiumDoseAdjustmentInput;
 
 export type LithiumDoseAdjustmentResult = {
   isValid: boolean;
   suggestedDoseMg: number | null;
+  rawDoseMg?: number | null;
+  warnings?: string[];
   errors: string[];
   note: string;
 };

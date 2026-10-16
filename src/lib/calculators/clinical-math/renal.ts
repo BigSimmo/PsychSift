@@ -1,4 +1,14 @@
-import type { CkdEpiInput, CkdEpiResult, CockcroftGaultInput, CockcroftGaultResult, RenalStage } from "./types";
+import type {
+  BiologicalSex,
+  CkdEpiInput,
+  CkdEpiResult,
+  CockcroftGaultInput,
+  CockcroftGaultResult,
+  CreatinineUnit,
+  RenalStage,
+} from "./types";
+
+export const CREATININE_UMOL_PER_MG_DL = 88.42;
 
 function classifyRenalStage(value: number): RenalStage {
   if (value >= 90) return "normal";
@@ -6,6 +16,35 @@ function classifyRenalStage(value: number): RenalStage {
   if (value >= 30) return "moderate_impairment";
   if (value >= 15) return "severe_impairment";
   return "kidney_failure";
+}
+
+function computeRawCrCl(
+  age: number,
+  weightKg: number,
+  sex: BiologicalSex,
+  serumCreatinine: number,
+  creatinineUnit: CreatinineUnit,
+): number {
+  if (creatinineUnit === "umol/L") {
+    // Standard Australasian formula: (140 - age) * weight * factor / SCr (umol/L)
+    // Factor: 1.23 for males, 1.04 for females
+    const factor = sex === "female" ? 1.04 : 1.23;
+    return ((140 - age) * weightKg * factor) / serumCreatinine;
+  }
+  // US formula: (140 - age) * weight / (72 * SCr) * (0.85 if female)
+  const factor = sex === "female" ? 0.85 : 1.0;
+  return (((140 - age) * weightKg) / (72 * serumCreatinine)) * factor;
+}
+
+/**
+ * Devine formula for Ideal Body Weight (IBW) in kilograms.
+ * Used by Australian Medicines Handbook (AMH) and Therapeutic Guidelines (eTG)
+ * when actual body weight exceeds IBW in Cockcroft-Gault renal clearance estimation.
+ */
+export function calculateIdealBodyWeightKg(heightCm: number, sex: BiologicalSex): number {
+  const baseKg = sex === "female" ? 45.5 : 50;
+  const ibw = baseKg + 0.9 * (heightCm - 152.4);
+  return Math.round(ibw * 10) / 10;
 }
 
 /**
@@ -40,6 +79,12 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     );
   }
 
+  if (input.heightCm !== undefined) {
+    if (!Number.isFinite(input.heightCm) || input.heightCm < 120 || input.heightCm > 230) {
+      errors.push("Height must be within adult physiological range (120–230 cm)");
+    }
+  }
+
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");
   } else if (input.creatinineUnit === "umol/L" && (input.serumCreatinine < 15 || input.serumCreatinine > 3000)) {
@@ -53,22 +98,50 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
       isValid: false,
       crClMlMin: null,
       stage: null,
+      ibwKg: null,
+      effectiveWeightKg: null,
       errors,
       warnings,
     };
   }
 
-  let crCl: number;
-  if (input.creatinineUnit === "umol/L") {
-    // Standard Australasian formula: (140 - age) * weight * factor / SCr (umol/L)
-    // Factor: 1.23 for males, 1.04 for females
-    const factor = input.sex === "female" ? 1.04 : 1.23;
-    crCl = ((140 - input.age) * input.weightKg * factor) / input.serumCreatinine;
+  let ibwKg: number | null = null;
+  let effectiveWeightKg = input.weightKg;
+  let weightBasis: "actual" | "ideal" | "adjusted" = "actual";
+
+  if (input.heightCm !== undefined) {
+    if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
+      ibwKg = calculateIdealBodyWeightKg(input.heightCm, input.sex);
+      // Only characterize the alternative weights as overweight/obesity guidance at BMI >= 25.
+      const bmi = input.weightKg / (input.heightCm / 100) ** 2;
+      if (ibwKg > 0 && input.weightKg > ibwKg && bmi >= 25) {
+        const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
+        const isObeseExcess = input.weightKg > ibwKg * 1.2;
+        effectiveWeightKg = isObeseExcess ? abwKg : ibwKg;
+        weightBasis = isObeseExcess ? "adjusted" : "ideal";
+        const ibwCrCl =
+          Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
+          100;
+        const abwCrCl =
+          Math.round(computeRawCrCl(input.age, abwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
+          100;
+        const excessLabel = isObeseExcess ? "exceeds Ideal Body Weight by >20%" : "exceeds Ideal Body Weight";
+        warnings.push(
+          `Actual weight (${input.weightKg} kg) ${excessLabel} (Devine IBW: ${ibwKg.toFixed(1)} kg; Adjusted Body Weight: ${abwKg.toFixed(1)} kg). Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (CrCl ${ibwCrCl} mL/min) or Adjusted Body Weight (CrCl ${abwCrCl} mL/min) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.`,
+        );
+      }
+    } else {
+      warnings.push(
+        "Height outside adult Devine IBW range (120–230 cm); Ideal Body Weight not calculated. Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal or Adjusted Body Weight in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.",
+      );
+    }
   } else {
-    // US formula: (140 - age) * weight / (72 * SCr) * (0.85 if female)
-    const factor = input.sex === "female" ? 0.85 : 1.0;
-    crCl = (((140 - input.age) * input.weightKg) / (72 * input.serumCreatinine)) * factor;
+    warnings.push(
+      "Height omitted (weight selection unassessed): Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (IBW) or Adjusted Body Weight (ABW) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium (provide heightCm to compute Devine IBW/ABW).",
+    );
   }
+
+  const crCl = computeRawCrCl(input.age, effectiveWeightKg, input.sex, input.serumCreatinine, input.creatinineUnit);
 
   const rounded = Math.round(crCl * 100) / 100;
   if (!Number.isFinite(rounded)) {
@@ -76,14 +149,27 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
       isValid: false,
       crClMlMin: null,
       stage: null,
+      ibwKg,
+      effectiveWeightKg,
+      weightBasis,
       errors: ["Calculated creatinine clearance is not finite"],
       warnings,
     };
   }
+
+  const lithiumClinicalNote =
+    rounded < 60
+      ? "Renal impairment (CrCl < 60 mL/min): lithium clearance is reduced; lower doses and closer serum monitoring are required (avoid or seek specialist advice in severe impairment)."
+      : "Confirm baseline renal function before initiating renally cleared psychotropics (lithium, amisulpride, pregabalin, gabapentin, paliperidone).";
+
   return {
     isValid: true,
     crClMlMin: rounded,
     stage: classifyRenalStage(rounded),
+    ibwKg,
+    effectiveWeightKg,
+    weightBasis,
+    lithiumClinicalNote,
     errors: [],
     warnings,
   };
@@ -123,7 +209,8 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
   }
 
   // Convert to mg/dL if supplied in umol/L
-  const scrMgDl = input.creatinineUnit === "umol/L" ? input.serumCreatinine / 88.42 : input.serumCreatinine;
+  const scrMgDl =
+    input.creatinineUnit === "umol/L" ? input.serumCreatinine / CREATININE_UMOL_PER_MG_DL : input.serumCreatinine;
 
   const isFemale = input.sex === "female";
   const kappa = isFemale ? 0.7 : 0.9;

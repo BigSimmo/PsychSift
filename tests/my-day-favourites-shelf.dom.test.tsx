@@ -149,6 +149,17 @@ describe("My Day Favourites shelf", () => {
     expect(screen.getByTestId("my-day-favourites-all")).toHaveTextContent("All 1");
   });
 
+  it("wraps a long name only at spaces, so a long drug name ellipsises rather than splitting mid-word", () => {
+    shelfState.current = state({ items: [clinical("acamprosate", "Acamprosate renal dosing")] });
+    render(<MyDayFavouritesShelf />);
+    const name = screen.getByTestId("favourites-shelf-tile-name");
+    expect(name).toHaveTextContent("Acamprosate renal dosing");
+    expect(name).toHaveClass("line-clamp-2", "text-ellipsis", "[overflow-wrap:normal]", "[word-break:normal]");
+    for (const splitting of ["break-words", "break-all", "hyphens-auto", "wrap-anywhere", "wrap-break-word"]) {
+      expect(name).not.toHaveClass(splitting);
+    }
+  });
+
   it("signed out with no work pages, draws nothing", () => {
     shelfState.current = state({ signedIn: false, items: [clinical("delirium", "Delirium")] });
     const { container } = render(<MyDayFavouritesShelf />);

@@ -30,7 +30,7 @@ Official register: <https://www.chiefpsychiatrist.wa.gov.au/laws-and-rights/legi
 
 ### Form 1A — Referral for examination by a psychiatrist
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`eb950d3c48db`)
 
@@ -98,7 +98,7 @@ Drafted from Mental Health Act 2014 (WA) s 26, s 36, s 40, s 41, s 42, s 43, s 4
 
 ### Form 1A attachment — Information provided by another person in confidence
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`50c9d0d7b072`)
 
@@ -164,7 +164,7 @@ Drafted from Mental Health Act 2014 (WA) s 41, s 42 with s 26, s 36 as context, 
 
 ### Form 1B — Variation of referral
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`933af3a84c6c`)
 
@@ -231,7 +231,7 @@ Drafted from Mental Health Act 2014 (WA) s 45, s 46 with s 26, s 41, s 44 as con
 
 ### Form 2 — Order to detain voluntary inpatient in authorised hospital for assessment
 
-**Status** REVIEWED by PsychSift on 2026-10-06T09:19:27.897Z
+**Status** REVIEWED by Psych Sift on 2026-10-06T09:19:27.897Z
 
 **Sign-off pin** matches the signed guidance (`9f8dd86e0276`)
 
@@ -299,7 +299,7 @@ Drafted from Mental Health Act 2014 (WA) s 34, s 35 with s 25, s 36 as context, 
 
 ### Form 3A — Detention order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`04f66d823c0f`)
 
@@ -367,7 +367,7 @@ Drafted from Mental Health Act 2014 (WA) s 28, s 62 with s 26, s 61 as context, 
 
 ### Form 3B — Continuation of detention
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`11ddcb0d7750`)
 
@@ -433,7 +433,7 @@ Drafted from Mental Health Act 2014 (WA) s 28, s 59, s 62 with s 26, s 58, s 61 
 
 ### Form 3C — Continuation of detention to enable a further examination by a psychiatrist
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:14:18.043Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:14:18.043Z
 
 **Sign-off pin** matches the signed guidance (`8bf94f175892`)
 
@@ -499,7 +499,7 @@ Drafted from Mental Health Act 2014 (WA) s 55, s 56 with s 52, s 53 as context, 
 
 ### Form 3D — Order authorising reception and detention in an authorised hospital for further examination
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`302c105b548a`)
 
@@ -565,7 +565,7 @@ Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, 
 
 ### Form 3E — Order that person cannot continue to be detained
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`8418a5149926`)
 
@@ -630,7 +630,7 @@ Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, and from the ap
 
 ### Form 4A — Transport order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`00913d415571`)
 
@@ -698,7 +698,7 @@ Drafted from Mental Health Act 2014 (WA) s 29, s 63, s 67, s 92, s 112, s 129, s
 
 ### Form 4B — Extension of transport order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`8db3f7db9076`)
 
@@ -764,7 +764,7 @@ Drafted from Mental Health Act 2014 (WA) s 152 with s 148, s 150 as context, and
 
 ### Form 4C — Transfer order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`94d6a2b10922`)
 
@@ -831,7 +831,7 @@ Drafted from Mental Health Act 2014 (WA) s 66, s 91 with s 67, s 92 as context, 
 
 ### Form 4D — Interstate transfer order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`37c313bfe24c`)
 
@@ -897,7 +897,7 @@ Drafted from Mental Health Act 2014 (WA) s 555 with s 551 as context, and from t
 
 ### Form 4E — Approval of interstate transfer order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`e48c4707ad23`)
 
@@ -963,7 +963,7 @@ Drafted from Mental Health Act 2014 (WA) s 557 with s 551 as context, and from t
 
 ### Form 5A — Community Treatment Order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`97a7ed35ee58`)
 
@@ -1030,7 +1030,7 @@ Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, s 75, s 76 with
 
 ### Form 5B — Continuation of Community Treatment Order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`97cd3fb2701f`)
 
@@ -1097,7 +1097,7 @@ Drafted from Mental Health Act 2014 (WA) s 121 with s 118, s 120 as context, and
 
 ### Form 5C — Variation of terms of Community Treatment Order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`151a61fe17b7`)
 
@@ -1165,7 +1165,7 @@ Drafted from Mental Health Act 2014 (WA) s 122 with s 115, s 135, s 137 as conte
 
 ### Form 5D — Request made by a supervising psychiatrist for a practitioner to conduct the monthly examination of a patient
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`bc5bede61cca`)
 
@@ -1229,7 +1229,7 @@ Drafted from Mental Health Act 2014 (WA) s 118, s 119, and from the approved For
 
 ### Form 5E — Notice and record of breach of Community Treatment Order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`055e581ec4e9`)
 
@@ -1296,7 +1296,7 @@ Drafted from Mental Health Act 2014 (WA) s 127 with s 126 as context, and from t
 
 ### Form 5F — Order to attend
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`6735c7bb7a9c`)
 
@@ -1363,7 +1363,7 @@ Drafted from Mental Health Act 2014 (WA) s 128 with s 127, s 129 as context, and
 
 ### Form 6A — Inpatient treatment order in authorised hospital
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`7f6f49a4d962`)
 
@@ -1430,7 +1430,7 @@ Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 72, s 87 with s 25, s 89,
 
 ### Form 6B — Inpatient treatment order in general hospital
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`da8736e41d2c`)
 
@@ -1497,7 +1497,7 @@ Drafted from Mental Health Act 2014 (WA) s 61, s 87 with s 65, s 66, s 68, s 89,
 
 ### Form 6B attachment — Inpatient treatment order in a general hospital: report to Chief Psychiatrist
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`6b9188f60ed7`)
 
@@ -1563,7 +1563,7 @@ Drafted from Mental Health Act 2014 (WA) s 65 with s 61, s 87, s 89 as context, 
 
 ### Form 6C — Continuation of inpatient treatment order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`58960bdc4124`)
 
@@ -1630,7 +1630,7 @@ Drafted from Mental Health Act 2014 (WA) s 89 with s 87, s 90 as context, and fr
 
 ### Form 6D — Confirmation of inpatient treatment order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`9ba2496ef4ff`)
 
@@ -1696,7 +1696,7 @@ Drafted from Mental Health Act 2014 (WA) s 68, s 124 with s 61, s 66, s 120, s 1
 
 ### Form 7A — Grant of leave to involuntary inpatient
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`a47687a48310`)
 
@@ -1764,7 +1764,7 @@ Drafted from Mental Health Act 2014 (WA) s 105 with s 90 as context, and from th
 
 ### Form 7B — Extension and/or variation of leave
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`29812cfccd91`)
 
@@ -1831,7 +1831,7 @@ Drafted from Mental Health Act 2014 (WA) s 106 with s 105, s 110 as context, and
 
 ### Form 7C — Cancellation of grant of leave
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`142743958ac5`)
 
@@ -1898,7 +1898,7 @@ Drafted from Mental Health Act 2014 (WA) s 110 with s 112 as context, and from t
 
 ### Form 7D — Apprehension and return order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`f9871c48eab4`)
 
@@ -1965,7 +1965,7 @@ Drafted from Mental Health Act 2014 (WA) s 98, s 101 with s 97, s 99, s 100 as c
 
 ### Form 8A — Record of search and seizure
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`50ab2c19a7bd`)
 
@@ -2031,7 +2031,7 @@ Drafted from Mental Health Act 2014 (WA) s 165 with s 159, s 162, s 166 as conte
 
 ### Form 8B — Record dealing with seized article
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`87e8bca7e931`)
 
@@ -2098,7 +2098,7 @@ Drafted from Mental Health Act 2014 (WA) s 167 with s 162, s 166 as context, and
 
 ### Form 9A — Record of emergency psychiatric treatment
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`3cfb4a73e3b7`)
 
@@ -2165,7 +2165,7 @@ Drafted from Mental Health Act 2014 (WA) s 204 with s 202, s 203 as context, and
 
 ### Form 9B — Report to Chief Psychiatrist about provision of urgent non-psychiatric treatment
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`80cd346e45c3`)
 
@@ -2231,7 +2231,7 @@ Drafted from Mental Health Act 2014 (WA) s 242 with s 240, s 241 as context, and
 
 ### Form 10A — Record of oral authorisation of bodily restraint
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`b387de0a23c1`)
 
@@ -2298,7 +2298,7 @@ Drafted from Mental Health Act 2014 (WA) s 230 with s 232 as context, and from t
 
 ### Form 10B — Written bodily restraint order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:14:23.764Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:14:23.764Z
 
 **Sign-off pin** matches the signed guidance (`30dcd4393667`)
 
@@ -2364,7 +2364,7 @@ Drafted from Mental Health Act 2014 (WA) s 231 with s 232 as context, and from t
 
 ### Form 10C — Record of informing medical practitioner and treating psychiatrist of bodily restraint
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`3969ac09dd04`)
 
@@ -2428,7 +2428,7 @@ Drafted from Mental Health Act 2014 (WA) s 230, s 231, s 233, and from the appro
 
 ### Form 10D — Record of observations made of restrained person
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`7c087fb285d1`)
 
@@ -2492,7 +2492,7 @@ Drafted from Mental Health Act 2014 (WA) s 238, and from the approved Form 10D a
 
 ### Form 10E — Record of examination of restrained person and possible extension of bodily restraint
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:14:28.175Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:14:28.175Z
 
 **Sign-off pin** matches the signed guidance (`b834adf3b6a3`)
 
@@ -2557,7 +2557,7 @@ Drafted from Mental Health Act 2014 (WA) s 234, s 238, and from the approved For
 
 ### Form 10F — Variation of bodily restraint order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`f04064538390`)
 
@@ -2624,7 +2624,7 @@ Drafted from Mental Health Act 2014 (WA) s 234 with s 238 as context, and from t
 
 ### Form 10G — Revocation or expiry of bodily restraint order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`a063e3ea9ff7`)
 
@@ -2691,7 +2691,7 @@ Drafted from Mental Health Act 2014 (WA) s 235, s 237 with s 239 as context, and
 
 ### Form 10H — Review of bodily restraint order by a psychiatrist
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`de8afc8023f9`)
 
@@ -2755,7 +2755,7 @@ Drafted from Mental Health Act 2014 (WA) s 238, and from the approved Form 10H a
 
 ### Form 10I — Record of post-bodily restraint examination
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`36a060bf718b`)
 
@@ -2820,7 +2820,7 @@ Drafted from Mental Health Act 2014 (WA) s 239, and from the approved Form 10I a
 
 ### Form 11A — Record of oral authorisation of seclusion
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`2aaeb27a4659`)
 
@@ -2888,7 +2888,7 @@ Drafted from Mental Health Act 2014 (WA) s 214 with s 216 as context, and from t
 
 ### Form 11B — Written seclusion order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:14:35.024Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:14:35.024Z
 
 **Sign-off pin** matches the signed guidance (`f146cf71bd4d`)
 
@@ -2954,7 +2954,7 @@ Drafted from Mental Health Act 2014 (WA) s 215 with s 216 as context, and from t
 
 ### Form 11C — Record of informing medical practitioner and treating psychiatrist of seclusion
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`2843a9033385`)
 
@@ -3018,7 +3018,7 @@ Drafted from Mental Health Act 2014 (WA) s 214, s 215, s 217, and from the appro
 
 ### Form 11D — Record of observations made of secluded person
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`147ea97578a2`)
 
@@ -3082,7 +3082,7 @@ Drafted from Mental Health Act 2014 (WA) s 222, and from the approved Form 11D a
 
 ### Form 11E — Record of examination of secluded person and possible extension of seclusion
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`ce7c4d6b8113`)
 
@@ -3146,7 +3146,7 @@ Drafted from Mental Health Act 2014 (WA) s 218, s 222, and from the approved For
 
 ### Form 11F — Revocation or expiry of seclusion order
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`f6370eb461a7`)
 
@@ -3213,7 +3213,7 @@ Drafted from Mental Health Act 2014 (WA) s 219, s 221 with s 223 as context, and
 
 ### Form 11G — Record of post-seclusion examination
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`be090f33603a`)
 
@@ -3278,7 +3278,7 @@ Drafted from Mental Health Act 2014 (WA) s 223, and from the approved Form 11G a
 
 ### Form 12A — Nomination of nominated person
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`6e15eb400780`)
 
@@ -3347,7 +3347,7 @@ Drafted from Mental Health Act 2014 (WA) s 275 with s 263, s 266, s 273, s 274, 
 
 ### Form 12B — Record of refusal of patient’s request to access document
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`7aac0062daf8`)
 
@@ -3412,7 +3412,7 @@ Drafted from Mental Health Act 2014 (WA) s 248, s 249, and from the approved For
 
 ### Form 12C — Restriction on freedom of communication
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`3b202a3de5fb`)
 
@@ -3480,7 +3480,7 @@ Drafted from Mental Health Act 2014 (WA) s 262 with s 261 as context, and from t
 
 ### Form 12C attachment — Record of confirmation, amendment or revocation of restriction of freedom of communication
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`d0c16853019c`)
 
@@ -3548,7 +3548,7 @@ Drafted from Mental Health Act 2014 (WA) s 262 with s 261 as context, and from t
 
 ### Form 13 — Statistics about ECT
 
-**Status** REVIEWED by PsychSift on 2026-09-26T17:20:51.637Z
+**Status** REVIEWED by Psych Sift on 2026-09-26T17:20:51.637Z
 
 **Sign-off pin** matches the signed guidance (`c95b4fafb214`)
 

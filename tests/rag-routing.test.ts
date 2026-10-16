@@ -34,12 +34,15 @@ describe("shadow query-plan orchestration", () => {
   it("threads query-plan identity through the real answer retrieval entrypoint", () => {
     const source = readFileSync("src/lib/rag/rag.ts", "utf8");
     const answerEntrypoint = source.indexOf("async function answerQuestionWithScopeUncoalesced");
-    const searchCall = source.indexOf("searchChunksWithTelemetry({", answerEntrypoint);
-    const searchCallEnd = source.indexOf("}),", searchCall);
+    // The call now takes the retrieval arguments plus an optional published-receipt
+    // capture, so it is bounded by the end of its enclosing try block rather than "})".
+    const searchCall = source.indexOf("searchChunksWithTelemetry(", answerEntrypoint);
+    const searchCallEnd = source.indexOf("} catch", searchCall);
     const callSource = source.slice(searchCall, searchCallEnd);
 
     expect(answerEntrypoint).toBeGreaterThan(-1);
     expect(searchCall).toBeGreaterThan(answerEntrypoint);
+    expect(searchCallEnd).toBeGreaterThan(searchCall);
     expect(callSource).toContain("ragQueryPlanVersion: args.ragQueryPlanVersion");
     expect(callSource).toContain("ragQueryPlanMode: args.ragQueryPlanMode");
   });

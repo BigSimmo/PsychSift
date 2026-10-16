@@ -36,7 +36,6 @@ import {
   fieldLabel,
   fieldControlPlain,
   ignoreUnavailableActivation,
-  metadataPill,
   panelSubtle,
   primaryControl,
   toneNeutral,
@@ -406,6 +405,24 @@ function AddRow({
   );
 }
 
+/**
+ * How many entries a step holds. Drawn as a quiet tinted number, not a bordered
+ * box, so it reads as a count rather than a field to type into (design
+ * follow-up 15 Oct 2026). The number alone is hidden from screen readers; they
+ * hear it with its noun ("0 entries").
+ */
+function StepCount({ count, noun }: { count: number; noun: readonly [string, string] }) {
+  return (
+    <span
+      data-testid="safety-plan-step-count"
+      className="inline-flex min-h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-[color:var(--surface-inset)] px-2 text-xs font-bold tabular-nums text-[color:var(--text-muted)]"
+    >
+      <span aria-hidden="true">{count}</span>
+      <span className="sr-only">{`${count} ${count === 1 ? noun[0] : noun[1]}`}</span>
+    </span>
+  );
+}
+
 function EntryChip({ entry, kind, onRemove }: { entry: Entry; kind: StepKind; onRemove: () => void }) {
   return (
     <li
@@ -481,7 +498,7 @@ function StepBuilderCard({
           <h3 className="text-sm font-extrabold leading-5 text-[color:var(--text-heading)]">{def.builderTitle}</h3>
           <p className="mt-0.5 text-2xs font-medium leading-4 text-[color:var(--text-muted)]">{def.helper}</p>
         </div>
-        <span className={cn(metadataPill, "shrink-0 tabular-nums")}>{entries.length}</span>
+        <StepCount count={entries.length} noun={["entry", "entries"]} />
       </header>
 
       {entries.length ? (
@@ -1078,7 +1095,7 @@ export function PatientSafetyPlan() {
                   The people, plans and things that matter — worth coming back to.
                 </p>
               </div>
-              <span className={cn(metadataPill, "shrink-0 tabular-nums")}>{reasons.length}</span>
+              <StepCount count={reasons.length} noun={["reason", "reasons"]} />
             </header>
             {reasons.length ? (
               <ul className="flex flex-wrap gap-x-2.5 gap-y-2">

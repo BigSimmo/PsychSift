@@ -4,6 +4,9 @@
 > repository-managed profile. They are not active startup policy for other Cloud tasks. Start with
 > [the current Cloud guide](../codex-cloud.md) and [active policy](../agents/codex-cloud-environment.md).
 > Historical account/connector assumptions below are not current-host evidence.
+> The active policy and current executable guards supersede historical boundary wording below,
+> including the owner's later permission for explicitly authorised scrubbed offline checks and the
+> name-scoped `GH_TOKEN` restricted-continuation path. Neither establishes a clean raw parent.
 
 _Updated 2026-10-16 — scope the legacy bootstrap to explicitly selected environments; operational evidence retains its original dates._
 

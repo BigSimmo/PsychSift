@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { z } from "zod";
 
 import snapshotJson from "../../../data/outstanding-issues-snapshot.json";
 
@@ -58,10 +59,21 @@ type InboxRecordPayload = {
   outcome?: string;
 };
 
+export const inboxRecordSchema = z
+  .object({
+    id: z.string().min(1),
+    action: z.string().min(1),
+    createdOn: z.string().nullable().optional(),
+    targetId: z.string().optional(),
+    payload: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
+
 type InboxRecord = {
   id: string;
   action: string;
   createdOn?: string | null;
+  targetId?: string;
   payload?: InboxRecordPayload;
 };
 
@@ -101,6 +113,8 @@ export function formatInboxRecord(record: InboxRecord): LedgerPendingRequest {
 /**
  * Reads and formats unapplied inbox records from `docs/outstanding-issues-inbox/`.
  * Deterministically sorts files by filename to ensure stable ordering.
+ * Malformed or schema-invalid files are skipped individually so a single corrupt
+ * file cannot blank the entire pending-requests list (#315621).
  */
 export function readDevPendingRequests(dir: string): LedgerPendingRequest[] {
   if (typeof window !== "undefined") return [];
@@ -110,10 +124,15 @@ export function readDevPendingRequests(dir: string): LedgerPendingRequest[] {
       .readdirSync(dir, { withFileTypes: true })
       .filter((entry) => (typeof entry.isFile === "function" ? entry.isFile() : true) && entry.name.endsWith(".json"))
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((entry) => {
-        const raw = fs.readFileSync(path.join(dir, entry.name), "utf8");
-        const record = JSON.parse(raw) as InboxRecord;
-        return formatInboxRecord(record);
+      .flatMap((entry) => {
+        try {
+          const raw = fs.readFileSync(path.join(dir, entry.name), "utf8");
+          const parsed = inboxRecordSchema.safeParse(JSON.parse(raw));
+          if (!parsed.success) return [];
+          return [formatInboxRecord(parsed.data as InboxRecord)];
+        } catch {
+          return [];
+        }
       });
   } catch {
     return [];

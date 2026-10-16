@@ -780,19 +780,26 @@ describe("Codex Cloud environment contract", () => {
     expect(result.stderr).not.toContain(secret);
   });
 
-  it("name-scopes the documented OPENAI_BASE_URL launcher defect separately from unexpected leaks", () => {
+  it("name-scopes the documented launcher names separately from unexpected provider names", () => {
     const known = spawnSync(bashCommand, ["scripts/check-codex-cloud-raw-env.sh"], {
       cwd: repoRoot,
       encoding: "utf8",
-      env: { PATH: process.env.PATH, NODE_ENV: "test", OPENAI_BASE_URL: "https://example.invalid" },
+      env: {
+        PATH: process.env.PATH,
+        NODE_ENV: "test",
+        OPENAI_BASE_URL: "https://example.invalid",
+        GH_TOKEN: "synthetic-known-host-token",
+      },
     });
     expect(known.status).toBe(2);
     expect(known.stderr).toContain("FAIL-KNOWN:");
     expect(known.stderr).toContain("OPENAI_BASE_URL");
+    expect(known.stderr).toContain("GH_TOKEN");
     expect(known.stderr).toContain("CONTINUE-RESTRICTED:");
     expect(known.stderr).toContain("redirect OpenAI-bound traffic");
     expect(known.stderr).toContain("bypasses the profile/shim scrub");
     expect(known.stderr).not.toContain("https://example.invalid");
+    expect(known.stderr).not.toContain("synthetic-known-host-token");
 
     const mixed = spawnSync(bashCommand, ["scripts/check-codex-cloud-raw-env.sh"], {
       cwd: repoRoot,
@@ -801,6 +808,7 @@ describe("Codex Cloud environment contract", () => {
         PATH: process.env.PATH,
         NODE_ENV: "test",
         OPENAI_BASE_URL: "https://example.invalid",
+        GH_TOKEN: "synthetic-known-host-token",
         SUPABASE_SERVICE_ROLE_KEY: "never-print-service-role",
       },
     });

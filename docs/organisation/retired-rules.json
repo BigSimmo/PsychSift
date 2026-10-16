@@ -29,9 +29,9 @@
       "id": "cloud-xhigh-marker-gate",
       "retired": "2026-10-16",
       "summary": "The general Cloud xhigh marker/resubmission gate is retired. Respect user-selected effort and ordinary-language confirmation; specialist programme launch contracts remain separate.",
-      "pattern": "Cloud xhigh gate|Cloud `xhigh` confirmation gate|prompt does not contain the exact marker|resubmit the same request",
-      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced",
-      "decision": "docs/decisions/2026-10-16-user-controlled-reasoning-effort.md"
+      "pattern": "\\[xhigh-confirmed\\]|--xhigh-confirmed|xhighConfirmationMarker|Cloud `?xhigh`? (confirmation )?gate|prompt does not contain the exact marker|resubmit the same request",
+      "allowedContext": "no longer|removed|removal|retir(ed|ement)|there is no|formerly|previously|superseded|dropped|replaced|deprecated|gone|do not demand|without requiring|optional compatibility",
+      "decision": "docs/decisions/2026-10-16-remove-cloud-xhigh-marker-gate.md"
     },
     {
       "id": "owner-approved-label-gate",

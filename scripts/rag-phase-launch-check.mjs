@@ -37,17 +37,7 @@ const expectedEffort = manifest.adaptiveEffortPolicy.highLaunchPhases.includes(t
 if (selectedEffort !== expectedEffort) {
   fail(`Cloud effort must be ${expectedEffort} for ${target}`, "BLOCKED_WRONG_REASONING_EFFORT");
 }
-// User attestation of the selected effort, including ordinary-language confirmation.
-// Runtime model/effort proof remains the route-evidence contract.
-const xhighConfirmed = process.argv.includes("--xhigh-confirmed");
-if (expectedEffort === "xhigh" && !xhighConfirmed) {
-  fail(
-    "xhigh target needs user confirmation of the selected effort; ordinary language is sufficient, then pass --xhigh-confirmed",
-    "BLOCKED_XHIGH_CONFIRMATION_MISSING",
-  );
-}
-if (expectedEffort === "high" && xhighConfirmed) {
-  fail("high target must omit the xhigh user-attestation flag", "BLOCKED_WRONG_LAUNCH_PROFILE");
-}
+// User confirmation may be in ordinary language; legacy attestation arguments
+// remain optional compatibility input. Runtime routes require separate evidence.
 
 console.log(`[rag-phase-launch] PASS: ${target} requires ${expectedEffort}; launch profile matches.`);

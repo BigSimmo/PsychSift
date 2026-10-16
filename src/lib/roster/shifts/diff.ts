@@ -1,3 +1,4 @@
+import { detectOwnConflicts, type OwnShiftConflict } from "@/lib/roster/shifts/conflicts";
 import {
   ON_CALL_SHIFT_CHANGES_MAX,
   shiftSnapshot,
@@ -25,6 +26,8 @@ export type RosterDiff = {
   readonly removed: number;
   /** The first lines of the change list, in date order, capped for storage. */
   readonly changes: OnCallShiftChange[];
+  /** Non-blocking warnings when incoming shifts overlap with each other. */
+  readonly conflicts: OwnShiftConflict[];
 };
 
 /** The Perth dates a roster covers, inclusive, or null for an empty roster. */
@@ -116,5 +119,6 @@ export function diffRoster(
     changed: moved.length,
     removed: removed.length,
     changes: changes.slice(0, ON_CALL_SHIFT_CHANGES_MAX).map((entry) => entry.change),
+    conflicts: detectOwnConflicts(incoming),
   };
 }

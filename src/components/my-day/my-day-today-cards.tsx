@@ -488,16 +488,13 @@ export function HeroCard({
     const end = Date.parse(shift.endsAt);
     const at = now.getTime();
     if (running) {
-      const left = ringParts(end - at);
       const until = words.sub.split(" · ")[0] ?? words.sub;
+      const done = Math.min(1, Math.max(0, (at - start) / Math.max(1, end - start)));
       top = (
         <HeroTop
           ring={
-            <HeroRing
-              figure={left.figure}
-              word={left.rest ? `${left.rest} left` : "left"}
-              fraction={(at - start) / Math.max(1, end - start)}
-            />
+            // The title already says the time left, so the ring shows how much of the shift is done.
+            <HeroRing figure={`${Math.round(done * 100)}%`} word="done" fraction={done} />
           }
           eyebrow={`${words.eyebrow}${asOf}`}
           title={words.big}
@@ -869,7 +866,7 @@ export function ShiftLegend({
       <ul
         role="list"
         aria-label="Key"
-        className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-x-3 gap-y-1 p-0 text-2xs font-semibold text-[color:var(--text-muted)]"
+        className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-x-3 gap-y-1 p-0 text-xs font-semibold text-[color:var(--text-muted)]"
       >
         {shown.map(([kind, label]) => (
           <li key={kind} className="inline-flex items-center gap-1.25">

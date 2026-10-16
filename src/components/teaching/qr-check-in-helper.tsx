@@ -53,7 +53,7 @@ export async function requestMobileCameraStream(): Promise<CameraStreamResult> {
         stream: null,
         status: "denied",
         errorMessage:
-          "Camera access denied. Please enable camera permissions in your browser or enter the 6-digit code below.",
+          "Camera access denied. Please enable camera permissions in your browser or type the 6-digit code instead.",
       };
     }
 
@@ -71,7 +71,7 @@ export async function requestMobileCameraStream(): Promise<CameraStreamResult> {
           stream: null,
           status: "denied",
           errorMessage:
-            "Camera access denied. Please enable camera permissions in your browser or enter the 6-digit code below.",
+            "Camera access denied. Please enable camera permissions in your browser or type the 6-digit code instead.",
         };
       }
       return {
@@ -88,6 +88,7 @@ export interface QrCheckInHelperProps {
   onClose?: () => void;
   title?: string;
   initialTypedCode?: string;
+  hideManualEntry?: boolean;
   className?: string;
 }
 
@@ -102,6 +103,7 @@ export function QrCheckInHelper({
   onClose,
   title = "Scan Session QR Code",
   initialTypedCode = "",
+  hideManualEntry = false,
   className = "",
 }: QrCheckInHelperProps) {
   const [permissionStatus, setPermissionStatus] = useState<CameraPermissionStatus>("prompt");
@@ -129,6 +131,11 @@ export function QrCheckInHelper({
     }
   }, []);
 
+  const onScanCodeRef = useRef(onScanCode);
+  useEffect(() => {
+    onScanCodeRef.current = onScanCode;
+  }, [onScanCode]);
+
   const startCamera = useCallback(async () => {
     stopCamera();
     setErrorMessage(null);
@@ -155,11 +162,13 @@ export function QrCheckInHelper({
             if (videoRef.current && videoRef.current.readyState >= 2) {
               try {
                 const barcodes = await detector.detect(videoRef.current);
+                // The camera may have been stopped or closed while detect() was pending.
+                if (streamRef.current !== result.stream) return;
                 if (barcodes && barcodes.length > 0) {
                   const rawValue = barcodes[0].rawValue;
                   if (rawValue) {
                     stopCamera();
-                    onScanCode(rawValue);
+                    onScanCodeRef.current(rawValue);
                   }
                 }
               } catch {
@@ -174,7 +183,7 @@ export function QrCheckInHelper({
     } else {
       setErrorMessage(result.errorMessage);
     }
-  }, [onScanCode, stopCamera]);
+  }, [stopCamera]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -208,7 +217,7 @@ export function QrCheckInHelper({
     }
     setCodeError(null);
     stopCamera();
-    onScanCode(clean);
+    onScanCodeRef.current(clean);
   };
 
   return (
@@ -267,7 +276,9 @@ export function QrCheckInHelper({
             data-testid="qr-viewport-fallback"
           >
             {errorMessage ? (
-              <p className="font-semibold text-[color:var(--warning-text)]">{errorMessage}</p>
+              <p role="alert" className="font-semibold text-[color:var(--warning-text)]">
+                {errorMessage}
+              </p>
             ) : (
               <p>Camera is currently inactive.</p>
             )}
@@ -299,42 +310,53 @@ export function QrCheckInHelper({
       )}
 
       {/* Fallback to 6-digit Code Entry */}
-      <div
-        className="flex flex-col gap-2 border-t border-[color:var(--border)] pt-3"
-        data-testid="qr-typed-code-fallback"
-      >
-        <span className="text-xs font-semibold text-[color:var(--text)]">Or check in with 6-digit code:</span>
-        <form onSubmit={handleTypedSubmit} className="flex gap-2">
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={6}
-            value={typedCode}
-            onChange={(e) => {
-              setTypedCode(e.target.value.replace(/\D/g, "").slice(0, 6));
-              setCodeError(null);
-            }}
-            placeholder="e.g. 842103"
-            aria-label="6-digit check-in code"
-            className={cn(fieldControlPlain, "w-32 font-mono tracking-wider")}
-            data-testid="qr-typed-code-input"
-          />
-          <button
-            type="submit"
-            className={buttonFaceClass({ variant: "primary", size: "sm" })}
-            disabled={typedCode.replace(/\D/g, "").length !== 6}
-            data-testid="qr-typed-code-submit-btn"
-          >
-            Check in
-          </button>
-        </form>
-        {codeError && (
-          <span className="text-xs font-semibold text-[color:var(--danger-text)]" data-testid="qr-code-error">
-            {codeError}
-          </span>
-        )}
-      </div>
+      {!hideManualEntry ? (
+        <div
+          className="flex flex-col gap-2 border-t border-[color:var(--border)] pt-3"
+          data-testid="qr-typed-code-fallback"
+        >
+          <span className="text-xs font-semibold text-[color:var(--text)]">Or check in with 6-digit code:</span>
+          <form onSubmit={handleTypedSubmit} className="flex gap-2">
+            <input
+              id="manual-session-code-input"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              autoComplete="off"
+              spellCheck={false}
+              data-gramm="false"
+              data-enable-grammarly="false"
+              value={typedCode}
+              onChange={(e) => {
+                setTypedCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                setCodeError(null);
+              }}
+              placeholder="e.g. 842103"
+              aria-label="6-digit check-in code"
+              className={cn(fieldControlPlain, "w-32 font-mono tracking-wider")}
+              data-testid="qr-typed-code-input"
+            />
+            <button
+              type="submit"
+              className={buttonFaceClass({ variant: "primary", size: "sm" })}
+              disabled={typedCode.replace(/\D/g, "").length !== 6}
+              data-testid="qr-typed-code-submit-btn"
+            >
+              Check in
+            </button>
+          </form>
+          {codeError && (
+            <span
+              role="alert"
+              className="text-xs font-semibold text-[color:var(--danger-text)]"
+              data-testid="qr-code-error"
+            >
+              {codeError}
+            </span>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

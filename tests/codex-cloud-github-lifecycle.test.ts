@@ -164,7 +164,6 @@ describe("authorized Cloud GitHub lifecycle", () => {
     "SUPABASE_SERVICE_ROLE_KEY",
     "DATABASE_URL",
     "RAILWAY_API_TOKEN",
-    "GH_TOKEN",
     "GITHUB_TOKEN",
     "GITLAB_TOKEN",
   ])("rejects unexpected inherited %s before the setup PAT can authenticate", (name) => {
@@ -177,15 +176,18 @@ describe("authorized Cloud GitHub lifecycle", () => {
     expect(result.runtimeProbes).toEqual([]);
   });
 
-  it("preserves the failed known-launcher boundary before provider lifecycle actions", () => {
-    const value = "synthetic-known-launcher-url";
-    const result = fixture({ secret: true, nodeMissing: true, environment: { OPENAI_BASE_URL: value } });
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain("FAIL-KNOWN");
-    expect(result.stdout + result.stderr).not.toContain(value);
-    expect(result.events).toEqual([]);
-    expect(result.runtimeProbes).toEqual([]);
-  });
+  it.each(["OPENAI_BASE_URL", "GH_TOKEN"])(
+    "preserves the failed %s known-launcher boundary before provider lifecycle actions",
+    (name) => {
+      const value = "synthetic-known-launcher-url";
+      const result = fixture({ secret: true, nodeMissing: true, environment: { [name]: value } });
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain("FAIL-KNOWN");
+      expect(result.stdout + result.stderr).not.toContain(value);
+      expect(result.events).toEqual([]);
+      expect(result.runtimeProbes).toEqual([]);
+    },
+  );
 
   it("defaults an absent RAG mode to offline before the authorized PAT lifecycle", () => {
     const result = fixture({ secret: true, environment: { RAG_PROVIDER_MODE: undefined } });

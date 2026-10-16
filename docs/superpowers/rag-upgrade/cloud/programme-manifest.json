@@ -231,8 +231,7 @@
       "P16D",
       "P17"
     ],
-    "xhighConfirmationMarker": "[xhigh-confirmed]",
-    "launchContract": "TARGET_PHASE must be supplied before repository inspection. The Cloud UI effort must match the target launch set. For xhigh, ordinary-language user confirmation is sufficient and --xhigh-confirmed records that attestation; no literal prompt token or resubmission is required. For high, omit that flag. xhighConfirmationMarker is retained only as legacy compatibility metadata; it is not a launch prerequisite. Authoritative runtime route evidence remains required.",
+    "launchContract": "TARGET_PHASE must be supplied before repository inspection. The Cloud UI effort must match the target launch set. For xhigh, ordinary-language user confirmation is sufficient; no literal prompt token, resubmission or additional CLI attestation is required. Authoritative runtime route evidence remains required.",
     "allowedEscalations": [
       {
         "fromModel": "gpt-5.6-terra",

@@ -117,6 +117,11 @@ const scientificQuantityPattern =
   /(?:(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most|<=|>=|<|>|≤|≥)\s*)?(\d+(?:[.,]\d+)?)\s*[×x]\s*10\^?(\d+)\s*\/\s*([a-z])/giu;
 const unitlessThresholdPattern =
   /(?:\b(below|under|less\s+than|above|over|greater\s+than|at\s+least|at\s+most)\s+|(<=|>=|<|>|≤|≥)\s*)(\d+(?:[.,]\d+)?)(?:\s*[-–—]\s*(\d+(?:[.,]\d+)?))?/giu;
+// Infer omitted years only inside explicit adjacent population-age grammar.
+// Closed continuations exclude an unknown measurement/category noun after the value.
+const populationAgePrefixPattern = /\b(?:children|adolescents|adults|people|young[ \t]+people)(?:[ \t]+aged?)?[ \t]+$/i;
+const populationAgeContinuationPattern =
+  /^[ \t]*(?:$|[.,;:!?)]|(?:should|must|may|can|cannot|are|is|was|were|do|does|did|have|has)\b)/i;
 const ratioPattern = /\b(\d+(?:[.,]\d+)?)\s*:\s*(\d+(?:[.,]\d+)?)\b/gu;
 const routePattern =
   /\b(oral(?:ly)?|intramuscular(?:ly)?|subcutaneous(?:ly)?|sublingual(?:ly)?|intravenous(?:ly)?|rectal(?:ly)?|\bim\b|\bpo\b|\bsc\b|\bsl\b|\biv\b)\b/giu;
@@ -270,6 +275,10 @@ export function extractClinicalValueAtoms(text: string): ClinicalValueAtom[] {
       canonicalValue: rangeEnd ? `${value}-${rangeEnd}` : value,
       comparator: canonicalComparator(match[1] ?? match[2]),
       range: rangeEnd ? [value, rangeEnd] : undefined,
+      ...(populationAgePrefixPattern.test(normalized.slice(0, start)) &&
+      populationAgeContinuationPattern.test(normalized.slice(start + match[0].length))
+        ? { canonicalUnit: "years", numeratorUnit: "years" }
+        : {}),
     });
   }
   for (const match of normalized.matchAll(/\b\d+(?:[.,]\d+)?\s*%/gu)) {
@@ -1477,7 +1486,7 @@ export function failClosedForLabelledNumericBandConflict(
 // on the answer and an explicit "verify against source" caveat is appended so a
 // paraphrased/mis-transcribed dose can never read as authoritative.
 const actionableNumericAnswerPattern =
-  /\b(?:dose|dosage|dosing|mg|mcg|microgram|micrograms|route|oral|intramuscular|\bim\b|\bpo\b|frequency|daily|twice|weekly|monthly|hourly|threshold|cutoff|cut-off|anc|fbc|wbc|withhold|cease|stop|discontinue|red\s+(?:result|range|zone)|amber\s+(?:result|range|zone)|green\s+(?:result|range|zone)|monitor|monitoring|interval|repeat|review|risk\s+score|risk|score|escalat|urgent)\b/i;
+  /\b(?:dose|dosage|dosing|mg|mcg|microgram|micrograms|route|oral|intramuscular|\bim\b|\bpo\b|frequency|daily|twice|weekly|monthly|hourly|threshold|cutoff|cut-off|anc|fbc|wbc|withhold|cease|stop|discontinue|red\s+(?:result|range|zone)|amber\s+(?:result|range|zone)|green\s+(?:result|range|zone)|monitor|monitoring|interval|repeat|review|risk\s+score|risk|score|escalat(?:e|ed|es|ing|ion|ions)|urgent)\b/i;
 
 const actionableNumericSectionKinds = new Set<AnswerSectionKind>([
   "medication_dose",

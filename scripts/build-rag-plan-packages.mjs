@@ -167,11 +167,6 @@ function validateCanonicalBodies() {
   ) {
     errors.push("programme-manifest.json: adaptive effort launch sets must partition every Cloud phase exactly once");
   }
-  // Preserve legacy manifest metadata for compatibility, without requiring a prompt token.
-  // Actual launch confirmation is the CLI user-attestation flag; routes prove runtime effort.
-  if (manifest.adaptiveEffortPolicy?.xhighConfirmationMarker !== "[xhigh-confirmed]") {
-    errors.push("programme-manifest.json: retain the legacy xhigh marker metadata for compatibility");
-  }
   if (manifest.defaultAgentPolicy?.allowModelFallback !== false) {
     errors.push("programme-manifest.json: model fallback must remain disabled");
   }

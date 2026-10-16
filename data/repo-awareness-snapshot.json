@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-15"
+    "committed_at": "2026-10-16"
   },
   "routes": {
     "modes": [
@@ -662,6 +662,11 @@
         "path": "/mockups/warning-line",
         "file": "src/app/mockups/warning-line/page.tsx",
         "area": "mockup"
+      },
+      {
+        "path": "/teaching/assessments/respond/[token]",
+        "file": "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
+        "area": "product"
       },
       {
         "path": "/my-day/alerts/earlier",
@@ -1444,6 +1449,11 @@
         "area": "product"
       },
       {
+        "path": "/admin/pilot",
+        "file": "src/app/admin/pilot/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/on-call/first-night",
         "file": "src/app/(search-app)/on-call/first-night/page.tsx",
         "area": "product"
@@ -1925,6 +1935,10 @@
       {
         "path": "/api/on-call/shifts",
         "file": "src/app/api/on-call/shifts/route.ts"
+      },
+      {
+        "path": "/api/teaching/assessments/respond/[token]",
+        "file": "src/app/api/teaching/assessments/respond/[token]/route.ts"
       },
       {
         "path": "/api/alerts/test",
@@ -2441,6 +2455,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-stuck-final-attempt-uses-existing-recovery.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/developer-area-access.md",
         "section": "root",
         "catalogued": true
@@ -2486,6 +2505,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/governance/openai-standard-agreement-evidence-2026-10-05.md",
+        "section": "governance",
+        "catalogued": false
+      },
+      {
         "path": "docs/superpowers/plans/2026-07-24-webkit-rsc-prefetch-disposition.md",
         "section": "superpowers",
         "catalogued": true
@@ -2498,6 +2522,11 @@
       {
         "path": "docs/agents/cursor-cloud.md",
         "section": "agents",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-admin-shows-the-date-line.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2543,6 +2572,11 @@
       {
         "path": "docs/mode-aware-clinical-ask-local-handover.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-remove-cloud-xhigh-marker-gate.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -2706,6 +2740,16 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-original-section-delivery-scope.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-keep-migration-history.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/TOOLS_CONTEXT_FOR_NEW_CHAT.md",
         "section": "archive",
         "catalogued": true
@@ -2823,6 +2867,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-sign-off-pins-cover-source-records.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3276,6 +3325,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-import-loops-fixed-in-3546.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/superpowers/rag-upgrade/cloud/plans/2026-08-20-rag-ingestion-reindex.md",
         "section": "superpowers",
         "catalogued": true
@@ -3451,6 +3505,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-psych-sift-display-name-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/clinical-chat-ui-component-map.md",
         "section": "root",
         "catalogued": true
@@ -3484,6 +3543,11 @@
         "path": "docs/superpowers/plans/2026-09-20-cme-mode-phase-1.md",
         "section": "superpowers",
         "catalogued": true
+      },
+      {
+        "path": "docs/governance/railway-dpa-completion-evidence-2026-10-05.md",
+        "section": "governance",
+        "catalogued": false
       },
       {
         "path": "docs/ci-operations.md",
@@ -3661,6 +3725,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-indexing-repair-provider-calls-stay-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/care-plan/patient-facing-sheets/README.md",
         "section": "care-plan",
         "catalogued": true
@@ -3692,6 +3761,11 @@
       },
       {
         "path": "docs/audit/ux-accessibility-review-2026-07-07.md",
+        "section": "audit",
+        "catalogued": true
+      },
+      {
+        "path": "docs/audit/ingestion-rag-2026-10-15/complete-record.md",
         "section": "audit",
         "catalogued": true
       },
@@ -4166,6 +4240,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-provider-agreements-verified-for-first-release.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-26-doppler-is-not-used.md",
         "section": "decisions",
         "catalogued": true
@@ -4208,6 +4287,11 @@
       {
         "path": "docs/superpowers/plans/2026-08-20-rag-ingestion-reindex.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-15-database-changes-need-owner-permission.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4293,6 +4377,11 @@
       {
         "path": "docs/care-plan/HANDOFF-START-HERE.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-admitted-upload-survives-client-cancel.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -4726,6 +4815,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-deep-memory-preparation-is-protected.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/specifier-entry-worksheet-with-catatonia.md",
         "section": "root",
         "catalogued": true
@@ -5007,6 +5101,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-duplicate-sighting-receipt-merge.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -10224,6 +10323,14 @@
         "scope": "branch-cleanup",
         "outcome": "Redundant: exact source HEAD was squash-merged by PR #469; eligible for deletion when unreferenced.",
         "checks": "GitHub merged-PR source HEAD matched exactly."
+      },
+      {
+        "date": "2026-10-14",
+        "ref": "PR #3546 / codex/ingestion-rag-pilot-handover-20261014",
+        "head": "3a287997fab2fcd9b207d692d4af1b334801bbfb",
+        "scope": "PR3546 preserved-main conflict and source restoration",
+        "outcome": "Qualified source acceptance: SQL, RAG, extractor and neutral table restorations independently accepted; hosted preview remains failed.",
+        "checks": "Dirty pins: guard548b80f4; extract809a366c; chunkerbe5cf416; tablefacts43fd50df; indexunits8120dfef. Fresh guard positive/two refusals/rollback; SDK21; recordedAnswer13+3; provenance172; contracts342; native86/parent20; supplier/index63. No general clinical GO or merge authority."
       },
       {
         "date": "2026-07-25",
@@ -19730,6 +19837,14 @@
         "checks": "`verify:cheap` PASS (393 files; 3519 passed / 2 skipped); focused Therapy and dashboard production WebKit PASS; `verify:ui` PASS (314/314); `verify:pr-local` PASS including production build/client-secret scan and 36-case offline RAG fixtures; no live provider-backed checks."
       },
       {
+        "date": "2026-10-15",
+        "ref": "codex/ingestion-rag-pilot-handover-20261014",
+        "head": "a90da76c2f29990ce54456a806b75394314405e3",
+        "scope": "Uncommitted native-PDF layout v5 producer 352d178978ef9086df1df708aa71266538076a2f5050a526b8ff3941af5ff984",
+        "outcome": "Independent technical P1/P2 closure and qualified representative-source acceptance; no hosted or general OCR claim",
+        "checks": "Final106page46artifact capture and all image/page identity comparisons accepted; actual source receipt24fcb7738f1590f77ce9823c6d0d840efd4201115572d483df491d46f3b4ba74; retained v3/v4 failures; no provider or deployment"
+      },
+      {
         "date": "2026-10-10",
         "ref": "codescene-non-rag-current-20261010",
         "head": "a9189921bcc182950e04ee41cb8ceca42f2adb2a",
@@ -23266,6 +23381,14 @@
         "checks": "Focused design-system + knip + mobile-chrome-paint + test-runner-safety PASS; ledger guard PASS after dedupe; hosted Static PR re-run pending; no provider-backed checks."
       },
       {
+        "date": "2026-10-15",
+        "ref": "codex/ingestion-rag-pilot-handover-20261014",
+        "head": "d22345dc7e34e3b0fc3de0c127285b34a047d72e",
+        "scope": "Uncommitted admin pilot shared announcement correction; file SHA256 0f76deaa4d8d9ad46139d0ba83a0973241669d582ce2517d1ede680ce2ddb5bb",
+        "outcome": "Independent frontend source review ACCEPT; visible message and polite singleton announcements preserved; no MFA, credential, network or baseline change",
+        "checks": "Scoped ESLint and source diff check passed. Design-system core contract passed at unchanged visibleLiveRegions17; wrapper gate tracked separately. No browser or real screen-reader execution claimed."
+      },
+      {
         "date": "2026-07-13",
         "ref": "origin/copilot/fix-failing-ci",
         "head": "d248707d09f62bb153d0eece69b4f7f4e8aeb7dc",
@@ -23584,6 +23707,14 @@
         "scope": "PR #2359 current changed scope",
         "outcome": "P2 findings confirmed: complete review corpus omitted legacy/archive rows; fallback UI counts disagreed with rendered groups. Smallest fixes applied; no additional P0-P2 findings in changed scope.",
         "checks": "Hosted failure root cause: stale review_state snapshot; focused Vitest first attempt blocked by repository coordinator capacity; local snapshot gate reproduced expected review_state drift."
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "fix/adversarial-remediation-20261016",
+        "head": "d5775ec60c00faff2b1a2485c4ee84f53b915a56",
+        "scope": "Adversarial assessment + parallel fix swarm + post-fix adversarial review across calculators, handover privacy, teaching QR/attendance, EPA magic links, and roster swaps (zero RAG diff)",
+        "outcome": "All P0/P1/P2 findings fixed and verified; zero RAG files touched",
+        "checks": "typecheck (10171 files), eslint --max-warnings=0 (33 code files), check:diff-integrity, check:forms-review-sheet, check:source-acquisitions, vitest (14 suites, 344/344 passed)"
       },
       {
         "date": "2026-07-31",
@@ -24850,6 +24981,14 @@
         "checks": "check:outstanding-issues,docs:check-links"
       },
       {
+        "date": "2026-10-16",
+        "ref": "feat/backlog-remediation-20261016",
+        "head": "e526f8a4d5ad00ad05c5b780262b84a5e347938c",
+        "scope": "prlanded",
+        "outcome": "PR #3571 squash-merged cleanly into main (e526f8a4d5ad00ad05c5b780262b84a5e347938c); two-dot tree diff against pushed head 7c00d1f35e960dc9ca92f4d6c4d50ccd1242724e is empty.",
+        "checks": "gh pr view 3571 (MERGED), git rev-list --parents -n 1 e526f8a4d5ad00ad05c5b780262b84a5e347938c (1 parent 24eeea365e782c651047eebf0ecbe9db87e4fd07), git diff --stat e526f8a4d5ad00ad05c5b780262b84a5e347938c 7c00d1f35e960dc9ca92f4d6c4d50ccd1242724e (empty)"
+      },
+      {
         "date": "2026-07-17",
         "ref": "main (origin/main)",
         "head": "e5caaa46cad5fb9a937f1dc43312723799b98abb",
@@ -25968,6 +26107,14 @@
         "scope": "PR #1441 final current-main sync",
         "outcome": "approved after merging #1457 without overlap; upload parity and repository guards remain green",
         "checks": "upload self-test pass; issues 141; ledger 141+1206; actions pin, format, diff pass"
+      },
+      {
+        "date": "2026-10-15",
+        "ref": "PR #3546 / codex/ingestion-rag-pilot-handover-20261014",
+        "head": "f3773e9c2e666063c9169e14cbb163c65a9ce78a",
+        "scope": "bounded OCR detail source safety and independent whole-table fidelity",
+        "outcome": "ACCEPT by independent ingestion-worker and clinical-governance reviewers. Exact source SHA e7390bbe03e6b66ffc782f5d7bf4bb1ec5b19185564dc6f204955001f3acaeba retains default4M pixel budget and timeout. Whole page table text equals independently frozen expectation after whitespace normalization:56values,14orderedrows,4ratio-percent header pairs,2groups and weekly units. Crop-specific local textual-table acceptance only; no general scan, structured fact, clinical-use or hosted-runtime acceptance.",
+        "checks": "Fresh51 Python extractor regression tests PASS; actual extractor on frozen text-free high-detail raster PASS at default4M and explicit6M. InputSHA725604979441b1e132f312b1b90b7fcb736dbd75a02a4d2eb631d4cee2e4e17a; defaultresultSHAd3d928473477ae7db29dca4bffff0735bb8c50e8631431e9b7db285719315ecc; frozenSHA119422cdb8fa98821bec9bdec738685300213f24ef2264c5edea43346c32cfcf. Local WindowsTesseract5.4 only; no providers or deployment. Main merge independently clean; no SQL/schema/migration differences relativeto main0e04b21641d23a3bb5c04c45821458ec17fbdd6c."
       },
       {
         "date": "2026-08-15",

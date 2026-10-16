@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import math
@@ -17,7 +18,7 @@ except Exception as exc:
 # parser defect can be traced to the documents it touched. Bump the date and label whenever a
 # change alters the text, tables or images produced for the same PDF. 2026-09-16 is PR #2810,
 # which replaced line-major table text with table_aware_page_text (#GJHKYC).
-EXTRACTOR_VERSION = "2026-09-16.table-aware-v1"
+EXTRACTOR_VERSION = "2026-10-16.bounded-ocr-detail-v6"
 TABLE_STRATEGY = "table_aware_page_text"
 
 # IDX-H6: caps on serialized table size. Raised from the previous 80/120-row and 8000-char
@@ -29,6 +30,8 @@ MAX_TABLE_TEXT_CHARS = 24000
 TARGET_CROP_DPI = 220
 TARGET_COVER_MAX_WIDTH = 480
 MAX_RENDER_SCALE = 4.0
+TARGET_OCR_DPI = 450
+MAX_OCR_RENDER_SCALE = TARGET_OCR_DPI / 72
 MIN_USEFUL_RENDER_SCALE = 0.25
 
 # Audit L12: embedded image streams are copied out of the PDF as-is, and their
@@ -184,12 +187,12 @@ def normalize_embedded_image(document, xref, extracted, budget, max_bytes=MAX_EM
     )
 
 
-def bounded_render_scale(rect, desired_scale, max_pixels):
+def bounded_render_scale(rect, desired_scale, max_pixels, max_scale=MAX_RENDER_SCALE):
     width = float(rect.width)
     height = float(rect.height)
     if not all(math.isfinite(value) and value > 0 for value in (width, height, desired_scale)):
         return None
-    scale = min(float(desired_scale), MAX_RENDER_SCALE)
+    scale = min(float(desired_scale), max_scale)
     scale = min(scale, math.sqrt(max_pixels / (width * height)))
     if not math.isfinite(scale) or scale < MIN_USEFUL_RENDER_SCALE:
         return None
@@ -209,8 +212,12 @@ def bounded_render_scale(rect, desired_scale, max_pixels):
 
 
 def maybe_ocr_page(page, budget):
+    # OCR needs the source glyph detail that thumbnail/crop rendering can omit.
+    # Keep its larger target separate from other renders and bounded by the
+    # caller's existing pixel limit; a 4M budget does not promise 450 DPI.
     render_scale = bounded_render_scale(
-        page.rect, 2.0, budget.limits["maxRenderPixels"]
+        page.rect, MAX_OCR_RENDER_SCALE, budget.limits["maxRenderPixels"],
+        max_scale=MAX_OCR_RENDER_SCALE,
     )
     if render_scale is None:
         return "", f"render_skipped: OCR page {page.number + 1} has unsafe geometry"
@@ -237,7 +244,8 @@ def maybe_ocr_page(page, budget):
             return "", f"render_skipped: OCR page {page.number + 1} exceeded the rounded pixel limit"
         image = Image.open(io.BytesIO(pix.tobytes("png")))
         return pytesseract.image_to_string(
-            image, timeout=budget.limits["ocrPageTimeoutSeconds"]
+            image, config=f"--dpi {round(render_scale * 72)}",
+            timeout=budget.limits["ocrPageTimeoutSeconds"]
         ), None
     except Exception as exc:
         return "", f"OCR failed on page {page.number + 1}: {type(exc).__name__}: {exc}"
@@ -470,7 +478,7 @@ def page_drawing_rects(page):
         rect = drawing.get("rect")
         if not rect:
             continue
-        rect = fitz.Rect(rect)
+        rect = fitz.Rect(rect) * page.rotation_matrix
         # Ignore hairline page rules / tiny marks.
         if rect.width < 8 or rect.height < 8:
             continue
@@ -554,45 +562,290 @@ def extend_table_rect_for_edge_content(page, rect, max_gap=TABLE_EDGE_CONTENT_GA
     }
 
 
-def recover_table_rows_from_edge_strip(page, original_rect, extended_rect, existing_rows, column_count=0):
-    """Recover structured rows from text that continues past a truncated find_tables bbox."""
+def _extract_table_column_ranges(table, column_count=0):
+    col_bounds = {}
+    try:
+        raw_rows = getattr(table, "rows", None) or []
+        for row in raw_rows:
+            cells = getattr(row, "cells", row)
+            if not isinstance(cells, (list, tuple)):
+                continue
+            for col_idx, cell in enumerate(cells):
+                if not cell or len(cell) < 4 or cell[0] is None or cell[2] is None:
+                    continue
+                try:
+                    x0, x1 = float(cell[0]), float(cell[2])
+                except (TypeError, ValueError):
+                    continue
+                if x1 <= x0:
+                    continue
+                if col_idx not in col_bounds:
+                    col_bounds[col_idx] = [x0, x1]
+                else:
+                    col_bounds[col_idx][0] = min(col_bounds[col_idx][0], x0)
+                    col_bounds[col_idx][1] = max(col_bounds[col_idx][1], x1)
+        if col_bounds:
+            max_col = max(col_bounds.keys())
+            total_cols = max(int(column_count or 0), max_col + 1)
+            ranges = []
+            for idx in range(total_cols):
+                if idx in col_bounds:
+                    ranges.append((round(col_bounds[idx][0], 2), round(col_bounds[idx][1], 2)))
+            if len(ranges) >= 2:
+                return ranges
+    except Exception:
+        pass
+    return []
+
+
+def _extract_page_line_segments(page):
+    segments = []
+    try:
+        text_dict = page.get_text("dict") or {}
+        for block in text_dict.get("blocks") or []:
+            if block.get("type", 0) != 0:
+                continue
+            for line in block.get("lines") or []:
+                spans = [
+                    span
+                    for span in (line.get("spans") or [])
+                    if clean_cell(span.get("text")) and len(span.get("bbox") or ()) >= 4
+                ]
+                if not spans:
+                    line_bbox = line.get("bbox")
+                    line_text = clean_cell(line.get("text"))
+                    if line_bbox and len(line_bbox) >= 4 and line_text:
+                        segments.append(
+                            (
+                                float(line_bbox[0]),
+                                float(line_bbox[1]),
+                                float(line_bbox[2]),
+                                float(line_bbox[3]),
+                                line_text,
+                            )
+                        )
+                    continue
+                spans.sort(key=lambda s: float(s["bbox"][0]))
+                cur_x0, cur_y0, cur_x1, cur_y1 = (
+                    float(spans[0]["bbox"][0]),
+                    float(spans[0]["bbox"][1]),
+                    float(spans[0]["bbox"][2]),
+                    float(spans[0]["bbox"][3]),
+                )
+                cur_text = clean_cell(spans[0].get("text"))
+                for span in spans[1:]:
+                    sx0, sy0, sx1, sy1 = (
+                        float(span["bbox"][0]),
+                        float(span["bbox"][1]),
+                        float(span["bbox"][2]),
+                        float(span["bbox"][3]),
+                    )
+                    stext = clean_cell(span.get("text"))
+                    if sx0 - cur_x1 <= 8.0 and abs(sy0 - cur_y0) <= 3.0:
+                        cur_x1 = max(cur_x1, sx1)
+                        cur_y0 = min(cur_y0, sy0)
+                        cur_y1 = max(cur_y1, sy1)
+                        cur_text = clean_cell(f"{cur_text} {stext}")
+                    else:
+                        segments.append((cur_x0, cur_y0, cur_x1, cur_y1, cur_text))
+                        cur_x0, cur_y0, cur_x1, cur_y1, cur_text = sx0, sy0, sx1, sy1, stext
+                segments.append((cur_x0, cur_y0, cur_x1, cur_y1, cur_text))
+    except Exception:
+        segments = []
+    # Text positions are unrotated; table and drawing rects are in the rotated page space.
+    rotation = getattr(page, "rotation_matrix", fitz.Identity)
+    rotated = []
+    for x0, y0, x1, y1, text in segments:
+        rect = fitz.Rect(x0, y0, x1, y1) * rotation
+        rotated.append((rect.x0, rect.y0, rect.x1, rect.y1, text))
+    return rotated
+
+
+def _resolve_effective_column_ranges(original_rect, column_count, column_ranges, all_segments):
+    if column_ranges and len(column_ranges) >= 2:
+        normalized = [
+            (float(r[0]), float(r[1]))
+            for r in column_ranges
+            if isinstance(r, (list, tuple)) and len(r) >= 2 and float(r[1]) > float(r[0])
+        ]
+        if len(normalized) >= 2:
+            return normalized
+
+    col_count = int(column_count or 0)
+    if col_count < 2:
+        return []
+
+    in_table = [
+        seg
+        for seg in all_segments
+        if seg[1] >= original_rect.y0 - 2.0
+        and seg[3] <= original_rect.y1 + 2.0
+        and seg[0] >= original_rect.x0 - 6.0
+        and seg[2] <= original_rect.x1 + 6.0
+    ]
+    if in_table:
+        in_table.sort(key=lambda s: (s[1], s[0]))
+        bands = []
+        for seg in in_table:
+            if not bands or abs(seg[1] - bands[-1][0][1]) > 3.0:
+                bands.append([seg])
+            else:
+                bands[-1].append(seg)
+        matching_bands = [sorted(b, key=lambda s: s[0]) for b in bands if len(b) == col_count]
+        if matching_bands:
+            starts = [
+                min(band[col_idx][0] for band in matching_bands)
+                for col_idx in range(col_count)
+            ]
+            if all(starts[i] < starts[i + 1] - 4.0 for i in range(col_count - 1)):
+                inferred = []
+                for col_idx in range(col_count):
+                    c_x0 = float(original_rect.x0) if col_idx == 0 else max(float(original_rect.x0), starts[col_idx] - 2.0)
+                    c_x1 = (
+                        float(original_rect.x1)
+                        if col_idx == col_count - 1
+                        else max(c_x0 + 4.0, starts[col_idx + 1] - 2.0)
+                    )
+                    inferred.append((c_x0, c_x1))
+                return inferred
+
+    total_width = float(original_rect.x1) - float(original_rect.x0)
+    if total_width <= 0:
+        return []
+    step = total_width / col_count
+    return [
+        (float(original_rect.x0) + idx * step, float(original_rect.x0) + (idx + 1) * step)
+        for idx in range(col_count)
+    ]
+
+
+def _match_segment_to_column(sx0, sx1, effective_ranges):
+    seg_width = max(0.0, sx1 - sx0)
+    overlapping_cols = []
+    for col_idx, (cx0, cx1) in enumerate(effective_ranges):
+        overlap = min(sx1, cx1) - max(sx0, cx0)
+        if overlap > 4.0 or (seg_width <= 4.0 and sx0 >= cx0 - 4.0 and sx1 <= cx1 + 4.0):
+            overlapping_cols.append(col_idx)
+    if len(overlapping_cols) != 1:
+        return None
+    col_idx = overlapping_cols[0]
+    cx0, cx1 = effective_ranges[col_idx]
+    col_width = max(1.0, cx1 - cx0)
+    if sx0 < cx0 - 6.0 or sx1 > cx1 + 6.0:
+        return None
+    if seg_width > col_width * 1.35:
+        return None
+    return col_idx
+
+
+def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0, column_ranges=None):
     existing_keys = {
         tuple(clean_cell(cell) for cell in row)
         for row in existing_rows or []
         if any(clean_cell(cell) for cell in row)
     }
-    recovered = []
-    for block in page.get_text("blocks") or []:
-        if len(block) < 5:
+    inferred_col_count = int(
+        column_count
+        or (len(column_ranges) if column_ranges else 0)
+        or max((len(row) for row in (existing_rows or [])), default=0)
+        or 0
+    )
+    all_segments = _extract_page_line_segments(page)
+    effective_ranges = _resolve_effective_column_ranges(
+        original_rect,
+        inferred_col_count,
+        column_ranges,
+        all_segments,
+    )
+    if len(effective_ranges) < 2 or not all_segments:
+        return [], []
+
+    num_cols = len(effective_ranges)
+    top_segments = []
+    bottom_segments = []
+    for sx0, sy0, sx1, sy1, text in all_segments:
+        seg_rect = fitz.Rect(sx0, sy0, sx1, sy1)
+        if (extended_rect & seg_rect).is_empty:
             continue
-        block_rect = fitz.Rect(block[:4])
-        intersection = extended_rect & block_rect
-        if intersection.is_empty:
+        if sx0 < original_rect.x0 - 8.0 or sx1 > original_rect.x1 + 8.0:
             continue
-        # Only consider text that sits in the strip beyond the original detection.
-        outside_bottom = block_rect.y1 > original_rect.y1 + 0.5 and block_rect.y0 >= original_rect.y1 - 2.0
-        outside_top = block_rect.y0 < original_rect.y0 - 0.5 and block_rect.y1 <= original_rect.y0 + 2.0
-        outside_right = block_rect.x1 > original_rect.x1 + 0.5 and block_rect.x0 >= original_rect.x1 - 2.0
-        outside_left = block_rect.x0 < original_rect.x0 - 0.5 and block_rect.x1 <= original_rect.x0 + 2.0
-        if not (outside_bottom or outside_top or outside_right or outside_left):
-            continue
-        lines = [clean_cell(line) for line in str(block[4] or "").splitlines() if clean_cell(line)]
-        if not lines:
-            continue
-        # Prefer blocks that match the known column count (one cell per line).
-        if column_count and len(lines) == column_count:
-            row = lines
-        elif column_count and len(lines) > 1 and len(lines) < column_count:
-            # Partial remnant still useful for search/OCR text.
-            row = lines + [""] * (column_count - len(lines))
-        else:
-            continue
-        key = tuple(row)
-        if key in existing_keys:
-            continue
-        existing_keys.add(key)
-        recovered.append(row)
-    return recovered
+        outside_bottom = sy1 > original_rect.y1 + 0.5 and sy0 >= original_rect.y1 - 2.0
+        outside_top = sy0 < original_rect.y0 - 0.5 and sy1 <= original_rect.y0 + 2.0
+        if outside_top:
+            top_segments.append((sx0, sy0, sx1, sy1, text))
+        elif outside_bottom:
+            bottom_segments.append((sx0, sy0, sx1, sy1, text))
+
+    def collect_rows(strip_segments):
+        if not strip_segments:
+            return []
+        strip_segments.sort(key=lambda s: (s[1], s[0]))
+        bands = []
+        for seg in strip_segments:
+            if not bands or abs(seg[1] - bands[-1][0][1]) > 3.0:
+                bands.append([seg])
+            else:
+                bands[-1].append(seg)
+
+        rows_out = []
+        prev_band_y1 = None
+        for band in bands:
+            band.sort(key=lambda s: s[0])
+            band_y0 = min(s[1] for s in band)
+            band_y1 = max(s[3] for s in band)
+            row_cells = [""] * num_cols
+            valid_band = True
+            for sx0, _sy0, sx1, _sy1, text in band:
+                col_idx = _match_segment_to_column(sx0, sx1, effective_ranges)
+                if col_idx is None:
+                    valid_band = False
+                    break
+                row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
+            if not valid_band:
+                prev_band_y1 = None
+                continue
+            populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
+            if populated_cols == 1 and rows_out and prev_band_y1 is not None and (band_y0 - prev_band_y1) <= 16.0:
+                prev_row = rows_out[-1]
+                existing_keys.discard(tuple(prev_row))
+                for idx, val in enumerate(row_cells):
+                    if val:
+                        prev_row[idx] = clean_cell(f"{prev_row[idx]} {val}") if prev_row[idx] else val
+                existing_keys.add(tuple(prev_row))
+                prev_band_y1 = band_y1
+                continue
+            if populated_cols < 2:
+                continue
+            key = tuple(row_cells)
+            if key in existing_keys:
+                prev_band_y1 = band_y1
+                continue
+            existing_keys.add(key)
+            rows_out.append(row_cells)
+            prev_band_y1 = band_y1
+        return rows_out
+
+    return collect_rows(top_segments), collect_rows(bottom_segments)
+
+
+def recover_table_rows_from_edge_strip(
+    page,
+    original_rect,
+    extended_rect,
+    existing_rows,
+    column_count=0,
+    column_ranges=None,
+):
+    """Recover structured rows from text that continues past a truncated find_tables bbox."""
+    top_rows, bottom_rows = _recover_table_rows_split(
+        page,
+        original_rect,
+        extended_rect,
+        existing_rows,
+        column_count=column_count,
+        column_ranges=column_ranges,
+    )
+    return top_rows + bottom_rows
 
 
 def rect_intersection_ratio(a, b):
@@ -659,6 +912,7 @@ def extract_table_payload(table):
         rows = table.extract()
         cleaned = [[clean_cell(cell) for cell in row] for row in rows if any(clean_cell(cell) for cell in row)]
         column_count = max((len(row) for row in cleaned), default=0)
+        column_ranges = _extract_table_column_ranges(table, column_count)
         return {
             "text": table_rows_to_markdown(rows),
             "rows": cleaned[:MAX_TABLE_ROWS],
@@ -667,6 +921,8 @@ def extract_table_payload(table):
             "row_count": len(cleaned),
             "rows_truncated": len(cleaned) > MAX_TABLE_ROWS,
             "column_count": column_count,
+            "repeated_populated_geometry": repeated_populated_table_geometry(rows, getattr(table, "rows", [])),
+            "column_ranges": column_ranges,
         }
     except Exception:
         return {
@@ -677,6 +933,8 @@ def extract_table_payload(table):
             "row_count": 0,
             "rows_truncated": False,
             "column_count": 0,
+            "repeated_populated_geometry": False,
+            "column_ranges": [],
         }
 
 
@@ -689,9 +947,10 @@ def split_table_heading(text):
     if not cleaned:
         return None, None
 
+    # Caption labels start their text block; inline cross-references are not headings.
     patterns = (
-        r"(?i)\b(table\s+\d+[a-z]?)\s*[:.\-\u2013\u2014]?\s*(.+)",
-        r"(?i)\b(appendix\s+\d+[a-z]?)\s*[:.\-\u2013\u2014]?\s*(.+)",
+        r"(?i)^(table\s+[a-z]?\d+(?:\.\d+)*[a-z]?)\b\s*[:.\-\u2013\u2014]?\s*(.+)",
+        r"(?i)^(appendix\s+\d+[a-z]?)\b\s*[:.\-\u2013\u2014]?\s*(.+)",
     )
     for pattern in patterns:
         match = re.search(pattern, cleaned)
@@ -723,7 +982,8 @@ def nearby_table_heading(page, rect, table_text):
     for block in blocks:
         if len(block) < 5:
             continue
-        x0, y0, x1, y1, text = block[:5]
+        x0, y0, x1, y1 = fitz.Rect(block[:4]) * getattr(page, "rotation_matrix", fitz.Identity)
+        text = block[4]
         if y1 > rect.y0 + 16 or y1 < rect.y0 - 140:
             continue
         if x1 < rect.x0 - 40 or x0 > rect.x1 + 40:
@@ -873,7 +1133,32 @@ def table_candidate_confidence(label, title, table_text, row_count=0, column_cou
     return round(min(confidence, 0.99), 2)
 
 
-def real_table_candidate(label, title, table_text, row_count=0, column_count=0):
+def repeated_populated_table_geometry(rows, source_rows):
+    """Count occupied row bands using observed cells, including vertical spans."""
+    cells = set()
+    for values, source_row in zip(rows, source_rows):
+        for value, box in zip(values, source_row.cells):
+            if box is not None and clean_cell(value):
+                rect = fitz.Rect(box)
+                if rect.width > 0 and rect.height > 0:
+                    cells.add(tuple(rect))
+    boundaries = sorted({edge for box in cells for edge in (box[1], box[3])})
+    populated_bands = 0
+    for top, bottom in zip(boundaries, boundaries[1:]):
+        middle = (top + bottom) / 2
+        occupied = sorted((box for box in cells if box[1] <= middle < box[3]), key=lambda box: box[0])
+        # Distinct cells must occupy separate columns; overlapping boxes do not
+        # establish extra columns or duplicate a shared spanning cell's text.
+        if any(left[2] <= right[0] + 0.5 for left, right in zip(occupied, occupied[1:])):
+            populated_bands += 1
+    return populated_bands >= 2
+
+
+def real_table_candidate(label, title, table_text, row_count=0, column_count=0, rows=None, repeated_geometry=False):
+    # A poster's frame can produce a nominal grid with nearly every cell empty.
+    # Repeated populated columns establish a matrix; generated Markdown bars do not.
+    if not repeated_geometry and sum(sum(bool(str(cell or "").strip()) for cell in row) >= 2 for row in rows or []) < 2:
+        return False
     metrics = table_text_metrics(table_text)
     combined = " ".join([label or "", title or "", table_text or ""]).lower()
     known_table_heading = bool(label) or (title or "").lower() in (
@@ -894,7 +1179,7 @@ def real_table_candidate(label, title, table_text, row_count=0, column_count=0):
     return False
 
 
-def likely_table_candidates(page):
+def likely_table_candidates(page, rejected_rects=None):
     candidates = []
     try:
         tables = page.find_tables()
@@ -905,7 +1190,12 @@ def likely_table_candidates(page):
             label, title, heading_text = nearby_table_heading(page, rect, table_text)
             row_count = payload["row_count"]
             column_count = payload["column_count"]
-            if not real_table_candidate(label, title, table_text, row_count, column_count):
+            if not real_table_candidate(
+                label, title, table_text, row_count, column_count, payload.get("rows"),
+                payload.get("repeated_populated_geometry", False),
+            ):
+                if rejected_rects is not None:
+                    rejected_rects.append(rect)
                 continue
             role = table_role_for_candidate(label, title, table_text)
             candidates.append(
@@ -921,6 +1211,7 @@ def likely_table_candidates(page):
                     "accessible_table_markdown": payload.get("accessible_markdown") or table_text,
                     "row_count": row_count,
                     "column_count": column_count,
+                    "column_ranges": payload.get("column_ranges", []),
                     "heading_text": heading_text,
                     "extraction_method": "pymupdf_find_tables",
                     "table_index": index + 1,
@@ -938,9 +1229,25 @@ def fallback_table_candidates(page, existing_rects):
     for block in blocks:
         if len(block) < 5:
             continue
-        rect = fitz.Rect(block[:4])
+        rect = fitz.Rect(block[:4]) * getattr(page, "rotation_matrix", fitz.Identity)
         raw_text = str(block[4])
-        text = re.sub(r"\s+", " ", raw_text).strip()
+        # Only original delimited lines establish fallback rows. Flattening a
+        # multiline card joins its label and details, and can merge nearby cards
+        # into a false row even though no table was present in the source.
+        rows = text_grid_rows(raw_text)
+        if not rows or any(sum(bool(re.search(r"[^\W_]", cell)) for cell in row) < 2 for row in rows):
+            continue
+        # Outline/list labels are not a substantive column. PDF blocks can put
+        # only a paragraph's first line beside its label; promoting that fragment
+        # would silently omit its continuation and invent a table header.
+        if any(
+            re.fullmatch(r"(?:[A-Za-z]\.|\d+\.(?:\d+(?:\.\d+)*)?\.?)", row[0])
+            and any(re.search(r"[^\W\d_]", cell) for cell in row[1:])
+            and "|" not in source_line
+            for row, source_line in zip(rows, (line for line in raw_text.splitlines() if line.strip()))
+        ):
+            continue
+        text = raw_text.strip()
         if not text or rect.height < 10:
             continue
         text_blocks.append((rect, text, raw_text))
@@ -977,7 +1284,7 @@ def fallback_table_candidates(page, existing_rects):
     inferred_rows = len([line for line in text.splitlines() if line.strip()])
     rows = text_grid_rows(text)
     role = table_role_for_candidate(label, title, text)
-    if not real_table_candidate(label, title, text, inferred_rows, inferred_columns):
+    if not real_table_candidate(label, title, text, inferred_rows, inferred_columns, rows):
         return []
     return [
         {
@@ -1071,7 +1378,7 @@ def likely_vector_region(page):
             continue
         if rect.width < 40 or rect.height < 20:
             continue
-        rects.append(rect)
+        rects.append(fitz.Rect(rect) * page.rotation_matrix)
 
     if len(rects) < 4:
         return None
@@ -1156,6 +1463,51 @@ def _dense_length(value):
     return len(re.sub(r"\s+", "", value or ""))
 
 
+def _intact_display_text_pieces(page):
+    """Keep native lines intact, using displayed geometry only for text assembly.
+
+    Native text boxes are unrotated, whereas find_tables() boxes describe the
+    displayed page. Cropping retains its existing coordinates outside this helper.
+    A native block can itself contain adjacent cards: split disjoint horizontal
+    line groups so each card's label and details stay together after rotation.
+    """
+    pieces = []
+    needs_layout = bool(page.rotation)
+    text_flags = fitz.TEXTFLAGS_DICT & ~fitz.TEXT_PRESERVE_IMAGES
+    for block in (page.get_text("dict", flags=text_flags) or {}).get("blocks", []):
+        lines = []
+        for line in block.get("lines", []):
+            text = "".join(span.get("text", "") for span in line.get("spans", [])).strip()
+            if not text:
+                continue
+            rect = fitz.Rect(line["bbox"]) * page.rotation_matrix
+            lines.append((rect, text))
+            direction = line.get("dir", (1, 0))
+            needs_layout = needs_layout or abs(direction[0] - 1) > 0.001 or abs(direction[1]) > 0.001
+        # Connected x intervals split side-by-side cards, without joining words
+        # or lines across native blocks or inventing paragraph-wide row bands.
+        groups = []
+        for index in sorted(range(len(lines)), key=lambda item: lines[item][0].x0):
+            rect = lines[index][0]
+            if groups and rect.x0 < groups[-1][0].x1:
+                groups[-1][0] |= rect
+                groups[-1][1].append(index)
+            else:
+                groups.append([fitz.Rect(rect), [index]])
+        needs_layout = needs_layout or len(groups) > 1
+        for rect, indices in groups:
+            pieces.append((rect, "\n".join(lines[index][1] for index in sorted(indices))))
+    for index, (rect, _) in enumerate(pieces):
+        if any(
+            min(rect.y1, other.y1) > max(rect.y0, other.y0)
+            and (rect.x1 <= other.x0 or other.x1 <= rect.x0)
+            for other, _ in pieces[index + 1:]
+        ):
+            needs_layout = True
+            break
+    return pieces, needs_layout
+
+
 def table_aware_page_text(page, grid_candidates, raw_text=None):
     """Assemble page text with detected table grids rendered cell by cell.
 
@@ -1169,7 +1521,9 @@ def table_aware_page_text(page, grid_candidates, raw_text=None):
 
     find_tables() already recovers those cells intact and the result is already
     computed for table candidates, so table regions are replaced by that grid
-    rendering while surrounding prose keeps its normal reading order.
+    rendering while surrounding prose keeps its normal reading order. Rotated
+    cards and overlapping callouts retain native line groups, rather than the
+    cross-block word reconstruction that can fuse unrelated text.
     """
     raw = raw_text if raw_text is not None else (page.get_text("text", sort=True) or "")
     usable = [
@@ -1178,19 +1532,17 @@ def table_aware_page_text(page, grid_candidates, raw_text=None):
         if candidate.get("extraction_method") == "pymupdf_find_tables"
         and (candidate.get("accessible_table_markdown") or "").strip()
     ]
-    if not usable:
+    # Non-grid heuristic candidates still have no cell structure to rewrite.
+    if not usable and grid_candidates:
         return raw
 
     try:
+        text_pieces, needs_layout = _intact_display_text_pieces(page)
+        if not usable and not needs_layout:
+            return raw
         table_rects = [fitz.Rect(candidate["rect"]) for candidate in usable]
         pieces = []
-        for block in page.get_text("blocks") or []:
-            if len(block) < 5:
-                continue
-            rect = fitz.Rect(block[:4])
-            body = str(block[4]).strip()
-            if not body:
-                continue
+        for rect, body in text_pieces:
             area = _rect_area(rect)
             if area > 0 and any(
                 _rect_area(rect & table_rect) / area >= TABLE_BLOCK_CONTAINMENT_RATIO
@@ -1245,12 +1597,88 @@ def extract(pdf_path, output_dir, budget=None):
     os.makedirs(output_dir, exist_ok=True)
     document = open_pdf_for_extraction(pdf_path)
     try:
-        return _extract_document(document, output_dir, budget)
+        identity = {
+            "sourceContentSha256": file_sha256(pdf_path),
+            "producer": {
+                "contractVersion": "pdf-native-page-source-v1",
+                "route": "python_pdf",
+                "scriptSha256": file_sha256(__file__),
+                "pythonVersion": sys.version.split()[0] or None,
+                "pymupdfVersion": str(getattr(fitz, "VersionBind", "") or getattr(fitz, "__version__", "")) or None,
+            },
+        }
+        return _extract_document(document, output_dir, budget, identity)
     finally:
         document.close()
 
 
-def _extract_document(document, output_dir, budget):
+def file_sha256(file_path):
+    digest = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return "sha256:" + digest.hexdigest()
+
+
+SURROGATE_PATTERN = re.compile("[\ud800-\udfff]")
+
+
+def text_sha256(text):
+    """Hash text exactly as the TypeScript side hashes the JSON-decoded string.
+
+    Node hashes a JS string as UTF-8, replacing each unpaired surrogate with U+FFFD, and
+    JSON decoding joins an escaped high/low surrogate pair into one character. Round-trip
+    through UTF-16 so a Python string carrying surrogates hashes to the same bytes instead
+    of raising UnicodeEncodeError. Ordinary text is unchanged by the round trip.
+    """
+    if SURROGATE_PATTERN.search(text):
+        text = text.encode("utf-16-le", "surrogatepass").decode("utf-16-le", "replace")
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def page_source_provenance(geometry, page_number, native_text, text, ocr_used, needs_ocr, identity):
+    """Per-page source observations checked by src/lib/extractors/pdf-source-provenance.ts.
+
+    Metadata only: it records hashes of the final page text and never alters that text.
+    """
+    ocr_unverified = ocr_used or needs_ocr
+    reasons = []
+    if geometry["rotation"] != 0 or geometry["cropBox"] != geometry["mediaBox"]:
+        reasons.append("pdf_geometry_transform_unverified")
+    if ocr_unverified:
+        reasons.append("pdf_ocr_unverified")
+    if identity["producer"]["pythonVersion"] is None or identity["producer"]["pymupdfVersion"] is None:
+        reasons.append("pdf_runtime_identity_unknown")
+    text_hash = text_sha256(text)
+    return {
+        "version": "extracted-page-source-v1",
+        "format": "pdf",
+        "coordinateSpace": "pymupdf_observed_page_points",
+        "physicalPageNumber": page_number,
+        **identity,
+        "pageGeometry": geometry,
+        "nativeTextSha256": text_sha256(native_text),
+        "structuralDisposition": "unverified" if reasons else "retained",
+        "reasonCodes": reasons,
+        "ocr": {
+            "status": "unverified" if ocr_unverified else "not_requested",
+            "confidence": None,
+            "confidenceStatus": "unavailable",
+            "textToPageMapping": "not_established",
+            "comparison": "not_compared" if ocr_unverified else "not_applicable",
+        },
+        "textMapping": {"status": "not_established", "offsets": None},
+        "textIdentity": {
+            "originalExtractedTextSha256": text_hash,
+            "persistedTextSha256": text_hash,
+            "normalizationApplied": False,
+            "metadataNormalizationApplied": False,
+            "qualification": "UTF-8 extracted/persisted text bytes; not original PDF spans",
+        },
+    }
+
+
+def _extract_document(document, output_dir, budget, identity):
     pages = []
     images = []
     warnings = []
@@ -1258,10 +1686,19 @@ def _extract_document(document, output_dir, budget):
 
     for page_index, page in enumerate(document):
         page_number = page_index + 1
+        # Some reader helpers temporarily alter the page crop; retain the source
+        # observations before table detection or crop rendering can touch them.
+        source_geometry = {
+            "pageRect": list(page.rect),
+            "cropBox": list(page.cropbox),
+            "mediaBox": list(page.mediabox),
+            "rotation": page.rotation,
+        }
         # Detect grid tables BEFORE assembling page text: the same candidates feed
         # the table-aware text assembly and the table-candidate pass below, so
         # find_tables() runs once per page rather than twice.
-        grid_table_candidates = likely_table_candidates(page)
+        rejected_table_rects = []
+        grid_table_candidates = likely_table_candidates(page, rejected_table_rects)
         # The OCR-density decision stays on the RAW embedded text. should_ocr_page
         # has hard character thresholds (40, and 220 on image-dominant pages), so
         # feeding it table-aware text would let markdown syntax -- pipes and the
@@ -1300,6 +1737,9 @@ def _extract_document(document, output_dir, budget):
                 "needsOcr": needs_ocr,
                 "metadata": {
                     "image_coverage_ratio": round(image_coverage, 4),
+                    "source_provenance": page_source_provenance(
+                        source_geometry, page_number, raw_page_text, text, ocr_used, needs_ocr, identity
+                    ),
                 },
             }
         )
@@ -1362,7 +1802,9 @@ def _extract_document(document, output_dir, budget):
         crop_index = 1
         table_rects = []
         table_candidates = list(grid_table_candidates)
-        table_candidates.extend(fallback_table_candidates(page, [candidate["rect"] for candidate in table_candidates]))
+        table_candidates.extend(fallback_table_candidates(
+            page, [candidate["rect"] for candidate in table_candidates] + rejected_table_rects,
+        ))
         table_candidates = merge_related_table_candidates(table_candidates, page.rect)
         for table_candidate in table_candidates:
             detected_rect = table_candidate["rect"]
@@ -1370,17 +1812,26 @@ def _extract_document(document, output_dir, budget):
             table_rows = list(table_candidate.get("table_rows") or [])
             column_count = int(table_candidate.get("column_count") or (len(table_rows[0]) if table_rows else 0) or 0)
             recovered_rows = []
+            recovered_truncated = False
             if edge_info["extended"]:
-                recovered_rows = recover_table_rows_from_edge_strip(
+                top_rows, bottom_rows = _recover_table_rows_split(
                     page,
                     detected_rect,
                     edge_rect,
                     table_rows,
                     column_count,
+                    table_candidate.get("column_ranges"),
                 )
+                recovered_rows = top_rows + bottom_rows
                 if recovered_rows:
-                    table_rows = (table_rows + recovered_rows)[:MAX_TABLE_ROWS]
-            rows_truncated = bool(table_candidate.get("rows_truncated")) or bool(edge_info["clipped_by_page"])
+                    combined_rows = top_rows + table_rows + bottom_rows
+                    recovered_truncated = len(combined_rows) > MAX_TABLE_ROWS
+                    table_rows = combined_rows[:MAX_TABLE_ROWS]
+            rows_truncated = (
+                bool(table_candidate.get("rows_truncated"))
+                or bool(edge_info["clipped_by_page"])
+                or recovered_truncated
+            )
             if edge_info["clipped_by_page"]:
                 warnings.append(
                     f"table_crop_edge_incomplete: page {page_number} table continues past the page edge; "
@@ -1435,8 +1886,35 @@ def _extract_document(document, output_dir, budget):
                 table_rects.append(table_rect)
                 crop_index += 1
 
+        visual_rects = list(table_rects)
+        # A rejected grid still marks source artwork worth retaining. Its bbox
+        # is already in display coordinates, including on rotated pages; keep
+        # the complete region without inventing table headers or relationships.
+        for rejected_rect in rejected_table_rects:
+            region = expanded_rect(rejected_rect, page.rect)
+            if any(rect_intersection_ratio(region, existing) > 0.45 for existing in visual_rects):
+                continue
+            crop = save_page_crop(
+                page,
+                region,
+                output_dir,
+                f"page-{page_number}-visual-crop-{crop_index}.png",
+                "page_region",
+                {
+                    "pageNumber": page_number,
+                    "source_kind": "page_region",
+                    "candidate_type": "rejected_table_region",
+                },
+                budget,
+                warnings,
+            )
+            if crop:
+                images.append(crop)
+                visual_rects.append(region)
+                crop_index += 1
+
         vector_region = likely_vector_region(page)
-        if vector_region and not any(rect_intersection_ratio(vector_region, table_rect) > 0.45 for table_rect in table_rects):
+        if vector_region and not any(rect_intersection_ratio(vector_region, existing) > 0.45 for existing in visual_rects):
             crop = save_page_crop(
                 page,
                 vector_region,

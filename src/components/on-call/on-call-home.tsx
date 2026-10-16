@@ -13,9 +13,10 @@ import { focusRing } from "@/components/card-recipes";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { toHandbookDial } from "@/components/on-call/kit/dial-row";
 import { OnCallHandbookState } from "@/components/on-call/kit/handbook-state";
-import { OnCallHospitalLine } from "@/components/on-call/kit/hospital-line";
+import { OnCallHospitalChange } from "@/components/on-call/kit/hospital-line";
 import { NowCrisisLines } from "@/components/on-call/now/crisis-lines";
 import { NowEmergencyPin } from "@/components/on-call/now/emergency-pin";
+import { NowOnCallHero } from "@/components/on-call/now/on-call-hero";
 import { NowNeedsYou, onCallNeedsYouAnswered, useOnCallCallMarks } from "@/components/on-call/now/needs-you";
 import { NowRightNow } from "@/components/on-call/now/right-now";
 import { NowShiftClock } from "@/components/on-call/now/shift-clock";
@@ -59,8 +60,10 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  * Now, the On Call mode home (v6 figure "Now"): who to ring, at this hospital,
  * this hour. Top to bottom, in the safety order:
  *
- *  0. the offline banner and the load-failed notice, as before;
- *  1. the hospital line (review F3), then the handbook's state when its numbers
+ *  0. the offline banner and the load-failed notice, as before, then the
+ *     summary hero (time left on your shift, switchboard as the white pill);
+ *  1. the hospital, named once in the hero's eyebrow with a quiet "Change
+ *     hospital" pill beside the call pill, then the handbook's state when its numbers
  *     are not on screen (signed out, expired, no service, unavailable);
  *  2. the hospital's pinned emergency route, above everything else;
  *  3. the public crisis lines whenever the hospital's own numbers are not on
@@ -83,7 +86,7 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *
  * Nothing moves under the thumb: while the hospital loads, each hospital module
  * holds its space with static outlines, and nothing is ever inserted above the
- * hospital line.
+ * summary hero.
  *
  * The hospital's own after-hours times are a Stage B field. Until a hospital
  * sets them, Now does not adapt to after hours: `handbook.hours` is null, the
@@ -294,7 +297,7 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
 
   const hasEntries = entries.length > 0;
   // The handbook's own sign-in states (signed out, or a session that ended)
-  // already ask the reader to sign in, under the hospital line; the first-run
+  // already ask the reader to sign in, under the summary hero; the first-run
   // block then does not ask a second time. Spelled as what it is not, because
   // this file is a compliance surface and one status name is a banned word.
   const handbookAsksSignIn =
@@ -329,7 +332,27 @@ function OnCallHomeLive({ now: pinnedNow }: { now?: Date } = {}) {
           columns="two"
           status={
             <>
-              <OnCallHospitalLine handbook={handbook} testId="on-call-now-hospital" />
+              {/* The summary hero leads every Work page (Work standard, owner 15 Oct 2026). It is
+                  drawn from the first paint and holds its shape while the handbook loads, so
+                  nothing is inserted above it later. It names the hospital and carries the
+                  "Change hospital" pill, so there is no separate hospital line repeating the name. */}
+              <NowOnCallHero
+                context={context}
+                answer={answer}
+                hours={handbook.hours ?? null}
+                hospitalPeriod={hospitalPeriod}
+                hospitalName={hospitalName}
+                handbookLoading={handbookLoading}
+                rosterLoading={shifts.status === "loading"}
+                rosterError={shifts.status === "error"}
+                rosterSignedOut={shifts.status === "signed-out"}
+                now={now}
+                hospitalChange={
+                  hospitalName && handbook.hospitals.length > 1 ? (
+                    <OnCallHospitalChange handbook={handbook} testId="on-call-now-hospital" variant="hero" />
+                  ) : null
+                }
+              />
               {!ready && !handbookLoading ? <OnCallHandbookState handbook={handbook} page="now" /> : null}
             </>
           }

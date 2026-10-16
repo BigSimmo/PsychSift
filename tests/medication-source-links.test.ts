@@ -50,7 +50,7 @@ function signed(record: SourceAcquisitionRecord): SourceAcquisitionRecord {
   const reviewed = { ...record, validationStatus: "locally_reviewed" as const };
   return {
     ...reviewed,
-    attestedBy: "Fixture Owner",
+    attestedBy: "Dr Alex Morgan",
     attestedAt: "2026-10-03T00:00:00.000Z",
     attestedAgainstSha256: acquisitionAttestedContentSha256(reviewed),
   };
@@ -63,24 +63,70 @@ function adoptedSigned(overrides: Partial<SourceAcquisitionRecord> = {}): Source
 
 const links = { clozapine: ["fixture-clozapine-pi"] };
 
+const HIGH_RISK_MEDICATION_SLUGS = [
+  "clozapine",
+  "lithium-carbonate-ir-sr",
+  "sodium-valproate-oral-iv",
+  "carbamazepine",
+  "lamotrigine",
+  "aripiprazole-lai",
+  "flupentixol-decanoate",
+  "haloperidol-decanoate",
+  "olanzapine-pamoate-lai",
+  "paliperidone-lai",
+  "risperidone-lai",
+  "zuclopenthixol-decanoate",
+  "zuclopenthixol-acetate",
+  "methadone",
+  "citalopram",
+  "escitalopram",
+  "amisulpride",
+  "ziprasidone",
+  "ziprasidone-im",
+  "droperidol",
+  "chlorpromazine",
+  "amitriptyline",
+  "clomipramine",
+  "nortriptyline",
+  "phenelzine",
+  "tranylcypromine",
+] as const;
+
 describe("medication source links", () => {
-  it("maps only real medication slugs to real register records", () => {
+  it("maps only real medication slugs (including all 26 high-risk slugs) to real register records", () => {
     const slugs = new Set(loadMedicationSnapshot().map((record) => record.slug));
     const ids = new Set(sourceAcquisitionRecords.map((record) => record.id));
     for (const [slug, recordIds] of Object.entries(medicationSourceLinkIds)) {
       expect(slugs.has(slug), `unknown medication slug ${slug}`).toBe(true);
+      expect(recordIds.length, `empty source links for ${slug}`).toBeGreaterThan(0);
       for (const id of recordIds) expect(ids.has(id), `unknown register record ${id}`).toBe(true);
+    }
+    for (const slug of HIGH_RISK_MEDICATION_SLUGS) {
+      expect(
+        (medicationSourceLinkIds as Record<string, readonly string[]>)[slug]?.length,
+        `missing high-risk medication slug ${slug}`,
+      ).toBeGreaterThan(0);
     }
   });
 
-  it("shows nothing on the live pages until the owner signs the records off", () => {
-    for (const slug of Object.keys(medicationSourceLinkIds)) {
-      expect(medicationSourceLinks(slug)).toEqual([]);
-    }
+  it("returns the confirmed source links on the live pages now that the owner has signed the adopted records", () => {
+    expect(medicationSourceLinks("clozapine").map((link) => link.id)).toEqual(["wa-health-clozapine-guideline-2024"]);
+    expect(medicationSourceLinks("lithium-carbonate-ir-sr").map((link) => link.id)).toEqual([
+      "australian-prescriber-lithium-therapy-and-its-interactions",
+      "australian-prescriber-lithium-therapy-interactions-correction",
+    ]);
   });
 
   it("hides an unconfirmed record", () => {
     expect(medicationSourceLinks("clozapine", { links, records: [candidate()] })).toEqual([]);
+  });
+
+  it("hides a record attested by a single-word product stamp while accepting the owner's two-word display name", () => {
+    expect(medicationSourceLinks("clozapine", { links, records: [adoptedSigned()] })).not.toEqual([]);
+    const displayName = { ...adoptedSigned(), attestedBy: "Psych Sift" };
+    expect(medicationSourceLinks("clozapine", { links, records: [displayName] })).not.toEqual([]);
+    const productName = { ...adoptedSigned(), attestedBy: "PsychSift" };
+    expect(medicationSourceLinks("clozapine", { links, records: [productName] })).toEqual([]);
   });
 
   it("hides a reviewed record that carries no attestation", () => {

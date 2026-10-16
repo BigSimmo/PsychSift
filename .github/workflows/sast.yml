@@ -18,7 +18,7 @@ jobs:
   # Advisory static application security testing. Semgrep is used instead of CodeQL
   # because this repository is private without GitHub Advanced Security, so the
   # code-scanning SARIF upload CodeQL relies on is unavailable. The document parsers
-  # (pdf-parse, pdfjs-dist, mammoth, exceljs, jszip) and the answer/ingestion
+  # (pdfjs-dist, mammoth, exceljs, jszip) and the answer/ingestion
   # paths process untrusted uploaded documents, so ERROR-severity findings remain
   # visible without making mutable registry rules a required merge dependency.
   # Runs OSS-engine only — no Semgrep account or token required.
@@ -41,10 +41,14 @@ jobs:
 
       - name: Semgrep scan
         continue-on-error: true
-        # --error fails the job on any ERROR-severity finding; --oss-only keeps
-        # it token-free; --metrics off sends no telemetry. Named registry rules
-        # remain advisory because they can change independently of this repository.
-        # Secrets are covered by Gitleaks in secret-scan.yml, so no p/secrets here.
+        # --error fails the step on any ERROR-severity finding; --oss-only keeps
+        # it token-free; --metrics off sends no telemetry. Named upstream registry
+        # rules (p/typescript, p/javascript, p/react, p/nodejs) remain advisory at
+        # the workflow boundary (#237JN5) because upstream rule definitions can
+        # change independently of this repository, while the blocking Ingestion
+        # SAST gate in ci.yml enforces deterministic merge-blocking checks on the
+        # untrusted document-upload surface. Secrets are covered by Gitleaks in
+        # secret-scan.yml, so no p/secrets here.
         run: >
           semgrep scan
           --error
@@ -55,4 +59,4 @@ jobs:
           --config p/javascript
           --config p/react
           --config p/nodejs
-          src worker scripts supabase/functions
+          src worker scripts eslint-rules supabase/functions

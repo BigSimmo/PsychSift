@@ -178,15 +178,15 @@ describe("RAG plan execution packages", () => {
       }),
     ).toThrow();
     expect(() =>
-      execFileSync(
-        process.execPath,
-        ["scripts/rag-phase-launch-check.mjs", "--target", "P01", "--effort", "xhigh", "--xhigh-confirmed"],
-        { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" },
-      ),
+      execFileSync(process.execPath, ["scripts/rag-phase-launch-check.mjs", "--target", "P01", "--effort", "xhigh"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        stdio: "pipe",
+      }),
     ).not.toThrow();
   });
 
-  it("accepts xhigh user attestation without a literal prompt token and keeps phase effort floors", () => {
+  it("does not require a CLI confirmation marker and keeps phase effort floors", () => {
     const launch = (...args: string[]) =>
       execFileSync(process.execPath, ["scripts/rag-phase-launch-check.mjs", ...args], {
         cwd: process.cwd(),
@@ -194,18 +194,13 @@ describe("RAG plan execution packages", () => {
         stdio: "pipe",
       });
 
-    // --xhigh-confirmed attests a user's confirmation, which may be ordinary language.
-    // Neither the old prompt token nor any prompt text is an input to the helper.
+    // Ordinary-language confirmation remains a controller responsibility. The
+    // helper validates declared effort, not user prose or observed runtime routes.
+    expect(launch("--target", "P01", "--effort", "xhigh")).toContain("PASS");
     expect(launch("--target", "P01", "--effort", "xhigh", "--xhigh-confirmed")).toContain("PASS");
     expect(launch("--target", "P00", "--effort", "high")).toContain("PASS");
-    expect(() => launch("--target", "P00", "--effort", "high", "--xhigh-confirmed")).toThrow();
-    try {
-      launch("--target", "P01", "--effort", "xhigh");
-      throw new Error("expected missing xhigh attestation to fail");
-    } catch (error) {
-      expect(error).toMatchObject({ status: 1 });
-      expect(String((error as { stderr?: string }).stderr)).toContain("ordinary language is sufficient");
-    }
+    expect(launch("--target", "P00", "--effort", "high", "--xhigh-confirmed")).toContain("PASS");
+    expect(() => launch("--target", "P01", "--effort", "high", "--xhigh-confirmed")).toThrow();
   });
 
   it("ships a valid resumable phase-receipt contract", () => {

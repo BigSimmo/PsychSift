@@ -2,6 +2,7 @@ import { isBoundMonitoringFrequencyQuestion, requestedMonitoringCadence } from "
 import type { RagQueryClass, SearchResult } from "@/lib/types";
 import {
   classifyRagQuery,
+  correctedTokens,
   hasDoseEvidenceSupport,
   hasStructuredThresholdEvidence,
   medicationDoseEvidenceQueryIntent,
@@ -72,10 +73,13 @@ export function evaluateEvidenceCoverageGate(
   const hasDirectTitle = directTitleOrAliasSupport(query, top);
 
   if (queryClass === "table_threshold") {
+    const normalizedQuery = `${query} ${correctedTokens(query).join(" ")}`;
     if (
-      /\bclozapine\b/i.test(query) &&
-      /\b(?:anc|fbc|wbc|wcc|neutrophil|neutrophils|full blood|white cell)\b/i.test(query) &&
-      /\b(?:withhold|withheld|withholding|cease|ceased|stop|stopped)\b/i.test(query)
+      /\bclozapine\b/i.test(normalizedQuery) &&
+      /\b(?:anc|fbc|wbc|wcc|neutrophil|neutrophils|full blood|white cell)\b/i.test(normalizedQuery) &&
+      /\b(?:withhold|withheld|withholding|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation)\b/i.test(
+        normalizedQuery,
+      )
     ) {
       const hasBlood = hasAnyTerm(
         evidenceText,
@@ -83,7 +87,7 @@ export function evaluateEvidenceCoverageGate(
       );
       const hasAction = hasAnyTerm(
         evidenceText,
-        /\b(?:withhold|withheld|withholding|cease|ceased|stop|stopped|red)\b/i,
+        /\b(?:withhold|withheld|withholding|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation|red)\b/i,
       );
       return {
         accepted: hasStructuredThreshold && hasBlood && hasAction,

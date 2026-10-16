@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "cbd0a3f9-af52-4247-b61f-6541acf527f8",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Clinical KB: provision PROXY_AUTH dedicated secret on the PsychSift Railway service (follow-up to #789SD7)",
+    "detail": "Route validation for PROXY_AUTH exists and fails closed with 503, but docs/supabase-remediation-closeout-notes.md still records PROXY_AUTH as not on Railway by name. The owner must authorise and confirm the variable on the correct PsychSift Railway service in a quiet change window; no agent sets production secrets.",
+    "source": "PR #3570 review; docs/supabase-remediation-closeout-notes.md; src/lib/supabase/proxy-auth-crypto.ts",
+    "issueUlid": "01M51JV9M29E87MGRFV0QFE7BA"
+  }
+}

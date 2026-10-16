@@ -15,6 +15,9 @@ export interface WaMhaFormPrintProps {
   isChild?: boolean;
   leastRestrictiveReasoning?: string;
   physicalHealthJustification?: string;
+  /** Whether the Form 6B attachment (Report to the Chief Psychiatrist) notification has been submitted */
+  chiefPsychiatristReportSubmitted?: boolean;
+  /** @deprecated Use chiefPsychiatristReportSubmitted — Form 6B attachment is a post-making report to the Chief Psychiatrist, not prior consent */
   chiefPsychiatristConsent?: boolean;
   className?: string;
 }
@@ -24,7 +27,7 @@ const FORM_METADATA = {
     code: "Form 6A",
     title: "Inpatient treatment order in authorised hospital",
     act: "Mental Health Act 2014 (WA)",
-    sections: "Sections 55, 56, 72, 89, 90, 120, 123, 131",
+    sections: "Sections 55, 56, 72, 89, 90, 120, 123, 131 (orientation summary — unverified)",
     purpose: "Compulsory inpatient treatment in an authorised hospital setting",
     threshold: "Inpatient treatment order criteria met and less restrictive options are insufficient",
     destination: "Authorised Hospital",
@@ -32,49 +35,61 @@ const FORM_METADATA = {
       "Authorises compulsory inpatient treatment according to the order.",
       "Adult initial period: up to 21 days from the day order is made.",
       "Child (< 18 years) initial period: up to 14 days from the day order is made.",
-      "Pre-expiry examination must occur on or within 7 days before the period ends.",
+      "Pre-expiry examination timeframe must be confirmed on the gazetted form.",
     ],
   },
   "6B": {
     code: "Form 6B",
     title: "Inpatient treatment order in general hospital",
     act: "Mental Health Act 2014 (WA)",
-    sections: "Sections 61, 89, 90, 131",
+    sections: "Sections 61, 89, 90, 131 (orientation summary — unverified)",
     purpose: "Compulsory inpatient treatment in a general hospital setting due to physical health needs",
-    threshold: "Criteria met; Chief Psychiatrist consent obtained; physical health transfer risk is significant",
+    threshold:
+      "Criteria met; Chief Psychiatrist consent required on Form 6B order and Form 6B attachment (Report to the Chief Psychiatrist) s65 reporting required; physical health transfer risk is significant",
     destination: "General Hospital",
     statutoryNotes: [
       "Authorises compulsory inpatient treatment in a general hospital setting.",
       "Adult initial period: up to 21 days; Child initial period: up to 14 days.",
-      "Requires documented Chief Psychiatrist consent.",
+      "Requires documented Chief Psychiatrist consent on the Form 6B order, plus separate Form 6B attachment: Report to the Chief Psychiatrist (s65 reporting obligation).",
       "Ongoing justification for general hospital detention must be actively reviewed.",
     ],
   },
 } as const;
 
+// A blank field prints as a visible gap, never as invented patient, clinician or clinical content.
+const NOT_ENTERED = "Not entered";
+
 /**
- * Printable leaf component for WA Mental Health Act 2014 Form 6A and 6B (#C4CFFP).
+ * Non-statutory study print layout for WA Mental Health Act 2014 Form 6A and 6B (#C4CFFP, #WFYDV6).
  *
- * Designed to ensure form headers, titles, and statutory metadata print visibly
+ * Designed to ensure study headers, titles, and orientation metadata print visibly
  * without rendering blank under browser print media rules.
+ *
+ * NOT FOR CLINICAL OR LEGAL USE. Section numbers, field prompts, and timing summaries are
+ * non-statutory orientation placeholders. Clinicians must use the official Chief Psychiatrist
+ * gazetted forms (chiefpsychiatrist.wa.gov.au / mentalhealth.wa.gov.au).
  */
 export function WaMhaFormPrint({
   formCode,
-  patientName = "Smith, John",
-  patientDob = "1985-04-12",
-  patientId = "UMRN-984210",
-  facilityName = "Perth Mental Health Service",
-  treatingPsychiatrist = "Dr. C. Reynolds (Consultant Psychiatrist)",
-  orderDateTime = new Date().toISOString().slice(0, 16).replace("T", " "),
+  patientName = NOT_ENTERED,
+  patientDob = NOT_ENTERED,
+  patientId = NOT_ENTERED,
+  facilityName = NOT_ENTERED,
+  treatingPsychiatrist = NOT_ENTERED,
+  orderDateTime = NOT_ENTERED,
   expiryDateTime,
-  isChild = false,
-  leastRestrictiveReasoning = "Voluntary options exhausted; severe risk of serious deterioration without inpatient compulsory treatment.",
-  physicalHealthJustification = "Requires active intravenous therapy and cardiac monitoring requiring general medical ward detention.",
-  chiefPsychiatristConsent = true,
+  isChild,
+  leastRestrictiveReasoning = NOT_ENTERED,
+  physicalHealthJustification = NOT_ENTERED,
+  chiefPsychiatristReportSubmitted = false,
+  chiefPsychiatristConsent = false,
   className = "",
 }: WaMhaFormPrintProps) {
   const meta = FORM_METADATA[formCode];
-  const maxDays = isChild ? 14 : 21;
+  // Age class is unknown until the caller states it, so no age-specific period prints by default.
+  const ageClass = isChild === undefined ? NOT_ENTERED : isChild ? "Child" : "Adult";
+  const maxPeriod = isChild === undefined ? "Not determined" : `${isChild ? 14 : 21} days`;
+  const reportSubmitted = chiefPsychiatristReportSubmitted;
 
   return (
     <div
@@ -82,6 +97,17 @@ export function WaMhaFormPrint({
       data-wa-mha-form-print="true"
       data-testid="wa-mha-form-print-root"
     >
+      <p
+        className="mb-4 border-2 border-[color:var(--text-heading)] p-2 text-sm font-bold"
+        data-print-header="true"
+        data-testid="form-not-for-use-warning"
+        role="note"
+      >
+        DRAFT, NOT FOR CLINICAL OR LEGAL USE. Section numbers, field prompts, and timing summaries on this layout are
+        non-statutory orientation placeholders and have not been verified against the Mental Health Act 2014 (WA).
+        Clinicians must use the official Chief Psychiatrist gazetted forms (chiefpsychiatrist.wa.gov.au /
+        mentalhealth.wa.gov.au).
+      </p>
       {/* Printable Form Header - ensured visible via @media print in print.css */}
       <header
         className="wa-mha-print-header form-print-header border-b-2 border-[color:var(--text-heading)] pb-4 mb-4"
@@ -97,7 +123,7 @@ export function WaMhaFormPrint({
               {meta.code}
             </span>
             <span className="text-xs uppercase tracking-wider font-semibold text-[color:var(--text-heading)]">
-              Government of Western Australia · Department of Health
+              Non-Statutory Study Layout — Mental Health Act 2014 (WA)
             </span>
           </div>
           <span className="text-xs font-mono">{meta.act}</span>
@@ -124,7 +150,7 @@ export function WaMhaFormPrint({
               <strong>Facility Setting:</strong> {meta.destination}
             </span>
             <span>
-              <strong>Maximum Initial Period:</strong> {maxDays} days ({isChild ? "Child" : "Adult"})
+              <strong>Maximum Initial Period:</strong> {maxPeriod} ({ageClass})
             </span>
           </div>
           <p className="italic">{meta.purpose}</p>
@@ -143,7 +169,7 @@ export function WaMhaFormPrint({
                 <span className="font-semibold">Full Name:</span> {patientName}
               </td>
               <td className="w-1/3 p-1.5 border border-[color:var(--text-heading)]">
-                <span className="font-semibold">DOB:</span> {patientDob} ({isChild ? "Child" : "Adult"})
+                <span className="font-semibold">DOB:</span> {patientDob} ({ageClass})
               </td>
               <td className="w-1/3 p-1.5 border border-[color:var(--text-heading)]">
                 <span className="font-semibold">Identifier:</span> {patientId}
@@ -181,8 +207,14 @@ export function WaMhaFormPrint({
               </p>
               <p className="mt-0.5">{physicalHealthJustification}</p>
               <p className="mt-1">
-                <strong>Chief Psychiatrist Consent:</strong>{" "}
-                {chiefPsychiatristConsent ? "Obtained and documented in clinical record." : "Pending"}
+                <strong>Chief Psychiatrist Consent (Form 6B Order):</strong>{" "}
+                {chiefPsychiatristConsent
+                  ? "Obtained prior to making this Form 6B order."
+                  : "Pending consent from Chief Psychiatrist"}
+              </p>
+              <p className="mt-1">
+                <strong>Report to the Chief Psychiatrist (Form 6B attachment):</strong>{" "}
+                {reportSubmitted ? "Submitted and documented in clinical record." : "Pending report/notification"}
               </p>
             </div>
           )}
@@ -226,7 +258,8 @@ export function WaMhaFormPrint({
                 <span className="font-semibold">Date & Time Order Made:</span> {orderDateTime}
               </td>
               <td className="p-2 border border-[color:var(--text-heading)]">
-                <span className="font-semibold">Copies to:</span> Patient, Mental Health Tribunal, Chief Psychiatrist
+                <span className="font-semibold">Copies to:</span> See official gazetted form for recipient and filing
+                requirements.
               </td>
             </tr>
           </tbody>
@@ -235,8 +268,8 @@ export function WaMhaFormPrint({
 
       {/* Footer Provenance */}
       <footer className="form-print-footer border-t border-[color:var(--text-heading)] pt-2 text-xs text-[color:var(--text-muted)] flex justify-between">
-        <span>WA Mental Health Act 2014 Statutory Instrument</span>
-        <span>PsychSift WA Statutory Print Service</span>
+        <span>Non-Statutory Study Layout — Mental Health Act 2014 (WA)</span>
+        <span>Use official gazetted forms: chiefpsychiatrist.wa.gov.au</span>
       </footer>
     </div>
   );

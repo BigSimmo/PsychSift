@@ -4,7 +4,7 @@ The tracked `.agents/skills/rag-cloud-sdd/SKILL.md` is the self-contained Cloud 
 
 ## Capability and route preflight
 
-Before repository inspection, the launch prompt supplies `TARGET_PHASE` and the selected high/xhigh effort. Verify the target against the manifest and accepted receipts without selecting another phase. An xhigh target requires user confirmation of the selected xhigh effort; ordinary language is sufficient and no literal prompt token or resubmission is required. Pass `--xhigh-confirmed` only after that confirmation; it is user attestation, not runtime evidence. Stop on wrong target or effort and retain authoritative route checks.
+Before repository inspection, the launch prompt supplies `TARGET_PHASE` and the selected high/xhigh effort. Verify the target against the manifest and accepted receipts without selecting another phase. An xhigh target requires user confirmation of the selected xhigh effort; ordinary language is sufficient and no literal prompt token or resubmission is required. No additional CLI attestation is required; user confirmation is not runtime evidence. Stop on wrong target or effort and retain authoritative route checks.
 
 Read and hash the controller skill/helper and every repo-local skill in the phase profiles. Assign the fresh read-only probe a useful bounded inspection of target-phase dependencies, accepted receipts and relevant source conflicts. Retain its findings, dispatch tool, agent ID and authoritative host metadata; do not dispatch a dummy task solely to demonstrate tool availability. No callable fresh-agent runtime means `BLOCKED_MISSING_SUBAGENT_RUNTIME`; a missing skill/helper means `BLOCKED_MISSING_CAPABILITY`.
 

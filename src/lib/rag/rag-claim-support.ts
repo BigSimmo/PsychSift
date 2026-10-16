@@ -245,8 +245,14 @@ function actionPolarity(value: string): ActionPolarity {
   }
   if (/\b(?:stop|cease|discontinue|withhold)\b/i.test(value)) return "stop";
   if (/\bcontinue\b/i.test(value)) return "continue";
-  if (/\b(?:may|can)\s+(?:be\s+)?use|not\s+contraindicated\b/i.test(value)) return "use_allowed";
-  if (/\b(?:contraindicat(?:ed|ion)?|must\s+not|do\s+not\s+use|avoid)\b/i.test(value)) return "do_not_use";
+  if (
+    /\b(?:(?:may|can)\s+(?:be\s+)?use|(?:(?:does|do|did|is|are|was|were)\s+)?not\s+contraindicat(?:e|ed|es|ing|ion|ions))\b/i.test(
+      value,
+    )
+  ) {
+    return "use_allowed";
+  }
+  if (/\b(?:contraindicat(?:e|ed|es|ing|ion|ions)|must\s+not|do\s+not\s+use|avoid)\b/i.test(value)) return "do_not_use";
   if (hasNegatedEscalation(value)) return "do_not_escalate";
   if (hasNegatedUrgency(value)) return "urgent_not_required";
   if (hasPositiveEscalation(value)) return "escalate";
@@ -264,7 +270,7 @@ function compatiblePolarity(claim: string, evidence: string) {
   // "do not use". Compare the claim with each action clause instead.
   const clauses = evidence
     .split(
-      /(?:[.!?;\n]+|,\s+(?:but|and)\s+|\s+(?:but|and)\s+(?=(?:do|must|should|never|avoid|cease|continue|discontinue|escalat|give|stop|urgent|withhold)\b))/i,
+      /(?:[.!?;\n]+|,\s+(?:but|and)\s+|\s+(?:but|and)\s+(?=(?:do|must|should|never|avoid|cease|continue|discontinue|escalat(?:e|ed|es|ing|ion|ions)|give|stop|urgent|withhold)\b))/i,
     )
     .map((value) => value.trim())
     .filter(Boolean);
@@ -1276,7 +1282,7 @@ function comparisonClauseHasAttribution(text: string, sources: SearchResult[]) {
 }
 
 const clinicalRecommendationPattern =
-  /\b(?:administer|avoid|cease|continue|contraindicat(?:ed|ion)?|discontinue|dose|escalat|give|initiat|monitor|recommend|repeat|should|start|stop|urgent|use|withhold|must|may|can)\b/i;
+  /\b(?:administer|avoid|cease|continue|contraindicat(?:e|ed|es|ing|ion|ions)|discontinue|dose|escalat(?:e|ed|es|ing|ion|ions)|give|initiat(?:e|ed|es|ing|ion|ions)|monitor|recommend(?:ed|s|ing|ation|ations)?|repeat|should|start|stop|urgent|use|withhold|must|may|can)\b/i;
 
 function normalizedGapText(value: string) {
   return value

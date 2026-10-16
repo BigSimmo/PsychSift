@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "5d7ae72b-9125-4b0c-9a0e-8d85023a1524",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Follow-up to PR 3546: Codex's held native PDF provenance change and pre-claim upload refusal",
+    "detail": "Codex's reference branch codex/pr3546-f04-candidate (f04c841c4) carries two changes held out of PR 3546. 1) Native PDF provenance in the PDF extractor, a protected RAG input producer, so it needs owner notice, a RAG impact line and a named yes. 2) A 503 refusal before claiming when the worker is not ready, which would reverse the owner decision of 2026-10-16 to leave that behaviour alone. Owner chose on 2026-10-16 to do both in a separate follow-up PR after 3546, each checked on its own.",
+    "source": "PR 3546 review thread, owner decision 2026-10-16",
+    "issueUlid": "01M51JRSM8JCDCGKRSM0ARAQYB"
+  }
+}

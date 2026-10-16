@@ -7,7 +7,7 @@ import { WorkButton, WorkCard, WorkIconCircle, WorkSectionLabel } from "@/compon
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { guardExampleAction } from "@/lib/example-data/guards";
 import { useExampleData } from "@/lib/example-data/store";
-import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
+import { WA_PUBLIC_HOLIDAY_DATES } from "@/lib/on-call/wa-public-holidays";
 import type { HoursSummary } from "@/lib/roster/hours";
 import { formatSpanWords } from "@/lib/roster/shifts-overview";
 import type { RosterDisplayShift as OnCallShift } from "@/lib/roster/team/team-view";
@@ -44,7 +44,7 @@ export function RosterPayslipCheck({
   const figures = payslipFigures(
     shifts.map((shift) => ({ id: shift.id, startsAt: shift.startsAt, endsAt: shift.endsAt, kind: kindOf(shift) })),
     { start: summary.start, end: summary.end },
-    WA_PUBLIC_HOLIDAYS,
+    WA_PUBLIC_HOLIDAY_DATES,
   );
   const atLeast = partial ? "at least " : "";
   const span = formatSpanWords(summary.start, summary.end);

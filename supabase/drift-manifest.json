@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-14T16:34:21.177Z",
+  "generated_at": "2026-10-16T00:03:20.700Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "8b544451a3604bc191db8a76c0176ef1bcfc1c236d84a8f2a5da701c340b5db2",
-  "replay_seconds": 38,
+  "schema_sha256": "2b625b944a1087ecd9c671f95366a1fb6369334ef0619224ca86e858485100ce",
+  "replay_seconds": 34,
   "snapshot": {
     "views": [
       {
@@ -9202,6 +9202,58 @@
           "postgres=arwdDxtm/postgres",
           "service_role=arwd/postgres"
         ],
+        "name": "roster_open_post_keys",
+        "columns": [
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "default": "now()",
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "open_shift_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "post_key",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          },
+          {
+            "name": "posted_by",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": false,
+            "generated": ""
+          },
+          {
+            "name": "service_id",
+            "type": "uuid",
+            "default": null,
+            "identity": "",
+            "not_null": true,
+            "generated": ""
+          }
+        ],
+        "reloptions": null,
+        "rls_forced": false,
+        "rls_enabled": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwd/postgres"
+        ],
         "name": "roster_open_shifts",
         "columns": [
           {
@@ -16010,6 +16062,18 @@
         "def_hash": "590bcff136e7af842298b48ee261e3f2"
       },
       {
+        "def": "CREATE INDEX roster_open_post_keys_open_shift_idx ON public.roster_open_post_keys USING btree (open_shift_id)",
+        "name": "roster_open_post_keys_open_shift_idx",
+        "table": "roster_open_post_keys",
+        "def_hash": "b6bf535bf8cb73f1cd9c8a0c01519b13"
+      },
+      {
+        "def": "CREATE UNIQUE INDEX roster_open_post_keys_pkey ON public.roster_open_post_keys USING btree (service_id, post_key)",
+        "name": "roster_open_post_keys_pkey",
+        "table": "roster_open_post_keys",
+        "def_hash": "5747b4e8b8ecd35fa92d19e91d40b72a"
+      },
+      {
         "def": "CREATE UNIQUE INDEX roster_open_shifts_live_assignment_idx ON public.roster_open_shifts USING btree (assignment_id) WHERE ((status = ANY (ARRAY['reported'::text, 'open'::text, 'claimed'::text])) AND (assignment_id IS NOT NULL))",
         "name": "roster_open_shifts_live_assignment_idx",
         "table": "roster_open_shifts",
@@ -17293,7 +17357,7 @@
         "table": "document_labels",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text))"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_labels.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "UPDATE",
@@ -17305,7 +17369,7 @@
         "table": "document_labels",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text))"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (source = 'manual'::text) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_labels.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "SELECT",
@@ -17329,7 +17393,7 @@
         "table": "document_memory_cards",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "(( SELECT auth.uid() AS uid) = owner_id)"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_memory_cards.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "SELECT",
@@ -17365,7 +17429,7 @@
         "table": "document_sections",
         "schema": "public",
         "permissive": "PERMISSIVE",
-        "with_check": "(( SELECT auth.uid() AS uid) = owner_id)"
+        "with_check": "((( SELECT auth.uid() AS uid) = owner_id) AND (EXISTS ( SELECT 1\n   FROM public.documents d\n  WHERE ((d.id = document_sections.document_id) AND (d.owner_id = ( SELECT auth.uid() AS uid))))))"
       },
       {
         "cmd": "SELECT",
@@ -18556,6 +18620,14 @@
       },
       {
         "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "fd8e7b953fe416ab8026f01ff61725e5",
+        "signature": "public.cleanup_ingestion_deep_memory_staging(jsonb,uuid)"
+      },
+      {
+        "acl": [
           "postgres=X/postgres"
         ],
         "def_hash": "7104ee6e947fcca68fdebdf2fa878339",
@@ -18744,6 +18816,14 @@
         ],
         "def_hash": "cf9f5925111482a20f980c2d6e41dd4e",
         "signature": "public.cme_set_entry_goal(uuid,uuid,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "6ebd2fbb68992b77d05cf6d060b404b8",
+        "signature": "public.commit_document_deep_memory_generation(jsonb,uuid,text,text,integer,integer,jsonb,jsonb,jsonb)"
       },
       {
         "acl": [
@@ -19377,7 +19457,7 @@
         "acl": [
           "postgres=X/postgres"
         ],
-        "def_hash": "92bf14fee49b501305bd81ac583a43cd",
+        "def_hash": "090e9afd33a764ce6ec81c632abd83b4",
         "signature": "public.match_governed_candidate_chunks_v3(extensions.vector,text,integer,double precision,uuid[],uuid,boolean,text[],uuid,text,bigint,text[])"
       },
       {
@@ -19425,7 +19505,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "b953a6c93a0ce61c139bfe9c342be376",
+        "def_hash": "7ebc3cf36463bd630116b017fd528187",
         "signature": "public.patch_ingestion_document_state(jsonb,jsonb,jsonb)"
       },
       {
@@ -19459,6 +19539,14 @@
         ],
         "def_hash": "574c88302663afcb100e559c61ca3cd3",
         "signature": "public.prepare_completed_admin_text_reference(uuid,uuid,uuid,text,jsonb,boolean)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "bd94a73804be17002615b685adf28413",
+        "signature": "public.prepare_ingestion_image_upload(jsonb,uuid,text)"
       },
       {
         "acl": [
@@ -19810,6 +19898,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "b279fc1fb2b1dc3cc132633bd6620b9d",
+        "signature": "public.reset_ingestion_attempt_artifacts(jsonb,uuid)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "0eb2f3c6c7251f6863e35139f80eabf7",
         "signature": "public.resolve_registered_published_admin_source_plan(uuid,uuid)"
       },
@@ -19930,6 +20026,14 @@
         ],
         "def_hash": "3970f82d1ac917820e8f1d2d8cc9b88e",
         "signature": "public.roster_on_membership_revoked()"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "def_hash": "ca06394dd5c4556e65af5a771fc47841",
+        "signature": "public.roster_open_post_once(uuid,uuid,uuid,jsonb)"
       },
       {
         "acl": [
@@ -20375,6 +20479,14 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
+        "def_hash": "b117dc3166fe247ed80a1cb11db83d42",
+        "signature": "public.stage_ingestion_deep_memory(jsonb,uuid,jsonb,jsonb,jsonb)"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
         "def_hash": "19596e11223053a7869e2523b1e390c5",
         "signature": "public.stage_site_content_sync_event(bigint,uuid,uuid,bigint,jsonb)"
       },
@@ -20454,7 +20566,7 @@
           "postgres=X/postgres",
           "service_role=X/postgres"
         ],
-        "def_hash": "33617f8cf09480ef51897aeac3be0fc3",
+        "def_hash": "fe758f431ff7da8b87c30aef15c02bca",
         "signature": "public.teaching_command(uuid,uuid,text,jsonb)"
       },
       {
@@ -23646,6 +23758,26 @@
         "def": "FOREIGN KEY (service_id, user_id) REFERENCES public.on_call_service_members(service_id, user_id) ON DELETE CASCADE",
         "name": "roster_member_roles_service_id_user_id_fkey",
         "table": "roster_member_roles"
+      },
+      {
+        "def": "FOREIGN KEY (open_shift_id) REFERENCES public.roster_open_shifts(id) ON DELETE CASCADE",
+        "name": "roster_open_post_keys_open_shift_id_fkey",
+        "table": "roster_open_post_keys"
+      },
+      {
+        "def": "PRIMARY KEY (service_id, post_key)",
+        "name": "roster_open_post_keys_pkey",
+        "table": "roster_open_post_keys"
+      },
+      {
+        "def": "FOREIGN KEY (posted_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "roster_open_post_keys_posted_by_fkey",
+        "table": "roster_open_post_keys"
+      },
+      {
+        "def": "FOREIGN KEY (service_id) REFERENCES public.on_call_services(id) ON DELETE CASCADE",
+        "name": "roster_open_post_keys_service_id_fkey",
+        "table": "roster_open_post_keys"
       },
       {
         "def": "FOREIGN KEY (assignment_id) REFERENCES public.roster_assignments(id) ON DELETE CASCADE",

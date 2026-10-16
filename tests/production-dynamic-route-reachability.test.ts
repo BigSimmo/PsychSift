@@ -480,8 +480,21 @@ function vouches(href: string, route: string): boolean {
   return shape !== null && shapeMatches(shape, routeShape(route));
 }
 
-/** Routes with no href of matching shape anywhere in the scanned source. */
+/**
+ * Routes with no href of matching shape anywhere in the scanned source. The scan is pure over
+ * fixed module data, so each mode is computed once: under coverage on CI, repeating it pushed a
+ * single test past the 30 s timeout.
+ */
+const orphanCache = new Map<boolean, string[]>();
 function orphansUnder(useStripped: boolean): string[] {
+  const cached = orphanCache.get(useStripped);
+  if (cached) return [...cached];
+  const orphans = computeOrphans(useStripped);
+  orphanCache.set(useStripped, orphans);
+  return [...orphans];
+}
+
+function computeOrphans(useStripped: boolean): string[] {
   return dynamicRoutes.filter(
     (route) =>
       !scannedFiles.some((file) =>
@@ -583,6 +596,7 @@ describe("production dynamic route reachability", () => {
       "/services/[slug]",
       "/sources/[sourceId]",
       "/specifiers/[slug]",
+      "/teaching/assessments/respond/[token]",
       // One doctor as their supervisor sees them (work mode, 7 Oct 2026). Reached today from the
       // preview-role switcher's supervisor example in preview-role.ts; it sits behind the launch
       // switch (work-mode-launch/routes.ts).

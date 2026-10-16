@@ -1,6 +1,7 @@
 -- Behaviour checks for the combined Roster DB PR, run against a disposable replay of files 1-5.
 -- Every block raises on a wrong answer, so a clean run prints only the final line.
 -- Run: psql -v ON_ERROR_STOP=1 -1 -f tests/sql/roster-behaviour.sql   (never against a live database)
+begin;
 create temp table ids (k text primary key, v uuid) on commit drop;
 grant all on ids to service_role;
 
@@ -529,12 +530,63 @@ begin
   end if;
 end $needs_stale$;
 
+-- Open shifts: a posted gap goes live once per key. Sending the same key again (the phone never
+-- heard back) answers with the shift already saved; another member can't use that key; a new key
+-- is a deliberate second opening for the same slot.
+do $open_post_once$
+declare
+  svc uuid := pg_temp.id('svc');
+  k1 uuid := gen_random_uuid();
+  k2 uuid := gen_random_uuid();
+  gap jsonb := jsonb_build_object('startsAt', date_trunc('day', now()) + interval '40 days',
+    'endsAt', date_trunc('day', now()) + interval '40 days 8 hours 30 minutes', 'shiftCode', 'DX', 'kind', 'day');
+  first jsonb; again jsonb; second jsonb;
+begin
+  perform pg_temp.expect_error(format('select public.roster_open_post_once(%L,%L,null,%L)',
+    pg_temp.id('mgr'), svc, gap), 'roster_invalid_request');
+  first := public.roster_open_post_once(pg_temp.id('mgr'), svc, k1, gap);
+  if first ->> 'status' is distinct from 'open' or first ? 'replayed' then raise exception 'post once: first post got %', first; end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 1 then
+    raise exception 'post once: the first post did not save exactly one shift';
+  end if;
+  again := public.roster_open_post_once(pg_temp.id('mgr'), svc, k1, gap);
+  if again ->> 'openShiftId' is distinct from first ->> 'openShiftId' or again ->> 'status' is distinct from 'open'
+     or (again ->> 'replayed')::boolean is not true then
+    raise exception 'post once: the same key did not replay the first post, got %', again;
+  end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 1 then
+    raise exception 'post once: the same key saved a second shift';
+  end if;
+  perform pg_temp.expect_error(format('select public.roster_open_post_once(%L,%L,%L,%L)',
+    pg_temp.id('lee'), svc, k1, gap), 'roster_conflict');
+  second := public.roster_open_post_once(pg_temp.id('mgr'), svc, k2, gap);
+  if second ->> 'openShiftId' is not distinct from first ->> 'openShiftId' or second ? 'replayed' then
+    raise exception 'post once: a new key did not post a second opening, got %', second;
+  end if;
+  if (select count(*) from public.roster_open_shifts where service_id = svc and shift_code = 'DX') <> 2 then
+    raise exception 'post once: expected two openings for two keys';
+  end if;
+  -- A member who isn't a manager is still refused a gap, and the refused key is not kept.
+  perform pg_temp.expect_error(format('select public.roster_open_post_once(%L,%L,%L,%L)',
+    pg_temp.id('lee'), svc, gen_random_uuid(), gap), 'roster_role_denied');
+  if (select count(*) from public.roster_open_post_keys where service_id = svc) <> 2 then
+    raise exception 'post once: expected one kept key per saved post';
+  end if;
+end $open_post_once$;
+
 -- 14. Deleting a doctor's account is never blocked by a Roster table.
 reset role;
 do $delete_account$
 declare lee uuid := pg_temp.id('lee');
 begin
+  -- An open-shift post key that names them, so deleting the account has to clear it.
+  insert into public.roster_open_post_keys (service_id, post_key, open_shift_id, posted_by)
+  select service_id, gen_random_uuid(), open_shift_id, lee from public.roster_open_post_keys limit 1;
+  if not exists (select 1 from public.roster_open_post_keys where posted_by = lee) then
+    raise exception 'delete: no post key fixture to check';
+  end if;
   delete from auth.users where id = lee;
+  if exists (select 1 from public.roster_open_post_keys where posted_by = lee) then raise exception 'delete: post key still names them'; end if;
   if exists (select 1 from public.on_call_shifts where owner_id = lee) then raise exception 'delete: own shifts kept'; end if;
   if exists (select 1 from public.roster_publication_seen where user_id = lee) then raise exception 'delete: seen kept'; end if;
   if exists (select 1 from public.roster_assignments where user_id = lee) then raise exception 'delete: assignment still names them'; end if;
@@ -543,3 +595,7 @@ $delete_account$;
 set local role service_role;
 
 select 'roster behaviour: all checks passed' as result;
+
+-- The local runner and CI use psql -1, but the explicit begin and rollback mean a direct psql -f run
+-- (without -1) also leaves no synthetic fixtures behind.
+rollback;

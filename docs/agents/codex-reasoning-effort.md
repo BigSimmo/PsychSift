@@ -7,6 +7,7 @@ The user owns the main-chat model and reasoning picker. Do not set repository-wi
 from old sessions. Without runtime telemetry, distinguish a user-confirmed setting from verified
 execution metadata.
 
+The former Cloud prompt-marker and prompt-resubmission gate was retired on 2026-10-16.
 The owner can confirm a picker change in ordinary language; no literal marker or
 resubmission is required. Preserve that confirmation instead of asking again.
 

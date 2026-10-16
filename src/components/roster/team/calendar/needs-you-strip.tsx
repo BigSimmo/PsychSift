@@ -29,8 +29,8 @@ type Flags = ReadonlyMap<string, readonly RuleFlag[]>;
 
 /**
  * What the manager layer knows about the waiting swaps' team rules. The server
- * does not recheck team rules when a manager approves a swap, so these are the
- * only check on them (see `useManagerCalendar`).
+ * also rechecks team rules when a manager approves a swap unless warnings are
+ * explicitly acknowledged (see `rosterCommand` and `useManagerCalendar`).
  */
 export type SwapChecks = {
   /** Rule flags on the roster as it is, by assignment id. */
@@ -214,7 +214,11 @@ export function useRosterDecision(serviceId: string, onChanged: () => void) {
       return;
     }
     setReview(null);
-    const action = decisionAction(fresh.current, approve);
+    // Acknowledge only checked team-rule warnings the manager has read. "Could not be fully checked"
+    // never skips the server's rule check, so a server warning then comes back as an error to read.
+    const readRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
+    const acknowledged = approve && readRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint;
+    const action = decisionAction(fresh.current, approve, { acknowledgeRuleWarnings: acknowledged });
     const sent = await post(action);
     setBusy(false);
     setMessage(null);

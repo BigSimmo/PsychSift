@@ -11,3 +11,21 @@ describe("duplicate upload cleanup ledger", () => {
     expect(uploadRoute).toMatch(/if \(cleanupLedgerError\) \{[\s\S]*throw new Error\(/);
   });
 });
+
+describe("superseded collision object cleanup", () => {
+  it("releases the collided intended-path object only after this request's admission is durable", () => {
+    const calls = [...uploadRoute.matchAll(/await releaseSupersededUpload\(/g)].map((match) => match.index ?? -1);
+    expect(calls).toHaveLength(2);
+    for (const call of calls) {
+      const durable = uploadRoute.lastIndexOf("durableAdmission = true;", call);
+      expect(durable, "durable admission precedes the release").toBeGreaterThan(-1);
+      expect(uploadRoute.slice(durable, call)).not.toContain("catch");
+    }
+    expect(uploadRoute).toContain("storageUpload.collisionRecovered ? intendedStoragePath : null");
+    for (const call of calls) {
+      const callArgs = uploadRoute.slice(call, uploadRoute.indexOf("});", call));
+      expect(callArgs).toContain("supersededPath: supersededStoragePath,");
+      expect(callArgs).toContain("committedPath: admissionStoragePath,");
+    }
+  });
+});

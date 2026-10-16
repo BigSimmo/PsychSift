@@ -12,6 +12,7 @@ import {
 } from "@/lib/on-call/call-log";
 import { onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABEL_FALLBACK_LIFETIME_MS,
   parsePatientLabelExpiryStamp,
   patientLabelStorageKey,
@@ -19,6 +20,7 @@ import {
   removePatientLabels,
   writePatientLabels,
 } from "@/lib/patient-label-storage";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * The handover form: one short record per patient, filled in fast during the
@@ -48,6 +50,7 @@ import {
 /** The patient-label store name; the full key is `patientLabelStorageKey(ON_CALL_HANDOVER_STORE)`. */
 export const ON_CALL_HANDOVER_STORE = "on-call-handover";
 export const onCallHandoverStorageKey = patientLabelStorageKey(ON_CALL_HANDOVER_STORE);
+export const HANDOVER_SCRATCHPAD_STORAGE_KEY = "on-call-handover-scratchpad";
 
 const EXPIRY_MS = 12 * 60 * 60 * 1000;
 /** A full ward fits; the cap only bounds a runaway list. */
@@ -235,9 +238,62 @@ export function removeOnCallHandoverPatient(id: string, now: Date = new Date()):
   );
 }
 
+/**
+ * The shift's stored end time, kept even once it has passed. The on-screen view hides an expired
+ * shift, so a late timer must check this before it starts a fresh stamp for stale text.
+ */
+export function readOnCallHandoverStoredExpiry(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (
+      parsePatientLabelExpiryStamp(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY))?.expiresAt ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function loadOnCallHandoverScratchpad(now: Date = new Date()): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const rawStamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY);
+    const stamp = parsePatientLabelExpiryStamp(rawStamp);
+    if (!stamp || now.getTime() >= stamp.expiresAt || now.getTime() < stamp.startedAt - 5 * 60 * 1000) return "";
+    return window.localStorage.getItem(patientLabelStorageKey(HANDOVER_SCRATCHPAD_STORAGE_KEY)) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveOnCallHandoverScratchpad(text: string): void {
+  if (typeof window === "undefined") return;
+  if (text.trim() === "") {
+    removePatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY);
+    try {
+      window.dispatchEvent(new Event(onCallDeviceStoreChangedEvent));
+    } catch {
+      // Ignore missing window event support
+    }
+    return;
+  }
+  const problem = checkPatientDetail(text);
+  if (problem !== null) {
+    throw new Error(problem.body);
+  }
+  if (!writePatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY, text)) {
+    throw new Error("This device would not keep the scratchpad.");
+  }
+  try {
+    window.dispatchEvent(new Event(onCallDeviceStoreChangedEvent));
+  } catch {
+    // Ignore missing window event support
+  }
+}
+
 /** Clear the whole handover on this device. */
 export function clearOnCallHandover(): void {
   if (typeof window === "undefined") return;
+  removePatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY);
   write([], new Date());
 }
 

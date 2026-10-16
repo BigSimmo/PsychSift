@@ -7,6 +7,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
 import { modeNumberText } from "@/components/mode-kit/type";
+import { AttendanceRoster, type RegistrarMember } from "@/components/teaching/attendance-roster";
 import {
   afterChange,
   AUDIENCE_LABELS,
@@ -509,6 +510,8 @@ export function MembersSheet({ organise, onClose }: { organise: OrganiseRead; on
           onChange={(e) => setFilter(e.target.value)}
           autoComplete="off"
           spellCheck={false}
+          data-gramm="false"
+          data-enable-grammarly="false"
         />
         {shown.length > 0 ? (
           <ModeGroupedList>
@@ -594,6 +597,9 @@ export function InviteSheet({
               label="Work email"
               type="email"
               autoComplete="off"
+              spellCheck={false}
+              data-gramm="false"
+              data-enable-grammarly="false"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -639,46 +645,59 @@ export function PickSessionSheet({
 export function AttendanceGapsSheet({
   organise,
   onClose,
-  checkInCountsByUserId = {},
+  checkInCountsByUserId,
+  loadingCounts = false,
+  loadError = false,
+  onRetry,
+  demoMode = false,
 }: {
   organise: OrganiseRead;
   onClose: () => void;
   checkInCountsByUserId?: Record<string, number>;
+  loadingCounts?: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
+  demoMode?: boolean;
 }) {
-  const [filter, setFilter] = useState("");
-  const needle = filter.trim().toLowerCase();
-  const zeroCheckInMembers = organise.members.filter((m) => {
-    if (m.role && m.role !== "doctor") return false;
-    const count = (m as { checkInsCount?: number }).checkInsCount ?? checkInCountsByUserId[m.userId] ?? 0;
-    return count === 0;
-  });
-  const shown = zeroCheckInMembers.filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle));
+  const countsMap = checkInCountsByUserId ?? {};
+  const rosterMembers: RegistrarMember[] = organise.members.map((m) => ({
+    userId: m.userId,
+    name: (m as { displayName?: string }).displayName ?? memberLabel(m),
+    role: m.role,
+    checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
+    joinedAt: m.joinedAt,
+  }));
   return (
     <Sheet open onClose={onClose} title="Attendance gaps">
       <div className="grid gap-2" data-testid="teaching-attendance-gaps-sheet">
-        <p className={cn("text-xs leading-5", textMuted)}>Enrolled doctors with no check-ins recorded this term.</p>
-        <TextField
-          label="Filter doctors"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        {shown.length > 0 ? (
-          <ModeGroupedList>
-            {shown.map((m) => (
-              <ModeRow
-                key={m.userId}
-                title={memberLabel(m)}
-                subtitle="No check-ins recorded this term"
-                testId={`attendance-gap-${m.userId}`}
-              />
-            ))}
-          </ModeGroupedList>
-        ) : (
-          <p className={cn("text-sm", textMuted)} data-testid="teaching-attendance-gaps-empty">
-            {needle ? "No doctor matches that filter." : "No attendance gaps recorded."}
+        <p className={cn("text-xs leading-5", textMuted)}>
+          {demoMode
+            ? "Example service. Enrolled doctors with no check-ins recorded this term."
+            : "Enrolled doctors with no check-ins recorded this term."}
+        </p>
+        {loadingCounts ? (
+          <p className={cn("text-xs leading-5", textMuted)} role="status">
+            Loading term attendance records…
           </p>
+        ) : loadError ? (
+          <div className="grid gap-2">
+            <p className={cn("text-xs leading-5", textMuted)} role="alert">
+              We couldn&apos;t load term attendance records, so attendance gaps cannot be shown.
+            </p>
+            {onRetry ? (
+              <T5Button type="button" onClick={onRetry}>
+                Try again
+              </T5Button>
+            ) : null}
+          </div>
+        ) : (
+          <AttendanceRoster
+            members={rosterMembers}
+            checkInCountsByUserId={countsMap}
+            initialFilterGapsOnly={true}
+            searchAriaLabel="Filter doctors"
+            emptyTestId="teaching-attendance-gaps-empty"
+          />
         )}
       </div>
     </Sheet>

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "88d63f2e-ff6f-422e-b71b-84a41c000fb1",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#RP00FZ",
+    "outcome": "Wired buildAbandonedGenerationStorageCleanupJobs, row-ceiling clamping, and legacy/active generation guards into reindex reaper (src/lib/reindex-pipeline.ts, scripts/cleanup-abandoned-reindex-generations.ts, tests/reindex-reaper-storage-cleanup.test.ts).",
+    "baseRowFingerprint": "e19e0fc7b9520f056330d730afd03eeda59e7ca4135a6ef42aa774dca4ac0278",
+    "targetUlid": "01M1G9RKB5RP00FZ56D7TE2A1Y"
+  }
+}

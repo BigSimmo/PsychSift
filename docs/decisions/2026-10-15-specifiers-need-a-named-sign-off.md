@@ -1,6 +1,6 @@
 # Decision: DSM specifiers count as signed off only under a named clinician
 
-- **Status:** decided 2026-10-15
+- **Status:** decided 2026-10-15; superseded by 2026-10-16-psych-sift-display-name-sign-off.md
 - **Source:** the owner, in chat
 
 The 89 DSM specifier records stamped with the product name PsychSift (71 items and 18 universal

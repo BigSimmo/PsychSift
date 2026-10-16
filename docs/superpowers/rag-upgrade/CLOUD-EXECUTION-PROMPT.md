@@ -2,7 +2,7 @@
 
 Use the final handover message's filled prompt, not this unfilled template. Run one fresh Cloud task per P00–P17 phase. Before launch, set `TARGET_PHASE`, `PACKAGE_SOURCE_REF`, immutable `PACKAGE_HEAD_SHA`, `PACKAGE_BASE_SHA`, `PROGRAMME_BRANCH` and the matching UI effort from the manifest.
 
-Declare `TARGET_PHASE=...` and the selected effort. For an xhigh phase, the user must confirm that xhigh is selected; ordinary-language confirmation is sufficient. No literal prompt token or resubmission is required. A high phase omits the xhigh attestation flag. A running task cannot raise itself.
+Declare `TARGET_PHASE=...` and the selected effort. For an xhigh phase, the user must confirm that xhigh is selected; ordinary-language confirmation is sufficient. No literal prompt token or resubmission is required. A running task cannot raise itself.
 
 ## Shared prompt body
 
@@ -18,7 +18,7 @@ This prompt authorizes read-only repository inspection, offline/provider-free wo
 
 Follow the current-host policy in `docs/agents/codex-cloud-environment.md` and the readiness order in `cloud/START-HERE.md`. Establish repository identity, branch and status, host capabilities, runtime and lock parity. Run the legacy raw probe, setup, shims and Cloud acceptance checks only if the owner or selected environment configuration explicitly adopts that repository-managed setup. In that setup, preserve its raw exit codes, recovery, restrictions and base-pinned acceptance; its bounded policy-repair exception does not authorize programme execution or establish acceptance. Other host-managed environments use their supported readiness checks. Keep programme execution provider-free on every host.
 
-For P00, fetch `PACKAGE_SOURCE_REF`, verify exact `PACKAGE_HEAD_SHA`, create `PROGRAMME_BRANCH` from it and run the package publish check. For P01–P17, fetch the exact remote programme tip with no rebase. Run the tracked launch helper with the declared target/effort (and `--xhigh-confirmed` only after the user confirms an xhigh selection, including in ordinary language), package parity and `npm run plans:rag:receipts:check -- --before TARGET_PHASE`. The declared target must be exactly next; never select a different phase after launch.
+For P00, fetch `PACKAGE_SOURCE_REF`, verify exact `PACKAGE_HEAD_SHA`, create `PROGRAMME_BRANCH` from it and run the package publish check. For P01–P17, fetch the exact remote programme tip with no rebase. Run the tracked launch helper with the declared target/effort, package parity and `npm run plans:rag:receipts:check -- --before TARGET_PHASE`. The declared target must be exactly next; never select a different phase after launch.
 
 ### Required knowledge and capabilities
 

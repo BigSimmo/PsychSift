@@ -2268,6 +2268,7 @@
         "src/components/clinical-dashboard/evidence-panels.tsx",
         "src/components/clinical-dashboard/guide-dialog.tsx",
         "src/components/clinical-dashboard/image-lightbox.tsx",
+        "src/components/clinical-dashboard/master-search-header-scope-picker.tsx",
         "src/components/clinical-dashboard/master-search-header.tsx",
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/clinical-dashboard/mode-action-popup.tsx",
@@ -2411,6 +2412,7 @@
         "src/components/clinical-dashboard/evidence-panels.tsx",
         "src/components/clinical-dashboard/guide-dialog.tsx",
         "src/components/clinical-dashboard/image-lightbox.tsx",
+        "src/components/clinical-dashboard/master-search-header-scope-picker.tsx",
         "src/components/clinical-dashboard/master-search-header.tsx",
         "src/components/clinical-dashboard/medication-record-page.tsx",
         "src/components/clinical-dashboard/mode-action-popup.tsx",
@@ -2565,6 +2567,7 @@
         "tests/sheet-focus.dom.test.tsx",
         "tests/sheet.dom.test.tsx",
         "tests/signed-out-sample-focus.dom.test.tsx",
+        "tests/text-source-provenance.test.ts",
         "tests/therapy-global-convergence-contract.test.ts",
         "tests/ui-accessibility.spec.ts",
         "tests/ui-overlay-css-contract.test.ts",
@@ -2574,7 +2577,9 @@
         "tests/ux-audit-dead-ends-fix.dom.test.tsx",
         "tests/viewport-fill-contract.test.ts",
         "tests/work-tab-swipe-blocked.dom.test.tsx",
-        "tests/xlsx-extraction-budget.test.ts"
+        "tests/xlsx-extraction-budget.test.ts",
+        "tests/xlsx-sheet-dictionary-projection.test.ts",
+        "tests/xlsx-source-provenance.test.ts"
       ],
       "baseline": {
         "targetLayer": "v2",
@@ -2871,6 +2876,7 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/starter/starter-date-sheet.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
+        "src/components/calculators/clinical-math-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/password-recovery-form.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -2922,6 +2928,7 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/starter/starter-date-sheet.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
+        "src/components/calculators/clinical-math-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/password-recovery-form.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -3440,6 +3447,7 @@
         "src/app/(search-app)/teaching/assessments/help/page.tsx",
         "src/app/(search-app)/teaching/assessments/page.tsx",
         "src/app/(search-app)/teaching/assessments/record/page.tsx",
+        "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
         "src/app/(search-app)/teaching/c/[token]/page.tsx",
@@ -5101,6 +5109,16 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
           "exists": true,
           "imports": [],
@@ -6363,6 +6381,71 @@
           "sanctionedPatternsPresent": ["SourcePreviewPopover"]
         }
       ]
+    },
+    {
+      "id": "admin-source-pilot",
+      "disposition": "owned",
+      "documentedDisposition": "Restricted administrator MFA and exact approved-source admission interface; worker activation and publication require separate operator decisions.",
+      "routes": ["src/app/admin/pilot/page.tsx"],
+      "routeRoots": true,
+      "proofApplicability": "required",
+      "nonVisualRoute": null,
+      "declaredShellState": "v2",
+      "observedShellState": "v2",
+      "v2ShellMounted": true,
+      "v2MountMode": "inherited-global-root",
+      "inheritedFrom": "src/app/layout.tsx",
+      "directV2MountFiles": [],
+      "proof": {
+        "browser": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "compact320": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "dark": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "forcedColours": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        },
+        "print": {
+          "status": "passed",
+          "evidence": ["docs/design-system/evidence/admin-source-pilot.json"]
+        }
+      },
+      "baseline": {
+        "status": "not-committed",
+        "files": []
+      },
+      "permittedComponentFamilies": ["controls", "feedback", "layout"],
+      "sanctionedSpecialPatterns": [],
+      "roots": [
+        {
+          "file": "src/app/admin/pilot/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
+          "file": "src/app/admin/pilot/pilot-client.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        }
+      ]
     }
   ],
   "routeCoverage": {
@@ -6557,6 +6640,7 @@
       "src/app/(search-app)/teaching/assessments/help/page.tsx",
       "src/app/(search-app)/teaching/assessments/page.tsx",
       "src/app/(search-app)/teaching/assessments/record/page.tsx",
+      "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
       "src/app/(search-app)/teaching/c/[token]/page.tsx",
@@ -6588,6 +6672,7 @@
       "src/app/(search-app)/therapy-compass/review/page.tsx",
       "src/app/(search-app)/therapy-compass/search/page.tsx",
       "src/app/(search-app)/tools/page.tsx",
+      "src/app/admin/pilot/page.tsx",
       "src/app/auth/reset-password/page.tsx",
       "src/app/privacy/page.tsx",
       "src/app/reference/colour-coding/page.tsx"
@@ -6783,6 +6868,7 @@
       "src/app/(search-app)/teaching/assessments/help/page.tsx",
       "src/app/(search-app)/teaching/assessments/page.tsx",
       "src/app/(search-app)/teaching/assessments/record/page.tsx",
+      "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
       "src/app/(search-app)/teaching/c/[token]/page.tsx",
@@ -6814,6 +6900,7 @@
       "src/app/(search-app)/therapy-compass/review/page.tsx",
       "src/app/(search-app)/therapy-compass/search/page.tsx",
       "src/app/(search-app)/tools/page.tsx",
+      "src/app/admin/pilot/page.tsx",
       "src/app/auth/reset-password/page.tsx",
       "src/app/privacy/page.tsx",
       "src/app/reference/colour-coding/page.tsx"
@@ -6824,17 +6911,17 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 231,
+    "inheritedCkbV2RootCount": 234,
     "dynamicCkbV2RootCount": 0,
-    "v2MountedSurfaceCount": 14,
-    "declaredV2SurfaceCount": 14
+    "v2MountedSurfaceCount": 15,
+    "declaredV2SurfaceCount": 15
   },
   "summary": {
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 232,
-    "productionRouteCount": 224,
-    "nextUiEntryCount": 333
+    "rootCount": 235,
+    "productionRouteCount": 226,
+    "nextUiEntryCount": 346
   }
 }

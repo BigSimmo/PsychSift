@@ -70,10 +70,23 @@ runtime readiness. Retained legacy scripts are operational tools, not general st
 ### Raw-boundary failure and local policy repair
 
 A failed raw-boundary check does not prohibit an explicitly requested local policy review or repair.
-For a selected legacy profile, unexpected inherited provider names block its application, test,
-setup, package-manager and provider execution. Permit bounded local instruction edits and
-shell/Python document checks that do not load application dependencies, startup profiles or secrets.
-Do not unset a name to manufacture a pass or treat a sanitised child as proof the parent was clean.
+For a selected legacy profile, exit `2` / `FAIL-KNOWN` applies only to inherited `GH_TOKEN` and
+`OPENAI_BASE_URL`, alone or together. It permits the documented provider-free profile-and-shim
+path; it is still a failed raw boundary. Exit `1` / `FAIL` + `STOP` for any other provider name
+blocks application execution, live provider access and full runtime acceptance.
+
+After either failure, explicitly authorised local instruction repair and provider-free offline
+checks may proceed through the normal offline wrappers in a scrubbed child using the generated
+`~/.clinical-kb-codex-cloud.sh` profile or `~/.local/bin/{node,npm,npx}` shims. Use only the checks
+needed for that authorised repair. Do not run checks that call providers indirectly. Bounded
+shell/Python document checks that do not load dependencies or secrets remain available too.
+Setup, maintenance and package installation remain blocked after either failure; the command-shim
+installer permits the known exit `2` only for its documented restricted profile path.
+
+Never invoke OpenAI or GitHub clients from a raw parent carrying those names or bypass the scrub
+with another binary. Scrubbing a child does not remove inherited values from the parent, prove the
+parent clean, authorise provider access or permit an authentication bypass. Preserve the failed
+names-only result; do not unset a name to manufacture a passing raw-parent check.
 For other host-managed setups, follow current host boundaries and affected-operation checks;
 do not turn a legacy probe result into a universal task stop or a claimed passing result.
 

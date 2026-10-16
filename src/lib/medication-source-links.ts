@@ -5,6 +5,7 @@ import {
   sourceAcquisitionRecords,
   type SourceAcquisitionRecord,
 } from "@/lib/sources/acquisition-ledger";
+import { isNamedPerson } from "@/lib/admin/rule-sign-off";
 import { isCurrentActiveSourceReference } from "@/lib/sources/catalogue-core";
 import type { ClinicalSourceReferenceInput } from "@/lib/sources/catalogue-types";
 import { safeCanonicalSourceUrl } from "@/lib/sources/source-url-policy";
@@ -32,7 +33,7 @@ export const medicationSourceLinkIds: MedicationSourceLinkMap = medicationSource
 export function isConfirmedAcquisitionRecord(record: SourceAcquisitionRecord): boolean {
   if (record.disposition !== "adopted") return false;
   if (record.validationStatus !== "locally_reviewed" && record.validationStatus !== "approved") return false;
-  if (!record.attestedBy?.trim() || !record.attestedAt?.trim()) return false;
+  if (!isNamedPerson(record.attestedBy) || !record.attestedAt?.trim()) return false;
   const attested = record.attestedAgainstSha256?.trim();
   return Boolean(attested) && attested === acquisitionAttestedContentSha256(record);
 }

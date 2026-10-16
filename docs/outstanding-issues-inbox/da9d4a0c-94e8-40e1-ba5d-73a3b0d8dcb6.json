@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "da9d4a0c-94e8-40e1-ba5d-73a3b0d8dcb6",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Teaching Assessments: wire durable authenticated assessment storage and supervisor bookings (follow-up to #4KQGXZ)",
+    "detail": "The schema, RLS policies and migration for registrar assessments exist, but the dual-sign-off route still uses in-process memory and returns 503 in production, and no supervisor-booking endpoints or availability storage exist. Wire durable authenticated storage into the route and add the booking endpoints before closing.",
+    "source": "PR #3570 review; src/app/api/teaching/assessments/dual-sign-off/route.ts; supabase/migrations/20261013160000_teaching_assessments_and_milestones.sql",
+    "issueUlid": "01M51JV9CNAD9JC6FPMWA8RZZ0"
+  }
+}

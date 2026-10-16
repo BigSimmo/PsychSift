@@ -202,6 +202,13 @@ export const WORK_ACCOUNT_SYNC_MARKER_KEY = "psychsift:work:account-sync-v1";
  * `psychsift:` prefix, so the sweep would miss it: it is named here.
  */
 export const OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY = "psychsift.open-shifts.filters.v1";
+/**
+ * sessionStorage — Open shifts Post: the retry key for each date whose post got no answer, by the
+ * shift that was sent, so a retry after a reload sends the same key and the server never saves the
+ * shift twice. Random keys and the shift's team, times and code, no name. Cleared on account
+ * transitions so the next doctor in the tab starts with no keys.
+ */
+export const OPEN_SHIFTS_POST_KEYS_STORAGE_KEY = "psychsift:open-shifts:post-keys-v1";
 
 /**
  * The app preferences (`use-app-preferences.ts`). Display settings in it are the
@@ -305,6 +312,7 @@ export function clearAccountScopedBrowserStorage(): void {
   removeQuietly(() => window.localStorage, WORK_TAB_PICKS_STORAGE_KEY);
   removeQuietly(() => window.localStorage, WORK_ACCOUNT_SYNC_MARKER_KEY);
   removeQuietly(() => window.localStorage, OPEN_SHIFTS_SAVED_FILTERS_STORAGE_KEY);
+  removeQuietly(() => window.sessionStorage, OPEN_SHIFTS_POST_KEYS_STORAGE_KEY);
   stripAccountScopedPreferences();
   // The catch-all: every other `psychsift:` key, the clinical drafts, IndexedDB,
   // page caches and PsychSift's notifications (see account-device-sweep.ts).

@@ -1131,7 +1131,7 @@ function validateCheckoutAndRawEnvironmentContracts(sources, errors) {
   requireMatch(
     errors,
     rawEnvironmentProbe,
-    /known_launcher_defect_variables=\(OPENAI_BASE_URL\)/,
+    /known_launcher_defect_variables=\(OPENAI_BASE_URL(?: GH_TOKEN)?\)/,
     "Raw Cloud environment probe must name-scope the OPENAI_BASE_URL launcher-defect allowance.",
   );
   requireMatch(

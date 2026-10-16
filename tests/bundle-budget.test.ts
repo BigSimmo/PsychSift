@@ -1077,3 +1077,59 @@ describe("measureServerHtmlPayloads", () => {
     expect(measurement.status).toBe("ok");
   });
 });
+
+describe("committed bundle-budget.json provenance and ceiling invariants (#VHR3TJ)", () => {
+  it("keeps $comment aligned with baselineSource and enforces route/aggregate ceiling invariants", () => {
+    const raw = readFileSync(path.join(process.cwd(), "bundle-budget.json"), "utf8");
+    const budget = JSON.parse(raw) as {
+      $comment: string;
+      enforce: boolean;
+      production: { gzipBytes: number; tolerancePct: number };
+      mockups: { gzipBytes: number; tolerancePct: number };
+      routes: Record<string, { gzipBytes: number; tolerancePct: number }>;
+      totalGzipBytes: number;
+      tolerancePct: number;
+      updatedAt: string;
+      baselineSource: string;
+    };
+
+    expect(budget.enforce).toBe(true);
+    expect(budget.baselineSource).toMatch(/^[0-9a-f]{40}$/);
+    expect(Number.isNaN(Date.parse(budget.updatedAt))).toBe(false);
+
+    // Prevent silent baseline refreshes where baselineSource advances while $comment still claims an older SHA.
+    const shortBaselineSha = budget.baselineSource.slice(0, 9);
+    expect(budget.$comment).toContain(shortBaselineSha);
+    expect(budget.$comment).toContain("PR #3538");
+
+    // Aggregate totalGzipBytes must equal production + mockups baselines, and mockups must stay within tightened ceiling.
+    expect(budget.production.gzipBytes).toBe(6062493);
+    expect(budget.mockups.gzipBytes).toBeLessThanOrEqual(670993);
+    expect(budget.totalGzipBytes).toBe(budget.production.gzipBytes + budget.mockups.gzipBytes);
+
+    const expectedRoutes = [
+      "/",
+      "/documents/search",
+      "/my-day",
+      "/my-day/week",
+      "/roster",
+      "/roster/shifts",
+      "/open-shifts",
+      "/on-call",
+      "/on-call/handover",
+      "/teaching",
+      "/teaching/assessments",
+      "/cme",
+      "/admin",
+    ];
+    expect(Object.keys(budget.routes).sort()).toEqual([...expectedRoutes].sort());
+    for (const route of expectedRoutes) {
+      const entry = budget.routes[route];
+      expect(entry).toBeDefined();
+      expect(Number.isInteger(entry.gzipBytes)).toBe(true);
+      expect(entry.gzipBytes).toBeGreaterThan(0);
+      expect(entry.gzipBytes).toBeLessThan(budget.production.gzipBytes);
+      expect(entry.tolerancePct).toBe(10);
+    }
+  });
+});

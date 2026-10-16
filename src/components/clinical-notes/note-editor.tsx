@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { buttonFaceClass } from "@/components/ui/button-face";
 import { cn, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primitives";
+import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
+import { useSharedDevice } from "@/lib/alerts/shared-device";
+import { PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
+import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
 
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
 
@@ -33,19 +37,72 @@ export function ClinicalNoteEditor({
   onSave,
   debounceMs = 1000,
   readOnly = false,
-  placeholder = "Enter clinical note...",
+  placeholder = "Write de-identified clinical note (no patient name, DOB, or MRN)...",
   className = "",
   label = "Clinical Note",
 }: NoteEditorProps) {
+  const instanceId = useId();
   const isControlled = controlledValue !== undefined;
-  const [internalValue, setInternalValue] = useState(initialValue);
-  const currentValue = isControlled ? controlledValue : internalValue;
+  const [internalValue, setInternalValue] = useState(controlledValue ?? initialValue);
+  const [privacyProblem, setPrivacyProblem] = useState<PatientDetailProblem | null>(() =>
+    checkPatientDetail(controlledValue ?? initialValue),
+  );
+  const currentValue = internalValue;
+  const sharedDevice = useSharedDevice();
 
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [lastSavedValue, setLastSavedValue] = useState(currentValue);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
+    checkPatientDetail(controlledValue ?? initialValue) ? "error" : "idle",
+  );
+  const [lastSavedValue, setLastSavedValue] = useState(controlledValue ?? initialValue);
+
+  // Keep controlled updates as the source of truth when the parent changes them.
+  // Adjusted during render (not in an effect) so the new value shows in the same pass.
+  // A parent echoing what was just typed is not an external change, so it leaves the
+  // pending save alone. A genuinely new value is treated as the stored copy.
+  const [syncedControlledValue, setSyncedControlledValue] = useState(controlledValue);
+  const [externalValueVersion, setExternalValueVersion] = useState(0);
+  if (isControlled && controlledValue !== syncedControlledValue) {
+    setSyncedControlledValue(controlledValue);
+    if (controlledValue !== internalValue) {
+      const problem = checkPatientDetail(controlledValue);
+      setInternalValue(controlledValue);
+      setPrivacyProblem(problem);
+      setLastSavedValue(controlledValue);
+      setSaveStatus(problem ? "error" : "idle");
+      setExternalValueVersion((version) => version + 1);
+    }
+  }
+  const hasSavedRef = useRef(false);
+  // Refs, not state, so a timer or a save finishing late compares against what is really stored.
+  const lastSavedRef = useRef(controlledValue ?? initialValue);
+  const inFlightSaveRef = useRef<string | null>(null);
+  const pendingSaveRef = useRef<string | null>(null);
+  const performSaveRef = useRef<(textToSave: string) => Promise<void>>(async () => {});
+  // Bumped when the parent supplies a new value, so a save started before it cannot touch the new note.
+  const saveGenerationRef = useRef(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestValueRef = useRef(currentValue);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    latestValueRef.current = currentValue;
+  }, [currentValue]);
+
+  // After an external value arrives, drop any save queued for the old text.
+  useEffect(() => {
+    if (externalValueVersion === 0) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    saveGenerationRef.current += 1;
+    lastSavedRef.current = latestValueRef.current;
+  }, [externalValueVersion]);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Store selection state to restore across re-renders/saves
   const selectionRef = useRef<{
@@ -94,43 +151,110 @@ export function ClinicalNoteEditor({
 
   const performSave = useCallback(
     async (textToSave: string) => {
-      if (readOnly || textToSave === lastSavedValue) return;
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (readOnly) return;
+      const problem = checkPatientDetail(textToSave);
+      if (problem !== null) {
+        setPrivacyProblem(problem);
+        setSaveStatus("error");
+        return;
+      }
+      setPrivacyProblem(null);
+      if (!onSave) {
+        setSaveStatus("idle");
+        return;
+      }
+      // One save at a time: a change made while a save is in flight is saved straight after it.
+      if (inFlightSaveRef.current !== null) {
+        pendingSaveRef.current = textToSave;
+        return;
+      }
+      if (textToSave === lastSavedRef.current && saveStatus !== "error") {
+        if (saveStatus === "unsaved") {
+          setSaveStatus(hasSavedRef.current ? "saved" : "idle");
+        }
+        return;
+      }
 
       // Capture caret position before triggering save
       recordSelection();
       setSaveStatus("saving");
+      inFlightSaveRef.current = textToSave;
+      const generation = saveGenerationRef.current;
 
       try {
-        if (onSave) {
-          await onSave(textToSave);
-        }
+        await onSave(textToSave);
+        if (generation !== saveGenerationRef.current) return;
+        hasSavedRef.current = true;
+        lastSavedRef.current = textToSave;
         setLastSavedValue(textToSave);
-        setSaveStatus("saved");
+        if (latestValueRef.current === textToSave) {
+          setSaveStatus("saved");
+        }
       } catch {
-        setSaveStatus("error");
+        if (generation === saveGenerationRef.current) setSaveStatus("error");
+      } finally {
+        inFlightSaveRef.current = null;
+        const pending = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        if (pending !== null && pending === latestValueRef.current && pending !== lastSavedRef.current) {
+          void performSaveRef.current(pending);
+        }
       }
     },
-    [readOnly, lastSavedValue, onSave, recordSelection],
+    [readOnly, saveStatus, onSave, recordSelection],
   );
+  useEffect(() => {
+    performSaveRef.current = performSave;
+  }, [performSave]);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     recordSelection();
+    setInternalValue(newValue);
 
-    if (!isControlled) {
-      setInternalValue(newValue);
+    const problem = checkPatientDetail(newValue);
+    setPrivacyProblem(problem);
+    if (problem !== null) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      setSaveStatus("error");
+      return;
     }
+
     onChange?.(newValue);
-    setSaveStatus("unsaved");
 
     // Clear existing timer
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    if (!onSave) {
+      setSaveStatus("idle");
+      return;
+    }
+
+    if (newValue === lastSavedRef.current && inFlightSaveRef.current === null) {
+      setSaveStatus(hasSavedRef.current ? "saved" : "idle");
+      return;
+    }
+
+    setSaveStatus("unsaved");
+
+    // Suppress background auto-save on shared clinical devices
+    if (sharedDevice) {
+      return;
     }
 
     // Schedule debounced auto-save
     saveTimerRef.current = setTimeout(() => {
-      performSave(newValue);
+      void performSave(newValue);
     }, debounceMs);
   };
 
@@ -142,12 +266,13 @@ export function ClinicalNoteEditor({
   const handleBlur = () => {
     isFocusedRef.current = false;
     recordSelection();
-    // Save on blur if unsaved
-    if (saveStatus === "unsaved") {
+    // Save on blur if unsaved and not on a shared device
+    if (onSave && saveStatus === "unsaved" && !sharedDevice && privacyProblem === null) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
       }
-      performSave(currentValue);
+      void performSave(currentValue);
     }
   };
 
@@ -164,57 +289,121 @@ export function ClinicalNoteEditor({
   };
 
   useEffect(() => {
+    const clearEditorState = () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      selectionRef.current = { start: 0, end: 0, direction: "none" };
+      hasSavedRef.current = false;
+      setInternalValue("");
+      lastSavedRef.current = "";
+      pendingSaveRef.current = null;
+      setLastSavedValue("");
+      setPrivacyProblem(null);
+      setSaveStatus("idle");
+      onChangeRef.current?.("");
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(ACCOUNT_TRANSITION_EVENT, clearEditorState);
+      window.addEventListener("account-scoped-browser-storage-clear", clearEditorState);
+      window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
+    }
+
     return () => {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener(ACCOUNT_TRANSITION_EVENT, clearEditorState);
+        window.removeEventListener("account-scoped-browser-storage-clear", clearEditorState);
+        window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
       }
     };
   }, []);
 
+  const showSaveControls = Boolean(onSave) || privacyProblem !== null || saveStatus === "error";
+  const describedBy =
+    [showSaveControls ? `${instanceId}-status` : null, privacyProblem ? `${instanceId}-privacy-warning` : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
     <div className={cn("clinical-note-editor flex flex-col gap-2", className)} data-testid="clinical-note-editor">
       <div className="flex items-center justify-between text-xs">
-        <label htmlFor="clinical-note-textarea" className="font-semibold text-[color:var(--text)]">
+        <label htmlFor={`${instanceId}-textarea`} className="font-semibold text-[color:var(--text)]">
           {label}
         </label>
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "rounded border px-2 py-0.5 font-mono text-xs",
-              saveStatus === "saving"
-                ? toneWarning
+        {showSaveControls ? (
+          <div className="flex items-center gap-2">
+            <span
+              id={`${instanceId}-status`}
+              className={cn(
+                "rounded border px-2 py-0.5 font-mono text-xs",
+                saveStatus === "saving"
+                  ? toneWarning
+                  : saveStatus === "saved"
+                    ? toneSuccess
+                    : saveStatus === "error"
+                      ? toneDanger
+                      : "border-transparent text-[color:var(--text-muted)]",
+              )}
+              data-testid="note-editor-status"
+            >
+              {saveStatus === "saving"
+                ? "Saving..."
                 : saveStatus === "saved"
-                  ? toneSuccess
+                  ? "Saved"
                   : saveStatus === "error"
-                    ? toneDanger
-                    : "border-transparent text-[color:var(--text-muted)]",
-            )}
-            data-testid="note-editor-status"
-          >
-            {saveStatus === "saving"
-              ? "Saving..."
-              : saveStatus === "saved"
-                ? "Saved"
-                : saveStatus === "error"
-                  ? "Save error"
-                  : saveStatus === "unsaved"
-                    ? "Unsaved changes"
-                    : "Idle"}
-          </span>
-          <button
-            type="button"
-            onClick={() => performSave(currentValue)}
-            disabled={readOnly || saveStatus === "saving" || saveStatus === "saved"}
-            className={buttonFaceClass({ variant: "secondary", size: "sm" })}
-            data-testid="note-editor-save-btn"
-          >
-            Save now
-          </button>
-        </div>
+                    ? "Save error"
+                    : saveStatus === "unsaved"
+                      ? "Unsaved changes"
+                      : "Idle"}
+            </span>
+            {onSave ? (
+              <button
+                type="button"
+                onClick={() => void performSave(currentValue)}
+                disabled={
+                  readOnly ||
+                  privacyProblem !== null ||
+                  saveStatus === "saving" ||
+                  (currentValue === lastSavedValue && saveStatus !== "error")
+                }
+                className={buttonFaceClass({ variant: "secondary", size: "sm" })}
+                data-testid="note-editor-save-btn"
+              >
+                Save now
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
+      {sharedDevice ? (
+        <p className="text-xs text-[color:var(--text-muted)]" data-testid="note-editor-shared-device-notice">
+          Shared device mode: background auto-save is paused. Use Save now to save intentionally.
+        </p>
+      ) : null}
+
+      {privacyProblem ? (
+        <div
+          id={`${instanceId}-privacy-warning`}
+          role="alert"
+          className={cn("rounded-lg border p-3 text-xs", toneDanger)}
+          data-testid="note-editor-privacy-warning"
+        >
+          <p className="font-semibold">{privacyProblem.title}</p>
+          <p>{privacyProblem.body}</p>
+          {privacyProblem.suggestion ? <p className="mt-1">{privacyProblem.suggestion}</p> : null}
+        </div>
+      ) : null}
+
       <textarea
-        id="clinical-note-textarea"
+        id={`${instanceId}-textarea`}
+        aria-describedby={describedBy}
         ref={textareaRef}
         value={currentValue}
         onChange={handleChange}
@@ -231,7 +420,11 @@ export function ClinicalNoteEditor({
           focusRing,
         )}
         data-testid="note-editor-textarea"
+        autoComplete="off"
+        autoCorrect="off"
         spellCheck={false}
+        data-gramm="false"
+        data-enable-grammarly="false"
       />
     </div>
   );
