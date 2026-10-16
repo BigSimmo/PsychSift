@@ -338,8 +338,14 @@ export function registerEpaMagicLinkRecord(token: string, input: CreateEpaMagicL
   const now = input.now ?? new Date();
   const tokenHash = hashEpaMagicToken(trimmed);
   const existing = magicLinkStore.get(tokenHash);
-  if (existing && existing.status === "completed") {
-    return existing;
+  if (existing) {
+    if (existing.status === "completed") {
+      throw new EpaMagicLinkError("This EPA assessment link has already been submitted.", "magic_link_already_used", 409);
+    }
+    if (now.getTime() > Date.parse(existing.expiresAt)) {
+      throw new EpaMagicLinkError("This EPA assessment link has expired.", "magic_link_expired", 410);
+    }
+    throw new EpaMagicLinkError("This EPA assessment link has already been issued.", "magic_link_already_issued", 409);
   }
   const record = buildMagicLinkRecord(tokenHash, { ...input, now });
   evictMagicLinkStoreIfNeeded(now);
