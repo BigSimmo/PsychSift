@@ -1,6 +1,15 @@
 "use client";
 
-import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ChangeEvent,
+} from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { buttonFaceClass } from "@/components/ui/button-face";
@@ -24,6 +33,8 @@ export interface NoteEditorProps {
   label?: string;
 }
 
+const subscribeNoop = () => () => {};
+
 /**
  * Clinical Note Editor with debounced auto-save and caret preservation (#TDKF8T).
  *
@@ -45,11 +56,11 @@ export function ClinicalNoteEditor({
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(initialValue);
   const currentValue = isControlled ? controlledValue : internalValue;
-  const [sharedDevice, setSharedDevice] = useState(false);
-
-  useEffect(() => {
-    setSharedDevice(isSharedDevice());
-  }, []);
+  const sharedDevice = useSyncExternalStore(
+    subscribeNoop,
+    () => isSharedDevice(),
+    () => false,
+  );
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedValue, setLastSavedValue] = useState(currentValue);

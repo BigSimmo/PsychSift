@@ -29,7 +29,10 @@ const LEVEL_OPTIONS = SUPERVISION_LEVELS.map((item) => ({
 export default function EpaMagicLinkRespondPage() {
   const params = useParams<{ token?: string }>();
   const token = typeof params?.token === "string" ? params.token : "";
+  return <EpaMagicLinkRespondBody key={token} token={token} />;
+}
 
+function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
   const [record, setRecord] = useState<EpaMagicLinkRecord | null>(() => {
     if (!token) return null;
     const local = getEpaMagicLinkByToken(token);
@@ -60,35 +63,9 @@ export default function EpaMagicLinkRespondPage() {
   });
 
   useEffect(() => {
-    setFormError(null);
-    if (!token) {
-      setRecord(null);
-      setCompleted(null);
-      setStatusError("That assessment link was not found.");
-      setLoading(false);
-      return;
-    }
+    if (!token) return;
     const local = getEpaMagicLinkByToken(token);
-    if (local.ok) {
-      setRecord(local.request);
-      setAssessorName(local.request.supervisorName);
-      setCompleted(null);
-      setStatusError(null);
-      setLoading(false);
-      return;
-    }
-    if (local.status !== "not_found") {
-      setRecord(local.request ?? null);
-      setCompleted(local.status === "completed" && local.request ? local.request : null);
-      setStatusError(local.message);
-      setLoading(false);
-      return;
-    }
-
-    setRecord(null);
-    setCompleted(null);
-    setStatusError(null);
-    setLoading(true);
+    if (local.ok || local.status !== "not_found") return;
 
     let cancelled = false;
     void fetch(`/api/teaching/assessments/respond/${encodeURIComponent(token)}`, {
