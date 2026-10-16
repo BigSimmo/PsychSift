@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "52b311f2-1e3d-4a6e-82a0-1e503dfcc99c",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#3ZHFH9",
+    "outcome": "Extended scripts/check-diff-integrity.mjs to cover Python test files (def test_* and @pytest.mark.parametrize), weight inline test.each/it.each/test.for array literals by element count, and fail on mass-skipping (.skip/.fixme) reductions in active test coverage (tests/diff-integrity.test.ts).",
+    "baseRowFingerprint": "5c0ca9ef3954c308af1b8317aae33188a8566910bd206b22d5baeb9330bd3344",
+    "targetUlid": "01M4T67N833ZHFH9X3YYR7EKNZ"
+  }
+}

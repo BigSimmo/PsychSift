@@ -59,7 +59,7 @@
  * Exit 2 = CLI misuse.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -79,6 +79,7 @@ export const TRUNCATION_RULE_EXEMPT_PATHS = Object.freeze([
 ]);
 
 const TEST_FILE_PATTERN = /\.(spec|test)\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
+const PYTHON_TEST_FILE_PATTERN = /(?:^|\/)(?:test_[^/]+\.py|[^/]+_test\.py)$/;
 
 /**
  * `test`/`it` members that are not themselves a test case. `describe` opens a suite;
@@ -100,7 +101,24 @@ const NON_CASE_MEMBERS = new Set([
   "afterAll",
 ]);
 
+const HOOK_OR_STEP_MEMBERS = new Set([
+  "step",
+  "use",
+  "extend",
+  "expect",
+  "configure",
+  "setTimeout",
+  "slow",
+  "info",
+  "beforeEach",
+  "afterEach",
+  "beforeAll",
+  "afterAll",
+]);
+
 const CASE_ROOTS = new Set(["test", "it"]);
+const SKIP_ROOTS = new Set(["test", "it", "describe"]);
+const SKIP_MEMBERS = new Set(["skip", "fixme"]);
 
 /**
  * Members that return a function which is then called with the title: `test.each(table)(…)`,
@@ -149,7 +167,222 @@ const firstLine = (error) => (error instanceof Error ? error.message.split(/\r?\
  * @returns {boolean}
  */
 export function isTestFile(path) {
-  return TEST_FILE_PATTERN.test(path);
+  return TEST_FILE_PATTERN.test(path) || PYTHON_TEST_FILE_PATTERN.test(path);
+}
+
+/**
+ * Strip `#` comments and string literal contents (including triple-quoted docstrings)
+ * from Python source while preserving line breaks and structural punctuation.
+ *
+ * @param {string} source
+ * @returns {string}
+ */
+function scrubPythonSource(source) {
+  let out = "";
+  let i = 0;
+  while (i < source.length) {
+    if (source[i] === "#") {
+      while (i < source.length && source[i] !== "\n") i += 1;
+      continue;
+    }
+    if (source.startsWith('"""', i) || source.startsWith("'''", i)) {
+      const quote = source.slice(i, i + 3);
+      out += '""';
+      i += 3;
+      while (i < source.length && !source.startsWith(quote, i)) {
+        if (source[i] === "\\") {
+          if (source[i + 1] === "\n") out += "\n";
+          i += 2;
+        } else {
+          if (source[i] === "\n") out += "\n";
+          i += 1;
+        }
+      }
+      if (source.startsWith(quote, i)) i += 3;
+      continue;
+    }
+    if (source[i] === '"' || source[i] === "'") {
+      const quote = source[i];
+      out += '""';
+      i += 1;
+      while (i < source.length && source[i] !== quote && source[i] !== "\n") {
+        if (source[i] === "\\") i += 2;
+        else i += 1;
+      }
+      if (source[i] === quote) i += 1;
+      continue;
+    }
+    out += source[i];
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * Count top-level items in the second argument of `@pytest.mark.parametrize("...", [row1, row2, ...])`.
+ *
+ * @param {string} decorator
+ * @returns {number}
+ */
+function countPythonParametrizeItems(decorator) {
+  const match = /@(?:pytest\.mark\.)?parametrize\s*\(/.exec(decorator);
+  if (!match) return 1;
+  let index = match.index + match[0].length;
+  let depth = 0;
+  let commaIndex = -1;
+  for (; index < decorator.length; index += 1) {
+    const ch = decorator[index];
+    if (ch === "(" || ch === "[" || ch === "{") depth += 1;
+    else if (ch === ")" || ch === "]" || ch === "}") {
+      if (depth === 0) break;
+      depth -= 1;
+    } else if (ch === "," && depth === 0) {
+      commaIndex = index;
+      break;
+    }
+  }
+  if (commaIndex === -1) return 1;
+  let listStart = commaIndex + 1;
+  while (listStart < decorator.length && /\s/.test(decorator[listStart])) listStart += 1;
+  const openChar = decorator[listStart];
+  if (openChar !== "[" && openChar !== "(") return 1;
+  const closeChar = openChar === "[" ? "]" : ")";
+  let listDepth = 0;
+  let listEnd = -1;
+  for (let i = listStart; i < decorator.length; i += 1) {
+    const ch = decorator[i];
+    if (ch === "(" || ch === "[" || ch === "{") listDepth += 1;
+    else if (ch === ")" || ch === "]" || ch === "}") {
+      listDepth -= 1;
+      if (listDepth === 0 && ch === closeChar) {
+        listEnd = i;
+        break;
+      }
+    }
+  }
+  if (listEnd === -1) return 1;
+  const interior = decorator.slice(listStart + 1, listEnd);
+  let itemDepth = 0;
+  let current = "";
+  const items = [];
+  for (let i = 0; i < interior.length; i += 1) {
+    const ch = interior[i];
+    if (ch === "(" || ch === "[" || ch === "{") {
+      itemDepth += 1;
+      current += ch;
+    } else if (ch === ")" || ch === "]" || ch === "}") {
+      itemDepth = Math.max(0, itemDepth - 1);
+      current += ch;
+    } else if (ch === "," && itemDepth === 0) {
+      if (current.trim().length > 0) items.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim().length > 0) items.push(current.trim());
+  return Math.max(1, items.length);
+}
+
+/**
+ * Count brackets/parens delta on a scrubbed Python line.
+ *
+ * @param {string} text
+ * @returns {number}
+ */
+function bracketDelta(text) {
+  let delta = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "(" || ch === "[" || ch === "{") delta += 1;
+    else if (ch === ")" || ch === "]" || ch === "}") delta -= 1;
+  }
+  return delta;
+}
+
+/**
+ * Scan scrubbed Python source for `def test_...` declarations, `@pytest.mark.parametrize`
+ * row counts, and `@pytest.mark.skip` decorators.
+ *
+ * @param {string} source
+ * @returns {{ cases: number, skipped: number }}
+ */
+function scanPythonTests(source) {
+  const scrubbed = scrubPythonSource(source);
+  const lines = scrubbed.split(/\r?\n/);
+  let cases = 0;
+  let skipped = 0;
+  let pendingMultiplier = 1;
+  let pendingSkip = false;
+  let skippedClassIndent = null;
+  let currentDecorator = "";
+  let decoratorDepth = 0;
+
+  const finalizeDecorator = (decorator) => {
+    if (/^\s*@(?:pytest\.mark\.)?parametrize\s*\(/.test(decorator)) {
+      pendingMultiplier *= countPythonParametrizeItems(decorator);
+    }
+    if (
+      /^\s*@(?:pytest\.mark\.(?:skip|skipif)|unittest\.(?:skip|skipIf|skipUnless)|skip|skipIf|skipUnless)\b/.test(
+        decorator,
+      ) &&
+      !/\bskip(?:if|If)\s*\(\s*False\b/.test(decorator)
+    ) {
+      pendingSkip = true;
+    }
+  };
+
+  for (const line of lines) {
+    if (decoratorDepth > 0) {
+      currentDecorator += ` ${line}`;
+      decoratorDepth += bracketDelta(line);
+      if (decoratorDepth <= 0) {
+        decoratorDepth = 0;
+        finalizeDecorator(currentDecorator);
+        currentDecorator = "";
+      }
+      continue;
+    }
+    if (/^\s*@/.test(line)) {
+      currentDecorator = line;
+      decoratorDepth = bracketDelta(line);
+      if (decoratorDepth <= 0) {
+        decoratorDepth = 0;
+        finalizeDecorator(currentDecorator);
+        currentDecorator = "";
+      }
+      continue;
+    }
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    if (skippedClassIndent !== null && line.trim() !== "" && indent <= skippedClassIndent) {
+      skippedClassIndent = null;
+    }
+    if (/^\s*(?:async\s+)?def\s+test_[A-Za-z0-9_]*\s*\(/.test(line)) {
+      cases += pendingMultiplier;
+      if (pendingSkip || (skippedClassIndent !== null && indent > skippedClassIndent)) {
+        skipped += pendingMultiplier;
+      }
+      pendingMultiplier = 1;
+      pendingSkip = false;
+      continue;
+    }
+    if (/^\s*(?:async\s+)?def\s+/.test(line) || /^\s*class\s+/.test(line)) {
+      if (pendingSkip) {
+        if (/^\s*class\s+/.test(line)) skippedClassIndent = indent;
+        else skipped += 1;
+      }
+      pendingMultiplier = 1;
+      pendingSkip = false;
+      continue;
+    }
+    if (line.trim() !== "") {
+      if (pendingSkip) skipped += 1;
+      pendingMultiplier = 1;
+      pendingSkip = false;
+    }
+  }
+  if (pendingSkip) skipped += 1;
+  return { cases, skipped };
 }
 
 /**
@@ -187,20 +420,69 @@ function namesACase(args) {
 }
 
 /**
- * Count declared test cases in a TypeScript/JavaScript source string via the AST.
+ * Weight a curried `each`/`for` call by its inline array literal length,
+ * or 1 otherwise (for a table identifier).
  *
- * Counted: `test("…")`, `it("…")`, `test.skip/only/fixme/fails("…")`, and each
- * `test.each(table)` / `it.each(table)` declaration (once — the generated cases are not
- * expanded, which is fine because both sides of the comparison are counted identically).
+ * @param {string[]} members
+ * @param {ts.NodeArray<ts.Expression>} args
+ * @returns {number}
+ */
+function curriedCaseWeight(members, args) {
+  const isParameterized = members.some((member) => member === "each" || member === "for");
+  const firstArg = args[0];
+  if (isParameterized && firstArg && ts.isArrayLiteralExpression(firstArg)) {
+    return firstArg.elements.length;
+  }
+  return 1;
+}
+
+/** @param {ts.CallExpression} node @returns {ts.ArrowFunction | ts.FunctionExpression | null} */
+function skippedSuiteCallback(node) {
+  const chain = calleeChain(node.expression);
+  if (
+    chain &&
+    (chain[0] === "describe" || chain.includes("describe")) &&
+    chain.slice(1).some((member) => member === "skip" || member === "fixme")
+  ) {
+    const callback = node.arguments[1];
+    return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback : null;
+  }
+  if (ts.isCallExpression(node.expression)) {
+    const curriedChain = calleeChain(node.expression.expression);
+    const condArg = node.expression.arguments[0];
+    if (
+      curriedChain &&
+      curriedChain.includes("describe") &&
+      curriedChain.includes("skipIf") &&
+      condArg?.kind !== ts.SyntaxKind.FalseKeyword
+    ) {
+      const callback = node.arguments[1];
+      return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Count declared test cases in a TypeScript/JavaScript or Python source string.
+ *
+ * Counted (TS/JS): `test("…")`, `it("…")`, `test.skip/only/fixme/fails("…")`, and each
+ * `test.each(...)` / `it.each(...)` / `test.for(...)` declaration (weighted by element
+ * count when passed an inline array literal, or 1 for a table identifier).
+ * Counted (Python): `def test_...(` declarations (outside comments/docstrings), weighted
+ * by `@pytest.mark.parametrize` inline list length when present.
  *
  * Not counted: `describe`, hooks, `test.step`, in-body annotations such as `test.skip()`,
- * and anything inside a comment or string, which is the whole reason for using the AST.
+ * and anything inside a comment or string.
  *
  * @param {string} source
  * @param {string} [fileName]
  * @returns {number}
  */
 export function countTestCases(source, fileName = "spec.ts") {
+  if (fileName.endsWith(".py")) {
+    return scanPythonTests(source).cases;
+  }
   const sourceFile = ts.createSourceFile(
     fileName,
     source,
@@ -217,7 +499,9 @@ export function countTestCases(source, fileName = "spec.ts") {
         const members = chain.slice(1);
         const isSuiteOrHook = members.some((member) => NON_CASE_MEMBERS.has(member));
         const isCurried = members.some((member) => CURRIED_MEMBERS.has(member));
-        if (!isSuiteOrHook && (isCurried || namesACase(node.arguments))) cases += 1;
+        if (!isSuiteOrHook && (isCurried || namesACase(node.arguments))) {
+          cases += curriedCaseWeight(members, node.arguments);
+        }
       }
     }
     ts.forEachChild(node, visit);
@@ -227,16 +511,73 @@ export function countTestCases(source, fileName = "spec.ts") {
 }
 
 /**
- * Count `expect(` assertion calls in a TypeScript/JavaScript source string via the AST.
+ * Count skipped or fixme test/suite declarations (`.skip` / `.fixme` / `.skipIf` in TS/JS,
+ * `@pytest.mark.skip` / `@pytest.mark.skipif` / `@unittest.skip*` in Python).
  *
- * Counted: `expect(...)`, `expect.soft(...)`, `expect.poll(...)`.
- * Not counted: `expect` in comments, strings, or property names.
+ * @param {string} source
+ * @param {string} [fileName]
+ * @returns {number}
+ */
+export function countSkippedCases(source, fileName = "spec.ts") {
+  if (fileName.endsWith(".py")) {
+    return scanPythonTests(source).skipped;
+  }
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  let skipped = 0;
+  /** @param {ts.Node} node */
+  const visit = (node) => {
+    if (ts.isCallExpression(node)) {
+      const suiteCallback = skippedSuiteCallback(node);
+      if (suiteCallback) {
+        skipped += Math.max(1, countTestCases(suiteCallback.getText(sourceFile), fileName));
+        return;
+      }
+      const chain = calleeChain(node.expression);
+      if (chain && SKIP_ROOTS.has(chain[0]) && chain.length <= 3) {
+        const members = chain.slice(1);
+        const hasSkipOrFixme = members.some((member) => SKIP_MEMBERS.has(member));
+        const hasConditionalSkip =
+          members.includes("skipIf") &&
+          !members.includes("describe") &&
+          node.arguments[0]?.kind !== ts.SyntaxKind.FalseKeyword;
+        const isHookOrStep = members.some((member) => HOOK_OR_STEP_MEMBERS.has(member));
+        const isCurried = members.some((member) => CURRIED_MEMBERS.has(member));
+        if ((hasSkipOrFixme || hasConditionalSkip) && !isHookOrStep && (isCurried || namesACase(node.arguments))) {
+          skipped += curriedCaseWeight(members, node.arguments);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return skipped;
+}
+
+/**
+ * Count assertion calls in a TypeScript/JavaScript or Python source string.
+ *
+ * Counted (TS/JS): `expect(...)`, `expect.soft(...)`, `expect.poll(...)`.
+ * Counted (Python): `assert ...`, `self.assert*(...)`, `pytest.raises(...)`.
+ * Not counted: assertions in comments, strings, or property names.
  *
  * @param {string} source
  * @param {string} [fileName]
  * @returns {number}
  */
 export function countAssertions(source, fileName = "spec.ts") {
+  if (fileName.endsWith(".py")) {
+    const scrubbed = scrubPythonSource(source);
+    const assertStatements = scrubbed.match(/\bassert(?:\s+|\s*\()/g)?.length ?? 0;
+    const unittestAsserts = scrubbed.match(/\bself\.assert[A-Za-z0-9_]*\s*\(/g)?.length ?? 0;
+    const pytestRaises = scrubbed.match(/\bpytest\.raises\s*\(/g)?.length ?? 0;
+    return assertStatements + unittestAsserts + pytestRaises;
+  }
   const sourceFile = ts.createSourceFile(
     fileName,
     source,
@@ -330,7 +671,7 @@ const approvalHint = (path, before, after) =>
  * it is judged by the aggregate, so that deleting a spec while adding its replacement in
  * the same commit is not treated as lost coverage.
  *
- * @param {{ path: string, before: number, after: number, exists?: boolean, config: DiffIntegrityConfig }} input
+ * @param {{ path: string, before: number, after: number, exists?: boolean, config: DiffIntegrityConfig, assertionsBefore?: number, assertionsAfter?: number, skippedBefore?: number, skippedAfter?: number }} input
  * @returns {{ path: string, before: number, after: number, removed: number, fraction: number, exists: boolean, ok: boolean, approved: boolean, message?: string }}
  */
 export function assessTestFile({
@@ -341,6 +682,8 @@ export function assessTestFile({
   config,
   assertionsBefore = 0,
   assertionsAfter = 0,
+  skippedBefore = 0,
+  skippedAfter = 0,
 }) {
   const removed = before - after;
   const fraction = before === 0 ? 0 : removed / before;
@@ -349,25 +692,52 @@ export function assessTestFile({
     after: assertionsAfter,
     removed: assertionsBefore - assertionsAfter,
   };
-  const base = { path, before, after, removed, fraction, exists, assertions };
-  if (!exists) return { ...base, ok: true, approved: false };
-  if (removed < config.perFileMinRemovedCases) return { ...base, ok: true, approved: false };
-  if (fraction <= config.perFileMaxRemovedFraction) return { ...base, ok: true, approved: false };
-  if (isApproved(config, path, before, after)) return { ...base, ok: true, approved: true };
-  return {
-    ...base,
-    ok: false,
-    approved: false,
-    message:
-      `lost ${removed} of ${before} test case(s) (${(fraction * 100).toFixed(1)}%), over the per-file ${(config.perFileMaxRemovedFraction * 100).toFixed(0)}% ceiling. ` +
-      approvalHint(path, before, after),
+  const skipped = {
+    before: skippedBefore,
+    after: skippedAfter,
+    added: skippedAfter - skippedBefore,
   };
+  const base = { path, before, after, removed, fraction, exists, assertions, skipped };
+  if (!exists) return { ...base, ok: true, approved: false };
+  if (removed >= config.perFileMinRemovedCases && fraction > config.perFileMaxRemovedFraction) {
+    if (isApproved(config, path, before, after)) return { ...base, ok: true, approved: true };
+    return {
+      ...base,
+      ok: false,
+      approved: false,
+      message:
+        `lost ${removed} of ${before} test case(s) (${(fraction * 100).toFixed(1)}%), over the per-file ${(config.perFileMaxRemovedFraction * 100).toFixed(0)}% ceiling. ` +
+        approvalHint(path, before, after),
+    };
+  }
+  const activeBefore = Math.max(0, before - skippedBefore);
+  const activeAfter = Math.max(0, after - skippedAfter);
+  const activeRemoved = activeBefore - activeAfter;
+  const activeFraction = activeBefore === 0 ? 0 : activeRemoved / activeBefore;
+  if (
+    skippedAfter > skippedBefore &&
+    activeRemoved >= config.perFileMinRemovedCases &&
+    activeFraction > config.perFileMaxRemovedFraction
+  ) {
+    if (isApproved(config, path, before, after) || isApproved(config, path, activeBefore, activeAfter)) {
+      return { ...base, ok: true, approved: true };
+    }
+    return {
+      ...base,
+      ok: false,
+      approved: false,
+      message:
+        `newly skipped/fixme cases reduced active test coverage by ${activeRemoved} of ${activeBefore} active test case(s) (${(activeFraction * 100).toFixed(1)}%, skipped ${skippedBefore} -> ${skippedAfter}), over the per-file ${(config.perFileMaxRemovedFraction * 100).toFixed(0)}% ceiling. ` +
+        approvalHint(path, activeBefore, activeAfter),
+    };
+  }
+  return { ...base, ok: true, approved: false };
 }
 
 /**
  * Decide the diff as a whole: did the changed test files, taken together, lose coverage?
  *
- * @param {{ verdicts: { path: string, before: number, after: number }[], config: DiffIntegrityConfig }} input
+ * @param {{ verdicts: { path: string, before: number, after: number, skipped?: { before: number, after: number } }[], config: DiffIntegrityConfig }} input
  * @returns {{ before: number, after: number, removed: number, fraction: number, ok: boolean, approved: boolean, message?: string }}
  */
 export function assessAggregate({ verdicts, config }) {
@@ -376,13 +746,46 @@ export function assessAggregate({ verdicts, config }) {
   const removed = before - after;
   const fraction = before === 0 ? 0 : removed / before;
   const base = { before, after, removed, fraction };
-  if (removed < config.minRemovedCases) return { ...base, ok: true, approved: false };
-  if (fraction <= config.maxRemovedFraction) return { ...base, ok: true, approved: false };
+  const activeBefore = verdicts.reduce(
+    (sum, verdict) => sum + Math.max(0, verdict.before - (verdict.skipped?.before ?? 0)),
+    0,
+  );
+  const activeAfter = verdicts.reduce(
+    (sum, verdict) => sum + Math.max(0, verdict.after - (verdict.skipped?.after ?? 0)),
+    0,
+  );
+  const activeRemoved = activeBefore - activeAfter;
+  const activeFraction = activeBefore === 0 ? 0 : activeRemoved / activeBefore;
+  const totalDrop = removed >= config.minRemovedCases && fraction > config.maxRemovedFraction;
+  const activeDrop = activeRemoved >= config.minRemovedCases && activeFraction > config.maxRemovedFraction;
+  if (!totalDrop && !activeDrop) return { ...base, ok: true, approved: false };
   // An aggregate drop is excused only when every file that shrank is individually approved.
-  const shrunk = verdicts.filter((verdict) => verdict.before > verdict.after);
+  const shrunk = verdicts.filter((verdict) => {
+    const vActiveBefore = Math.max(0, verdict.before - (verdict.skipped?.before ?? 0));
+    const vActiveAfter = Math.max(0, verdict.after - (verdict.skipped?.after ?? 0));
+    return verdict.before > verdict.after || vActiveBefore > vActiveAfter;
+  });
   const allApproved =
-    shrunk.length > 0 && shrunk.every((verdict) => isApproved(config, verdict.path, verdict.before, verdict.after));
+    shrunk.length > 0 &&
+    shrunk.every((verdict) => {
+      const vActiveBefore = Math.max(0, verdict.before - (verdict.skipped?.before ?? 0));
+      const vActiveAfter = Math.max(0, verdict.after - (verdict.skipped?.after ?? 0));
+      return (
+        isApproved(config, verdict.path, verdict.before, verdict.after) ||
+        isApproved(config, verdict.path, vActiveBefore, vActiveAfter)
+      );
+    });
   if (allApproved) return { ...base, ok: true, approved: true };
+  if (!totalDrop && activeDrop) {
+    return {
+      ...base,
+      ok: false,
+      approved: false,
+      message:
+        `changed test files lost ${activeRemoved} of ${activeBefore} active test case(s) via new skip/fixme annotations (${(activeFraction * 100).toFixed(1)}%), over the ${(config.maxRemovedFraction * 100).toFixed(0)}% ceiling. ` +
+        "Record each intended reduction in diff-integrity.json so a reviewer sees it.",
+    };
+  }
   return {
     ...base,
     ok: false,
@@ -556,6 +959,8 @@ export function evaluate({ base, git = NODE_GIT, config, readWorkingFile }) {
     const after = afterSource === null ? 0 : countTestCases(afterSource, afterPath ?? beforePath);
     const assertionsBefore = countAssertions(beforeSource, beforePath);
     const assertionsAfter = afterSource === null ? 0 : countAssertions(afterSource, afterPath ?? beforePath);
+    const skippedBefore = countSkippedCases(beforeSource, beforePath);
+    const skippedAfter = afterSource === null ? 0 : countSkippedCases(afterSource, afterPath ?? beforePath);
     verdicts.push(
       assessTestFile({
         path: afterPath ?? beforePath,
@@ -563,6 +968,8 @@ export function evaluate({ base, git = NODE_GIT, config, readWorkingFile }) {
         after,
         assertionsBefore,
         assertionsAfter,
+        skippedBefore,
+        skippedAfter,
         exists: afterSource !== null,
         config,
       }),
@@ -581,6 +988,7 @@ export function evaluate({ base, git = NODE_GIT, config, readWorkingFile }) {
     if (addedSource === null) continue;
     const addedCases = countTestCases(addedSource, path);
     const addedAssertions = countAssertions(addedSource, path);
+    const addedSkipped = countSkippedCases(addedSource, path);
     verdicts.push({
       path,
       before: 0,
@@ -591,6 +999,11 @@ export function evaluate({ base, git = NODE_GIT, config, readWorkingFile }) {
         before: 0,
         after: addedAssertions,
         removed: -addedAssertions,
+      },
+      skipped: {
+        before: 0,
+        after: addedSkipped,
+        added: addedSkipped,
       },
       exists: true,
       ok: true,
@@ -662,14 +1075,26 @@ export function selfTest(log = console.log) {
   const check = (label, ok) => results.push({ label, ok });
 
   check("counts four cases and ignores describe/step", countTestCases(SELF_TEST_SPEC) === 4);
+  check("counts two skipped/fixme declarations in SELF_TEST_SPEC", countSkippedCases(SELF_TEST_SPEC) === 2);
   check(
     "ignores commented-out tests",
     countTestCases(`// test("ghost", () => {});\n/* test("ghost2", () => {}); */\ntest("real", () => {});`) === 1,
   );
   check("ignores the regex .test() method", countTestCases(`const ok = /a/.test("a");`) === 0);
-  check("counts test.each once", countTestCases(`test.each([1, 2, 3])("case %i", () => {});`) === 1);
+  check(
+    "weights inline test.each array literals by element count and table refs once",
+    countTestCases(`test.each([1, 2, 3])("case %i", () => {});`) === 3 &&
+      countTestCases(`test.each(table)("case %i", () => {});`) === 1,
+  );
   check("ignores in-body test.skip()", countTestCases(`test("a", () => { test.skip(); });`) === 1);
   check("counts vitest it()", countTestCases(`it("a", () => {});\nit.only("b", () => {});`) === 2);
+  check(
+    "counts Python test_ functions and @pytest.mark.parametrize items",
+    countTestCases(
+      `# def test_comment():\n@pytest.mark.parametrize("x", [1, 2, 3])\ndef test_p(x):\n    assert x > 0\ndef test_plain():\n    assert True\n`,
+      "worker/python/test_extract.py",
+    ) === 4,
+  );
   check(
     "counts expect assertions via AST",
     countAssertions('expect(1).toBe(1);\nexpect.soft(2).toBe(2);\n// expect(3).toBe(3);\nconst s = "expect(4)";') === 2,
@@ -685,6 +1110,11 @@ export function selfTest(log = console.log) {
   check(
     "the #Y30AXB per-file drop fails",
     assessTestFile({ path: "tests/ui-smoke.spec.ts", before: 89, after: 9, config }).ok === false,
+  );
+  check(
+    "mass-skipping active tests fails",
+    assessTestFile({ path: "tests/x.spec.ts", before: 20, after: 20, skippedBefore: 0, skippedAfter: 15, config })
+      .ok === false,
   );
   check(
     "a one-test trim on a small file passes",
@@ -875,5 +1305,12 @@ export function main(argv = process.argv.slice(2)) {
   return 0;
 }
 
-const invokedAsScript = process.argv[1] !== undefined && resolve(process.argv[1]) === resolve(SCRIPT_PATH);
+const sameScriptPath = (a, b) => {
+  try {
+    return realpathSync(resolve(a)) === realpathSync(resolve(b));
+  } catch {
+    return resolve(a) === resolve(b);
+  }
+};
+const invokedAsScript = process.argv[1] !== undefined && sameScriptPath(process.argv[1], SCRIPT_PATH);
 if (invokedAsScript) process.exit(main());

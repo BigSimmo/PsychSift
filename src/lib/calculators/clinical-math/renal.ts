@@ -4,6 +4,7 @@ import type {
   CkdEpiResult,
   CockcroftGaultInput,
   CockcroftGaultResult,
+  CreatinineUnit,
   RenalStage,
 } from "./types";
 
@@ -13,6 +14,24 @@ function classifyRenalStage(value: number): RenalStage {
   if (value >= 30) return "moderate_impairment";
   if (value >= 15) return "severe_impairment";
   return "kidney_failure";
+}
+
+function computeRawCrCl(
+  age: number,
+  weightKg: number,
+  sex: BiologicalSex,
+  serumCreatinine: number,
+  creatinineUnit: CreatinineUnit,
+): number {
+  if (creatinineUnit === "umol/L") {
+    // Standard Australasian formula: (140 - age) * weight * factor / SCr (umol/L)
+    // Factor: 1.23 for males, 1.04 for females
+    const factor = sex === "female" ? 1.04 : 1.23;
+    return ((140 - age) * weightKg * factor) / serumCreatinine;
+  }
+  // US formula: (140 - age) * weight / (72 * SCr) * (0.85 if female)
+  const factor = sex === "female" ? 0.85 : 1.0;
+  return (((140 - age) * weightKg) / (72 * serumCreatinine)) * factor;
 }
 
 /**
@@ -89,35 +108,38 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
   let weightBasis: "actual" | "ideal" = "actual";
 
   if (input.heightCm !== undefined) {
-    ibwKg = calculateIdealBodyWeightKg(input.heightCm, input.sex);
-    if (ibwKg < 20) {
+    if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
+      ibwKg = calculateIdealBodyWeightKg(input.heightCm, input.sex);
+      // Only characterize the alternative weights as overweight/obesity guidance at BMI >= 25.
+      const bmi = input.weightKg / (input.heightCm / 100) ** 2;
+      if (ibwKg > 0 && input.weightKg > ibwKg && bmi >= 25) {
+        const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
+        const isObeseExcess = input.weightKg > ibwKg * 1.2;
+        effectiveWeightKg = isObeseExcess ? abwKg : ibwKg;
+        weightBasis = "ideal";
+        const ibwCrCl =
+          Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
+          100;
+        const abwCrCl =
+          Math.round(computeRawCrCl(input.age, abwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
+          100;
+        const excessLabel = isObeseExcess ? "exceeds Ideal Body Weight by >20%" : "exceeds Ideal Body Weight";
+        warnings.push(
+          `Actual weight (${input.weightKg} kg) ${excessLabel} (Devine IBW: ${ibwKg.toFixed(1)} kg; Adjusted Body Weight: ${abwKg.toFixed(1)} kg). Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (CrCl ${ibwCrCl} mL/min) or Adjusted Body Weight (CrCl ${abwCrCl} mL/min) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.`,
+        );
+      }
+    } else {
       warnings.push(
-        "Devine Ideal Body Weight formula is not validated at this height (computed IBW < 20 kg); actual body weight was used. Seek specialist pharmacist input for renal dosing.",
-      );
-    } else if (input.weightKg > ibwKg) {
-      effectiveWeightKg = ibwKg;
-      weightBasis = "ideal";
-      warnings.push(
-        `Actual weight (${input.weightKg} kg) exceeds Ideal Body Weight (${ibwKg} kg): using IBW per AMH / eTG guidance to prevent Cockcroft-Gault overestimation in overweight or obesity.`,
+        "Height outside adult Devine IBW range (120–230 cm); Ideal Body Weight not calculated. Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal or Adjusted Body Weight in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.",
       );
     }
-  } else if (input.weightKg >= 85) {
+  } else {
     warnings.push(
-      "Weight >= 85 kg without height supplied: Cockcroft-Gault using actual body weight overestimates renal clearance in overweight or obese patients. Supply height to use Ideal Body Weight (IBW) per AMH / eTG.",
+      "Height omitted (weight selection unassessed): Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (IBW) or Adjusted Body Weight (ABW) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium (provide heightCm to compute Devine IBW/ABW).",
     );
   }
 
-  let crCl: number;
-  if (input.creatinineUnit === "umol/L") {
-    // Standard Australasian formula: (140 - age) * weight * factor / SCr (umol/L)
-    // Factor: 1.23 for males, 1.04 for females
-    const factor = input.sex === "female" ? 1.04 : 1.23;
-    crCl = ((140 - input.age) * effectiveWeightKg * factor) / input.serumCreatinine;
-  } else {
-    // US formula: (140 - age) * weight / (72 * SCr) * (0.85 if female)
-    const factor = input.sex === "female" ? 0.85 : 1.0;
-    crCl = (((140 - input.age) * effectiveWeightKg) / (72 * input.serumCreatinine)) * factor;
-  }
+  const crCl = computeRawCrCl(input.age, effectiveWeightKg, input.sex, input.serumCreatinine, input.creatinineUnit);
 
   const rounded = Math.round(crCl * 100) / 100;
   if (!Number.isFinite(rounded)) {

@@ -50,6 +50,31 @@ describe("NowOnCallHero", () => {
     expect(call).toHaveClass("work-hero__action");
   });
 
+  it("names the hospital in its eyebrow and carries the Change hospital pill beside the call pill", () => {
+    render(
+      <NowOnCallHero
+        context={ROSTERED}
+        answer={SWITCHBOARD!}
+        hours={null}
+        hospitalPeriod={null}
+        hospitalName="Synthetic Hospital"
+        handbookLoading={false}
+        now={AT_0350}
+        hospitalChange={
+          <button type="button" className="work-hero__action" data-variant="quiet">
+            Change hospital
+          </button>
+        }
+      />,
+    );
+    const hero = screen.getByTestId("on-call-now-hero");
+    expect(within(hero).getByTestId("on-call-now-hospital")).toHaveTextContent("Synthetic Hospital");
+    const actions = hero.querySelector(".work-hero__actions");
+    expect(actions).not.toBeNull();
+    expect(within(actions as HTMLElement).getByRole("link", { name: /^Call switchboard, / })).toBeInTheDocument();
+    expect(within(actions as HTMLElement).getByRole("button", { name: "Change hospital" })).toBeInTheDocument();
+  });
+
   it("says no rostered shift is on, and offers no number the hospital has not recorded", () => {
     render(
       <NowOnCallHero

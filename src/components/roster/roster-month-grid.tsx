@@ -137,7 +137,7 @@ export function RosterMonthLegend({
 }) {
   return (
     <ul
-      className="mt-2.5 flex flex-wrap justify-center gap-x-2.5 gap-y-1.5 text-3xs font-semibold text-[color:var(--text)]"
+      className="mt-2.5 flex flex-wrap justify-center gap-x-2.5 gap-y-1.5 text-xs font-semibold text-[color:var(--text)]"
       aria-label="Key"
     >
       {LEGEND_KINDS.map((kind) => (

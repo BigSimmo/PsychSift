@@ -866,7 +866,7 @@ export function ShiftLegend({
       <ul
         role="list"
         aria-label="Key"
-        className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-x-3 gap-y-1 p-0 text-2xs font-semibold text-[color:var(--text-muted)]"
+        className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-x-3 gap-y-1 p-0 text-xs font-semibold text-[color:var(--text-muted)]"
       >
         {shown.map(([kind, label]) => (
           <li key={kind} className="inline-flex items-center gap-1.25">

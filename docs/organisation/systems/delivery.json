@@ -208,6 +208,7 @@
     "tests/deploy-migration-gate.test.ts",
     "tests/deployment-rag-activation.test.ts",
     "tests/diff-integrity.test.ts",
+    "tests/doc-governance-encoding-and-skills.test.ts",
     "tests/empty-catch-disposition.test.ts",
     "tests/final-merge-audit.test.ts",
     "tests/fixture-type-casts.test.ts",

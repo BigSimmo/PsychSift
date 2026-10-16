@@ -116,6 +116,44 @@ describe("Now: the safety order", () => {
     expect(within(hero).getByRole("link", { name: /^Call switchboard, / })).toHaveAttribute("href", "tel:0890000000");
   });
 
+  it("names the hospital once, in the hero, with Change hospital as the hero's quiet pill", async () => {
+    handbook.state = {
+      ...readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }])),
+      hospitals: [
+        { serviceId: "svc", serviceName: "Synthetic Health Service", siteId: "a", siteName: "Synthetic Hospital" },
+        {
+          serviceId: "svc",
+          serviceName: "Synthetic Health Service",
+          siteId: "b",
+          siteName: "Synthetic North Hospital",
+        },
+      ],
+    };
+    render(<OnCallHome now={IN_HOURS} />);
+    const hero = screen.getByTestId("on-call-now-hero");
+    // The hospital's name appears in the hero's eyebrow and nowhere else at the top of the page.
+    expect(hero.contains(screen.getByTestId("on-call-now-hospital"))).toBe(true);
+    expect(screen.getAllByText("Synthetic Hospital")).toHaveLength(1);
+    const change = within(hero).getByRole("button", { name: "Change hospital, currently Synthetic Hospital" });
+    expect(change).toHaveTextContent("Change hospital");
+    expect(change).toHaveClass("work-hero__action");
+    expect(change).toHaveAttribute("data-variant", "quiet");
+    await userEvent.click(change);
+    expect(await screen.findByRole("option", { name: /Synthetic North Hospital/ })).toBeInTheDocument();
+  });
+
+  it("offers no Change hospital pill when the reader has only one hospital", () => {
+    handbook.state = {
+      ...readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }])),
+      hospitals: [
+        { serviceId: "svc", serviceName: "Synthetic Health Service", siteId: "a", siteName: "Synthetic Hospital" },
+      ],
+    };
+    render(<OnCallHome now={IN_HOURS} />);
+    expect(screen.queryByRole("button", { name: /Change hospital/ })).toBeNull();
+    expect(screen.getByTestId("on-call-now-hospital")).toHaveTextContent("Synthetic Hospital");
+  });
+
   it("pins only this site's clinical Emergency rows, three at most, with the quiet red dot", async () => {
     handbook.state = readyHandbook(
       handbookItems([

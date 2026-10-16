@@ -5,7 +5,7 @@ import { TriangleAlert } from "lucide-react";
 import { focusRing } from "@/components/card-recipes";
 import { formatShiftRange } from "@/components/roster/roster-format";
 import { cn } from "@/components/ui-primitives";
-import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
+import { isWaPublicHolidayDate } from "@/lib/on-call/wa-public-holidays";
 import { SHIFT_KIND_LABEL, SHIFT_LETTER } from "@/lib/roster/shift-kind";
 import { formatPerthDay, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { coverText, type CoverCount } from "@/lib/roster/team/cover";
@@ -71,7 +71,7 @@ export function WeekBoard({
                 className={cn(HAIRLINE, "min-w-24 px-1 py-1 text-xs font-normal text-[color:var(--text-muted)]")}
               >
                 <span className="block">{formatPerthDay(date).split(" ").slice(0, 2).join(" ")}</span>
-                {WA_PUBLIC_HOLIDAYS.has(date) ? <span className="block">Public holiday</span> : null}
+                {isWaPublicHolidayDate(date) ? <span className="block">Public holiday</span> : null}
               </th>
             ))}
           </tr>

@@ -198,7 +198,10 @@ export function TeachingCodeSheet({
                     const parsedUrl = new URL(trimmed, window.location.origin);
                     const pathMatch = parsedUrl.pathname.match(/^\/teaching\/c\/([A-Za-z0-9_-]+)$/);
                     if (parsedUrl.origin === window.location.origin && pathMatch?.[1]) {
-                      const destUrl = new URL(`/teaching/c/${encodeURIComponent(pathMatch[1])}`, window.location.origin);
+                      const destUrl = new URL(
+                        `/teaching/c/${encodeURIComponent(pathMatch[1])}`,
+                        window.location.origin,
+                      );
                       window.location.assign(destUrl.href);
                       return;
                     }

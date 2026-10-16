@@ -23,7 +23,7 @@ import {
 import { cn } from "@/components/ui-primitives";
 import { useWorkCalendarEntries } from "@/components/work-calendar/use-work-calendar-entries";
 import { monthGridRange, monthKeyOf, shiftMonth } from "@/lib/calendar/month-grid";
-import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
+import { WA_PUBLIC_HOLIDAY_DATES } from "@/lib/on-call/wa-public-holidays";
 import { restCuesByTeam } from "@/lib/roster/rest-cues";
 import { SHIFT_KIND_LABEL, type ShiftKind } from "@/lib/roster/shift-kind";
 import { formatSpanUntil, leadShift, shiftSpan } from "@/lib/roster/shifts-overview";
@@ -243,7 +243,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
   // Rotations (and later booked courses): empty for readers outside the rotation preferences preview.
   const calendar = useWorkCalendarEntries();
 
-  const holidays = WA_PUBLIC_HOLIDAYS;
+  const holidays = WA_PUBLIC_HOLIDAY_DATES;
   const monthShifts = useMemo(() => shifts.shifts.map(toMonthShift), [shifts.shifts]);
   const byId = useMemo(() => new Map(shifts.shifts.map((shift) => [shift.id, shift])), [shifts.shifts]);
   const cues = useMemo(

@@ -10,6 +10,7 @@ import { ClinicalMathPanel } from "@/components/calculators/clinical-math-panel"
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
 import { PatientProfilePanel } from "@/components/clinical-dashboard/patient-profile-panel";
 import { TextField } from "@/components/ui/text-field";
+import { calculateProportionalLithiumDose, evaluateLithiumLevel } from "@/lib/calculators/clinical-math/lithium";
 import { calculateQtc } from "@/lib/calculators/clinical-math/qtc";
 import { calculateCkdEpi2021, calculateCockcroftGault } from "@/lib/calculators/clinical-math/renal";
 
@@ -270,6 +271,79 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       expect(
         calculateCkdEpi2021({ age: 50, sex: "female", serumCreatinine: 0.17, creatinineUnit: "mg/dL" }).isValid,
       ).toBe(true);
+    });
+
+    it("provides Devine IBW and Adjusted Body Weight warnings and flags unassessed weight selection when heightCm is omitted", () => {
+      const standardWithoutHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 70,
+        sex: "male",
+        serumCreatinine: 100,
+        creatinineUnit: "umol/L",
+      });
+      expect(standardWithoutHeight.crClMlMin).toBeCloseTo(77.49, 1);
+      expect(standardWithoutHeight.warnings).toEqual([
+        expect.stringMatching(/Height omitted \(weight selection unassessed\)/i),
+      ]);
+
+      const standardWithHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 70,
+        heightCm: 175,
+        sex: "male",
+        serumCreatinine: 100,
+        creatinineUnit: "umol/L",
+      });
+      expect(standardWithHeight.warnings).toEqual([]);
+
+      const withHeightOverweight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 88,
+        heightCm: 165,
+        sex: "female",
+        serumCreatinine: 80,
+        creatinineUnit: "umol/L",
+      });
+      expect(withHeightOverweight.warnings).toEqual(
+        expect.arrayContaining([expect.stringMatching(/Devine IBW:.*Adjusted Body Weight:/i)]),
+      );
+    });
+  });
+
+  describe("Lithium >= 1.2 mmol/L boundary and Australian 125 mg tablet rounding (#08216B)", () => {
+    it("treats 1.2 mmol/L consistently as toxic across evaluateLithiumLevel and calculateProportionalLithiumDose", () => {
+      const evalAtBoundary = evaluateLithiumLevel({
+        serumLevelMmolL: 1.2,
+        indication: "acute_mania",
+        age: 35,
+      });
+      expect(evalAtBoundary.status).toBe("toxic");
+      expect(evalAtBoundary.severity).toBe("moderate");
+
+      const doseAtCurrentBoundary = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 1.2,
+        targetLevelMmolL: 0.8,
+      });
+      expect(doseAtCurrentBoundary.isValid).toBe(false);
+
+      const doseAtTargetBoundary = calculateProportionalLithiumDose({
+        currentDoseMg: 750,
+        currentLevelMmolL: 0.8,
+        targetLevelMmolL: 1.2,
+      });
+      expect(doseAtTargetBoundary.isValid).toBe(false);
+    });
+
+    it("rounds proportional lithium doses to 125 mg (half of a 250 mg Australian tablet) by default", () => {
+      const res = calculateProportionalLithiumDose({
+        currentDoseMg: 500,
+        currentLevelMmolL: 0.45,
+        targetLevelMmolL: 0.7,
+      });
+      // 500 * (0.7 / 0.45) = 777.78 mg -> nearest 125 mg is 750 mg (3 x 250 mg tablets)
+      expect(res.isValid).toBe(true);
+      expect(res.suggestedDoseMg).toBe(750);
     });
   });
 

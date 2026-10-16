@@ -12,6 +12,7 @@ export type RenalStage =
 export type CockcroftGaultInput = {
   age: number;
   weightKg: number;
+  /** Optional height in cm (120–230 cm) for Devine Ideal Body Weight (IBW) and Adjusted Body Weight (ABW) guidance */
   heightCm?: number;
   sex: BiologicalSex;
   serumCreatinine: number;
@@ -87,12 +88,22 @@ export type LithiumLevelEvaluation = {
   clinicalGuidance: string[];
 };
 
+export type LithiumDoseIncrementMg = 50 | 125 | 225 | 250;
+
 export type LithiumDoseAdjustmentInput = {
   currentDoseMg: number;
   currentLevelMmolL: number;
   targetLevelMmolL: number;
-  tabletIncrementMg?: 125 | 225 | 250 | 450;
+  /**
+   * Practical tablet-strength rounding increment in mg.
+   * Defaults to 125 mg (half of a scored 250 mg Australian immediate-release lithium carbonate tablet;
+   * slow-release Quilonum SR is 450 mg / 225 mg half-tablet).
+   */
+  doseIncrementMg?: LithiumDoseIncrementMg;
+  tabletIncrementMg?: 50 | 125 | 225 | 250 | 450;
 };
+
+export type ProportionalLithiumDoseInput = LithiumDoseAdjustmentInput;
 
 export type LithiumDoseAdjustmentResult = {
   isValid: boolean;

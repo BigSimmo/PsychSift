@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "aebceba4-b600-4d60-94d1-901c7112bc21",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Hostile-document ingestion: run the upload-to-answer end-to-end matrix (follow-up to #F3SGCM)",
+    "detail": "Seven-class helper coverage exists in tests/hostile-document-ingestion-matrix.test.ts, but it uses an extraction mock and fabricated search results, so no uploaded hostile document is checked against real ingestion, retrieval and answer paths. Close only when each class runs end to end.",
+    "source": "PR #3570 review; tests/hostile-document-ingestion-matrix.test.ts",
+    "issueUlid": "01M51JV9GC7D8WZ29KQKRSF5HP"
+  }
+}
