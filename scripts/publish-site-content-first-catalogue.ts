@@ -17,6 +17,9 @@
  * 2. Content pin check: each sign-off's `reviewedContentSha256` must still match the content it
  *    signed, worked out the same way npm run clinical:review wrote it. A record edited after its
  *    sign-off is refused, so a stale approval can never publish changed text.
+ *    The owner decided the pin covers the reviewed source record, not the published copy.
+ *    (A form's catalogue entry and guidance, or a curated service record.) That keeps every
+ *    existing sign-off valid, and the projected row is built only from that pinned source.
  * 3. Offline by default: `--dry-run` and `--out <path>` never import or call a live Supabase
  *    client. Live execution requires BOTH `--execute` and `ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true`.
  *
