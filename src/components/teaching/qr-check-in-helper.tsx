@@ -162,6 +162,8 @@ export function QrCheckInHelper({
             if (videoRef.current && videoRef.current.readyState >= 2) {
               try {
                 const barcodes = await detector.detect(videoRef.current);
+                // The camera may have been stopped or closed while detect() was pending.
+                if (streamRef.current !== result.stream) return;
                 if (barcodes && barcodes.length > 0) {
                   const rawValue = barcodes[0].rawValue;
                   if (rawValue) {
