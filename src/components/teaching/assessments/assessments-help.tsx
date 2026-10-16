@@ -299,16 +299,19 @@ function RequestEpaSheet({
                 supervisorRole: guest,
               });
               try {
-                const registration = await fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    epaCode: epa,
-                    traineeName: SAMPLE_DOCTOR.name,
-                    supervisorName,
-                    supervisorRole: guest,
-                  }),
-                });
+                const registration = await fetch(
+                  `/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`,
+                  {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      epaCode: epa,
+                      traineeName: SAMPLE_DOCTOR.name,
+                      supervisorName,
+                      supervisorRole: guest,
+                    }),
+                  },
+                );
                 if (!registration.ok) {
                   setMagicLinkCopied(
                     registration.status === 401

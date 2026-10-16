@@ -568,7 +568,9 @@ export function OnCallHandoverPage() {
   const [scratchpadText, setScratchpadText] = useState<string>("");
   const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
 
+  // Read device storage only after mount, so the server render and first client render match.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setScratchpadText(loadOnCallHandoverScratchpad());
     setScratchpadResetKey((key) => key + 1);
   }, []);

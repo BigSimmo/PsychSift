@@ -701,7 +701,9 @@ describe("Team calendar, manager layer", () => {
     expect(posts).toEqual([]);
     expect(within(review).getByText(/Team rules could not be fully checked/)).toBeTruthy();
     fireEvent.click(within(review).getByRole("button", { name: "Approve after review" }));
-    await waitFor(() => expect(posts).toEqual([{ action: "swap.approve", swapId: ID(57) }]));
+    await waitFor(() =>
+      expect(posts).toEqual([{ acknowledgeRuleWarnings: true, action: "swap.approve", swapId: ID(57) }]),
+    );
   });
 
   it("requires explicit review of a rest warning introduced after the calendar loaded", async () => {
@@ -722,7 +724,9 @@ describe("Team calendar, manager layer", () => {
     await within(review).findByText("After this swap: Less than 12 hours' rest before this shift");
     expect(posts).toEqual([]);
     fireEvent.click(within(review).getByRole("button", { name: "Approve after review" }));
-    await waitFor(() => expect(posts).toEqual([{ action: "swap.approve", swapId: ID(50) }]));
+    await waitFor(() =>
+      expect(posts).toEqual([{ acknowledgeRuleWarnings: true, action: "swap.approve", swapId: ID(50) }]),
+    );
   });
 
   it("bulk approval leaves a freshly unsafe swap unapproved", async () => {
