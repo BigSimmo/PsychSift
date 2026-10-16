@@ -647,12 +647,16 @@ export function AttendanceGapsSheet({
   onClose,
   checkInCountsByUserId,
   loadingCounts = false,
+  loadError = false,
+  onRetry,
   demoMode = false,
 }: {
   organise: OrganiseRead;
   onClose: () => void;
   checkInCountsByUserId?: Record<string, number>;
   loadingCounts?: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
   demoMode?: boolean;
 }) {
   const countsMap = checkInCountsByUserId ?? {};
@@ -675,6 +679,17 @@ export function AttendanceGapsSheet({
           <p className={cn("text-xs leading-5", textMuted)} role="status">
             Loading term attendance records…
           </p>
+        ) : loadError ? (
+          <div className="grid gap-2">
+            <p className={cn("text-xs leading-5", textMuted)} role="alert">
+              We couldn&apos;t load term attendance records, so attendance gaps cannot be shown.
+            </p>
+            {onRetry ? (
+              <T5Button type="button" onClick={onRetry}>
+                Try again
+              </T5Button>
+            ) : null}
+          </div>
         ) : (
           <AttendanceRoster
             members={rosterMembers}
