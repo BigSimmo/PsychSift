@@ -2381,12 +2381,11 @@ async function answerQuestionWithScopeUncoalesced(
       ? await packModelContextEvidence(routeSelection, packGovernedContext, useGovernedContextPacking)
       : routeSelection;
   // Side-evidence top-up candidates must pass the same admission receipt the governed packer requires.
-  const sideEvidencePool = [...eligibleAnswerResults, ...results];
   const sideEvidenceCandidates = useGovernedContextPacking
-    ? sideEvidencePool.filter((result) =>
+    ? eligibleAnswerResults.filter((result) =>
         contextPackAdmissionMatches(result, contextPackAccessScope, args.ragRequestContext!.snapshot),
       )
-    : sideEvidencePool;
+    : eligibleAnswerResults;
   const answerInputResults = withAdmissionDischargeSideEvidence({
     query: args.query,
     queryClass,
