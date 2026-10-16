@@ -138,7 +138,7 @@
     "name": "Applied Relaxation / Relaxation-Based Therapy",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -200,7 +200,7 @@
     "name": "Behavioural Activation (BA)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -245,7 +245,7 @@
     "name": "Behavioural Couples Therapy for Substance Use Disorders (BCT-SUD)",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best used when the patient is in a committed relationship and the partner is willing to participate.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -365,7 +365,7 @@
     "name": "Carer Interventions",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best established in psychosis / schizophrenia, where NICE states that carers of adults with psychosis or schizophrenia should be offered carer-focused education and support programmes, and parents/carers of newly diagnosed children and young people with bipolar disorder, psychosis, or schizophrenia should be given information about carer-focused education and support.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -528,7 +528,7 @@
     "name": "Cognitive Behavioural Therapy (CBT)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Strongest broad evidence-backed uses are depression and anxiety disorders.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -554,7 +554,7 @@
     "name": "Cognitive Behavioural Therapy for Bipolar Depression / Bipolar Relapse Prevention",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best used as an adjunctive psychotherapy in bipolar disorder, especially for bipolar depression, residual symptoms, and relapse prevention in people who are not acutely manic.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -620,7 +620,7 @@
     "name": "Cognitive Behavioural Therapy for Psychosis (CBTp)",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Best supported for psychosis and schizophrenia, including people at increased risk of psychosis, first and subsequent acute episodes, and the recovery phase when positive or negative symptoms continue to affect distress or function.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1093,7 +1093,7 @@
     "name": "Dialectical Behaviour Therapy (DBT)",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best supported for borderline personality disorder / borderline personality symptoms, especially when recurrent self-harm is a major treatment priority.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1431,7 +1431,7 @@
     "name": "Family Intervention for Psychosis",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Best supported for adults with psychosis or schizophrenia who live with or are in close contact with family members or carers.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1469,7 +1469,7 @@
     "name": "Family Psychoeducation for Psychosis",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Most useful for schizophrenia-spectrum and other psychotic disorders when family members or carers are closely involved and need a clearer illness model, relapse plan, and coping framework.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1542,7 +1542,7 @@
     "name": "Family-Focused Psychoeducation for Bipolar Disorder",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best used for relapse prevention in bipolar disorder, especially when relatives/carers are closely involved in day-to-day life or episode detection.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -1710,7 +1710,7 @@
     "name": "Group Psychoeducation for Bipolar Disorder",
     "category": "Group CBT",
     "bestUsedFor": "Best used for maintenance / relapse prevention in bipolar disorder, especially when the patient is not in an acute episode and can engage in a structured group format.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2484,7 +2484,7 @@
     "name": "Motivational Interviewing (MI) for Substance Use Disorders",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best used at engagement, assessment, early treatment, and whenever motivation is unstable.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -2504,7 +2504,7 @@
     "name": "Multi-Family Interventions",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best supported in psychosis / schizophrenia, where NICE states family intervention should take account of family preference for either single-family intervention or multi-family group intervention.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2666,7 +2666,7 @@
     "name": "Parent Management Training (PMT)",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best supported for children with clinical levels of disruptive behaviour, especially oppositional and conduct-type presentations in younger children.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2686,7 +2686,7 @@
     "name": "Parent Training",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best supported for children aged 3 to 11 years who are at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2772,7 +2772,7 @@
     "name": "Peer Support",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Most useful in psychosis rehabilitation, community recovery work, discharge transition, engagement support, group activities, and broader recovery-oriented service delivery.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -2895,7 +2895,7 @@
     "name": "Problem-Solving Therapy (PST)",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Most useful for less severe depression, stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -3195,7 +3195,7 @@
     "name": "Relapse-Prevention Psychotherapy",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Strongest guideline-backed use is recurrent depression, especially after remission or partial remission in people at higher relapse risk.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3429,7 +3429,7 @@
     "name": "Short-Term Psychodynamic Psychotherapy for Depression (STPP)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best used for adult depression when relational-emotional patterns and developmental difficulties in close relationships are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
@@ -3890,7 +3890,7 @@
     "name": "Supportive-Expressive / Psychodynamic Counselling Approaches for Depression",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
@@ -4064,7 +4064,7 @@
     "name": "Twelve-Step Facilitation (TSF)",
     "category": "Substance Use Therapies",
     "bestUsedFor": "The strongest evidence is for alcohol use disorder (AUD).",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [

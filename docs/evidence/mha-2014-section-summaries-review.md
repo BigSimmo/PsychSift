@@ -12,6 +12,26 @@ sign-off via `npm run clinical:review`.
 
 ---
 
+### s14 — Capacity of child to make decisions
+
+**Act text (02-b0-02, as at 2025-09-25)**
+
+> (1)A child is presumed to not have the capacity to make a treatment decision.
+>
+> (2)A child has the capacity to make a treatment decision if the child has sufficient maturity and understanding to make the decision having regard to the criteria set out in section 15.
+
+**Drafted summary** (status: reviewed)
+
+> A child (a person under 18 years of age) is presumed to not have capacity to make a treatment decision unless the child has sufficient maturity and understanding to make the decision having regard to the criteria in s 15.
+
+Cited by: _none_
+
+Source text SHA-256: `a8faee7535560b29ff6d4a67e23114d7b2354c4ff5aa3bcebafe4d8f58b0f49f`
+
+Reviewed by: ______________________ Date: ______________
+
+---
+
 ### s25 — Criteria for involuntary treatment order
 
 **Act text (02-b0-02, as at 2025-09-25)**
@@ -64,7 +84,7 @@ sign-off via `npm run clinical:review`.
 >
 > Subdivision 1 — Person suspected of needing involuntary treatment order
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A person needs an inpatient treatment order only if all five criteria are met: (a) a mental illness for which they need treatment; (b) because of that illness, a significant risk to the health or safety of the person or to the safety of another person, or a significant risk of serious harm to the person or another person; (c) they do not demonstrate the capacity required by s 18 to make a treatment decision about that treatment; (d) treatment in the community cannot reasonably be provided; and (e) they cannot be adequately treated in a way that is less restrictive of their freedom of choice and movement than an inpatient treatment order. A community treatment order requires the same illness and capacity criteria. Its risk criterion also includes a significant risk of the person suffering serious physical or mental deterioration, and it requires that treatment in the community can reasonably be provided and that the person cannot be adequately treated in a less restrictive way than a community treatment order. Either decision must be made having regard to the guidelines published under s 547(1)(a).
 
@@ -106,7 +126,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > 3.Part 7 Division 5 applies if a person who is detained under section 28(1) or (2), 52(1)(b) or 58(1)(b) is absent without leave from the authorised hospital or other place where the person is be detained.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may refer a person for examination by a psychiatrist if, having regard to the section 25 criteria, they reasonably suspect the person needs an involuntary treatment order — or, for someone already under a community treatment order, an inpatient treatment order. The examination may be at an authorised hospital, or at another place the practitioner considers appropriate under the s 547(1)(b) guidelines, in which case the practitioner must make the arrangements needed for it to happen there.
 
@@ -172,7 +192,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (12)The release of a person because of subsection (10) or (11) is an event to which Part 9 applies and a medical practitioner or authorised mental health practitioner is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may order detention for up to 24 hours to enable a referred person to be taken to the examination place, and may renew it for further 24-hour blocks — but only after personally assessing the person again and remaining satisfied detention is still needed. Total continuous detention is capped at 72 hours if the referral was made in the metropolitan area, or 144 hours outside it. The order is in the approved form with times made and expiring, reasons and the practitioner's details, is filed with a copy to the person, and is a Part 9 notifiable event. The person must be given the opportunity and means to contact a support person, their treating health professional and the Chief Mental Health Advocate. Detention ends if the person has not been taken to the place and no valid further order or transport-order apprehension applies, or if the referral expires first.
 
@@ -200,7 +220,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)The making of a transport order under subsection (1) is an event to which Part 9 applies and the practitioner who makes the order is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may make a transport order for a referred person, but only if satisfied the person needs to be taken to the examination place and no other safe means of taking them is reasonably available. Part 10 governs how the order is carried out, and making it is a Part 9 notifiable event.
 
@@ -250,7 +270,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 2 — Voluntary inpatient admitted by authorised hospital
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may revoke a s 26 referral if satisfied the person no longer needs an involuntary treatment order. Revoking another practitioner's referral requires consulting them, or documented reasonable efforts to make contact. The order records the time, the reasons, and the consultation or the attempts, and is filed with a copy to the person. The practitioner must also tell the transport or police officer carrying out any transport order — which is revoked with the referral under s 153 — and file a record of that advice. Detention cannot continue once the referral is revoked, and the release is a Part 9 notifiable event.
 
@@ -298,7 +318,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)the assessment has been completed but a referral has not been made under section 36(2) in respect of the voluntary inpatient.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a voluntary inpatient wants to leave against medical advice and the person in charge of the ward reasonably suspects, on the section 25 criteria, that they need an involuntary treatment order, that person may order an assessment by an MP or AMHP at the hospital. The inpatient can be detained for up to 6 hours to allow it. The order is in the approved form and is filed with a copy to the patient, and the inpatient must be given the opportunity and means to contact a support person, their treating health professional and the Chief Mental Health Advocate. Detention ends at 6 hours if the assessment is not completed, or is completed without a s 36(2) referral being made.
 
@@ -328,7 +348,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)The voluntary inpatient cannot continue to be detained if the order for an assessment is revoked under subsection (1).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The person who ordered a s 34 assessment may revoke that order at any time before the assessment starts, if satisfied the patient no longer needs an involuntary treatment order. The revocation is in the approved form and is filed with a copy to the patient, and detention cannot continue once it is made.
 
@@ -362,7 +382,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > 3.Part 7 Division 5 applies if a voluntary patient who is detained under section 53(1) is absent without leave from the authorised hospital where the voluntary patient is detained.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For a voluntary inpatient assessed either under a s 34 order or in the course of their treatment, an MP or AMHP may refer them for psychiatrist examination at that hospital if, having regard to the section 25 criteria, they reasonably suspect the inpatient needs an involuntary treatment order.
 
@@ -404,7 +424,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 3 — Requirements for referral
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may revoke a s 36 referral if satisfied the voluntary inpatient no longer needs an involuntary treatment order. Revoking another practitioner's referral requires consulting them, or documented reasonable efforts to make contact. The order records the time, the reasons and that consultation or those attempts, and is filed with a copy to the patient. Detention cannot continue once the referral is revoked.
 
@@ -452,7 +472,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (e)include the name, qualifications and signature of the practitioner making the referral.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A referral must be in the approved form and must state when and where it was made, when it expires, whether and how it can be extended under s 45, where the examination will be conducted, and when the s 39(1) assessment was completed. It must certify the practitioner's reasonable suspicion against the section 25 criteria, set out the information that suspicion rests on, and — for information gathered in their own assessment — distinguish what came from the person themselves from what came from someone else or the medical record.
 
@@ -474,7 +494,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The information provided under subsection (1) must be in the approved form.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The practitioner must give the referred person the referral information required by s 41(a) and (b), and the s 41(c) grounds, in the approved form. The exception is any part of those grounds supplied by someone else on condition that it not be passed on to the person.
 
@@ -534,7 +554,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (6)The referral cannot be extended more than once.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a referral was made outside the metropolitan area and the person responsible for transporting the patient forms the view it will expire before arrival, an extension of a further 72 hours may be obtained. The request goes to the referring practitioner, or if they are unavailable another practitioner at the same place, or failing that any other MP or AMHP; the transporting person may extend it themselves only if no practitioner is reasonably available and they are themselves an MP or AMHP. The extension is recorded in the approved form with the time granted, the new expiry and the reasons, and filed with a copy to the person. A referral cannot be extended more than once.
 
@@ -576,7 +596,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 4 — Conduct of assessment
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may change the place specified in a s 26 referral where the examination will be conducted, but only after consulting a practitioner at the proposed new place. They must promptly tell whoever is transporting the person, record the change in the approved form with the old and new places and the time, and file it with a copy to the person. Changing between an authorised hospital and a non-hospital place switches which limb of s 26 the referral is treated as having been made under.
 
@@ -632,7 +652,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > 4.A community treatment order in respect of an involuntary community patient who is referred under section 26(2) is no longer suspended if a psychiatrist makes an order under section 55(1)(d) that the involuntary community patient cannot continue to be detained (see section 30(b)(i)).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > On completing the examination the psychiatrist must make one of four orders: an inpatient treatment order detaining the person at the authorised hospital for a s 87 period; a community treatment order; an order continuing detention to allow a further psychiatrist examination; or an order that the person cannot continue to be detained. The order is in the approved form with the time, the reasons (except for a release order) and the psychiatrist's details, and is filed with a copy to the person. A continuation order runs only to the period specified, which cannot exceed 72 hours from reception or detention at the hospital, and cannot be extended. Making the order is a Part 9 notifiable event.
 
@@ -678,7 +698,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 2 — Examination at place that is not authorised hospital
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An order continuing detention under s 55(1)(c) lasts until whichever comes first: a psychiatrist completes the further examination and makes an inpatient treatment order, a community treatment order, or an order that detention cannot continue; or the period specified under s 55(3) expires. The resulting order is in the approved form with the time, the reasons (except for a release order) and the psychiatrist's details, and is filed with a copy to the person.
 
@@ -726,7 +746,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)the examination has been completed but an order has not been made under section 61(1) in respect of the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where the examination place is outside the metropolitan area and it is not practicable to finish the examination within the 24 hours allowed by s 58(1)(b), an MP or AMHP at that place may order detention to continue for up to a further 48 hours so it can be completed. The order is in the approved form with the times made and expiring, the reasons and the practitioner's details, and is filed with a copy to the person. The person must be given the opportunity and means to contact a support person, their treating health professional and the Chief Mental Health Advocate. Detention ends at the 48 hours if the examination is unfinished, or is finished without a s 61(1) order.
 
@@ -780,7 +800,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > 4.A community treatment order in respect of a person who is referred under section 26(3)(a) is no longer suspended if a psychiatrist makes an order under section 61(1)(d) that the involuntary community patient cannot continue to be detained (see section 30(b)(i)).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > On completing an examination at a place that is not an authorised hospital, the psychiatrist must make one of four orders: an inpatient treatment order detaining the person at a specified general hospital; a community treatment order; an order for reception and detention at an authorised hospital for a psychiatrist examination; or an order that the person cannot continue to be detained. A general-hospital inpatient treatment order is available only where taking or detaining the person at an authorised hospital would pose a significant risk to their physical health, and only with the Chief Psychiatrist's consent. The order is in the approved form and is filed with a copy to the person, and making it is a Part 9 notifiable event.
 
@@ -836,7 +856,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (c)an order under subsection (2) authorising the continuation of the person’s detention from the end of that period has not been made or, because of subsection (3), cannot be made.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An MP or AMHP may order detention to continue for up to 24 hours so a person under a s 61(1)(a) or (c) order can be taken to the hospital, and may renew it in further 24-hour blocks — but only after assessing the person immediately beforehand and remaining satisfied detention is still needed. Total continuous detention under this section cannot exceed 72 hours. The order is in the approved form with the times made and expiring, the reasons and the practitioner's details, is filed with a copy to the person, and the person must be given the opportunity and means to contact a support person, their treating health professional and the Chief Mental Health Advocate. Detention ends if the person has not reached the hospital, has not been apprehended under a s 63 transport order, and no valid further order applies.
 
@@ -864,7 +884,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 3 — Inpatient treatment order authorising detention at general hospital
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may make a transport order for a person under a s 61(1)(a) or (c) order, but only if satisfied the person needs to be taken to the hospital named in that order and no other safe means of taking them is reasonably available. Part 10 governs how the order is carried out.
 
@@ -890,7 +910,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (2)The report must be in the approved form.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > At the end of each successive 7-day period an involuntary inpatient is detained at a general hospital, the treating psychiatrist must report to the Chief Psychiatrist in the approved form on the inpatient's mental and physical condition, any treatment being provided at the general hospital, and any other medical or surgical treatment being provided there.
 
@@ -932,7 +952,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)The making of a transfer order under subsection (1) is an event to which Part 9 applies and the treating psychiatrist is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Once the treating psychiatrist is satisfied that taking or detaining the involuntary inpatient at an authorised hospital no longer poses a significant risk to their physical health, the psychiatrist must, as soon as practicable, make a transfer order to the authorised hospital named in it. In deciding whether the risk remains, they may consult any other practitioner or health care provider responsible for the inpatient's medical or surgical treatment. The order is in the approved form and must include the inpatient's name, the hospital transferred from and to, the time made, the reasons and the psychiatrist's details. It is filed with a copy to the patient, and making it is a Part 9 notifiable event.
 
@@ -954,7 +974,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)Part 10 applies in relation to the transport order.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may make a transport order for an inpatient under a s 66(1) transfer order, but only if satisfied no other safe means of taking them to the authorised hospital is reasonably available. Part 10 governs how the order is carried out.
 
@@ -996,7 +1016,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 4 — Order for further examination at authorised hospital
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where the examination for an inpatient treatment order was conducted without the psychiatrist and inpatient being in each other's physical presence, and no in-person psychiatrist examination has happened since, the order must be confirmed by a psychiatrist at the authorised hospital within 24 hours of admission under the transfer order. Confirmation requires examining the inpatient, and is recorded in the approved form with the time, the reasons and the psychiatrist's details. The inpatient treatment order ceases to be in force if it is not confirmed in time, and that release is a Part 9 notifiable event.
 
@@ -1038,7 +1058,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 5 — Examination without referral
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > On completing the examination the psychiatrist must make one of three orders: an inpatient treatment order detaining the person at the authorised hospital for a s 87 period; a community treatment order; or an order that the person cannot continue to be detained. The order is in the approved form with the time, the reasons (except for a release order) and the psychiatrist's details, and is filed with a copy to the person.
 
@@ -1066,7 +1086,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The psychiatrist must, as soon as practicable, file the order and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > On completing an examination conducted without a referral, the psychiatrist may make a community treatment order. It must be in the approved form with the time made, the reasons and the psychiatrist's details, and is filed with a copy to the person.
 
@@ -1110,7 +1130,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 6 — Conduct of examination
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A community treatment order must be confirmed within 72 hours of being made — by another psychiatrist, or if none is reasonably available by another medical practitioner or an authorised mental health practitioner. The confirmation is in the approved form with the time, the reasons and the confirming practitioner's details. The supervising psychiatrist must tell the person whether it was confirmed and, if it was, file it and give them a copy. The order ceases to be in force if it is not confirmed in time.
 
@@ -1154,7 +1174,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (6)The release of a person because of an order made under subsection (2)(b) or (c) is an event to which Part 9 applies and the person in charge of the hospital is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The treating psychiatrist must ensure the involuntary inpatient is examined by a psychiatrist on, or within 7 days before, the day the detention period ends. On completing that examination the psychiatrist must make one of three orders on the section 25 criteria: a continuation order extending the inpatient treatment order for a further detention period; a community treatment order, if an involuntary treatment order is still needed but not as an inpatient; or an order revoking the inpatient treatment order. A further detention period cannot exceed 3 months for an adult or 28 days for a child. The order is in the approved form and is filed with a copy to the inpatient; a release under (2)(b) or (c) is a Part 9 notifiable event.
 
@@ -1190,7 +1210,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)The making of an order under subsection (1) is an event to which Part 9 applies and the psychiatrist who makes the order is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > During the detention period a psychiatrist may, on the section 25 criteria, make a community treatment order where the inpatient no longer needs the inpatient treatment order but still needs an involuntary treatment order, or revoke the inpatient treatment order where no involuntary treatment order is needed at all. Either order may be made without examining the inpatient. It is in the approved form and is filed with a copy to the inpatient, and making it is a Part 9 notifiable event.
 
@@ -1236,7 +1256,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Section 66 applies in relation to the transfer of an involuntary inpatient from a general hospital to an authorised hospital.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For an involuntary inpatient detained at an authorised hospital, the treating psychiatrist — or another psychiatrist at that hospital if the treating psychiatrist is not reasonably available — may make a transfer order to another authorised hospital named in it. The order is in the approved form and must include the inpatient's name, the hospital transferred from and to, the time made, the reasons and the psychiatrist's details. It is filed with a copy to the inpatient, and making it is a Part 9 notifiable event. Transfers from a general hospital instead run under s 66.
 
@@ -1258,7 +1278,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)Part 10 applies in relation to the transport order.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may make a transport order for an inpatient under a s 91(2) transfer order, but only if satisfied no other safe means of taking them to the authorised hospital is reasonably available. Part 10 governs how the order is carried out.
 
@@ -1298,7 +1318,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)A person who makes an apprehension and return order must, as soon as practicable, file it and give a copy to the police officer or person prescribed who will carry out the order.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The person in charge of a hospital or other place, or a medical practitioner, may make an apprehension and return order for someone absent without leave, but only if satisfied no other safe means of ensuring their return is reasonably available. The order is in the approved form and must name the person, the place they are absent from, the place they must be taken to if apprehended, the date made, the date it expires, the reasons and the maker's details. It is filed as soon as practicable with a copy to the police officer or prescribed person who will carry it out.
 
@@ -1334,7 +1354,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)file the order and a record of the advice.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The person in charge of the place the patient is absent from, or a medical practitioner, may revoke an apprehension and return order if satisfied it is no longer needed. The revocation is in the approved form with the time, the reasons and the maker's details. They must promptly tell the police officer or prescribed person responsible for carrying out the original order, and file both the revocation and a record of that advice.
 
@@ -1426,7 +1446,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 105 amended: No. 10 of 2023 s. 357.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may grant an involuntary inpatient leave of absence if satisfied it is likely to benefit their recovery or mental health, or will let them obtain medical or surgical treatment or otherwise benefit their physical health, and that it is not inconsistent with their need for treatment under s 25(1)(b). Before granting it the psychiatrist must consult, on both whether to grant leave and its period and conditions, any enduring guardian or guardian, a child's parent or guardian, any nominated person, any carer and any close family member (subject to the Act's entitlement exceptions), and the Mental Impairment Review Tribunal for a supervised person; the consultation or the efforts made must be filed. The psychiatrist must also consider whether a s 90(1) order would be more appropriate. Conditions may cover residing at a specified place, receiving specified treatment, or attending and remaining at a specified place for treatment. The order is in the approved form with the time, the period and conditions, the reasons and the psychiatrist's details, is filed with a copy to the inpatient, and making it is a Part 9 notifiable event.
 
@@ -1462,7 +1482,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)The making of an order under subsection (1) is an event to which Part 9 applies and the psychiatrist who makes the order is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may extend an involuntary inpatient's leave of absence or vary the conditions it was granted subject to. The order is in the approved form with the time made, the period of the extension or the variation, the reasons and the psychiatrist's details. It is filed with a copy to the inpatient, and making it is a Part 9 notifiable event.
 
@@ -1500,7 +1520,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 3 — Transport to and from hospital
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a psychiatrist forms the reasonable belief that it is inappropriate for an involuntary inpatient to remain away from hospital on leave of absence, the psychiatrist may order the leave cancelled. The order is in the approved form with the time made, the reasons for that belief and the psychiatrist's details. The psychiatrist must, as soon as practicable, tell the patient orally that the leave has been cancelled, and file the order with a copy to the inpatient. Making it is a Part 9 notifiable event.
 
@@ -1534,7 +1554,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Preliminary matters
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may make a transport order for the involuntary inpatient, but only if satisfied no other safe means of taking them to the hospital is reasonably available. Part 10 governs how the order is carried out.
 
@@ -1564,7 +1584,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > The supervising psychiatrist can also be the treating practitioner (see section 136(2)(b)).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist cannot make a community treatment order unless satisfied of two things: that treating the person in the community would not be inconsistent with their need for treatment for a reason in s 25(2)(b); and that suitable arrangements can be made for their treatment and care in the community, including a psychiatrist to be the supervising psychiatrist and a medical practitioner or mental health practitioner to be the treating practitioner. The supervising psychiatrist can also be the treating practitioner (s 136(2)(b)).
 
@@ -1616,7 +1636,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Operation of order
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A community treatment order must name the supervising psychiatrist and the treating practitioner; require the patient to comply with all of the supervising psychiatrist's directions about treatment under the order; record the date and time it is made and the date and time it comes into force, which the Act says “must be within 7 days after the date and time when the order is made”; state its treatment period; and require the patient to notify the supervising psychiatrist or treating practitioner of any change of residential address and of any interstate or overseas travel — “at least 7 days before the day of the patient’s departure”, or as soon as practicable if the travel is urgent. The treatment period specified when the order is made “cannot exceed 3 months from the day on which it is made”. The terms may require treatment by a mental health service in another State or a Territory (s 559).
 
@@ -1648,7 +1668,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > 2.A community treatment order may be suspended under section 30 or 33.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A community treatment order stays in force until the first of these happens: the supervising psychiatrist makes an inpatient treatment order under s 120(2)(a), 123(1)(a) or 131(2)(a); any psychiatrist makes an inpatient treatment order under another provision of the Act; the supervising psychiatrist revokes it under s 120(2)(b) or 131(2)(b); or its treatment period expires, unless it has been continued under a continuation order. A community treatment order may also be suspended under s 30 or 33.
 
@@ -1700,7 +1720,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)each report of an examination of the involuntary community patient provided to the supervising psychiatrist under subsection (5).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An involuntary community patient must be examined on, or within 14 days before, the day each monthly review period ends — by the supervising psychiatrist, or by another medical practitioner or mental health practitioner if the supervising psychiatrist is unavailable or has requested it under s 119(1). Another practitioner cannot conduct that examination if more than 2 months have passed since the supervising psychiatrist last examined the patient. A practitioner examining in the supervising psychiatrist's place must provide a written report recommending whether, on the section 25 criteria, the patient still needs an involuntary treatment order. The supervising psychiatrist must file a record of each examination they conduct and each report they receive.
 
@@ -1720,7 +1740,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (2)The request must be in the approved form and may specify requirements for carrying out the examination or preparing the report or both.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The supervising psychiatrist may request another medical practitioner or mental health practitioner to examine the involuntary community patient for the purposes of s 118(2)(b)(ii). The request must be in the approved form and may specify requirements for carrying out the examination, preparing the report, or both.
 
@@ -1772,7 +1792,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > A community treatment order is automatically revoked under section 116(a) if a psychiatrist makes an inpatient treatment order under section 120(2)(a), or under section 116(b) if a psychiatrist makes an inpatient treatment order under any other provision of this Act, in respect of the involuntary community patient.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > After examining the involuntary community patient, or on receiving a report under s 118(5), the supervising psychiatrist must consider whether the patient still needs an involuntary treatment order. They may make an inpatient treatment order where the patient still needs an involuntary treatment order but the s 114 community criteria are not met, or an order revoking the community treatment order where no involuntary treatment order is needed. An inpatient treatment order requires examining the patient; a revocation may be made either after examination or on the basis of a s 118(5) report alone. The order is in the approved form and is filed with a copy to the patient, and making it is a Part 9 notifiable event.
 
@@ -1826,7 +1846,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (8)Subsection (7) does not apply if the further opinion is not obtained within the 14-day period referred to in subsection (7)(a) because the involuntary community patient did not attend an examination to be conducted by the psychiatrist responsible for giving the further opinion.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The supervising psychiatrist may, on or within 7 days before a treatment period ends, make a continuation order extending the community treatment order for a further period of up to 3 months. They cannot do so without examining the patient. The order is in the approved form with the date made, the period continued, the new expiry date, the reasons and the psychiatrist's details, and is filed with a copy to the patient. The patient may request in writing that a further opinion be obtained from another psychiatrist on whether continuing the order was appropriate — though not on the length of the period. The continuation order does not come into force, or ceases to be in force, if that opinion is not obtained within 14 days of the request or does not confirm the continuation; that does not apply where the delay was because the patient did not attend the examination.
 
@@ -1856,7 +1876,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The supervising psychiatrist must, as soon as practicable, file the order and give a copy to the involuntary community patient.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The supervising psychiatrist may at any time while a community treatment order is in force vary its terms in any way consistent with s 115 that they consider appropriate. The variation is in the approved form with the time made, the variation itself, the reasons and the psychiatrist's details, and is filed with a copy to the patient.
 
@@ -1922,7 +1942,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > A community treatment order is automatically revoked under section 116(a) if a psychiatrist makes an inpatient treatment order under section 123(1)(a) in respect of the involuntary community patient.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The supervising psychiatrist may at any time while a community treatment order is in force make an inpatient treatment order, if satisfied on the s 25(1) criteria that the patient needs one, or revoke the community treatment order, if satisfied on the section 25 criteria that no involuntary treatment order is needed. An inpatient treatment order requires examining the patient; a revocation may be made without examination provided the psychiatrist has regard to information from the patient, from any other person, and from the medical record. None of this depends on the patient having breached the order, been given a breach notice, or been made subject to an order to attend. The order is in the approved form and is filed with a copy to the patient, and making it is a Part 9 notifiable event.
 
@@ -1964,7 +1984,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (7)The release of a person because of subsection (6) is an event to which Part 9 applies and the person in charge of the authorised hospital is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where the supervising psychiatrist made an inpatient treatment order under s 120(2)(a) or 123(1)(a) without being in the patient's physical presence for the examination, and no in-person psychiatrist examination has happened since, the order must be confirmed by a psychiatrist at the authorised hospital within 24 hours of admission. Confirmation requires examining the patient, and is recorded in the approved form with the time, the reasons and the psychiatrist's details. The order ceases to be in force if it is not confirmed in time, and that release is a Part 9 notifiable event.
 
@@ -2014,7 +2034,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 127 amended: No. 10 of 2023 s. 358.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > If an involuntary community patient breaches a community treatment order the supervising psychiatrist must record the breach, give the patient notice of it, and notify the Mental Impairment Review Tribunal for a supervised person. The record of breach is in the approved form and must set out the non-compliance, the steps taken to obtain compliance, a statement of the s 126(c) belief, and the facts and reasons behind it. The notice of breach must set out the non-compliance, what the patient must do to comply, and a statement that continued non-compliance may result in being required to attend a place for treatment. Both must be filed as soon as practicable.
 
@@ -2054,7 +2074,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)The supervising psychiatrist must, as soon as practicable, file the order to attend and give a copy to the involuntary community patient.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where the patient has been given a breach notice and the supervising psychiatrist is not satisfied they are complying, the psychiatrist may make an order to attend requiring the patient to attend a specified time and place to be provided with treatment. The order must warn that non-compliance may result in a transport order authorising apprehension and transport to that place. It is in the approved form with the time made, the reasons, the time and place to attend, the warning and the psychiatrist's details, and is filed with a copy to the patient.
 
@@ -2080,7 +2100,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)The making of a transport order under subsection (2) is an event to which Part 9 applies and the practitioner who makes the order is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where an involuntary community patient does not comply with an order to attend, a medical practitioner or mental health practitioner may make a transport order for them, but only if satisfied no other safe means of ensuring they attend the place is reasonably available. Part 10 governs how the order is carried out, and making it is a Part 9 notifiable event.
 
@@ -2158,7 +2178,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Transport to hospital
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a patient is in breach of a community treatment order, has been given notice of the breach, and has since either continued not complying or failed to comply with an order to attend, the supervising psychiatrist may make an inpatient treatment order — if satisfied on the section 25 criteria that an involuntary treatment order is still needed but the s 114 community criteria are not met — or revoke the community treatment order if no involuntary treatment order is needed. An inpatient treatment order requires examining the patient, and detention at a general hospital additionally requires that an authorised hospital would pose a significant risk to physical health and that the Chief Psychiatrist consents. A revocation may be made without examination, having regard to clinical observation, other people and the medical record. The order is in the approved form and is filed with a copy to the patient, and making it is a Part 9 notifiable event.
 
@@ -2190,7 +2210,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Supervising psychiatrist and treating practitioner
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner may make a transport order for the involuntary community patient, but only if satisfied the patient needs to be taken to the hospital and no other safe means of taking them is reasonably available. Part 10 governs how the order is carried out.
 
@@ -2226,7 +2246,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)An authorisation under subsection (3) has effect for the period specified in the authorisation.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The supervising psychiatrist under a community treatment order may, by arrangement, transfer that responsibility to another psychiatrist, and must then inform the patient in writing. The Chief Psychiatrist, or a person authorised in writing by them, may also transfer the responsibility by arrangement and must likewise inform the patient in writing. An authorisation may cover all or any patients treated by a specified mental health service or residing in a specified area, and has effect for the period it specifies.
 
@@ -2260,7 +2280,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Preliminary matters
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The supervising psychiatrist under a community treatment order may, by arrangement, transfer the treating practitioner's responsibility to another practitioner, and must then inform the involuntary community patient in writing of the transfer.
 
@@ -2280,7 +2300,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (2)However, the entitlement of a carer, close family member or other personal support person to be notified under subsection (1) is subject to section 142.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Any carer, close family member or other personal support person of a person is entitled to be notified, “as soon as practicable”, that a notifiable event has occurred for that person. The entitlement is subject to the best-interests exceptions in s 142.
 
@@ -2304,7 +2324,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Any notification provided under section 140(1) must be provided in accordance with section 9(2).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The person responsible under Part 9 for notifying a notifiable event must ensure that any carer, close family member or other personal support person of the person is notified “as soon as practicable after the event occurs”. They need not notify someone who is not entitled to be notified for a reason in s 142(1) or (2). The notification must be given in accordance with s 9(2).
 
@@ -2332,7 +2352,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)if no carer, close family member or other personal support person has been notified under section 140(1) of the notifiable event — a record of the reasons for that and any efforts made to do so.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The duty to notify under s 140(1) is taken to be met if reasonable efforts to notify continue until at least one carer, close family member or other personal support person has been notified, or until it is reasonable to conclude that none can be. The person responsible must file either a record of when and how each was notified or, if nobody was notified, a record of the reasons and of the efforts made.
 
@@ -2362,7 +2382,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > For the purpose of deciding under section 142(1) or (2) what is or is not in the best interests of a person, Part 2 Division 3 applies.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A carer, close family member or other personal support person is not entitled to be notified of a detention order under s 28(1) or (2), or a transport order under s 29(1), if the medical practitioner or authorised mental health practitioner who made the order reasonably believes notifying them is not in the person's best interests. For any other notifiable event, they are not entitled to be notified if a psychiatrist believes it is not in the person's best interests. A practitioner or psychiatrist who decides this must, as soon as practicable, file a record of the decision and the reasons and give a copy to the Chief Mental Health Advocate. Best interests are decided under Part 2 Division 3.
 
@@ -2396,7 +2416,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Any advice provided under section 143(1)(a) or (3)(a) must be provided in accordance with section 9(2).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > If a carer, close family member or other personal support person who is not entitled to notification under s 142 asks to be notified of the event, the practitioner or psychiatrist who made that decision must advise them of the decision and the reasons, file a record of that advice, and give a copy to the person the event concerns. If the advice was given orally, the carer, family member or support person may ask for it to be confirmed in writing; the practitioner or psychiatrist must do so, file a copy and give another copy to the person. The advice must be given in accordance with s 9(2).
 
@@ -2460,7 +2480,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Heading inserted: No. 10 of 2023 s. 360.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > When an involuntary treatment order is made, the person responsible for notification must ensure, as soon as practicable, that the Chief Mental Health Advocate, the Mental Health Tribunal and, if the patient is a supervised person, the Mental Impairment Review Tribunal are each given a copy of the order, together with the name and contact details of any carer, close family member or other personal support person notified under s 140(1) (so far as known) or, if none was notified, advice of that and the reasons. The same people and bodies must be given a copy of any order revoking an involuntary treatment order, and advised in writing when one expires. Records must be filed of who was given each copy, advice or piece of information, what was provided, and the date.
 
@@ -2504,7 +2524,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)give a copy to the transport officer or police officer responsible for carrying out the order.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A transport order must be in the approved form and must name the person to be transported, the place they are transported from and the hospital or place they must be taken to, the reasons why the order is necessary to get them there, and whether it is to be carried out by a transport officer or — where s 149(2) applies — a police officer, with reasons why a transport officer cannot do so. It must also state the time it is made, the time it expires under s 150(2), whether and how it can be extended, and the maker's name, qualifications and signature. It must be filed as soon as practicable with a copy to the person and a copy to the officer carrying it out.
 
@@ -2550,7 +2570,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)The transport order cannot be extended more than once.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a transport order made under s 63, 67, 92, 112, 129 or 133 is being carried out from a place outside the metropolitan area and the officer transporting the person forms the view it will expire before arrival, they may orally request an extension from a medical practitioner or mental health practitioner. The practitioner may orally make an extension order for a further period of up to 72 hours. They must then record it in the approved form with the time made and the new expiry, and file it with a copy to the officer. A transport order cannot be extended more than once.
 
@@ -2586,7 +2606,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)give a copy to the transport officer or police officer responsible for carrying out the transport order.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner may revoke a transport order if satisfied it is no longer needed. The revocation order is in the approved form with the time made, the reasons and the practitioner's details. It must be filed as soon as practicable with a copy to the person and a copy to the transport or police officer responsible for carrying out the transport order.
 
@@ -2628,7 +2648,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The person to whom the record of the search is given under subsection (1)(b)(i), (ii) or (iv) must ensure that, as soon as practicable, the record is filed and a copy given to the person searched.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Anyone conducting a search under s 159(2)(b) or 162(2)(a) must record it as soon as practicable and give the record to the person in charge of the service or place the person is taken to or received at, the practitioner into whose care they are delivered, the person searched if they are released without being taken anywhere, or the person in charge of the place where the search happened. The record is in the approved form and must state when the search was conducted, the reasons for it, any article seized in the course of it, and the name, sex, qualifications and signature of the person who conducted it. Whoever receives the record must ensure it is filed and a copy given to the person searched.
 
@@ -2678,7 +2698,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)A person to whom a record is given under subsection (4)(b)(i) or (ii) must ensure that the record is filed as soon as practicable.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An article seized under s 159(2)(c) from someone apprehended must be given to the person in charge of the service or place when they are received there, or to the practitioner into whose care they are delivered, or returned to the person if they are released without being taken anywhere — or otherwise dealt with according to law. Whoever deals with the article must record the details in the approved form as soon as practicable and give that record to the same recipient, and a person in charge or practitioner receiving it must ensure it is filed.
 
@@ -2744,7 +2764,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (g)if the article was dealt with under subsection (2)(b) — any other relevant information.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > An article seized under s 162(2)(b) or given to a mental health service under s 166(3)(a)(i) must be returned to the person when they are released, discharged or otherwise leave — unless in the opinion of the person in charge returning it may pose a serious risk to anyone's health or safety, in which case it is given to a carer, close family member or other personal support person, unless that is not appropriate. If neither happens at that point the article may be returned or handed over later, and otherwise must be stored and may be destroyed or disposed of after 6 months. A record of how the article was dealt with must be filed in the approved form, covering the details of the article, the dates it was returned or handed over, or the reasons it was not, and the date and manner of any destruction or disposal.
 
@@ -2762,7 +2782,7 @@ Reviewed by: ______________________ Date: ______________
 
 > A person cannot perform electroconvulsive therapy on a child under 14 years of age.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > No one may perform electroconvulsive therapy on a child under 14 years of age.
 
@@ -2792,7 +2812,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > For section 195(2)(a), the child or the child’s parent or guardian can give informed consent (see sections 14 and 15).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For a voluntary patient who is at least 14 but under 18 years of age, a medical practitioner can perform ECT only if informed consent is given, the Mental Health Tribunal approves it under Part 21 Division 6, and the practitioner has regard to the guidelines published under s 547(1)(f). The child, or the child's parent or guardian, can give the informed consent (ss 14 and 15).
 
@@ -2822,7 +2842,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 196 amended: No. 10 of 2023 s. 363.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For a child who is at least 14 but under 18 years of age and is an involuntary patient, or a supervised person required under the CLMI Act to be detained at an authorised hospital, a medical practitioner can perform ECT only if the Mental Health Tribunal approves it under Part 21 Division 6 and the practitioner has regard to the guidelines published under s 547(1)(f).
 
@@ -2854,7 +2874,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > 2.The GAA Act sections 110ZI and 110ZIA do not apply in relation to the performance of ECT on an adult who is a voluntary patient.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For an adult voluntary patient, a medical practitioner can perform ECT only if informed consent is given, it is performed at a mental health service approved under s 544 for that purpose, and the practitioner has regard to the guidelines published under s 547(1)(f). Informed consent can be given in an advance health directive, or on the adult's behalf by their enduring guardian, guardian or person responsible (GAA Act s 110ZJ). GAA Act ss 110ZI and 110ZIA do not apply to ECT on an adult voluntary patient.
 
@@ -2884,7 +2904,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 198 amended: No. 10 of 2023 s. 364.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For an adult involuntary patient, or a supervised person required under the CLMI Act to be detained at an authorised hospital, a medical practitioner can perform ECT only if the Mental Health Tribunal approves it under Part 21 Division 6 and the practitioner has regard to the guidelines published under s 547(1)(f).
 
@@ -2926,7 +2946,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 199 amended: No. 10 of 2023 s. 365.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Emergency ECT on an adult involuntary patient, or a supervised person required under the CLMI Act to be detained at an authorised hospital, can be performed only if it is needed to save the patient's life, or because there is an imminent risk of the patient behaving in a way likely to result in serious physical injury to the patient or another person; it is performed at a mental health service approved under s 544 for that purpose; the Chief Psychiatrist approves it; and the practitioner has regard to the guidelines published under s 547(1)(f). The Chief Psychiatrist must also have regard to those guidelines when approving it.
 
@@ -3022,7 +3042,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Emergency psychiatric treatment
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a mental health service performs electroconvulsive therapy, the person in charge must report to the Chief Psychiatrist in the approved form as soon as practicable after each month ends. The report covers the number of people whose ECT course was completed or discontinued that month, broken down by children, voluntary patients, involuntary patients and supervised persons (both those detained at an authorised hospital under the CLMI Act and those treated as a condition of a community supervision, interim, extended, leave-of-absence or interim-disposition order), with the child counts for each. It must also state the number of treatments in each course, how many were emergency ECT under s 199, and details of any serious adverse event that occurred or is suspected — including premature consciousness, anaesthetic complications, an acute and persistent confused state, muscle tears or vertebral column damage, severe persistent headaches, or persistent memory deficit. A course counts as completed in the month its last treatment was performed, and as discontinued in the month the decision to stop was made.
 
@@ -3072,7 +3092,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Psychosurgery
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner who provides emergency psychiatric treatment must, as soon as practicable, file a record of it and give a copy to the person, the Chief Psychiatrist, and — for a supervised person — the Mental Impairment Review Tribunal. The record is in the approved form and must include the person's name, the name and qualifications of the practitioner who provided the treatment, the names of anyone else involved, the date, time and place, the particulars of the circumstances, and the particulars of the treatment provided.
 
@@ -3138,7 +3158,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)the person who gave the oral authorisation or, if that person is not reasonably available, another person who is authorised to make a seclusion order must ensure that the person is informed of that fact and released from seclusion.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner at an authorised hospital, or the person in charge of a ward, may orally authorise seclusion of an admitted patient, a person referred under s 26(2) or 36(2) for examination there, or a person under a s 55(1)(c) or 61(1)(c) order — but only if satisfied of the s 216 matters, and they must specify the room or area. As soon as practicable after the person is secluded the authorisation is recorded in the approved form with the time given, the room or area and the reasons, and filed with a copy to the person. A mental health practitioner or person in charge of a ward must also inform a medical practitioner whether the person is or was secluded, in time for the examinations s 222(4) or 223(2) require, and record that. If a seclusion order confirming the oral authorisation is not made within 2 hours of the person being secluded, seclusion cannot continue and the person must be informed and released.
 
@@ -3210,7 +3230,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (6)The person who makes a seclusion order in respect of a person must, as soon as practicable after the person is secluded under the order, file it and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner at an authorised hospital, or the person in charge of a ward, may make a seclusion order for an admitted patient, a person referred under s 26(2) or 36(2) for examination there, or a person under a s 55(1)(c) or 61(1)(c) order, if satisfied of the s 216 matters. The order is in the approved form and must include the person's name and date of birth, the time it is made, the time any oral authorisation it confirms was given, the period of seclusion — which cannot exceed 2 hours including any time under that oral authorisation — the room or area, the reasons by reference to the s 216(1) criteria, the reasons for urgency where a mental health practitioner or person in charge makes it, particulars of observations made and of any directions about treatment and care while secluded, and the maker's details. A mental health practitioner or person in charge who makes the order must also inform a medical practitioner whether the person is or was secluded, in time for the required examinations, and record that. The order is filed with a copy to the person as soon as practicable after they are secluded.
 
@@ -3252,7 +3272,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)file the record and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a person secluded under an oral authorisation or seclusion order has a treating psychiatrist who neither gave the authorisation nor made the order, and the medical practitioner informed under s 214(5) or 215(4) is not that psychiatrist, whoever gave the authorisation or made the order must inform the treating psychiatrist whether the person is or was secluded. That must happen as soon as practicable and in any event within 2 hours of the person being secluded. The psychiatrist's name, qualifications and the time they were informed are recorded in the approved form and filed with a copy to the person.
 
@@ -3274,7 +3294,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The medical practitioner must, as soon as practicable, file the order and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner may extend a seclusion order in force for a further period of up to 2 hours. They cannot do so unless, immediately beforehand, they examine the person in accordance with s 222(4). The order must be filed as soon as practicable with a copy to the person.
 
@@ -3300,7 +3320,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The person who makes the order must, as soon as practicable, file it and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner, or the person in charge of a ward at an authorised hospital, may revoke a seclusion order in force. The revocation is in the approved form and must state the time the seclusion order is revoked and the maker's name, qualifications and signature, and is filed with a copy to the person.
 
@@ -3318,7 +3338,7 @@ Reviewed by: ______________________ Date: ______________
 
 > A medical practitioner or mental health practitioner must, as soon as practicable after a seclusion order expires, file a record in the approved form of the date and time of the expiry.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner must, as soon as practicable after a seclusion order expires, file a record in the approved form of the date and time of the expiry.
 
@@ -3364,7 +3384,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (d)any other care appropriate to the person’s needs.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > While a person is secluded, the person in charge of the ward must ensure these requirements are met. A mental health practitioner or nurse must observe the person every 15 minutes and file a record of those observations in the approved form with a copy to the person. A medical practitioner must examine the person at least every 2 hours and record their name and qualifications, the time of the examination, and the results — including whether, on the s 216(1) criteria, seclusion should continue — then file it with a copy to the person. The person must be provided with appropriate bedding and clothing, sufficient food and drink, access to toilet facilities, and any other care appropriate to their needs.
 
@@ -3402,7 +3422,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)file the record and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Whenever a person is released from seclusion, the person in charge of the ward must ensure they are examined by a medical practitioner within 6 hours — or, if they are to be released or discharged or want to leave against medical advice before that, that an examination is offered beforehand. The examining practitioner must record their name and qualifications, the time of the examination, and the results, including any complication of or deterioration in the person's mental or physical condition that is or may be a result of the seclusion, then file it with a copy to the person.
 
@@ -3476,7 +3496,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)the person who gave the oral authorisation or, if that person is not reasonably available, another person who is authorised to make a bodily restraint order must ensure that the person is informed of that fact and released from bodily restraint.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner at an authorised hospital, or the person in charge of a ward, may orally authorise bodily restraint of an admitted patient, a person referred under s 26(2) or 36(2) for examination there, or a person under a s 55(1)(c) or 61(1)(c) order — but only if satisfied of the s 232 matters. They must specify whether physical or mechanical restraint may be used and, for mechanical restraint, the device and how it may be applied to the person's body. As soon as practicable after the person is restrained the authorisation is recorded in the approved form with the time given, those specifications and the reasons, and filed with a copy to the person. A mental health practitioner or person in charge of a ward must also inform a medical practitioner whether the person is or was restrained, in time for the examinations s 238(4) or 239(2)(a) require, and record that. If a bodily restraint order confirming the oral authorisation is not made within 30 minutes of the person being restrained, restraint cannot continue and the person must be informed and released.
 
@@ -3558,7 +3578,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (6)The person who makes a bodily restraint order in respect of a person must, as soon as practicable after the person is restrained under the order, file it and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner at an authorised hospital, or the person in charge of a ward, may make a bodily restraint order for an admitted patient, a person referred under s 26(2) or 36(2) for examination there, or a person under a s 55(1)(c) or 61(1)(c) order, if satisfied of the s 232 matters. The order is in the approved form and must include the person's name and date of birth, the time it is made, the time any oral authorisation it confirms was given, the period of restraint — which cannot exceed 30 minutes including any time under that oral authorisation — whether physical or mechanical restraint may be used and, for mechanical restraint, the device and how it may be applied, the reasons by reference to the s 232(1) criteria including reasons for any device authorised, the reasons for urgency where a mental health practitioner or person in charge makes it, particulars of observations made and of any directions about treatment and care while restrained, and the maker's details. A mental health practitioner or person in charge who makes the order must also inform a medical practitioner whether the person is or was restrained, in time for the required examinations, and record that. The order is filed with a copy to the person as soon as practicable after they are restrained.
 
@@ -3600,7 +3620,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)file the record and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where a person restrained under an oral authorisation or bodily restraint order has a treating psychiatrist who neither gave the authorisation nor made the order, and the medical practitioner informed under s 230(5) or 231(4) is not that psychiatrist, whoever gave the authorisation or made the order must inform the treating psychiatrist whether the person is or was restrained. That must happen as soon as practicable and in any event within 30 minutes of the person being restrained. The psychiatrist's name, qualifications and the time they were informed are recorded in the approved form and filed with a copy to the person.
 
@@ -3638,7 +3658,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (5)A person who makes an order under subsection (1) or (3) must, as soon as practicable, file it and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner may extend a bodily restraint order in force for a further period of up to 30 minutes, but only if they examine the person in accordance with s 238(4) immediately beforehand. A medical practitioner or mental health practitioner may instead vary the order by shortening it, or by varying the device authorised or the way it may be applied. Either order is in the approved form with the time made, the variation, the reasons and the maker's details, and is filed with a copy to the person.
 
@@ -3664,7 +3684,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)The person who makes the order must, as soon as practicable, file it and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner, or the person in charge of a ward at an authorised hospital, may revoke a bodily restraint order in force. The revocation is in the approved form and must state the time the order is revoked and the maker's name, qualifications and signature, and is filed with a copy to the person.
 
@@ -3682,7 +3702,7 @@ Reviewed by: ______________________ Date: ______________
 
 > A medical practitioner or mental health practitioner must, as soon as practicable after a bodily restraint order expires, file a record in the approved form of the date and time of the expiry.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A medical practitioner or mental health practitioner must, as soon as practicable after a bodily restraint order expires, file a record in the approved form of the date and time of the expiry.
 
@@ -3740,7 +3760,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (d)any other care appropriate to the person’s needs.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > While a person is under bodily restraint, the person in charge of the ward must ensure these requirements are met. A mental health practitioner or nurse must be in physical attendance at all times and file a record of any observations in the approved form with a copy to the person. A medical practitioner must examine the person at least every 30 minutes and record their name and qualifications, the time of the examination, and the results — including whether, on the s 232(1) criteria, restraint should continue. If restraint lasts more than 6 hours a psychiatrist must review its use and record their name, qualifications and the date, time and results of the review. The person must be provided with appropriate bedding and clothing, sufficient food and drink, access to toilet facilities, and any other care appropriate to their needs.
 
@@ -3778,7 +3798,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)file the record and give a copy to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Whenever a person is released from bodily restraint, the person in charge of the ward must ensure they are examined by a medical practitioner as soon as practicable and in any event within 6 hours — or, if they are to be released or discharged or want to leave against medical advice before that, that an examination is offered beforehand. The examining practitioner must record their name and qualifications, the time of the examination, and the results, including any complication of or deterioration in the person's mental or physical condition that is or may be a result of the restraint, then file it with a copy to the person.
 
@@ -3852,7 +3872,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 1 — Explanation of rights
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Where urgent non-psychiatric treatment is provided to an involuntary patient detained at an authorised hospital, or to an accused or supervised person required to be detained there under the CLMI Act, the person in charge of the hospital must report it as soon as practicable to the Chief Psychiatrist and, for a supervised person, to the Mental Impairment Review Tribunal. The report is in the approved form and must include the patient's name, the name and qualifications of the practitioner who provided the treatment, the names of anyone else involved, the date, time and place, the particulars of the circumstances, and the particulars of the treatment. Providing the treatment is a Part 9 notifiable event.
 
@@ -3882,7 +3902,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)if the request is refused — that, as soon as practicable after the refusal, a record in the approved form of the reasons for the refusal is filed and a copy given to the person.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Unless s 249(1)(a) or (b) or (3) applies, a person who is or was provided with treatment or care by a mental health service is entitled to inspect and be given a copy of any relevant document about them held by the person in charge or a staff member, in addition to any other right of access they have. The person in charge must ensure any such request is dealt with as soon as practicable, and that if it is refused a record of the reasons is filed in the approved form and a copy given to the person.
 
@@ -3952,7 +3972,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 1 — Purpose and effect of nomination
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A psychiatrist may order that a patient be prohibited from exercising a s 261 communication right, or limited in exercising it. For the rights in s 261(3)(a), (b) or (e) the psychiatrist must be satisfied the order is in the patient's best interests. For visits from a legal practitioner or mental health advocate they must be satisfied there is a serious risk to that person's safety without the order and no other step could reasonably reduce it; contact by a legal practitioner or mental health advocate by other means cannot be restricted at all. The order is in the approved form with the time, the reasons and the psychiatrist's details, and is filed with a copy to the patient and to any carer, close family member or other personal support person. A psychiatrist must review the order before the end of each 24-hour period and confirm, amend or revoke it, filing a record of that and the reasons and advising the patient; the order ceases to be in force if it is not reviewed in time. The Chief Mental Health Advocate must be advised within 24 hours of the order being made.
 
@@ -3986,7 +4006,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (2)For the purposes of subsection (1)(e) and (g), the witness must be authorised by law to take declarations but cannot be a person referred to in subsection (1)(d) or (f).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A nomination is not valid unless it is in the approved form, states the nominated person's name and contact details and the date it takes effect, and is signed by the person making it — or by someone else in their presence and at their direction — with that signature witnessed. The nominated person must also sign to indicate they accept the nomination, and that signature must be witnessed too. Each witness must be authorised by law to take declarations and cannot be the person who signed the part being witnessed.
 
@@ -4068,7 +4088,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 1 — Appointment or engagement, functions and powers
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Defines terms for Part 20 (mental health advocacy services). An “identified person” — the people mental health advocates serve — includes: a person referred for examination by a psychiatrist under s 26(2) or (3)(a) or 36(2); a voluntary inpatient under an assessment order under s 34(1); a person under an order under s 55(1)(c) or 61(1)(c) enabling a psychiatrist's examination; any involuntary patient; an accused required under the CLMI Act s 19 to be detained at an authorised hospital; a supervised person required under the CLMI Act to be detained at an authorised hospital, or required to undergo treatment as a condition of one of the listed CLMI Act orders; a resident of a private psychiatric hostel; a person who has or may have a mental illness and is being treated or cared for by a body prescribed by the regulations; and a voluntary patient in a class the Minister directs under s 354. A “mental health service” in this Part includes a private psychiatric hostel.
 
@@ -4100,7 +4120,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (3)If the request is made to the mental health service, the person in charge of the mental health service must ensure that the Chief Mental Health Advocate is notified of the request as soon as practicable and, in any event, within 24 hours after the time when the request was made.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > A request for a mental health advocate to contact an identified person may be made by the person, their psychiatrist, or someone with a sufficient interest in them. It may be made to the mental health service detaining or treating the person, or to the Chief Mental Health Advocate. If it is made to the service, the person in charge must ensure the Chief Mental Health Advocate is notified of the request as soon as practicable and, in any event, “within 24 hours after the time when the request was made”.
 
@@ -4184,7 +4204,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > [Section 357 amended: No. 10 of 2023 s. 380.]
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > Sets when a mental health advocate must visit or otherwise contact an identified person; the deadline depends on which paragraph of the s 348 definition the person falls under. A person in paragraph (a), (b), (c) or (e) who is detained under one of the listed provisions (including s 28(1) or (2) and s 34(1)) must be contacted as soon as practicable and in any event “on or within 3 days after the day on which the Chief Mental Health Advocate receives a request” for contact, or is notified of one. An involuntary patient under an involuntary treatment order made on or after the section commenced must be contacted “on or within 7 days after the day on which the involuntary treatment order is made” if an adult, or “within 24 hours after the time when the involuntary treatment order is made” if a child. An involuntary patient whose order was made before the section commenced, or “has been in force for more than 7 days from the day on which the order is made”, must be contacted on or as soon as practicable after the Chief Mental Health Advocate receives, or is notified of, a request. A supervised person required under the CLMI Act to be detained at an authorised hospital must be contacted “within 7 days after the day on which the person is detained” if an adult, or “within 24 hours after the person is detained” if a child. A supervised person required to undergo treatment in the community under the CLMI Act (paragraph (g)) must be contacted “within 7 days (or 24 hours if the person is a child) after the day on which the Chief Mental Health Advocate” receives or is notified of a request. A resident of a private psychiatric hostel (paragraph (h)) or a person receiving care from a prescribed organisation (paragraph (i)) must be contacted on or as soon as practicable after a request is received or notified and, in any event, “within 7 days after that day”; a voluntary patient in a class directed by the Minister (paragraph (j)), within a reasonable time. Despite that, a child who is a hostel resident, receiving care from a prescribed organisation, or in a directed voluntary class (paragraphs (h), (i) or (j)) must be contacted “on or within 24 hours after the day on which the Chief Mental Health Advocate receives a request” or is notified of one.
 
@@ -4204,7 +4224,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Subdivision 3 — Specific powers of mental health advocates
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > In addition to the contact required by s 357, a mental health advocate may visit or otherwise contact an identified person at any time, subject to any direction of the Chief Mental Health Advocate under s 359(3).
 
@@ -4248,7 +4268,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)the involuntary patient has, under section 388, been an involuntary patient continuously since the previous review.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The Mental Health Tribunal must review each involuntary treatment order as soon as practicable after it is made, and in any event by the end of the initial review period, to decide whether the patient still needs the order having regard to the s 25 criteria. The initial review period is “the period of 35 days from the day on which the order is made” for an adult and “the period of 10 days from the day on which the order is made” for a child. It is enough that the review starts within that period and is completed as soon as practicable. No initial review is required if the person has not been an involuntary patient continuously (s 388) since the order was made, or if the Tribunal has already reviewed an earlier order for them (or the terms of a community treatment order it directed under s 395(2)(b)) and they have been continuously involuntary since that review.
 
@@ -4306,7 +4326,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)The Tribunal is not required to review the order under subsection (2) if the involuntary patient has not, under section 388, been an involuntary patient continuously since the last review day.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > While an involuntary treatment order stays in force, the Tribunal must review it periodically — on or within the prescribed number of days before each periodic review period ends — to decide whether the patient still needs it having regard to the s 25 criteria. The periodic review period runs from the last review day. For an inpatient treatment order, or a community treatment order where on the last review day the patient “has been an involuntary community patient continuously for not more than 12 months”, it is “the period of 3 months from that day” for an adult and “the period of 28 days from that day” for a child. For a community treatment order where the patient “has been an involuntary community patient continuously for more than 12 months”, it is “the period of 6 months from that day”. The prescribed number of days is “21 days before the day on which that period ends” if the patient was an adult when the order was made, and “7 days before the day on which that period ends” if they were a child. Starting in time and finishing as soon as practicable is enough, and no periodic review is required if the patient has not been continuously involuntary (s 388) since the last review day.
 
@@ -4328,7 +4348,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)during the period, an involuntary treatment order ceased to be in force in respect of the person and another involuntary treatment order came into force in respect of the person on or within 7 days after the day of the cessation.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > For the review rules in ss 386(4), 386(5)(b) and 387(4), a person has been an involuntary patient continuously for a period if one or more involuntary treatment orders were in force for the whole of it, or if, when an order ceased, another came into force “on or within 7 days after the day of the cessation”.
 
@@ -4376,7 +4396,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (2)If the Tribunal makes a relevant decision within the prescribed period before the day on which a review period for an involuntary treatment order ends, the Tribunal may make an order extending the review period from the day on which it would otherwise have ended for the further period (not exceeding the maximum extension period) specified in the order.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > If, within the prescribed period before a review period (initial or periodic) ends, the Tribunal makes a decision that involved considering substantially the same issues as the review would, it may order the review period extended by a further period no longer than the maximum extension period. Judged on the day of that decision, the prescribed period is “the period of 28 days” for an adult and “the period of 7 days” for a child; the maximum extension period is “the period of 21 days” for an adult and “the period of 7 days” for a child.
 
@@ -4428,7 +4448,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (b)if, on the day on which the decision is made, the involuntary patient is a child — the period of 7 days.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The involuntary patient, a carer, close family member or other personal support person, a mental health advocate, or anyone else the Tribunal considers has a sufficient interest may apply in writing to the Tribunal for review of: an involuntary treatment order (against the s 25 criteria); an inpatient treatment order (against s 25(1)); whether a community treatment order's terms are appropriate; a transfer order under s 66(1), 91(2) or 555(1), or a refusal to make one; or a transfer of, or refusal to transfer, responsibility as supervising psychiatrist (s 135(1)(a)) or treating practitioner (s 137(a)). An application may be made at any time, except that once the Tribunal has decided substantially the same issues, a fresh application cannot be made within the prescribed period — “the period of 28 days” for an adult, “the period of 7 days” for a child — unless the patient's circumstances have materially changed.
 
@@ -4452,7 +4472,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (c)a transfer of responsibility under section 390(1)(e) or (f) to decide the matter referred to in that provision.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The Tribunal may, on its own initiative whenever it considers it appropriate, review any matter that could be the subject of an application under s 390(1): an involuntary treatment order, an inpatient treatment order or the terms of a community treatment order; a transfer order or a refusal to make one; or a transfer of supervising-psychiatrist or treating-practitioner responsibility, or a refusal to transfer it.
 
@@ -4486,7 +4506,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)The Tribunal may give a copy of any recommendation made under subsection (3) to the Chief Psychiatrist.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > On completing a review, the Tribunal may make any orders and give any directions it considers appropriate, including revoking an involuntary treatment order, directing the psychiatrist named in the order to make a community treatment order in specified terms (consistent with s 115) within a specified reasonable period, or varying the terms of a community treatment order consistently with s 115. It cannot make orders or give directions about a patient's treatment, support or discharge plan, but it may recommend that the patient's psychiatrist review the plan, recommend amendments to it, and give a copy of any such recommendation to the Chief Psychiatrist.
 
@@ -4518,7 +4538,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (iv)the minimum period that it is proposed will elapse between any 2 treatments.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The patient's psychiatrist may apply to the Tribunal for approval to perform ECT. The application must be in writing and set out the reasons for recommending ECT and a treatment plan stating the mental health service where it is proposed to be performed, the maximum number of treatments, the maximum period over which they will be given, and the minimum period between any two treatments.
 
@@ -4538,7 +4558,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (2)The Tribunal cannot approve electroconvulsive therapy being performed on a patient to whom section 195 applies unless satisfied that informed consent to it being performed on the patient is given as required by section 195(2)(a).
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The Tribunal cannot approve ECT unless satisfied that the mental health service where it is proposed to be performed is approved under s 544 for that purpose and, for a voluntary patient aged at least 14 but under 18 (s 195), that informed consent has been given as s 195(2)(a) requires.
 
@@ -4568,7 +4588,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > Psychosurgery approvals
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The Tribunal decides an ECT application by approving ECT in accordance with the treatment plan in the application, approving it on that plan but with the maximum number of treatments reduced to a number the Tribunal specifies, or refusing to approve it.
 
@@ -4612,7 +4632,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (4)The making of a transfer order under subsection (1) is an event to which Part 9 applies and the person in charge of the hospital is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The person in charge of a hospital may, with the Chief Psychiatrist's written approval, make a transfer order authorising a State inpatient's transfer to the interstate mental health service named in it — including an inpatient who is absent without leave as described in s 551(2). The order is in the approved form and must include the inpatient's name, the hospital transferred from and the interstate service transferred to, the time made, the reasons and the maker's details. Both the approval and the order must be filed with a copy of each to the inpatient, and a copy of each transmitted to the person in charge of the interstate service. Making it is a Part 9 notifiable event.
 
@@ -4656,7 +4676,7 @@ Reviewed by: ______________________ Date: ______________
 >
 > (6)The making of a transfer approval order under subsection (1) is an event to which Part 9 applies and the person in charge of the hospital is the person responsible under that Part for notification of that event.
 
-**Drafted summary** (status: drafted)
+**Drafted summary** (status: reviewed)
 
 > The person in charge of a hospital may, with the Chief Psychiatrist's written consent, make a transfer approval order approving an interstate inpatient's transfer to that hospital — including one absent without leave as described in s 551(3). The order is in the approved form and must include the patient's name, the interstate service transferred from and the hospital transferred to, the time made, the reasons and the maker's details. A copy of both the consent and the order must be transmitted to the interstate service as soon as practicable. On admission the interstate inpatient treatment order is taken to be an inpatient treatment order made under this Act, and the consent and order must then be filed with a copy of each given to the patient. Making it is a Part 9 notifiable event.
 

@@ -40,15 +40,11 @@ function signedFormReviews(): ClinicalSignOffEntry[] {
 }
 
 describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
-  it("refuses the current repository review sidecars while records carry product attribution or remain drafted", () => {
-    const expectedServiceCount = defaultServiceRecords().length;
-    expect(() => buildFirstPublicationCataloguePlan({ kind: "form" })).toThrow(
-      /First-publication plan refused: 54 record\(s\) lack clinical sign-off by a named person/,
-    );
+  it("accepts the 54 signed repository forms and refuses service sidecars while Indigenous or legacy records lack named sign-off", () => {
+    const formPlan = buildFirstPublicationCataloguePlan({ kind: "form" });
+    expect(formPlan.counts.forms).toBe(54);
     expect(() => buildFirstPublicationCataloguePlan({ kind: "service" })).toThrow(
-      new RegExp(
-        `First-publication plan refused: ${expectedServiceCount} record\\(s\\) lack clinical sign-off by a named person`,
-      ),
+      /First-publication plan refused: \d+ record\(s\) lack clinical sign-off by a named person/,
     );
   });
 

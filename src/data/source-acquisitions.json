@@ -79,7 +79,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Sodium valproate", "Anticonvulsants / teratogens", "Medications", "Product information"],
     "rung": 3,
@@ -88,7 +88,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for sodium-valproate-oral-iv (Anticonvulsants / teratogens, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"sodium valproate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"sodium valproate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "2102d6b2db2469d71bb1f00fb39171a815e4339fd69ae40eb63b3008e27ec627"
   },
   {
     "id": "dictionary-wa-mental-health-advocacy-service",
@@ -220,7 +223,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Clomipramine", "Tricyclic antidepressants (overdose lethality)", "Medications", "Product information"],
     "rung": 3,
@@ -229,7 +232,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for clomipramine (Tricyclic antidepressants (overdose lethality), #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"clomipramine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"clomipramine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "0b5027d281f2b091af1e00dc0f87a12c7fa32b4d47183a29e25a58263b27cf8e"
   },
   {
     "id": "mhc-wa-my-services-directory-page",
@@ -358,7 +364,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Tranylcypromine", "Irreversible MAOIs", "Medications", "Product information"],
     "rung": 3,
@@ -367,7 +373,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for tranylcypromine (Irreversible MAOIs, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"tranylcypromine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"tranylcypromine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "b8671158bc0fb79a59b7fe1c1f0e939922e5eb4cd29fdc2937f34e55d92bb864"
   },
   {
     "id": "dictionary-ranzcp-ect-ps74",
@@ -849,7 +858,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Citalopram", "High QTc-prolongation antidepressants", "Medications", "Product information"],
     "rung": 3,
@@ -858,7 +867,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for citalopram (High QTc-prolongation antidepressants, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"citalopram\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"citalopram\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "20752cab7d4d795c6c7492032f51ad7f1b218868fb84872d0d7124597f09795e"
   },
   {
     "id": "tga-product-information-nortriptyline",
@@ -876,7 +888,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Nortriptyline", "Tricyclic antidepressants (overdose lethality)", "Medications", "Product information"],
     "rung": 3,
@@ -885,7 +897,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for nortriptyline (Tricyclic antidepressants (overdose lethality), #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"nortriptyline\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"nortriptyline\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "30de442c05ede826de08a39da55be0e29520d403490b5944974940da38a903ec"
   },
   {
     "id": "tga-product-information-flupentixol-decanoate",
@@ -903,7 +918,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Flupentixol decanoate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -912,7 +927,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for flupentixol-decanoate (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"flupentixol decanoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"flupentixol decanoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "1c8db9833f9c6147255bd3aa1cf2f4de96ef085ba4f2b7129d0ec8e16e5f06a0"
   },
   {
     "id": "cahs-pch-medication-monograph-lithium",
@@ -1010,7 +1028,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Ziprasidone", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -1019,7 +1037,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for ziprasidone (High QTc-prolongation antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"ziprasidone\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"ziprasidone\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "15b9e9c348f069927832021b9ae7656ee075e15c9c6f94d3c0b3f9d1af369827"
   },
   {
     "id": "healthdirect-1800respect-partner-page",
@@ -1122,7 +1143,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Escitalopram", "High QTc-prolongation antidepressants", "Medications", "Product information"],
     "rung": 3,
@@ -1131,7 +1152,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for escitalopram (High QTc-prolongation antidepressants, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"escitalopram\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"escitalopram\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "956f4a6aed6837e3ed59aee80193ecd7e58d33fd42e9a3f21de8376bbd6857aa"
   },
   {
     "id": "mental-health-act-2014-wa",
@@ -1580,7 +1604,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": [
       "Zuclopenthixol acetate",
@@ -1594,7 +1618,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for zuclopenthixol-acetate (Acute parenteral / depot antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"zuclopenthixol acetate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"zuclopenthixol acetate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "7ba19c0a975b14f5cec6474e22fe4a9bb3d48bec5796045bc086d45a7bd891b5"
   },
   {
     "id": "apa-dsm5tr-manual",
@@ -1942,7 +1969,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Paliperidone palmitate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -1951,7 +1978,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for paliperidone-lai (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"paliperidone palmitate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"paliperidone palmitate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "d626920da754b923777d1f1009f5c6e195e59aa458d0e35f9f0f9c8a5262f88a"
   },
   {
     "id": "therapy-nice-cg78",
@@ -1997,7 +2027,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Risperidone", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -2006,7 +2036,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for risperidone-lai (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"risperidone\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"risperidone\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "fcc60e248517f58da828227f964b850743e16e73f0a4578dc570d02418589600"
   },
   {
     "id": "wachs-bunbury-mhoa-completion-news",
@@ -2105,7 +2138,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Droperidol", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -2114,7 +2147,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for droperidol (High QTc-prolongation antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"droperidol\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"droperidol\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "5a4d0f65139c617ae8e16e5af448050036a70c283c70fdccd565a509fc795cbc"
   },
   {
     "id": "dictionary-healthdirect-psychosis",
@@ -2420,7 +2456,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Carbamazepine", "Anticonvulsants / teratogens", "Medications", "Product information"],
     "rung": 3,
@@ -2429,7 +2465,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for carbamazepine-ir-cr (Anticonvulsants / teratogens, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"carbamazepine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"carbamazepine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "118bc492afb58afaf7bd641631dd6d635644ff3dcb7acfa4770bdee52d0a7570"
   },
   {
     "id": "ocp-wa-standard-consumer-carer-involvement",
@@ -2475,7 +2514,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Amisulpride", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -2484,7 +2523,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for amisulpride (High QTc-prolongation antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"amisulpride\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"amisulpride\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "498caf075016970d6a09ffba8dabe4214a17c6f2223600ce38be1498bafe9c69"
   },
   {
     "id": "tga-product-information-phenelzine",
@@ -2502,7 +2544,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Phenelzine", "Irreversible MAOIs", "Medications", "Product information"],
     "rung": 3,
@@ -2511,7 +2553,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for phenelzine (Irreversible MAOIs, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"phenelzine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"phenelzine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "8c3184048df08d903f7d08a83404ead932c064695b4e1ed52db45a30a089a73f"
   },
   {
     "id": "wachs-great-southern-adult-mental-health-page",
@@ -2557,7 +2602,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Aripiprazole", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -2566,7 +2611,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for aripiprazole-lai (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"aripiprazole\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"aripiprazole\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "da29b9360258d610d62ecfb44299773ed18d6c2e29a47d31e33b502ccf93ffda"
   },
   {
     "id": "therapy-au-nhmrc-mdma",
@@ -2775,7 +2823,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Methadone", "Opioid agonist therapy / QTc and overdose risk", "Medications", "Product information"],
     "rung": 3,
@@ -2784,7 +2832,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for methadone (Opioid agonist therapy / QTc and overdose risk, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"methadone\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"methadone\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "f7697cfda2afc0bd7c3e35011f52fa3b4f25266ffeb43100997ba388a24a2935"
   },
   {
     "id": "therapy-au-ranzcp-ltpp-clarification-2026",
@@ -2833,7 +2884,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Amitriptyline", "Tricyclic antidepressants (overdose lethality)", "Medications", "Product information"],
     "rung": 3,
@@ -2842,7 +2893,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for amitriptyline (Tricyclic antidepressants (overdose lethality), #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"amitriptyline\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"amitriptyline\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "27d927ace51374835c2a3316e29dc6c59ebc5eb25e7e7178eb716866d3d85abd"
   },
   {
     "id": "wa-health-scriptcheckwa",
@@ -2944,7 +2998,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Lamotrigine", "Anticonvulsants / SJS-TEN risk", "Medications", "Product information"],
     "rung": 3,
@@ -2953,7 +3007,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for lamotrigine (Anticonvulsants / SJS-TEN risk, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"lamotrigine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"lamotrigine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "87311aeb59773b334e33ddd5ccf1a03da4772821b5d1b05344dfb94b04ee426a"
   },
   {
     "id": "therapy-nice-ng193",
@@ -3296,7 +3353,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Haloperidol decanoate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -3305,7 +3362,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for haloperidol-decanoate (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"haloperidol decanoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"haloperidol decanoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "cab9f6a026bd29a7078c78e154a7982f2f3235eac7408b00b249aa4d8eaba3d5"
   },
   {
     "id": "tga-product-information-olanzapine-pamoate",
@@ -3323,7 +3383,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Olanzapine pamoate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -3332,7 +3392,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for olanzapine-pamoate-lai (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"olanzapine pamoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"olanzapine pamoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "2b8800888e34e2b814308f3a52bd6e97809bf1c38760468451ce9989304ad5b7"
   },
   {
     "id": "therapy-nice-cg113",
@@ -3462,7 +3525,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Haloperidol", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -3471,7 +3534,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for haloperidol-oral-im-iv (High QTc-prolongation antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"haloperidol\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"haloperidol\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "40c0349ce0eecf70566408c22507af34ecf9458bb30f79ec90e5798bb7c12cde"
   },
   {
     "id": "dictionary-apa-what-are-bipolar-disorders",
@@ -3574,7 +3640,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": ["Chlorpromazine", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
@@ -3583,7 +3649,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for chlorpromazine (High QTc-prolongation antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"chlorpromazine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"chlorpromazine\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "7d8de94ffcaed9fc02e4f71b838fa95c0e7add739a1d69c34df10ca2c34a3333"
   },
   {
     "id": "wa-health-language-services-policy-mp0051-17",
@@ -3766,7 +3835,7 @@
     "expiryDate": null,
     "evidenceType": "regulatory",
     "documentStatus": "current",
-    "validationStatus": "unverified",
+    "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
     "topics": [
       "Zuclopenthixol decanoate",
@@ -3780,7 +3849,10 @@
     "disposition": "candidate",
     "dispositionReason": "Candidate TGA eBS Product Information search link for zuclopenthixol-decanoate (Long-acting injectable antipsychotics, #05WXHX); awaits clinical owner verification of the current Product Information version and date before sign-off and adoption.",
     "supersededBy": [],
-    "notes": "Links to the TGA eBS Product Information repository query for \"zuclopenthixol decanoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source."
+    "notes": "Links to the TGA eBS Product Information repository query for \"zuclopenthixol decanoate\". Held as a candidate with validationStatus unverified until the clinical owner reviews and signs off via npm run clinical:review -- --write --kind source.",
+    "attestedBy": "Josh Simpson",
+    "attestedAt": "2026-10-16T05:11:29.327Z",
+    "attestedAgainstSha256": "4e4e35a54cd56a6bfc232fd3dbe3e873de1d1190c0057e7aec37ae29482d8052"
   },
   {
     "id": "therapy-nice-cg115",

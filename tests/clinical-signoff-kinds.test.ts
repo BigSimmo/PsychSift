@@ -387,8 +387,19 @@ describe("specifier sign-off", () => {
   });
 
   it("offers product-stamped sign-offs for re-signing and refuses a reviewer without a full name", () => {
+    const document = clone(specifiersContent);
+    const firstDefined = document.categories
+      .flatMap((category) => category.disorders.flatMap((disorder) => disorder.groups.flatMap((group) => group.items)))
+      .find((item) => item.definitionStatus === "defined");
+    if (firstDefined) {
+      Object.assign(firstDefined.review, {
+        clinicianReviewStatus: "clinician-reviewed",
+        reviewedBy: "PsychSift",
+        reviewedAt: REVIEWED_AT,
+      });
+    }
     const stampedIds = new Set(
-      specifiersContent.categories.flatMap((category) =>
+      document.categories.flatMap((category) =>
         category.disorders.flatMap((disorder) =>
           disorder.groups.flatMap((group) =>
             group.items
@@ -398,7 +409,9 @@ describe("specifier sign-off", () => {
         ),
       ),
     );
-    const productStamped = records().filter((record: Json) => stampedIds.has(String(record.id)));
+    const productStamped = collectionOf("specifier", document).filter((record: Json) =>
+      stampedIds.has(String(record.id)),
+    );
     expect(productStamped.length).toBeGreaterThan(0);
     for (const record of productStamped) expect(record).toMatchObject({ status: "drafted", reviewedBy: null });
 
