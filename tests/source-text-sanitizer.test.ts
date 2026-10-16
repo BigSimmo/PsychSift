@@ -579,4 +579,24 @@ describe("normalizeInlineBulletGlyphs", () => {
       "first point\nSecond point\nThird point",
     );
   });
+
+  it("recognizes inflected forms of contraindicated, escalate, and prescribe as clinical signals and concrete actions (#HD1C6W)", () => {
+    const controlGluedContraindicated =
+      "Treatment is contraindicated in severe hepatic impairment. Document owner: Pharmacy Department.";
+    expect(sourceTextForDisplay(controlGluedContraindicated)).toContain(
+      "Treatment is contraindicated in severe hepatic impairment.",
+    );
+
+    const prescribeUsefulness = clinicalProseUsefulness(
+      "Clinicians who prescribe clozapine must verify blood results before issuing a prescription.",
+    );
+    expect(prescribeUsefulness.useful).toBe(true);
+    expect(prescribeUsefulness.text).toContain("prescribe clozapine");
+
+    const escalateUsefulness = clinicalProseUsefulness(
+      "Staff must escalate abnormal results and document the escalation in the clinical record.",
+    );
+    expect(escalateUsefulness.useful).toBe(true);
+    expect(escalateUsefulness.text).toContain("escalate abnormal results");
+  });
 });

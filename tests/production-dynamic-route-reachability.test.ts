@@ -583,6 +583,7 @@ describe("production dynamic route reachability", () => {
       "/services/[slug]",
       "/sources/[sourceId]",
       "/specifiers/[slug]",
+      "/teaching/assessments/respond/[token]",
       // One doctor as their supervisor sees them (work mode, 7 Oct 2026). Reached today from the
       // preview-role switcher's supervisor example in preview-role.ts; it sits behind the launch
       // switch (work-mode-launch/routes.ts).

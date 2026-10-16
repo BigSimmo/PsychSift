@@ -1666,7 +1666,8 @@ describe("design-system adoption manifest", () => {
     // 221 -> 223: Job applications and its CV moved to /admin/applications (the old /cme addresses
     // stay as redirects).
     // 223 -> 224: Clinical Forms' Clock tab (`/forms/clock`), the MHA clock under Forms.
-    expect(manifest.routeCoverage.discovered).toHaveLength(224);
+    // 224 -> 225: External supervisor EPA magic-link response page (`/teaching/assessments/respond/[token]`).
+    expect(manifest.routeCoverage.discovered).toHaveLength(225);
     expect(manifest.routeCoverage.declared).toEqual(manifest.routeCoverage.discovered);
     expect(manifest.routeCoverage.undeclared).toEqual([]);
     expect(manifest.routeCoverage.missing).toEqual([]);

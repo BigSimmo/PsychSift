@@ -355,7 +355,9 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
 
       expect(adjustment.isValid).toBe(true);
+      expect(adjustment.rawDoseMg).toBe(1200);
       expect(adjustment.suggestedDoseMg).toBe(1250);
+      expect(adjustment.warnings).toEqual(expect.arrayContaining([expect.stringContaining("125 mg -> 1250 mg")]));
       expect(adjustment.note).toContain("Linear kinetics");
 
       // Supports explicit 50 mg or 225 mg (Quilonum SR 450 mg half-tablet) increments
@@ -395,7 +397,6 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
       expect(boundaryToxicTarget.isValid).toBe(false);
       expect(boundaryToxicTarget.suggestedDoseMg).toBeNull();
-
       const toxicAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 1000,
         currentLevelMmolL: 1.5,
@@ -405,9 +406,17 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(toxicAdjustment.isValid).toBe(false);
       expect(toxicAdjustment.suggestedDoseMg).toBeNull();
       expect(toxicAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic range")]));
+
+      const toxicTarget = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 0.8,
+        targetLevelMmolL: 1.2,
+      });
+      expect(toxicTarget.isValid).toBe(false);
+      expect(toxicTarget.suggestedDoseMg).toBeNull();
     });
 
-    it("fails closed when calculated proportional dose rounds to zero mg", () => {
+    it("fails closed when calculated proportional dose rounds to zero mg or rounds above the 2000 mg/day ceiling", () => {
       const zeroAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 20,
         currentLevelMmolL: 0.8,
@@ -417,6 +426,19 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(zeroAdjustment.isValid).toBe(false);
       expect(zeroAdjustment.suggestedDoseMg).toBeNull();
       expect(zeroAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("rounds to zero")]));
+
+      // rawDose = 1100 * (0.9 / 0.5) = 1980 mg, but rounding to 225 mg increment yields 2025 mg > 2000 mg ceiling
+      const roundedAboveCeiling = calculateProportionalLithiumDose({
+        currentDoseMg: 1100,
+        currentLevelMmolL: 0.5,
+        targetLevelMmolL: 0.9,
+        tabletIncrementMg: 225,
+      });
+      expect(roundedAboveCeiling.isValid).toBe(false);
+      expect(roundedAboveCeiling.suggestedDoseMg).toBeNull();
+      expect(roundedAboveCeiling.errors).toEqual(
+        expect.arrayContaining([expect.stringContaining("outside safe limits")]),
+      );
     });
   });
 });

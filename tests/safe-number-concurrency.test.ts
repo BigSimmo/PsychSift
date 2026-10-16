@@ -11,9 +11,12 @@ import {
   setSafeNumber,
 } from "@/lib/on-call/cover";
 import { SafeNumberEditor, type SafeNumberRecord } from "@/components/on-call/safe-number-editor";
+import { RosterSafeNumber } from "@/components/roster/manage/roster-safe-number";
+import type { RosterOverview } from "@/lib/roster/team/model";
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -234,5 +237,73 @@ describe("SafeNumberEditor component optimistic locking", () => {
       expect(screen.queryByTestId("safe-number-conflict-alert")).toBeNull();
       expect(screen.getByTestId("safe-number-value-day").textContent).toBe("5");
     });
+  });
+});
+
+describe("RosterSafeNumber live route cell-level conflict detection (#3B4S3Z)", () => {
+  const overview: RosterOverview = {
+    service: { id: "team", name: "Example team" },
+    me: { role: "manager", grade: null, rotationEndsOn: null },
+    latestPublication: null,
+    seenLatest: true,
+    settings: { swapApproval: "auto_same_grade", rules: {}, rulesSource: null, payFortnightAnchor: null },
+    sites: [],
+  };
+  const id = (n: number) => `5e000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const baselineNeeds = [1, 2, 3, 4, 5].map((weekday) => ({
+    id: id(weekday),
+    weekday,
+    date: null,
+    kind: "day",
+    grade: null,
+    siteId: null,
+    needed: 2,
+  }));
+
+  it("surfaces safe-number-conflict-banner when a modified shift was concurrently edited, and resolves via Reload latest or Overwrite", async () => {
+    let currentNeeds = baselineNeeds;
+    const posts: unknown[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return Response.json({ result: { ok: true } });
+        }
+        return Response.json({ codes: [], needs: currentNeeds, drafts: [] });
+      }),
+    );
+
+    render(React.createElement(RosterSafeNumber, { serviceId: "team", overview }));
+
+    const incrementBtn = await screen.findByRole("button", { name: "One more, Day, Monday to Friday" });
+    fireEvent.click(incrementBtn);
+
+    // Concurrent manager updates Monday-Friday day shift to 5 while editor is open
+    currentNeeds = baselineNeeds.map((need) => ({ ...need, needed: 5 }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+
+    const banner = await screen.findByTestId("safe-number-conflict-banner");
+    expect(banner).toBeTruthy();
+    expect(posts).toHaveLength(0);
+
+    // Clicking Reload latest adopts the concurrent 5 value and clears the conflict banner
+    fireEvent.click(screen.getByTestId("safe-number-conflict-reload"));
+    expect(screen.queryByTestId("safe-number-conflict-banner")).toBeNull();
+    expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("5");
+
+    // Edit again (5 -> 6), simulate another concurrent change to 4, then click Overwrite with my changes
+    fireEvent.click(screen.getByRole("button", { name: "One more, Day, Monday to Friday" }));
+    currentNeeds = baselineNeeds.map((need) => ({ ...need, needed: 4 }));
+    fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+
+    await screen.findByTestId("safe-number-conflict-banner");
+    fireEvent.click(screen.getByTestId("safe-number-conflict-overwrite"));
+
+    expect(await screen.findByText(/^Saved\./)).toBeTruthy();
+    expect(posts).toHaveLength(1);
+    expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("6");
   });
 });

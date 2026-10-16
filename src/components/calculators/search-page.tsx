@@ -45,6 +45,7 @@ import {
   type CalculatorFixture,
 } from "./calculator-fixtures";
 import { CalculatorSheet } from "./calculator-sheet";
+import { ClinicalMathPanel } from "./clinical-math-panel";
 import { calculatorRecordById } from "./calculator-routes";
 import {
   MetaPill,
@@ -587,12 +588,14 @@ export function CalculatorsSearchPage({
         sidebar={
           <>
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
+            <ClinicalMathPanel />
             <AboutPanel />
           </>
         }
         sidebarMobile={
           <div className="grid gap-4 xl:hidden">
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
+            <ClinicalMathPanel />
             <AboutPanel />
           </div>
         }

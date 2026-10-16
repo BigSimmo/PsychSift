@@ -593,7 +593,10 @@ export function chunkIntoBatches<T>(items: T[], size: number): T[][] {
   return batches;
 }
 
-export async function embedTexts(texts: string[], options?: { signal?: AbortSignal }) {
+export async function embedTexts(
+  texts: string[],
+  options?: { signal?: AbortSignal; timeoutMs?: number; maxRetries?: number },
+) {
   if (texts.length === 0) return [];
   options?.signal?.throwIfAborted();
 
@@ -651,7 +654,12 @@ export async function embedTexts(texts: string[], options?: { signal?: AbortSign
               // IDX-C2: request the exact dimension the schema's vector(N) columns expect.
               dimensions: env.EMBEDDING_DIMENSIONS,
             },
-            requestOptions({ operation: "embedding", signal: options?.signal }),
+            requestOptions({
+              operation: "embedding",
+              signal: options?.signal,
+              timeoutMs: options?.timeoutMs,
+              maxRetries: options?.maxRetries,
+            }),
           );
 
           // IDX-C2: a short response means some inputs silently produced no embedding.
@@ -748,7 +756,18 @@ async function awaitInflightEmbedding(key: string, entry: QueryEmbeddingInflight
   }
 }
 
-export async function embedTextWithTelemetry(text: string, options?: { signal?: AbortSignal }) {
+export async function embedText(
+  text: string,
+  options?: { signal?: AbortSignal; timeoutMs?: number; maxRetries?: number },
+) {
+  const { embedding } = await embedTextWithTelemetry(text, options);
+  return embedding;
+}
+
+export async function embedTextWithTelemetry(
+  text: string,
+  options?: { signal?: AbortSignal; timeoutMs?: number; maxRetries?: number },
+) {
   options?.signal?.throwIfAborted();
   const cached = getCachedQueryEmbedding(text);
   if (cached) {
@@ -773,7 +792,11 @@ export async function embedTextWithTelemetry(text: string, options?: { signal?: 
       waiters: 0,
       settled: false,
     };
-    entry.promise = embedTexts([text], { signal: controller.signal })
+    entry.promise = embedTexts([text], {
+      signal: controller.signal,
+      timeoutMs: options?.timeoutMs,
+      maxRetries: options?.maxRetries,
+    })
       .then((embeddings) => {
         const embedding = embeddings[0];
         if (!embedding) {

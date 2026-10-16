@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, CalendarPlus, ChevronRight, FileUp, Link2, type LucideIcon } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useMemo, useState, type FormEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { modeInsetHairline, modeModuleSurface, modePressable, modeRowHeight } from "@/components/mode-kit/recipes";
@@ -11,7 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, type ShiftKind } from "@/lib/roster/shift-kind";
-import { ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS, type OnCallManualShiftRequest } from "@/lib/roster/shifts/model";
+import { detectOwnConflicts } from "@/lib/roster/shifts/conflicts";
+import {
+  ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS,
+  type OnCallManualShiftRequest,
+  type OnCallShiftInput,
+} from "@/lib/roster/shifts/model";
 import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
@@ -95,9 +100,11 @@ export function manualShiftFrom(
 
 function ShiftForm({
   today,
+  existingShifts = [],
   onSubmit,
 }: {
   readonly today: string;
+  readonly existingShifts?: readonly OnCallShiftInput[];
   readonly onSubmit: (request: OnCallManualShiftRequest) => Promise<string | null>;
 }) {
   const id = useId();
@@ -109,6 +116,16 @@ function ShiftForm({
   const [repeatWeeks, setRepeatWeeks] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const conflicts = useMemo(() => {
+    const candidateShifts: OnCallShiftInput[] = [];
+    for (let week = 0; week <= repeatWeeks; week += 1) {
+      const candidate = manualShiftFrom(addDaysToDate(date, week * 7), start, end, kind, place);
+      if (candidate) candidateShifts.push(candidate);
+    }
+    if (candidateShifts.length === 0) return [];
+    return detectOwnConflicts([...existingShifts, ...candidateShifts]);
+  }, [date, start, end, kind, place, repeatWeeks, existingShifts]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -213,6 +230,15 @@ function ShiftForm({
           ))}
         </select>
       </label>
+      {conflicts.length > 0 ? (
+        <div data-testid="roster-own-shift-conflict-warning">
+          <InlineNotice tone="warning">
+            {conflicts.length === 1
+              ? `Double-booked shift: ${conflicts[0]!.first.title} overlaps ${conflicts[0]!.second.title}.`
+              : `${conflicts.length} overlapping shifts found in your roster.`}
+          </InlineNotice>
+        </div>
+      ) : null}
       {error ? <InlineNotice tone="warning">{error}</InlineNotice> : null}
       <Button type="submit" variant="primary" busy={saving} busyLabel="Saving…">
         Save shift
@@ -295,6 +321,7 @@ export function RosterAddSheet({
   onClose,
   today,
   workplaces,
+  existingShifts = [],
   onImportFile,
   onAddShift,
   onAddLink,
@@ -308,6 +335,7 @@ export function RosterAddSheet({
   /** Perth date the shift form starts on. */
   readonly today: string;
   readonly workplaces: readonly string[];
+  readonly existingShifts?: readonly OnCallShiftInput[];
   readonly onImportFile: () => void;
   readonly onAddShift: (request: OnCallManualShiftRequest) => Promise<string | null>;
   readonly onAddLink: (url: string, workplace: string | null) => Promise<string | null>;
@@ -347,7 +375,7 @@ export function RosterAddSheet({
           ) : null}
         </ul>
       ) : view === "shift" ? (
-        <ShiftForm today={today} onSubmit={onAddShift} />
+        <ShiftForm today={today} existingShifts={existingShifts} onSubmit={onAddShift} />
       ) : (
         <LinkForm workplaces={workplaces} onSubmit={onAddLink} />
       )}

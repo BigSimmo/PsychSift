@@ -34,6 +34,7 @@ import {
   searchIndexUnitCandidates,
   searchTableFactCandidates,
   searchTextChunkCandidates,
+  type ChunkLoadCache,
   type MemoryCardCache,
 } from "@/lib/rag/rag-candidate-sources";
 export {
@@ -290,6 +291,8 @@ import {
   hydrateCandidatesWithMetadataAndMemory,
   prepareCoverageGateResults,
   selectRankedRetrievalResults,
+  type DocumentRankingMetadataCache,
+  type PageVisualEvidenceCache,
 } from "@/lib/rag/rag-hydration";
 export { attachDocumentRankingMetadata, attachPageVisualEvidence } from "@/lib/rag/rag-hydration";
 import { cleanClinicalSummaryText, isLowYieldClinicalText } from "@/lib/source-text-sanitizer";
@@ -971,7 +974,12 @@ export function decideTextFastPath(
   ) {
     return { returnFastPath: false, reason: "missing_structured_threshold_evidence" };
   }
-  if (queryClass === "table_threshold" && /\b(?:withhold|withheld|withholding|cease|stop|stopped)\b/i.test(query)) {
+  if (
+    queryClass === "table_threshold" &&
+    /\b(?:withhold|withheld|withholding|hold|holding|held|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation)\b/i.test(
+      query,
+    )
+  ) {
     return { returnFastPath: false, reason: "threshold_action_requires_structured_retrieval" };
   }
   if (queryClass === "medication_dose_risk" && !results.slice(0, 5).some((result) => hasDoseEvidenceSupport(result))) {
@@ -1162,10 +1170,23 @@ async function searchChunksWithTiming(
   if (args.forceEmbedding && sourceOnlyRetrieval) {
     throw new Error("forceEmbedding requires embedding-capable retrieval; source-only mode cannot exercise vectors.");
   }
-  // Share memory-card reads across this request.
-  const memoryCardCache: MemoryCardCache = new Map();
-  const chunkLoadCache = createChunkLoadCache();
-  const documentRankingMetadataCache = createDocumentRankingMetadataCache();
+  type QueryExecutionCacheContext = NonNullable<SearchChunksArgs["cacheContext"]> & {
+    memoryCardCache?: MemoryCardCache;
+    chunkLoadCache?: ChunkLoadCache;
+    documentRankingMetadataCache?: DocumentRankingMetadataCache;
+    pageVisualEvidenceCache?: PageVisualEvidenceCache;
+  };
+  const cacheContext: QueryExecutionCacheContext = args.cacheContext ?? {};
+  // Share memory-card, chunk, and metadata/visual reads across this request.
+  const memoryCardCache: MemoryCardCache = (cacheContext.memoryCardCache ??= new Map());
+  const chunkLoadCache = (cacheContext.chunkLoadCache ??= createChunkLoadCache());
+  const documentRankingMetadataCache = (cacheContext.documentRankingMetadataCache ??=
+    createDocumentRankingMetadataCache());
+  if (cacheContext.pageVisualEvidenceCache) {
+    documentRankingMetadataCache.pageVisuals = cacheContext.pageVisualEvidenceCache;
+  } else {
+    cacheContext.pageVisualEvidenceCache = documentRankingMetadataCache.pageVisuals;
+  }
   const modeQueryClass = queryClassForClinicalMode(args.queryMode ?? "auto");
   const documentFilterList = args.documentIds?.length
     ? args.documentIds
@@ -1187,9 +1208,8 @@ async function searchChunksWithTiming(
       return undefined;
     }
   })();
-  const cacheContext = args.cacheContext ?? {};
   const indexingVersionPromise = isSearchCacheLookupEnabled(args)
-    ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args, { forceRefresh: true }))
+    ? (cacheContext.indexingVersionAtRequestStart ??= cacheIndexingVersion(args))
     : undefined;
   const indexingVersionAtRetrievalStartPromise = indexingVersionPromise
     ? measureSearchPhase(searchTiming, "index_version", () => indexingVersionPromise)
@@ -1390,7 +1410,11 @@ async function searchChunksWithTiming(
     !(sourceOnlyRetrieval || args.lexicalOnly),
     expandedQuery,
     (options) => embedTextWithTelemetry(expandedQuery, options),
-    { signal: args.signal },
+    {
+      signal: args.signal,
+      timeoutMs: env.OPENAI_INTERACTIVE_EMBEDDING_TIMEOUT_MS,
+      maxRetries: 0,
+    },
   );
   if (prefetchedEmbedding) telemetry.embedding_prefetched = true;
   const textSearchQuery = queryVariants[0] ?? buildClinicalTextSearchQuery(retrievalQuery);
@@ -1528,6 +1552,7 @@ async function searchChunksWithTiming(
         documentIds: documentFilterList,
         matchCount: candidateCount,
         cardCache: memoryCardCache,
+        chunkLoadCache,
       }),
     );
     const memoryBoost = applyMemoryBoostArtifacts(retrievalQuery, textCandidates, memoryArtifacts);
@@ -1614,6 +1639,7 @@ async function searchChunksWithTiming(
         matchCount: candidateCount,
         metadataCache: documentRankingMetadataCache,
         cardCache: memoryCardCache,
+        chunkLoadCache,
         signal: args.signal,
         measurePhase: (phase, operation) => measureSearchPhase(searchTiming, phase, operation),
       });
@@ -1728,7 +1754,11 @@ async function searchChunksWithTiming(
   try {
     embeddingResult = await (prefetchedEmbeddingQuery === expandedQuery && prefetchedEmbedding
       ? prefetchedEmbedding
-      : embedTextWithTelemetry(expandedQuery, { signal: args.signal }));
+      : embedTextWithTelemetry(expandedQuery, {
+          signal: args.signal,
+          timeoutMs: env.OPENAI_INTERACTIVE_EMBEDDING_TIMEOUT_MS,
+          maxRetries: 0,
+        }));
     throwIfAborted(args.signal);
   } catch (error) {
     throwIfAborted(args.signal);
@@ -1875,6 +1905,7 @@ async function searchChunksWithTiming(
       matchCount: candidateCount,
       metadataCache: documentRankingMetadataCache,
       cardCache: memoryCardCache,
+      chunkLoadCache,
       signal: args.signal,
       measurePhase: (phase, operation) => measureSearchPhase(searchTiming, phase, operation),
     });
@@ -1967,6 +1998,7 @@ async function searchChunksWithTiming(
     matchCount: candidateCount,
     metadataCache: documentRankingMetadataCache,
     cardCache: memoryCardCache,
+    chunkLoadCache,
     signal: args.signal,
     measurePhase: (phase, operation) => measureSearchPhase(searchTiming, phase, operation),
   });
