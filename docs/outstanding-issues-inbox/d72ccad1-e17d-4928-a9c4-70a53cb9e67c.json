@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "d72ccad1-e17d-4928-a9c4-70a53cb9e67c",
+  "createdOn": "2026-10-16",
+  "action": "update",
+  "payload": {
+    "id": "#54N8ZN",
+    "detail": "The 14 Oct admin source pilot proof (docs/design-system/evidence/admin-source-pilot.json) ran against an earlier pilot-client digest, and its harness is not in the repo. Native labels, keyboard order and the polite announcement are now pinned against the current client by tests/admin-pilot-client-accessibility.dom.test.tsx on every change (branch claude/ingestion-review-lbw6rf, 16 Oct). Still not done: a real screen-reader run (VoiceOver or NVDA) by a person, and the dark, forced-colours, 320px and print checks against the current digest. Low value while the page is administrator-only.",
+    "targetUlid": "01M520SQ7T54N8ZNCFC7KJ4HKC"
+  }
+}
