@@ -482,7 +482,7 @@
       "**Primary use of Claude Code**: software development on this personal clinical-reference RAG prototype (Next.js 16 / TypeScript / Supabase / OpenAI), with heavy use of repo verification gates, PR handoff, and review subagents",
       "**Trusted repo**: the currently verified checkout of `github.com/BigSimmo/PsychSift` and its task-owned worktrees, resolved from current Git identity rather than a fixed drive path. This remote is PUBLIC, so only that repo's own work may be committed or pushed there — content ported, repointed, or first read from outside this session's repo is not its own work, whoever directed the port. Visibility scopes confidential material only: secrets, clinical documents, and patient-identifiable data are never cleared into it by its visibility",
       "**Org-specific CLIs**: `supabase` (Supabase CLI), `gh` (GitHub CLI), repo `npm run` gates (`ensure`, `verify:cheap`, `verify:pr-local`, `verify:ui`, `test:focused`, `ledger:lookup`, `ledger:append`, `skills`), `sentry-cli`, `fnm`, `codex`",
-      "**Routine under this repo's prefix**: read-only and offline gate work inside that verified checkout and its task-owned worktrees is routine; anything provider-backed (OpenAI, live Supabase, GitHub API writes, hosted CI, `verify:release`, non-offline `eval:*`) remains subject to the repo's provider policy and existing task authorisation"
+      "**Routine under this repo's prefix**: read-only and offline gate work inside that verified checkout and its task-owned worktrees is routine; anything provider-backed (OpenAI, live Supabase, GitHub API writes, hosted CI, `verify:release`, non-offline `eval:*`) remains confirmation-required by the repo's own policy"
     ]
   },
   "hooks": {
