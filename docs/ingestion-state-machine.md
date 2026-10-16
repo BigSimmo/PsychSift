@@ -194,6 +194,16 @@ was no lease heartbeat at the time of this snapshot, every worker window below a
 **Worker (W1)**
 
 - C1: crash after claim → job `processing` until stale reclaim; attempt burned.
+- C1a (2026-10-16): on a job's final attempt, an uncertain outcome (a crash, a lost
+  connection, or SQLSTATE 40003) leaves the job `processing` with no stale reclaim, because
+  `claim_ingestion_jobs` skips jobs at `max_attempts`. The owner decided on 2026-10-16 not to add
+  an automatic database recovery for this. The 6-hourly ingestion autopilot reads only the 25
+  oldest open jobs (`scripts/reindex-health.ts`) and flags a `processing` job among them locked for
+  more than 30 minutes. A stuck job behind a larger backlog is therefore flagged only once the
+  older jobs ahead of it clear. Queue recovery (T16) reads every open job but applies at most
+  `--limit` actions per run (default 20), and changes nothing until confirmed (interactively, or
+  by `--apply` or `--yes`). With a larger backlog, rerun it or raise `--limit` until the job is
+  reset.
 - C2 (non-atomic only): crash after reset → document has zero index rows and
   `D:processing` until reclaim. Steady-state docs are safe (atomic path skips
   T3) — but see R15 for how the retry route re-opens this for indexed docs.
