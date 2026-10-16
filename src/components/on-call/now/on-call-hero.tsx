@@ -1,6 +1,7 @@
 "use client";
 
 import { Phone } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { WorkHero } from "@/components/mode-kit/work";
 import { onCallShiftClock } from "@/components/on-call/now/shift-clock";
@@ -25,6 +26,11 @@ import type { OnCallShiftContext } from "@/lib/on-call/shift-context";
  * window (as "Right now" reads it), and the number is the hospital's recorded
  * switchboard. With no switchboard recorded there is no pill, never an invented
  * number. While the handbook loads the pill's place is held, so nothing moves.
+ *
+ * The hero is also where the page names the hospital (its eyebrow), so the
+ * "Change hospital" control sits here as a quiet second pill, not on a separate
+ * hospital line that would repeat the name. It is passed in as
+ * `hospitalChange`, and is absent for a reader with only one hospital.
  */
 export function NowOnCallHero({
   context,
@@ -37,6 +43,7 @@ export function NowOnCallHero({
   rosterError = false,
   rosterSignedOut = false,
   now,
+  hospitalChange = null,
 }: {
   readonly context: OnCallShiftContext;
   /** The hospital's switchboard row, or null when none is recorded. */
@@ -51,6 +58,8 @@ export function NowOnCallHero({
   /** Signed out, the roster read returns nothing, which is not the same as no shift. */
   readonly rosterSignedOut?: boolean;
   readonly now: Date;
+  /** The quiet "Change hospital" pill, or null when there is nothing to change. */
+  readonly hospitalChange?: ReactNode;
 }) {
   const hospitalPhone = useOnCallHospitalPhone();
   const clock = onCallShiftClock(context, now);
@@ -68,7 +77,14 @@ export function NowOnCallHero({
         ? `Switchboard ${dial.display}`
         : null;
 
-  const eyebrow = [clock ? "On call now" : "Right now", hospitalName].filter(Boolean).join(" · ");
+  const lead = clock ? "On call now" : "Right now";
+  const eyebrow = hospitalName ? (
+    <>
+      {lead} · <span data-testid="on-call-now-hospital">{hospitalName}</span>
+    </>
+  ) : (
+    lead
+  );
   const title = clock
     ? `${onCallDurationWords(clock.minutesLeft)} left`
     : cover && periodLabel
@@ -120,7 +136,14 @@ export function NowOnCallHero({
       eyebrow={eyebrow}
       title={<span className="nums">{title}</span>}
       sub={sub ? <span className="nums">{sub}</span> : null}
-      footer={action ? <div className="work-hero__actions">{action}</div> : null}
+      footer={
+        action || hospitalChange ? (
+          <div className="work-hero__actions">
+            {action}
+            {hospitalChange}
+          </div>
+        ) : null
+      }
     />
   );
 }

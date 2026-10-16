@@ -277,6 +277,7 @@ function FormulationResults({ query }: { query: string }) {
         label="Try another pattern"
         labelPlacement="above"
         layout="scroll"
+        chipShape="control"
         testId="formulation-pattern-suggestions"
         suggestions={formulationSearchPresets.map((preset) => preset.label)}
         onPick={(label) => {

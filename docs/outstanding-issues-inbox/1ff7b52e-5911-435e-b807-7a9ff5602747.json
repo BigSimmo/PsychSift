@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "1ff7b52e-5911-435e-b807-7a9ff5602747",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Reindex reaper: enqueue storage cleanup at generation commit time (follow-up to #RP00FZ)",
+    "detail": "The reaper script builds storage cleanup jobs only on its gated apply path, so ordinary generation commits still schedule no cleanup for superseded storage objects. Needs a reviewed forward migration (never an edit to an existing one) before closing. Migration merges deploy to production and need the owner's explicit permission.",
+    "source": "PR #3570 review; scripts/cleanup-abandoned-reindex-generations.ts; supabase/migrations/20260702000000_commit_generation_preserve_legacy_artifacts.sql",
+    "issueUlid": "01M51JV9J6EG02B7D44998GPSQ"
+  }
+}
