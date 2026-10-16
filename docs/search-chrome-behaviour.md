@@ -717,7 +717,13 @@ transform, so the same value is correct in both states; a reserve that animated
 or zeroed on hide would reintroduce exactly the shift overlay removes. And it
 must be **correct before the first paint**, which is a separate requirement from
 both of those: the property is seeded in `globals.css` as
-`calc(var(--safe-area-top) + var(--shell-header-h))` and refined in a
+`calc(max(0.5rem, var(--safe-area-top)) + var(--shell-header-h))` for a legacy
+overlay header. A `.phone-sticky-header-stack.phone-overlay-header` keeps its
+safe-area spacer outside the bar, whose row retains both `py-2` pads, so its
+seed adds the inset, `--shell-header-h`, and the remaining `0.5rem` top pad.
+At a 59px inset that is 131px from the first paint, matching the later
+measurement; a 123px seed moved WebKit scroll position by 8px during a gesture.
+Both seeds are refined in a
 `useLayoutEffect`, never a passive `useEffect`, and the utility carries no `,0px`
 fallback. Leaving the property unset until an effect ran painted the first
 content underneath the out-of-flow header and then pushed it down at hydration —

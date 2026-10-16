@@ -758,6 +758,16 @@
   color-scheme: light;
 }
 
+/* Collapse-strategy phone hosts keep the safe-area spacer outside the bar.
+   Their min-h-14 row retains both py-2 pads: seed that 72px bar plus the
+   spacer before hydration, so the measured reserve cannot add 8px mid-scroll.
+   Legacy overlay headers own their inset as top padding and keep the seed above. */
+@media (max-width: 639px) {
+  html:has(.phone-sticky-header-stack.phone-overlay-header) {
+    --phone-overlay-chrome-h: calc(var(--safe-area-top) + var(--shell-header-h) + 0.5rem);
+  }
+}
+
 .dark {
   /* Dark neutral ramp (inverted): black-polish canvas to near-white ink. */
   --neutral-0: #060708;

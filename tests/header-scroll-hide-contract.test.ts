@@ -236,6 +236,12 @@ describe("shared header hide/reveal wiring", () => {
       "--phone-overlay-chrome-h: calc(max(0.5rem, var(--safe-area-top)) + var(--shell-header-h))",
     );
     expect(headerSource).toContain("pt-[max(0.5rem,var(--safe-area-top))]");
+    // A collapse host keeps its safe-area spacer outside the bar and retains both py-2 pads.
+    // The legacy overlay seed above replaces top padding with the inset; this host adds them.
+    expect(headerSource).toContain("edge-glass-header universal-header z-30 py-2");
+    expect(globalsSource).toMatch(
+      /@media \(max-width: 639px\) \{\s*html:has\(\.phone-sticky-header-stack\.phone-overlay-header\) \{\s*--phone-overlay-chrome-h: calc\(var\(--safe-area-top\) \+ var\(--shell-header-h\) \+ 0\.5rem\);/,
+    );
     // The pad must never transition padding-top: under reduced motion every
     // element gets a 0.01ms duration, and a claimed reserve then painted the
     // stale value for one frame (#CHPC5C). The Playwright cold-load check pins
