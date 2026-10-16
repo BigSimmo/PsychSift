@@ -269,6 +269,34 @@ describe("Posting a shift", () => {
     expect(second).not.toBe(first);
   });
 
+  it("when the account changes mid-post, stops, names what went live, and never sends that date again", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    let answerFirst: (value: unknown) => void = () => undefined;
+    mocks.post.mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)));
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Add another date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review and post 2 shifts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post all 2" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // Someone else signs in while the first date is still being sent, and then it goes live.
+    const first = mocks.state.actorId;
+    mocks.state = { ...mocks.state, actorId: "5e000000-0000-4000-8000-000000000002" };
+    view.rerender(<OpenShiftsPostPage />);
+    answerFirst({ ok: true, result: { openShiftId: "5e000000-0000-4000-8000-0000000000b7", status: "open" } });
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Posting stopped.*Already posted/));
+    expect(mocks.post).toHaveBeenCalledOnce();
+
+    // The first manager signs back in and tries again: only the date that never went out is sent.
+    mocks.state = { ...mocks.state, actorId: first, readAt: new Date(Date.now() + 1000) };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+    const sent = mocks.post.mock.calls.map((call) => (call[1] as { startsAt: string }).startsAt);
+    expect(sent[1]).not.toBe(sent[0]);
+  });
+
   it("gives a deliberate new post its own key once the last one went live", async () => {
     mocks.post.mockResolvedValue({
       ok: true,

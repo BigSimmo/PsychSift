@@ -299,10 +299,6 @@ export function OpenShiftsPostPage() {
         urgent,
         postKey,
       } as RosterAction);
-      if (actorIdRef.current !== postingActorId) {
-        stopped = true;
-        break;
-      }
       if (result.ok) {
         attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
         nowDone[signature(on)] = result.result.openShiftId ?? "";
@@ -322,9 +318,14 @@ export function OpenShiftsPostPage() {
       }
     }
     setProgress(null);
-    if (stopped) return "Posting stopped because the signed-in account changed. Please review and try again.";
+    // Keep what this run learned even when it stopped, so a date that already went live is never sent again.
     setDone(nowDone);
     setUnanswered(nowUnanswered);
+    if (stopped) {
+      const posted = attempts.filter((row) => row.ok).map((row) => formatDayShort(row.date));
+      const already = posted.length > 0 ? ` Already posted: ${posted.join(", ")}.` : "";
+      return `Posting stopped because the signed-in account changed.${already} Please review and try again.`;
+    }
     // Pin the team a post with no answer went to, so a re-read that misses it can't quietly switch the form.
     if (Object.keys(nowUnanswered).length > Object.keys(unanswered).length) setServiceId(team.serviceId);
     const { failed } = splitAttempts(attempts);
