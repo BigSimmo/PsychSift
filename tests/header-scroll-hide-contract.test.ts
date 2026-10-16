@@ -19,6 +19,7 @@ import { describe, expect, it } from "vitest";
 const read = (relativePath: string) => readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 const hookSource = read("src/components/clinical-dashboard/use-hide-on-scroll.ts");
 const headerSource = read("src/components/clinical-dashboard/master-search-header.tsx");
+const headerTypesSource = read("src/components/clinical-dashboard/master-search-header-types.ts");
 const shellSource = read("src/components/clinical-dashboard/global-search-shell.tsx");
 const reserveHookSource = read("src/components/clinical-dashboard/use-phone-overlay-chrome-reserve.ts");
 const globalsSource = read("src/app/globals.css");
@@ -148,7 +149,7 @@ describe("shared header hide/reveal wiring", () => {
   });
 
   it("overlays phone motion on every route so hiding moves no content", () => {
-    expect(headerSource).toContain('phoneMotion?: "collapse" | "overlay"');
+    expect(headerTypesSource).toContain('phoneMotion?: "collapse" | "overlay"');
     expect(headerSource).toContain('const phoneMotion = hideOnScroll?.phoneMotion ?? "collapse"');
     expect(headerSource).toContain('hideStrategy === "collapse" && phoneMotion === "overlay"');
     // Every phone route on both hosts overlays, with no route or mode
@@ -281,7 +282,8 @@ describe("shared header hide/reveal wiring", () => {
     expect(composerSlotSource).toContain(
       'export const desktopPageComposerSlotId = "desktop-page-search-composer-slot"',
     );
-    expect(headerSource).toContain('const desktopPageComposerMediaQuery = "(min-width: 640px)"');
+    expect(headerTypesSource).toContain('export const desktopPageComposerMediaQuery = "(min-width: 640px)"');
+    expect(headerSource).toContain("desktopPageComposerMediaQuery");
     expect(headerSource).toContain("desktopHomeComposerSlotId ?? desktopPageComposerSlotId");
     expect(headerSource).toContain('placement: "default" | "desktop-home" | "desktop-page"');
     expect(headerSource).toContain("data-composer-placement={placement}");

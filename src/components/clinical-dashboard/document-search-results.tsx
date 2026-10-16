@@ -61,6 +61,7 @@ import {
 import { ResultRowsPlaceholder } from "@/components/clinical-dashboard/result-rows-placeholder";
 import { useBatchSignedImageUrls } from "@/components/clinical-dashboard/use-batch-signed-urls";
 import { useSignedImageUrl } from "@/components/clinical-dashboard/use-signed-image-url";
+import { VirtualizedResultList } from "@/components/ui/virtualized-result-list";
 import { cn, floatingControl, metadataPillDensity, Skeleton, sourceCard, textMuted } from "@/components/ui-primitives";
 import { copyTextToClipboard } from "@/lib/copy-to-clipboard";
 import { compactBestUseTitle } from "@/lib/compact-best-use-title";
@@ -119,9 +120,6 @@ type DocumentFilterDraft = {
   selectedDocumentIds: string[];
 };
 
-/** Initial DOM budget for document result cards; further rows reveal on demand. */
-const DOCUMENT_RESULTS_INITIAL_WINDOW = 30;
-const DOCUMENT_RESULTS_PAGE_SIZE = 30;
 export type SearchFacets = {
   status?: SearchFacet[];
   validation?: SearchFacet[];
@@ -625,17 +623,9 @@ function SearchRecordResults({
    *  not include the most recent publication, and the heading says so. */
   degraded?: boolean;
 }) {
-  const [prevSearchKey, setPrevSearchKey] = useState(`${mode}:${query}`);
-  const [visibleCount, setVisibleCount] = useState(30);
-  const currentSearchKey = `${mode}:${query}`;
-  if (prevSearchKey !== currentSearchKey) {
-    setPrevSearchKey(currentSearchKey);
-    setVisibleCount(30);
-  }
   if (matches.length === 0) return null;
   const copy = searchRecordConfig[mode];
   const recordRoute = (slug: string) => `${copy.routePrefix}/${slug}`;
-  const renderedMatches = matches.length > 30 ? matches.slice(0, visibleCount) : matches;
   return (
     <section
       data-testid={`${copy.testIdPrefix}-results`}
@@ -661,8 +651,13 @@ function SearchRecordResults({
         <span className={metadataPillDensity.roomyCompact}>{copy.chip}</span>
       </div>
 
-      <div className="grid gap-3">
-        {renderedMatches.map(({ service, reasons }, index) => {
+      <VirtualizedResultList
+        items={matches}
+        getItemKey={({ service }) => service.slug}
+        className="grid gap-3"
+        testId={`${copy.testIdPrefix}-virtualized-list`}
+        ariaLabel={copy.ariaLabel}
+        renderItem={({ service, reasons }, index) => {
           const summaryCards = service.summaryCards?.slice(0, 3) ?? [];
           const chips = [
             ...(service.statusChips ?? []).map((chip) => chip.label).filter(Boolean),
@@ -754,18 +749,8 @@ function SearchRecordResults({
               ) : null}
             </article>
           );
-        })}
-      </div>
-      {matches.length > visibleCount ? (
-        <button
-          type="button"
-          onClick={() => setVisibleCount((prev) => prev + 30)}
-          className={cn(floatingControl, "min-h-tap w-full justify-center rounded-xl px-4 text-sm font-semibold")}
-          data-testid={`${copy.testIdPrefix}-show-more`}
-        >
-          Show more ({matches.length - visibleCount} remaining)
-        </button>
-      ) : null}
+        }}
+      />
     </section>
   );
 }
@@ -944,30 +929,11 @@ function DocumentSearchResultsPanelImpl({
     () => sortResultItems(displayedMatches, sortValue, documentDisplayTitle),
     [displayedMatches, sortValue],
   );
-  // Progressive reveal so large libraries do not mount every card on first paint.
-  // Reset the window whenever the sorted result set identity changes (query/filter/sort).
-  const resultsSignature = [
-    trimmedQuery,
-    sortValue,
-    effectiveResultType,
-    activeFacetKeys.join(","),
-    sortedMatches.map((document) => document.document_id).join(","),
-  ].join("\0");
-  const [visibleCountState, setVisibleCountState] = useState({
-    signature: resultsSignature,
-    count: DOCUMENT_RESULTS_INITIAL_WINDOW,
-  });
-  if (visibleCountState.signature !== resultsSignature) {
-    setVisibleCountState({ signature: resultsSignature, count: DOCUMENT_RESULTS_INITIAL_WINDOW });
-  }
-  const visibleCount = Math.min(visibleCountState.count, sortedMatches.length);
-  const renderedMatches = sortedMatches.slice(0, visibleCount);
   const coverImageIds = useMemo(
-    () => renderedMatches.map((doc) => doc.coverImageId).filter((id): id is string => Boolean(id)),
-    [renderedMatches],
+    () => sortedMatches.map((doc) => doc.coverImageId).filter((id): id is string => Boolean(id)),
+    [sortedMatches],
   );
   useBatchSignedImageUrls(coverImageIds);
-  const hasMoreMatches = visibleCount < sortedMatches.length;
   const recordMatchCount = recordMatches.length;
   const shouldShowHome = showHome || !trimmedQuery;
 
@@ -1643,8 +1609,14 @@ function DocumentSearchResultsPanelImpl({
           ) : null}
           <div className="grid gap-3 sm:gap-4">
             <div className="min-w-0 space-y-2.5 sm:space-y-3">
-              <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
-                {renderedMatches.map((document, index) => {
+              <VirtualizedResultList
+                items={sortedMatches}
+                getItemKey={(document) => document.document_id}
+                columns={2}
+                className="grid gap-3 sm:gap-4 lg:grid-cols-2"
+                testId="document-results-virtualized-list"
+                ariaLabel="Document search results"
+                renderItem={(document, index) => {
                   // The verdict in words, never a percentage (#1M22X5): the
                   // number was a per-verdict constant that measured nothing.
                   const relevanceLabel = documentRelevanceLabel(document);
@@ -1787,26 +1759,8 @@ function DocumentSearchResultsPanelImpl({
                       </div>
                     </article>
                   );
-                })}
-              </div>
-              {hasMoreMatches ? (
-                <button
-                  type="button"
-                  className={cn(
-                    floatingControl,
-                    "min-h-tap w-full justify-center rounded-xl px-4 text-sm font-semibold",
-                  )}
-                  onClick={() =>
-                    setVisibleCountState((current) => ({
-                      signature: resultsSignature,
-                      count: Math.min(current.count + DOCUMENT_RESULTS_PAGE_SIZE, sortedMatches.length),
-                    }))
-                  }
-                  data-testid="document-search-show-more"
-                >
-                  Show more ({sortedMatches.length - visibleCount} remaining)
-                </button>
-              ) : null}
+                }}
+              />
             </div>
           </div>
         </>

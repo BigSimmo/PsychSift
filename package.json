@@ -39,7 +39,7 @@
     "verify:lighthouse": "node scripts/run-lighthouse-budget.mjs",
     "start": "node scripts/dev-free-port.mjs start",
     "lint": "node scripts/run-heavy.mjs --npm-script lint:internal",
-    "lint:internal": "node --max-old-space-size=8192 ./node_modules/eslint/bin/eslint.js src tests scripts worker supabase playwright eslint.config.mjs next.config.ts playwright.config.ts playwright.visual.config.ts vitest.config.mts --max-warnings 0 --no-error-on-unmatched-pattern --cache --cache-strategy content --cache-location node_modules/.cache/eslint/",
+    "lint:internal": "node --max-old-space-size=8192 ./node_modules/eslint/bin/eslint.js src tests scripts worker supabase playwright eslint-rules eslint.config.mjs next.config.ts playwright.config.ts playwright.visual.config.ts vitest.config.mts --max-warnings 0 --no-error-on-unmatched-pattern --cache --cache-strategy content --cache-location node_modules/.cache/eslint/",
     "lint:changed:internal": "node --max-old-space-size=8192 ./node_modules/eslint/bin/eslint.js",
     "typecheck": "node scripts/run-heavy.mjs --npm-script typecheck:internal",
     "typecheck:internal": "node --max-old-space-size=8192 ./node_modules/typescript/bin/tsc -p tsconfig.typecheck.json --noEmit",

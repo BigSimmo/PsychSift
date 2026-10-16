@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "3a11cc43-e4d7-46ca-b2e0-05ee44909214",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#HEWR5X",
+    "outcome": "Extended adminFreeTextProblem to all On Call sections with recursive details scanning and depth/cycle guards (src/lib/on-call/free-text-guard.ts, tests/on-call-free-text-guard.test.ts).",
+    "targetUlid": "01M4T67NAMHEWR5X5PBZN9RSHZ"
+  }
+}
