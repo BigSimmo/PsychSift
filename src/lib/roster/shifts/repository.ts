@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Json } from "@/lib/supabase/database.types";
 import { SHIFT_KINDS, type ShiftKind } from "@/lib/roster/shift-kind";
+import { detectOwnConflicts, type OwnShiftConflict } from "@/lib/roster/shifts/conflicts";
 import { diffRoster } from "@/lib/roster/shifts/diff";
 import {
   ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS,
@@ -14,6 +15,8 @@ import {
   type OnCallShiftSource,
 } from "@/lib/roster/shifts/model";
 import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
+
+export { detectOwnConflicts, type OwnShiftConflict };
 
 type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
 
@@ -268,6 +271,30 @@ export async function addManualShifts(
   const { data, error } = await supabase.from("on_call_shifts").insert(rows).select(SHIFT_COLUMNS);
   if (error) throw error;
   return (data ?? []).map(rowToShift);
+}
+
+/**
+ * Non-blocking conflict check for newly added manual shifts against the owner's
+ * existing shifts in the covered window.
+ */
+export async function checkManualShiftConflicts(
+  supabase: AdminClient,
+  ownerId: string,
+  addedShifts: readonly (OnCallShiftInput | OnCallShift)[],
+): Promise<OwnShiftConflict[]> {
+  requireOwner(ownerId);
+  const starts = addedShifts.map((shift) => Date.parse(shift.startsAt)).filter(Number.isFinite);
+  const ends = addedShifts.map((shift) => Date.parse(shift.endsAt)).filter(Number.isFinite);
+  if (starts.length === 0 || ends.length === 0) return [];
+  const minStart = Math.min(...starts);
+  const maxEnd = Math.max(...ends);
+  if (maxEnd <= minStart) return [];
+  const existing = await fetchOwnerShiftsBetween(supabase, ownerId, new Date(minStart), new Date(maxEnd));
+  const addedIds = new Set(
+    addedShifts.flatMap((shift) => ("id" in shift && typeof shift.id === "string" ? [shift.id] : [])),
+  );
+  const prior = existing.filter((shift) => !addedIds.has(shift.id));
+  return detectOwnConflicts([...prior, ...addedShifts]);
 }
 
 /** Remove every shift in one hand-added series (the shift and its weekly repeats). */

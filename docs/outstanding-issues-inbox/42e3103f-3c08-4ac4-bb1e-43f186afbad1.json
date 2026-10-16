@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "42e3103f-3c08-4ac4-bb1e-43f186afbad1",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#5PNWGR",
+    "outcome": "Synchronized all stale file:line citations in clinical-hazard-analysis.md and rag-injection-threat-model.md and added automated anchor verifier (tests/clinical-doc-line-anchors.test.ts).",
+    "targetUlid": "01M4T67NJR5PNWGR1W5MV46FWW"
+  }
+}

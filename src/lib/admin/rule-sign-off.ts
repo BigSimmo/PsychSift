@@ -129,10 +129,13 @@ export function isNamedPerson(name: string | null | undefined): boolean {
   if (typeof name !== "string") return false;
   const trimmed = name.trim().replace(/\s+/g, " ");
   if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  // The two-word display name Psych Sift is accepted as the owner's public sign-off attribution,
+  // while single-word product/system stamps ("PsychSift", "Psych-Sift") and role words remain rejected.
+  const normaliseRejectedName = (value: string) => value.toLowerCase().replace(/[^\p{L}]/gu, "");
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
-  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
+  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(normaliseRejectedName(word)));
 }
 
 const UTC_ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;

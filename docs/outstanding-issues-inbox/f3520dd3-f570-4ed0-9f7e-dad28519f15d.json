@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f3520dd3-f570-4ed0-9f7e-dad28519f15d",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#49Q5FB",
+    "outcome": "Refreshed docs/release-source-metadata-debt-2026-06-30.json with verified zero-debt status and added regression guard (tests/source-metadata-debt-waiver.test.ts).",
+    "targetUlid": "01M4R2MAJY49Q5FBC16DPHA4A8"
+  }
+}

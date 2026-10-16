@@ -19,6 +19,7 @@
    it adds no separate stylesheet to that layout's first download. */
 @import "./motion.css";
 @import "../styles/print.css";
+@import "../styles/globals-keyframes.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant pointer-fine (@media (pointer: fine));
@@ -5063,108 +5064,7 @@ td,
   }
 }
 
-/* Motion keyframes (suppressed under prefers-reduced-motion below) */
-@keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes overlay-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes sheet-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes sheet-left {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes dialog-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes action-tray-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes mode-action-fold-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes mode-action-fold-down {
-  from {
-    opacity: 0;
-    transform: translateY(-8px) scale(0.985);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes shimmer {
-  from {
-    background-position: -150% 0;
-  }
-  to {
-    background-position: 250% 0;
-  }
-}
+/* Motion keyframes (fade-up, sheet-up, etc.) extracted to src/styles/globals-keyframes.css (#H9WAQN) */
 
 /* The answer/search progress indicator, breathing.
  *

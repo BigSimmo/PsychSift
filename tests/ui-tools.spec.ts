@@ -18,7 +18,7 @@ import {
   readPrimaryScrollGeometry,
   scrollPrimarySurface,
 } from "./playwright-scroll";
-import { clickWhenSettled, expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
+import { clickWhenSettled, expectHydrated, expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
 
 const readySetupChecks = [
   { id: "env", label: ".env.local configured", status: "ready", detail: "Test environment ready." },
@@ -298,6 +298,7 @@ function toolRowLink(scope: Locator, id: string) {
 async function gotoLauncher(page: Page, path = "/tools") {
   await page.goto(path, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#main-content").first()).toBeVisible({ timeout: 15_000 });
+  await expectHydrated(page.locator("#main-content").first());
 }
 
 async function waitForReactEventHandler(locator: Locator, eventName: "onChange" | "onClick" | "onSubmit" = "onClick") {
@@ -687,11 +688,13 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     ] as const) {
       await expect(toolRowLink(results, id)).toHaveAttribute("href", href);
       // Most rows sit below the fold, and the header's scroll-hide moves them mid-click.
-      await clickWhenSettled(results.getByRole("button", { name: `About ${title}` }));
+      const aboutButton = results.getByRole("button", { name: `About ${title}` });
+      await clickWhenSettled(aboutButton);
       const detail = page.locator('[data-testid="tools-search-detail-sheet"]:visible');
       await expect(detail.getByRole("link", { name: `Open ${title}` })).toHaveAttribute("href", href);
       await detail.getByRole("button", { name: `Close ${title}` }).click();
       await expect(detail).toHaveCount(0);
+      await expect(aboutButton).toBeFocused({ timeout: 10_000 });
     }
     // External companion-app launchers were removed; no localhost links should remain.
     await expect(page.locator('a[href^="http://localhost"], a[href^="http://127.0.0.1"]')).toHaveCount(0);

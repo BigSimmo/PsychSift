@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "a686346e-911a-45a5-b0d6-c3b09a648aba",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#F3SGCM",
+    "outcome": "Added executable 7-class hostile-document ingestion test matrix (tests/hostile-document-ingestion-matrix.test.ts).",
+    "baseRowFingerprint": "b563e791da0b3e4df2870124c8112b7e44ca5fe8b2bfd3d2be77b2698967c5dc",
+    "targetUlid": "01M3CHC2F8F3SGCMTYH7WX82AX"
+  }
+}
