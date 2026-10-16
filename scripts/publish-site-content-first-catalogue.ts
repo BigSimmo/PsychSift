@@ -156,6 +156,14 @@ function validateSignOffEntry(
       reason: `reviewedAt ${JSON.stringify(review.reviewedAt)} is not a valid UTC ISO timestamp`,
     };
   }
+  if (typeof review.reviewedContentSha256 !== "string" || !/^[a-f0-9]{64}$/.test(review.reviewedContentSha256)) {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason: `reviewedContentSha256 ${JSON.stringify(review.reviewedContentSha256)} is missing or not a valid 64-character hex SHA-256 digest`,
+    };
+  }
   return null;
 }
 

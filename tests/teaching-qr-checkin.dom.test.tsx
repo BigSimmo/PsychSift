@@ -210,4 +210,40 @@ describe("TeachingQrCheckinSheet (#ZTDZ4Z)", () => {
     expect(onCheckInSuccess).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+  it("ignores a QR detection that finishes after the camera is stopped", async () => {
+    const user = userEvent.setup();
+    const teachingPostSpy = vi.spyOn(clientModule, "teachingPost").mockResolvedValue({
+      method: "code",
+      recordedAt: new Date().toISOString(),
+    });
+    let resolveDetect: (codes: Array<{ rawValue: string }>) => void = () => {};
+    const detect = vi.fn(
+      () =>
+        new Promise<Array<{ rawValue: string }>>((resolve) => {
+          resolveDetect = resolve;
+        }),
+    );
+    class MockBarcodeDetector {
+      static getSupportedFormats = vi.fn().mockResolvedValue(["qr_code"]);
+      detect = detect;
+    }
+    // @ts-expect-error - assign mock
+    window.BarcodeDetector = MockBarcodeDetector;
+    Object.defineProperty(navigator, "mediaDevices", {
+      value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop: vi.fn() }] }) },
+      configurable: true,
+    });
+
+    render(
+      <TeachingQrCheckinSheet open onClose={vi.fn()} serviceId="service-psych-2" occurrenceId="occ-teaching-202" />,
+    );
+
+    await user.click(screen.getByTestId("teaching-camera-scan-btn"));
+    await waitFor(() => expect(detect).toHaveBeenCalled());
+    await user.click(screen.getByTestId("teaching-camera-stop-btn"));
+    resolveDetect([{ rawValue: "WARD-987654" }]);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(teachingPostSpy).not.toHaveBeenCalled();
+  });
 });

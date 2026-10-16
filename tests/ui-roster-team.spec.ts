@@ -263,7 +263,10 @@ for (const bulk of [false, true]) {
       await expect(review.getByText("After this swap: Less than 10 hours' rest before this shift")).toBeVisible();
       expect(posts).toEqual([]);
       await clickWhenHydrated(review.getByRole("button", { name: "Approve after review" }));
-      await expect.poll(() => posts).toEqual([{ action: "swap.approve", swapId: waiting.id }]);
+      // The manager read this checkable warning, so the approval acknowledges it.
+      await expect
+        .poll(() => posts)
+        .toEqual([{ action: "swap.approve", swapId: waiting.id, acknowledgeRuleWarnings: true }]);
     }
   });
 }

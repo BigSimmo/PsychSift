@@ -1,5 +1,23 @@
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { AuthenticationError } from "@/lib/supabase/auth";
+
+const { mockRequireAuthenticatedUser } = vi.hoisted(() => ({
+  mockRequireAuthenticatedUser: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(() => ({})),
+}));
+
+vi.mock("@/lib/supabase/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/supabase/auth")>();
+  return {
+    ...actual,
+    requireAuthenticatedUser: mockRequireAuthenticatedUser,
+  };
+});
 
 import { GET, POST, PUT } from "@/app/api/teaching/assessments/respond/[token]/route";
 import {
@@ -10,6 +28,14 @@ import {
 } from "@/lib/teaching/assessments/magic-link";
 
 describe("External supervisor EPA magic-link (#MAAXAX)", () => {
+  beforeEach(() => {
+    mockRequireAuthenticatedUser.mockReset();
+    mockRequireAuthenticatedUser.mockResolvedValue({
+      id: "00000000-0000-4000-8000-000000000001",
+      email: "trainee@health.wa.gov.au",
+    });
+  });
+
   it("generates a high-entropy token, hashes it with SHA-256 at rest, and resolves valid lookups", async () => {
     const now = new Date("2026-10-16T00:00:00.000Z");
     const created = createEpaMagicLinkRequest({
@@ -169,5 +195,67 @@ describe("External supervisor EPA magic-link (#MAAXAX)", () => {
     expect(await replayResponse.json()).toMatchObject({
       code: "magic_link_already_used",
     });
+  });
+
+  it("allows supervisor and assessor names with titles such as 'Dr J. Smith' and 'Ms Taylor'", async () => {
+    const createdDr = createEpaMagicLinkRequest({
+      epaCode: 1,
+      traineeName: "Dr Alex Example",
+      supervisorName: "Dr J. Smith",
+      supervisorRole: "specialist",
+    });
+    const submitDr = submitEpaMagicLinkResponse(createdDr.token, {
+      level: "minimal",
+      assessorName: "Dr J. Smith",
+      strengths: "Safe handover and clear plan.",
+    });
+    expect(submitDr.ok).toBe(true);
+    if (submitDr.ok) {
+      expect(submitDr.request.submission?.assessorName).toBe("Dr J. Smith");
+    }
+
+    const createdMs = createEpaMagicLinkRequest({
+      epaCode: 2,
+      traineeName: "Dr Alex Example",
+      supervisorName: "Ms Taylor",
+      supervisorRole: "nurse",
+    });
+    const submitMs = submitEpaMagicLinkResponse(createdMs.token, {
+      level: "proximal",
+      assessorName: "Ms Taylor",
+      strengths: "Calm de-escalation.",
+    });
+    expect(submitMs.ok).toBe(true);
+    if (submitMs.ok) {
+      expect(submitMs.request.submission?.assessorName).toBe("Ms Taylor");
+    }
+  });
+
+  it("requires authentication on PUT and refuses ephemeral store in production", async () => {
+    mockRequireAuthenticatedUser.mockRejectedValueOnce(new AuthenticationError());
+    const unauthPut = await PUT(
+      new Request("https://psychiatry.tools/api/teaching/assessments/respond/unauth_token_1234567890abcd", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          epaCode: 1,
+          traineeName: "Dr Alex Example",
+          supervisorName: "Dr J. Smith",
+        }),
+      }),
+      { params: Promise.resolve({ token: "unauth_token_1234567890abcd" }) },
+    );
+    expect(unauthPut.status).toBe(401);
+
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const prodGet = await GET(new Request("https://psychiatry.tools/api/teaching/assessments/respond/some_token"), {
+        params: Promise.resolve({ token: "some_token_1234567890abcdef" }),
+      });
+      expect(prodGet.status).toBe(503);
+      expect(await prodGet.json()).toMatchObject({ code: "assessment_store_unavailable" });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

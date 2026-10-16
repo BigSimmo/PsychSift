@@ -19,6 +19,7 @@ import {
   removePatientLabels,
   writePatientLabels,
 } from "@/lib/patient-label-storage";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 /**
  * The handover form: one short record per patient, filled in fast during the
@@ -48,6 +49,7 @@ import {
 /** The patient-label store name; the full key is `patientLabelStorageKey(ON_CALL_HANDOVER_STORE)`. */
 export const ON_CALL_HANDOVER_STORE = "on-call-handover";
 export const onCallHandoverStorageKey = patientLabelStorageKey(ON_CALL_HANDOVER_STORE);
+export const HANDOVER_SCRATCHPAD_STORAGE_KEY = "on-call-handover-scratchpad";
 
 const EXPIRY_MS = 12 * 60 * 60 * 1000;
 /** A full ward fits; the cap only bounds a runaway list. */
@@ -235,9 +237,40 @@ export function removeOnCallHandoverPatient(id: string, now: Date = new Date()):
   );
 }
 
+export function loadOnCallHandoverScratchpad(): string {
+  if (typeof window === "undefined") return "";
+  return readPatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY) ?? "";
+}
+
+export function saveOnCallHandoverScratchpad(text: string): void {
+  if (typeof window === "undefined") return;
+  if (text.trim() === "") {
+    removePatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY);
+    try {
+      window.dispatchEvent(new Event(onCallDeviceStoreChangedEvent));
+    } catch {
+      // Ignore missing window event support
+    }
+    return;
+  }
+  const problem = checkPatientDetail(text);
+  if (problem !== null) {
+    throw new Error(problem.body);
+  }
+  if (!writePatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY, text)) {
+    throw new Error("This device would not keep the scratchpad.");
+  }
+  try {
+    window.dispatchEvent(new Event(onCallDeviceStoreChangedEvent));
+  } catch {
+    // Ignore missing window event support
+  }
+}
+
 /** Clear the whole handover on this device. */
 export function clearOnCallHandover(): void {
   if (typeof window === "undefined") return;
+  removePatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY);
   write([], new Date());
 }
 

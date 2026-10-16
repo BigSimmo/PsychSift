@@ -25,7 +25,7 @@ export type CockcroftGaultResult = {
   stage: RenalStage | null;
   ibwKg?: number | null;
   effectiveWeightKg?: number | null;
-  weightBasis?: "actual" | "ideal";
+  weightBasis?: "actual" | "ideal" | "adjusted";
   lithiumClinicalNote?: string;
   errors: string[];
   warnings: string[];

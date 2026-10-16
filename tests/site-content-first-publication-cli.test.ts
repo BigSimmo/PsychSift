@@ -11,6 +11,7 @@ import {
 
 const NAMED_REVIEWER = "Dr Jane Citizen";
 const REVIEWED_AT = "2026-10-16T01:00:00.000Z";
+const REVIEWED_SHA256 = "eb950d3c48dba095ef61d7b0645709d90316ed475b5eb6602b670e62e6e07ad1";
 
 function formCodeForRecord(form: (typeof formRecords)[number]): string {
   const payload = (form.catalogPayload ?? {}) as { form?: string };
@@ -26,6 +27,7 @@ function signedServiceReviews(): ClinicalSignOffEntry[] {
     status: "reviewed",
     reviewedBy: NAMED_REVIEWER,
     reviewedAt: REVIEWED_AT,
+    reviewedContentSha256: REVIEWED_SHA256,
   }));
 }
 
@@ -36,6 +38,7 @@ function signedFormReviews(): ClinicalSignOffEntry[] {
     status: "reviewed",
     reviewedBy: NAMED_REVIEWER,
     reviewedAt: REVIEWED_AT,
+    reviewedContentSha256: REVIEWED_SHA256,
   }));
 }
 
@@ -49,11 +52,49 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
   });
 
   it.each([
-    ["drafted status", { status: "drafted", reviewedBy: NAMED_REVIEWER, reviewedAt: REVIEWED_AT }],
-    ["null reviewer", { status: "reviewed", reviewedBy: null, reviewedAt: REVIEWED_AT }],
-    ["product attribution PsychSift", { status: "reviewed", reviewedBy: "PsychSift", reviewedAt: REVIEWED_AT }],
-    ["role placeholder Clinician", { status: "reviewed", reviewedBy: "Clinician", reviewedAt: REVIEWED_AT }],
-    ["invalid timestamp", { status: "reviewed", reviewedBy: NAMED_REVIEWER, reviewedAt: "2026-10-16" }],
+    [
+      "drafted status",
+      {
+        status: "drafted",
+        reviewedBy: NAMED_REVIEWER,
+        reviewedAt: REVIEWED_AT,
+        reviewedContentSha256: REVIEWED_SHA256,
+      },
+    ],
+    [
+      "null reviewer",
+      { status: "reviewed", reviewedBy: null, reviewedAt: REVIEWED_AT, reviewedContentSha256: REVIEWED_SHA256 },
+    ],
+    [
+      "product attribution PsychSift",
+      { status: "reviewed", reviewedBy: "PsychSift", reviewedAt: REVIEWED_AT, reviewedContentSha256: REVIEWED_SHA256 },
+    ],
+    [
+      "role placeholder Clinician",
+      { status: "reviewed", reviewedBy: "Clinician", reviewedAt: REVIEWED_AT, reviewedContentSha256: REVIEWED_SHA256 },
+    ],
+    [
+      "invalid timestamp",
+      {
+        status: "reviewed",
+        reviewedBy: NAMED_REVIEWER,
+        reviewedAt: "2026-10-16",
+        reviewedContentSha256: REVIEWED_SHA256,
+      },
+    ],
+    [
+      "missing content sha256",
+      { status: "reviewed", reviewedBy: NAMED_REVIEWER, reviewedAt: REVIEWED_AT, reviewedContentSha256: null },
+    ],
+    [
+      "malformed content sha256",
+      {
+        status: "reviewed",
+        reviewedBy: NAMED_REVIEWER,
+        reviewedAt: REVIEWED_AT,
+        reviewedContentSha256: "not-a-sha256",
+      },
+    ],
   ])("refuses a batch when any record has %s", (_label, badOverride) => {
     const sampleForm = formRecords[0]!;
     const code = formCodeForRecord(sampleForm);
