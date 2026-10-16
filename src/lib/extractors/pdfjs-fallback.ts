@@ -107,9 +107,13 @@ export class PdfjsFallbackParser {
         for (let index = 0; index < ops.fnArray.length; index += 1) {
           const fn = ops.fnArray[index];
           if (fn !== pdfjs.OPS.paintInlineImageXObject && fn !== pdfjs.OPS.paintImageXObject) continue;
-          const name = ops.argsArray[index][0] as string;
-          const objects = page.commonObjs.has(name) ? page.commonObjs : page.objs;
-          const { width, height, kind, data } = await resolveEmbeddedImage(objects, name, canvasFactory);
+          // An inline image carries its pixels in the operator itself; only XObjects are looked up by id.
+          // Looking an inline image up by id waits on an object that never resolves, so the page would hang.
+          const inline = fn === pdfjs.OPS.paintInlineImageXObject;
+          const name = inline ? `inline-${index}` : (ops.argsArray[index][0] as string);
+          const { width, height, kind, data } = inline
+            ? toEmbeddedImage(ops.argsArray[index][0], name, canvasFactory)
+            : await resolveEmbeddedImage(page.commonObjs.has(name) ? page.commonObjs : page.objs, name, canvasFactory);
           if (params.imageThreshold >= width || params.imageThreshold >= height) continue;
           const { canvas, context } = canvasFactory.create(width, height);
           const imageData = context.createImageData(width, height);
@@ -168,44 +172,43 @@ type PdfObjects = { get(name: string, callback: (data: unknown) => void): unknow
 function resolveEmbeddedImage(objects: PdfObjects, name: string, canvasFactory: CanvasFactory): Promise<EmbeddedImage> {
   return new Promise((resolve, reject) => {
     objects.get(name, (raw) => {
-      const image = raw as {
-        width: number;
-        height: number;
-        kind?: number | null;
-        data?: ArrayBufferView;
-        bitmap?: { width: number; height: number };
-      } | null;
-      if (!image) {
-        reject(new Error(`Image object ${name} not found`));
-        return;
+      try {
+        resolve(toEmbeddedImage(raw, name, canvasFactory));
+      } catch (error) {
+        reject(error);
       }
-      let data: Uint8Array | undefined;
-      if (image.data instanceof Uint8Array) {
-        data = image.data;
-      } else if (image.data instanceof Uint8ClampedArray) {
-        data = new Uint8Array(image.data);
-      } else if (image.bitmap) {
-        const { context } = canvasFactory.create(image.bitmap.width, image.bitmap.height);
-        context.drawImage(image.bitmap, 0, 0);
-        data = new Uint8Array(context.getImageData(0, 0, image.bitmap.width, image.bitmap.height).data.buffer);
-      } else if (image.data && ArrayBuffer.isView(image.data)) {
-        data = new Uint8Array(image.data.buffer, image.data.byteOffset, image.data.byteLength);
-      }
-      if (!data) {
-        reject(
-          new Error(
-            `Image object ${name}: data field is empty or invalid. Available fields: ${Object.keys(image).join(", ")}`,
-          ),
-        );
-        return;
-      }
-      if (data.length === 0) {
-        reject(new Error(`Image object ${name}: data buffer is empty (length: 0)`));
-        return;
-      }
-      resolve({ width: image.width, height: image.height, kind: image.kind, data });
     });
   });
+}
+
+function toEmbeddedImage(raw: unknown, name: string, canvasFactory: CanvasFactory): EmbeddedImage {
+  const image = raw as {
+    width: number;
+    height: number;
+    kind?: number | null;
+    data?: ArrayBufferView;
+    bitmap?: { width: number; height: number };
+  } | null;
+  if (!image) throw new Error(`Image object ${name} not found`);
+  let data: Uint8Array | undefined;
+  if (image.data instanceof Uint8Array) {
+    data = image.data;
+  } else if (image.data instanceof Uint8ClampedArray) {
+    data = new Uint8Array(image.data);
+  } else if (image.bitmap) {
+    const { context } = canvasFactory.create(image.bitmap.width, image.bitmap.height);
+    context.drawImage(image.bitmap, 0, 0);
+    data = new Uint8Array(context.getImageData(0, 0, image.bitmap.width, image.bitmap.height).data.buffer);
+  } else if (image.data && ArrayBuffer.isView(image.data)) {
+    data = new Uint8Array(image.data.buffer, image.data.byteOffset, image.data.byteLength);
+  }
+  if (!data) {
+    throw new Error(
+      `Image object ${name}: data field is empty or invalid. Available fields: ${Object.keys(image).join(", ")}`,
+    );
+  }
+  if (data.length === 0) throw new Error(`Image object ${name}: data buffer is empty (length: 0)`);
+  return { width: image.width, height: image.height, kind: image.kind, data };
 }
 
 function convertToRgba(
