@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import {
   LazyWorkSearchKeys,
@@ -31,10 +31,6 @@ function markCoachSeen() {
   } catch {
     // Storage blocked: the note simply shows again next time.
   }
-}
-
-function subscribeNever() {
-  return () => {};
 }
 
 /** Typing in a field (or a rich-text box): the shortcut keys are the reader's letters there, not ours. */
@@ -88,8 +84,9 @@ function prefetchWhenIdle(): () => void {
 export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; className?: string }) {
   const [open, setOpen] = useState(false);
   const [keysOpen, setKeysOpen] = useState(false);
-  // Read from storage after hydration (the server snapshot says "seen"), then hidden for good once dismissed.
-  const seen = useSyncExternalStore(subscribeNever, coachSeen, () => true);
+  // Read from storage once after hydration; marking it seen should not hide this visit's note.
+  const [seen, setSeen] = useState(true);
+  useEffect(() => setSeen(coachSeen()), []);
   const [dismissed, setDismissed] = useState(false);
   // Any tap elsewhere hides the note for this visit, without counting it as read,
   // so it never sits over the page the reader is trying to use.
@@ -100,10 +97,15 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
   useEffect(() => {
     if (!coach) return;
     // On a wide screen the note hangs below the header over the top of the page (it covered
-    // CPD's Customise button and the My Day heading, 15 Oct 2026). So it is shown once only:
-    // counted as read as soon as it appears, and it goes by itself after a few seconds, or
-    // at the reader's first tap, key or scroll, whichever comes first.
-    markCoachSeen();
+    // CPD's Customise button and the My Day heading, 15 Oct 2026). Count it as read only when
+    // that explanatory note is actually visible; the phone-only ring must not consume it.
+    const desktop = window.matchMedia("(min-width: 1024px)");
+    const markIfVisible = () => {
+      if (!desktop.matches) return;
+      markCoachSeen();
+    };
+    markIfVisible();
+    desktop.addEventListener("change", markIfVisible);
     const setAsideNow = () => setSetAside(true);
     const onPointerDown = (event: PointerEvent) => {
       if (!coachRef.current?.contains(event.target as Node)) setAsideNow();
@@ -114,6 +116,7 @@ export function WorkSearchButton({ modeId, className }: { modeId: AppModeId; cla
     window.addEventListener("scroll", setAsideNow, { capture: true, passive: true });
     return () => {
       window.clearTimeout(timer);
+      desktop.removeEventListener("change", markIfVisible);
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("keydown", setAsideNow, true);
       window.removeEventListener("scroll", setAsideNow, { capture: true });
