@@ -94,13 +94,25 @@ export function useClinicalMathPanelState({ defaultOpen = false, defaultTab = "r
 
 export type ClinicalMathPanelState = ReturnType<typeof useClinicalMathPanelState>;
 
-export function ClinicalMathPanel({
-  defaultOpen = false,
-  defaultTab = "renal",
-  state,
-}: ClinicalMathPanelProps & { state?: ClinicalMathPanelState }) {
-  const panelId = useId();
+type ClinicalMathPanelControlledProps = { state: ClinicalMathPanelState; defaultOpen?: never; defaultTab?: never };
+type ClinicalMathPanelUncontrolledProps = ClinicalMathPanelProps & { state?: never };
+
+export function ClinicalMathPanel(props: ClinicalMathPanelControlledProps | ClinicalMathPanelUncontrolledProps) {
+  if ("state" in props) return <ControlledClinicalMathPanel state={props.state} />;
+  return <UncontrolledClinicalMathPanel {...props} />;
+}
+
+function UncontrolledClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }: ClinicalMathPanelProps) {
   const ownState = useClinicalMathPanelState({ defaultOpen, defaultTab });
+  return <ClinicalMathPanelContent state={ownState} />;
+}
+
+function ControlledClinicalMathPanel({ state }: ClinicalMathPanelControlledProps) {
+  return <ClinicalMathPanelContent state={state} />;
+}
+
+function ClinicalMathPanelContent({ state }: { state: ClinicalMathPanelState }) {
+  const panelId = useId();
   const {
     open,
     setOpen,
@@ -132,7 +144,7 @@ export function ClinicalMathPanel({
     setTargetLevel,
     tabletIncrementMg,
     setTabletIncrementMg,
-  } = state ?? ownState;
+  } = state;
 
   const parsedAge = parseStrictNumber(age);
   const parsedWeight = parseStrictNumber(weightKg);
