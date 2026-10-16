@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 
 const workerSource = readFileSync(new URL("../worker/main.ts", import.meta.url), "utf8");
 const extractorSource = readFileSync(new URL("../worker/python/extract_pdf_assets.py", import.meta.url), "utf8");
+// Fenced leases (PR #3546) moved the lease-bound RPC seams into worker/behavior.ts.
+const behaviorSource = readFileSync(new URL("../worker/behavior.ts", import.meta.url), "utf8");
+const schemaSource = readFileSync(new URL("../supabase/schema.sql", import.meta.url), "utf8");
+
+function fencedCompleteIngestionJobBody() {
+  const start = schemaSource.lastIndexOf(
+    "create or replace function public.complete_ingestion_job(p_fence jsonb, p_batch_id uuid, p_stage text)",
+  );
+  expect(start).toBeGreaterThan(-1);
+  const end = schemaSource.indexOf("create or replace function", start + 1);
+  return schemaSource.slice(start, end === -1 ? undefined : end);
+}
 
 describe("worker visual capture hardening", () => {
   it("guards every local worker vector write before Supabase inserts", () => {
@@ -16,8 +28,8 @@ describe("worker visual capture hardening", () => {
     expect(workerSource).toContain(
       "embedding: assertEmbeddingDim(fieldEmbeddings[index], `document_embedding_fields.section_context.${index}`)",
     );
-    expect(workerSource).toContain(
-      "embedding: assertEmbeddingDim(unitEmbeddings[start + index], `document_index_units.visual.${start + index}`)",
+    expect(workerSource).toMatch(
+      /embedding: assertEmbeddingDim\(\s*unitEmbeddings\[start \+ index\],\s*`document_index_units\.visual\.\$\{start \+ index\}`,?\s*\)/,
     );
     expect(workerSource).toContain(
       "embedding: assertEmbeddingDim(additionalEmbeddings[index], `document_embedding_fields.${field.field_type}`)",
@@ -41,50 +53,92 @@ describe("worker visual capture hardening", () => {
   });
 
   it("fails closed when the lease-fenced commit RPC is unavailable and keeps image uploads generation-scoped", () => {
-    expect(workerSource).toContain("p_job_id: args.jobId");
-    expect(workerSource).toContain("p_worker_id: workerId");
+    // The job/worker identity now travels in the durable lease fence (p_fence), not loose args.
+    expect(workerSource).toContain('await mutation(attemptForJob(args.jobId), "commit_document_index_generation", {');
+    expect(workerSource).toContain("p_generation: args.indexGenerationId");
+    expect(behaviorSource).toContain("job_id: job.id,");
+    expect(behaviorSource).toContain("worker_id: job.locked_by,");
+    expect(behaviorSource).toContain("result = await rpc(name, { ...payload, p_fence: attempt.fence });");
     expect(workerSource).not.toContain("await replacePageRows(args.documentId, args.pages)");
     // The commit RPC prunes stale/legacy generation rows and upserts index quality atomically
     // server-side; the worker must surface any RPC failure (fail closed) rather than run a
     // client-side fallback that could partially write after an error.
-    expect(workerSource).toContain('if (error) throw supabaseStageError("commit_document_index_generation", error)');
+    expect(behaviorSource).toContain("if (result.error) throw new Error(result.error.message);");
+    expect(behaviorSource).toMatch(/catch \(error\) \{\s*attempt\.cancel\(\);\s*throw error;\s*\}/);
     expect(workerSource).not.toContain("deleteStaleIndexGenerationRows");
-    expect(workerSource).toContain("`${imagePrefix}/${indexGenerationId}/image-${index + 1}${ext}`");
+    // Image objects are generation-scoped under the server-prepared, lease-scoped prefix.
+    expect(workerSource).toMatch(/await persistIngestionImage\(\{\s*attempt,\s*generation: indexGenerationId,/);
+    expect(behaviorSource).toContain(
+      "const prefix = `${args.attempt.fence.document_id}/${args.attempt.fence.lease_token}/${args.generation}/`;",
+    );
+    expect(behaviorSource).toContain("!prepared.storage_path.startsWith(prefix)");
     expect(workerSource).toContain('indexing_v3_agent_repair_reason: "core_index_committed"');
     expect(workerSource).toContain("indexing_v3_agent_repair_reason: null");
   });
 
   it("uses the strict completion RPC when inline enrichment succeeds", () => {
     expect(workerSource).toContain("async function completeStrictEnrichmentJob(job: JobRow)");
-    expect(workerSource).toContain("complete_strict_enrichment_job");
+    expect(workerSource).toContain("return runIngestionStrictCompletion(");
+    expect(behaviorSource).toContain(
+      'await rpc("complete_strict_enrichment_job", { ...payload, p_fence: attempt.fence });',
+    );
     expect(workerSource).toContain('p_agent_version: "visual-core-v3"');
     expect(workerSource).toContain('p_visual_indexing_version: "visual-v3"');
     expect(workerSource).toContain('strictCompletion.missing.includes("strict_completion_rpc_failed")');
     expect(workerSource).toContain("indexing_v3_agent_repair_reason: strictCompletionRepairReason");
   });
 
-  it("logs fallback import-batch update failures when RPC-based refresh is unavailable", () => {
-    expect(workerSource).toContain("Import batch status fallback update failed");
-    expect(workerSource).toContain("update import batch status fallback");
-    expect(workerSource).toContain("const { error: fallbackUpdateError } = await supabase");
+  it("refreshes import-batch status inside the fenced completion RPC, with no unfenced client fallback", () => {
+    // Fenced leases: a client-side import_batches write would be an unfenced mutation, so the
+    // batch refresh moved into complete_ingestion_job's own transaction under the fence.
+    expect(workerSource).toMatch(
+      /await mutation\(attemptForJob\(job\.id\), "complete_ingestion_job", \{\s*p_batch_id: job\.batch_id,/,
+    );
+    expect(workerSource).not.toContain("Import batch status fallback update failed");
+    expect(workerSource).not.toMatch(/\.from\("import_batches"\)/);
+    const completion = fencedCompleteIngestionJobBody();
+    expect(completion).toContain("public.assert_current_ingestion_attempt(p_fence");
+    expect(completion).toMatch(/update public\.import_batches set status=/);
   });
 
   it("invalidates stale image caption cache entries by policy, prompt, and context versions", () => {
     expect(workerSource).toContain('const imageCaptionCacheVersion = "clinical-image-caption-cache-v2"');
     expect(workerSource).toContain('const visionClassificationPromptVersion = "clinical-image-classification-v1"');
-    expect(workerSource).toContain("metadata.image_caption_cache_version !== imageCaptionCacheVersion");
-    expect(workerSource).toContain("metadata.image_policy_version !== clinicalImagePolicyVersion");
-    expect(workerSource).toContain("metadata.visual_intelligence_version !== visualIntelligenceVersion");
-    expect(workerSource).toContain("metadata.caption_context_hash !== contextHash");
+    // Fenced leases: legacy cache entries lack admission/source identity, so the worker no
+    // longer reads or writes the caption cache at all — every caption is regenerated under
+    // the current attempt, which is strictly stronger than per-version invalidation.
+    expect(workerSource).toContain("const classificationCacheHit = false;");
+    expect(workerSource).not.toMatch(/(get|set)CachedImageClassification/);
+    // The versions still key the context hash and are stamped on every persisted image.
+    expect(workerSource).toContain("cacheVersion: imageCaptionCacheVersion,");
+    expect(workerSource).toContain("promptVersion: visionClassificationPromptVersion,");
+    expect(workerSource).toContain("policyVersion: clinicalImagePolicyVersion,");
+    expect(workerSource).toContain("image_caption_cache_version: imageCaptionCacheVersion,");
+    expect(workerSource).toContain("image_policy_version: clinicalImagePolicyVersion,");
+    expect(workerSource).toContain("visual_intelligence_version: visualIntelligenceVersion,");
+    expect(workerSource).toContain("caption_context_hash: contextHash,");
   });
 
   it("redacts captions before cache writes", () => {
     expect(workerSource).toContain("function redactImageClassification");
-    expect(workerSource).toContain("const classification = redactImageClassification(args.classification);");
-    expect(workerSource).toContain("let classification = redactImageClassification(resolved.classification);");
+    // No caption cache writes remain (see above); redaction must precede the only sink,
+    // the fenced image persistence.
+    expect(workerSource).not.toMatch(/setCachedImageClassification/);
+    expect(workerSource).toContain("caption: redactCaptionIdentifiers(cleanString(classification.caption)),");
+    expect(workerSource).toMatch(
+      /structured_visual_profile: redactCaptionMetadataValue\(\s*\(classification as ImageClassificationWithVisualProfile\)\.structured_visual_profile,/,
+    );
+    const redactIndex = workerSource.indexOf(
+      "let classification = redactImageClassification(resolved.classification);",
+    );
+    expect(redactIndex).toBeGreaterThan(-1);
+    expect(workerSource.indexOf("const data = await persistIngestionImage({", redactIndex)).toBeGreaterThan(
+      redactIndex,
+    );
     expect(workerSource).toContain("caption: classification.caption");
-    expect(workerSource).toContain("const structuredProfile = normalizeStructuredVisualProfile(");
-    expect(workerSource).toContain("redactCaptionMetadataValue(metadata.structured_visual_profile)");
+    expect(workerSource).toMatch(
+      /structured_visual_profile: normalizeStructuredVisualProfile\(\s*redactCaptionMetadataValue\(/,
+    );
   });
 
   it("computes perceptual duplicate groups before caption budget selection", () => {

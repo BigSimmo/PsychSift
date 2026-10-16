@@ -467,13 +467,25 @@ describe("worker/main.ts + env + image contract (source text)", () => {
     expect(finalMetadataIndex).toBeGreaterThan(shadowCallIndex);
     expect(finalWriteIndex).toBeGreaterThan(finalMetadataIndex);
     expect(workerMain).toContain('if (env.WORKER_DOCUMENT_EXTRACTOR_MODE === "shadow") {');
-    // Fail-open: the stage update before the shadow run must swallow a lost lease, otherwise
-    // shadow mode could fail a job whose generation is already committed.
-    const shadowStageUpdate = workerMain.slice(
-      workerMain.indexOf('await updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)"'),
-      workerMain.indexOf("const shadowHeartbeat = setInterval("),
+    // Fenced leases (PR #3546): every lease-bound mutation goes through runIngestionMutation,
+    // which cancels the whole attempt on any transport/fence failure, so a swallowed stage
+    // update could no longer keep a committed job alive — it would only run docling on a dead
+    // attempt. The stage update is therefore fail-closed (never swallowed) and the shadow run
+    // re-checks the attempt; lease liveness comes from the job-wide heartbeat, which cancels
+    // the attempt on a lost lease, instead of a shadow-only heartbeat.
+    const shadowStageStart = workerMain.indexOf(
+      'await updateJobProgress(job.id, { stage: "indexed; shadow extraction (docling)"',
     );
-    expect(shadowStageUpdate).toMatch(/\.catch\(\s*\(\)\s*=>\s*\{\}\s*,?\s*\)/);
+    expect(shadowStageStart).toBeGreaterThan(commitIndex);
+    const shadowStageUpdate = workerMain.slice(shadowStageStart, shadowCallIndex);
+    expect(shadowStageUpdate).toMatch(
+      /^await updateJobProgress\(job\.id, \{ stage: "indexed; shadow extraction \(docling\)", progress: 98 \}\);\s*try \{\s*$/,
+    );
+    expect(shadowStageUpdate).not.toMatch(/\.catch\(/);
+    const shadowRun = workerMain.slice(shadowCallIndex, finalMetadataIndex);
+    expect(shadowRun).toMatch(/\}\s*finally\s*\{\s*attempt\.check\(\);\s*\}/);
+    expect(workerMain).not.toContain("const shadowHeartbeat = setInterval(");
+    expect(workerMain).toContain('mutation(attempt, "heartbeat_ingestion_job").catch(() => attempt.cancel());');
     // The record travels only inside finalMetadata (deep-merged by apply_document_metadata_patch).
     expect(workerMain.match(/shadow_extraction: shadowExtraction/g)).toHaveLength(1);
     expect(workerMain).toContain("...(shadowExtraction ? { shadow_extraction: shadowExtraction } : {})");

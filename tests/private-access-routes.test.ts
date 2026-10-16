@@ -7,6 +7,38 @@ const documentId = "11111111-1111-4111-8111-111111111111";
 const otherDocumentId = "22222222-2222-4222-8222-222222222222";
 const imageId = "33333333-3333-4333-8333-333333333333";
 const token = "valid-token";
+const admissionEventId = "44444444-4444-4444-8444-444444444444";
+const admittedJobId = "55555555-5555-4555-8555-555555555555";
+// A valid administrator-template authority for uploads that must get past metadata parsing.
+const uploadAuthorityJson = JSON.stringify({
+  version: 1,
+  sourceRole: "clinical_guideline",
+  authorityBasis: "administrator_template",
+  licencePolicy: "review_required",
+  rightsEvidenceRef: "synthetic-rights-evidence",
+  publisher: "Synthetic Publisher",
+  jurisdiction: "Australia",
+  publicationDate: null,
+  effectiveDate: null,
+  reviewDate: null,
+  expiryDate: null,
+  currentness: "current",
+  supersedesDocumentId: null,
+  purpose: "clinical_retrieval",
+  supportedFeatures: ["text"],
+  providerProcessing: "permitted",
+});
+
+/** Recent-MFA administrator claims, as the cookie-session user client would verify them. */
+function administratorClaims() {
+  return {
+    sub: userId,
+    role: "authenticated",
+    aal: "aal2",
+    app_metadata: { site_role: "administrator" },
+    amr: [{ method: "totp", timestamp: Math.floor(Date.now() / 1000) - 5 }],
+  };
+}
 
 function documentDetailRow(overrides: Record<string, unknown> = {}) {
   return {
@@ -301,7 +333,11 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
         error: null,
       };
     }
-    if (name === "create_uploaded_document_with_ingestion_job") {
+    if (name === "admit_administrator_document") {
+      // The trusted administrator admission RPC replaced create_uploaded_document_with_ingestion_job
+      // (which now raises on live). A replay-only probe finds no prior admission; a real admission
+      // is the atomic document + job insert, each still decided by the test's query resolver.
+      if (args?.p_replay_only === true) return ok({ outcome: "not_found" });
       const document = (args?.p_document ?? {}) as Record<string, unknown>;
       const documentCall: QueryCall = {
         table: "documents",
@@ -321,6 +357,10 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       const insertedDocument = {
         ...document,
         ...(typeof documentResult.data === "object" && documentResult.data ? documentResult.data : {}),
+        // The database returns the row it admitted, so its identity is the admitted one.
+        id: document.id,
+        owner_id: document.owner_id,
+        content_hash: document.content_hash,
         status: "queued",
         page_count: 0,
         chunk_count: 0,
@@ -333,7 +373,7 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
         status: "pending",
         stage: "queued",
         progress: 0,
-        max_attempts: args?.p_max_attempts,
+        max_attempts: document.max_attempts,
       };
       const jobCall: QueryCall = {
         table: "ingestion_jobs",
@@ -351,11 +391,15 @@ function createSupabaseMock(resolve: QueryResolver = defaultQueryResolver) {
       if (jobResult.error) return jobResult;
 
       return ok({
+        outcome: "created",
+        admission_event_id: admissionEventId,
         document: insertedDocument,
         job: {
-          id: "job-1",
           ...jobPayload,
           ...(typeof jobResult.data === "object" && jobResult.data ? jobResult.data : {}),
+          id: admittedJobId,
+          document_id: document.id,
+          status: "pending",
         },
       });
     }
@@ -450,6 +494,13 @@ function mockRuntime(
   }));
   vi.doMock("@/lib/supabase/admin", () => ({
     createAdminClient: () => client,
+  }));
+  // The upload route's user-context client (MFA claims + admission RPC) is the cookie session.
+  vi.doMock("@/lib/supabase/server", () => ({
+    createSupabaseServerClient: async () => ({
+      auth: { getClaims: async () => ({ data: { claims: administratorClaims() }, error: null }) },
+      rpc: (name: string, args?: Record<string, unknown>) => client.rpc(name, args),
+    }),
   }));
   if (ragMock) {
     vi.doMock("@/lib/rag/rag", () => ragMock);
@@ -1767,6 +1818,7 @@ describe("private document API access", () => {
     });
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", uploadAuthorityJson);
     vi.spyOn(uploadRequest, "formData").mockImplementation(async () => {
       controller.abort();
       return form;
@@ -1793,6 +1845,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", { method: "POST", body: form, signal: controller.signal }),
@@ -1838,11 +1891,13 @@ describe("private document API access", () => {
 
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", uploadAuthorityJson);
     resolveForm(form);
     expect((await firstResponsePromise).status).toBe(201);
 
     const afterRelease = new FormData();
     afterRelease.set("file", new File(["%PDF-1.7 revised\n%%EOF"], "second.pdf", { type: "application/pdf" }));
+    afterRelease.set("authority", uploadAuthorityJson);
     const afterResponse = await POST(authenticatedRequest("/api/upload", { method: "POST", body: afterRelease }));
     expect(afterResponse.status).toBe(201);
   });
@@ -1868,6 +1923,7 @@ describe("private document API access", () => {
 
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", uploadAuthorityJson);
     const admittedResponse = await POST(
       authenticatedRequest("/api/upload", {
         method: "POST",
@@ -1880,7 +1936,10 @@ describe("private document API access", () => {
     expect(client.storageMocks.upload).toHaveBeenCalledTimes(1);
   });
 
-  it("cleans up document and storage when aborted after the atomic upload enqueue", async () => {
+  // Admission is atomic and idempotent: once the document and its job are committed, a client
+  // abort no longer rolls them back. Deleting an admitted row would race the worker that may
+  // already hold its job, so the route keeps it and reports success.
+  it("keeps the admitted document and job when the client aborts after the atomic upload enqueue", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
       if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
@@ -1894,16 +1953,17 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", { method: "POST", body: form, signal: controller.signal }),
     );
 
-    expect(response.status).toBe(499);
+    expect(response.status).toBe(201);
     expect(client.calls.filter((call) => call.table === "documents" && call.operation === "insert")).toHaveLength(1);
     expect(client.calls.some((call) => call.table === "ingestion_jobs" && call.operation === "insert")).toBe(true);
-    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(1);
-    expect(client.storageMocks.remove).toHaveBeenCalledTimes(1);
+    expect(client.calls.filter((call) => call.table === "documents" && call.operation === "delete")).toHaveLength(0);
+    expect(client.storageMocks.remove).not.toHaveBeenCalled();
   });
 
   it("stores uploaded documents with owner_id and a user-scoped storage path", async () => {
@@ -1921,6 +1981,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
     formData.set("title", "Guideline");
 
     const response = await POST(
@@ -1959,6 +2020,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "WACHS-anything.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
     formData.set("title", "WACHS lithium spoof");
 
     const response = await POST(
@@ -2006,6 +2068,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7 revised\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", {
@@ -2039,6 +2102,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", {
@@ -3306,13 +3370,16 @@ describe("private document API access", () => {
   });
 
   it("cleans up uploaded storage when document insert fails", async () => {
+    // The admission RPC reports a definitive (rolled-back) document refusal by its SQL marker.
+    // Non-marker errors are ambiguous by contract and deliberately keep the bytes for replay.
     const client = createSupabaseMock((call) =>
-      call.table === "documents" && call.operation === "insert" ? fail("document insert failed") : ok([]),
+      call.table === "documents" && call.operation === "insert" ? fail("invalid_trusted_document_input") : ok([]),
     );
     mockRuntime(client);
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", {
@@ -3335,8 +3402,11 @@ describe("private document API access", () => {
     });
     mockRuntime(client);
     client.rpc.mockImplementation(async (name: string, args?: Record<string, unknown>) => {
-      if (name === "create_uploaded_document_with_ingestion_job") {
-        return fail("job insert failed");
+      if (name === "admit_administrator_document") {
+        // A replay probe finds no prior admission; the admission itself is definitively refused
+        // (the atomic document + job insert rolled back), reported by its SQL marker.
+        if (args?.p_replay_only === true) return ok({ outcome: "not_found" });
+        return fail("invalid_trusted_document_admission");
       }
       if (name === "consume_api_rate_limit" || name === "consume_api_subject_rate_limit") {
         return {
@@ -3355,6 +3425,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", {
@@ -3369,20 +3440,15 @@ describe("private document API access", () => {
     expect(client.calls.some((call) => call.table === "documents" && call.operation === "delete")).toBe(false);
   });
 
-  it("still runs catch cleanup when post-enqueue cleanup calls return non-throwing errors", async () => {
+  it("still records a cleanup ledger row when pre-admission storage cleanup returns a non-throwing error", async () => {
     const controller = new AbortController();
     const client = createSupabaseMock((call) => {
-      if (call.table === "documents" && call.operation === "insert") {
-        controller.abort();
-        return ok({ id: documentId });
-      }
-      if (call.table === "ingestion_jobs" && call.operation === "insert") {
-        return ok({ id: "job-1", document_id: documentId });
-      }
-      if (call.table === "documents" && call.operation === "delete") {
-        return fail("document cleanup returned error");
-      }
+      if (call.table === "documents" && call.operation === "select" && call.maybeSingle) return ok(null);
       return ok([]);
+    });
+    client.storageMocks.upload.mockImplementation(async () => {
+      controller.abort();
+      return { data: { path: "uploaded" }, error: null };
     });
     client.storageMocks.remove.mockResolvedValue({
       data: [],
@@ -3392,6 +3458,7 @@ describe("private document API access", () => {
     const { POST } = await import("../src/app/api/upload/route");
     const formData = new FormData();
     formData.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    formData.set("authority", uploadAuthorityJson);
 
     const response = await POST(
       authenticatedRequest("/api/upload", {
@@ -3401,11 +3468,15 @@ describe("private document API access", () => {
       }),
     );
     const uploadPath = client.storageMocks.upload.mock.calls[0]?.[0] as string;
-    const documentDeletes = client.calls.filter((call) => call.table === "documents" && call.operation === "delete");
+    const ledgerInserts = client.calls.filter(
+      (call) => call.table === "storage_cleanup_jobs" && call.operation === "insert",
+    );
 
     expect(response.status).toBe(499);
-    expect(documentDeletes).toHaveLength(1);
+    expect(client.calls.some((call) => call.table === "documents" && call.operation === "insert")).toBe(false);
     expect(client.storageMocks.remove).toHaveBeenCalledWith([uploadPath]);
+    expect(ledgerInserts).toHaveLength(1);
+    expect((ledgerInserts[0]?.insertPayload as { document_paths: string[] }).document_paths).toEqual([uploadPath]);
   });
 
   it("does not return document details for an unowned document", async () => {
@@ -5581,7 +5652,12 @@ describe("private document API access", () => {
       }),
     );
     const reader = response.body?.getReader();
-    await reader?.read();
+    // The pilot-budget wrapper loads its ticket before generation starts, so read
+    // until generation is actually running (its ranking progress event) before cancelling.
+    for (let reads = 0; reads < 20 && answerQuestionWithScope.mock.calls.length === 0; reads += 1) {
+      const chunk = await reader?.read();
+      if (!chunk || chunk.done) break;
+    }
     await reader?.cancel();
 
     expect(response.status).toBe(200);

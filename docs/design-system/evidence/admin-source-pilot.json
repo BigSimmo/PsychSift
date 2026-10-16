@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "surface": "admin-source-pilot",
+  "status": "passed",
+  "executedAt": "2026-10-14T18:35:05.070Z",
+  "scope": "Actual pilot page/client in an isolated synthetic dependency harness; current source CSS and local fonts; no full application providers, server-auth enforcement, hosted MFA/admission, or verify:ui gate claim",
+  "syntheticOnly": true,
+  "categories": {
+    "dark": "passed",
+    "forcedColours": "passed",
+    "compact320": "passed",
+    "print": "passed",
+    "browser": "passed"
+  },
+  "checks": [
+    "factor read pending disables authenticator actions",
+    "factor read error fails closed",
+    "Actual Next Image displays only synthetic inline 240px QR",
+    "Refused/successful synthetic verification gating and secret state clearance",
+    "Wrong synthetic file refuses before session/upload",
+    "Source switch resets native file field and keeps source-specific controls",
+    "Native labels, keyboard traversal and polite status",
+    "320px source and synthetic enrollment states stay inside viewport",
+    "Actual enabled text/control contrast in dark inherited v2",
+    "Forced colours readable content, native focus and visible borders",
+    "Print media keeps purpose/forms readable and contained"
+  ],
+  "sourceInputs": [
+    {
+      "path": "package-lock.json",
+      "sha256": "226f489f033d241e232a83d089cf886471a6b3f1044139b1d2856c376e686f67"
+    },
+    {
+      "path": "src/app/admin/pilot/page.tsx",
+      "sha256": "a5bab0ace630c7b072e86a7d88a6eb16ed49308fdf8489c1d0cd5e0c628529e4"
+    },
+    {
+      "path": "src/app/admin/pilot/pilot-client.tsx",
+      "sha256": "8167a4fc2a48839e98b18c9fc3d973f184f2473718f210cc17ffb0ccaa5bcb0a"
+    },
+    {
+      "path": "src/app/ckb-v2-tokens.css",
+      "sha256": "1d80042ddd3775017323eaae96af8e2404bc20f68fff06d83a25b6a9b3e66790"
+    },
+    {
+      "path": "src/app/clinical-mode.css",
+      "sha256": "f8381be2b3edea41c5c1d159dd6a7a59b68c666c6adc41e9b30c4ac46645fca4"
+    },
+    {
+      "path": "src/app/globals.css",
+      "sha256": "c163d52f94de3c844c73a9990868dde19ce220f2650d024edcd8fe3c330de8c2"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "sha256": "195843c47cbc584de577bd8ebce17ff646ef36953cb80d20a19b9e62cde8f14a"
+    },
+    {
+      "path": "src/app/mode-band.css",
+      "sha256": "664dac8c2314a5a041312df2b36e3ad75d76e88f173a5d9ae2e159f233e41584"
+    },
+    {
+      "path": "src/app/motion.css",
+      "sha256": "f3e75658e98f0a0e997d24ea742ec743bb93e46d17d486bbcacf7468a63eeac5"
+    },
+    {
+      "path": "src/app/reading-aids.css",
+      "sha256": "ddb8a451e2bb47eb94033863f9e84bb53dc5b3b7073105d2fcd470a50308b794"
+    },
+    {
+      "path": "src/app/work-mode-tokens.css",
+      "sha256": "ed3900d17b55ea3e36c268ca875b0cdbceb1f0a16ec252a4ae1233465a8e620a"
+    },
+    {
+      "path": "src/app/work-mode.css",
+      "sha256": "222542e452da8219ccf4e680047d599c222808b697cfc412c32772a38e4bb1ba"
+    },
+    {
+      "path": "src/fonts/geist-latin.woff2",
+      "sha256": "1b5ebfb3a01a97343ac96873e6d59a8cb285c66012b6a1ac509cb2765e995ba8"
+    },
+    {
+      "path": "src/fonts/geist-mono-latin.woff2",
+      "sha256": "b7ac144b394cbd81052d6397ec0c33397977b1d7e9bc095e744e652a378c6fb3"
+    },
+    {
+      "path": "src/lib/authorization.ts",
+      "sha256": "444317d2e23e8ca0a41b22561675ec3ce6107db2d0cd902d349a71a7de4741a5"
+    },
+    {
+      "path": "src/styles/print.css",
+      "sha256": "24859057fe9219277497a65bab17bff80638649c0677457d97ce054d113b94d2"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "fcc24f8304c369ecedb2c1e6f3cd5ce2b6480cc3e0053e58b057210512b5517e"
+    },
+    {
+      "path": "next.config.ts",
+      "sha256": "d535544296d0c429e89334c8d16dee5d9d96ab31d4beb6ef01da98a4ae569092"
+    },
+    {
+      "path": "node_modules/next/dist/build/define-env.js",
+      "sha256": "0ea6c29ea783a910159e4a15855434d080d24c750be0636633064908810b883f"
+    },
+    {
+      "path": "node_modules/next/dist/shared/lib/image-config.js",
+      "sha256": "09c02c6af29186533555a17d6ab67dcb0ef508d3e4d1157c392e41444dafa415"
+    }
+  ],
+  "browser": {
+    "version": "153.0.8010.12",
+    "binarySha256": "addfa79abb060e1e514e155ed745d4bf96140bca402735958bb4e223aea0b98c"
+  },
+  "nodeVersion": "24.19.0",
+  "compiledArtifacts": {
+    "cssSha256": "a42c110bbad0cb2b2706a2004c779e5537b8154cffc555b5f63a1a1351c7f2b5",
+    "bundleSha256": "2585f2c3893587a60eb2f5d6e0fe814ec3768674f556026bc57367a5beccadd7",
+    "harnessSha256": "132b875ed15662af51e61659794b41371d8605d0eaafd5e73fb1bfa3af3bbfd6"
+  },
+  "harnessInputs": [
+    {
+      "file": "run.mjs",
+      "sha256": "132b875ed15662af51e61659794b41371d8605d0eaafd5e73fb1bfa3af3bbfd6"
+    },
+    {
+      "file": "entry.tsx",
+      "sha256": "bd306205d16df352381c61504a9c526b44d6326736d620099fd2cb0e58ec6884"
+    },
+    {
+      "file": "mock.ts",
+      "sha256": "bf737d33a446912e909725839143d4572e56d6df0359ffd3f9ddbbb60874e75d"
+    }
+  ],
+  "screenshotDigests": [
+    {
+      "file": "compact320-pdf.png",
+      "sha256": "91b8e9aba9181d855f9caf1260f45a6cab4d845c1b642d0c6c1907a2943b2c9e"
+    },
+    {
+      "file": "compact320-txt.png",
+      "sha256": "751894fb27dd277540bb5d01b9331c3dcefc96bc531e87f869fc2e686f59510c"
+    },
+    {
+      "file": "compact320-qr.png",
+      "sha256": "33ae4b83959eed316e46c44a16909d4997b2794d25a495ceee53d6e7f3ce190c"
+    },
+    {
+      "file": "dark.png",
+      "sha256": "6e928841e83f17a3dd257257f947150149623c002752a88bd05aaf005b128f4b"
+    },
+    {
+      "file": "forced-colours.png",
+      "sha256": "a1f0f33e1f6b913df644a1669907b2fe04b44b66a293d0683acd4ea1a9d867a1"
+    },
+    {
+      "file": "print.png",
+      "sha256": "41a9198f76efa2e9a7a868bfe86d1e85d544f12dcc77189be6bd0609728f99b4"
+    }
+  ],
+  "network": "Only local intercepted synthetic fixture assets were fulfilled; no real provider requests.",
+  "limitations": [
+    "Does not establish hosted authentication, actual MFA credentials, admission or the full verify:ui gate.",
+    "Windows Chromium exercise; approved Linux screenshot baseline remains not committed.",
+    "Private harness, failed preparation attempts and captures remain in the existing local handover."
+  ]
+}

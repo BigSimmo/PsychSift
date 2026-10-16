@@ -553,6 +553,152 @@ type ChunkImages = NonNullable<ChunkInput["images"]>;
 type ChunkProfile = ReturnType<typeof adaptiveChunkProfile>;
 type SpanPage = { pageNumber: number | null; pageText: string };
 
+function nativeTableBlock(image: ChunkImages[number]) {
+  const columns = image.tableColumns;
+  const rows = image.tableRows;
+  if (!Array.isArray(columns) || columns.length < 2 || !Array.isArray(rows)) return null;
+  const normalizeCell = (cell: unknown) =>
+    typeof cell === "string" && !/[\r\n|\\]/.test(cell) ? cell.replace(/\s+/g, " ").trim() : null;
+  const normalizedColumns = columns.map(normalizeCell);
+  if (normalizedColumns.some((cell) => !cell)) return null;
+  const dataRows: string[][] = [];
+  for (const row of rows) {
+    if (!Array.isArray(row) || row.length !== columns.length) return null;
+    const cells = row.map(normalizeCell);
+    if (cells.some((cell) => cell === null)) return null;
+    if (cells.every((cell) => cell === "")) continue;
+    if (cells.some((cell) => !cell)) return null;
+    const checked = cells as string[];
+    if (checked.every((cell, index) => cell === normalizedColumns[index])) continue;
+    if (checked.every((cell) => /^:?-{3,}:?$/.test(cell))) continue;
+    dataRows.push(checked);
+  }
+  if (!dataRows.length) return null;
+  return { columns: normalizedColumns as string[], rows: dataRows };
+}
+
+function narrativeTableBlocks(text: string) {
+  let openMarker: string | null = null;
+  for (const marker of text.matchAll(
+    /\[\[(IMAGE_DATA_START|IMAGE_DATA_END|IMAGE_DATA_OMITTED|\/IMAGE_DATA_OMITTED)\]\]/g,
+  )) {
+    if (marker[1] === "IMAGE_DATA_START" || marker[1] === "IMAGE_DATA_OMITTED") {
+      if (openMarker) return null;
+      openMarker = marker[1];
+    } else {
+      const expected = marker[1] === "IMAGE_DATA_END" ? "IMAGE_DATA_START" : "IMAGE_DATA_OMITTED";
+      if (openMarker !== expected) return null;
+      openMarker = null;
+    }
+  }
+  if (openMarker) return null;
+  const narrative = text.replace(imageDataTagPattern, " ");
+  if (/\[\[\/?IMAGE_DATA|\bIMAGE_DATA_/.test(narrative)) return null;
+  const lines = narrative.split(/\r?\n/).map((line) => line.trim());
+  const blocks: Array<{ columns: string[]; rows: string[][] }> = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].startsWith("|")) continue;
+    const rows: string[][] = [];
+    while (index < lines.length && lines[index].startsWith("|")) {
+      const line = lines[index];
+      if (!line.endsWith("|") || line.includes("\\")) return null;
+      rows.push(
+        line
+          .slice(1, -1)
+          .split("|")
+          .map((cell) => cell.replace(/\s+/g, " ").trim()),
+      );
+      index += 1;
+    }
+    index -= 1;
+    const [columns, ...remaining] = rows;
+    if (columns.some((cell) => !cell)) return null;
+    if (remaining[0]?.every((cell) => /^:?-{3,}:?$/.test(cell))) {
+      if (remaining[0].length !== columns.length) return null;
+      remaining.shift();
+    }
+    if (remaining.some((row) => row.length !== columns.length || row.some((cell) => !cell))) return null;
+    if (remaining.some((row) => row.every((cell) => /^:?-{3,}:?$/.test(cell)))) return null;
+    if (remaining.length) blocks.push({ columns, rows: remaining });
+  }
+  return blocks;
+}
+
+// Native association is deliberately page-local and exact. Injected image context,
+// partial tables and ambiguous crops cannot supply their own linkage evidence.
+function matchesNativeTableBlock(
+  image: ChunkImages[number],
+  args: {
+    content: string;
+    pageNumber: number | null;
+    pageStart: number | null;
+    pageEnd: number | null;
+    images: ChunkImages;
+    spanPages: SpanPage[];
+    chunkerVersion: string;
+  },
+  imageIndex: number,
+) {
+  if (
+    args.chunkerVersion !== CHUNKER_VERSION ||
+    !Number.isInteger(image.pageNumber) ||
+    (image.pageNumber ?? 0) <= 0 ||
+    args.spanPages.length !== 1 ||
+    args.spanPages[0].pageNumber !== image.pageNumber ||
+    args.pageNumber !== image.pageNumber ||
+    args.pageStart !== image.pageNumber ||
+    args.pageEnd !== image.pageNumber
+  )
+    return false;
+  const table = nativeTableBlock(image);
+  if (!table) return false;
+  const units =
+    /^(?:mg|mcg|µg|μg|ug|g|kg|ng|pg|ml|l|dl|h|hr|hrs|hour|hours|min|s|sec|second|seconds|day|days|wk|week|weeks|mmol|mol|meq|iu|u|unit|units|mmhg|cm|bpm|x)$/i;
+  const hasRowIdentifier = table.rows.some((row) => {
+    // First slice supports explicit labels, not a semantic classifier for plain words/units.
+    if (!/^[A-Z0-9]+(?:[-_][A-Z0-9]+)+$/.test(row[0]) || !/[A-Z]/.test(row[0])) return false;
+    const withoutNumbers = row[0].replace(/[+-]?(?:\d+(?:[.,]\d+)?|\.\d+)(?:e[+-]?\d+)?/gi, " ");
+    return withoutNumbers.split(/[^\p{L}]+/u).some((word) => word && !units.test(word));
+  });
+  if (!hasRowIdentifier) return false;
+  const rowSignatures = new Set(table.rows.map((row) => JSON.stringify(row)));
+  const signature = JSON.stringify(table);
+  const uniqueNarrativeMatch = (text: string) => {
+    const blocks = narrativeTableBlocks(text);
+    if (!blocks || blocks.filter((block) => JSON.stringify(block) === signature).length !== 1) return false;
+    return !blocks.some(
+      (block) =>
+        JSON.stringify(block) !== signature && block.rows.some((row) => rowSignatures.has(JSON.stringify(row))),
+    );
+  };
+  if (!uniqueNarrativeMatch(args.content) || !uniqueNarrativeMatch(args.spanPages[0].pageText)) return false;
+  const descriptor = (peer: ChunkImages[number]) =>
+    JSON.stringify([
+      nativeTableBlock(peer),
+      peer.pageNumber,
+      peer.sourceKind,
+      peer.caption,
+      peer.tableLabel ?? null,
+      peer.tableTitle ?? null,
+      peer.tableRole ?? null,
+      peer.imageType ?? null,
+      peer.tableTextSnippet ?? null,
+      peer.accessibleTableMarkdown ?? null,
+      peer.tableColumns ?? null,
+      peer.tableRows ?? null,
+      peer.labels ?? null,
+    ]);
+  for (const peer of args.images) {
+    if (peer.id === image.id && descriptor(peer) !== descriptor(image)) return false;
+    if (peer.sourceKind !== "table_crop" || peer.pageNumber !== image.pageNumber) continue;
+    const peerTable = nativeTableBlock(peer);
+    if (!peerTable) return false;
+    if (peer.id !== image.id && peerTable.rows.some((row) => rowSignatures.has(JSON.stringify(row)))) return false;
+  }
+  // Only consistent duplicates may collapse, after checking every descriptor/peer.
+  return args.images.findIndex((peer) => peer.id === image.id) === imageIndex;
+}
+
 function pageLocalExcerptForChunk(chunkExcerpt: string, pageText: string) {
   const compactPage = pageText.replace(/\s+/g, " ").trim();
   if (!compactPage) return chunkExcerpt;
@@ -610,7 +756,15 @@ function emitChunk(args: {
   const level = headingLevel(heading, sectionContext);
   const parentHeading = sectionContext.length > 1 ? sectionContext[sectionContext.length - 2] : null;
   const referencedImageIds = args.images
-    .filter((image) => {
+    .filter((image, imageIndex) => {
+      if (
+        image.sourceKind === "table_crop" &&
+        !image.caption.trim() &&
+        !(image.tableLabel ?? "").trim() &&
+        !(image.tableTitle ?? "").trim()
+      ) {
+        return matchesNativeTableBlock(image, args, imageIndex);
+      }
       const label = normalizeLookupText(image.tableLabel ?? "");
       const title = normalizeLookupText(image.tableTitle ?? "");
       const caption = normalizeLookupText(image.caption);

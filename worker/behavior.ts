@@ -1,4 +1,24 @@
+import type { ExtractedDocument } from "../src/lib/types";
+import { extractedTextSha256 } from "../src/lib/extractors/docx-source-provenance";
+import { PdfSourceProvenanceError } from "../src/lib/extractors/pdf-source-provenance";
+import { TextSourceProvenanceError } from "../src/lib/extractors/text-source-provenance";
+import {
+  XlsxSourceProvenanceError,
+  hasFreshXlsxBinding,
+  validateFreshXlsxDocument,
+  validateXlsxSourcePages,
+  refreshXlsxAfterSanitation,
+  xlsxPageSourceProvenanceSchema,
+} from "../src/lib/extractors/xlsx-source-provenance";
+import { boundedXlsxJson, XLSX_SOURCE_LIMITS } from "../src/lib/extractors/xlsx-original-zip";
+import {
+  IngestionAttempt,
+  IngestionAttemptError,
+  type IngestionFence,
+} from "../supabase/functions/_shared/ingestion-attempt";
 import { isPartialIndexWriteConflict, isRetryableIngestionError, nextRetryAt } from "../src/lib/ingestion";
+import { ProviderEgressDeniedError } from "../src/lib/document-ingress-safety";
+import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-egress";
 
 export type IngestionFailureDecision = {
   retry: boolean;
@@ -14,10 +34,31 @@ export function ingestionFailureDecision(args: {
   maxAttempts: number;
   atomicReindex: boolean;
 }): IngestionFailureDecision {
-  const errorMessage = args.error instanceof Error ? args.error.message : String(args.error);
+  const error = args.error;
+  const errorMessage = error instanceof Error ? error.message : String(error);
   const preservedStatus = args.atomicReindex ? "indexed" : "failed";
 
-  if (isPartialIndexWriteConflict(args.error)) {
+  if (
+    error instanceof PdfSourceProvenanceError ||
+    error instanceof TextSourceProvenanceError ||
+    error instanceof XlsxSourceProvenanceError
+  ) {
+    return { retry: false, documentStatus: preservedStatus, stage: "failed", errorMessage: error.code };
+  }
+
+  if (error instanceof ProviderEgressDeniedError) {
+    const refusal =
+      error instanceof IngestionProviderEgressRefusal ? error : new IngestionProviderEgressRefusal(error.code);
+    const details = `; reasons=${refusal.codes.join(",")}; actions=${refusal.actions.join(",")}`;
+    return {
+      retry: false,
+      documentStatus: preservedStatus,
+      stage: "blocked by ingress safety checks",
+      errorMessage: `${refusal.code}${details}`,
+    };
+  }
+
+  if (isPartialIndexWriteConflict(error)) {
     return {
       retry: false,
       documentStatus: preservedStatus,
@@ -26,7 +67,10 @@ export function ingestionFailureDecision(args: {
     };
   }
 
-  if (isRetryableIngestionError(args.error) && args.attemptCount < args.maxAttempts) {
+  if (
+    (isRetryableIngestionError(error) || isTransientDatabaseRejection(error)) &&
+    args.attemptCount < args.maxAttempts
+  ) {
     return {
       retry: true,
       documentStatus: args.atomicReindex ? "indexed" : "queued",
@@ -77,6 +121,246 @@ export function enrichmentRepairDecision(args: {
 }
 
 /**
+ * The database answered with an error and rolled the call back, so the lease is still held and
+ * the job can still be failed or retried through the normal path.
+ */
+export class IngestionRpcRejectedError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+    this.name = "IngestionRpcRejectedError";
+  }
+}
+
+/**
+ * Only a Postgres SQLSTATE proves the statement ran and rolled back. Connection (class 08),
+ * operator-intervention (57P) and statement_completion_unknown (40003) codes, PostgREST gateway
+ * codes and missing codes stay uncertain.
+ */
+function confirmedRpcRejection(error: { message: string; code?: string | null }) {
+  const code = typeof error.code === "string" ? error.code : "";
+  if (!/^[0-9A-Z]{5}$/.test(code) || code.startsWith("08") || code.startsWith("57P") || code === "40003") return null;
+  return new IngestionRpcRejectedError(error.message, code);
+}
+
+/**
+ * Deadlocks and serialization failures (class 40), resource exhaustion (class 53), lock
+ * timeouts (55P03) and statement timeouts (57014) roll back cleanly and are worth retrying.
+ */
+function isTransientDatabaseRejection(error: unknown) {
+  if (!(error instanceof IngestionRpcRejectedError)) return false;
+  const { code } = error;
+  return code.startsWith("40") || code.startsWith("53") || code === "55P03" || code === "57014";
+}
+
+type IngestionRpcResult = { data: unknown; error: { message: string; code?: string | null } | null };
+
+/**
+ * Importable actual transport seam: an uncertain outcome cancels the whole attempt, while a
+ * confirmed database rejection leaves it live so the caller can still record the failure.
+ */
+export async function runIngestionMutation(
+  attempt: IngestionAttempt,
+  rpc: (name: string, args: Record<string, unknown>) => PromiseLike<IngestionRpcResult>,
+  name: string,
+  payload: Record<string, unknown> = {},
+) {
+  return attempt.serialize(async () => {
+    attempt.check();
+    let result: IngestionRpcResult;
+    try {
+      result = await rpc(name, { ...payload, p_fence: attempt.fence });
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
+    const rejection = result.error ? confirmedRpcRejection(result.error) : null;
+    if (rejection) throw rejection;
+    try {
+      if (result.error) throw new Error(result.error.message);
+      const accepted =
+        name === "commit_document_index_generation"
+          ? attempt.handoff(result.data, payload.p_generation)
+          : attempt.accept(result.data);
+      if (name === "complete_ingestion_job" || name === "fail_or_retry_ingestion_job") attempt.cancel();
+      return accepted;
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
+  });
+}
+
+export function claimedJobFence(
+  job: {
+    id: string;
+    document_id: string;
+    locked_by: string;
+    lease_token: string;
+    lease_expected_generation_id: string | null;
+    lease_authority_digest: string;
+  },
+  kind: IngestionFence["job_kind"],
+): IngestionFence {
+  return {
+    job_kind: kind,
+    job_id: job.id,
+    document_id: job.document_id,
+    worker_id: job.locked_by,
+    lease_token: job.lease_token,
+    expected_generation_id: job.lease_expected_generation_id,
+    authority_digest: job.lease_authority_digest,
+  };
+}
+
+export function registerClaimedJobAttempt(
+  job: Parameters<typeof claimedJobFence>[0],
+  jobs: Map<string, IngestionAttempt>,
+  documents: Map<string, IngestionAttempt>,
+) {
+  const attempt = new IngestionAttempt(claimedJobFence(job, "node"));
+  jobs.get(job.id)?.cancel();
+  documents.get(job.document_id)?.cancel();
+  jobs.set(job.id, attempt);
+  documents.set(job.document_id, attempt);
+  return attempt;
+}
+
+/** A gate refusal permits repair; all ambiguous persistence outcomes revoke the attempt. */
+export function runIngestionStrictCompletion(
+  attempt: IngestionAttempt,
+  rpc: Parameters<typeof runIngestionMutation>[1],
+  payload: Record<string, unknown>,
+) {
+  return attempt.serialize(async () => {
+    try {
+      const { data, error } = await rpc("complete_strict_enrichment_job", { ...payload, p_fence: attempt.fence });
+      if (error) throw confirmedRpcRejection(error) ?? new Error(error.message);
+      attempt.check();
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        const result = data as Record<string, unknown>;
+        if (result.ok === false && result.reason === "completion_gate_blocked") {
+          if (!Array.isArray(result.missing) || !result.missing.every((item) => typeof item === "string")) {
+            throw new IngestionAttemptError("ingestion_rpc_invalid");
+          }
+          return {
+            completed: false,
+            missing: result.missing as string[],
+            message: "Strict enrichment completion blocked.",
+          };
+        }
+      }
+      const accepted = attempt.accept(data);
+      if (Object.keys(accepted).length !== 1) throw new IngestionAttemptError("ingestion_rpc_invalid");
+      // Strict completion's Node transaction already terminally completes the job.
+      // Revoke before releasing the serialization tail to any queued heartbeat.
+      attempt.cancel();
+      return { completed: true, missing: [] as string[], message: null };
+    } catch (error) {
+      if (!(error instanceof IngestionRpcRejectedError)) attempt.cancel();
+      throw error;
+    }
+  });
+}
+
+/** Respect the SQL artifact limit without truncating facts from dense image tables. */
+export async function writeIngestionTableFacts(
+  attempt: IngestionAttempt,
+  rpc: Parameters<typeof runIngestionMutation>[1],
+  generation: string,
+  facts: readonly unknown[],
+) {
+  for (let start = 0; start < facts.length; start += 500) {
+    await runIngestionMutation(attempt, rpc, "write_ingestion_base_artifacts", {
+      p_generation: generation,
+      p_chunks: [],
+      p_images: [],
+      p_table_facts: facts.slice(start, start + 500),
+      p_embedding_fields: [],
+      p_index_units: [],
+    });
+  }
+}
+
+/** Actual image publication seam. Late/ambiguous uploads are retained, never compensated destructively. */
+export async function persistIngestionImage<T extends Record<string, unknown>>(args: {
+  attempt: IngestionAttempt;
+  generation: string;
+  extension: string;
+  row: T;
+  rpc: Parameters<typeof runIngestionMutation>[1];
+  upload: (storagePath: string, options: { upsert: false }) => Promise<{ error: { message: string } | null }>;
+}): Promise<T & { storage_path: string }> {
+  const prepared = await runIngestionMutation(args.attempt, args.rpc, "prepare_ingestion_image_upload", {
+    p_generation: args.generation,
+    p_extension: args.extension,
+  });
+  const prefix = `${args.attempt.fence.document_id}/${args.attempt.fence.lease_token}/${args.generation}/`;
+  if (
+    typeof prepared.storage_path !== "string" ||
+    !prepared.storage_path.startsWith(prefix) ||
+    !/^[0-9a-f-]{36}\.(png|jpg|jpeg|webp)$/.test(prepared.storage_path.slice(prefix.length))
+  ) {
+    args.attempt.cancel();
+    throw new IngestionAttemptError("ingestion_rpc_invalid");
+  }
+  args.attempt.check();
+  const uploaded = await args.upload(prepared.storage_path, { upsert: false });
+  args.attempt.check();
+  if (uploaded.error) throw new Error(uploaded.error.message);
+  const row = { ...args.row, storage_path: prepared.storage_path };
+  await runIngestionMutation(args.attempt, args.rpc, "write_ingestion_base_artifacts", {
+    p_generation: args.generation,
+    p_chunks: [],
+    p_images: [row],
+    p_table_facts: [],
+    p_embedding_fields: [],
+    p_index_units: [],
+  });
+  return row;
+}
+
+/** Guard preparation before optional work; ordinary work failures retain their own semantics. */
+export async function runIngestionPreparedWork<T>(
+  attempt: IngestionAttempt,
+  prepare: () => Promise<unknown>,
+  work: () => Promise<T>,
+): Promise<T> {
+  attempt.check();
+  try {
+    await prepare();
+  } catch (error) {
+    attempt.cancel();
+    throw error;
+  }
+  attempt.check();
+  const result = await work();
+  attempt.check();
+  return result;
+}
+
+/** Actual optional enrichment boundary used by processJob. */
+export async function runIngestionEnrichmentStage<T>(attempt: IngestionAttempt, work: () => Promise<T>) {
+  attempt.check();
+  try {
+    const value = await work();
+    attempt.check();
+    return { status: "completed" as const, value };
+  } catch (error) {
+    attempt.check();
+    if (error instanceof ProviderEgressDeniedError || (error instanceof Error && error.name === "AbortError"))
+      throw error;
+    if (error instanceof IngestionAttemptError) {
+      attempt.cancel();
+      throw error;
+    }
+    return { status: "failed" as const, error };
+  }
+}
+
+/**
  * Per-image vision-rejection isolation (audit L12).
  *
  * One embedded image the vision provider refuses used to fail the WHOLE
@@ -124,4 +408,115 @@ export function visionImageRejectionSkipReason(error: unknown): string | null {
     return "vision provider rejected this image (unsupported or unreadable image data)";
   }
   return null;
+}
+
+/** Same page rows consumed by main's existing fenced p_pages serialization; no worker startup. */
+export function buildDocumentPageRowsForPersistence(
+  documentId: string,
+  extracted: ExtractedDocument,
+  sanitation: {
+    cleanString: (value: string) => string;
+    sanitizeJsonbRecord: (value: unknown) => Record<string, unknown>;
+  },
+) {
+  const hasXlsx =
+    hasFreshXlsxBinding(extracted) ||
+    extracted.pages.some((page) => page.metadata?.source_provenance?.format === "xlsx");
+  if (hasXlsx) validateFreshXlsxDocument(extracted);
+  const rows = extracted.pages.map((page) => {
+    const suppliedProvenance = page.metadata?.source_provenance;
+    const provenance =
+      suppliedProvenance?.format === "xlsx"
+        ? xlsxPageSourceProvenanceSchema.parse(suppliedProvenance)
+        : suppliedProvenance;
+    const text = sanitation.cleanString(page.text);
+    const originalMetadata = page.metadata ?? {};
+    const metadata = sanitation.sanitizeJsonbRecord(originalMetadata);
+    if (provenance?.format === "xlsx") {
+      metadata.source_provenance = refreshXlsxAfterSanitation(
+        provenance,
+        metadata.source_provenance,
+        page.text,
+        text,
+        false,
+      );
+    } else if (provenance) {
+      const sanitizedProvenance = metadata.source_provenance as typeof provenance;
+      metadata.source_provenance = {
+        ...sanitizedProvenance,
+        textIdentity: {
+          ...sanitizedProvenance.textIdentity,
+          // Original here is the UTF-8 extracted stream, never original source bytes/spans.
+          originalExtractedTextSha256: extractedTextSha256(page.text),
+          persistedTextSha256: extractedTextSha256(text),
+          normalizationApplied: text !== page.text,
+          metadataNormalizationApplied: JSON.stringify(originalMetadata) !== JSON.stringify(metadata),
+        },
+      };
+    }
+    return { document_id: documentId, page_number: page.pageNumber, text, ocr_used: Boolean(page.ocrUsed), metadata };
+  });
+  if (hasXlsx) {
+    validateXlsxSourcePages(
+      rows.map((row) => ({
+        pageNumber: row.page_number,
+        text: row.text,
+        ocrUsed: row.ocr_used,
+        metadata: row.metadata,
+      })),
+    );
+    boundedXlsxJson(rows, XLSX_SOURCE_LIMITS.resultBytes);
+  }
+  return rows;
+}
+
+/** Exact final p_pages: unchanged text and the existing second metadata sanitation. */
+export function serializeDocumentPageRowsForCommit(
+  pages: Array<{ page_number: number; text: string; ocr_used: boolean; metadata: Record<string, unknown> }>,
+  sanitation: { sanitizeJsonbRecord: (value: unknown) => Record<string, unknown> },
+) {
+  const hasXlsx = pages.some(
+    (page) => (page.metadata.source_provenance as { format?: string } | undefined)?.format === "xlsx",
+  );
+  if (hasXlsx)
+    validateXlsxSourcePages(
+      pages.map((page) => ({
+        pageNumber: page.page_number,
+        text: page.text,
+        ocrUsed: page.ocr_used,
+        metadata: page.metadata,
+      })),
+    );
+  const rows = pages.map((page) => {
+    const supplied = page.metadata.source_provenance;
+    const provenance =
+      supplied && typeof supplied === "object" && "format" in supplied && supplied.format === "xlsx"
+        ? xlsxPageSourceProvenanceSchema.parse(supplied)
+        : supplied;
+    const metadata = sanitation.sanitizeJsonbRecord(page.metadata);
+    if (provenance && typeof provenance === "object" && "format" in provenance && provenance.format === "xlsx") {
+      // Validated above; refresh and revalidate the actual second-pass payload before RPC.
+      const parsed = provenance as import("../src/lib/extractors/xlsx-source-provenance").XlsxPageSourceProvenance;
+      metadata.source_provenance = refreshXlsxAfterSanitation(
+        parsed,
+        metadata.source_provenance,
+        page.text,
+        page.text,
+        true,
+      );
+    }
+    return { page_number: page.page_number, text: page.text, ocr_used: page.ocr_used, metadata };
+  });
+  if (hasXlsx) {
+    validateXlsxSourcePages(
+      rows.map((row) => ({
+        pageNumber: row.page_number,
+        text: row.text,
+        ocrUsed: row.ocr_used,
+        metadata: row.metadata,
+      })),
+    );
+    boundedXlsxJson(rows, XLSX_SOURCE_LIMITS.resultBytes);
+  }
+  return rows;
 }

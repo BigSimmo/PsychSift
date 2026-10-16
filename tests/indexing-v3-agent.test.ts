@@ -189,6 +189,13 @@ describe("indexing-v3-agent behavior", () => {
     expect(edgeSource).toContain("metadata->>'source' = 'visual_intelligence'");
   });
 
+  const replaceFamilies = [
+    ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits", "replace_indexing_v3_memory_cards"],
+    ["upsertSectionIndexUnits", "upsertVisualArtifacts", "replace_indexing_v3_sections"],
+    ["upsertVisualArtifacts", "upsertCoreEmbeddingFields", "replace_indexing_v3_visual_artifacts"],
+    ["upsertCoreEmbeddingFields", "updateQuality", "replace_indexing_v3_core_embeddings"],
+  ] as const;
+
   it("replaces every generated enrichment family inside one database transaction", async () => {
     const edgeSource = String(
       await import("node:fs/promises").then((fs) =>
@@ -200,16 +207,33 @@ describe("indexing-v3-agent behavior", () => {
         label: `indexing-v3-agent function ${name}`,
       });
 
-    for (const [name, nextName] of [
-      ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits"],
-      ["upsertSectionIndexUnits", "upsertVisualArtifacts"],
-      ["upsertVisualArtifacts", "upsertCoreEmbeddingFields"],
-      ["upsertCoreEmbeddingFields", "updateQuality"],
-    ]) {
+    // Fenced leases (PR #3546): each family is now replaced by ONE lease-fenced plpgsql
+    // function call. A single SQL statement is its own transaction, so the delete and the
+    // insert still commit or roll back together; the edge code itself writes nothing directly.
+    const schemaSource = String(
+      await import("node:fs/promises").then((fs) =>
+        fs.readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8"),
+      ),
+    );
+    for (const [name, nextName, rpcName] of replaceFamilies) {
       const body = functionBody(name, nextName);
-      expect(body).toContain("await sql.begin(async (tx) =>");
-      expect(body).toContain("await tx`");
-      expect(body.indexOf("delete from public.document_")).toBeLessThan(body.indexOf("insert into public.document_"));
+      expect(body).toContain(`await edgeMutation(job, "${rpcName}", {`);
+      expect(body).not.toMatch(/delete from public\.document_|insert into public\.document_|sql\.begin\(/);
+      const start = schemaSource.lastIndexOf(`create or replace function public.${rpcName}(`);
+      expect(start, `${rpcName} must be defined in schema.sql`).toBeGreaterThan(-1);
+      const definition = schemaSource.slice(start, schemaSource.indexOf("end $$;", start));
+      expect(definition).toContain("language plpgsql");
+      const fenceCheck = definition.indexOf("public.assert_current_ingestion_attempt(p_fence");
+      const firstDelete = definition.indexOf("delete from public.document_");
+      expect(fenceCheck).toBeGreaterThan(-1);
+      expect(firstDelete).toBeGreaterThan(fenceCheck);
+      for (const table of new Set(
+        Array.from(definition.matchAll(/delete from public\.(document_\w+)/g), (m) => m[1]),
+      )) {
+        const deleteIndex = definition.indexOf(`delete from public.${table}`);
+        const insertIndex = definition.indexOf(`insert into public.${table}(`, deleteIndex);
+        expect(insertIndex, `${rpcName} must delete ${table} before inserting it`).toBeGreaterThan(deleteIndex);
+      }
     }
   });
 
@@ -220,7 +244,7 @@ describe("indexing-v3-agent behavior", () => {
   // which is exactly the arrangement the issue describes.
   //
   // This pins the ordering the refutation actually rests on. The `await embeddingBatch(...)`
-  // completes before `sql.begin` is entered, so an outage throws before any delete happens,
+  // completes before the fenced replace RPC is called, so an outage throws before any delete happens,
   // and the delete and insert then share one transaction, so a failed insert rolls the
   // delete back. Static source assertion like its neighbour, because index.ts is
   // Deno-runtime code Vitest cannot execute — worth saying plainly rather than implying
@@ -236,15 +260,11 @@ describe("indexing-v3-agent behavior", () => {
         label: `indexing-v3-agent function ${name}`,
       });
 
-    for (const [name, nextName] of [
-      ["upsertMemoryCardsFromSections", "upsertSectionIndexUnits"],
-      ["upsertSectionIndexUnits", "upsertVisualArtifacts"],
-      ["upsertVisualArtifacts", "upsertCoreEmbeddingFields"],
-      ["upsertCoreEmbeddingFields", "updateQuality"],
-    ]) {
+    for (const [name, nextName, rpcName] of replaceFamilies) {
       const body = functionBody(name, nextName);
       const embedding = body.indexOf("await embeddingBatch(");
-      const transaction = body.indexOf("await sql.begin(async (tx) =>");
+      // The fenced replace RPC is the transaction that deletes and re-inserts the family.
+      const transaction = body.indexOf(`await edgeMutation(job, "${rpcName}", {`);
       expect(embedding, `${name} must call embeddingBatch`).toBeGreaterThanOrEqual(0);
       expect(transaction, `${name} must open a transaction`).toBeGreaterThanOrEqual(0);
       expect(embedding, `${name} must await OpenAI before opening the transaction`).toBeLessThan(transaction);
