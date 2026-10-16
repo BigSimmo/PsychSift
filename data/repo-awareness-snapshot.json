@@ -6283,6 +6283,14 @@
         "checks": "git log --right-only --cherry-pick --no-merges origin/main...claude/query-hash-hmac-secret-0e44d3; git diff --name-only reported 2 path(s)."
       },
       {
+        "date": "2026-10-16",
+        "ref": "codex/cloud-policy-clarity",
+        "head": "06eefbe47fca3d05745843450c8999011a249f43",
+        "scope": "Codex Cloud reasoning-effort and raw-env policy overhaul",
+        "outcome": "PASS (0 blocking findings; retired general [xhigh-confirmed] chat gate, clarified raw-env local policy repair and scrubbed offline checks, added activation guidance)",
+        "checks": "check:codex-cloud, vitest (tests/codex-cloud-setup.test.ts, tests/organisation-decisions.test.ts: 84 passed), docs:maintain:check, check:instructions, check:decisions, check:organisation"
+      },
+      {
         "date": "2026-07-30",
         "ref": "codex/ledger-next-20260730",
         "head": "072051eb83e0b8317880d6167d06b3865b4a6ff7",
