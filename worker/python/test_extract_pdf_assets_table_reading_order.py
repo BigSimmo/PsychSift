@@ -187,6 +187,147 @@ class TableReadingOrderTests(unittest.TestCase):
             self.assertEqual(extractor.table_aware_page_text(page, heuristic), raw)
 
 
+class DisplayTextPage:
+    """Synthetic native blocks with independently specified displayed line boxes."""
+
+    def __init__(self, displayed_blocks, rotation=0):
+        self.rotation = rotation
+        self.rotation_matrix = fitz.Matrix(0, 1, -1, 0, 800, 0) if rotation else fitz.Matrix(1, 0, 0, 1, 0, 0)
+        inverse = ~self.rotation_matrix
+        self.blocks = []
+        ordered_lines = []
+        for block in displayed_blocks:
+            lines = []
+            for bbox, text in block:
+                lines.append({
+                    "bbox": tuple(fitz.Rect(bbox) * inverse),
+                    "dir": (0, -1) if rotation else (1, 0),
+                    "spans": [{"text": text}],
+                })
+                ordered_lines.append((bbox[1], bbox[0], text))
+            self.blocks.append({"lines": lines})
+        # Deliberately line-major, rather than the expected intact card order.
+        self.raw = "\n".join(text for _, _, text in sorted(ordered_lines))
+
+    def get_text(self, kind, **kwargs):
+        if kind == "dict":
+            return {"blocks": self.blocks}
+        if kind == "text":
+            return self.raw
+        raise AssertionError("unexpected text request: " + kind)
+
+
+class IntactLayoutTests(unittest.TestCase):
+    def test_disjoint_overlapping_callout_keeps_ratio_and_prose_separate(self):
+        page = DisplayTextPage([
+            [((30, 100, 180, 114), "Reasons for this advice:")],
+            [((300, 95, 330, 109), "1 in"), ((300, 110, 330, 124), "250")],
+            [((350, 100, 510, 114), "An illustrative risk estimate.")],
+        ])
+        raw = "1 inReasons for this advice: 250 An illustrative risk estimate."
+        rebuilt = extractor.table_aware_page_text(page, [], raw_text=raw)
+        self.assertIn("1 in\n250", rebuilt)
+        self.assertIn("Reasons for this advice:", rebuilt)
+        self.assertNotIn("inReasons", rebuilt)
+        for text in ("1 in", "250", "Reasons for this advice:", "An illustrative risk estimate."):
+            self.assertEqual(rebuilt.count(text), 1)
+
+    def test_rotated_cards_keep_all_label_volume_percentage_pairs_exactly_once(self):
+        cards = []
+        expected = []
+        for index in range(8):
+            x = 30 + (index % 4) * 190
+            y = 100 + (index // 4) * 180
+            label = "SAMPLE " + chr(65 + index)
+            detail = f"{111 + index * 10} ml | {index + 1}.1% alc/vol"
+            cards.append([((x, y, x + 125, y + 14), label), ((x, y + 18, x + 150, y + 32), detail)])
+            expected.append(label + " " + detail)
+        # Reproduce a producer-native block containing two distant cards.
+        page = DisplayTextPage([cards[0] + cards[2], cards[3], cards[1], *cards[4:]], rotation=90)
+        self.assertNotIn(expected[0], flatten(page.raw))
+        rebuilt = flatten(extractor.table_aware_page_text(page, []))
+        for pair in expected:
+            self.assertEqual(rebuilt.count(pair), 1)
+        self.assertEqual(rebuilt.count(" ml | "), 8)
+        self.assertEqual(rebuilt.count("% alc/vol"), 8)
+        self.assertEqual(rebuilt, " ".join(expected))
+
+    def test_rotated_grid_containment_uses_display_boxes_without_changing_crop_rect(self):
+        page = DisplayTextPage([
+            [((30, 110, 130, 124), "First 111 ml")],
+            [((230, 110, 330, 124), "Second 222 ml")],
+            [((30, 150, 130, 164), "Third 333 ml")],
+            [((230, 150, 330, 164), "Fourth 444 ml")],
+            [((30, 500, 200, 514), "Outside explanatory prose.")],
+        ], rotation=90)
+        rect = fitz.Rect(20, 100, 350, 180)
+        before = tuple(rect)
+        markdown = "| First 111 ml | Second 222 ml |\n| Third 333 ml | Fourth 444 ml |"
+        rebuilt = extractor.table_aware_page_text(page, [{
+            "rect": rect,
+            "extraction_method": "pymupdf_find_tables",
+            "accessible_table_markdown": markdown,
+        }])
+        self.assertIn(markdown, rebuilt)
+        self.assertIn("Outside explanatory prose.", rebuilt)
+        for label in ("First 111 ml", "Second 222 ml", "Third 333 ml", "Fourth 444 ml"):
+            self.assertEqual(rebuilt.count(label), 1)
+        self.assertEqual(tuple(rect), before)
+
+
+class RotatedVisualGeometryTests(unittest.TestCase):
+    def test_rejected_grid_retains_complete_rotated_visual_without_table_facts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, "rotated-illustration.pdf")
+            with fitz.open() as document:
+                page = document.new_page(width=500, height=800)
+                for x in (0, 250, 500):
+                    page.draw_line((x, 0), (x, 800))
+                for y in (0, 400, 800):
+                    page.draw_line((0, y), (500, y))
+                page.insert_text((30, 50), "Top illustration with an independent label.", fontsize=9)
+                page.insert_text((30, 700), "Second illustration has no shared table columns.", fontsize=9)
+                # In display coordinates this marker lies beyond the native
+                # page width, where the former mixed-frame crop lost content.
+                page.draw_circle((30, 25), 8, color=(1, 0, 0), fill=(1, 0, 0))
+                page.set_rotation(90)
+                rejected = []
+                self.assertEqual(extractor.likely_table_candidates(page, rejected), [])
+                self.assertEqual(rejected, [fitz.Rect(0, 0, 800, 500)])
+                document.save(path)
+
+            result = extractor.extract(path, os.path.join(directory, "out"))
+            self.assertFalse(any(image["sourceKind"] == "table_crop" for image in result["images"]))
+            visuals = [image for image in result["images"] if image["sourceKind"] == "page_region"]
+            self.assertEqual(len(visuals), 1)
+            visual = visuals[0]
+            self.assertEqual(visual["bbox"], [0, 0, 800, 500])
+            self.assertEqual(visual["metadata"]["clip_bbox"], [0, 0, 800, 500])
+            self.assertEqual(visual["metadata"]["page_rotation"], 90)
+            self.assertNotIn("table_rows", visual["metadata"])
+            self.assertNotIn("accessible_table_markdown", visual["metadata"])
+            pixmap = fitz.Pixmap(visual["path"])
+            red, green, blue = pixmap.pixel(int(775 * pixmap.width / 800), int(30 * pixmap.height / 500))[:3]
+            self.assertGreater(red, 240)
+            self.assertLess(green, 20)
+            self.assertLess(blue, 20)
+            self.assertIn("Top illustration with an independent label.", result["pages"][0]["text"])
+            self.assertIn("Second illustration has no shared table columns.", result["pages"][0]["text"])
+
+    def test_vector_geometry_is_transformed_before_display_page_clipping(self):
+        with fitz.open() as document:
+            page = document.new_page(width=500, height=800)
+            boxes = [
+                (50, 40, 150, 120), (250, 40, 350, 120),
+                (50, 160, 150, 240), (250, 160, 350, 240),
+            ]
+            for box in boxes:
+                page.draw_rect(box)
+            page.set_rotation(90)
+            self.assertEqual(extractor.likely_vector_region(page), fitz.Rect(548, 38, 772, 362))
+            self.assertEqual(extractor.page_drawing_rects(page), [fitz.Rect(box) * page.rotation_matrix for box in boxes])
+
+
 class OcrDecisionIndependenceTests(unittest.TestCase):
     """The table-aware rewrite must not change whether a page is OCR'd.
 

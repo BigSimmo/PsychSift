@@ -377,8 +377,8 @@ function collectDeclaration(
  * Decompose a module into the top-level declarations a render walk can step
  * through: what each one renders, and what event handlers it carries.
  */
-export function moduleComponents(sourceText: string): ModuleComponents {
-  const source = parseModuleSource(sourceText);
+export function moduleComponents(sourceText: string, filePath?: string): ModuleComponents {
+  const source = parseModuleSource(sourceText, filePath);
   const isClient = hasUseClientDirective(source);
 
   const declarationNodes: { name: string; node: unknown }[] = [];
@@ -967,7 +967,7 @@ function computeBoundaryState() {
   const load = (file: string) => {
     let components = componentCache.get(file);
     if (!components) {
-      components = moduleComponents(readSource(file));
+      components = moduleComponents(readSource(file), file);
       componentCache.set(file, components);
     }
     return components;

@@ -480,8 +480,21 @@ function vouches(href: string, route: string): boolean {
   return shape !== null && shapeMatches(shape, routeShape(route));
 }
 
-/** Routes with no href of matching shape anywhere in the scanned source. */
+/**
+ * Routes with no href of matching shape anywhere in the scanned source. The scan is pure over
+ * fixed module data, so each mode is computed once: under coverage on CI, repeating it pushed a
+ * single test past the 30 s timeout.
+ */
+const orphanCache = new Map<boolean, string[]>();
 function orphansUnder(useStripped: boolean): string[] {
+  const cached = orphanCache.get(useStripped);
+  if (cached) return [...cached];
+  const orphans = computeOrphans(useStripped);
+  orphanCache.set(useStripped, orphans);
+  return [...orphans];
+}
+
+function computeOrphans(useStripped: boolean): string[] {
   return dynamicRoutes.filter(
     (route) =>
       !scannedFiles.some((file) =>

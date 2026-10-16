@@ -71,3 +71,40 @@ describe("producer-scoped deep-memory transaction SQL", () => {
     expect(migration).toContain("'memory_card_count', p_memory_card_count");
   });
 });
+
+describe("fenced deep-memory commit legacy cleanup", () => {
+  const fenced = readFileSync(
+    new URL("../supabase/migrations/20261015185000_fenced_ingestion_reset_and_deep_memory.sql", import.meta.url),
+    "utf8",
+  )
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+  const supersede = fenced.slice(
+    fenced.indexOf("-- 3. supersede earlier local-worker deep memory"),
+    fenced.indexOf("-- 4a. anchor repair"),
+  );
+  const legacyBranch =
+    "or ((index_generation_id is null or index_generation_id = v_committed) and artifact_generation_id is null and (producer = 'local-worker' or producer is null) and (metadata->>'generated_by' = 'local-worker' or (nullif(metadata->>'generated_by', '') is null and metadata->>'rag_indexing_version' in ('rag-deep-memory-v1', 'rag-deep-memory-v2'))))";
+
+  it("removes legacy rows that health repair stamped with the committed generation", () => {
+    for (const table of ["document_memory_cards", "document_index_units", "document_sections"]) {
+      const start = supersede.indexOf(`delete from public.${table} `);
+      expect(start, `${table} cleanup exists`).toBeGreaterThan(-1);
+      expect(supersede.slice(start, start + 900), `${table} legacy branch`).toContain(legacyBranch);
+    }
+  });
+
+  it("guards foreign section links with the same legacy predicate the section delete uses", () => {
+    const guard = fenced.slice(
+      fenced.indexOf("-- refuse to null another producer's card"),
+      fenced.indexOf("-- 2. activate"),
+    );
+    expect(guard).toContain(
+      legacyBranch.replace(/(index_generation_id|artifact_generation_id|producer|metadata)/g, "section.$1"),
+    );
+  });
+
+  it("never infers deep-memory ownership from missing markers alone", () => {
+    expect(supersede).not.toContain("coalesce(nullif(metadata->>'generated_by', ''), 'local-worker')");
+  });
+});

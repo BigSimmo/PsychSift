@@ -171,3 +171,31 @@ export function createAnswerRouteDeadline(args: {
 export function isAnswerRouteDeadlineExceeded(error: unknown) {
   return error instanceof AnswerRouteDeadlineExceededError;
 }
+
+/** Retrieval never produced a completed, admitted evidence set. Do not claim the corpus lacks an answer. */
+export function retrievalDeadlineExceededAnswer(args: {
+  searchStartedAt: number;
+  startedAt: number;
+  budgetMs: number;
+}): RagAnswer {
+  return {
+    answer: "The search reached its time limit before source evidence could be confirmed. Please try again.",
+    grounded: false,
+    confidence: "unsupported",
+    citations: [],
+    sources: [],
+    answerSections: [],
+    modelUsed: null,
+    routingMode: "unsupported",
+    routingReason: "retrieval_deadline_exceeded",
+    fallbackReasonCode: "provider_timeout",
+    degradedMode: { active: true, reason: "The search reached its time limit." },
+    latencyTimings: {
+      search_latency_ms: Date.now() - args.searchStartedAt,
+      generation_latency_ms: 0,
+      route_budget_ms: args.budgetMs,
+      route_deadline_exceeded: true,
+      total_latency_ms: Date.now() - args.startedAt,
+    },
+  };
+}

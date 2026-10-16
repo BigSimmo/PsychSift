@@ -131,15 +131,22 @@ describe("vision per-image error isolation (L12)", () => {
     const source = String(
       await import("node:fs/promises").then((fs) => fs.readFile(new URL("../worker/main.ts", import.meta.url), "utf8")),
     );
+    // Fenced leases: the vision call now runs inside runIngestionPreparedWork (lease heartbeat
+    // + attempt signal), and terminal egress/abort errors are rethrown before the L12 skip.
     const window = sourceSegment(
       source,
-      "classification = await classifyAndCaptionImageFromBase64({",
+      "classification = await runIngestionPreparedWork(",
       "return { task, classification",
       {
         label: "worker per-task vision call",
       },
     );
+    expect(window).toContain("classifyAndCaptionImageFromBase64({");
     expect(window).toContain("visionImageRejectionSkipReason(");
     expect(window).toContain("visionRejectedClassification(");
+    expect(window.indexOf("rethrowTerminalProviderError(error);")).toBeGreaterThan(-1);
+    expect(window.indexOf("rethrowTerminalProviderError(error);")).toBeLessThan(
+      window.indexOf("visionImageRejectionSkipReason("),
+    );
   });
 });

@@ -8,6 +8,7 @@ import {
   generationRecoveryReserveMs,
 } from "../src/lib/rag/rag-route-budget";
 import { verifyAnswerNumbers } from "../src/lib/answer-verification";
+import { legacyAnswerInstructionsCacheRevision } from "../src/lib/rag/rag-answer-instructions";
 import type { RagAnswer, RagQueryPlan, SearchResult, SourcePolicyConflict } from "../src/lib/types";
 import type { ClientRagAnswerPayload } from "../src/lib/answer-client-payload";
 import type { ReviewedPolicyEvent, ReviewedSourcePolicyLoader } from "../src/lib/rag/rag-reviewed-policy-input";
@@ -7971,12 +7972,36 @@ describe("P08C ordered generation degradation producers", () => {
 
 describe("P12A actual issued provider contract", () => {
   it.each([
-    { lane: "legacy", candidate: false, adaptive: true, version: "clinical-rag-answer-v19", sections: 6 },
-    { lane: "candidate-off", candidate: true, adaptive: false, version: "clinical-rag-answer-v19", sections: 6 },
-    { lane: "candidate-on", candidate: true, adaptive: true, version: "clinical-rag-answer-v20", sections: 8 },
+    // The legacy instruction text changed under the unchanged v19 prompt version, so its
+    // provider prompt-cache key carries an explicit instruction revision; the adaptive v20
+    // contract keys on its own prompt version.
+    {
+      lane: "legacy",
+      candidate: false,
+      adaptive: true,
+      version: "clinical-rag-answer-v19",
+      cacheKey: `clinical-rag-answer-v19:${legacyAnswerInstructionsCacheRevision}`,
+      sections: 6,
+    },
+    {
+      lane: "candidate-off",
+      candidate: true,
+      adaptive: false,
+      version: "clinical-rag-answer-v19",
+      cacheKey: `clinical-rag-answer-v19:${legacyAnswerInstructionsCacheRevision}`,
+      sections: 6,
+    },
+    {
+      lane: "candidate-on",
+      candidate: true,
+      adaptive: true,
+      version: "clinical-rag-answer-v20",
+      cacheKey: "clinical-rag-answer-v20",
+      sections: 8,
+    },
   ])(
     "selects coherent prompt schema cache and final contract for $lane",
-    async ({ candidate, adaptive, version, sections }) => {
+    async ({ candidate, adaptive, version, cacheKey, sections }) => {
       const evidence = source({
         id: "p12a-action",
         title: "Australian agitation guideline",
@@ -8012,7 +8037,7 @@ describe("P12A actual issued provider contract", () => {
       );
       expect(calls.length).toBeGreaterThan(0);
       for (const call of calls) {
-        expect(call.options.promptCacheKey).toBe(version);
+        expect(call.options.promptCacheKey).toBe(cacheKey);
         expect(call.schema.properties.answerSections.maxItems).toBe(sections);
         expect(String(call.options.instructions).includes("Follow the adaptive_answer contract")).toBe(
           candidate && adaptive,
