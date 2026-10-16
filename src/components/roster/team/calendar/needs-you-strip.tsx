@@ -214,13 +214,12 @@ export function useRosterDecision(serviceId: string, onChanged: () => void) {
       return;
     }
     setReview(null);
-    const needsRuleAck = Boolean(fresh.rules && (!fresh.rules.checkable || fresh.rules.warnings.length > 0));
-    const acknowledged = approve && needsRuleAck && reviewedFingerprint === fresh.rules?.fingerprint;
-    const action = decisionAction(fresh.current, approve);
-    let sent = await post(action);
-    if (!sent.ok && sent.code === "roster_swap_rule_warning" && acknowledged) {
-      sent = await post(decisionAction(fresh.current, approve, { acknowledgeRuleWarnings: true }));
-    }
+    // Acknowledge only checked team-rule warnings the manager has read. "Could not be fully checked"
+    // never skips the server's rule check, so a server warning then comes back as an error to read.
+    const readRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
+    const acknowledged = approve && readRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint;
+    const action = decisionAction(fresh.current, approve, { acknowledgeRuleWarnings: acknowledged });
+    const sent = await post(action);
     setBusy(false);
     setMessage(null);
     if (!sent.ok) setErrors([sent.message]);

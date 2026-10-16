@@ -30,8 +30,12 @@ function parseStrictNumber(value: string): number {
   return trimmed === "" ? Number.NaN : Number(trimmed);
 }
 
-export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }: ClinicalMathPanelProps) {
-  const panelId = useId();
+/**
+ * Everything the clinician has entered. The calculator page keeps one copy and hands it to
+ * whichever panel is mounted, so crossing the desktop breakpoint (the panel moves between the
+ * sidebar and the mobile column) does not wipe the entries. It lives in memory only.
+ */
+export function useClinicalMathPanelState({ defaultOpen = false, defaultTab = "renal" }: ClinicalMathPanelProps = {}) {
   const [open, setOpen] = useState(defaultOpen);
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
 
@@ -53,6 +57,82 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
   const [currentDoseMg, setCurrentDoseMg] = useState("");
   const [targetLevel, setTargetLevel] = useState("");
   const [tabletIncrementMg, setTabletIncrementMg] = useState<125 | 225 | 250 | 450>(125);
+
+  return {
+    open,
+    setOpen,
+    activeTab,
+    setActiveTab,
+    age,
+    setAge,
+    sex,
+    setSex,
+    weightKg,
+    setWeightKg,
+    heightCm,
+    setHeightCm,
+    creatinine,
+    setCreatinine,
+    creatinineUnit,
+    setCreatinineUnit,
+    qtMs,
+    setQtMs,
+    hrBpm,
+    setHrBpm,
+    lithiumLevel,
+    setLithiumLevel,
+    lithiumIndication,
+    setLithiumIndication,
+    currentDoseMg,
+    setCurrentDoseMg,
+    targetLevel,
+    setTargetLevel,
+    tabletIncrementMg,
+    setTabletIncrementMg,
+  };
+}
+
+export type ClinicalMathPanelState = ReturnType<typeof useClinicalMathPanelState>;
+
+export function ClinicalMathPanel({
+  defaultOpen = false,
+  defaultTab = "renal",
+  state,
+}: ClinicalMathPanelProps & { state?: ClinicalMathPanelState }) {
+  const panelId = useId();
+  const ownState = useClinicalMathPanelState({ defaultOpen, defaultTab });
+  const {
+    open,
+    setOpen,
+    activeTab,
+    setActiveTab,
+    age,
+    setAge,
+    sex,
+    setSex,
+    weightKg,
+    setWeightKg,
+    heightCm,
+    setHeightCm,
+    creatinine,
+    setCreatinine,
+    creatinineUnit,
+    setCreatinineUnit,
+    qtMs,
+    setQtMs,
+    hrBpm,
+    setHrBpm,
+    lithiumLevel,
+    setLithiumLevel,
+    lithiumIndication,
+    setLithiumIndication,
+    currentDoseMg,
+    setCurrentDoseMg,
+    targetLevel,
+    setTargetLevel,
+    tabletIncrementMg,
+    setTabletIncrementMg,
+  } = state ?? ownState;
 
   const parsedAge = parseStrictNumber(age);
   const parsedWeight = parseStrictNumber(weightKg);
@@ -319,7 +399,7 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
               >
                 {!hasRenalBaseInput ? (
                   <p className="text-[color:var(--text-muted)]">
-                    Enter patient age, weight, and serum creatinine above to calculate renal clearance.
+                    Enter patient age and serum creatinine above to calculate eGFR. Add weight for Cockcroft-Gault CrCl.
                   </p>
                 ) : cgResult.isValid || ckdResult.isValid ? (
                   <>

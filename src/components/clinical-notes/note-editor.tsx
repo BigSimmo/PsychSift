@@ -52,11 +52,13 @@ export function ClinicalNoteEditor({
 
   // Keep controlled updates as the source of truth when the parent changes them,
   // but do not switch away from the locally typed value while it is being checked.
-  useEffect(() => {
-    if (!isControlled) return;
+  // Adjusted during render (not in an effect) so the new value shows in the same pass.
+  const [syncedControlledValue, setSyncedControlledValue] = useState(controlledValue);
+  if (isControlled && controlledValue !== syncedControlledValue) {
+    setSyncedControlledValue(controlledValue);
     setInternalValue(controlledValue);
     setPrivacyProblem(checkPatientDetail(controlledValue));
-  }, [controlledValue, isControlled]);
+  }
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
     checkPatientDetail(controlledValue ?? initialValue) ? "error" : "idle",

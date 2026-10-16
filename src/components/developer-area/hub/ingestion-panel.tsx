@@ -558,6 +558,19 @@ export function IngestionPanel() {
 
       <CheckedAt fetchedAt={state.fetchedAt} />
 
+      {/*
+       * The administrator source pilot is administrator-only (the page itself 404s
+       * everyone else), so its one in-app entry lives here, behind the same
+       * administrator sign-in this loaded state already proved.
+       */}
+      <Link
+        href="/admin/pilot"
+        data-testid="developer-ingestion-source-pilot-link"
+        className="inline-flex min-h-12 w-fit items-center text-sm font-bold text-[color:var(--clinical-accent)] underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
+      >
+        Open the administrator source pilot
+      </Link>
+
       {state.pagination && state.pagination.hasMore ? (
         <p data-testid="developer-ingestion-more-note" className={META_CLASS}>
           Showing the first {state.jobs.length} of {state.pagination.total} jobs.

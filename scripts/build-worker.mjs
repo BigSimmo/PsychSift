@@ -19,8 +19,11 @@
  *   extension is what marks the bundle as ESM.
  */
 import { writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { build } from "esbuild";
+
+const require = createRequire(import.meta.url);
 
 /**
  * Shared with tests/worker-bundle.test.ts, which resolve-checks externals.
@@ -38,6 +41,10 @@ export const workerBuildOptions = {
   logLevel: "info",
   alias: {
     "server-only": "./tests/stubs/server-only.ts",
+    // This decoder is build-only in the locked tree. Bundle its pure JS rather
+    // than leaving imports that production npm ci --omit=dev cannot resolve.
+    entities: require.resolve("entities"),
+    "entities/decode": require.resolve("entities/decode"),
     // next's package.json has no `exports` map, so Node's ESM resolver needs
     // the explicit file: `import "next/server"` boots under tsx/Turbopack but
     // throws ERR_MODULE_NOT_FOUND under plain `node`. src/lib/http.ts pulls

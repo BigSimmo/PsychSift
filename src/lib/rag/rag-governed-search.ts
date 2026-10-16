@@ -1,3 +1,4 @@
+import type { RawPublishedOriginalRowObserver } from "@/lib/rag/rag-source-block";
 import { rankClinicalResults } from "@/lib/clinical-search";
 import { env } from "@/lib/env";
 import { governedPublicRetrievalAccessScope } from "@/lib/owner-scope";
@@ -91,6 +92,7 @@ export async function routeGovernedSearch(input: {
   queryPlan: RagQueryPlan;
   queryVariants: string[];
   telemetry: SearchTelemetry;
+  observeRawPublishedRow?: RawPublishedOriginalRowObserver;
 }): Promise<GovernedModeResult | null> {
   const { args, queryPlan, queryVariants, supabase, telemetry } = input;
   if (args.ragQueryPlanMode === "legacy") return null;
@@ -138,6 +140,7 @@ export async function routeGovernedSearch(input: {
     answerSourcePolicy: args.answerSourcePolicy ?? queryPlan.sourcePolicy,
     signal: args.signal,
     maxRpcCalls: shadow ? 1 : 3,
+    observeRawPublishedRow: shadow ? undefined : input.observeRawPublishedRow,
     onRpcCall: () => {
       rpcCalls += 1;
     },

@@ -53,7 +53,7 @@ export async function requestMobileCameraStream(): Promise<CameraStreamResult> {
         stream: null,
         status: "denied",
         errorMessage:
-          "Camera access denied. Please enable camera permissions in your browser or enter the 6-digit code below.",
+          "Camera access denied. Please enable camera permissions in your browser or type the 6-digit code instead.",
       };
     }
 
@@ -71,7 +71,7 @@ export async function requestMobileCameraStream(): Promise<CameraStreamResult> {
           stream: null,
           status: "denied",
           errorMessage:
-            "Camera access denied. Please enable camera permissions in your browser or enter the 6-digit code below.",
+            "Camera access denied. Please enable camera permissions in your browser or type the 6-digit code instead.",
         };
       }
       return {
@@ -162,6 +162,8 @@ export function QrCheckInHelper({
             if (videoRef.current && videoRef.current.readyState >= 2) {
               try {
                 const barcodes = await detector.detect(videoRef.current);
+                // The camera may have been stopped or closed while detect() was pending.
+                if (streamRef.current !== result.stream) return;
                 if (barcodes && barcodes.length > 0) {
                   const rawValue = barcodes[0].rawValue;
                   if (rawValue) {

@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "6aec8cab-618e-4533-bf70-1d871fe03323",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "Follow-up to PR 3546: CodeRabbit items held out of the merge",
+    "detail": "Held from CodeRabbit's 16 Oct review of PR 3546. 1) XLSX preflight gives every worksheet the whole workbook's shared strings and styles, so a large multi-sheet workbook can exceed the 8 MiB page or 32 MiB provenance budget and be refused non-retryably; project only each sheet's referenced entries and add a multi-sheet test (pilot accepts TXT and PDF only, so no live path yet). 2) docs/design-system/evidence/admin-source-pilot.json records a passed browser and screen-reader proof against an earlier pilot-client digest; rerun the proof or mark it pending. 3) Live canary pair for the retrieval-input changes in worker/python/extract_pdf_assets.py, src/lib/chunking.ts, worker/table-facts.ts and the answer-path original-section eligibility in src/lib/rag/rag.ts; paid run, needs the owner's named yes, planned right after merge.",
+    "source": "PR 3546 CodeRabbit review 5545295336, owner decision 2026-10-16",
+    "issueUlid": "01M520SQ7T54N8ZNCFC7KJ4HKC"
+  }
+}

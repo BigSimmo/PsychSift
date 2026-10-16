@@ -27,7 +27,7 @@ import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
-import { isSharedDevice, useSharedDevice } from "@/lib/alerts/shared-device";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -566,18 +566,31 @@ export function OnCallHandoverPage() {
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
   const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
-  const [scratchpadText, setScratchpadText] = useState<string>(() => loadOnCallHandoverScratchpad());
+  const [scratchpadText, setScratchpadText] = useState<string>("");
   const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
 
-  const reset = useCallback(() => {
+  // Read device storage only after mount, so the server render and first client render match.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setScratchpadText(loadOnCallHandoverScratchpad());
+    setScratchpadResetKey((key) => key + 1);
+  }, []);
+
+  // Starts a fresh patient form. The shift scratchpad is separate and survives this.
+  const resetForm = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
     setCurrentId(null);
     setCopiedWard("");
     setDraftExpiresAt(null);
     setMode("form");
+  }, []);
+
+  // A wipe or shift end clears the scratchpad along with the form.
+  const reset = useCallback(() => {
+    resetForm();
     setScratchpadText("");
     setScratchpadResetKey((k) => k + 1);
-  }, []);
+  }, [resetForm]);
 
   // A wipe (end of shift, sign-out, another user, another tab) also drops the half-typed record.
   useEffect(() => {
@@ -631,8 +644,8 @@ export function OnCallHandoverPage() {
   useEffect(() => {
     if (!currentGone) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    reset();
-  }, [currentGone, reset]);
+    resetForm();
+  }, [currentGone, resetForm]);
 
   const persistScratchpad = useCallback(
     (text: string) => {
@@ -681,7 +694,7 @@ export function OnCallHandoverPage() {
     }
     const result = saveOnCallHandoverPatient(id, next);
     if (!result.ok) {
-      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) reset();
+      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) resetForm();
       setProblem(result.problem);
       return;
     }
@@ -1031,7 +1044,8 @@ export function OnCallHandoverPage() {
                     initialValue={scratchpadText}
                     onChange={(text) => {
                       setScratchpadText(text);
-                      if (isSharedDevice()) return;
+                      // On a shared device only Save now keeps text, but clearing still removes any stored copy.
+                      if (isSharedDevice() && text.trim() !== "") return;
                       try {
                         persistScratchpad(text);
                       } catch {
@@ -1042,18 +1056,6 @@ export function OnCallHandoverPage() {
                       setScratchpadText(text);
                       if (isSharedDevice()) return;
                       persistScratchpad(text);
-                    }}
-                  />
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </InformationPageShell>
-    </>
-  );
-}
-                     persistScratchpad(text);
                     }}
                   />
                 </>

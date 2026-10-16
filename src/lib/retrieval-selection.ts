@@ -382,8 +382,83 @@ function medicationClinicalSubjectMatches(query: string, result: SearchResult) {
   return hasMedicationMonitoringSubjectEvidence(query, result);
 }
 
+/** Lower-case words only, so punctuation such as a trailing "." or a "v2.1" never blocks a match. */
+function titleWords(value: string) {
+  return normalize(value)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/**
+ * Publisher, site and index codes that only say where a document came from. Anything else in
+ * brackets, such as "(Adult)", "(CAMHS)", "(ICU)" or "(v2.1)", stays in the core title. An
+ * unknown code also stays, which only means no boost, never a wrong one.
+ */
+const TITLE_PUBLISHER_CODES = new Set([
+  "AKG",
+  "BH",
+  "CAHS",
+  "EMHS",
+  "FH",
+  "FSH",
+  "KEMH",
+  "MHERL",
+  "NCBI",
+  "NICE",
+  "NMHS",
+  "OPH",
+  "PCH",
+  "PMC",
+  "RANZCP",
+  "RKPG",
+  "RPBG",
+  "RPH",
+  "SAMHSA",
+  "SCGH",
+  "SMHS",
+  "WA",
+  "WACHS",
+]);
+
+/**
+ * Core title words: the title (or file name) without its extension or bracketed publisher code,
+ * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation". A query must
+ * name any other bracketed qualifier too before the title counts as named.
+ */
+function coreDocumentTitle(value: string) {
+  const withoutCodes = value
+    .replace(/\.(?:pdf|docx?|txt|md)$/i, "")
+    .replace(/\(\s*([A-Za-z]+)\s*\)/g, (match, code: string) =>
+      TITLE_PUBLISHER_CODES.has(code.toUpperCase()) ? " " : match,
+    );
+  return titleWords(withoutCodes);
+}
+
+/**
+ * True when the query contains the document's whole core title as a phrase of at least two words
+ * ("What assessment documentation is required?" names "Assessment Documentation (AKG)"). A shared
+ * single word, such as "assessment" in "Radiotherapy Skin Care Assessment", does not count.
+ */
+function queryNamesWholeDocumentTitle(query: string, result: SearchResult) {
+  const paddedQuery = ` ${titleWords(query)} `;
+  const queryRevisions = revisionTokens(paddedQuery);
+  return [result.title, result.file_name].some((value) => {
+    const core = coreDocumentTitle(value ?? "");
+    if (core.split(" ").length < 2 || !paddedQuery.includes(` ${core} `)) return false;
+    // A query that names a version or year only counts when this title or file name has it too.
+    const paddedValue = ` ${titleWords(value ?? "")} `;
+    return queryRevisions.every((token) => paddedValue.includes(` ${token} `));
+  });
+}
+
+/** Version and year words in already-normalised text, such as "v2", "version 3" or "2024". */
+function revisionTokens(paddedWords: string) {
+  return [...paddedWords.matchAll(/ (v\d+|version \d+|(?:19|20)\d{2})(?= )/g)].map((match) => match[1]);
+}
+
 function matchedSignalsForResult(args: {
   query: string;
+  queryClass: RagQueryClass;
   intent: RetrievalIntent;
   result: SearchResult;
   chunkType: RetrievalChunkType;
@@ -397,6 +472,10 @@ function matchedSignalsForResult(args: {
     args.intent.preferredDocumentSignals.some((signal) => titleText.includes(signal))
   ) {
     signals.push("document_title");
+  }
+  // Document lookups only: a question that names a whole title is asking for that document.
+  if (args.queryClass === "document_lookup" && queryNamesWholeDocumentTitle(args.query, args.result)) {
+    signals.push("document_title_phrase");
   }
   if (args.result.match_explanation?.labelHit) signals.push("document_label");
   if (args.result.match_explanation?.tableHit || (args.result.table_facts?.length ?? 0) > 0) signals.push("table_fact");
@@ -483,6 +562,9 @@ function resultBoost(args: { intent: RetrievalIntent; candidate: RetrievalCandid
   }
   if (args.intent.needsComparison && args.result.document_summary) boost += 0.03;
   if (signals.has("document_title")) boost += 0.05;
+  // The query names this document's whole title. Still added inside the clamp below, so it can
+  // only lift an unsaturated candidate and never outvotes saturated relevance.
+  if (signals.has("document_title_phrase")) boost += 0.12;
   if (signals.has("direct_relevance")) boost += 0.06;
   if (args.intent.requiredTermSignals.length > 0 && args.candidate.lexicalScore === 1) boost += 0.1;
   if (args.intent.requiredTermSignals.length > 0 && (args.candidate.lexicalScore ?? 0) === 0) boost -= 0.08;
@@ -643,7 +725,7 @@ export function buildRetrievalCandidates(
       matchedSignals: [],
       sourceHref: documentCitationHref(citationFromResult(result)),
     };
-    const matchedSignals = matchedSignalsForResult({ query, intent, result, chunkType });
+    const matchedSignals = matchedSignalsForResult({ query, queryClass, intent, result, chunkType });
     const lexicalScore = lexicalScoreForSignals(intent.requiredTermSignals, matchedSignals);
     const candidate = { ...initial, lexicalScore, matchedSignals };
     // The relevance score stays CLAMPED: live hybrid scores routinely saturate at 1.0, and letting

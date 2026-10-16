@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
+import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { formatHours, gapTimes, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
 import {
   MAX_POST_DATES,
@@ -25,6 +26,7 @@ import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { ROSTER_OPEN_SHIFT_KINDS, type RosterAction } from "@/lib/roster/team/model";
 
 import { ConfirmSheet } from "./open-shifts-confirm";
+import { forgetPostKey, postKeyFor } from "./open-shifts-post-keys";
 import { SignInAction } from "./open-shifts-sign-in";
 import { LoadFailed, NoTeam } from "./open-shifts-states";
 import {
@@ -109,10 +111,30 @@ export function OpenShiftsPostPage() {
   const [unanswered, setUnanswered] = useState<
     Record<string, { readonly ids: readonly string[]; readonly at: number; readonly serviceId: string }>
   >({});
-  // One post key per date being posted, by everything that was sent. A retry of a date whose answer was
-  // lost sends the same key, so the server answers with the shift that post already saved instead of saving
-  // a second one. A key is dropped once its date is posted; changing anything in the shift makes a new key.
+  // One post key per date being posted, by everything that was sent, also kept for this tab so it survives a
+  // reload. A retry of a date whose answer was lost sends the same key, so the server answers with the shift
+  // that post already saved instead of saving a second one. A key is dropped once its date is posted;
+  // changing anything in the shift makes a new key.
   const postKeys = useRef<Record<string, string>>({});
+  // Counts sign-outs on this tab, so a post in progress stops at once, before the team list catches up.
+  const signIns = useRef(0);
+  // Keep the current actor available to an in-progress post, whose render state can otherwise be stale after
+  // authentication changes.
+  const actorIdRef = useRef(state.actorId);
+  useEffect(() => {
+    actorIdRef.current = state.actorId;
+  }, [state.actorId]);
+  // Keys belong to the signed-in person, so someone else signing in on this tab never reuses one.
+  const keyFor = (on: string, actorId = state.actorId) => `${actorId ?? ""}|${signature(on)}`;
+  // Signing out drops this tab's keys, so the same person signing back in never replays an older post.
+  useEffect(
+    () =>
+      subscribeAccountTransition(() => {
+        postKeys.current = {};
+        signIns.current += 1;
+      }),
+    [],
+  );
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);
@@ -219,6 +241,8 @@ export function OpenShiftsPostPage() {
    * rest; the answer names every date that went live and every one that didn't.
    */
   async function post(): Promise<string | null> {
+    const postingActorId = actorIdRef.current;
+    const postingSignIn = signIns.current;
     if (!team || !times) return "Choose a team, date and times.";
     // A post that got no answer for a team that couldn't be read just now: wait, rather than let the form
     // fall back to another team and post there instead. A team the manager picked themselves still posts.
@@ -235,7 +259,13 @@ export function OpenShiftsPostPage() {
     const attempts: PostAttempt[] = [];
     const nowDone = { ...done };
     const nowUnanswered = { ...unanswered };
+    let stopped = false;
     for (const [index, on] of toPost.entries()) {
+      // Do not issue another request after the account changes while a previous date is pending.
+      if (actorIdRef.current !== postingActorId || signIns.current !== postingSignIn) {
+        stopped = true;
+        break;
+      }
       setProgress({ current: index + 1, total: toPost.length });
       const onTimes = gapTimes(on, start, end);
       // A date whose earlier post got no answer waits for a fresh read of the team's shifts, so it is never sent
@@ -253,14 +283,15 @@ export function OpenShiftsPostPage() {
       if (live) {
         attempts.push({ date: on, ok: true, openShiftId: live.id });
         nowDone[signature(on)] = live.id;
+        // Confirmed from the list, so a later deliberate post of the same slot gets a new key.
+        forgetPostKey(keyFor(on, postingActorId), postKeys.current);
         continue;
       }
       if (!onTimes) {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
       }
-      const postKey = postKeys.current[signature(on)] ?? crypto.randomUUID();
-      postKeys.current[signature(on)] = postKey;
+      const postKey = postKeyFor(keyFor(on, postingActorId), postKeys.current);
       const result = await postRosterAction(team.serviceId, {
         action: "open.post",
         startsAt: onTimes.startsAt,
@@ -275,7 +306,7 @@ export function OpenShiftsPostPage() {
       if (result.ok) {
         attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
         nowDone[signature(on)] = result.result.openShiftId ?? "";
-        delete postKeys.current[signature(on)];
+        forgetPostKey(keyFor(on, postingActorId), postKeys.current);
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat
@@ -291,8 +322,14 @@ export function OpenShiftsPostPage() {
       }
     }
     setProgress(null);
+    // Keep what this run learned even when it stopped, so a date that already went live is never sent again.
     setDone(nowDone);
     setUnanswered(nowUnanswered);
+    if (stopped) {
+      const posted = attempts.filter((row) => row.ok).map((row) => formatDayShort(row.date));
+      const already = posted.length > 0 ? ` Already posted: ${posted.join(", ")}.` : "";
+      return `Posting stopped because the signed-in account changed.${already} Please review and try again.`;
+    }
     // Pin the team a post with no answer went to, so a re-read that misses it can't quietly switch the form.
     if (Object.keys(nowUnanswered).length > Object.keys(unanswered).length) setServiceId(team.serviceId);
     const { failed } = splitAttempts(attempts);

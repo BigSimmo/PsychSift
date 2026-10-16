@@ -285,7 +285,7 @@ export function checkEpaClinicianName(name: string) {
   const trimmed = name.trim();
   if (!trimmed) return null;
   const normalizedClinician = trimmed.replace(
-    /^(?:dr|prof|mr|mrs|ms|miss|mx)\.?\s+(?:[a-z]\.?\s+)?([a-z][a-z'-]{1,})/i,
+    /^(?:dr|prof|mr|mrs|ms|miss|mx)\.?\s+(?:\p{L}\.?\s+)?(\p{L}[\p{L}\p{M}'-]{1,})/iu,
     "Dr $1",
   );
   return checkPatientDetail(normalizedClinician, { allowName: true, allowCapitals: true });

@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
-import formsContentReview from "../data/forms-content-review.json";
 import { formRecords } from "@/lib/forms";
 import { defaultServiceRecords } from "@/lib/registry-fixtures";
 import {
@@ -8,11 +10,34 @@ import {
   parseFirstPublicationCliArgs,
   runFirstPublicationCli,
   type ClinicalSignOffEntry,
+  type SignOffPinCheck,
 } from "../scripts/publish-site-content-first-catalogue";
 
 const NAMED_REVIEWER = "Dr Jane Citizen";
 const REVIEWED_AT = "2026-10-16T01:00:00.000Z";
 const REVIEWED_SHA256 = "eb950d3c48dba095ef61d7b0645709d90316ed475b5eb6602b670e62e6e07ad1";
+
+// A distinct digest per record, so the plan check below proves each record is matched to
+// its own sign-off, not to one shared pin.
+function fixtureDigest(kind: string, key: string): string {
+  return createHash("sha256").update(`${kind}:${key}`).digest("hex");
+}
+
+const fixturePinCheck: SignOffPinCheck = (kind, review) =>
+  review.reviewedContentSha256 === fixtureDigest(kind, String(kind === "form" ? review.code : review.id))
+    ? "current"
+    : "stale";
+
+type RepositoryFormReview = ClinicalSignOffEntry & { code: string };
+
+function repositoryFormReview(code: string): RepositoryFormReview {
+  const document = JSON.parse(readFileSync("data/forms-content-review.json", "utf8")) as {
+    forms: RepositoryFormReview[];
+  };
+  const review = document.forms.find((entry) => entry.code === code);
+  if (!review) throw new Error(`No repository review for Form ${code}.`);
+  return review;
+}
 
 function formCodeForRecord(form: (typeof formRecords)[number]): string {
   const payload = (form.catalogPayload ?? {}) as { form?: string };
@@ -21,13 +46,6 @@ function formCodeForRecord(form: (typeof formRecords)[number]): string {
     .trim();
 }
 
-const canonicalPinByCode = new Map(
-  (formsContentReview as { forms: Array<{ code: string; reviewedContentSha256: string }> }).forms.map((row) => [
-    row.code.trim().toLowerCase(),
-    row.reviewedContentSha256,
-  ]),
-);
-
 function signedServiceReviews(): ClinicalSignOffEntry[] {
   return defaultServiceRecords().map((service) => ({
     id: String(service.catalogPayload?.stableId ?? service.slug),
@@ -35,22 +53,19 @@ function signedServiceReviews(): ClinicalSignOffEntry[] {
     status: "reviewed",
     reviewedBy: NAMED_REVIEWER,
     reviewedAt: REVIEWED_AT,
-    reviewedContentSha256: REVIEWED_SHA256,
+    reviewedContentSha256: fixtureDigest("service", String(service.catalogPayload?.stableId ?? service.slug)),
   }));
 }
 
 function signedFormReviews(): ClinicalSignOffEntry[] {
-  return formRecords.map((form) => {
-    const code = formCodeForRecord(form);
-    return {
-      code,
-      slug: form.slug,
-      status: "reviewed",
-      reviewedBy: NAMED_REVIEWER,
-      reviewedAt: REVIEWED_AT,
-      reviewedContentSha256: canonicalPinByCode.get(code.toLowerCase()) ?? REVIEWED_SHA256,
-    };
-  });
+  return formRecords.map((form) => ({
+    code: formCodeForRecord(form),
+    slug: form.slug,
+    status: "reviewed",
+    reviewedBy: NAMED_REVIEWER,
+    reviewedAt: REVIEWED_AT,
+    reviewedContentSha256: fixtureDigest("form", formCodeForRecord(form)),
+  }));
 }
 
 describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
@@ -58,7 +73,7 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     const formPlan = buildFirstPublicationCataloguePlan({ kind: "form" });
     expect(formPlan.counts.forms).toBe(54);
     expect(() => buildFirstPublicationCataloguePlan({ kind: "service" })).toThrow(
-      /First-publication plan refused: \d+ record\(s\) lack clinical sign-off by a named person/,
+      /First-publication plan refused: \d+ record\(s\) lack a current clinical sign-off by a named person/,
     );
   });
 
@@ -106,15 +121,6 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
         reviewedContentSha256: "not-a-sha256",
       },
     ],
-    [
-      "stale or mismatched content sha256 pin",
-      {
-        status: "reviewed",
-        reviewedBy: NAMED_REVIEWER,
-        reviewedAt: REVIEWED_AT,
-        reviewedContentSha256: "0".repeat(64),
-      },
-    ],
   ])("refuses a batch when any record has %s", (_label, badOverride) => {
     const sampleForm = formRecords[0]!;
     const code = formCodeForRecord(sampleForm);
@@ -127,6 +133,45 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     ).toThrow(/First-publication plan refused/);
   });
 
+  it("refuses a form whose content changed after its sign-off, and accepts it while the pin is current", () => {
+    const sampleForm = formRecords.find((form) => formCodeForRecord(form) === "1A")!;
+    const signed = repositoryFormReview("1A");
+    expect(signed.status).toBe("reviewed");
+
+    const current = buildFirstPublicationCataloguePlan({ kind: "form", forms: [sampleForm], formReviews: [signed] });
+    expect(current.counts.forms).toBe(1);
+
+    // A well-formed digest that is not the one the signed content produces: the content no longer matches.
+    const stalePin = createHash("sha256").update("edited after sign-off").digest("hex");
+    expect(() =>
+      buildFirstPublicationCataloguePlan({
+        kind: "form",
+        forms: [sampleForm],
+        formReviews: [{ ...signed, reviewedContentSha256: stalePin }],
+      }),
+    ).toThrow(/content changed since sign-off/);
+  });
+
+  it("refuses a current sign-off that reaches a different form only through a slug alias", () => {
+    const otherForm = formRecords.find((form) => formCodeForRecord(form) !== "1A")!;
+    const signed = repositoryFormReview("1A");
+    expect(() =>
+      buildFirstPublicationCataloguePlan({
+        kind: "form",
+        forms: [otherForm],
+        formReviews: [{ ...signed, slug: otherForm.slug }],
+      }),
+    ).toThrow(/its review names "1A", not this record/);
+  });
+
+  it("refuses a service sign-off when the curated records it pins were not loaded", () => {
+    const sampleService = defaultServiceRecords()[0]!;
+    const [review] = signedServiceReviews();
+    expect(() =>
+      buildFirstPublicationCataloguePlan({ kind: "service", services: [sampleService], serviceReviews: [review!] }),
+    ).toThrow(/content pin could not be checked/);
+  });
+
   it("builds a deterministic batched first-publication plan once all 222 services and 54 forms have named clinician sign-off", () => {
     const services222 = defaultServiceRecords().slice(0, 222);
     const planA = buildFirstPublicationCataloguePlan({
@@ -135,6 +180,7 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
       services: services222,
       serviceReviews: signedServiceReviews(),
       formReviews: signedFormReviews(),
+      pinState: fixturePinCheck,
     });
     const planB = buildFirstPublicationCataloguePlan({
       kind: "all",
@@ -142,6 +188,7 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
       services: services222,
       serviceReviews: signedServiceReviews(),
       formReviews: signedFormReviews(),
+      pinState: fixturePinCheck,
     });
 
     expect(planA.version).toBe("site-content-first-publication-plan-v1");

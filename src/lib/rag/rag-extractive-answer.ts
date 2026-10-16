@@ -1,5 +1,44 @@
+import {
+  type OriginalSectionFinalizationContext,
+  carryOriginalSectionCandidateProof,
+  carryFinalizedOriginalSectionProof,
+  restoreCheckedOriginalSectionBulletPresentation,
+  recoverCheckedOriginalSectionRecommendation,
+  enforceOriginalSectionDeliveredCompleteness,
+} from "@/lib/rag/rag-original-section-delivery";
+export {
+  type OriginalSectionFinalizationContext,
+  carryOriginalSectionCandidateProof,
+  prepareOriginalSectionCandidateProof,
+  enforceOriginalSectionDeliveredCompleteness,
+} from "@/lib/rag/rag-original-section-delivery";
+import {
+  normalizedMeasuredQuery,
+  isSourceBoundActiveCommunityEdProcedureQuery,
+  isSourceBoundCommunityHomeVisitRequirementsQuery,
+  isSourceBoundBestPracticePrescriptionRequirementsQuery,
+  comparisonSourceLabel,
+  communityHomeVisitDepartureEvidence,
+  communityHomeVisitReturnEvidence,
+  bestPracticePrescriptionProgramUseEvidence,
+  bestPracticePrescriptionProfileEvidence,
+  buildActiveCommunityEdProcedureAnswer,
+  buildCommunityHomeVisitRequirementsAnswer,
+  buildBestPracticePrescriptionRequirementsAnswer,
+  isAtomicNmhsClozapineRedRangeSource,
+  buildClozapineBloodActionThresholdAnswer,
+} from "@/lib/rag/rag-source-bound-policy-procedures";
+export {
+  isSourceBoundActiveCommunityEdProcedureQuery,
+  isSourceBoundCommunityHomeVisitRequirementsQuery,
+  isSourceBoundBestPracticePrescriptionRequirementsQuery,
+  bestPracticePrescriptionProgramUseEvidence,
+  bestPracticePrescriptionProfileEvidence,
+} from "@/lib/rag/rag-source-bound-policy-procedures";
 import { adaptiveAnswerLimits, answerWithinLimits } from "@/lib/rag/rag-answer-contract-limits";
+import { type CheckedOriginalSectionAuthority as CheckedOriginalSectionLayout } from "@/lib/rag/rag-source-block";
 import { buildSourceConflictSection } from "@/lib/rag/source-conflict-section";
+import { renderSourceBoundAlcoholSummary } from "@/lib/rag/rag-source-bound-alcohol-summary";
 import { classifyRagFallbackReason, publicFallbackReason } from "@/lib/rag/rag-fallback-reason";
 import type { SearchChunksArgs } from "@/lib/rag/rag-contracts";
 import type {
@@ -110,7 +149,6 @@ import {
   toxicityListHeadingPattern,
 } from "@/lib/rag/rag-claim-support";
 import {
-  atomicNmhsClozapineRedRangeSegment,
   reflowBoundedSourceLines,
   reflowWrappedAgitationDoseLines,
   reflowWrappedEctBookingSystemLines,
@@ -2203,22 +2241,6 @@ const sourceBoundAdmissionDischargeComparisonQueries = new Set([
   "combine community admission steps with discharge documentation requirements",
 ]);
 
-const sourceBoundActiveCommunityEdProcedureQueries = new Set([
-  "how are active community patients in ed managed",
-  "active community pt in ed guidance",
-]);
-
-const sourceBoundCommunityHomeVisitRequirementsQuery = "what is required for community home visits";
-const sourceBoundBestPracticePrescriptionRequirementsQuery =
-  "what does the best practice prescription document require";
-
-function normalizedMeasuredQuery(query: string) {
-  return query
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 export function isAdmissionDischargeRequirementsComparisonQuery(query: string, queryClass: RagQueryClass) {
   return (
     queryClass === "comparison" &&
@@ -2232,29 +2254,6 @@ export function isAdmissionDischargeRequirementsComparisonQuery(query: string, q
 export function isSourceBoundAdmissionDischargeComparisonQuery(query: string, queryClass: RagQueryClass) {
   if (!isAdmissionDischargeRequirementsComparisonQuery(query, queryClass)) return false;
   return sourceBoundAdmissionDischargeComparisonQueries.has(normalizedMeasuredQuery(query));
-}
-
-/** Whether the query is one of the measured active-community ED procedure shapes. */
-export function isSourceBoundActiveCommunityEdProcedureQuery(query: string, queryClass: RagQueryClass) {
-  return (
-    queryClass === "document_lookup" && sourceBoundActiveCommunityEdProcedureQueries.has(normalizedMeasuredQuery(query))
-  );
-}
-
-/** Whether the query is the measured AKG community-home-visit requirements shape. */
-export function isSourceBoundCommunityHomeVisitRequirementsQuery(query: string, queryClass: RagQueryClass) {
-  return (
-    queryClass === "unsupported_or_general" &&
-    normalizedMeasuredQuery(query) === sourceBoundCommunityHomeVisitRequirementsQuery
-  );
-}
-
-/** Whether the query is the measured AKG Best Practice Prescription requirements shape. */
-export function isSourceBoundBestPracticePrescriptionRequirementsQuery(query: string, queryClass: RagQueryClass) {
-  return (
-    queryClass === "document_lookup" &&
-    normalizedMeasuredQuery(query) === sourceBoundBestPracticePrescriptionRequirementsQuery
-  );
 }
 
 /** Whether a table-threshold query asks for the clozapine blood-count stop boundary. */
@@ -2501,264 +2500,6 @@ export function isSourceBoundBestPracticePrescriptionRequirementsAnswer(answer: 
     /\bmedication name, formulation, route, dose and directions for use\b/i.test(deliveredText) &&
     /\bpsychiatric and non-psychiatric medication\b/i.test(deliveredText),
   );
-}
-
-function comparisonSourceLabel(result: SearchResult) {
-  return normalizeSectionText([result.title, result.file_name, result.section_heading].filter(Boolean).join(" "));
-}
-
-function boundedSourceText(result: SearchResult) {
-  return reflowBoundedSourceLines(sourceTextForClinicalProsePreservingBreaks(result.content ?? ""))
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isActiveCommunityEdProcedureSource(result: SearchResult) {
-  return /\bactive community\b.*\b(?:patients?|consumers?)\b.*\bemergency department\b/i.test(
-    comparisonSourceLabel(result),
-  );
-}
-
-function activeCommunityEdProcessEvidence(result: SearchResult) {
-  if (!isActiveCommunityEdProcedureSource(result)) return false;
-  const text = boundedSourceText(result);
-  return (
-    /\bconsumer will be triaged by the Triage Nurse at the AHS ED\b/i.test(text) &&
-    /\bED Mental Health Liaison Nurse \(EDMHLN\) will provide a mental health assessment as required\b/i.test(text) &&
-    /\bEDMHLN will identify via PSOLIS\b/i.test(text) &&
-    /\bEDMHLN will check PSOLIS for a Treatment Support Discharge Plan \(TSD\)\s*\/\s*crisis plan\b/i.test(text) &&
-    /\bEDMHLN will contact the relevant community mental health team,? EMHS CRHTT team\b/i.test(text) &&
-    /\brequest collateral information\b/i.test(text)
-  );
-}
-
-function activeCommunityEdAccessEvidence(result: SearchResult) {
-  if (!isActiveCommunityEdProcedureSource(result)) return false;
-  const text = boundedSourceText(result);
-  return (
-    /\bconsumers active with Armadale Mental Health Service \(AMHS\) are assessed by the most appropriate mental health clinician available\b/i.test(
-      text,
-    ) &&
-    /\bprovided with information on how to access their relevant treating team during office hours\b/i.test(text) &&
-    /\bprovided with information regarding out of hours emergency contacts\b/i.test(text)
-  );
-}
-
-function isAkgCommunityHomeVisitSource(result: SearchResult) {
-  return /\bCommunity\s+Home\s+Visit\s*\(?AKG\)?\b/i.test(comparisonSourceLabel(result));
-}
-
-function communityHomeVisitDepartureEvidence(result: SearchResult) {
-  if (!isAkgCommunityHomeVisitSource(result)) return false;
-  const text = boundedSourceText(result);
-  return (
-    /\ball clinical staff are to complete a Community Home Visit Log\b/i.test(text) &&
-    /\bprior to leaving the workplace\b/i.test(text) &&
-    /\bDesignated OAC clerical staff will review the log\b/i.test(text)
-  );
-}
-
-function communityHomeVisitReturnEvidence(result: SearchResult) {
-  if (!isAkgCommunityHomeVisitSource(result)) return false;
-  const text = boundedSourceText(result);
-  return (
-    /\bLeschen clerical reception staff will take responsibility for safety monitoring\b/i.test(text) &&
-    /\bclinician will inform Leschen clerical reception staff on their return to the workplace\b/i.test(text) &&
-    /\bupdate the community home visit log\b/i.test(text)
-  );
-}
-
-function isAkgBestPracticePrescriptionSource(result: SearchResult) {
-  return /\bBest Practice Prescription(?:\s+Program)?\s*\(?AKG\)?\b/i.test(comparisonSourceLabel(result));
-}
-
-export function bestPracticePrescriptionProgramUseEvidence(result: SearchResult) {
-  if (!isAkgBestPracticePrescriptionSource(result)) return false;
-  const text = boundedSourceText(result);
-  return (
-    /\bBest Practice Prescription Program is an electronic program\b/i.test(text) &&
-    /\bPrescription generation\b/i.test(text) &&
-    /\bMaintenance of electronic medication profiles\b/i.test(text) &&
-    /\bInternal and external correspondence generation\b/i.test(text) &&
-    /\bRecording other relevant clinical information\b/i.test(text) &&
-    /\ballergies\s*\/\s*adverse drug reactions\b/i.test(text)
-  );
-}
-
-export function bestPracticePrescriptionProfileEvidence(result: SearchResult) {
-  if (!isAkgBestPracticePrescriptionSource(result)) return false;
-  const text = boundedSourceText(result);
-  return (
-    /\bat the first clinic appointment, medical officers are to inquire\b/i.test(text) &&
-    /\babout their current medications\b/i.test(text) &&
-    /\bverify this information\b/i.test(text) &&
-    /\bGeneral Practitioner\b/i.test(text) &&
-    /\bmedication name, formulation, route, dose and directions for use\b/i.test(text) &&
-    /\beach psychiatric and non-psychiatric medication must be entered\b/i.test(text)
-  );
-}
-
-/** Build the exact, same-document active-community ED procedure answer. */
-function buildActiveCommunityEdProcedureAnswer(args: { query: string; results: SearchResult[] }) {
-  const processSources = args.results.filter(activeCommunityEdProcessEvidence);
-  const accessSources = args.results.filter(activeCommunityEdAccessEvidence);
-  const pair = processSources
-    .flatMap((process) => accessSources.map((access) => ({ process, access })))
-    .find(
-      ({ process, access }) =>
-        process.id !== access.id && Boolean(process.document_id) && process.document_id === access.document_id,
-    );
-  if (!pair) return null;
-
-  const processBody =
-    "The consumer is triaged by the AHS ED Triage Nurse, and the ED Mental Health Liaison Nurse (EDMHLN) provides a mental health assessment as required. The EDMHLN identifies the active community team in PSOLIS, checks the Treatment Support Discharge Plan (TSD)/crisis plan, contacts the relevant community or CRHTT team, and requests collateral information.";
-  const accessBody =
-    "Active AMHS consumers are assessed by the most appropriate mental health clinician available. They should routinely receive information on accessing their treating team during office hours and out-of-hours emergency contacts.";
-  const answerSections = [
-    {
-      heading: "ED assessment and coordination",
-      kind: "required_actions",
-      supportLevel: "direct",
-      body: boldHighYieldClinicalText(processBody, args.query),
-      citation_chunk_ids: [pair.process.id],
-    },
-    {
-      heading: "Clinician access and contacts",
-      kind: "required_actions",
-      supportLevel: "direct",
-      body: boldHighYieldClinicalText(accessBody, args.query),
-      citation_chunk_ids: [pair.access.id],
-    },
-  ] satisfies AnswerSection[];
-  return {
-    answer: `${processBody} ${accessBody}`,
-    body: `${processBody} ${accessBody}`,
-    preformatted: true,
-    sourceBoundCitationOnly: true,
-    citationChunkIds: [pair.process.id, pair.access.id],
-    answerSections,
-  };
-}
-
-/** Build the exact, same-document AKG community-home-visit requirements answer. */
-function buildCommunityHomeVisitRequirementsAnswer(args: { query: string; results: SearchResult[] }) {
-  const departureSources = args.results.filter(communityHomeVisitDepartureEvidence);
-  const returnSources = args.results.filter(communityHomeVisitReturnEvidence);
-  const pair = departureSources
-    .flatMap((departure) => returnSources.map((returned) => ({ departure, returned })))
-    .find(
-      ({ departure, returned }) =>
-        departure.id !== returned.id &&
-        Boolean(departure.document_id) &&
-        departure.document_id === returned.document_id,
-    );
-  if (!pair) return null;
-
-  const departureBody =
-    "All clinical staff are to complete a Community Home Visit Log prior to leaving the workplace. Designated OAC clerical staff will review the log.";
-  const returnBody =
-    "Leschen clerical reception staff will take responsibility for safety monitoring. The clinician will inform Leschen clerical reception staff on their return to the workplace and update the Community Home Visit Log.";
-  return {
-    answer: `${departureBody} ${returnBody}`,
-    body: `${departureBody} ${returnBody}`,
-    preformatted: true,
-    sourceBoundCitationOnly: true,
-    citationChunkIds: [pair.departure.id, pair.returned.id],
-    answerSections: [
-      {
-        heading: "Before leaving",
-        kind: "required_actions",
-        supportLevel: "direct",
-        body: boldHighYieldClinicalText(departureBody, args.query),
-        citation_chunk_ids: [pair.departure.id],
-      },
-      {
-        heading: "Safety monitoring and return",
-        kind: "required_actions",
-        supportLevel: "direct",
-        body: boldHighYieldClinicalText(returnBody, args.query),
-        citation_chunk_ids: [pair.returned.id],
-      },
-    ] satisfies AnswerSection[],
-  };
-}
-
-/** Build the exact, same-document AKG prescription-program requirements answer. */
-function buildBestPracticePrescriptionRequirementsAnswer(args: { query: string; results: SearchResult[] }) {
-  const useSources = args.results.filter(bestPracticePrescriptionProgramUseEvidence);
-  const profileSources = args.results.filter(bestPracticePrescriptionProfileEvidence);
-  const pair = useSources
-    .flatMap((use) => profileSources.map((profile) => ({ use, profile })))
-    .find(
-      ({ use, profile }) =>
-        use.id !== profile.id && Boolean(use.document_id) && use.document_id === profile.document_id,
-    );
-  if (!pair) return null;
-
-  const useBody =
-    "Best Practice Prescription Program is used for prescription generation, maintenance of electronic medication profiles, internal and external correspondence generation, and recording other relevant clinical information such as allergies/adverse drug reactions.";
-  const profileBody =
-    "At the first clinic appointment, medical officers are to inquire with the consumer or carer about current medications and may need to verify the information against the consumer’s medicines or another suitable source such as the General Practitioner. For each psychiatric and non-psychiatric medication, the medication name, formulation, route, dose and directions for use must be entered in the medication profile.";
-  return {
-    answer: `${useBody} ${profileBody}`,
-    body: `${useBody} ${profileBody}`,
-    preformatted: true,
-    sourceBoundCitationOnly: true,
-    citationChunkIds: [pair.use.id, pair.profile.id],
-    answerSections: [
-      {
-        heading: "Program use",
-        kind: "required_actions",
-        supportLevel: "direct",
-        body: boldHighYieldClinicalText(useBody, args.query),
-        citation_chunk_ids: [pair.use.id],
-      },
-      {
-        heading: "Medication profile",
-        kind: "documentation",
-        supportLevel: "direct",
-        body: boldHighYieldClinicalText(profileBody, args.query),
-        citation_chunk_ids: [pair.profile.id],
-      },
-    ] satisfies AnswerSection[],
-  };
-}
-
-function isAtomicNmhsClozapineRedRangeSource(result: SearchResult) {
-  const label = comparisonSourceLabel(result);
-  return Boolean(
-    atomicNmhsClozapineRedRangeSegment({
-      sourceLabel: label,
-      content: result.content ?? "",
-    }),
-  );
-}
-
-/** Build an atomic red-range threshold/action answer from one explicitly labelled NMHS row. */
-function buildClozapineBloodActionThresholdAnswer(args: { query: string; results: SearchResult[] }) {
-  const source = args.results.find(isAtomicNmhsClozapineRedRangeSource);
-  if (!source) return null;
-  // The source row pairs the stop with "Contact haematologist and Clozapine Monitoring Centre";
-  // dropping it lost the escalation step from the red-range answer (#ZZ4RAP).
-  const body =
-    "Red-range WBC <3.0 × 10⁹/L and/or neutrophils <1.5 × 10⁹/L: stop clozapine therapy immediately. Contact haematologist and Clozapine Monitoring Centre.";
-  return {
-    answer: body,
-    body,
-    preformatted: true,
-    sourceBoundCitationOnly: true,
-    citationChunkIds: [source.id],
-    answerSections: [
-      {
-        heading: "Red-range threshold and action",
-        kind: "thresholds",
-        supportLevel: "direct",
-        body: boldHighYieldClinicalText(body, args.query),
-        citation_chunk_ids: [source.id],
-      },
-    ] satisfies AnswerSection[],
-  };
 }
 
 function unwrapSourceBoundComparisonLines(content: string) {
@@ -3920,6 +3661,17 @@ const sourceHeadingOpeningPattern =
   /^(?:appendix\s+\d+|dosage|dose|dosing|dosage and monitoring|dose table|monitoring|referral criteria|contraindications?|adverse effects?|required actions?|thresholds?|summary|overview|formulations?|available products?|product information|table|figure)\.?$/i;
 const openingSentenceActionPattern =
   /\b(?:are|avoid|arrange|be|can|cannot|cease|check|contact|continue|could|discontinue|document|escalate|give|include|includes|included|increase|inform|involves|is|list|lists|may|might|monitor|must|need|needed|needs|notify|provide|provides|recommend(?:s|ed|ing|ation|ations)?|recommends|reduce|refer|repeat|report|required|requires|review|should|start|starts|stop|support|supports|use|uses|was|were|will|withhold|would)\b/i;
+// Recognise a complete limit instruction without treating the noun "drink" in
+// headings or lists as a verb. This is grammar only; evidence gates still bind
+// the quantity, period, population and risk qualifications to cited sources.
+const drinkLimitQuantityPeriodPattern = String.raw`\d+(?:\.\d+)?\s+standard\s+drinks?\s+(?:a\s+(?:week|day)|per\s+(?:week|day)|on\s+any\s+one\s+day)`;
+const openingDrinkLimitImperativePattern = new RegExp(
+  String.raw`^(?:for\s+[^,.;!?]{1,140},\s*)?drink\s+no\s+more\s+than\s+${drinkLimitQuantityPeriodPattern}(?:\s+and\s+no\s+more\s+than\s+${drinkLimitQuantityPeriodPattern})?(?:;\s+less\s+drinking\s+further\s+lowers\s+risk)?[.!?]["')\]]*$`,
+  "i",
+);
+// The recorded adult instruction shares its upper-limit verb across both periods.
+const openingSharedDrinkLimitImperativePattern =
+  /^for healthy adults aged \d+ years and over, drink no more than \d+ standard drinks a week and \d+ standard drinks on any one day;? drinking less further reduces risk\.$/i;
 
 /** First sentence. */
 function firstSentence(value: string) {
@@ -3939,7 +3691,11 @@ function hasCompleteOpeningSentence(value: string) {
   if (templateLikeGeneratedPrefixPattern.test(opening)) return false;
   if (incompleteOpeningSentencePattern.test(opening)) return false;
   if (sourceHeadingOpeningPattern.test(openingWithoutTerminal)) return false;
-  return openingSentenceActionPattern.test(opening);
+  return (
+    openingSentenceActionPattern.test(opening) ||
+    openingDrinkLimitImperativePattern.test(opening) ||
+    openingSharedDrinkLimitImperativePattern.test(opening)
+  );
 }
 
 // The extractive completer's last-resort branch (completeExtractiveSentence, above) wraps a
@@ -4556,6 +4312,7 @@ function shouldPreserveSourceBackedGeneratedAnswer(answer: RagAnswer, reason: st
       signal.startsWith("index_unit:") ||
       [
         "document_title",
+        "document_title_phrase",
         "document_label",
         "table_fact",
         "source_image",
@@ -4803,6 +4560,164 @@ function deliveredFacetDetailPresent(facet: RagAskedPart, detail: RagRequestedFa
   return deliveredFrequencyPresent(text);
 }
 
+/** Conservative applicability check for already verified prose, never source admission. */
+function deliveredScopeMatches(question: string, prose: string) {
+  const population = (text: string) =>
+    new Set(
+      normalizedClinicalSearchTokens(
+        // A measurement target is not a population restriction.
+        text.replace(/\b(?:renal|hepatic) function\b(?!\s+impairment)/gi, "function"),
+      )
+        .filter(hasClinicalPopulationSignal)
+        .map((term) =>
+          term
+            .replace(/^children$/, "child")
+            .replace(/^paediatric$/, "pediatric")
+            .replace(/s$/, ""),
+        ),
+    );
+  // Keep compound qualifiers before tokenization can collapse them to "adult".
+  // Exact scope matching is deliberately conservative; unfamiliar equivalents
+  // retain an answer limitation rather than acquiring population authority.
+  const qualifiers = (text: string) =>
+    new Set(
+      (
+        text.match(
+          /\b(?:older adults?|young people|(?:over|under|above|below|aged?)\s+\d+(?:\s*[-–]\s*\d+)?(?:\s+years?(?:\s+old)?)?)\b/gi,
+        ) ?? []
+      ).map((term) =>
+        term
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .replace(/older adults$/, "older adult"),
+      ),
+    );
+  const requestedQualifiers = qualifiers(question);
+  const deliveredQualifiers = qualifiers(prose);
+  if (
+    [...requestedQualifiers].some((term) => !deliveredQualifiers.has(term)) ||
+    [...deliveredQualifiers].some((term) => !requestedQualifiers.has(term))
+  )
+    return false;
+  const requestedPopulation = population(question);
+  const deliveredPopulation = population(prose);
+  if (
+    [...requestedPopulation].some((term) => !deliveredPopulation.has(term)) ||
+    [...deliveredPopulation].some((term) => !requestedPopulation.has(term))
+  )
+    return false;
+  const requestedConditions =
+    question.match(/\b(?:renal impairment|hepatic impairment|pregnan\w*|overdose|toxicity)\b/gi) ?? [];
+  return requestedConditions.every((condition) => {
+    const escaped = escapeQueryToken(condition);
+    if (!new RegExp(`\\b${escaped}\\b`, "i").test(prose)) return false;
+    const negated = new RegExp(
+      `\\b(?:without|no(?: evidence of)?|absence of|free of|not(?: have|having|experiencing)?)(?:\\s+\\w+){0,3}\\s+${escaped}\\b|\\b${escaped}\\s+(?:is |was )?(?:absent|excluded)\\b`,
+      "i",
+    );
+    const prefixedNegation = new RegExp(`\\bnon[- ]${escaped}\\b`, "i");
+    const negative = (text: string) => negated.test(text) || prefixedNegation.test(text);
+    return negative(question) === negative(prose);
+  });
+}
+
+/** Account for delivered prose only. This does not assess source or corpus coverage. */
+function unassessedDeliveryGap(answer: RagAnswer, queryPlan?: RagQueryPlan): AnswerSection | null {
+  const visible = normalizeSectionText(
+    [answer.answer, ...(answer.answerSections ?? []).map((section) => section.body)].join(" "),
+  ).replaceAll("**", "");
+  const citedIds = new Set(answer.citations.map((citation) => citation.chunk_id));
+  const directClaims = (answer.supportedClaims ?? []).filter(
+    (claim) =>
+      claim.supportStatus === "direct" &&
+      claim.supportingChunkIds.some((id) => citedIds.has(id)) &&
+      visible.includes(normalizeSectionText(claim.text).replaceAll("**", "")),
+  );
+  const missing = new Set<string>();
+  for (const part of queryPlan?.subquestions ?? []) {
+    if (!part.required) continue;
+    const intent = classifyAnswerIntent(part.question, classifyRagQuery(part.question).queryClass);
+    const medicines = medicationEntitiesInText(part.question);
+    // Match the subject here, then account for facets/details below. Requiring
+    // the full retrieval intent would hide verified monitoring without a cadence
+    // and safety cautions which are not absolute contraindications.
+    const claims = directClaims.filter(
+      (claim) =>
+        deliveredScopeMatches(part.question, claim.text) &&
+        (medicines.length
+          ? medicines.some((medicine) => medicationEntitiesInText(claim.text).includes(medicine))
+          : hasRelevantQueryOverlap(claim.text, part.question, "general")),
+    );
+    const safetyDependency = queryPlan?.materialSafetyDependencies?.includes(part.purpose);
+    if (safetyDependency) {
+      const constraints =
+        part.question.match(/\b(?:renal impairment|hepatic impairment|pregnan\w*|overdose|toxicity)\b/gi) ?? [];
+      // Check independently of facet bindings: the planner can attach a safety
+      // dependency to an existing grouped part when its subquestion budget is full.
+      const safetyPresent = claims.some(
+        (claim) =>
+          deliveredFacetPresent("risk", claim.text) &&
+          constraints.length > 0 &&
+          constraints.every((constraint) => deliveredProseRelevance(constraint, claim.text).missingTerms.length === 0),
+      );
+      if (!safetyPresent)
+        missing.add(
+          `safety implications of ${[...new Set(constraints)].join("; ") || "the stated clinical constraint"}`,
+        );
+      if (!part.requestedFacets?.length) continue;
+    }
+    if (!part.requestedFacets?.length) {
+      const question = part.question.replace(/: directly relevant evidence for this comparison\.$/, "");
+      const prose = claims.map((claim) => claim.text).join(" ");
+      const relevance = deliveredProseRelevance(question, prose);
+      const explicit = medicationDoseEvidenceQueryIntent(question);
+      const attributesPresent =
+        (!explicit.asksRoute || medicationDoseEvidenceQueryIntent(prose).asksRoute) &&
+        (!explicit.asksFrequency || deliveredFrequencyPresent(prose));
+      const clinicalIntent = intent !== "general" && intent !== "unsupported" && intent !== "document_lookup";
+      const intentPresent =
+        clinicalIntent &&
+        claims.some((claim) => {
+          const kind = factKindForSentence(claim.text, question, intent);
+          return kind && factSupportsAnswerIntent(kind, claim.text, question, intent);
+        });
+      const partPresent =
+        attributesPresent &&
+        ((part.purpose !== "comparison_side" && intentPresent) ||
+          (relevance.coreTerms.length > 0 && relevance.missingTerms.length === 0));
+      if (!claims.length || !partPresent) {
+        const name = question
+          .replace(/[\u0000-\u001f\u007f<>\[\]\x60*_#\\]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 160);
+        missing.add(name);
+      }
+      continue;
+    }
+    for (const facet of part.requestedFacets ?? []) {
+      const name = facet.replaceAll("_", " ");
+      if (!claims.some((claim) => deliveredFacetPresent(facet, claim.text))) {
+        missing.add(name);
+        continue;
+      }
+      for (const detail of part.requestedFacetDetails?.[facet] ?? []) {
+        if (!claims.some((claim) => deliveredFacetDetailPresent(facet, detail, claim.text)))
+          missing.add(`${name} ${detail}`);
+      }
+    }
+  }
+  return missing.size
+    ? {
+        heading: "Answer limitation",
+        kind: "source_gap",
+        supportLevel: "unsupported",
+        citation_chunk_ids: [],
+        body: `This answer does not establish: ${[...missing].join("; ")}. Source coverage has not been assessed.`,
+      }
+    : null;
+}
+
 /** Downgrade source coverage when its requested part has no surviving verified prose. */
 function reconcileDeliveredParts(answer: RagAnswer, coverage: AnswerCoveragePlan, queryPlan?: RagQueryPlan) {
   const required = coverage.subquestions.filter((part) => part.required);
@@ -4910,23 +4825,35 @@ export function retainVerifiedAnswerParts(
     queryPlan?: RagQueryPlan;
     queryClass: RagQueryClass;
     contract: RagAnswerGenerationContract;
+    admittedPassageDelivery?: boolean;
     verificationSources?: SearchResult[];
     resolveCoverage: (verified: RagAnswer) => AnswerCoveragePlan | null;
     reconcileCoverage?: (verified: RagAnswer, coverage: AnswerCoveragePlan | null) => void;
     reviewRequest?: SearchChunksArgs;
-    sectionCap?: (coverage: AnswerCoveragePlan) => number;
+    sectionCap?: (coverage: AnswerCoveragePlan | null) => number;
+    checkedOriginalSectionLayout?: CheckedOriginalSectionLayout;
+    originalSectionDeliveryPending?: boolean;
   },
 ) {
   const proseSections = (answer.answerSections ?? []).filter(
     (section) => section.kind !== "source_gap" && section.kind !== "source_conflict",
   );
   const verified = finalizeRagAnswerQuality(
-    { ...answer, answerSections: proseSections },
+    carryOriginalSectionCandidateProof(answer, { ...answer, answerSections: proseSections }),
     context.query,
     context.queryClass,
     context.verificationSources,
     context.contract,
+    context,
   );
+  const beforeDeliveryTransforms = carryOriginalSectionCandidateProof(verified, {
+    ...verified,
+    citations: verified.citations.map((citation) => ({ ...citation })),
+    answerSections: verified.answerSections?.map((section) => ({
+      ...section,
+      citation_chunk_ids: [...section.citation_chunk_ids],
+    })),
+  });
   const finalSourceIds = new Set(verified.sources.map((row) => row.id));
   verified.citations = verified.citations.filter((citation) => finalSourceIds.has(citation.chunk_id));
   const resolvedCoverage = context.resolveCoverage(verified);
@@ -4971,6 +4898,23 @@ export function retainVerifiedAnswerParts(
   const retainedSectionCount = verified.answerSections?.length ?? 0;
   let gapAdded = false;
   let conflictAdded = false;
+  if (
+    !coverage &&
+    context.admittedPassageDelivery &&
+    verified.grounded &&
+    verified.confidence !== "unsupported" &&
+    verified.citations.length
+  ) {
+    const gap = unassessedDeliveryGap(verified, context.queryPlan);
+    if (gap) {
+      verified.answerSections = reserveMetadataSlots(
+        verified,
+        [gap],
+        context.sectionCap?.(null) ?? adaptiveAnswerLimits.sections,
+      );
+      gapAdded = true;
+    }
+  }
   if (coverage && verified.grounded && verified.confidence !== "unsupported" && verified.citations.length) {
     const conflicts = canonicalSections.map(({ section }) => section);
     const missing = coverage.subquestions.filter(
@@ -5057,7 +5001,11 @@ export function retainVerifiedAnswerParts(
     );
   }
   return {
-    answer: verified,
+    answer: enforceOriginalSectionDeliveredCompleteness(
+      carryFinalizedOriginalSectionProof(beforeDeliveryTransforms, verified),
+      context.query,
+      context,
+    ),
     retainedSectionCount,
     droppedSectionCount: Math.max(0, proseSections.length - retainedSectionCount),
     gapAdded,
@@ -5074,15 +5022,57 @@ export function finalizeRagAnswerQuality(
   queryClass: RagQueryClass,
   verificationSources?: SearchResult[],
   contract: RagAnswerGenerationContract = legacyAnswerGenerationContract,
+  context: OriginalSectionFinalizationContext = {},
 ): RagAnswer {
-  const coherenceChecked = enforceLabelledNumericBandCoherence(answer, { query, verificationSources });
-  const qualityChecked = finalizeRagAnswerQualityCore(coherenceChecked, query, queryClass, contract);
+  context = { ...context, contract };
+  const sourceRendering =
+    contract.promptVersion === legacyAnswerGenerationContract.promptVersion &&
+    contract.schemaVersion === legacyAnswerGenerationContract.schemaVersion
+      ? renderSourceBoundAlcoholSummary(answer, verificationSources ?? answer.sources, query, queryClass)
+      : null;
+  const recoveredOriginal = recoverCheckedOriginalSectionRecommendation(
+    sourceRendering?.answer ?? answer,
+    query,
+    context,
+  );
+  const coherenceChecked = enforceLabelledNumericBandCoherence(recoveredOriginal, { query, verificationSources });
+  const qualityChecked = restoreCheckedOriginalSectionBulletPresentation(
+    finalizeRagAnswerQualityCore(coherenceChecked, query, queryClass, contract),
+    recoveredOriginal,
+    context,
+  );
   const verified = applyNumericVerification(
     assessAndEnforceClaimSupport(qualityChecked, verificationSources),
     verificationSources,
   );
   const retained = retainDeliveredExtractiveFallbackEvidence(verified, query, queryClass);
-  return applyProviderLabels(appendCompoundMonitoringOutputGap(retained, query));
+  const finalized = enforceOriginalSectionDeliveredCompleteness(
+    carryFinalizedOriginalSectionProof(
+      recoveredOriginal,
+      applyProviderLabels(appendCompoundMonitoringOutputGap(retained, query)),
+    ),
+    query,
+    context,
+  );
+  if (sourceRendering && !sourceRendering.complete(finalized)) {
+    return finalizeRagAnswerQuality(
+      {
+        ...finalized,
+        answer: machineReadableFallbackAnswer,
+        grounded: false,
+        confidence: "unsupported",
+        citations: [],
+        answerSections: [],
+        quoteCards: [],
+      },
+      query,
+      queryClass,
+      verificationSources,
+      contract,
+      context,
+    );
+  }
+  return finalized;
 }
 
 /**

@@ -131,8 +131,20 @@ describe("R5 document metadata deep-merge", () => {
   });
 
   it("routes worker document metadata updates through the merge RPC with owned deltas only", () => {
-    expect(workerMain).toContain('rpc("apply_document_metadata_patch"');
+    // Fenced leases: patch_ingestion_document_state (lease-fenced) replaces the unfenced
+    // apply_document_metadata_patch call and keeps the same jsonb_merge_deep semantics.
+    expect(workerMain).toContain('await mutation(attemptForDocument(documentId), "patch_ingestion_document_state", {');
+    expect(workerMain).toContain("p_metadata: sanitizeJsonbRecord(metadata ?? {}),");
+    expect(workerMain).not.toContain('rpc("apply_document_metadata_patch"');
     expect(workerMain).toContain("send only worker-owned key deltas");
     expect(workerMain).not.toContain("...(job.documents.metadata");
+    const patchStart = schemaSql.lastIndexOf("create or replace function public.patch_ingestion_document_state(");
+    expect(patchStart).toBeGreaterThan(-1);
+    const patchBody = schemaSql.slice(patchStart, schemaSql.indexOf("end $$;", patchStart));
+    expect(patchBody).toContain("public.assert_current_ingestion_attempt(p_fence");
+    expect(patchBody).toContain("metadata=public.jsonb_merge_deep(metadata,p_metadata)");
+    // Only worker-owned keys may be patched; anything else is rejected, not merged.
+    expect(patchBody).toMatch(/jsonb_object_keys\(p_metadata\) k where k <> all\(array\[/);
+    expect(patchBody).toContain("raise exception 'invalid_ingestion_document_patch'");
   });
 });
