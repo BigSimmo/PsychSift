@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-15"
+    "committed_at": "2026-10-16"
   },
   "routes": {
     "modes": [
@@ -3448,6 +3448,11 @@
       {
         "path": "docs/care-plan/reports/task-11-report.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-psych-sift-display-name-sign-off.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
