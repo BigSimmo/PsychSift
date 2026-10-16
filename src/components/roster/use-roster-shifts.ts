@@ -75,11 +75,14 @@ export type RosterShiftsState = {
   /** Fetch the shifts again, e.g. after a calendar link refresh brought new ones. */
   readonly reload: () => Promise<void>;
   readonly dismissChanges: () => Promise<void>;
+  /** Non-blocking own-shift overlap warnings from the last manual shift save. */
+  readonly lastManualConflicts?: readonly unknown[];
 };
 
 type Payload = {
   shifts?: OnCallShift[];
   latestImport?: OnCallShiftImportSummary | null;
+  conflicts?: unknown[];
   demoMode?: boolean;
   sample?: boolean;
   error?: unknown;
@@ -281,6 +284,8 @@ export function useRosterShifts(
     [accept, refreshHistory],
   );
 
+  const [lastManualConflicts, setLastManualConflicts] = useState<readonly unknown[]>([]);
+
   const addManual = useCallback(
     async (request: OnCallManualShiftRequest) => {
       try {
@@ -292,6 +297,7 @@ export function useRosterShifts(
         const payload = await readPayload(response);
         if (response.status === 401) return "Sign in to add a shift.";
         if (!response.ok) return errorText(payload, "That shift could not be saved. Try again.");
+        setLastManualConflicts(Array.isArray(payload.conflicts) ? payload.conflicts : []);
         await load();
         refreshHistory();
         return null;
@@ -415,6 +421,7 @@ export function useRosterShifts(
     removeWorkplace,
     reload,
     dismissChanges,
+    lastManualConflicts,
   };
 }
 

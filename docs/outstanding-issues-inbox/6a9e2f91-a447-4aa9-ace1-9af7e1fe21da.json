@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "6a9e2f91-a447-4aa9-ace1-9af7e1fe21da",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#WBQ6MC",
+    "outcome": "Moved tests/work-page-favourite-visibility.dom.test.tsx from data-platform.json to personal-practice.json.",
+    "targetUlid": "01M4TNNW5TWBQ6MCX5A9M81PKX"
+  }
+}

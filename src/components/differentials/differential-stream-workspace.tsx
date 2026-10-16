@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type Re
 import { ArrowLeft, ArrowRight, Check, ChevronRight, FileText, Network, ShieldAlert } from "lucide-react";
 
 import { pageHeadingDescriptionClass, pageHeadingTitleClass } from "@/components/ui/page-header";
+import { VirtualizedResultList } from "@/components/ui/virtualized-result-list";
 import { cn } from "@/components/ui-primitives";
 import { StatusTag, type StatusTagShape } from "@/components/mode-kit/status-tag";
 
@@ -752,13 +753,21 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
   }
 
   function renderCardGrid(items: DifferentialStreamItem[], outsideFilter = false): ReactNode {
+    const focusedIndex = focusedSlug ? items.findIndex((item) => item.slug === focusedSlug) : -1;
     return (
       // One hairline card per group with divided rows (no cards inside cards).
       // From the two-column width each row draws its own bottom and inner
       // right hairline; the -mb-px tucks the last row's bottom line under the
       // card's clipped edge so it is never doubled.
-      <div className="grid divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] sm:grid-cols-2 sm:divide-y-0 sm:[&>*]:-mb-px sm:[&>*]:border-b sm:[&>*]:border-[color:var(--border)] sm:[&>*:nth-child(odd)]:border-r">
-        {items.map((item) => (
+      <VirtualizedResultList
+        items={items}
+        getItemKey={(item) => item.id}
+        columns={2}
+        focusedIndex={focusedIndex >= 0 ? focusedIndex : null}
+        disableVirtualization={highlightFilterActive}
+        ariaLabel={outsideFilter ? `${outsideLabel} ${copy.heading.toLowerCase()}` : copy.heading}
+        className="grid divide-y divide-[color:var(--border)] overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] sm:grid-cols-2 sm:divide-y-0 sm:[&>*]:-mb-px sm:[&>*]:border-b sm:[&>*]:border-[color:var(--border)] sm:[&>*:nth-child(odd)]:border-r"
+        renderItem={(item) => (
           <StreamCard
             key={item.id}
             item={item}
@@ -773,8 +782,8 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
             onToggleSelect={handleToggleSelect}
             onShowConnections={handleShowConnections}
           />
-        ))}
-      </div>
+        )}
+      />
     );
   }
 

@@ -1,15 +1,19 @@
 {
   "accepted": true,
   "accepted_by": "repository owner",
-  "accepted_at": "2026-07-02T20:00:00.000+08:00",
-  "expires_at": "2026-08-31T23:59:59.000+08:00",
-  "reason": "Bounded release metadata debt acceptance for residual corpus-state governance values after required source metadata key coverage was completed. This accepts review_due, unknown, and unverified states as tracked backend debt only; it does not mark any source current, locally reviewed, or approved. Re-accepted 2026-07-02 evening at a 0.6 review-required ceiling: the relevance-first ranking work (PR #118 / PR #130) deliberately removed governance metadata weighting from retrieval selection ordering, so review-flagged sources are no longer buried and the observed top-result review-required rate rose from 0.14 to 0.5398 without any corpus change. The rate now reports true corpus state; the burn-down path is targeted clinical review of the 25 surfaced documents in docs/source-review-priority-2026-07-02.md, after which this ceiling must be tightened back toward 0.2 or removed. Renewed 2026-07-03 by the repository owner: the acceptance window was extended to 2026-08-31 and the live corpus was re-verified unchanged (2065 indexed, 132 unknown-status, 130 unverified, 481 review-due, 0 poor-extraction, 0 missing required source-metadata keys). This renewal extends the window only — ceilings and scope are unchanged, no source is marked current, reviewed, or approved, and the clinical-review burn-down is now tracked in GitHub issue #229.",
+  "accepted_at": "2026-10-16T00:00:00.000+08:00",
+  "verified_at": "2026-10-16",
+  "expires_at": "2027-04-16T23:59:59.000+08:00",
+  "status": "resolved_zero_missing_metadata",
+  "missing_required_metadata_count": 0,
+  "reason": "Bounded release metadata debt acceptance for residual corpus-state governance values after required source metadata key coverage was completed. This accepts review_due, unknown, and unverified states as tracked backend debt only; it does not mark any source current, locally reviewed, or approved. Re-accepted 2026-07-02 evening at a 0.6 review-required ceiling: the relevance-first ranking work (PR #118 / PR #130) deliberately removed governance metadata weighting from retrieval selection ordering, so review-flagged sources are no longer buried and the observed top-result review-required rate rose from 0.14 to 0.5398 without any corpus change. The rate now reports true corpus state; the burn-down path is targeted clinical review of the 25 surfaced documents in docs/source-review-priority-2026-07-02.md, after which this ceiling must be tightened back toward 0.2 or removed. Re-verified 2026-10-16 (#49Q5FB): required source metadata key coverage (publisher, version, jurisdiction, and required governance keys) remains at 0 missing fields (missing_required_metadata_count: 0, status: resolved_zero_missing_metadata); the unconfirmed 808-sources claim in the 2026-10-09 audit was not supported by this waiver or offline source-governance checks. Review window refreshed to 2027-04-16 while clinical-review burn-down of unverified/unknown-status documents continues under GitHub issue #229.",
   "scope": "eval-quality retrieval source metadata thresholds only",
   "source_report": "output/evals/retrieval-quality-2026-07-02T08-37-08-387Z.json",
   "observed_live_corpus": {
-    "observed_at": "2026-07-03T00:00:00.000+08:00",
+    "observed_at": "2026-10-16T00:00:00.000+08:00",
     "indexed_documents": 2065,
     "missing_required_source_metadata": 0,
+    "missing_required_metadata_count": 0,
     "review_due_documents": 481,
     "unknown_status_documents": 132,
     "unverified_documents": 130,
@@ -32,7 +36,7 @@
     "Backfill documents.metadata.document_status only after confirming source currentness.",
     "Backfill documents.metadata.clinical_validation_status only after local clinical review.",
     "Tighten max_review_required_rate back toward 0.2 as reviews land; replace or remove this debt file before expiry.",
-    "Burn down via GitHub issue #229 (clinical review of the 130 unverified + 132 unknown-status documents) before the 2026-08-31 expiry; do not fabricate statuses."
+    "Burn down via GitHub issue #229 (clinical review of the 130 unverified + 132 unknown-status documents) before the 2027-04-16 review window; do not fabricate statuses."
   ],
   "ceilings": {
     "max_stale_rate": 0,

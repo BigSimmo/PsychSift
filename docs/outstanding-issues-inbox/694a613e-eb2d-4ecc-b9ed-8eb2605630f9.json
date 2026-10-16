@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "694a613e-eb2d-4ecc-b9ed-8eb2605630f9",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#HN9RD0",
+    "outcome": "Replaced visibleByText with expectSingleSettledOwner in tests/ui-specifiers.spec.ts and verified single Top match badge ownership.",
+    "targetUlid": "01M4T67N59HN9RD00VG8KRWJ3S"
+  }
+}

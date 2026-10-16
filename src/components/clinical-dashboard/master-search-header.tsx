@@ -12,7 +12,6 @@ import {
   useSyncExternalStore,
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -20,10 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import {
   Check,
-  CircleCheck,
   ChevronDown,
-  FileText,
-  Filter,
   Loader2,
   Layers3,
   Menu,
@@ -39,14 +35,10 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { DocumentTagCloud } from "@/components/DocumentTagCloud";
 import { PrivacyInputNotice } from "@/components/privacy-input-notice";
 import {
   splitFilterText,
-  filterText,
   labelScopeFilterFields,
-  documentScopeTitle,
-  documentScopeMeta,
   type TextScopeFilterKey,
 } from "@/components/clinical-dashboard/master-search-scope-helpers";
 import { restoreFocusUnlessMoved, useDismissableLayer } from "@/components/use-dismissable-layer";
@@ -66,20 +58,17 @@ import {
   type ModeActionPlacement,
   type ModeActionSetId,
 } from "@/components/clinical-dashboard/mode-action-popup";
+import { executeMasterSearchHeaderModeAction } from "@/components/clinical-dashboard/master-search-header-actions";
+import { MasterSearchHeaderScopePicker } from "@/components/clinical-dashboard/master-search-header-scope-picker";
 import {
   cn,
   chatComposerInput,
   chatComposerShellBase,
   chatSendButton,
-  fieldControlPlain,
-  fieldControlWithIcon,
-  floatingControl,
   glassOverlaySurface,
-  shellChip,
   eyebrowText,
 } from "@/components/ui-primitives";
 import { UniversalSearchCommandSurface } from "@/components/clinical-dashboard/universal-search-command-surface";
-import { cleanDisplayTitle } from "@/components/clinical-dashboard/display-text";
 import { Sheet } from "@/components/ui/sheet";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { useHeaderModePill } from "@/components/clinical-dashboard/master-search-header-mode-pill";
@@ -118,7 +107,6 @@ import {
   setModeHomeComposerReservePending,
   syncHydratedComposerReserve,
   universalHeaderTrailingSlotId,
-  type PhoneDockAddonKind,
 } from "@/lib/mode-home-composer";
 import { modeSectionIcon } from "@/components/mode-nav/mode-nav-icons";
 import {
@@ -155,8 +143,7 @@ import {
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import type { CommandSurfacePlacement } from "@/lib/search-command-surface";
 import { useCommandDropdownDisplayableByPlacement } from "@/components/clinical-dashboard/use-command-dropdown-displayable";
-import type { ClinicalDocument, ClinicalQueryMode } from "@/lib/types";
-import { type SearchScopeFilters } from "@/lib/search-scope";
+import type { ClinicalQueryMode } from "@/lib/types";
 import { standaloneModeHomeHref } from "@/lib/search-route-ownership";
 import { confirmShellNavigation } from "@/lib/navigation-guards";
 
@@ -168,150 +155,22 @@ const ClinicalHeaderBell = dynamic(() =>
   import("@/components/needs-you/needs-you-button").then((m) => m.NeedsYouButton),
 );
 
-// Shared between the composer input's aria-describedby and the rendered
-// PrivacyInputNotice id/testId so the wiring cannot drift apart.
-const composerPrivacyWarningId = "answer-composer-privacy-warning";
-
-const phoneSearchLayoutMediaQuery = "(max-width: 639px)";
-const scopeSheetMediaQuery = "(max-width: 1023px)";
-const desktopPageComposerMediaQuery = "(min-width: 640px)";
-const modeHomeComposerMediaQuery = "(min-width: 0px)";
-const modeHomeComposerSmUpMediaQuery = "(min-width: 640px)";
-
-export type MasterSearchHeaderScrollConfig = {
-  strategy: "overlay" | "collapse";
-  /**
-   * Phone-only motion for collapse-strategy hosts. "collapse" releases the
-   * row's layout height; "overlay" keeps the complete phone stack stable and
-   * translates it over page content. Defaults to "collapse".
-   */
-  phoneMotion?: "collapse" | "overlay";
-  /**
-   * Overlay-only: apply the hide/reveal (and the out-of-flow absolute header)
-   * at every breakpoint instead of phones only. The host must reserve
-   * matching top padding on its scroll container.
-   */
-  allBreakpoints?: boolean;
-  /**
-   * Collapse-only: how the chrome hides above the phone breakpoint. Omitting
-   * it keeps the hide/reveal phone-only.
-   */
-  wide?: "collapse" | "sticky";
-  /** Parent-owned hidden state for hosts that report scroll via React `onScroll`. */
-  scrollHidden?: boolean;
-};
-
-export type MasterSearchHeaderState = {
-  demoMode: boolean;
-  documents: ClinicalDocument[];
-  documentTotal?: number;
-  query: string;
-  searchMode: AppModeId;
-  loading: boolean;
-  selectedDocumentIds: string[];
-  queryMode: ClinicalQueryMode;
-  scopeFilters: SearchScopeFilters;
-  realDataReady: boolean;
-  queryModeOptions: Array<{ value: ClinicalQueryMode; label: string }>;
-  queryInputRef?: RefObject<HTMLInputElement | null>;
-  queryInputAutoFocus?: boolean;
-  /** Overrides the mode's default input placeholder (e.g. "Ask a follow-up..." mid-thread). */
-  composerPlaceholder?: string;
-  recentQueries?: string[];
-  composerFollowUpSuggestions?: string[];
-  composerFollowUpSuggestionsDisabled?: boolean;
-  canAccessFavourites?: boolean;
-  canManageDocuments?: boolean;
-};
-
-export type MasterSearchHeaderActions = {
-  onQueryChange: (query: string) => void;
-  onSearchModeChange: (mode: AppModeId) => void;
-  onAsk: (query?: string) => void;
-  onClearQuery: () => void;
-  onClearScope: () => void;
-  onQueryModeChange: (mode: ClinicalQueryMode) => void;
-  onScopeFiltersChange: (filters: SearchScopeFilters) => void;
-  onToggleScope: (documentId: string) => void;
-  onScopeOpenChange?: (open: boolean) => void;
-  onOpenEvidence?: () => void;
-  onOpenRecentDocuments?: () => void;
-  onOpenLibrary?: () => void;
-  /** Opens the administrator document/indexing surface. Paired with `canManageDocuments`. */
-  onOpenDocumentAdmin?: () => void;
-  /** Gates the administrator-only rows in the mode action list. Defaults to hidden. */
-  canManageDocuments?: boolean;
-  onOpenSourcePdf?: () => void;
-  onNewChat?: () => void;
-  onOpenMobileSidebar?: () => void;
-  onPickRecent?: (query: string) => void;
-  onCrossModeSearch?: (modeId: AppModeId, query: string) => void;
-  onPickComposerFollowUpSuggestion?: (suggestion: string) => void;
-  /** Invoked when the user tries to open Favourites without access. */
-  onRequestAccountSetup?: () => void;
-  /** Notify hosts when the phone bottom composer is actually hidden (not merely scrolled). */
-  onBottomComposerHiddenChange?: (hidden: boolean) => void;
-};
-
-export type MasterSearchHeaderMobileControls = {
-  /** Keep the product identity stable while `/` retargets between modes. */
-  sharedHomeIdentity?: boolean;
-  mobileSearchPlacement?: "default" | "bottom";
-  /** "compact" drops the phone footer chip row and hugs the bottom edge so
-   *  content keeps maximum screen space. Every phone dock uses it now; the
-   *  "default" value remains for hosts that need the taller legacy dock. */
-  mobileBottomSearchVariant?: "default" | "compact";
-  /** Which placement the home hero vs footer uses on phones. Tools uses "footer"
-   *  so its search pill sits in the bottom dock like a submitted search while
-   *  retaining the home privacy notice. */
-  mobileHomeComposerPlacement?: "hero" | "footer";
-  /** Show the compact phone suggestion ticker only for standalone-mode homes. */
-  showPhoneSuggestionTickerOnHome?: boolean;
-  desktopSearchPlacement?: "default" | "hero";
-  searchComposerVisible?: boolean;
-  /** Mode-home slot the composer portals into so the search pill sits in the
-   *  middle of the hero instead of docking to the bottom edge. Which widths the
-   *  hero owns is controlled by `heroComposerBreakpoint`. */
-  desktopHomeComposerSlotId?: string;
-  /** Normal-flow page slot used by submitted/search views from tablet widths up.
-   * Phones keep the bottom dock. */
-  desktopPageComposerSlotId?: string;
-  /** Widths where the mode-home hero slot hosts the composer. "all" keeps the
-   *  hero pill on phones too (the answer home); "sm-up" reserves the hero for
-   *  sm+ widths and hands phones the compact bottom dock instead. */
-  heroComposerBreakpoint?: "all" | "sm-up";
-  /** Mobile/tablet slot rendered above the search pill for page-specific composer addons. */
-  mobileBottomSearchAddonSlotId?: string;
-  /** Which page-owned action occupies the dock addon slot. One at a time. */
-  mobileBottomSearchAddonKind?: PhoneDockAddonKind;
-  /** Phone-only hide-on-scroll for the universal header and bottom search dock. */
-  hideOnScroll?: MasterSearchHeaderScrollConfig;
-  /** Keep the phone new-chat action, but hide its desktop copy when a visible sidebar already owns the action. */
-  showDesktopNewChat?: boolean;
-  /** Notify hosts when the phone bottom composer is actually hidden (not merely scrolled). */
-  onBottomComposerHiddenChange?: (hidden: boolean) => void;
-};
-
-export type MasterSearchHeaderProps = (
-  | {
-      searchState: MasterSearchHeaderState;
-      headerActions: MasterSearchHeaderActions;
-      mobileControls?: MasterSearchHeaderMobileControls;
-    }
-  | (MasterSearchHeaderState & MasterSearchHeaderActions & MasterSearchHeaderMobileControls)
-) &
-  Partial<MasterSearchHeaderState & MasterSearchHeaderActions & MasterSearchHeaderMobileControls> & {
-    searchState?: Partial<MasterSearchHeaderState>;
-    headerActions?: Partial<MasterSearchHeaderActions>;
-    mobileControls?: Partial<MasterSearchHeaderMobileControls>;
-  };
-
-const DEFAULT_DOCUMENTS: ClinicalDocument[] = [],
-  DEFAULT_SELECTED_DOCUMENT_IDS: string[] = [];
-const DEFAULT_QUERY_MODE_OPTIONS: Array<{ value: ClinicalQueryMode; label: string }> = [],
-  DEFAULT_RECENT_QUERIES: string[] = [];
-const DEFAULT_SCOPE_FILTERS: SearchScopeFilters = {},
-  NOOP_HANDLER = () => {};
+export * from "./master-search-header-types";
+import {
+  composerPrivacyWarningId,
+  phoneSearchLayoutMediaQuery,
+  scopeSheetMediaQuery,
+  desktopPageComposerMediaQuery,
+  modeHomeComposerMediaQuery,
+  modeHomeComposerSmUpMediaQuery,
+  type MasterSearchHeaderProps,
+  DEFAULT_DOCUMENTS,
+  DEFAULT_SELECTED_DOCUMENT_IDS,
+  DEFAULT_QUERY_MODE_OPTIONS,
+  DEFAULT_RECENT_QUERIES,
+  DEFAULT_SCOPE_FILTERS,
+  NOOP_HANDLER,
+} from "./master-search-header-types";
 
 export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const { searchState, headerActions, mobileControls } = props;
@@ -750,218 +609,24 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   }
 
   function runModeAction(actionId: ModeActionId) {
-    if (actionId === "medication-dose") {
-      const medicationQuery = trimmedQuery || "acamprosate renal dose";
-      onQueryModeChange("dose_threshold_lookup");
-      onQueryChange(medicationQuery);
-      return;
-    }
-    if (actionId === "medication-safety") {
-      onQueryModeChange("contraindications_cautions");
-      onQueryChange(trimmedQuery || "acamprosate contraindications");
-      return;
-    }
-    if (actionId === "medication-monitoring") {
-      onQueryModeChange("monitoring_schedule");
-      onQueryChange(trimmedQuery || "acamprosate monitoring");
-      return;
-    }
-    if (actionId === "medication-access") {
-      onQueryModeChange("required_documentation");
-      onQueryChange(trimmedQuery || "acamprosate PBS access");
-      return;
-    }
-    if (actionId === "medication-escalation") {
-      onQueryModeChange("escalation_criteria");
-      onQueryChange(trimmedQuery || "acamprosate escalation criteria");
-      return;
-    }
-
-    if (actionId === "documents-search") {
-      onSearchModeChange("documents");
-      return;
-    }
-    if (actionId === "documents-scope") {
-      openScopePicker();
-      return;
-    }
-    if (actionId === "answer-quotes" || actionId === "answer-evidence-map") {
-      onOpenEvidence?.();
-      return;
-    }
-    if (actionId === "documents-tables") {
-      onSearchModeChange("documents");
-      onQueryChange(trimmedQuery || "table evidence");
-      return;
-    }
-    if (actionId === "documents-recent") {
-      onSearchModeChange("documents");
-      onOpenRecentDocuments?.();
-      return;
-    }
-    if (actionId === "documents-admin") {
-      onSearchModeChange("documents");
-      onOpenDocumentAdmin?.();
-      return;
-    }
-    if (actionId === "documents-status" || actionId === "documents-collections") {
-      onSearchModeChange("documents");
-      onOpenLibrary?.();
-      return;
-    }
-    if (actionId === "documents-viewer") {
-      onSearchModeChange("documents");
-      onOpenSourcePdf?.();
-      return;
-    }
-    if (actionId === "factsheets-search") {
-      onSearchModeChange("factsheets");
-      return;
-    }
-    if (actionId === "factsheets-browse") {
-      pushIfLeaveConfirmed(factsheetsTopicsHref);
-      return;
-    }
-    if (actionId === "dictionary-search") {
-      pushIfLeaveConfirmed(`/dictionary/search${trimmedQuery ? `?q=${encodeURIComponent(trimmedQuery)}` : ""}`);
-      return;
-    }
-    if (actionId === "dictionary-topics") {
-      pushIfLeaveConfirmed("/dictionary/topics");
-      return;
-    }
-    if (actionId === "dictionary-compare") {
-      pushIfLeaveConfirmed("/dictionary/compare");
-      return;
-    }
-    if (actionId === "dictionary-sources") {
-      pushIfLeaveConfirmed("/dictionary/sources");
-      return;
-    }
-    if (actionId === "services-search") {
-      onSearchModeChange("services");
-      return;
-    }
-    if (actionId === "services-pathways") {
-      onSearchModeChange("services");
-      onQueryChange(trimmedQuery || "crisis support referral pathway");
-      return;
-    }
-    if (actionId === "services-records") {
-      onSearchModeChange("services");
-      onQueryChange("");
-      return;
-    }
-    if (actionId === "services-documents") {
-      onSearchModeChange("documents");
-      onQueryChange(trimmedQuery || "service referral guidance");
-      return;
-    }
-    if (actionId === "forms-records") {
-      onSearchModeChange("forms");
-      onQueryChange("");
-      return;
-    }
-    if (actionId === "forms-documents") {
-      onSearchModeChange("documents");
-      onQueryChange(trimmedQuery || "clinical form guidance");
-      return;
-    }
-    if (actionId === "favourites-browse") {
-      if (!canAccessFavourites) {
-        onRequestAccountSetup?.();
-        return;
-      }
-      onSearchModeChange("favourites");
-      onQueryChange("");
-      return;
-    }
-    if (actionId === "favourites-sets") {
-      if (!canAccessFavourites) {
-        onRequestAccountSetup?.();
-        return;
-      }
-      onSearchModeChange("favourites");
-      onQueryChange("set");
-      return;
-    }
-    if (actionId === "answer-new" || actionId === "tools-new") {
-      onNewChat?.();
-      return;
-    }
-    if (actionId === "tools-browse") {
-      onSearchModeChange("tools");
-      return;
-    }
-    if (actionId === "calculators-browse") {
-      pushIfLeaveConfirmed("/calculators");
-      return;
-    }
-    if (actionId === "differentials-build") {
-      onSearchModeChange("differentials");
-      onQueryChange(trimmedQuery || "acute confusion differential diagnosis");
-      return;
-    }
-    if (actionId === "differentials-criteria") {
-      onSearchModeChange("differentials");
-      onQueryModeChange("compare_guidance");
-      onQueryChange(trimmedQuery || "delirium vs dementia differential diagnosis");
-      return;
-    }
-    if (actionId === "differentials-documents") {
-      onSearchModeChange("documents");
-      onQueryChange(trimmedQuery || "differential diagnosis");
-      return;
-    }
-    if (actionId === "differentials-evidence") {
-      onOpenEvidence?.();
-      return;
-    }
-    if (actionId === "dsm-search") {
-      onSearchModeChange("dsm");
-      return;
-    }
-    if (actionId === "dsm-compare") {
-      pushIfLeaveConfirmed("/dsm/compare");
-      return;
-    }
-    if (actionId === "dsm-criteria") {
-      onSearchModeChange("dsm");
-      onQueryChange(trimmedQuery || "major depressive disorder");
-      return;
-    }
-    if (actionId === "specifiers-search") {
-      onSearchModeChange("specifiers");
-      return;
-    }
-    if (actionId === "specifiers-builder") {
-      pushIfLeaveConfirmed("/specifiers/builder");
-      return;
-    }
-    if (actionId === "specifiers-compare") {
-      pushIfLeaveConfirmed("/specifiers/compare");
-      return;
-    }
-    if (actionId === "specifiers-map") {
-      pushIfLeaveConfirmed("/specifiers/map");
-      return;
-    }
-    if (actionId === "formulation-search") {
-      onSearchModeChange("formulation");
-      return;
-    }
-    if (actionId === "formulation-builder") {
-      pushIfLeaveConfirmed("/formulation/builder");
-      return;
-    }
-    if (actionId === "formulation-compare") {
-      pushIfLeaveConfirmed("/formulation/compare");
-      return;
-    }
-    if (actionId === "formulation-map") {
-      pushIfLeaveConfirmed("/formulation/map");
-      return;
-    }
+    executeMasterSearchHeaderModeAction({
+      actionId,
+      trimmedQuery,
+      onQueryModeChange,
+      onQueryChange,
+      onSearchModeChange,
+      openScopePicker,
+      onOpenEvidence,
+      onOpenRecentDocuments,
+      onOpenDocumentAdmin,
+      onOpenLibrary,
+      onOpenSourcePdf,
+      pushIfLeaveConfirmed,
+      factsheetsTopicsHref,
+      canAccessFavourites: Boolean(canAccessFavourites),
+      onRequestAccountSetup,
+      onNewChat,
+    });
   }
 
   function selectAppMode(mode: (typeof appModeDefinitions)[number]) {
@@ -1774,304 +1439,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
     onScopeFiltersChange({ ...scopeFilters, [key]: splitFilterText(value) });
   }
 
-  function renderLabelScopeFilterGrid(compact = false) {
-    return (
-      <div className={cn("grid gap-2", compact ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")}>
-        {labelScopeFilterFields.map((field) => (
-          <label key={field.key} className="grid min-w-0 gap-1">
-            <span className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-              {field.label}
-            </span>
-            <input
-              value={filterText(scopeFilters[field.key])}
-              onChange={(event) => updateTextScopeFilter(field.key, event.target.value)}
-              placeholder={field.placeholder}
-              className={cn(
-                fieldControlPlain,
-                "min-w-0 text-xs font-semibold border-[color:var(--border-lux)] bg-[color:var(--surface-lux)]",
-              )}
-            />
-          </label>
-        ))}
-      </div>
-    );
-  }
-
-  function renderDocumentScopeSection() {
-    return (
-      <section className="min-w-0 rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] p-3 shadow-[var(--e2)]">
-        <div className="mb-3 grid min-h-[4.25rem] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[color:var(--clinical-accent-border)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--clinical-accent-soft)_72%,var(--surface-lux)_28%)_0%,var(--surface-lux)_72%)] p-3 shadow-[var(--shadow-inset)]">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]">
-            <FileText className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-extrabold text-[color:var(--text-heading)]">{scopeSummary}</p>
-            <p className="mt-0.5 line-clamp-2 text-xs font-medium leading-5 text-[color:var(--text-muted)]">
-              {selectedDocumentIds.length
-                ? "Only selected documents will be used for the next search."
-                : "Search all indexed documents unless you pin specific sources."}
-            </p>
-          </div>
-          <span className="nums shrink-0 rounded-md border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2.5 py-1 text-2xs font-extrabold text-[color:var(--clinical-accent)]">
-            {selectedDocumentIds.length ? `${selectedDocumentIds.length} picked` : loadedScopeSummary}
-          </span>
-        </div>
-        <div className="grid gap-2.5">
-          <label className="relative block">
-            <Search
-              aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--decoration-soft)]"
-            />
-            <input
-              ref={scopeFilterInputRef}
-              value={scopeFilter}
-              onChange={(event) => setScopeFilter(event.target.value)}
-              data-testid="document-scope-filter"
-              aria-label="Filter document scope"
-              placeholder="Filter documents by title or file"
-              className={cn(
-                fieldControlWithIcon,
-                "font-semibold border-[color:var(--border-lux)] bg-[color:var(--surface-lux)]",
-              )}
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={onClearScope}
-              className={cn(
-                shellChip,
-                selectedDocumentIds.length === 0
-                  ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-                  : "border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-subtle)]",
-              )}
-            >
-              All documents
-            </button>
-            {scopeFilter ? (
-              <span className="nums rounded-md border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] px-2 py-1 text-2xs font-semibold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)]">
-                {matchingDocuments.length} match{matchingDocuments.length === 1 ? "" : "es"}
-              </span>
-            ) : (
-              <span className="rounded-md border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] px-2 py-1 text-2xs font-semibold text-[color:var(--text-muted)] shadow-[var(--shadow-inset)]">
-                Recently updated first
-              </span>
-            )}
-          </div>
-          <div className="max-h-72 overflow-y-auto pr-1 polished-scroll">
-            <div className="grid gap-1.5">
-              {requireScopeFilter && visibleScopeDocuments.length === 0 ? (
-                <p className="rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] px-3 py-2 text-sm font-medium text-[color:var(--text-muted)] shadow-[var(--shadow-inset)]">
-                  Type to filter {documents.length.toLocaleString()} loaded documents. Selected documents stay pinned
-                  here.
-                </p>
-              ) : null}
-              {visibleScopeDocuments.map((document) => {
-                const selected = selectedDocumentIds.includes(document.id);
-                return (
-                  <button
-                    key={document.id}
-                    type="button"
-                    onClick={() => onToggleScope(document.id)}
-                    title={cleanDisplayTitle(document.title)}
-                    className={cn(
-                      "grid min-h-tap w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition motion-safe:duration-[var(--duration-quick)]",
-                      selected
-                        ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-                        : "border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] text-[color:var(--text)] hover:border-[color:var(--clinical-accent-border)] hover:bg-[color:var(--surface-subtle)]",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "grid h-5 w-5 place-items-center rounded-md border",
-                        selected
-                          ? "border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)]"
-                          : "border-[color:var(--border-strong)] bg-[color:var(--surface-subtle)]",
-                      )}
-                      aria-hidden
-                    >
-                      {selected ? <CircleCheck aria-hidden="true" className="h-3.5 w-3.5" /> : null}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold">{documentScopeTitle(document)}</span>
-                      <span className="nums block truncate text-2xs font-medium text-[color:var(--text-muted)]">
-                        {documentScopeMeta(document)}
-                      </span>
-                      <DocumentTagCloud
-                        labels={document.labels}
-                        query={scopeFilter}
-                        limit={2}
-                        compact
-                        expandable={false}
-                        className="mt-1"
-                      />
-                    </span>
-                    {selected ? (
-                      <span className="rounded-md bg-[color:var(--clinical-accent-soft)] px-2 py-1 text-2xs font-bold text-[color:var(--clinical-accent)]">
-                        In scope
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-              {!requireScopeFilter && visibleScopeDocuments.length === 0 && documents.length > 0 ? (
-                <p className="rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] px-3 py-2 text-sm font-medium text-[color:var(--text-muted)] shadow-[var(--shadow-inset)]">
-                  No documents match that filter. Clear the filter or search by file name.
-                </p>
-              ) : null}
-            </div>
-          </div>
-          {hiddenScopeMatchCount > 0 ? (
-            <p className="nums px-1 text-xs font-medium text-[color:var(--text-muted)]">
-              {requireScopeFilter
-                ? `${loadedScopeSummary} documents. Type a title or file name to narrow the loaded list.`
-                : `Showing ${visibleScopeDocuments.length} of ${matchingDocuments.length}. Keep typing to narrow the list.`}
-            </p>
-          ) : null}
-        </div>
-      </section>
-    );
-  }
-
-  function renderScopeRows() {
-    return (
-      <div className="grid gap-3">
-        {renderDocumentScopeSection()}
-        <details className="group min-w-0 rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-lux)] shadow-[var(--e2)] sm:hidden">
-          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-semibold text-[color:var(--text-heading)]">
-            <span>Refine search</span>
-            <span className="flex items-center gap-2">
-              <span className="nums rounded-full border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] px-2 py-1 text-2xs font-bold text-[color:var(--clinical-accent)]">
-                {activeQuickFilterCount ? `${activeQuickFilterCount} active` : "Optional"}
-              </span>
-              <ChevronDown
-                aria-hidden="true"
-                className="h-3.5 w-3.5 text-[color:var(--clinical-accent)] transition group-open:rotate-180"
-              />
-            </span>
-          </summary>
-          <div className="grid gap-2.5 border-t border-[color:var(--border-lux)] p-3">
-            <label className="grid gap-1">
-              <span className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                Search intent
-              </span>
-              <select
-                value={queryMode}
-                onChange={(event) => onQueryModeChange(event.target.value as ClinicalQueryMode)}
-                aria-label="Clinical query mode"
-                className={cn(
-                  fieldControlPlain,
-                  "text-sm font-semibold border-[color:var(--border-lux)] bg-[color:var(--surface-lux)]",
-                )}
-              >
-                {queryModeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="grid gap-1">
-                <span className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                  Status
-                </span>
-                <select
-                  value={scopeFilters.sourceStatuses?.[0] ?? ""}
-                  aria-label="Source status filter"
-                  onChange={(event) =>
-                    onScopeFiltersChange({
-                      ...scopeFilters,
-                      sourceStatuses: event.target.value
-                        ? [event.target.value as NonNullable<SearchScopeFilters["sourceStatuses"]>[number]]
-                        : [],
-                    })
-                  }
-                  className={cn(
-                    fieldControlPlain,
-                    "min-w-0 text-sm font-semibold border-[color:var(--border-lux)] bg-[color:var(--surface-lux)]",
-                  )}
-                >
-                  <option value="">Any status</option>
-                  <option value="current">Current</option>
-                  <option value="review_due">Review due</option>
-                  <option value="outdated">Outdated</option>
-                  <option value="unknown">Unknown</option>
-                </select>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-2xs font-bold uppercase tracking-eyebrow text-[color:var(--text-muted)]">
-                  Locality
-                </span>
-                <select
-                  value={scopeFilters.locality ?? ""}
-                  aria-label="Locality filter"
-                  onChange={(event) =>
-                    onScopeFiltersChange({
-                      ...scopeFilters,
-                      locality: event.target.value ? (event.target.value as SearchScopeFilters["locality"]) : undefined,
-                    })
-                  }
-                  className={cn(
-                    fieldControlPlain,
-                    "min-w-0 text-sm font-semibold border-[color:var(--border-lux)] bg-[color:var(--surface-lux)]",
-                  )}
-                >
-                  <option value="">Any locality</option>
-                  <option value="local">Local only</option>
-                  <option value="non_local">Non-local only</option>
-                </select>
-              </label>
-            </div>
-            <details className="group rounded-lg border border-[color:var(--border-lux)] bg-[color:var(--surface-subtle)]">
-              <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 px-3 text-sm font-semibold text-[color:var(--text-heading)]">
-                <span>Advanced labels</span>
-                <span className="flex items-center gap-2 text-2xs font-bold text-[color:var(--text-muted)]">
-                  {activeLabelFilterCount ? `${activeLabelFilterCount} active` : "Medication, site, risk"}
-                  <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" aria-hidden="true" />
-                </span>
-              </summary>
-              <div className="grid gap-2 border-t border-[color:var(--border-lux)] p-2.5">
-                {renderLabelScopeFilterGrid(true)}
-              </div>
-            </details>
-            {activeQuickFilterCount ? (
-              <button
-                type="button"
-                onClick={() => onScopeFiltersChange({})}
-                className={cn(floatingControl, "px-3 text-xs lg:min-h-compact-meta")}
-              >
-                Clear refine filters
-              </button>
-            ) : null}
-          </div>
-        </details>
-        <details className="group hidden min-w-0 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-2.5 sm:block">
-          <summary className="flex min-h-tap cursor-pointer list-none items-center justify-between gap-3 px-0.5 lg:min-h-compact-meta">
-            <span className={eyebrowText}>Label filters</span>
-            <span className="flex items-center gap-2 text-2xs font-semibold text-[color:var(--text-muted)]">
-              {activeLabelFilterCount ? `${activeLabelFilterCount} active` : "Medication, site, action, intent"}
-              <ChevronDown
-                aria-hidden="true"
-                className="h-3.5 w-3.5 text-[color:var(--decoration-soft)] transition group-open:rotate-180"
-              />
-            </span>
-          </summary>
-          <div className="mt-2 grid gap-2 border-t border-[color:var(--border)] pt-2">
-            {renderLabelScopeFilterGrid(false)}
-            <button
-              type="button"
-              onClick={() => onScopeFiltersChange({})}
-              className={cn(floatingControl, "w-fit px-3 text-xs lg:min-h-compact-meta")}
-            >
-              Clear refine filters
-            </button>
-          </div>
-        </details>
-      </div>
-    );
-  }
-
   const hideStrategy = hideOnScroll?.strategy;
   const phoneMotion = hideOnScroll?.phoneMotion ?? "collapse";
   const phoneOverlayMotion = hideStrategy === "collapse" && phoneMotion === "overlay";
@@ -2463,60 +1830,38 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
             {phiWarningText}
           </p>
         ) : null}
-        {/* Scope popover is a form sibling so the "+" menu's "Set scope" action can
-            open it even when the footer chip row is not shown. */}
-        {hasScopeFooterChip && !usesScopeSheet && scopeOpen ? (
-          <div
-            ref={scopePopoverRef}
-            data-testid="scope-command-popover"
-            className="polished-scroll absolute bottom-[calc(100%+0.75rem)] right-2 z-[95] max-h-[min(70dvh,28rem)] w-[min(28rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-xl border border-[color:var(--border-lux)] bg-[color:var(--surface-raised)] p-2.5 pb-2.5 text-[color:var(--text)] shadow-[var(--shadow-elevated)] backdrop-blur-xl motion-safe:animate-pop-in"
-          >
-            {scopePreview ? (
-              <p className="truncate px-1 text-xs text-[color:var(--text-muted)]">{scopePreview}</p>
-            ) : null}
-            {renderScopeRows()}
-          </div>
-        ) : null}
-        <Sheet
-          open={usesScopeSheet && scopeSheetOpen}
-          onClose={closeScopeSheet}
-          title="Document scope"
-          description="Choose documents and filters for the next search."
-          closeLabel="Close document scope"
-          initialFocusRef={scopeFilterInputRef}
-          returnFocusRef={actionMenuTriggerRef}
-          headerLeading={
-            <span className="grid h-10 w-10 place-items-center rounded-xl border border-[color:var(--clinical-accent-border)] bg-[color:var(--clinical-accent-soft)] text-[color:var(--clinical-accent)] shadow-[var(--shadow-inset)]">
-              <Filter className="h-5 w-5" aria-hidden="true" />
-            </span>
-          }
-          headerClassName="bg-[color:var(--surface-lux)] px-4 py-3 sm:px-5 sm:py-4"
-          closeButtonClassName="grid h-tap w-tap shrink-0 place-items-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-muted)] shadow-[var(--shadow-inset)] transition hover:border-[color:var(--border-strong)] hover:bg-[color:var(--surface-subtle)] hover:text-[color:var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--focus)]"
-          contentClassName={cn(
-            "bg-[color:var(--surface-lux)]",
-            scopeSheetFullscreen ? "max-h-dvh" : "max-h-[min(84dvh,42rem)]",
-            "sm:max-h-[min(88dvh,44rem)] sm:max-w-xl",
-          )}
-          bodyClassName={cn(
-            "p-3 sm:p-4",
-            scopeSheetFullscreen ? "bg-[color:var(--background)]" : "bg-[color:var(--surface-subtle)]",
-          )}
-          mobilePlacement={scopeSheetFullscreen ? "fullscreen" : "bottom"}
-          portal={scopeSheetFullscreen}
-        >
-          <div
-            data-testid={usesScopeSheet ? "scope-command-popover" : undefined}
-            className={cn(
-              "grid gap-3",
-              usesScopeSheet && "polished-scroll max-h-[min(70dvh,28rem)] overflow-y-auto overscroll-contain pr-1",
-            )}
-          >
-            {scopePreview ? (
-              <p className="truncate px-1 text-xs text-[color:var(--text-muted)]">{scopePreview}</p>
-            ) : null}
-            {renderScopeRows()}
-          </div>
-        </Sheet>
+        <MasterSearchHeaderScopePicker
+          usesScopeSheet={usesScopeSheet}
+          scopeOpen={scopeOpen}
+          scopeSheetOpen={scopeSheetOpen}
+          scopeSheetFullscreen={scopeSheetFullscreen}
+          closeScopeSheet={closeScopeSheet}
+          scopePopoverRef={scopePopoverRef}
+          scopeFilterInputRef={scopeFilterInputRef}
+          actionMenuTriggerRef={actionMenuTriggerRef}
+          hasScopeFooterChip={hasScopeFooterChip}
+          scopePreview={scopePreview}
+          scopeSummary={scopeSummary}
+          loadedScopeSummary={loadedScopeSummary}
+          selectedDocumentIds={selectedDocumentIds}
+          documents={documents}
+          matchingDocuments={matchingDocuments}
+          visibleScopeDocuments={visibleScopeDocuments}
+          requireScopeFilter={requireScopeFilter}
+          hiddenScopeMatchCount={hiddenScopeMatchCount}
+          scopeFilter={scopeFilter}
+          setScopeFilter={setScopeFilter}
+          onClearScope={onClearScope}
+          onToggleScope={onToggleScope}
+          scopeFilters={scopeFilters}
+          onScopeFiltersChange={onScopeFiltersChange}
+          queryMode={queryMode}
+          onQueryModeChange={(mode) => onQueryModeChange(mode as ClinicalQueryMode)}
+          queryModeOptions={queryModeOptions}
+          activeQuickFilterCount={activeQuickFilterCount}
+          activeLabelFilterCount={activeLabelFilterCount}
+          updateTextScopeFilter={updateTextScopeFilter}
+        />
       </form>
     );
   }

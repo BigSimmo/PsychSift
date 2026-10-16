@@ -6,6 +6,7 @@
   "owns": "Getting a change safely from branch to live: CI, git hooks, gates, budgets, containers, deploy config and test tooling.",
   "canonicalDocs": ["docs/agents/verification-gates.md", "docs/testing.md", "docs/deployment-architecture.md"],
   "paths": [
+    ".coderabbit.yaml",
     ".docker/buildx.toml",
     ".dockerignore",
     ".editorconfig",
