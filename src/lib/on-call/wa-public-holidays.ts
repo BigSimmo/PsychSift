@@ -168,10 +168,24 @@ export function waPublicHolidaysByRule(year: number): string[] {
   return [...days].sort();
 }
 
+const HISTORICAL_PUBLIC_HOLIDAYS = new Set([
+  // Published WA dates for 2021 (Easter Sunday was not a public holiday).
+  "2021-01-01", "2021-01-26", "2021-03-01", "2021-04-02", "2021-04-05",
+  "2021-04-25", "2021-04-26", "2021-06-07", "2021-09-27", "2021-12-25",
+  "2021-12-26", "2021-12-27", "2021-12-28",
+  // Published WA dates for 2022, including the National Day of Mourning.
+  "2022-01-01", "2022-01-03", "2022-01-26", "2022-03-07", "2022-04-15",
+  "2022-04-18", "2022-04-25", "2022-06-06", "2022-09-22", "2022-09-26",
+  "2022-12-25", "2022-12-26", "2022-12-27", "2022-12-28",
+]);
 const ruleCache = new Map<number, ReadonlySet<string>>();
 
 function holidaysFor(year: number): ReadonlySet<string> {
   if (year >= 2026 && year <= WA_PUBLIC_HOLIDAYS_LAST_YEAR) return WA_PUBLIC_HOLIDAYS;
+  const historical = new Set([...HISTORICAL_PUBLIC_HOLIDAYS].filter((date) => date.startsWith(`${year}-`)));
+  if (historical.size > 0) return historical;
+  // The rules below are not a substitute for an historical proclamation list.
+  if (year < 2023) return new Set();
   let set = ruleCache.get(year);
   if (!set) {
     set = new Set(waPublicHolidaysByRule(year));
