@@ -555,7 +555,12 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
             organise={data}
             checkInCountsByUserId={checkInCountsByUserId}
             loadingCounts={!isDemo && (attendanceExport.status === "loading" || attendanceExport.status === "idle")}
-            loadError={!isDemo && attendanceExport.status !== "ready" && attendanceExport.status !== "loading" && attendanceExport.status !== "idle"}
+            loadError={
+              !isDemo &&
+              attendanceExport.status !== "ready" &&
+              attendanceExport.status !== "loading" &&
+              attendanceExport.status !== "idle"
+            }
             onRetry={attendanceExport.retry}
             demoMode={isDemo}
             onClose={() => {

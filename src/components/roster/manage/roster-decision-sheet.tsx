@@ -184,11 +184,24 @@ export function RosterDecisionSheet({
       return;
     }
     setReview(null);
+    const hasRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
     const needsRuleAck = Boolean(fresh.rules && (!fresh.rules.checkable || fresh.rules.warnings.length > 0));
+    const acknowledged = approve && needsRuleAck && reviewedFingerprint === fresh.rules?.fingerprint;
     const action = decisionAction(fresh.current, approve, {
-      acknowledgeRuleWarnings: approve && needsRuleAck && reviewedFingerprint === fresh.rules?.fingerprint,
+      acknowledgeRuleWarnings: approve && hasRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint,
     });
-    const result = await postRosterAction(serviceId, action);
+    let result = await postRosterAction(serviceId, action);
+    if (
+      !result.ok &&
+      result.code === "roster_swap_rule_warning" &&
+      acknowledged &&
+      !(action.action === "swap.approve" && action.acknowledgeRuleWarnings)
+    ) {
+      result = await postRosterAction(
+        serviceId,
+        decisionAction(fresh.current, approve, { acknowledgeRuleWarnings: true }),
+      );
+    }
     onChanged();
     if (!result.ok) {
       if (result.code === "roster_swap_rule_warning") {
