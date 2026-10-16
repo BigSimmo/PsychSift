@@ -90,12 +90,14 @@ Type each command below exactly as shown, then press Enter.
 
 ## Signing off forms
 
-6. Start the walk-through. Replace `<your surname>`, angle brackets included, with your
-   surname, so the name reads exactly as you want it shown in the app. Keep the quote marks.
-   The tool refuses the name if the angle brackets are still there.
+6. Start the walk-through. Replace `<your full name>`, angle brackets included, with your
+   given name and surname, so the name reads exactly as you want it shown in the app. Keep the
+   quote marks. The tool refuses the name if the angle brackets are still there, and it refuses
+   a product or role name such as "PsychSift" or a surname on its own: a sign-off must name a
+   person (owner decision, 2026-10-15).
 
    ```bash
-   npm run clinical:review -- --write --walk --kind form --reviewed-by "Dr <your surname>"
+   npm run clinical:review -- --write --walk --kind form --reviewed-by "Dr <your full name>"
    ```
 
    Your name is shown publicly in the app. Do not use your email address, AHPRA number,
@@ -138,7 +140,7 @@ questions mean the same thing, applied to the summary against the Act text. Conf
 by typing its section number (for example `26`).
 
 ```bash
-npm run clinical:review -- --write --walk --kind section --reviewed-by "Dr <your surname>"
+npm run clinical:review -- --write --walk --kind section --reviewed-by "Dr <your full name>"
 ```
 
 ## Signing off Act deadlines
@@ -148,7 +150,7 @@ Timeline. It shows the quoted Act words for each deadline. Confirm each one by t
 code the tool shows for it.
 
 ```bash
-npm run clinical:review -- --write --walk --kind timeframe --reviewed-by "Dr <your surname>"
+npm run clinical:review -- --write --walk --kind timeframe --reviewed-by "Dr <your full name>"
 ```
 
 After you sign off a deadline, tell Claude: the offline page (the one the app shows with no
@@ -195,7 +197,7 @@ shows every authored line exactly as the page does. Confirm each one by typing i
 name, which the tool shows (for example `serotonin-toxicity`).
 
 ```bash
-npm run clinical:review -- --write --walk --kind differential --reviewed-by "Dr <your surname>"
+npm run clinical:review -- --write --walk --kind differential --reviewed-by "Dr <your full name>"
 ```
 
 The three questions mean the same thing here. "The wording matches its source" means each
@@ -209,15 +211,15 @@ rather than define. Guide 8, for example, makes a specific claim about NICE NG22
 suicide risk prediction. Then do the 12 mechanisms, then the 46 concepts.
 
 ```bash
-npm run clinical:review -- --write --walk --kind formulation-guide --reviewed-by "Dr <your surname>"
+npm run clinical:review -- --write --walk --kind formulation-guide --reviewed-by "Dr <your full name>"
 ```
 
 ```bash
-npm run clinical:review -- --write --walk --kind formulation-mechanism --reviewed-by "Dr <your surname>"
+npm run clinical:review -- --write --walk --kind formulation-mechanism --reviewed-by "Dr <your full name>"
 ```
 
 ```bash
-npm run clinical:review -- --write --walk --kind formulation-concept --reviewed-by "Dr <your surname>"
+npm run clinical:review -- --write --walk --kind formulation-concept --reviewed-by "Dr <your full name>"
 ```
 
 Each screen shows every field of the record, including its evidence list. Confirm each one by
@@ -234,12 +236,12 @@ Instead of answering questions 205 times in the terminal, generate a visual HTML
 
 1. Generate the review pack:
    ```bash
-   npm run therapy:review -- --pack --reviewed-by "Dr <your surname>"
+   npm run therapy:review -- --pack --reviewed-by "Dr <your full name>"
    ```
 2. Open `sign-off-packs/therapy.html` in your browser and review the records. Note the sign-off code shown at the top.
 3. Sign the batch in one step:
    ```bash
-   npm run therapy:review -- --write --batch --reviewed-by "Dr <your surname>"
+   npm run therapy:review -- --write --batch --reviewed-by "Dr <your full name>"
    ```
    If any specific record needs revision before sign-off, exclude it by short name: `--exclude <slug1>,<slug2>`.
 
@@ -248,7 +250,7 @@ Instead of answering questions 205 times in the terminal, generate a visual HTML
 The walk-through goes through all 205 in catalogue order. Confirm each one by typing `REVIEW` and its short name, which the tool shows.
 
 ```bash
-npm run therapy:review -- --write --walk --reviewed-by "Dr <your surname>"
+npm run therapy:review -- --write --walk --reviewed-by "Dr <your full name>"
 ```
 
 47 Therapy records list no references yet. The tool leaves them out, because the source correspondence question cannot be answered yes without a source; they stay awaiting review until one is adopted. Type `skip` at any question to move on to the next record without saving the one on screen.
@@ -284,7 +286,7 @@ read a whole set in your browser and sign it in one go.
    project folder:
 
    ```bash
-   npm run clinical:review -- --pack --kind formulation-concept --reviewed-by "PsychSift"
+   npm run clinical:review -- --pack --kind formulation-concept --reviewed-by "Dr <your full name>"
    ```
 
 2. Open the pack in your browser and read every record. At the top it shows a **sign-off
@@ -295,7 +297,7 @@ read a whole set in your browser and sign it in one go.
    with after `--exclude`, separated by commas with no spaces, or leave `--exclude` out:
 
    ```bash
-   npm run clinical:review -- --write --batch --kind formulation-concept --reviewed-by "PsychSift" --exclude hopelessness,guilt
+   npm run clinical:review -- --write --batch --kind formulation-concept --reviewed-by "Dr <your full name>" --exclude hopelessness,guilt
    ```
 
 4. Answer the three questions once. Answer yes only if the statement is true of every
@@ -308,11 +310,11 @@ The same works for `--kind differential`, `formulation-guide`, `formulation-mech
 `form`, `section`, `timeframe`, `specifier` and `dictionary-rewrite`. For Therapy:
 
 ```bash
-npm run therapy:review -- --pack --reviewed-by "PsychSift"
+npm run therapy:review -- --pack --reviewed-by "Dr <your full name>"
 ```
 
 ```bash
-npm run therapy:review -- --write --batch --reviewed-by "PsychSift" --exclude <slugs>
+npm run therapy:review -- --write --batch --reviewed-by "Dr <your full name>" --exclude <slugs>
 ```
 
 ## Saving and sending your sign-offs

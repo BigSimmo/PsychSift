@@ -213,7 +213,10 @@ describe("repository source providers", () => {
         section.rows.filter((row) => section.title === "Sources" || row.key === "Source Review"),
       ),
     );
-    expect(medicationReferences).toHaveLength(medicationSourceRows.length);
+    expect(medicationReferences.filter((reference) => reference.usage.field !== "sourceLinks")).toHaveLength(
+      medicationSourceRows.length,
+    );
+    expect(medicationReferences.filter((reference) => reference.usage.field === "sourceLinks")).toHaveLength(3);
 
     const serviceReferences = provider("services").references();
     const services = loadServicesSnapshot().services;

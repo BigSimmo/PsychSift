@@ -1,43 +1,58 @@
 import { describe, expect, it } from "vitest";
 
-import { formatTallMan, isTallManMedication, ISMP_TALL_MAN_MEDICATIONS } from "@/lib/medications/tall-man";
+import { ACSQHC_MIXED_CASE_MEDICATIONS, formatTallMan, isTallManMedication } from "@/lib/medications/tall-man";
 
-describe("ISMP Tall Man Lettering for Psychotropic Safety (CS-002)", () => {
-  it("formats look-alike / sound-alike psychiatric pairs with standard ISMP Tall Man lettering", () => {
-    expect(formatTallMan("clozapine")).toBe("cloZAPine");
-    expect(formatTallMan("clonidine")).toBe("cloNIDine");
+describe("ACSQHC mixed-case (Tall Man) lettering for psychotropics (CS-002)", () => {
+  it("letters names exactly as the National Mixed-Case Lettering List (April 2024) does", () => {
+    expect(formatTallMan("quetiapine")).toBe("QUETIAPine");
+    expect(formatTallMan("sertraline")).toBe("SERTRALine");
+    expect(formatTallMan("risperidone")).toBe("riSPERIDONe");
+    expect(formatTallMan("carbamazepine")).toBe("CARBAMazepine");
+    expect(formatTallMan("lamotrigine")).toBe("lamOTRIGine");
     expect(formatTallMan("clonazepam")).toBe("CLONazepam");
-    expect(formatTallMan("lorazepam")).toBe("LORazepam");
-    expect(formatTallMan("hydroxyzine")).toBe("hydrOXYzine");
-    expect(formatTallMan("hydralazine")).toBe("hydrALAZINE");
-    expect(formatTallMan("fluoxetine")).toBe("FLUoxetine");
-    expect(formatTallMan("fluvoxamine")).toBe("fluvoxaMINE");
-    expect(formatTallMan("olanzapine")).toBe("OLANZapine");
-    expect(formatTallMan("quetiapine")).toBe("QUEtiapine");
-    expect(formatTallMan("bupropion")).toBe("buPROPion");
-    expect(formatTallMan("buspirone")).toBe("busPIRone");
+    expect(formatTallMan("clobazam")).toBe("cloBAZam");
+    expect(formatTallMan("diazepam")).toBe("DIAzepam");
+    expect(formatTallMan("fluvoxamine")).toBe("fluVOXAMine");
+    expect(formatTallMan("methylphenidate")).toBe("methYLPHENIDATE");
+  });
+
+  it("keeps cloZAPine as the one local exception", () => {
+    expect(formatTallMan("clozapine")).toBe("cloZAPine");
+  });
+
+  it("leaves names that are only on the US list unlettered", () => {
+    for (const name of [
+      "olanzapine",
+      "clonidine",
+      "hydroxyzine",
+      "bupropion",
+      "buspirone",
+      "valproate",
+      "fluoxetine",
+    ]) {
+      expect(formatTallMan(name)).toBe(name);
+    }
   });
 
   it("handles case-insensitivity and extra whitespace gracefully", () => {
     expect(formatTallMan("  CLOZAPINE ")).toBe("cloZAPine");
-    expect(formatTallMan("Clonidine")).toBe("cloNIDine");
+    expect(formatTallMan("Quetiapine")).toBe("QUETIAPine");
   });
 
-  it("returns original string unchanged when medication is not in LASA list", () => {
+  it("returns the name unchanged when it is not on the list", () => {
     expect(formatTallMan("lithium")).toBe("lithium");
     expect(formatTallMan("metformin")).toBe("metformin");
   });
 
-  it("correctly identifies whether a drug is on the ISMP / ACSQHC Tall Man list", () => {
+  it("identifies whether a medicine is on the list", () => {
     expect(isTallManMedication("clozapine")).toBe(true);
-    expect(isTallManMedication("cloZAPine")).toBe(true);
+    expect(isTallManMedication("QUETIAPine")).toBe(true);
     expect(isTallManMedication("aspirin")).toBe(false);
   });
 
-  it("contains critical high-alert psychiatric drugs in the registry", () => {
-    expect(ISMP_TALL_MAN_MEDICATIONS["clozapine"]).toBe("cloZAPine");
-    expect(ISMP_TALL_MAN_MEDICATIONS["clonidine"]).toBe("cloNIDine");
-    expect(ISMP_TALL_MAN_MEDICATIONS["valproate"]).toBe("VALproate");
-    expect(ISMP_TALL_MAN_MEDICATIONS["carbamazepine"]).toBe("carBAMazepine");
+  it("keeps every lettered form a case variant of its key", () => {
+    for (const [key, lettered] of Object.entries(ACSQHC_MIXED_CASE_MEDICATIONS)) {
+      expect(lettered.toLowerCase()).toBe(key);
+    }
   });
 });

@@ -117,7 +117,10 @@ describe("the real queue", () => {
     // has no sign-off tool. A change in this set should update this pin.
     // 13 Oct 2026: +5 Therapy records edited on #3510 went back to needs_review
     // (owner decision, 10:23 PM AWST) and are signable again.
-    expect(signable.map((item) => item.family)).toEqual(Array(27).fill("therapy"));
+    // 16 Oct 2026: the 27 corrected Therapy records and the 3 adopted medicine sources
+    // have been signed off by "Psych Sift", so no signable rows remain; everything still
+    // waiting is an Indigenous governance hold or has no sign-off tool / references.
+    expect(signable.map((item) => item.family)).toEqual([]);
     expect(today.signable).toBe(signable.length);
     expect(today.rows.length).toBe(Math.min(SIGN_OFF_TODAY_SIZE, signable.length));
     for (const item of today.rows) {
