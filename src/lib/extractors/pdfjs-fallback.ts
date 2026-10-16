@@ -107,9 +107,13 @@ export class PdfjsFallbackParser {
         for (let index = 0; index < ops.fnArray.length; index += 1) {
           const fn = ops.fnArray[index];
           if (fn !== pdfjs.OPS.paintInlineImageXObject && fn !== pdfjs.OPS.paintImageXObject) continue;
-          const name = ops.argsArray[index][0] as string;
-          const objects = page.commonObjs.has(name) ? page.commonObjs : page.objs;
-          const { width, height, kind, data } = await resolveEmbeddedImage(objects, name, canvasFactory);
+          const args = ops.argsArray[index];
+          const inline = fn === pdfjs.OPS.paintInlineImageXObject;
+          const name = inline ? `inline-${index}` : (args[0] as string);
+          const image = inline
+            ? normalizeEmbeddedImage(args[0], name, canvasFactory)
+            : await resolveEmbeddedImage(page.commonObjs.has(name) ? page.commonObjs : page.objs, name, canvasFactory);
+          const { width, height, kind, data } = image;
           if (params.imageThreshold >= width || params.imageThreshold >= height) continue;
           const { canvas, context } = canvasFactory.create(width, height);
           const imageData = context.createImageData(width, height);
@@ -165,45 +169,56 @@ async function pageText(page: PdfPage) {
 
 type PdfObjects = { get(name: string, callback: (data: unknown) => void): unknown };
 
+type RawEmbeddedImage = {
+  width: number;
+  height: number;
+  kind?: number | null;
+  data?: ArrayBufferView;
+  bitmap?: { width: number; height: number };
+};
+
+function normalizeEmbeddedImage(raw: unknown, name: string, canvasFactory: CanvasFactory): EmbeddedImage {
+  const image = raw as RawEmbeddedImage | null;
+  if (!image) throw new Error(`Image object ${name} not found`);
+  let data: Uint8Array | undefined;
+  if (image.data instanceof Uint8Array) {
+    data = image.data;
+  } else if (image.data instanceof Uint8ClampedArray) {
+    data = new Uint8Array(image.data);
+  } else if (image.bitmap) {
+    const { context } = canvasFactory.create(image.bitmap.width, image.bitmap.height);
+    context.drawImage(image.bitmap, 0, 0);
+    data = new Uint8Array(context.getImageData(0, 0, image.bitmap.width, image.bitmap.height).data.buffer);
+  } else if (image.data && ArrayBuffer.isView(image.data)) {
+    data = new Uint8Array(image.data.buffer, image.data.byteOffset, image.data.byteLength);
+  }
+  if (!data) {
+    throw new Error(
+      `Image object ${name}: data field is empty or invalid. Available fields: ${Object.keys(image).join(", ")}`,
+    );
+  }
+  if (data.length === 0) throw new Error(`Image object ${name}: data buffer is empty (length: 0)`);
+  return { width: image.width, height: image.height, kind: image.kind, data };
+}
+
 function resolveEmbeddedImage(objects: PdfObjects, name: string, canvasFactory: CanvasFactory): Promise<EmbeddedImage> {
   return new Promise((resolve, reject) => {
-    objects.get(name, (raw) => {
-      const image = raw as {
-        width: number;
-        height: number;
-        kind?: number | null;
-        data?: ArrayBufferView;
-        bitmap?: { width: number; height: number };
-      } | null;
-      if (!image) {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
         reject(new Error(`Image object ${name} not found`));
-        return;
       }
-      let data: Uint8Array | undefined;
-      if (image.data instanceof Uint8Array) {
-        data = image.data;
-      } else if (image.data instanceof Uint8ClampedArray) {
-        data = new Uint8Array(image.data);
-      } else if (image.bitmap) {
-        const { context } = canvasFactory.create(image.bitmap.width, image.bitmap.height);
-        context.drawImage(image.bitmap, 0, 0);
-        data = new Uint8Array(context.getImageData(0, 0, image.bitmap.width, image.bitmap.height).data.buffer);
-      } else if (image.data && ArrayBuffer.isView(image.data)) {
-        data = new Uint8Array(image.data.buffer, image.data.byteOffset, image.data.byteLength);
+    }, 1_000);
+    objects.get(name, (raw) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      try {
+        resolve(normalizeEmbeddedImage(raw, name, canvasFactory));
+      } catch (error) {
+        reject(error);
       }
-      if (!data) {
-        reject(
-          new Error(
-            `Image object ${name}: data field is empty or invalid. Available fields: ${Object.keys(image).join(", ")}`,
-          ),
-        );
-        return;
-      }
-      if (data.length === 0) {
-        reject(new Error(`Image object ${name}: data buffer is empty (length: 0)`));
-        return;
-      }
-      resolve({ width: image.width, height: image.height, kind: image.kind, data });
     });
   });
 }
@@ -227,12 +242,12 @@ function convertToRgba(
   if (kind === pdfjs.ImageKind.RGB_24BPP) {
     fromRgb();
   } else if (kind === pdfjs.ImageKind.GRAYSCALE_1BPP) {
-    let pixel = 0;
-    for (const byte of src) {
-      for (let bit = 7; bit >= 0; bit -= 1) {
-        if (pixel >= pixels) break;
-        const gray = ((byte >> bit) & 1) === 1 ? 255 : 0;
-        dest[pixel++] = (255 << 24) | (gray << 16) | (gray << 8) | gray;
+    const rowBytes = (width + 7) >> 3;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const byte = src[y * rowBytes + (x >> 3)] ?? 0;
+        const gray = ((byte >> (7 - (x & 7))) & 1) === 1 ? 255 : 0;
+        dest[y * width + x] = (255 << 24) | (gray << 16) | (gray << 8) | gray;
       }
     }
   } else if (kind === undefined || kind === null) {
