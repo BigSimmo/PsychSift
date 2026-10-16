@@ -71,14 +71,13 @@ async function isOpenPostAlertDelivered(
       const query = table?.select?.("open_shift_id")?.eq?.("service_id", serviceId)?.eq?.("open_shift_id", openShiftId);
       if (query && typeof query.maybeSingle === "function") {
         const { data, error } = await query.maybeSingle();
-        if (!error) {
-          if (data?.open_shift_id) {
-            deliveredOpenPostAlerts.add(key);
-            pendingOrFailedOpenPostAlerts.delete(key);
-            return true;
-          }
-          return false;
+        if (error) return false;
+        if (data?.open_shift_id) {
+          deliveredOpenPostAlerts.add(key);
+          pendingOrFailedOpenPostAlerts.delete(key);
+          return true;
         }
+        return false;
       }
     }
   } catch {
@@ -105,7 +104,7 @@ async function markOpenPostAlertDelivered(
           options: { onConflict: string },
         ) => Promise<unknown>;
       } | null;
-      await table?.upsert?.(
+      const result = await table?.upsert?.(
         {
           service_id: serviceId,
           open_shift_id: openShiftId,
@@ -113,9 +112,15 @@ async function markOpenPostAlertDelivered(
         },
         { onConflict: "service_id,open_shift_id" },
       );
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        pendingOrFailedOpenPostAlerts.add(key);
+        return;
+      }
     }
+    deliveredOpenPostAlerts.add(key);
+    pendingOrFailedOpenPostAlerts.delete(key);
   } catch {
-    // In-memory state still records delivery for this process.
+    pendingOrFailedOpenPostAlerts.add(key);
   }
 }
 
@@ -237,7 +242,7 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
       const key = openPostAlertKey(event.serviceId, result.openShiftId);
       const existingInFlight = inFlightOpenPostAlerts.get(key);
       if (existingInFlight) {
-        await existingInFlight;
+        await existingInFlight.catch(() => undefined);
       }
       if (await isOpenPostAlertDelivered(client, event.serviceId, result.openShiftId, result.replayed === true)) {
         return;
@@ -256,6 +261,12 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
     }
 
     await runRosterAlertDispatch(client, event, result, false);
+  } catch {
+    // A phone alert must never turn a successful roster change into an error.
+    // No identity, endpoint or payload is logged here.
+  }
+}
+   await runRosterAlertDispatch(client, event, result, false);
   } catch {
     // A phone alert must never turn a successful roster change into an error.
     // No identity, endpoint or payload is logged here.
