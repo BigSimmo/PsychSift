@@ -354,49 +354,49 @@ export async function teachingServiceMutation(
           const linkRow = (Array.isArray(link) ? link[0] : link) as { id?: string; created_by?: string | null } | null;
           if (linkRow && (!linkRow.created_by || linkRow.created_by !== actorId)) {
             const roleTable = dynamicClient.from("teaching_member_roles");
-            if (roleTable && typeof roleTable.select === "function") {
-              const roleQuery = roleTable
-                .select("role, granted_at")
-                .eq("service_id", serviceId)
-                .eq("user_id", actorId)
-                .eq("role", "organiser")
-                .is("revoked_at", null);
-              const roleRes =
-                typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
-              if (roleRes?.error) throw teachingRpcError(roleRes.error);
-              const roleData = roleRes?.data;
-              const activeOrganiser = (Array.isArray(roleData) ? roleData[0] : roleData) as {
-                role?: string;
-                granted_at?: string | null;
-              } | null;
-              if (!activeOrganiser) {
-                throw teachingRpcError({ message: "teaching_role_denied" });
-              }
-              const memberTable = dynamicClient.from("on_call_service_members");
-              if (memberTable && typeof memberTable.select === "function") {
-                const memberQuery = memberTable
-                  .select("joined_at")
-                  .eq("service_id", serviceId)
-                  .eq("user_id", actorId)
-                  .is("revoked_at", null);
-                const memberRes =
-                  typeof memberQuery.maybeSingle === "function" ? await memberQuery.maybeSingle() : await memberQuery;
-                if (memberRes?.error) throw teachingRpcError(memberRes.error);
-                const memberData = memberRes?.data;
-                const activeMember = (Array.isArray(memberData) ? memberData[0] : memberData) as {
-                  joined_at?: string | null;
-                } | null;
-                if (!activeMember) {
-                  throw teachingRpcError({ message: "teaching_access_denied" });
-                }
-                if (
-                  activeOrganiser.granted_at &&
-                  activeMember.joined_at &&
-                  Date.parse(activeOrganiser.granted_at) < Date.parse(activeMember.joined_at)
-                ) {
-                  throw teachingRpcError({ message: "teaching_role_denied" });
-                }
-              }
+            if (!roleTable || typeof roleTable.select !== "function") {
+              throw teachingRpcError({ message: "teaching_role_denied" });
+            }
+            const roleQuery = roleTable
+              .select("role, granted_at")
+              .eq("service_id", serviceId)
+              .eq("user_id", actorId)
+              .eq("role", "organiser")
+              .is("revoked_at", null);
+            const roleRes =
+              typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
+            if (roleRes?.error) throw teachingRpcError(roleRes.error);
+            const roleData = roleRes?.data;
+            const activeOrganiser = (Array.isArray(roleData) ? roleData[0] : roleData) as {
+              role?: string;
+              granted_at?: string | null;
+            } | null;
+            if (!activeOrganiser) {
+              throw teachingRpcError({ message: "teaching_role_denied" });
+            }
+            const memberTable = dynamicClient.from("on_call_service_members");
+            if (!memberTable || typeof memberTable.select !== "function") {
+              throw teachingRpcError({ message: "teaching_access_denied" });
+            }
+            const memberQuery = memberTable
+              .select("joined_at")
+              .eq("service_id", serviceId)
+              .eq("user_id", actorId)
+              .is("revoked_at", null);
+            const memberRes =
+              typeof memberQuery.maybeSingle === "function" ? await memberQuery.maybeSingle() : await memberQuery;
+            if (memberRes?.error) throw teachingRpcError(memberRes.error);
+            const memberData = memberRes?.data;
+            const activeMember = (Array.isArray(memberData) ? memberData[0] : memberData) as {
+              joined_at?: string | null;
+            } | null;
+            if (!activeMember) {
+              throw teachingRpcError({ message: "teaching_access_denied" });
+            }
+            const grantedMs = activeOrganiser.granted_at ? Date.parse(activeOrganiser.granted_at) : Number.NaN;
+            const joinedMs = activeMember.joined_at ? Date.parse(activeMember.joined_at) : Number.NaN;
+            if (!Number.isFinite(grantedMs) || !Number.isFinite(joinedMs) || grantedMs < joinedMs) {
+              throw teachingRpcError({ message: "teaching_role_denied" });
             }
           }
         }
