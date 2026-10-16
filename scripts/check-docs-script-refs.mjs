@@ -15,7 +15,7 @@
  * Scans README.md, AGENTS.md, and docs/**\/*.md excluding docs/archive, docs/audit,
  * and dated point-in-time filenames (historical records). Pass --all to include them.
  *
- * Blocking for maintained docs: runs in verify:cheap and CI. Historical directories
+ * Blocking for maintained docs: runs in verify:full and CI. Historical directories
  * and dated point-in-time records stay excluded unless --all is requested.
  */
 import { readdirSync, readFileSync } from "node:fs";
@@ -37,7 +37,7 @@ const ALLOWLIST = new Set([
   "<script>",
   "<name>",
   "your-script",
-  "test:e2e:advisory", // renamed to test:e2e:regression (2026-07); kept for historical ledger accuracy
+  "test:e2e:advisory", // both test:e2e:advisory (@quarantine|@mockup) and test:e2e:regression exist in package.json; kept in allowlist for historical ledger references
 ]);
 
 /** Script names defined in package.json. */

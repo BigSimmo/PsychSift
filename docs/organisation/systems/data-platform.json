@@ -198,7 +198,6 @@
     "tests/work-bookings-organiser-access-contract.test.ts",
     "tests/work-bookings-retention-contract.test.ts",
     "tests/work-mode-launch*.test.ts",
-    "tests/work-page-favourite-visibility.dom.test.tsx",
     "tests/work-roles-hospital-short-staffed.test.ts",
     "tests/work-roles-people-changes.test.ts"
   ]

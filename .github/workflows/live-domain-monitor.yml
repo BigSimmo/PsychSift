@@ -119,6 +119,7 @@ jobs:
           sparse-checkout: |
             scripts/check-live-deployment-freshness.mjs
             scripts/check-live-search-results.mjs
+            scripts/lib/is-entrypoint.mjs
           sparse-checkout-cone-mode: false
 
       - name: Live deployment has not been stranded behind main

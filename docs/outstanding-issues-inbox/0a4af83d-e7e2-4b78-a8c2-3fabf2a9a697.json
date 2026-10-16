@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "0a4af83d-e7e2-4b78-a8c2-3fabf2a9a697",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#33346A",
+    "outcome": "Fixed Gecko details toggle feedback loop and rAF hit-step latch in source-panels.tsx, added useId and persistent sr-only heading to tools complementary panel, and added regression suite (tests/browser-matrix-regressions.dom.test.tsx).",
+    "baseRowFingerprint": "ebf4ec566a1219201343cc8adb6ebbbf4ed68777b9c8c008babf9229729cb17d",
+    "targetUlid": "01M2ZTPSXQ33346AYMPF41R5AR"
+  }
+}

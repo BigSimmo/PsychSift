@@ -3466,6 +3466,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-psych-sift-display-name-sign-off.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/clinical-chat-ui-component-map.md",
         "section": "root",
         "catalogued": true

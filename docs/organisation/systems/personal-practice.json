@@ -107,6 +107,7 @@
     "tests/ui-teaching.spec.ts",
     "tests/work-calendar-booking-feed.test.ts",
     "tests/work-calendar-entries.test.ts",
+    "tests/work-page-favourite-visibility.dom.test.tsx",
     "tests/work-page-stars.test.ts",
     "tests/work-profile*",
     "tests/work-roles-hook.dom.test.tsx",

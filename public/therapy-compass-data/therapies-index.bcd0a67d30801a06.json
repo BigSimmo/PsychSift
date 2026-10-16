@@ -76,17 +76,11 @@
     "name": "Adolescent-focused psychotherapy for anorexia nervosa",
     "category": "Eating Disorder Therapies",
     "bestUsedFor": "Best for children and young people with anorexia nervosa when FT-AN is unacceptable, contraindicated, or ineffective.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Trauma",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
       "Eating/body image",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
       "Multi-session"
     ],
     "aliases": []
@@ -96,16 +90,13 @@
     "name": "Advocacy-informed therapeutic work",
     "category": "Community & Casework Support",
     "bestUsedFor": "Best in community psychiatry, rehabilitation, severe mental illness, complex psychosocial presentations, and recovery-oriented care where progress depends on both treatment and access to practical supports.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Trauma",
-      "Psychosis",
-      "Eating/body image",
       "Crisis/risk",
-      "ACT",
-      "Group programme"
+      "Personality/interpersonal",
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -138,19 +129,12 @@
     "name": "Applied Relaxation / Relaxation-Based Therapy",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Strongest formal guideline support is for generalised anxiety disorder, where NICE includes applied relaxation as a high-intensity psychological treatment option alongside CBT.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
       "Anxiety",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
-      "Pain/somatic",
-      "CBT",
-      "Single session"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -200,21 +184,13 @@
     "name": "Behavioural Activation (BA)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Strongly indicated for depression, especially when inactivity, withdrawal, reduced routine, and loss of reinforcement are prominent.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
-      "Pain/somatic",
-      "Crisis/risk",
-      "Grief/loss",
       "Behavioural activation",
-      "CBT",
-      "Micro skill"
+      "Multi-session"
     ],
     "aliases": [
       "BA"
@@ -245,14 +221,13 @@
     "name": "Behavioural Couples Therapy for Substance Use Disorders (BCT-SUD)",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best used when the patient is in a committed relationship and the partner is willing to participate.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Substance use",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Personality/interpersonal",
+      "Multi-session"
     ],
     "aliases": [
       "BCT-SUD"
@@ -365,16 +340,12 @@
     "name": "Carer Interventions",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best established in psychosis / schizophrenia, where NICE states that carers of adults with psychosis or schizophrenia should be offered carer-focused education and support programmes, and parents/carers of newly diagnosed children and young people with bipolar disorder, psychosis, or schizophrenia should be given information about carer-focused education and support.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
       "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -528,22 +499,14 @@
     "name": "Cognitive Behavioural Therapy (CBT)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Strongest broad evidence-backed uses are depression and anxiety disorders.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
       "Anxiety",
-      "Trauma",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "Behavioural activation",
       "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "CBT"
@@ -554,17 +517,13 @@
     "name": "Cognitive Behavioural Therapy for Bipolar Depression / Bipolar Relapse Prevention",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best used as an adjunctive psychotherapy in bipolar disorder, especially for bipolar depression, residual symptoms, and relapse prevention in people who are not acutely manic.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
       "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -620,21 +579,13 @@
     "name": "Cognitive Behavioural Therapy for Psychosis (CBTp)",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Best supported for psychosis and schizophrenia, including people at increased risk of psychosis, first and subsequent acute episodes, and the recovery phase when positive or negative symptoms continue to affect distress or function.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Anxiety",
-      "Trauma",
       "Psychosis",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "Emotional regulation",
       "CBT",
-      "Micro skill"
+      "Multi-session"
     ],
     "aliases": [
       "CBTp"
@@ -1093,20 +1044,14 @@
     "name": "Dialectical Behaviour Therapy (DBT)",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best supported for borderline personality disorder / borderline personality symptoms, especially when recurrent self-harm is a major treatment priority.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
       "Emotional regulation",
       "Distress tolerance",
+      "Crisis/risk",
       "DBT",
       "Group programme"
     ],
@@ -1431,16 +1376,12 @@
     "name": "Family Intervention for Psychosis",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Best supported for adults with psychosis or schizophrenia who live with or are in close contact with family members or carers.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Substance use",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -1469,15 +1410,12 @@
     "name": "Family Psychoeducation for Psychosis",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Most useful for schizophrenia-spectrum and other psychotic disorders when family members or carers are closely involved and need a clearer illness model, relapse plan, and coping framework.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -1542,18 +1480,12 @@
     "name": "Family-Focused Psychoeducation for Bipolar Disorder",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best used for relapse prevention in bipolar disorder, especially when relatives/carers are closely involved in day-to-day life or episode detection.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "Behavioural activation",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -1710,16 +1642,11 @@
     "name": "Group Psychoeducation for Bipolar Disorder",
     "category": "Group CBT",
     "bestUsedFor": "Best used for maintenance / relapse prevention in bipolar disorder, especially when the patient is not in an acute episode and can engage in a structured group format.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Crisis/risk",
-      "CBT",
       "Group programme"
     ],
     "aliases": []
@@ -1826,21 +1753,12 @@
     "name": "Habit reversal training / CBIT",
     "category": "OCD & Exposure Therapies",
     "bestUsedFor": "Best-supported use is Tourette syndrome and chronic tic disorders, where CBIT is an evidence-based behavioural treatment.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Anxiety",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
       "Neurodevelopmental",
-      "Eating/body image",
-      "Pain/somatic",
-      "Crisis/risk",
-      "CBT",
-      "Micro skill"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -2484,15 +2402,11 @@
     "name": "Motivational Interviewing (MI) for Substance Use Disorders",
     "category": "Substance Use Therapies",
     "bestUsedFor": "Best used at engagement, assessment, early treatment, and whenever motivation is unstable.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "tags": [
-      "Anxiety",
-      "Psychosis",
       "Substance use",
-      "Crisis/risk",
-      "CBT",
       "Multi-session"
     ],
     "aliases": [
@@ -2504,14 +2418,11 @@
     "name": "Multi-Family Interventions",
     "category": "Family & Couple Therapies",
     "bestUsedFor": "Best supported in psychosis / schizophrenia, where NICE states family intervention should take account of family preference for either single-family intervention or multi-family group intervention.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Personality/interpersonal",
-      "Crisis/risk",
-      "CBT",
       "Group programme"
     ],
     "aliases": []
@@ -2666,16 +2577,12 @@
     "name": "Parent Management Training (PMT)",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best supported for children with clinical levels of disruptive behaviour, especially oppositional and conduct-type presentations in younger children.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Psychosis",
       "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "PMT"
@@ -2686,13 +2593,11 @@
     "name": "Parent Training",
     "category": "Child & Adolescent Therapies",
     "bestUsedFor": "Best supported for children aged 3 to 11 years who are at high risk of oppositional defiant disorder or conduct disorder, who already have oppositional defiant disorder or conduct disorder, or who are in contact with the criminal justice system because of antisocial behaviour.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Neurodevelopmental",
-      "Crisis/risk",
-      "ACT",
       "Group programme"
     ],
     "aliases": []
@@ -2772,15 +2677,12 @@
     "name": "Peer Support",
     "category": "Psychosis & Rehabilitation Therapies",
     "bestUsedFor": "Most useful in psychosis rehabilitation, community recovery work, discharge transition, engagement support, group activities, and broader recovery-oriented service delivery.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Psychosis",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -2894,19 +2796,13 @@
     "slug": "problem-solving-therapy-pst",
     "name": "Problem-Solving Therapy (PST)",
     "category": "Foundational & Engagement Therapies",
-    "bestUsedFor": "Most useful for less severe depression, stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
-    "reviewStatus": "needs_review",
+    "bestUsedFor": "Most useful for stress-linked depression, adjustment-related difficulty, executive overload, and patients whose distress is closely tied to unresolved current-life problems.",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Neurodevelopmental",
-      "Crisis/risk",
-      "CBT",
-      "Single session"
+      "Multi-session"
     ],
     "aliases": [
       "PST"
@@ -3195,21 +3091,12 @@
     "name": "Relapse-Prevention Psychotherapy",
     "category": "Foundational & Engagement Therapies",
     "bestUsedFor": "Strongest guideline-backed use is recurrent depression, especially after remission or partial remission in people at higher relapse risk.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
-      "Sleep",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
-      "Crisis/risk",
-      "Grief/loss",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -3429,20 +3316,13 @@
     "name": "Short-Term Psychodynamic Psychotherapy for Depression (STPP)",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Best used for adult depression when relational-emotional patterns and developmental difficulties in close relationships are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Pain/somatic",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "STPP"
@@ -3658,21 +3538,14 @@
     "name": "STAIR (Skills Training in Affective and Interpersonal Regulation)",
     "category": "Trauma Therapies",
     "bestUsedFor": "Best for complex trauma / complex PTSD-type presentations where the dominant problems are emotion regulation and interpersonal functioning.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
       "Trauma",
-      "Psychosis",
-      "Personality/interpersonal",
-      "Substance use",
-      "Neurodevelopmental",
-      "Crisis/risk",
       "Emotional regulation",
-      "Distress tolerance",
-      "CBT",
-      "Group programme"
+      "Personality/interpersonal",
+      "Multi-session"
     ],
     "aliases": [
       "Skills Training in Affective and Interpersonal Regulation"
@@ -3717,21 +3590,14 @@
     "name": "Structured clinical management",
     "category": "Personality Disorder Therapies",
     "bestUsedFor": "Best for BPD/personality disorder in public-sector or general mental health settings where a structured, consistent, manualised clinical model is needed and specialist therapies may not be available.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
-      "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Neurodevelopmental",
-      "Eating/body image",
       "Crisis/risk",
       "Emotional regulation",
-      "DBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -3890,20 +3756,13 @@
     "name": "Supportive-Expressive / Psychodynamic Counselling Approaches for Depression",
     "category": "Standard Talking Therapies",
     "bestUsedFor": "Most defensible for adult depression when recurrent relationship themes and difficult affects are central.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
-    "briefInterventionAvailable": true,
+    "briefInterventionAvailable": false,
     "tags": [
       "Mood",
-      "Trauma",
-      "Psychosis",
       "Personality/interpersonal",
-      "Substance use",
-      "Pain/somatic",
-      "Crisis/risk",
-      "Emotional regulation",
-      "CBT",
-      "Single session"
+      "Multi-session"
     ],
     "aliases": []
   },
@@ -4064,15 +3923,12 @@
     "name": "Twelve-Step Facilitation (TSF)",
     "category": "Substance Use Therapies",
     "bestUsedFor": "The strongest evidence is for alcohol use disorder (AUD).",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "tags": [
       "Substance use",
-      "Eating/body image",
-      "Crisis/risk",
-      "CBT",
-      "Group programme"
+      "Multi-session"
     ],
     "aliases": [
       "TSF"

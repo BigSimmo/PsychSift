@@ -856,8 +856,10 @@ if (/^    continue-on-error:\s*true\s*$/m.test(semgrepJob)) {
 if (!/^        continue-on-error:\s*true\s*$/m.test(semgrepScanStep)) {
   failures.push("sast.yml: the Semgrep scan step must remain advisory while registry rules are mutable.");
 }
-if (!/^          src worker scripts supabase\/functions\s*$/m.test(semgrepScanStep)) {
-  failures.push("sast.yml: the Semgrep scan command must target src, worker, scripts, and supabase/functions.");
+if (!/^          src worker scripts eslint-rules supabase\/functions\s*$/m.test(semgrepScanStep)) {
+  failures.push(
+    "sast.yml: the Semgrep scan command must target src, worker, scripts, eslint-rules, and supabase/functions.",
+  );
 }
 
 // Maturity X4: the untrusted-document parsing surface has a BLOCKING Semgrep

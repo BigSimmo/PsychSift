@@ -46,7 +46,7 @@ import { conceptReviewState, mechanismReviewState } from "@/lib/formulation-revi
 
 const NOW = new Date(Math.max(Date.now(), Date.parse("2026-10-07T00:00:00.000Z")));
 const REVIEWED_AT = "2026-09-25T05:00:00.000Z";
-const REVIEWER = "Dr Clinical Owner";
+const REVIEWER = "Dr Sam Taylor";
 const context = { curated: curatedDifferentials, sourceLibrary: formulationContent.sourceLibrary };
 
 type Json = Record<string, unknown>;
@@ -373,8 +373,10 @@ describe("specifier sign-off", () => {
     for (const name of [
       "Dr Alex Example",
       "Jane Citizen",
+      "Psych Sift",
       "PsychSift",
       "Clinical Team",
+      "Jane Team,",
       "Psychiatry Registrar",
       "Josh",
       "Dr Smith",
@@ -387,26 +389,35 @@ describe("specifier sign-off", () => {
   });
 
   it("offers product-stamped sign-offs for re-signing and refuses a reviewer without a full name", () => {
-    const stampedIds = new Set(
-      specifiersContent.categories.flatMap((category) =>
-        category.disorders.flatMap((disorder) =>
-          disorder.groups.flatMap((group) =>
-            group.items
-              .filter((item) => (item.review as Json).reviewedBy === "PsychSift" && item.definitionStatus === "defined")
-              .map((item) => String(item.review.rowKey)),
-          ),
-        ),
-      ),
+    const document = clone(specifiersContent);
+    const stampedIds = new Set<string>();
+    for (const category of document.categories)
+      for (const disorder of category.disorders)
+        for (const group of disorder.groups)
+          for (const item of group.items) {
+            if (item.definitionStatus === "defined") {
+              (item.review as Json).reviewedBy = "PsychSift";
+              stampedIds.add(String(item.review.rowKey));
+            }
+          }
+    const productStamped = collectionOf("specifier", document).filter((record: Json) =>
+      stampedIds.has(String(record.id)),
     );
-    const productStamped = records().filter((record: Json) => stampedIds.has(String(record.id)));
     expect(productStamped.length).toBeGreaterThan(0);
     for (const record of productStamped) expect(record).toMatchObject({ status: "drafted", reviewedBy: null });
 
-    for (const reviewedBy of ["PsychSift", "Josh", "Dr Smith"]) {
+    for (const reviewedBy of ["PsychSift", "Josh", "Dr Smith", "Jane Team,"]) {
       expect(() =>
         finalizeClinicalReview(productStamped[0], "specifier", { reviewedBy, reviewedAt: REVIEWED_AT, now: NOW }),
       ).toThrow(/full name/);
     }
+    expect(
+      finalizeClinicalReview(productStamped[0], "specifier", {
+        reviewedBy: "Psych Sift",
+        reviewedAt: REVIEWED_AT,
+        now: NOW,
+      }),
+    ).toMatchObject({ status: "reviewed", reviewedBy: "Psych Sift" });
   });
 });
 

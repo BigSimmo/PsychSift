@@ -1014,7 +1014,9 @@ export const IndexedTextPanel = memo(function IndexedTextPanel({
     .join(" · ");
   const selectedPageText = selectedPage ? sourceTextForIndexedPage(selectedPage.text) : "";
   const topLevelDisclosureRef = useRef<HTMLDetailsElement>(null);
+  const programmaticToggleRef = useRef(false);
   const hitMoveLockRef = useRef(false);
+  const hitMoveFrameRef = useRef<number | null>(null);
   const activeHitId = activeHit?.id;
   const autoOpenTargetId = activeHitId ?? selectedChunkId;
   const autoOpenDriver = activeHitId ? `search:${activeHitId}` : selectedChunkId ? `citation:${selectedChunkId}` : null;
@@ -1062,8 +1064,33 @@ export const IndexedTextPanel = memo(function IndexedTextPanel({
   useLayoutEffect(() => {
     const top = topLevelDisclosureRef.current;
     if (!top || top.open === panelShouldOpen) return;
+    programmaticToggleRef.current = true;
     top.open = panelShouldOpen;
+    // Fallback: clear the programmatic toggle flag on the next microtask/turn so that
+    // if the environment (e.g. Chrome, WebKit, jsdom) does not fire a synthetic toggle
+    // event on imperative .open changes, the flag doesn't stay stuck and swallow user clicks.
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(() => {
+        programmaticToggleRef.current = false;
+      });
+    } else {
+      setTimeout(() => {
+        programmaticToggleRef.current = false;
+      }, 0);
+    }
   }, [panelShouldOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (hitMoveFrameRef.current != null) {
+        if (typeof cancelAnimationFrame === "function") {
+          cancelAnimationFrame(hitMoveFrameRef.current);
+        } else {
+          clearTimeout(hitMoveFrameRef.current);
+        }
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!autoOpenDriver || !autoOpenTargetId || autoOpenSuppressed) return;
@@ -1092,10 +1119,24 @@ export const IndexedTextPanel = memo(function IndexedTextPanel({
     // One user gesture can deliver two click activations in Firefox (pointer +
     // exclusive-accordion side effects). With exactly two hits, wrapping twice
     // returns to Hit 1 and looks like a no-op — coalesce same-turn duplicates.
+    // Lock with requestAnimationFrame (<=16ms frame turn) so same-turn synthetic duplicates
+    // are coalesced without dropping fast intentional clicks or keyboard repeats.
     hitMoveLockRef.current = true;
-    queueMicrotask(() => {
+    if (hitMoveFrameRef.current != null) {
+      if (typeof cancelAnimationFrame === "function") {
+        cancelAnimationFrame(hitMoveFrameRef.current);
+      } else {
+        clearTimeout(hitMoveFrameRef.current);
+      }
+    }
+    const scheduleUnlock =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (callback: () => void) => setTimeout(callback, 16);
+    hitMoveFrameRef.current = scheduleUnlock(() => {
       hitMoveLockRef.current = false;
-    });
+      hitMoveFrameRef.current = null;
+    }) as unknown as number;
     setActiveHitIndex((current) => (current + delta + visibleChunks.length) % visibleChunks.length);
   }
 
@@ -1127,20 +1168,19 @@ export const IndexedTextPanel = memo(function IndexedTextPanel({
       open={panelShouldOpen}
       onToggle={(event) => {
         if (!compact) return;
-        // Exclusive-accordion closes must not win over a deep-link/search reveal.
-        // Re-open after the browser finishes the toggle (microtask), and bump a
-        // render so the controlled `open` prop stays authoritative. The layout
-        // sync above recovers the case where Gecko clears `.open` without a
-        // React prop change; this path still latches compactOpen for search.
-        if (!event.currentTarget.open && forceReveal) {
-          const disclosure = event.currentTarget;
-          queueMicrotask(() => {
-            disclosure.open = true;
-          });
-          setCompactOpen(true);
+        if (programmaticToggleRef.current) {
+          programmaticToggleRef.current = false;
           return;
         }
-        setCompactOpen(event.currentTarget.open);
+        // Exclusive-accordion closes must not win over a deep-link/search reveal.
+        if (!event.currentTarget.open && forceReveal) {
+          event.currentTarget.open = true;
+          if (!compactOpen) setCompactOpen(true);
+          return;
+        }
+        if (compactOpen !== event.currentTarget.open) {
+          setCompactOpen(event.currentTarget.open);
+        }
       }}
       data-testid={`${idPrefix}-indexed-text-panel`}
       className={cn(panel, "group scroll-mt-[var(--document-anchor-offset,6rem)] source-print")}
