@@ -7,10 +7,7 @@ import { ModeGroupedList, ModeRow } from "@/components/mode-kit/grouped-list";
 import { ModeNotice } from "@/components/mode-kit/notice";
 import { ModeStateLabel } from "@/components/mode-kit/state-label";
 import { modeNumberText } from "@/components/mode-kit/type";
-import {
-  AttendanceRoster,
-  type RegistrarMember,
-} from "@/components/teaching/attendance-roster";
+import { AttendanceRoster, type RegistrarMember } from "@/components/teaching/attendance-roster";
 import {
   afterChange,
   AUDIENCE_LABELS,
@@ -648,7 +645,7 @@ export function PickSessionSheet({
 export function AttendanceGapsSheet({
   organise,
   onClose,
-  checkInCountsByUserId = {},
+  checkInCountsByUserId,
 }: {
   organise: OrganiseRead;
   onClose: () => void;
@@ -656,21 +653,29 @@ export function AttendanceGapsSheet({
 }) {
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
-  const zeroCheckInMembers = organise.members.filter((m) => {
-    if (m.role && m.role !== "doctor") return false;
-    const count = (m as { checkInsCount?: number }).checkInsCount ?? checkInCountsByUserId[m.userId] ?? 0;
-    return count === 0;
-  });
+  const hasLoadedCounts =
+    checkInCountsByUserId !== undefined ||
+    organise.members.some((m) => typeof (m as { checkInsCount?: number }).checkInsCount === "number");
+  const countsMap = checkInCountsByUserId ?? {};
+  const zeroCheckInMembers = hasLoadedCounts
+    ? organise.members.filter((m) => {
+        if (m.role && m.role !== "doctor") return false;
+        const count = (m as { checkInsCount?: number }).checkInsCount ?? countsMap[m.userId] ?? 0;
+        return count === 0;
+      })
+    : [];
   const shown = zeroCheckInMembers.filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle));
-  const rosterMembers: RegistrarMember[] = organise.members
-    .filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle))
-    .map((m) => ({
-      userId: m.userId,
-      name: (m as { displayName?: string }).displayName ?? memberLabel(m),
-      role: m.role,
-      checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
-      joinedAt: m.joinedAt,
-    }));
+  const rosterMembers: RegistrarMember[] = hasLoadedCounts
+    ? organise.members
+        .filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle))
+        .map((m) => ({
+          userId: m.userId,
+          name: (m as { displayName?: string }).displayName ?? memberLabel(m),
+          role: m.role,
+          checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
+          joinedAt: m.joinedAt,
+        }))
+    : [];
   return (
     <Sheet open onClose={onClose} title="Attendance gaps">
       <div className="grid gap-2" data-testid="teaching-attendance-gaps-sheet">
@@ -684,11 +689,7 @@ export function AttendanceGapsSheet({
           data-gramm="false"
           data-enable-grammarly="false"
         />
-        <AttendanceRoster
-          members={rosterMembers}
-          checkInCountsByUserId={checkInCountsByUserId}
-          initialFilterGapsOnly={true}
-        />
+        <AttendanceRoster members={rosterMembers} checkInCountsByUserId={countsMap} initialFilterGapsOnly={true} />
         {shown.length > 0 ? (
           <ul className="sr-only" aria-label="Attendance gap summary">
             {shown.map((m) => (

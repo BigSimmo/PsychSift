@@ -1598,6 +1598,7 @@ def _extract_document(document, output_dir, budget):
             table_rows = list(table_candidate.get("table_rows") or [])
             column_count = int(table_candidate.get("column_count") or (len(table_rows[0]) if table_rows else 0) or 0)
             recovered_rows = []
+            recovered_truncated = False
             if edge_info["extended"]:
                 top_rows, bottom_rows = _recover_table_rows_split(
                     page,
@@ -1609,8 +1610,14 @@ def _extract_document(document, output_dir, budget):
                 )
                 recovered_rows = top_rows + bottom_rows
                 if recovered_rows:
-                    table_rows = (top_rows + table_rows + bottom_rows)[:MAX_TABLE_ROWS]
-            rows_truncated = bool(table_candidate.get("rows_truncated")) or bool(edge_info["clipped_by_page"])
+                    combined_rows = top_rows + table_rows + bottom_rows
+                    recovered_truncated = len(combined_rows) > MAX_TABLE_ROWS
+                    table_rows = combined_rows[:MAX_TABLE_ROWS]
+            rows_truncated = (
+                bool(table_candidate.get("rows_truncated"))
+                or bool(edge_info["clipped_by_page"])
+                or recovered_truncated
+            )
             if edge_info["clipped_by_page"]:
                 warnings.append(
                     f"table_crop_edge_incomplete: page {page_number} table continues past the page edge; "

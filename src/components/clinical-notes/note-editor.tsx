@@ -8,6 +8,7 @@ import { cn, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primit
 import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
 import { isSharedDevice } from "@/lib/alerts/shared-device";
 import { PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
+import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
 
@@ -100,6 +101,10 @@ export function ClinicalNoteEditor({
   const performSave = useCallback(
     async (textToSave: string) => {
       if (readOnly || textToSave === lastSavedValue) return;
+      if (checkPatientDetail(textToSave)) {
+        setSaveStatus("error");
+        return;
+      }
 
       // Capture caret position before triggering save
       recordSelection();
@@ -126,6 +131,14 @@ export function ClinicalNoteEditor({
       setInternalValue(newValue);
     }
     onChange?.(newValue);
+    if (checkPatientDetail(newValue)) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      setSaveStatus("error");
+      return;
+    }
     setSaveStatus("unsaved");
 
     // Clear existing timer

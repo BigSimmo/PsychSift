@@ -102,14 +102,14 @@ export type EpaMagicLinkSubmitResult =
 
 // Standard FIPS 180-4 SHA-256 round constants (isomorphic across browser and Node.js).
 const SHA256_K = new Uint32Array([
-  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98,
+  0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+  0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8,
+  0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819,
+  0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+  0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+  0xc67178f2,
 ]);
 
 function rotr(value: number, bits: number): number {
@@ -207,9 +207,12 @@ function normalizeEpaNumber(code: EpaCode): EpaNumber {
   if (typeof code === "number" && (code === 1 || code === 2 || code === 3 || code === 4)) {
     return code;
   }
-  const match = String(code).match(/[1-4]/);
-  const parsed = match ? Number(match[0]) : 1;
-  return (parsed >= 1 && parsed <= 4 ? parsed : 1) as EpaNumber;
+  const trimmed = String(code).trim();
+  const match = trimmed.match(/^(?:EPA\s*)?([1-4])$/i);
+  if (!match) {
+    throw new EpaMagicLinkError("Choose a valid EPA code (EPA 1 to EPA 4).", "invalid_epa_code", 400);
+  }
+  return Number(match[1]) as EpaNumber;
 }
 
 function normalizeRoleLabel(role: GuestKind | string | undefined): string {
@@ -232,6 +235,55 @@ const magicRateLimitStore = (globalMagicLinks.__psychsiftEpaMagicRateLimits ??= 
   { windowStartMs: number; count: number; resetAtMs: number }
 >());
 
+function getNodePersistenceFilePath(): string | null {
+  if (typeof window !== "undefined") return null;
+  if (typeof process === "undefined" || !process.versions?.node) return null;
+  const tempRoot = process.env.TMPDIR || process.env.TEMP || process.env.TMP || "/tmp";
+  return `${tempRoot.replace(/[\\/]+$/, "")}/psychsift-epa-magic-links.json`;
+}
+
+function loadPersistedMagicLinksIntoStore(): void {
+  const filePath = getNodePersistenceFilePath();
+  if (!filePath) return;
+  try {
+    const req = (0, eval)("require") as (id: string) => {
+      existsSync: (p: string) => boolean;
+      readFileSync: (p: string, enc: string) => string;
+    };
+    const fs = req("node:fs");
+    if (!fs.existsSync(filePath)) return;
+    const raw = fs.readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw) as Record<string, EpaMagicLinkRecord>;
+    if (!parsed || typeof parsed !== "object") return;
+    for (const [hash, record] of Object.entries(parsed)) {
+      const current = magicLinkStore.get(hash);
+      if (!current || (current.status !== "completed" && record.status === "completed")) {
+        magicLinkStore.set(hash, record);
+      }
+    }
+  } catch {
+    // Non-fatal fallback to in-memory map in restricted environments
+  }
+}
+
+function persistMagicLinksFromStore(): void {
+  const filePath = getNodePersistenceFilePath();
+  if (!filePath) return;
+  try {
+    const req = (0, eval)("require") as (id: string) => {
+      writeFileSync: (p: string, data: string, enc: string) => void;
+    };
+    const fs = req("node:fs");
+    const serialized: Record<string, EpaMagicLinkRecord> = {};
+    for (const [hash, record] of magicLinkStore.entries()) {
+      serialized[hash] = record;
+    }
+    fs.writeFileSync(filePath, JSON.stringify(serialized), "utf8");
+  } catch {
+    // Non-fatal fallback to in-memory map in restricted environments
+  }
+}
+
 export class EpaMagicLinkError extends Error {
   readonly status: number;
   readonly code: string;
@@ -252,6 +304,14 @@ function evictMagicLinkStoreIfNeeded(now: Date) {
   for (const [key, entry] of magicLinkStore.entries()) {
     if (entry.status === "expired" || nowMs > Date.parse(entry.expiresAt)) {
       magicLinkStore.delete(key);
+    }
+  }
+  if (magicLinkStore.size >= MAX_MAGIC_LINKS) {
+    for (const [key, entry] of magicLinkStore.entries()) {
+      if (magicLinkStore.size < MAX_MAGIC_LINKS) break;
+      if (entry.status !== "completed") {
+        magicLinkStore.delete(key);
+      }
     }
   }
   while (magicLinkStore.size >= MAX_MAGIC_LINKS) {
@@ -313,6 +373,7 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
   readonly expiresAt: string;
   readonly request: EpaMagicLinkRecord;
 } {
+  loadPersistedMagicLinksIntoStore();
   const now = input.now ?? new Date();
   const token = generateRandomToken(32);
   const tokenHash = hashEpaMagicToken(token);
@@ -320,6 +381,7 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
 
   evictMagicLinkStoreIfNeeded(now);
   magicLinkStore.set(tokenHash, record);
+  persistMagicLinksFromStore();
 
   return {
     token,
@@ -331,19 +393,21 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
 }
 
 export function registerEpaMagicLinkRecord(token: string, input: CreateEpaMagicLinkInput): EpaMagicLinkRecord {
+  loadPersistedMagicLinksIntoStore();
   const trimmed = token.trim();
-  if (!trimmed || trimmed.length < 16) {
+  if (!trimmed || trimmed.length < 24 || !/^[A-Za-z0-9_-]+$/.test(trimmed)) {
     throw new EpaMagicLinkError("Check the assessment link token and try again.", "invalid_magic_link_token", 400);
   }
   const now = input.now ?? new Date();
   const tokenHash = hashEpaMagicToken(trimmed);
   const existing = magicLinkStore.get(tokenHash);
-  if (existing && existing.status === "completed") {
-    return existing;
+  if (existing) {
+    throw new EpaMagicLinkError("This EPA assessment link has already been issued.", "magic_link_already_issued", 409);
   }
   const record = buildMagicLinkRecord(tokenHash, { ...input, now });
   evictMagicLinkStoreIfNeeded(now);
   magicLinkStore.set(tokenHash, record);
+  persistMagicLinksFromStore();
   return record;
 }
 
@@ -397,6 +461,7 @@ export function consumePublicApiRateLimit(
 }
 
 export function getEpaMagicLinkByToken(token: string, now: Date = new Date()): EpaMagicLinkLookupResult {
+  loadPersistedMagicLinksIntoStore();
   const trimmed = token.trim();
   if (!trimmed || trimmed.length < 16) {
     return {
@@ -428,6 +493,7 @@ export function getEpaMagicLinkByToken(token: string, now: Date = new Date()): E
   if (now.getTime() > Date.parse(record.expiresAt)) {
     const expiredRecord: EpaMagicLinkRecord = { ...record, status: "expired" };
     magicLinkStore.set(tokenHash, expiredRecord);
+    persistMagicLinksFromStore();
     return {
       ok: false,
       status: "expired",
@@ -547,6 +613,7 @@ export function submitEpaMagicLinkResponse(
   };
 
   magicLinkStore.set(lookup.request.tokenHash, completedRecord);
+  persistMagicLinksFromStore();
 
   return {
     ok: true,

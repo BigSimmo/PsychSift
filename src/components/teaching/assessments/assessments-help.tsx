@@ -225,6 +225,7 @@ function RequestEpaSheet({
   const [epa, setEpa] = useState<EpaNumber>(pick);
   const [who, setWho] = useState<"sup" | "reg" | "guest">("sup");
   const [guest, setGuest] = useState<GuestKind | null>(null);
+  const [guestName, setGuestName] = useState("");
   const [magicLinkCopied, setMagicLinkCopied] = useState<string | null>(null);
   const dup = pendingEpaRequest(s, epa);
   const why = who === "guest" && !guest ? "Choose their role first." : null;
@@ -270,6 +271,13 @@ function RequestEpaSheet({
               </WorkChip>
             ))}
           </WorkChips>
+          <AssessTextField
+            id="assess-request-guest-name"
+            label="Assessor name (optional)"
+            value={guestName}
+            onChange={setGuestName}
+            single
+          />
           <AssessNote>
             They get an emailed link and need no CLA account. Their EPA shows as Unapproved until your MEU approves
             them.
@@ -279,29 +287,41 @@ function RequestEpaSheet({
             icon={Copy}
             size="wide"
             testId="epa-magic-link-copy"
-            disabled={!guest}
-            onClick={() => {
+            disabled={!guest || looksLikePatientDetails(guestName)}
+            onClick={async () => {
               if (!guest) return;
-              const supervisorName = GUEST_KINDS.find((item) => item.id === guest)?.name ?? "External supervisor";
+              const supervisorName =
+                guestName.trim() || GUEST_KINDS.find((item) => item.id === guest)?.name || "External supervisor";
               const generated = createEpaMagicLinkRequest({
                 epaCode: epa,
                 traineeName: SAMPLE_DOCTOR.name,
                 supervisorName,
                 supervisorRole: guest,
               });
-              void fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
-                method: "PUT",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                  epaCode: epa,
-                  traineeName: SAMPLE_DOCTOR.name,
-                  supervisorName,
-                  supervisorRole: guest,
-                }),
-              }).catch(() => {});
+              try {
+                const registration = await fetch(
+                  `/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`,
+                  {
+                    method: "PUT",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                      epaCode: epa,
+                      traineeName: SAMPLE_DOCTOR.name,
+                      supervisorName,
+                      supervisorRole: guest,
+                    }),
+                  },
+                );
+                if (!registration.ok && registration.status !== 404) {
+                  setMagicLinkCopied("Could not register supervisor link. Try again.");
+                  return;
+                }
+              } catch {
+                // Local demo/unit-test environments continue with in-process store
+              }
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;
-              void navigator.clipboard?.writeText(fullUrl).catch(() => undefined);
+              await navigator.clipboard?.writeText(fullUrl).catch(() => undefined);
               setMagicLinkCopied(`Supervisor link ready (${generated.urlPath})`);
             }}
           >

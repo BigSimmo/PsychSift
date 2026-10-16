@@ -109,8 +109,13 @@ export type FirstPublicationCliOptions = {
 const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 function isValidReviewTimestamp(value: string | null | undefined): boolean {
-  if (typeof value !== "string" || !ISO_TIMESTAMP_RE.test(value.trim())) return false;
-  return Number.isFinite(Date.parse(value.trim()));
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!ISO_TIMESTAMP_RE.test(trimmed)) return false;
+  const parsedMs = Date.parse(trimmed);
+  if (!Number.isFinite(parsedMs) || parsedMs > Date.now() + 60_000) return false;
+  const normalized = new Date(parsedMs).toISOString();
+  return normalized.slice(0, 19) === trimmed.slice(0, 19);
 }
 
 function validateSignOffEntry(

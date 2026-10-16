@@ -263,7 +263,16 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                     <button
                       key={unit}
                       type="button"
-                      onClick={() => setCreatinineUnit(unit)}
+                      onClick={() => {
+                        if (unit === creatinineUnit) return;
+                        const current = Number.parseFloat(creatinine);
+                        if (Number.isFinite(current) && current > 0) {
+                          const converted =
+                            unit === "mg/dL" ? Math.round((current / 88.4) * 100) / 100 : Math.round(current * 88.4);
+                          setCreatinine(String(converted));
+                        }
+                        setCreatinineUnit(unit);
+                      }}
                       aria-pressed={creatinineUnit === unit}
                       className={cn(
                         "rounded border px-2 py-0.5 text-2xs font-semibold",
@@ -278,23 +287,35 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                 </div>
               </div>
 
-              {cgResult.isValid && ckdResult.isValid ? (
+              {cgResult.isValid || ckdResult.isValid ? (
                 <div
                   className="grid gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-xs"
                   data-testid="clinical-math-renal-results"
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-bold text-[color:var(--text-heading)]">
-                      Cockcroft-Gault CrCl: {cgResult.crClMlMin} mL/min
-                    </span>
-                    <span className="font-mono text-2xs text-[color:var(--text-muted)]">
-                      CKD-EPI 2021 eGFR: {ckdResult.egfr} mL/min/1.73m²
-                    </span>
+                    {cgResult.isValid ? (
+                      <span className="font-bold text-[color:var(--text-heading)]">
+                        Cockcroft-Gault CrCl: {cgResult.crClMlMin} mL/min
+                      </span>
+                    ) : null}
+                    {ckdResult.isValid ? (
+                      <span className="font-mono text-2xs text-[color:var(--text-muted)]">
+                        CKD-EPI 2021 eGFR: {ckdResult.egfr} mL/min/1.73m²
+                      </span>
+                    ) : null}
                   </div>
-                  {cgResult.ibwKg ? (
+                  {cgResult.isValid && cgResult.ibwKg ? (
                     <p className="text-2xs text-[color:var(--text-muted)]">
                       Ideal Body Weight (Devine): {cgResult.ibwKg} kg · Weight used: {cgResult.effectiveWeightKg} kg (
                       {cgResult.weightBasis})
+                    </p>
+                  ) : null}
+                  {cgResult.isValid && cgResult.lithiumClinicalNote ? (
+                    <p
+                      className="text-2xs font-medium text-[color:var(--text)]"
+                      data-testid="clinical-math-renal-lithium-note"
+                    >
+                      {cgResult.lithiumClinicalNote}
                     </p>
                   ) : null}
                   {cgResult.warnings.map((w, idx) => (
@@ -303,11 +324,15 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                     </p>
                   ))}
                 </div>
-              ) : (
-                <div className={cn("rounded-md border p-2.5 text-xs", toneDanger)} data-testid="clinical-math-renal-errors">
-                  {[...cgResult.errors, ...ckdResult.errors].join(" · ")}
+              ) : null}
+              {!cgResult.isValid || !ckdResult.isValid ? (
+                <div
+                  className={cn("rounded-md border p-2.5 text-xs", toneDanger)}
+                  data-testid="clinical-math-renal-errors"
+                >
+                  {[...new Set([...cgResult.errors, ...ckdResult.errors])].join(" · ")}
                 </div>
-              )}
+              ) : null}
             </div>
           ) : null}
 
@@ -364,7 +389,10 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                   ))}
                 </div>
               ) : (
-                <div className={cn("rounded-md border p-2.5 text-xs", toneDanger)} data-testid="clinical-math-qtc-errors">
+                <div
+                  className={cn("rounded-md border p-2.5 text-xs", toneDanger)}
+                  data-testid="clinical-math-qtc-errors"
+                >
                   {qtcResult.errors.join(" · ")}
                 </div>
               )}
@@ -488,8 +516,8 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-bold capitalize">
-                    Level status: {lithiumEval.status} (target {lithiumEval.targetRange.min}–{lithiumEval.targetRange.max}{" "}
-                    mmol/L)
+                    Level status: {lithiumEval.status} (target {lithiumEval.targetRange.min}–
+                    {lithiumEval.targetRange.max} mmol/L)
                   </span>
                   {lithiumDose.isValid ? (
                     <span className="font-mono font-bold" data-testid="clinical-math-lithium-suggested-dose">
@@ -502,6 +530,11 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                     {g}
                   </p>
                 ))}
+                {lithiumDose.isValid && lithiumDose.note ? (
+                  <p className="text-2xs font-medium" data-testid="clinical-math-lithium-dose-note">
+                    {lithiumDose.note}
+                  </p>
+                ) : null}
                 {lithiumDose.warnings?.map((w, idx) => (
                   <p key={idx} className="text-2xs">
                     {w}

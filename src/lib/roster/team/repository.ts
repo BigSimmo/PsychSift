@@ -36,7 +36,7 @@ export function ruleLookbackDays(rules: RosterRules): number {
   const { minBreakHours, maxNightsInRow, maxDaysInRow, maxHours7d, maxHours14d } = rules;
   return Math.max(
     0,
-    minBreakHours === undefined ? 0 : Math.ceil(minBreakHours / 24) + 1,
+    minBreakHours === undefined ? 0 : Math.ceil(minBreakHours / 24) + 2,
     maxNightsInRow === undefined ? 0 : maxNightsInRow + 1,
     maxDaysInRow === undefined ? 0 : maxDaysInRow + 1,
     maxHours7d === undefined ? 0 : 8,

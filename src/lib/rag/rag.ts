@@ -976,7 +976,7 @@ export function decideTextFastPath(
   }
   if (
     queryClass === "table_threshold" &&
-    /\b(?:withhold|withheld|withholding|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation)\b/i.test(
+    /\b(?:withhold|withheld|withholding|hold|holding|held|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation)\b/i.test(
       query,
     )
   ) {

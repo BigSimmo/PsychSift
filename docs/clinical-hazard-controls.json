@@ -168,7 +168,7 @@
     "src/lib/answer-verification.ts": "73e2a66d3b50ae66b415f57366de7f688d098dd9315aeefa38c7e8fd426f8dfc",
     "src/lib/clinical-safety.ts": "8fa7b5fca92f2b12b6f241d32feadd9310ee075a38e55e10b5bbce4c26c1173b",
     "src/lib/rag/rag-answer-support.ts": "4250f30017789f6c5d75e84e7a291f163f08abb95d615fb2368e904956841dd5",
-    "src/lib/rag/rag-claim-support.ts": "88e5b90be32af8f02b6443bb584f3156e70c881c64de9ca32bcb3be689cd0204",
+    "src/lib/rag/rag-claim-support.ts": "a945a3aa1166590010404fbae71ac7a3cc1a8ed4036b68164667adea84e21b47",
     "src/lib/rag/rag-source-block.ts": "984b3f655b468aabbf2d1f489eb6df66273fe7c9e85ea88df63affa986654ad2",
     "src/lib/service-ranker.ts": "bbdbe3629520a22104194fc727530c05614dfba5528d9b9d8d5743acbfa9ea44",
     "src/lib/service-urgent-routing.ts": "663b0d131fa4457a4df9875fb200efe1520c9ebda75b552a8bbd68eb66264a7f",

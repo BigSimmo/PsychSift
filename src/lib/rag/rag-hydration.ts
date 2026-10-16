@@ -400,6 +400,7 @@ export async function attachPageVisualEvidence(
     const fetchedById = new Map(((directData.data ?? []) as PageImageRow[]).map((row) => [row.id, row]));
     for (const id of missingImageIds) visualCache.imagesById.set(id, fetchedById.get(id) ?? null);
   }
+  const missingPairKeys = new Set(missingPairs.map((pair) => pair.key));
   const pageRows =
     visualCache && requestedPairs.every((pair) => visualCache.pages.has(pair.key))
       ? requestedPairs
@@ -412,9 +413,10 @@ export async function attachPageVisualEvidence(
                 .filter((pair) => visualCache.pages.has(pair.key))
                 .flatMap((pair) => visualCache.pages.get(pair.key) ?? [])
             : []),
-          ...((pageData.data ?? []) as PageImageRow[]).filter((row) =>
-            requestedPairsMap.has(pageVisualKey(row.document_id, row.page_number)),
-          ),
+          ...((pageData.data ?? []) as PageImageRow[]).filter((row) => {
+            const key = pageVisualKey(row.document_id, row.page_number);
+            return visualCache ? missingPairKeys.has(key) : requestedPairsMap.has(key);
+          }),
         ]
           .sort((left, right) => right.clinical_relevance_score - left.clinical_relevance_score)
           .slice(0, PAGE_IMAGE_ROW_LIMIT);

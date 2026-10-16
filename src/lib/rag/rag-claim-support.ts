@@ -245,7 +245,13 @@ function actionPolarity(value: string): ActionPolarity {
   }
   if (/\b(?:stop|cease|discontinue|withhold)\b/i.test(value)) return "stop";
   if (/\bcontinue\b/i.test(value)) return "continue";
-  if (/\b(?:may|can)\s+(?:be\s+)?use|not\s+contraindicated\b/i.test(value)) return "use_allowed";
+  if (
+    /\b(?:(?:may|can)\s+(?:be\s+)?use|(?:(?:does|do|did|is|are|was|were)\s+)?not\s+contraindicat(?:e|ed|es|ing|ion|ions))\b/i.test(
+      value,
+    )
+  ) {
+    return "use_allowed";
+  }
   if (/\b(?:contraindicat(?:e|ed|es|ing|ion|ions)|must\s+not|do\s+not\s+use|avoid)\b/i.test(value)) return "do_not_use";
   if (hasNegatedEscalation(value)) return "do_not_escalate";
   if (hasNegatedUrgency(value)) return "urgent_not_required";

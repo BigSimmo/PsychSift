@@ -80,7 +80,22 @@ export function parseCatatoniaWorksheet(markdown) {
   const sharedSection = sectionParts[0] ?? "";
   const disordersSection = (sectionParts[1] ?? "").split(/^##\s+3[\s.—-]+/m)[0] ?? "";
 
-  const quoteMatches = [...sharedSection.matchAll(/^>\s*(.+)$/gm)].map((match) => cleanField(match[1]));
+  const quoteBlocks = [];
+  let currentQuoteLines = [];
+  for (const line of sharedSection.split("\n")) {
+    const match = line.match(/^>\s*(.*)$/);
+    if (match) {
+      const cleaned = cleanField(match[1]);
+      if (cleaned) currentQuoteLines.push(cleaned);
+    } else if (currentQuoteLines.length > 0) {
+      quoteBlocks.push(currentQuoteLines.join(" "));
+      currentQuoteLines = [];
+    }
+  }
+  if (currentQuoteLines.length > 0) {
+    quoteBlocks.push(currentQuoteLines.join(" "));
+  }
+  const quoteMatches = quoteBlocks;
   if (quoteMatches.length < 4) {
     problems.push(`Section 1 must contain 4 blockquote answers (found ${quoteMatches.length}).`);
   }
@@ -165,7 +180,7 @@ export function applyCatatoniaWorksheet(document, parsed) {
   const categories = (document.categories ?? []).map((category) => ({
     ...category,
     disorders: (category.disorders ?? []).map((disorder) => {
-      let nextIcd11Context = disorder.icd11Context;
+      const nextIcd11Context = disorder.icd11Context || undefined;
       const groups = (disorder.groups ?? []).map((group) => ({
         ...group,
         items: (group.items ?? []).map((item) => {
@@ -173,13 +188,14 @@ export function applyCatatoniaWorksheet(document, parsed) {
           const override = byRowKey.get(rowKey);
           if (!override) return item;
           matched.add(rowKey);
-          if (override.icd11Context) {
-            nextIcd11Context = override.icd11Context;
-          }
+          const itemIcd11Note = override.icd11Context ? `ICD-11 route: ${override.icd11Context}` : "";
           const meaning = override.unchanged
             ? parsed.shared.threshold
             : `${parsed.shared.threshold} ${override.difference}`.trim();
-          const clinicalNote = `${parsed.shared.exclusions} ${parsed.shared.impact}`.trim();
+          const clinicalNote = [parsed.shared.exclusions, parsed.shared.impact, itemIcd11Note]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
           const definition = {
             meaning,
             clinicalNote,
@@ -211,7 +227,7 @@ export function applyCatatoniaWorksheet(document, parsed) {
       }));
       return {
         ...disorder,
-        icd11Context: nextIcd11Context,
+        ...(nextIcd11Context ? { icd11Context: nextIcd11Context } : {}),
         groups,
       };
     }),

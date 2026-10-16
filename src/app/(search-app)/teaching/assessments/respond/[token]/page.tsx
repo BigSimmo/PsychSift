@@ -52,6 +52,7 @@ export default function EpaMagicLinkRespondPage({
 
   const [level, setLevel] = useState<SupervisionLevel | null>(null);
   const [complexity, setComplexity] = useState<CaseComplexity | null>(null);
+  const [assessorName, setAssessorName] = useState(() => record?.supervisorName ?? "");
   const [strengths, setStrengths] = useState("");
   const [improvements, setImprovements] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -63,11 +64,35 @@ export default function EpaMagicLinkRespondPage({
   });
 
   useEffect(() => {
-    if (!token) return;
-    const local = getEpaMagicLinkByToken(token);
-    if (local.ok || local.status !== "not_found") {
+    setFormError(null);
+    if (!token) {
+      setRecord(null);
+      setCompleted(null);
+      setStatusError("That assessment link was not found.");
+      setLoading(false);
       return;
     }
+    const local = getEpaMagicLinkByToken(token);
+    if (local.ok) {
+      setRecord(local.request);
+      setAssessorName(local.request.supervisorName);
+      setCompleted(null);
+      setStatusError(null);
+      setLoading(false);
+      return;
+    }
+    if (local.status !== "not_found") {
+      setRecord(local.request ?? null);
+      setCompleted(local.status === "completed" && local.request ? local.request : null);
+      setStatusError(local.message);
+      setLoading(false);
+      return;
+    }
+
+    setRecord(null);
+    setCompleted(null);
+    setStatusError(null);
+    setLoading(true);
 
     let cancelled = false;
     void fetch(`/api/teaching/assessments/respond/${encodeURIComponent(token)}`, {
@@ -81,6 +106,7 @@ export default function EpaMagicLinkRespondPage({
         if (cancelled) return;
         if (response.ok && body?.request) {
           setRecord(body.request);
+          setAssessorName(body.request.supervisorName);
           setStatusError(null);
         } else {
           setStatusError(body?.message ?? "That assessment link was not found.");
@@ -100,7 +126,10 @@ export default function EpaMagicLinkRespondPage({
     };
   }, [token]);
 
-  const patientProblem = checkPatientDetail(strengths) ?? checkPatientDetail(improvements);
+  const patientProblem =
+    checkPatientDetail(strengths) ??
+    checkPatientDetail(improvements) ??
+    (assessorName.trim() ? checkPatientDetail(assessorName, { allowCapitals: true }) : null);
 
   async function handleSubmit() {
     setFormError(null);
@@ -117,21 +146,7 @@ export default function EpaMagicLinkRespondPage({
       return;
     }
 
-    const localResult = submitEpaMagicLinkResponse(token, {
-      level,
-      complexity,
-      strengths,
-      improvements,
-    });
-    if (localResult.ok) {
-      setCompleted(localResult.request);
-      setRecord(localResult.request);
-      return;
-    }
-    if (localResult.status !== "not_found") {
-      setFormError(localResult.message);
-      return;
-    }
+    const resolvedAssessorName = assessorName.trim() || record?.supervisorName || "External Supervisor";
 
     setSubmitting(true);
     try {
@@ -141,6 +156,7 @@ export default function EpaMagicLinkRespondPage({
         body: JSON.stringify({
           level,
           complexity,
+          assessorName: resolvedAssessorName,
           strengths,
           improvements,
         }),
@@ -151,16 +167,40 @@ export default function EpaMagicLinkRespondPage({
         message?: string;
       } | null;
       if (response.ok && payload?.request) {
+        submitEpaMagicLinkResponse(token, {
+          level,
+          complexity,
+          assessorName: resolvedAssessorName,
+          strengths,
+          improvements,
+        });
         setCompleted(payload.request);
         setRecord(payload.request);
-      } else {
+        return;
+      }
+      if (response.status !== 404) {
         setFormError(payload?.message ?? "Could not submit this EPA response.");
+        return;
       }
     } catch {
-      setFormError("Could not submit this EPA response. Check your connection and try again.");
+      // Fall back to local store in offline/unit-test environments
     } finally {
       setSubmitting(false);
     }
+
+    const localResult = submitEpaMagicLinkResponse(token, {
+      level,
+      complexity,
+      assessorName: resolvedAssessorName,
+      strengths,
+      improvements,
+    });
+    if (localResult.ok) {
+      setCompleted(localResult.request);
+      setRecord(localResult.request);
+      return;
+    }
+    setFormError(localResult.message);
   }
 
   return (
@@ -206,6 +246,14 @@ export default function EpaMagicLinkRespondPage({
               </p>
             </div>
           </WorkCard>
+
+          <AssessTextField
+            id="epa-magic-link-assessor-name"
+            label="Your name and role (assessor)"
+            value={assessorName}
+            onChange={setAssessorName}
+            single
+          />
 
           <OptionCard
             legend={`Level of supervision ${record.traineeName} needed`}

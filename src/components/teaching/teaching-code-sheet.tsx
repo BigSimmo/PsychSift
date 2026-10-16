@@ -137,7 +137,7 @@ export function TeachingCodeSheet({
                 ref={inputRef}
                 id={`${formId}-code`}
                 inputMode="numeric"
-                autoComplete="off"
+                autoComplete="one-time-code"
                 spellCheck={false}
                 data-gramm="false"
                 data-enable-grammarly="false"
@@ -191,7 +191,20 @@ export function TeachingCodeSheet({
           <QrCheckInHelper
             onClose={() => setShowScanner(false)}
             onScanCode={(scanned) => {
-              const clean = scanned.replace(/\D/g, "").slice(0, 6);
+              const trimmed = scanned.trim();
+              const checkInUrlMatch = trimmed.match(/\/teaching\/c\/([A-Za-z0-9_-]+)/);
+              if (checkInUrlMatch?.[1]) {
+                if (typeof window !== "undefined") {
+                  window.location.assign(`/teaching/c/${encodeURIComponent(checkInUrlMatch[1])}`);
+                }
+                return;
+              }
+              const exactSixDigits = trimmed.match(/^\d{3}\s?\d{3}$/);
+              if (!exactSixDigits) {
+                setError("Scanned QR code does not contain a 6-digit session code.");
+                return;
+              }
+              const clean = trimmed.replace(/\D/g, "").slice(0, 6);
               setTyped(clean);
               void submit(clean);
             }}
