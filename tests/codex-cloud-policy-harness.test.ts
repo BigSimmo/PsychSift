@@ -121,9 +121,12 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(existsSync(path.join(test.home, ".clinical-kb-codex-cloud.sh"))).toBe(true);
     // Setup now puts the Cloud profile source at the top of each shell profile before the harness stops,
     // so the relocation can be tested without a real runtime. Only files inside the redirected HOME change.
+    const expectedProfileBlock =
+      '# PsychSift Codex Cloud runtime\n[ -f "$HOME/.clinical-kb-codex-cloud.sh" ] && . "$HOME/.clinical-kb-codex-cloud.sh"\n';
     for (const profile of [".bashrc", ".profile", ".bash_profile"]) {
       const contents = readFileSync(path.join(test.home, profile), "utf8");
-      expect(contents).toContain('. "$HOME/.clinical-kb-codex-cloud.sh"');
+      expect(contents.startsWith(expectedProfileBlock)).toBe(true);
+      expect(contents.split(expectedProfileBlock).length - 1).toBe(1);
     }
   });
 
