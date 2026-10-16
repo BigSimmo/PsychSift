@@ -154,17 +154,20 @@ async function main() {
     }
   }
 
-  // Stage jobs as failed (non-executable) before deleting rows. Activate them only
-  // after deletion succeeds, preventing a process stop from exposing live-row cleanup.
-  let stagedJobIds: string[] = [];
+  // Stage jobs with empty image_paths so the storage janitor has zero objects to delete
+  // before the database rows are removed. Populate real paths and activate only after RPC succeeds.
+  let stagedJobsWithPaths: Array<{ id: string; imagePaths: string[] }> = [];
   if (cleanupJobs.length > 0) {
-    const stagedJobs = cleanupJobs.map((job) => ({ ...job, status: "failed" as const }));
+    const stagedJobs = cleanupJobs.map((job) => ({ ...job, image_paths: [], status: "failed" as const }));
     const { data: insertedJobs, error: insertError } = await supabase
       .from("storage_cleanup_jobs")
       .insert(stagedJobs)
       .select("id");
     if (insertError) throw new Error(`Failed to stage storage cleanup jobs: ${insertError.message}`);
-    stagedJobIds = (insertedJobs ?? []).map((job) => job.id);
+    stagedJobsWithPaths = (insertedJobs ?? []).map((row, idx) => ({
+      id: row.id,
+      imagePaths: cleanupJobs[idx]?.image_paths ?? [],
+    }));
   }
 
   const applied = await supabase.rpc("cleanup_abandoned_document_index_generations", {
@@ -172,15 +175,31 @@ async function main() {
     p_limit: limit,
     p_dry_run: false,
   });
-  if (applied.error) throw new Error(applied.error.message);
+  if (applied.error) {
+    if (stagedJobsWithPaths.length > 0) {
+      await supabase
+        .from("storage_cleanup_jobs")
+        .delete()
+        .in(
+          "id",
+          stagedJobsWithPaths.map((job) => job.id),
+        );
+    }
+    throw new Error(applied.error.message);
+  }
 
-  if (stagedJobIds.length > 0) {
-    const { error: activateError } = await supabase
-      .from("storage_cleanup_jobs")
-      .update({ status: "pending" })
-      .in("id", stagedJobIds);
-    if (activateError) throw new Error(`Failed to activate storage cleanup jobs: ${activateError.message}`);
-    console.log(`Enqueued ${stagedJobIds.length} storage cleanup job(s) for ${totalOrphanedPaths} orphaned object(s).`);
+  if (stagedJobsWithPaths.length > 0) {
+    for (const staged of stagedJobsWithPaths) {
+      const { error: activateError } = await supabase
+        .from("storage_cleanup_jobs")
+        .update({ image_paths: staged.imagePaths, status: "pending" })
+        .eq("id", staged.id);
+      if (activateError)
+        throw new Error(`Failed to activate storage cleanup job ${staged.id}: ${activateError.message}`);
+    }
+    console.log(
+      `Enqueued ${stagedJobsWithPaths.length} storage cleanup job(s) for ${totalOrphanedPaths} orphaned object(s).`,
+    );
   }
 
   console.log("\nAbandoned staged generation cleanup applied.");

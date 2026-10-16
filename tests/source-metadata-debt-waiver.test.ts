@@ -46,6 +46,7 @@ describe("release source metadata debt waiver (#49Q5FB)", () => {
     expect(waiver.expires_at).toContain("2027-04-16");
 
     expect(waiver.ceilings.max_stale_rate).toBe(0);
+    expect(waiver.ceilings.max_review_required_rate).toBeLessThanOrEqual(0.6);
     expect(waiver.ceilings.max_outdated_top_results).toBe(0);
     expect(waiver.ceilings.max_poor_extraction_top_results).toBe(0);
     expect(waiver.ceilings.max_source_governance_danger_failure_rate).toBe(0);

@@ -54,6 +54,7 @@ export function computeVirtualWindowRange({
   overscanRows,
   columns,
   focusedIndex,
+  measuredRowHeights,
 }: {
   totalItems: number;
   scrollTop: number;
@@ -62,6 +63,7 @@ export function computeVirtualWindowRange({
   overscanRows: number;
   columns: number;
   focusedIndex?: number | null;
+  measuredRowHeights?: ReadonlyMap<number, number>;
 }): VirtualWindowRange {
   const safeTotalItems = Number.isFinite(totalItems) ? Math.max(0, Math.floor(totalItems)) : 0;
   const safeColumns = Number.isFinite(columns) ? Math.max(1, Math.floor(columns)) : 1;
@@ -88,13 +90,33 @@ export function computeVirtualWindowRange({
     };
   }
 
-  const visibleRowCount = Math.max(1, Math.ceil(safeViewportHeight / safeRowHeight));
-  const maxScrollTop = Math.max(0, totalRows * safeRowHeight - safeViewportHeight);
+  const rowOffsets = new Float64Array(totalRows + 1);
+  for (let r = 0; r < totalRows; r += 1) {
+    const h = measuredRowHeights?.get(r);
+    const validH = typeof h === "number" && Number.isFinite(h) && h >= 24 ? h : safeRowHeight;
+    rowOffsets[r + 1] = rowOffsets[r]! + validH;
+  }
+  const totalHeight = rowOffsets[totalRows]!;
+  const maxScrollTop = Math.max(0, totalHeight - safeViewportHeight);
   const clampedScrollTop = Math.max(0, Math.min(safeScrollTop, maxScrollTop));
-  const anchorRow = Math.floor(clampedScrollTop / safeRowHeight);
+
+  let anchorRow = 0;
+  for (let r = 0; r < totalRows; r += 1) {
+    if (rowOffsets[r + 1]! > clampedScrollTop) {
+      anchorRow = r;
+      break;
+    }
+    anchorRow = r;
+  }
+
+  let endVisibleRow = anchorRow + 1;
+  while (endVisibleRow < totalRows && rowOffsets[endVisibleRow]! - rowOffsets[anchorRow]! < safeViewportHeight) {
+    endVisibleRow += 1;
+  }
+  const visibleRowCount = Math.max(1, endVisibleRow - anchorRow);
 
   let startRow = Math.max(0, anchorRow - safeOverscanRows);
-  let endRow = Math.min(totalRows, anchorRow + visibleRowCount + safeOverscanRows);
+  let endRow = Math.min(totalRows, endVisibleRow + safeOverscanRows);
 
   if (
     typeof focusedIndex === "number" &&
@@ -114,8 +136,8 @@ export function computeVirtualWindowRange({
 
   const startIndex = Math.min(safeTotalItems, startRow * safeColumns);
   const endIndex = Math.min(safeTotalItems, endRow * safeColumns);
-  const topSpacerHeight = startRow * safeRowHeight;
-  const bottomSpacerHeight = Math.max(0, (totalRows - endRow) * safeRowHeight);
+  const topSpacerHeight = Math.round(rowOffsets[startRow] ?? 0);
+  const bottomSpacerHeight = Math.max(0, Math.round(totalHeight - (rowOffsets[endRow] ?? 0)));
 
   return {
     startIndex,
@@ -177,15 +199,25 @@ export function VirtualizedResultList<T>({
   const [scrollTop, setScrollTop] = useState(0);
   const [measuredViewportHeight, setMeasuredViewportHeight] = useState<number>(viewportHeight);
   const [measuredRowHeight, setMeasuredRowHeight] = useState<number | null>(null);
+  const [measuredRowHeights, setMeasuredRowHeights] = useState<ReadonlyMap<number, number>>(() => new Map());
   const [measuredColumns, setMeasuredColumns] = useState<number | null>(null);
   const [internalFocusedIndex, setInternalFocusedIndex] = useState<number | null>(null);
+  const [dismissedExternalFocusIndex, setDismissedExternalFocusIndex] = useState<number | null>(null);
 
   // Deterministic across SSR and initial client hydration: never branch on `typeof window`.
   const shouldVirtualize = !disableVirtualization && items.length > virtualizationThreshold;
 
-  const effectiveFocusedIndex =
-    typeof focusedIndex === "number" && focusedIndex >= 0 && focusedIndex < items.length
+  const activeExternalFocusIndex =
+    typeof focusedIndex === "number" &&
+    focusedIndex >= 0 &&
+    focusedIndex < items.length &&
+    focusedIndex !== dismissedExternalFocusIndex
       ? focusedIndex
+      : null;
+
+  const effectiveFocusedIndex =
+    activeExternalFocusIndex !== null
+      ? activeExternalFocusIndex
       : internalFocusedIndex !== null && internalFocusedIndex >= 0 && internalFocusedIndex < items.length
         ? internalFocusedIndex
         : null;
@@ -240,9 +272,56 @@ export function VirtualizedResultList<T>({
     (event: ReactUIEvent<HTMLDivElement>) => {
       const nextScrollTop = readScrollOffset(event.currentTarget);
       setScrollTop((prev) => (prev === nextScrollTop ? prev : nextScrollTop));
+      setInternalFocusedIndex(null);
+      if (typeof focusedIndex === "number") {
+        setDismissedExternalFocusIndex(focusedIndex);
+      }
     },
-    [readScrollOffset],
+    [focusedIndex, readScrollOffset],
   );
+
+  const measureRenderedRows = useCallback(() => {
+    const listEl = listRef.current;
+    if (!listEl) return;
+    const itemNodes = listEl.querySelectorAll<HTMLElement>("[data-virtual-index]");
+    if (itemNodes.length === 0) return;
+
+    const rowMaxHeights = new Map<number, number>();
+    let firstValidHeight: number | null = null;
+    itemNodes.forEach((node) => {
+      const idx = Number(node.getAttribute("data-virtual-index"));
+      if (!Number.isInteger(idx) || idx < 0) return;
+      const height = Math.round(node.getBoundingClientRect().height || node.offsetHeight || 0);
+      if (height < 24) return;
+      if (firstValidHeight === null) firstValidHeight = height;
+      const row = Math.floor(idx / safeColumns);
+      const prevMax = rowMaxHeights.get(row) ?? 0;
+      if (height > prevMax) rowMaxHeights.set(row, height);
+    });
+
+    if (firstValidHeight !== null) {
+      const capturedFirst = firstValidHeight;
+      setMeasuredRowHeight((prev) => (prev === capturedFirst ? prev : capturedFirst));
+    }
+
+    if (rowMaxHeights.size > 0) {
+      setMeasuredRowHeights((prev) => {
+        let changed = false;
+        for (const [row, h] of rowMaxHeights.entries()) {
+          if (prev.get(row) !== h) {
+            changed = true;
+            break;
+          }
+        }
+        if (!changed) return prev;
+        const next = new Map(prev);
+        for (const [row, h] of rowMaxHeights.entries()) {
+          next.set(row, h);
+        }
+        return next;
+      });
+    }
+  }, [safeColumns]);
 
   useEffect(() => {
     if (!shouldVirtualize || typeof window === "undefined") {
@@ -271,18 +350,16 @@ export function VirtualizedResultList<T>({
         setMeasuredColumns((prev) => (prev === detectedCols ? prev : detectedCols));
       }
 
-      const firstItem = listRef.current?.querySelector<HTMLElement>("[data-virtual-index]");
-      if (firstItem) {
-        const itemRectHeight = Math.round(firstItem.getBoundingClientRect().height || firstItem.offsetHeight || 0);
-        if (itemRectHeight >= 24) {
-          setMeasuredRowHeight((prev) => (prev === itemRectHeight ? prev : itemRectHeight));
-        }
-      }
+      measureRenderedRows();
     };
 
     const onWindowScroll = (event: Event) => {
       const nextScrollTop = readScrollOffset(event.target);
       setScrollTop((prev) => (prev === nextScrollTop ? prev : nextScrollTop));
+      setInternalFocusedIndex(null);
+      if (typeof focusedIndex === "number") {
+        setDismissedExternalFocusIndex(focusedIndex);
+      }
     };
 
     updateMetrics();
@@ -293,7 +370,7 @@ export function VirtualizedResultList<T>({
       window.removeEventListener("scroll", onWindowScroll, { capture: true });
       window.removeEventListener("resize", updateMetrics);
     };
-  }, [readScrollOffset, shouldVirtualize, viewportHeight]);
+  }, [focusedIndex, measureRenderedRows, readScrollOffset, shouldVirtualize, viewportHeight]);
 
   const windowRange = useMemo(
     () =>
@@ -306,6 +383,7 @@ export function VirtualizedResultList<T>({
             overscanRows: overscan,
             columns: safeColumns,
             focusedIndex: effectiveFocusedIndex,
+            measuredRowHeights,
           })
         : {
             startIndex: 0,
@@ -320,12 +398,18 @@ export function VirtualizedResultList<T>({
       effectiveRowHeight,
       effectiveViewportHeight,
       items.length,
+      measuredRowHeights,
       overscan,
       safeColumns,
       scrollTop,
       shouldVirtualize,
     ],
   );
+
+  useEffect(() => {
+    if (!shouldVirtualize) return;
+    queueMicrotask(measureRenderedRows);
+  }, [measureRenderedRows, shouldVirtualize, windowRange.startIndex, windowRange.endIndex, items.length]);
 
   const handleFocusCapture = useCallback((event: ReactFocusEvent<HTMLDivElement>) => {
     const target = event.target;
@@ -393,10 +477,27 @@ export function VirtualizedResultList<T>({
       setInternalFocusedIndex(nextIndex);
 
       const nextRow = Math.floor(nextIndex / safeColumns);
-      const nextScrollTop = Math.max(0, (nextRow - 1) * effectiveRowHeight);
+      let rowOffsetTop = 0;
+      for (let r = 0; r < Math.max(0, nextRow - 1); r += 1) {
+        const h = measuredRowHeights.get(r);
+        rowOffsetTop += typeof h === "number" && Number.isFinite(h) && h >= 24 ? h : effectiveRowHeight;
+      }
+      const nextScrollTop = Math.max(0, rowOffsetTop);
       setScrollTop(nextScrollTop);
+      const containerEl = containerRef.current;
+      if (containerEl && containerEl.scrollHeight > containerEl.clientHeight) {
+        containerEl.scrollTop = nextScrollTop;
+      }
     },
-    [effectiveFocusedIndex, effectiveRowHeight, items.length, safeColumns, shouldVirtualize, windowRange],
+    [
+      effectiveFocusedIndex,
+      effectiveRowHeight,
+      items.length,
+      measuredRowHeights,
+      safeColumns,
+      shouldVirtualize,
+      windowRange,
+    ],
   );
 
   useEffect(() => {
@@ -406,7 +507,10 @@ export function VirtualizedResultList<T>({
     if (!itemWrapper) return;
     pendingKeyboardFocusIndexRef.current = null;
     const focusTarget = findFirstFocusableChild(itemWrapper);
-    focusTarget?.focus({ preventScroll: true });
+    focusTarget?.focus();
+    if (typeof itemWrapper.scrollIntoView === "function") {
+      itemWrapper.scrollIntoView({ block: "nearest" });
+    }
   }, [windowRange.startIndex, windowRange.endIndex, effectiveFocusedIndex]);
 
   if (!shouldVirtualize) {

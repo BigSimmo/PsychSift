@@ -49,10 +49,20 @@ export function useDashboardDrawerOpeners({
 
   function openEvidenceDrawer() {
     closeDashboardTransientSurfaces();
-    const reviewTrigger = document.getElementById("answer-evidence-drawer-mobile-trigger") as HTMLButtonElement | null;
+    const reviewTrigger =
+      (document.getElementById("answer-evidence-drawer-mobile-trigger") as HTMLButtonElement | null) ??
+      document.querySelector<HTMLButtonElement>(
+        '[data-testid="answer-source-drawer-trigger"], [data-testid="source-drawer-trigger"]',
+      );
     if (reviewTrigger) {
       reviewTrigger.scrollIntoView({ block: "center", behavior: resolveScrollBehavior() });
       reviewTrigger.click();
+      return;
+    }
+
+    const sourcesSection = document.getElementById("sources");
+    if (sourcesSection) {
+      sourcesSection.scrollIntoView({ block: "start", behavior: resolveScrollBehavior() });
       return;
     }
 

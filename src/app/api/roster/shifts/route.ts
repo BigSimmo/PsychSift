@@ -13,6 +13,7 @@ import { clearRosterSettings } from "@/lib/roster/settings";
 import { removeAllOwnerSubscriptions } from "@/lib/roster/alerts/subscriptions";
 import { removeAllOwnerLeave, withdrawRosterRequests } from "@/lib/roster/team/delete-my-data";
 import { demoOnCallShifts } from "@/lib/roster/shifts/demo-shifts";
+import { detectOwnConflicts } from "@/lib/roster/shifts/conflicts";
 import { shiftIsInWindow } from "@/lib/roster/shifts/diff";
 import { onCallShiftImportRequestSchema } from "@/lib/roster/shifts/model";
 import {
@@ -153,11 +154,12 @@ export async function POST(request: Request) {
       return publicErrorResponse("A shift falls outside the roster's dates.", 400, { code: "invalid_body" });
     }
     await replaceOwnerShifts(supabase, user.id, body);
+    const conflicts = detectOwnConflicts(body.shifts);
     const [shifts, latestImport] = await Promise.all([
       fetchOwnerShifts(supabase, user.id, listFrom()),
       fetchLatestShiftImport(supabase, user.id),
     ]);
-    return NextResponse.json({ shifts, latestImport }, { headers: noStore });
+    return NextResponse.json({ shifts, latestImport, conflicts }, { headers: noStore });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);

@@ -36,25 +36,33 @@ export function useDashboardBulkActions({
     if (!selectedDocumentIds.length) return;
     setBulkActionBusy(true);
     setBulkActionStatus(null);
+    const batchSize = 10;
+    let anySuccessfulWork = false;
+    let lastSummaryMessage: string | null = null;
     try {
-      const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authorizationHeader,
-        },
-        body: JSON.stringify({ documentIds: selectedDocumentIds, mode }),
-      });
-      if (response.status === 401) {
-        markSessionExpired();
-        return;
+      for (let offset = 0; offset < selectedDocumentIds.length; offset += batchSize) {
+        const batchIds = selectedDocumentIds.slice(offset, offset + batchSize);
+        const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authorizationHeader,
+          },
+          body: JSON.stringify({ documentIds: batchIds, mode }),
+        });
+        if (response.status === 401) {
+          markSessionExpired();
+          return;
+        }
+        const payload = await response.json().catch(() => ({}));
+        if (!isAuthEpochCurrent(requestEpoch)) return;
+        if (!response.ok) throw new Error(payload.error || errorCopy.bulkReindexFailed);
+        const summary = summarizeBulkReindexPayload(payload);
+        lastSummaryMessage = summary.message;
+        if (summary.hasSuccessfulWork) anySuccessfulWork = true;
       }
-      const payload = await response.json().catch(() => ({}));
-      if (!isAuthEpochCurrent(requestEpoch)) return;
-      if (!response.ok) throw new Error(payload.error || errorCopy.bulkReindexFailed);
-      const summary = summarizeBulkReindexPayload(payload);
-      setBulkActionStatus(summary.message);
-      if (!summary.hasSuccessfulWork) return;
+      if (lastSummaryMessage) setBulkActionStatus(lastSummaryMessage);
+      if (!anySuccessfulWork) return;
       setUserStartedIngestion(true);
       setIndexingActive(true);
       await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
