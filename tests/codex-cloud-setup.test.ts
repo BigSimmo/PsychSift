@@ -815,6 +815,51 @@ describe("Codex Cloud environment contract", () => {
     expect(resolvedPath).toEqual(expect.arrayContaining(["/usr/bin", "/bin"]));
   }, 120_000);
 
+  it("only accepts a PATH fallback npm and npx that meet the repository npm range", () => {
+    const home = temporaryDirectory("codex-cloud-shim-npm-home-");
+    const bashHome = bashPathEntry(home);
+    const nodeVersion = "v24.19.0";
+    const nodeBin = path.join(home, ".nvm", "versions", "node", nodeVersion, "bin");
+    mkdirSync(nodeBin, { recursive: true });
+    // This Node install has no npm or npx, so the installer must look elsewhere on PATH.
+    const node = path.join(nodeBin, "node");
+    writeFileSync(
+      node,
+      `#!/usr/bin/env bash\nif [[ "\${1:-}" = "-p" ]]; then printf "%s\\n" "${nodeVersion.slice(1)}"; fi\n`,
+    );
+    chmodSync(node, 0o755);
+    writeFileSync(
+      path.join(home, ".clinical-kb-codex-cloud.sh"),
+      [`export NVM_DIR="${bashHome}/.nvm"`, `nvm() { printf '${nodeVersion}\\n'; }`, ""].join("\n"),
+    );
+
+    const installWithFallbackNpm = (npmVersion: string) => {
+      const fallbackBin = temporaryDirectory("codex-cloud-shim-npm-path-");
+      for (const command of ["npm", "npx"]) {
+        const executable = path.join(fallbackBin, command);
+        writeFileSync(executable, `#!/usr/bin/env bash\nprintf "%s\\n" "${npmVersion}"\n`);
+        chmodSync(executable, 0o755);
+      }
+      return spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          HOME: bashHome,
+          PATH: `${bashPathEntry(fallbackBin)}:${bashPathList(process.env.PATH || "")}`,
+        },
+      });
+    };
+
+    const older = installWithFallbackNpm("10.9.0");
+    expect(older.status).toBe(1);
+    expect(older.stderr).toContain("npm 11.x is required");
+    expect(older.stderr).toContain("10.9.0");
+
+    const supported = installWithFallbackNpm("11.17.0");
+    expect(supported.status, supported.stderr || supported.stdout).toBe(0);
+  }, 120_000);
+
   it("prefers the exact Python 3.12 interpreter over an older python3 alias", () => {
     const home = temporaryDirectory("codex-cloud-python-home-");
     const bin = temporaryDirectory("codex-cloud-python-");
