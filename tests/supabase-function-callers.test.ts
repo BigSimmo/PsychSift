@@ -3,8 +3,8 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 // Every database function the live schema is expected to hold should have a caller: application or
-// worker code, a script, an edge function, or another piece of SQL (a function body, trigger,
-// policy, view or scheduled job). A function nothing calls is dead weight in the live database,
+// worker code, a script, an edge function, or SQL in the current schema (a function body, trigger,
+// policy or view) or a scheduled job. A function nothing calls is dead weight in the live database,
 // which is how unused versions pile up. This check is offline: it reads the drift manifest and the
 // repository, and never touches the database.
 
@@ -15,9 +15,19 @@ const root = path.resolve(import.meta.dirname, "..");
 // cannot see. Remove an entry when that happens; never add one to silence a new function.
 const KNOWN_UNCALLED = new Set([
   "activate_public_source_version",
+  "backfill_legacy_index_health_batch",
+  "create_uploaded_document_with_ingestion_job",
+  "document_label_metadata",
+  "document_summary_text",
+  "invoke_indexing_v3_agent",
+  "match_document_embedding_fields_text",
   "on_call_shifts_replace",
+  "prepare_completed_admin_text_reference",
+  "read_completed_admin_text_source_layout",
   "record_public_source_activation",
   "roster_rotation_can_manage",
+  "set_document_corpus_access_mode",
+  "stamp_document_deep_memory_version",
   "teaching_platform_command",
   "transition_public_source_version",
 ]);
@@ -53,28 +63,60 @@ function codeWords(): Set<string> {
   return words;
 }
 
-function migrationSqlWithoutComments(): string {
+// The current schema (`supabase/schema.sql`, which the drift manifest is built from) is the only SQL
+// that can call anything: superseded bodies in older migrations no longer run. When schema.sql
+// redefines a function, only its last definition counts.
+function currentSchemaSql(): string {
+  const sql = readFileSync(path.join(root, "supabase/schema.sql"), "utf8").replace(/--.*$/gm, "");
+  const definition =
+    /\bcreate\s+(?:or\s+replace\s+)?function\s+(?:public\.)?"?(\w+)"?\s*\(([^)]*)\)[\s\S]*?\bas\s+(\$\w*\$)[\s\S]*?\3/gi;
+  const definitions = [...sql.matchAll(definition)];
+  const last = new Map<string, number>();
+  for (const match of definitions)
+    last.set(`${match[1]!.toLowerCase()}(${match[2]!.replace(/\s+/g, " ").trim()})`, match.index);
+  let current = "";
+  let cursor = 0;
+  for (const match of definitions) {
+    const key = `${match[1]!.toLowerCase()}(${match[2]!.replace(/\s+/g, " ").trim()})`;
+    current += sql.slice(cursor, match.index);
+    if (last.get(key) === match.index) current += match[0];
+    cursor = match.index + match[0].length;
+  }
+  return current + sql.slice(cursor) + "\n" + scheduledJobCommands();
+}
+
+// Scheduled jobs live in pg_cron's own table, not in schema.sql, so the commands migrations scheduled
+// are callers too.
+function scheduledJobCommands(): string {
   const dir = path.join(root, "supabase/migrations");
+  const schedule = /\bcron\.schedule\s*\(([\s\S]*?)\)\s*;/gi;
   return readdirSync(dir)
     .filter((file) => file.endsWith(".sql"))
-    .sort()
-    .map((file) => readFileSync(path.join(dir, file), "utf8").replace(/--.*$/gm, ""))
+    .flatMap((file) => [...readFileSync(path.join(dir, file), "utf8").replace(/--.*$/gm, "").matchAll(schedule)])
+    .map((match) => match[1])
     .join("\n");
 }
 
-// Statements that name a function without calling it: defining, dropping, altering, granting or commenting.
+// Text that names a function without calling it: its own definition and body, drop, alter, grant and
+// comment statements, and catalog lookups by name (`to_regprocedure('public.x(uuid)')`,
+// `proname = 'x'`, or a quoted `'public.x(...)'` identity string).
 function withoutSelfReferences(sql: string, name: string): string {
-  const declaring = new RegExp(
-    String.raw`\b(?:create\s+or\s+replace\s+function|create\s+function|drop\s+function(?:\s+if\s+exists)?|alter\s+function|on\s+function)\s+(?:public\.)?"?${name}\b`,
+  const ownDefinition = new RegExp(
+    String.raw`\bcreate\s+(?:or\s+replace\s+)?function\s+(?:public\.)?"?${name}"?\s*\([\s\S]*?\bas\s+(\$\w*\$)[\s\S]*?\1`,
     "gi",
   );
-  return sql.replace(declaring, "");
+  const naming = new RegExp(
+    String.raw`\b(?:drop\s+function(?:\s+if\s+exists)?|alter\s+function|on\s+function)\s+(?:public\.)?"?${name}\b`,
+    "gi",
+  );
+  const lookups = new RegExp(String.raw`proname\s*=\s*'${name}'|'(?:public\.)?${name}(?:\([^']*\))?'(?:::\w+)?`, "gi");
+  return sql.replace(ownDefinition, "").replace(naming, "").replace(lookups, "");
 }
 
 describe("database function callers", () => {
   const names = expectedFunctionNames();
   const words = codeWords();
-  const sql = migrationSqlWithoutComments();
+  const sql = currentSchemaSql();
 
   const uncalled = names.filter((name) => {
     if (words.has(name)) return false;
