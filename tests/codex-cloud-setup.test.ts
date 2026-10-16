@@ -1190,6 +1190,37 @@ describe("Codex Cloud environment contract", () => {
     expect(resolvedPath).toEqual(expect.arrayContaining(["/usr/bin", "/bin"]));
   }, 120_000);
 
+  it("probes a supported Node installed under a directory containing spaces", () => {
+    const homeRoot = temporaryDirectory("codex-cloud-shim-space-");
+    const home = path.join(homeRoot, "home with spaces");
+    mkdirSync(home, { recursive: true });
+    const bashHome = bashPathEntry(home);
+    const nodeVersion = "v24.19.0";
+    const nodeBin = path.join(home, ".nvm", "versions", "node", nodeVersion, "bin");
+    mkdirSync(nodeBin, { recursive: true });
+    for (const command of ["node", "npm", "npx"]) {
+      const executable = path.join(nodeBin, command);
+      writeFileSync(
+        executable,
+        command === "node"
+          ? `#!/usr/bin/env bash\nif [[ "\${1:-}" = "-p" ]]; then printf "%s\\n" "${nodeVersion.slice(1)}"; fi\n`
+          : '#!/usr/bin/env bash\nprintf "%s\\n" "$PATH"\n',
+      );
+      chmodSync(executable, 0o755);
+    }
+    writeFileSync(
+      path.join(home, ".clinical-kb-codex-cloud.sh"),
+      [`export NVM_DIR="${bashHome}/.nvm"`, `nvm() { printf '${nodeVersion}\\n'; }`, ""].join("\n"),
+    );
+
+    const install = spawnSync(bashCommand, ["scripts/install-codex-cloud-command-shims.sh"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { ...fixtureEnvironment, HOME: bashHome, PATH: bashPathList(process.env.PATH || "") },
+    });
+    expect(install.status, install.stderr || install.stdout).toBe(0);
+  }, 120_000);
+
   it("only accepts a PATH fallback npm and npx that meet the repository npm range", () => {
     const home = temporaryDirectory("codex-cloud-shim-npm-home-");
     const bashHome = bashPathEntry(home);
