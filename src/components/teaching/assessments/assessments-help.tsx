@@ -280,7 +280,7 @@ function RequestEpaSheet({
             size="wide"
             testId="epa-magic-link-copy"
             disabled={!guest}
-            onClick={() => {
+            onClick={async () => {
               if (!guest) return;
               const supervisorName = GUEST_KINDS.find((item) => item.id === guest)?.name ?? "External supervisor";
               const generated = createEpaMagicLinkRequest({
@@ -289,16 +289,22 @@ function RequestEpaSheet({
                 supervisorName,
                 supervisorRole: guest,
               });
-              const registration = await fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
-                method: "PUT",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({
-                  epaCode: epa,
-                  traineeName: SAMPLE_DOCTOR.name,
-                  supervisorName,
-                  supervisorRole: guest,
-                }),
-              });
+              let registration: Response;
+              try {
+                registration = await fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
+                  method: "PUT",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    epaCode: epa,
+                    traineeName: SAMPLE_DOCTOR.name,
+                    supervisorName,
+                    supervisorRole: guest,
+                  }),
+                });
+              } catch {
+                setMagicLinkCopied("Could not register supervisor link. Please try again.");
+                return;
+              }
               if (!registration.ok) {
                 setMagicLinkCopied("Could not register supervisor link. Please try again.");
                 return;
@@ -756,6 +762,4 @@ export function AssessmentsSheets({
       </div>
     </Sheet>
   );
-}
- );
 }

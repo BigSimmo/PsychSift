@@ -1779,6 +1779,3 @@ if __name__ == "__main__":
     except PdfUnreadable as exc:
         print(f"PDF_UNREADABLE: {exc}", file=sys.stderr)
         sys.exit(4)
-readable as exc:
-        print(f"PDF_UNREADABLE: {exc}", file=sys.stderr)
-        sys.exit(4)

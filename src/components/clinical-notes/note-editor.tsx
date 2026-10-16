@@ -240,13 +240,13 @@ export function ClinicalNoteEditor({
           </span>
           {onSave ? (
             <button
-            type="button"
-            onClick={() => performSave(currentValue)}
-            disabled={readOnly || saveStatus === "saving" || saveStatus === "saved"}
-            className={buttonFaceClass({ variant: "secondary", size: "sm" })}
-            data-testid="note-editor-save-btn"
-          >
-            Save now
+              type="button"
+              onClick={() => performSave(currentValue)}
+              disabled={readOnly || saveStatus === "saving" || saveStatus === "saved"}
+              className={buttonFaceClass({ variant: "secondary", size: "sm" })}
+              data-testid="note-editor-save-btn"
+            >
+              Save now
             </button>
           ) : null}
         </div>
@@ -259,7 +259,7 @@ export function ClinicalNoteEditor({
       ) : null}
 
       <textarea
-        i{`${instanceId}-textarea`}
+        id={`${instanceId}-textarea`}
         aria-describedby={`${instanceId}-status`}
         ref={textareaRef}
         value={currentValue}
@@ -285,26 +285,4 @@ export function ClinicalNoteEditor({
       />
     </div>
   );
-}
-);
-}
-}
-se"
-        data-enable-grammarly="false"
-      />
-    </div>
-  );
-}
-);
-}
-
-}
-}
-se"
-        data-enable-grammarly="false"
-      />
-    </div>
-  );
-}
-);
 }
