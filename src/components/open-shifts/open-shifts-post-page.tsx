@@ -115,8 +115,12 @@ export function OpenShiftsPostPage() {
   // that post already saved instead of saving a second one. A key is dropped once its date is posted;
   // changing anything in the shift makes a new key.
   const postKeys = useRef<Record<string, string>>({});
+  // Keep the current actor available to an in-progress post, whose render state can otherwise be stale after
+  // authentication changes.
+  const actorIdRef = useRef(state.actorId);
+  actorIdRef.current = state.actorId;
   // Keys belong to the signed-in person, so someone else signing in on this tab never reuses one.
-  const keyFor = (on: string) => `${state.actorId ?? ""}|${signature(on)}`;
+  const keyFor = (on: string, actorId = state.actorId) => `${actorId ?? ""}|${signature(on)}`;
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);
@@ -223,6 +227,7 @@ export function OpenShiftsPostPage() {
    * rest; the answer names every date that went live and every one that didn't.
    */
   async function post(): Promise<string | null> {
+    const postingActorId = actorIdRef.current;
     if (!team || !times) return "Choose a team, date and times.";
     // A post that got no answer for a team that couldn't be read just now: wait, rather than let the form
     // fall back to another team and post there instead. A team the manager picked themselves still posts.
@@ -239,7 +244,13 @@ export function OpenShiftsPostPage() {
     const attempts: PostAttempt[] = [];
     const nowDone = { ...done };
     const nowUnanswered = { ...unanswered };
+    let stopped = false;
     for (const [index, on] of toPost.entries()) {
+      // Do not issue another request after the account changes while a previous date is pending.
+      if (actorIdRef.current !== postingActorId) {
+        stopped = true;
+        break;
+      }
       setProgress({ current: index + 1, total: toPost.length });
       const onTimes = gapTimes(on, start, end);
       // A date whose earlier post got no answer waits for a fresh read of the team's shifts, so it is never sent
@@ -258,14 +269,14 @@ export function OpenShiftsPostPage() {
         attempts.push({ date: on, ok: true, openShiftId: live.id });
         nowDone[signature(on)] = live.id;
         // Confirmed from the list, so a later deliberate post of the same slot gets a new key.
-        forgetPostKey(keyFor(on), postKeys.current);
+        forgetPostKey(keyFor(on, postingActorId), postKeys.current);
         continue;
       }
       if (!onTimes) {
         attempts.push({ date: on, ok: false, message: "The times couldn't be worked out for this date." });
         continue;
       }
-      const postKey = postKeyFor(keyFor(on), postKeys.current);
+      const postKey = postKeyFor(keyFor(on, postingActorId), postKeys.current);
       const result = await postRosterAction(team.serviceId, {
         action: "open.post",
         startsAt: onTimes.startsAt,
@@ -277,10 +288,14 @@ export function OpenShiftsPostPage() {
         urgent,
         postKey,
       } as RosterAction);
+      if (actorIdRef.current !== postingActorId) {
+        stopped = true;
+        break;
+      }
       if (result.ok) {
         attempts.push({ date: on, ok: true, openShiftId: result.result.openShiftId ?? null });
         nowDone[signature(on)] = result.result.openShiftId ?? "";
-        forgetPostKey(keyFor(on), postKeys.current);
+        forgetPostKey(keyFor(on, postingActorId), postKeys.current);
       } else {
         attempts.push({ date: on, ok: false, message: result.message });
         // No answer at all: it may still have gone live, so a retry checks the team's list first. A repeat
@@ -296,6 +311,7 @@ export function OpenShiftsPostPage() {
       }
     }
     setProgress(null);
+    if (stopped) return "Posting stopped because the signed-in account changed. Please review and try again.";
     setDone(nowDone);
     setUnanswered(nowUnanswered);
     // Pin the team a post with no answer went to, so a re-read that misses it can't quietly switch the form.
