@@ -2860,6 +2860,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-sign-off-pins-cover-source-records.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-08-29-compact-roles-tap-floor-40px.md",
         "section": "decisions",
         "catalogued": true
@@ -23694,6 +23699,14 @@
         "checks": "Hosted failure root cause: stale review_state snapshot; focused Vitest first attempt blocked by repository coordinator capacity; local snapshot gate reproduced expected review_state drift."
       },
       {
+        "date": "2026-10-16",
+        "ref": "fix/adversarial-remediation-20261016",
+        "head": "d5775ec60c00faff2b1a2485c4ee84f53b915a56",
+        "scope": "Adversarial assessment + parallel fix swarm + post-fix adversarial review across calculators, handover privacy, teaching QR/attendance, EPA magic links, and roster swaps (zero RAG diff)",
+        "outcome": "All P0/P1/P2 findings fixed and verified; zero RAG files touched",
+        "checks": "typecheck (10171 files), eslint --max-warnings=0 (33 code files), check:diff-integrity, check:forms-review-sheet, check:source-acquisitions, vitest (14 suites, 344/344 passed)"
+      },
+      {
         "date": "2026-07-31",
         "ref": "codex/moderate-batch-20260730",
         "head": "d582c49fe3a2f01bad179d06f84484754b639458",
@@ -24956,6 +24969,14 @@
         "scope": "PR #1490 merge conflict",
         "outcome": "merged origin/main; resolved outstanding-issues against #1508 IDs; kept pre-snapshot wording",
         "checks": "check:outstanding-issues,docs:check-links"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "feat/backlog-remediation-20261016",
+        "head": "e526f8a4d5ad00ad05c5b780262b84a5e347938c",
+        "scope": "prlanded",
+        "outcome": "PR #3571 squash-merged cleanly into main (e526f8a4d5ad00ad05c5b780262b84a5e347938c); two-dot tree diff against pushed head 7c00d1f35e960dc9ca92f4d6c4d50ccd1242724e is empty.",
+        "checks": "gh pr view 3571 (MERGED), git rev-list --parents -n 1 e526f8a4d5ad00ad05c5b780262b84a5e347938c (1 parent 24eeea365e782c651047eebf0ecbe9db87e4fd07), git diff --stat e526f8a4d5ad00ad05c5b780262b84a5e347938c 7c00d1f35e960dc9ca92f4d6c4d50ccd1242724e (empty)"
       },
       {
         "date": "2026-07-17",
