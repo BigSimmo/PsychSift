@@ -12,6 +12,8 @@ update public.roster_open_post_keys k
  where k.posted_by is not null
    and not exists (select 1 from auth.users u where u.id = k.posted_by);
 
+create index roster_open_post_keys_posted_by_idx on public.roster_open_post_keys (posted_by);
+
 alter table public.roster_open_post_keys
   add constraint roster_open_post_keys_posted_by_fkey
   foreign key (posted_by) references auth.users (id) on delete set null;
