@@ -774,8 +774,11 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
                 bands[-1].append(seg)
 
         rows_out = []
+        prev_band_y1 = None
         for band in bands:
             band.sort(key=lambda s: s[0])
+            band_y0 = min(s[1] for s in band)
+            band_y1 = max(s[3] for s in band)
             row_cells = [""] * num_cols
             valid_band = True
             for sx0, _sy0, sx1, _sy1, text in band:
@@ -785,15 +788,27 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
                     break
                 row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
             if not valid_band:
+                prev_band_y1 = None
                 continue
             populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
+            if populated_cols == 1 and rows_out and prev_band_y1 is not None and (band_y0 - prev_band_y1) <= 16.0:
+                prev_row = rows_out[-1]
+                existing_keys.discard(tuple(prev_row))
+                for idx, val in enumerate(row_cells):
+                    if val:
+                        prev_row[idx] = clean_cell(f"{prev_row[idx]} {val}") if prev_row[idx] else val
+                existing_keys.add(tuple(prev_row))
+                prev_band_y1 = band_y1
+                continue
             if populated_cols < 2:
                 continue
             key = tuple(row_cells)
             if key in existing_keys:
+                prev_band_y1 = band_y1
                 continue
             existing_keys.add(key)
             rows_out.append(row_cells)
+            prev_band_y1 = band_y1
         return rows_out
 
     return collect_rows(top_segments), collect_rows(bottom_segments)

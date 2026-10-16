@@ -45,7 +45,11 @@ export function ClinicalNoteEditor({
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(initialValue);
   const currentValue = isControlled ? controlledValue : internalValue;
-  const sharedDevice = isSharedDevice();
+  const [sharedDevice, setSharedDevice] = useState(false);
+
+  useEffect(() => {
+    setSharedDevice(isSharedDevice());
+  }, []);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [lastSavedValue, setLastSavedValue] = useState(currentValue);

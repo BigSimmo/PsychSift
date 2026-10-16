@@ -307,4 +307,3 @@ describe("RosterSafeNumber live route cell-level conflict detection (#3B4S3Z)", 
     expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("6");
   });
 });
-

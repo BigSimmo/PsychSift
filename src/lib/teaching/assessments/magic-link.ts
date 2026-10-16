@@ -235,53 +235,12 @@ const magicRateLimitStore = (globalMagicLinks.__psychsiftEpaMagicRateLimits ??= 
   { windowStartMs: number; count: number; resetAtMs: number }
 >());
 
-function getNodePersistenceFilePath(): string | null {
-  if (typeof window !== "undefined") return null;
-  if (typeof process === "undefined" || !process.versions?.node) return null;
-  const tempRoot = process.env.TMPDIR || process.env.TEMP || process.env.TMP || "/tmp";
-  return `${tempRoot.replace(/[\\/]+$/, "")}/psychsift-epa-magic-links.json`;
-}
-
 function loadPersistedMagicLinksIntoStore(): void {
-  const filePath = getNodePersistenceFilePath();
-  if (!filePath) return;
-  try {
-    const req = (0, eval)("require") as (id: string) => {
-      existsSync: (p: string) => boolean;
-      readFileSync: (p: string, enc: string) => string;
-    };
-    const fs = req("node:fs");
-    if (!fs.existsSync(filePath)) return;
-    const raw = fs.readFileSync(filePath, "utf8");
-    const parsed = JSON.parse(raw) as Record<string, EpaMagicLinkRecord>;
-    if (!parsed || typeof parsed !== "object") return;
-    for (const [hash, record] of Object.entries(parsed)) {
-      const current = magicLinkStore.get(hash);
-      if (!current || (current.status !== "completed" && record.status === "completed")) {
-        magicLinkStore.set(hash, record);
-      }
-    }
-  } catch {
-    // Non-fatal fallback to in-memory map in restricted environments
-  }
+  // Process-scoped globalThis store is authoritative within the server runtime; avoid /tmp file races and eval
 }
 
 function persistMagicLinksFromStore(): void {
-  const filePath = getNodePersistenceFilePath();
-  if (!filePath) return;
-  try {
-    const req = (0, eval)("require") as (id: string) => {
-      writeFileSync: (p: string, data: string, enc: string) => void;
-    };
-    const fs = req("node:fs");
-    const serialized: Record<string, EpaMagicLinkRecord> = {};
-    for (const [hash, record] of magicLinkStore.entries()) {
-      serialized[hash] = record;
-    }
-    fs.writeFileSync(filePath, JSON.stringify(serialized), "utf8");
-  } catch {
-    // Non-fatal fallback to in-memory map in restricted environments
-  }
+  // No-op: avoids uncoordinated /tmp file overwrites across concurrent workers
 }
 
 export class EpaMagicLinkError extends Error {

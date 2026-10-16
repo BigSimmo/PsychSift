@@ -653,29 +653,23 @@ export function AttendanceGapsSheet({
 }) {
   const [filter, setFilter] = useState("");
   const needle = filter.trim().toLowerCase();
-  const hasLoadedCounts =
-    checkInCountsByUserId !== undefined ||
-    organise.members.some((m) => typeof (m as { checkInsCount?: number }).checkInsCount === "number");
   const countsMap = checkInCountsByUserId ?? {};
-  const zeroCheckInMembers = hasLoadedCounts
-    ? organise.members.filter((m) => {
-        if (m.role && m.role !== "doctor") return false;
-        const count = (m as { checkInsCount?: number }).checkInsCount ?? countsMap[m.userId] ?? 0;
-        return count === 0;
-      })
-    : [];
+  const zeroCheckInMembers = organise.members.filter((m) => {
+    const role = m.role as string | undefined;
+    if (role && role !== "doctor" && role !== "registrar") return false;
+    const count = (m as { checkInsCount?: number }).checkInsCount ?? countsMap[m.userId] ?? 0;
+    return count === 0;
+  });
   const shown = zeroCheckInMembers.filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle));
-  const rosterMembers: RegistrarMember[] = hasLoadedCounts
-    ? organise.members
-        .filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle))
-        .map((m) => ({
-          userId: m.userId,
-          name: (m as { displayName?: string }).displayName ?? memberLabel(m),
-          role: m.role,
-          checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
-          joinedAt: m.joinedAt,
-        }))
-    : [];
+  const rosterMembers: RegistrarMember[] = organise.members
+    .filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle))
+    .map((m) => ({
+      userId: m.userId,
+      name: (m as { displayName?: string }).displayName ?? memberLabel(m),
+      role: m.role,
+      checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
+      joinedAt: m.joinedAt,
+    }));
   return (
     <Sheet open onClose={onClose} title="Attendance gaps">
       <div className="grid gap-2" data-testid="teaching-attendance-gaps-sheet">

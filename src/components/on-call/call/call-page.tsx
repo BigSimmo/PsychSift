@@ -594,6 +594,8 @@ export function OnCallCallPage() {
                 <span className={cn(modeSecondaryText, "break-words")}>Sign in to keep your own numbers.</span>
               </li>
             ) : null}
+            {/* A literal next/link href: route-reachability counts only those. */}
+            <OnCallRow href="/on-call/contacts" title="Your own numbers" testId="on-call-call-mine-link" />
           </OnCallGroupedList>
         ) : null}
 

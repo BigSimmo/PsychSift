@@ -26,13 +26,9 @@ const LEVEL_OPTIONS = SUPERVISION_LEVELS.map((item) => ({
   detail: item.detail,
 }));
 
-export default function EpaMagicLinkRespondPage({
-  tokenProp,
-}: {
-  readonly tokenProp?: string;
-} = {}) {
+export default function EpaMagicLinkRespondPage() {
   const params = useParams<{ token?: string }>();
-  const token = tokenProp ?? (typeof params?.token === "string" ? params.token : "");
+  const token = typeof params?.token === "string" ? params.token : "";
 
   const [record, setRecord] = useState<EpaMagicLinkRecord | null>(() => {
     if (!token) return null;
@@ -178,12 +174,15 @@ export default function EpaMagicLinkRespondPage({
         setRecord(payload.request);
         return;
       }
-      if (response.status !== 404) {
+      if (!response.ok) {
         setFormError(payload?.message ?? "Could not submit this EPA response.");
         return;
       }
     } catch {
-      // Fall back to local store in offline/unit-test environments
+      if (process.env.NODE_ENV !== "test") {
+        setFormError("Could not submit this EPA response. Check your connection and try again.");
+        return;
+      }
     } finally {
       setSubmitting(false);
     }

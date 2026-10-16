@@ -15,10 +15,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Authorised hospitals"
-    ],
+    "topics": ["Mental Health Act 2014", "Authorised hospitals"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -43,10 +40,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Statutory compliance"
-    ],
+    "topics": ["Mental Health Act 2014", "Statutory compliance"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -74,11 +68,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Community treatment orders",
-      "Involuntary treatment"
-    ],
+    "topics": ["Mental Health Act 2014", "Community treatment orders", "Involuntary treatment"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -106,10 +96,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Psychiatric examination"
-    ],
+    "topics": ["Mental Health Act 2014", "Psychiatric examination"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -137,10 +124,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Treatment support and discharge plans"
-    ],
+    "topics": ["Mental Health Act 2014", "Treatment support and discharge plans"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -168,10 +152,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Further opinions"
-    ],
+    "topics": ["Mental Health Act 2014", "Further opinions"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -199,10 +180,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Clinical care standards",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Clinical care standards", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -227,11 +205,7 @@
     "documentStatus": "outdated",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mood disorders",
-      "Major depressive disorder",
-      "Bipolar disorder"
-    ],
+    "topics": ["Mood disorders", "Major depressive disorder", "Bipolar disorder"],
     "rung": 3,
     "capturedAt": "2026-09-06",
     "capturedFor": "Seed capture of the WA statutory psychiatry sources the register should hold first",
@@ -259,12 +233,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Medicines",
-      "Adverse effects",
-      "Movement disorders",
-      "Dictionary"
-    ],
+    "topics": ["Medicines", "Adverse effects", "Movement disorders", "Dictionary"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Already cited by the published dictionary for the extrapyramidal side-effect terms. Captured so that citation has a dated register row.",
@@ -293,10 +262,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -325,10 +291,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -357,10 +320,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -389,10 +349,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -421,10 +378,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -453,10 +407,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -485,10 +436,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Consumer information"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name this term. Captured for terminology provenance only; consumer information is not clinical guidance.",
@@ -516,10 +464,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Delirium",
-      "Dictionary"
-    ],
+    "topics": ["Delirium", "Dictionary"],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "The published dictionary already cites CG103 for the delirium entry. Captured so that citation has a dated register row.",
@@ -547,11 +492,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Self-harm",
-      "Risk assessment",
-      "Dictionary"
-    ],
+    "topics": ["Self-harm", "Risk assessment", "Dictionary"],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts reference NG225 terminology. Captured for terminology provenance only; UK guidance does not carry WA clinical authority.",
@@ -579,10 +520,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Services and workforce",
-      "Dictionary"
-    ],
+    "topics": ["Services and workforce", "Dictionary"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name consultation-liaison psychiatry services. Captured for terminology provenance only.",
@@ -610,10 +548,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Neurostimulation",
-      "Dictionary"
-    ],
+    "topics": ["Neurostimulation", "Dictionary"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts in the Neurostimulation category name this position statement. Captured for terminology provenance only.",
@@ -641,10 +576,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Neurostimulation",
-      "Dictionary"
-    ],
+    "topics": ["Neurostimulation", "Dictionary"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts in the Neurostimulation category name this guideline. Captured for terminology provenance only; no scoring or prescribing behaviour is derived from it.",
@@ -673,10 +605,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Consent",
-      "Dictionary"
-    ],
+    "topics": ["Consent", "Dictionary"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts reference WA consent terminology. Captured for terminology provenance only; consent law itself is governed by the Mental Health Act 2014 and the Chief Psychiatrist's standards.",
@@ -704,11 +633,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Clinical documentation",
-      "Dictionary"
-    ],
+    "topics": ["Mental Health Act 2014", "Clinical documentation", "Dictionary"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts name WA standardised clinical documentation. Captured for terminology provenance only.",
@@ -736,10 +661,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Instrument terminology"
-    ],
+    "topics": ["Dictionary", "Instrument terminology"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "Dictionary sense drafts name this instrument and its originating manual. Captured for terminology provenance only; no scoring or activation.",
@@ -767,10 +689,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Instrument terminology"
-    ],
+    "topics": ["Dictionary", "Instrument terminology"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "Dictionary sense drafts name this instrument and its originating manual. Captured for terminology provenance only; no scoring or activation.",
@@ -798,9 +717,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -825,9 +742,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -852,9 +767,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -879,9 +792,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -906,9 +817,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -933,9 +842,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -960,9 +867,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -987,9 +892,7 @@
     "documentStatus": "outdated",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Therapy"
-    ],
+    "topics": ["Therapy"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1014,10 +917,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Adult depression therapy selection/delivery."
-    ],
+    "topics": ["Therapy", "Adult depression therapy selection/delivery."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1045,10 +945,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Youth depression."
-    ],
+    "topics": ["Therapy", "Youth depression."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1076,10 +973,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "GAD/panic CBT/applied relaxation."
-    ],
+    "topics": ["Therapy", "GAD/panic CBT/applied relaxation."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1107,10 +1001,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Disorder-specific CBT."
-    ],
+    "topics": ["Therapy", "Disorder-specific CBT."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1138,10 +1029,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "CBT/ERP."
-    ],
+    "topics": ["Therapy", "CBT/ERP."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1169,10 +1057,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Detailed corroboration for PTSD; Phoenix first for Australia."
-    ],
+    "topics": ["Therapy", "Detailed corroboration for PTSD; Phoenix first for Australia."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1231,10 +1116,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Phase-specific bipolar psychotherapy."
-    ],
+    "topics": ["Therapy", "Phase-specific bipolar psychotherapy."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1262,10 +1144,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Adult CBT-informed intervention and DBT-A subgroup."
-    ],
+    "topics": ["Therapy", "Adult CBT-informed intervention and DBT-A subgroup."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1293,10 +1172,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Structured therapy/comprehensive DBT in defined subgroup."
-    ],
+    "topics": ["Therapy", "Structured therapy/comprehensive DBT in defined subgroup."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1324,10 +1200,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "AN/BN/BED diagnosis-age specific treatment."
-    ],
+    "topics": ["Therapy", "AN/BN/BED diagnosis-age specific treatment."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1355,10 +1228,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "ACT/CBT for chronic primary pain."
-    ],
+    "topics": ["Therapy", "ACT/CBT for chronic primary pain."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1386,10 +1256,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Motivational and alcohol-focused psychological interventions."
-    ],
+    "topics": ["Therapy", "Motivational and alcohol-focused psychological interventions."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1417,10 +1284,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Therapy",
-      "Adult ADHD structured psychological interventions."
-    ],
+    "topics": ["Therapy", "Adult ADHD structured psychological interventions."],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "PsychSift Therapy source reconciliation: the Therapy catalogue's 205 records cite one uploaded Markdown export and no traceable clinical source",
@@ -1479,10 +1343,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "metadata_only",
-    "topics": [
-      "DSM-5-TR",
-      "Diagnostic criteria"
-    ],
+    "topics": ["DSM-5-TR", "Diagnostic criteria"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
@@ -1510,18 +1371,13 @@
     "documentStatus": "outdated",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "DSM-5-TR",
-      "Approved updates"
-    ],
+    "topics": ["DSM-5-TR", "Approved updates"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
     "disposition": "candidate",
     "dispositionReason": "Metadata established from the publisher on 2026-09-14. Held as a candidate until a clinician reviews it; no clinical content cites it",
-    "supersededBy": [
-      "apa-dsm5tr-supplement-2023-09"
-    ],
+    "supersededBy": ["apa-dsm5tr-supplement-2023-09"],
     "notes": "An amendment to the manual, not an independent complete manual. Dated September 2022 without a day, hence month precision.",
     "attestedBy": "PsychSift",
     "attestedAt": "2026-09-26T17:29:43.184Z",
@@ -1543,18 +1399,13 @@
     "documentStatus": "outdated",
     "validationStatus": "locally_reviewed",
     "contentMode": "metadata_only",
-    "topics": [
-      "DSM-5-TR",
-      "Approved updates"
-    ],
+    "topics": ["DSM-5-TR", "Approved updates"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
     "disposition": "candidate",
     "dispositionReason": "Metadata established from the publisher on 2026-09-14. Held as a candidate until a clinician reviews it; no clinical content cites it",
-    "supersededBy": [
-      "apa-dsm5tr-supplement-2024-09"
-    ],
+    "supersededBy": ["apa-dsm5tr-supplement-2024-09"],
     "notes": "An amendment to the manual. No canonical URL was established for this edition, so it is held as metadata only. Dated September 2023 without a day.",
     "attestedBy": "PsychSift",
     "attestedAt": "2026-09-26T17:29:43.184Z",
@@ -1576,18 +1427,13 @@
     "documentStatus": "outdated",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "DSM-5-TR",
-      "Approved updates"
-    ],
+    "topics": ["DSM-5-TR", "Approved updates"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
     "disposition": "candidate",
     "dispositionReason": "Metadata established from the publisher on 2026-09-14. Held as a candidate until a clinician reviews it; no clinical content cites it",
-    "supersededBy": [
-      "apa-dsm5tr-supplement-2025-09"
-    ],
+    "supersededBy": ["apa-dsm5tr-supplement-2025-09"],
     "notes": "An amendment to the manual. Dated September 2024 without a day, hence month precision.",
     "attestedBy": "PsychSift",
     "attestedAt": "2026-09-26T17:29:43.184Z",
@@ -1609,11 +1455,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "DSM-5-TR",
-      "Approved updates",
-      "Other specified bipolar and related disorder"
-    ],
+    "topics": ["DSM-5-TR", "Approved updates", "Other specified bipolar and related disorder"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
@@ -1641,12 +1483,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "ICD-10-AM",
-      "ACHI",
-      "Australian Coding Standards",
-      "Admitted care coding"
-    ],
+    "topics": ["ICD-10-AM", "ACHI", "Australian Coding Standards", "Admitted care coding"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
@@ -1674,11 +1511,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Alcohol use disorder",
-      "Alcohol withdrawal",
-      "Thiamine"
-    ],
+    "topics": ["Alcohol use disorder", "Alcohol withdrawal", "Thiamine"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "DSM-5-TR diagnosis and Australian coding sources supplied by the 2026-09-14 handover",
@@ -1706,10 +1539,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Generalised anxiety disorder",
-      "Panic disorder"
-    ],
+    "topics": ["Generalised anxiety disorder", "Panic disorder"],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
@@ -1737,9 +1567,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Bipolar disorder"
-    ],
+    "topics": ["Bipolar disorder"],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
@@ -1767,11 +1595,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Withdrawal",
-      "Dependence",
-      "Antidepressants"
-    ],
+    "topics": ["Withdrawal", "Dependence", "Antidepressants"],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
@@ -1799,9 +1623,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Depression"
-    ],
+    "topics": ["Depression"],
     "rung": 5,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
@@ -1829,11 +1651,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Lithium",
-      "Monitoring",
-      "Drug interactions"
-    ],
+    "topics": ["Lithium", "Monitoring", "Drug interactions"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
@@ -1861,10 +1679,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Lithium",
-      "Drug interactions"
-    ],
+    "topics": ["Lithium", "Drug interactions"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Factsheets evidence reconciliation: sources cited by the 2026-09-14 source-checked claim review that were not yet in the register",
@@ -1892,11 +1707,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Alcohol and other drugs",
-      "Opioid agonist therapy",
-      "Dictionary"
-    ],
+    "topics": ["Alcohol and other drugs", "Opioid agonist therapy", "Dictionary"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Dictionary sense drafts reference opioid agonist therapy terminology reported here. Captured for terminology provenance only; prison health statistics are not clinical guidance.",
@@ -1924,11 +1735,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Sexual assault",
-      "Crisis response",
-      "Counselling"
-    ],
+    "topics": ["Sexual assault", "Crisis response", "Counselling"],
     "rung": 1,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode carried no Sexual Assault Resource Centre record; SARC is the WA sexual assault crisis pathway",
@@ -1986,11 +1793,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Family and domestic violence",
-      "Sexual violence",
-      "Crisis counselling"
-    ],
+    "topics": ["Family and domestic violence", "Sexual violence", "Crisis counselling"],
     "rung": 3,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode carried no 1800RESPECT record and the WA family violence pathway needs one",
@@ -2018,11 +1821,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Child and adolescent mental health",
-      "Regional WA",
-      "Specialist consultation"
-    ],
+    "topics": ["Child and adolescent mental health", "Regional WA", "Specialist consultation"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode carried no WISH record and the referral rule for WISH was unresolved",
@@ -2050,11 +1849,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Youth psychosocial support",
-      "Mental health",
-      "Alcohol and other drugs"
-    ],
+    "topics": ["Youth psychosocial support", "Mental health", "Alcohol and other drugs"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode carried no youth psychosocial support pathway between clinical treatment and nothing",
@@ -2082,11 +1877,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Youth psychosocial support",
-      "Transitional accommodation",
-      "Mental health"
-    ],
+    "topics": ["Youth psychosocial support", "Transitional accommodation", "Mental health"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode carried no youth transitional accommodation pathway with mental health support",
@@ -2114,11 +1905,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Child development",
-      "Neurodevelopment",
-      "Paediatric assessment"
-    ],
+    "topics": ["Child development", "Neurodevelopment", "Paediatric assessment"],
     "rung": 1,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode carried no child development or neurodevelopmental assessment pathway",
@@ -2146,11 +1933,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Perinatal mental health",
-      "Inpatient care",
-      "Mother and baby"
-    ],
+    "topics": ["Perinatal mental health", "Inpatient care", "Mother and baby"],
     "rung": 1,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode held no perinatal inpatient record and the existing legacy entry conflates KEMH with Fiona Stanley",
@@ -2178,11 +1961,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Eating disorders",
-      "Gender diversity",
-      "Child and adolescent mental health"
-    ],
+    "topics": ["Eating disorders", "Gender diversity", "Child and adolescent mental health"],
     "rung": 1,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode held no child eating disorder or child gender diversity pathway",
@@ -2210,11 +1989,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Service navigation",
-      "Mental health",
-      "Alcohol and other drugs"
-    ],
+    "topics": ["Service navigation", "Mental health", "Alcohol and other drugs"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode had no long-tail discovery fallback for WA services outside the curated core",
@@ -2242,11 +2017,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "South West",
-      "Mental health observation",
-      "Emergency alternative"
-    ],
+    "topics": ["South West", "Mental health observation", "Emergency alternative"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "Services mode had no South West short-stay mental health observation pathway",
@@ -2274,11 +2045,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Adult community mental health",
-      "Regional WA",
-      "South West"
-    ],
+    "topics": ["Adult community mental health", "Regional WA", "South West"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "The legacy South West record carried four clinic phone numbers and duplicated hours fields from merged research",
@@ -2306,12 +2073,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Adult community mental health",
-      "Regional WA",
-      "Kimberley",
-      "Aboriginal mental health"
-    ],
+    "topics": ["Adult community mental health", "Regional WA", "Kimberley", "Aboriginal mental health"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "The legacy Kimberley record had never been checked against the service's own page",
@@ -2336,12 +2098,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Adult community mental health",
-      "Regional WA",
-      "Pilbara",
-      "Aboriginal mental health"
-    ],
+    "topics": ["Adult community mental health", "Regional WA", "Pilbara", "Aboriginal mental health"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "The legacy Pilbara record had never been checked against the service's own page",
@@ -2366,12 +2123,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Adult community mental health",
-      "Regional WA",
-      "Great Southern",
-      "GP psychiatry advice"
-    ],
+    "topics": ["Adult community mental health", "Regional WA", "Great Southern", "GP psychiatry advice"],
     "rung": 2,
     "capturedAt": "2026-09-16",
     "capturedFor": "The legacy Great Southern record stated no contact was publicly available, which left a regional service unreachable from the catalogue",
@@ -2399,9 +2151,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric differential diagnosis"
-    ],
+    "topics": ["Psychiatric differential diagnosis"],
     "rung": 5,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Differentials source/content handover preparation",
@@ -2429,9 +2179,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric differential diagnosis"
-    ],
+    "topics": ["Psychiatric differential diagnosis"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Differentials source/content handover preparation",
@@ -2459,9 +2207,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric differential diagnosis"
-    ],
+    "topics": ["Psychiatric differential diagnosis"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Differentials source/content handover preparation",
@@ -2489,9 +2235,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric formulation"
-    ],
+    "topics": ["Psychiatric formulation"],
     "rung": 2,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Formulation content/source handover; metadata only",
@@ -2519,9 +2263,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric formulation"
-    ],
+    "topics": ["Psychiatric formulation"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Formulation content/source handover; metadata only",
@@ -2549,9 +2291,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric formulation"
-    ],
+    "topics": ["Psychiatric formulation"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Formulation content/source handover; metadata only",
@@ -2579,9 +2319,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric formulation"
-    ],
+    "topics": ["Psychiatric formulation"],
     "rung": 3,
     "capturedAt": "2026-09-14",
     "capturedFor": "PsychSift Formulation content/source handover; metadata only",
@@ -2645,10 +2383,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Mental Health Act 2014",
-      "Legislation versions"
-    ],
+    "topics": ["Mental Health Act 2014", "Legislation versions"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "Confirm which consolidation of the Mental Health Act 2014 is current before running build-mha-act-sections.mjs --refresh.",
@@ -2673,10 +2408,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Aboriginal mental health practice",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Aboriginal mental health practice", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2701,10 +2433,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Psychiatric assessment",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Psychiatric assessment", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2732,10 +2461,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Care planning",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Care planning", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2763,10 +2489,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Consumer and carer involvement",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Consumer and carer involvement", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2794,10 +2517,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Physical healthcare of mental health consumers",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Physical healthcare of mental health consumers", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2825,10 +2545,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Seclusion and restraint reduction",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Seclusion and restraint reduction", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2856,10 +2573,7 @@
     "documentStatus": "review_due",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Transfer of care",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Transfer of care", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Chief Psychiatrist Standards drafted-summary data (task 5c)",
@@ -2957,10 +2671,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Statewide Medicines Formulary",
-      "Stimulant restrictions"
-    ],
+    "topics": ["Statewide Medicines Formulary", "Stimulant restrictions"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "Round-1 fix review flagged that the plan bullet's 'SMF restrictions' phrase might mean the Statewide Medicines Formulary's own drug-specific restriction level for the psychostimulants, distinct from the CPOP client-number caps already captured under wa-monitored-medicines-prescribing-code.",
@@ -3019,10 +2730,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Clozapine",
-      "Neutropenia monitoring"
-    ],
+    "topics": ["Clozapine", "Neutropenia monitoring"],
     "rung": 1,
     "capturedAt": "2026-09-25",
     "capturedFor": "PsychSift Medications catalogue clozapine 'wa' quoted reference block (task 6b): excluded per task instruction and outstanding issue #7VQ5RC before drafting any clozapine content",
@@ -3047,19 +2755,13 @@
     "documentStatus": "outdated",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Interpreters",
-      "Language services",
-      "Mental health assessment"
-    ],
+    "topics": ["Interpreters", "Language services", "Mental health assessment"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "Task t7b — interpreter and Aboriginal-liaison cultural notes for MHA examination forms 1A, 3A, 3B, 3C, 4A and 6A.",
     "disposition": "rejected",
     "dispositionReason": "Rejected in fix round 1 (2026-09-25): a reviewer confirmed the current successor policy, WA Health Language Services Policy MP 0051/17 (effective 3 April 2017, amended 17 March 2025), is reachable at https://www.health.wa.gov.au/~/media/Corp/Policy-Frameworks/System-governance-risk-and-assurance/Language-Services-Policy/Language-Services-Policy.pdf — a URL this session had not tried when it first captured this 2011 edition (every URL tried at that time 404'd). No form-cultural-notes.json entry cites this record any more; every interpreter note that cited it now cites wa-health-language-services-policy-mp0051-17 or wa-health-language-services-guidelines-2025 instead. Superseded by MP 0051/17.",
-    "supersededBy": [
-      "wa-health-language-services-policy-mp0051-17"
-    ],
+    "supersededBy": ["wa-health-language-services-policy-mp0051-17"],
     "notes": "Kept for the record only. s 6.4 of this 2011 edition lists 'mental health assessment, diagnosis and treatment' among the health care events with 'higher risks ... associated with miscommunication', and s 6.4.1 says high-risk encounters 'warrant the engagement of interpreters or translators with the highest possible level of competency' — both ideas persist in the MP 0051/17 Guidelines' more specific mental-health telephone-interpreting caveat, which is what the current notes now cite."
   },
   {
@@ -3078,11 +2780,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Interpreters",
-      "Language services",
-      "Mandatory WA Health policy"
-    ],
+    "topics": ["Interpreters", "Language services", "Mandatory WA Health policy"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "Fix round 1 for task t7b — replaces the superseded 2011 Language Services Policy record.",
@@ -3110,12 +2808,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Interpreters",
-      "Language services",
-      "Aboriginal Interpreting WA",
-      "Mental health assessment"
-    ],
+    "topics": ["Interpreters", "Language services", "Aboriginal Interpreting WA", "Mental health assessment"],
     "rung": 2,
     "capturedAt": "2026-09-25",
     "capturedFor": "Fix round 1 for task t7b — re-draft of the interpreter notes previously (wrongly) sourced from the superseded 2011 policy.",
@@ -3172,10 +2865,7 @@
     "disposition": "candidate",
     "supersededBy": [],
     "evidenceType": "professional_reference",
-    "topics": [
-      "Dictionary",
-      "Spinal cord injury"
-    ],
+    "topics": ["Dictionary", "Spinal cord injury"],
     "rung": 4,
     "capturedFor": "Dictionary sense drafts cite this page for the SCI expansion. Captured for terminology provenance only.",
     "dispositionReason": "The publisher's page states 'Publication date 2021-08-30' and 'Version: 1'. Read 2026-09-26 Candidate only pending clinical sign-off.",
@@ -3203,11 +2893,7 @@
     "disposition": "candidate",
     "supersededBy": [],
     "evidenceType": "professional_reference",
-    "topics": [
-      "Dictionary",
-      "Emergency care",
-      "Mental health assessment"
-    ],
+    "topics": ["Dictionary", "Emergency care", "Mental health assessment"],
     "rung": 4,
     "capturedFor": "Dictionary sense drafts cite this page for adult emergency mental-health assessment terms. Captured for terminology provenance only.",
     "dispositionReason": "The publisher's page states 'Published: December 2023.' and gives no version, so the version field carries that statement. Read 2026-09-26. Candidate only pending clinical sign-off.",
@@ -3236,11 +2922,7 @@
     "disposition": "candidate",
     "supersededBy": [],
     "evidenceType": "consumer_reference",
-    "topics": [
-      "Dictionary",
-      "Bipolar disorder",
-      "Consumer information"
-    ],
+    "topics": ["Dictionary", "Bipolar disorder", "Consumer information"],
     "rung": 5,
     "capturedFor": "Dictionary sense drafts cite this page to correct the implication that bipolar I requires a depressive episode. Captured for terminology provenance only; consumer information is not clinical guidance.",
     "dispositionReason": "The APA's own page carries a physician review dated 'April 2024' and gives no publication date, which is why this record is dateModel continuously_updated. Read 2026-09-26. Candidate only pending clinical sign-off.",
@@ -3265,11 +2947,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Forensic mental health",
-      "Youth justice",
-      "Court liaison"
-    ],
+    "topics": ["Forensic mental health", "Youth justice", "Court liaison"],
     "rung": 1,
     "capturedAt": "2026-09-26",
     "capturedFor": "Services mode held no record for the Links Court Program at the Perth Children's Court (ledger #6X06YS)",
@@ -3301,10 +2979,7 @@
     "capturedAt": "2026-09-26",
     "disposition": "candidate",
     "supersededBy": [],
-    "topics": [
-      "Child protection",
-      "Reporting concerns"
-    ],
+    "topics": ["Child protection", "Reporting concerns"],
     "capturedFor": "The legacy Child Protection Central Intake record carried no source URL yet was marked high confidence (ledger #KVYHWZ)",
     "dispositionReason": "Captured from the publisher's own page (owner-approved page read, 2026-09-26) and used for a canonical service record. Awaiting owner review before adoption",
     "notes": "States the Central Intake Team on 1800 273 889 for concerns about a child's wellbeing, Crisis Care as the after-hours response, police on 000 for life-threatening concerns, and the Professional Referral form. States no hours for the Central Intake Team.",
@@ -3332,10 +3007,7 @@
     "capturedAt": "2026-09-26",
     "disposition": "candidate",
     "supersededBy": [],
-    "topics": [
-      "Family and domestic violence",
-      "Helplines"
-    ],
+    "topics": ["Family and domestic violence", "Helplines"],
     "capturedFor": "The legacy Women's Domestic Violence Helpline record carried no source URL yet was marked high confidence (ledger #KVYHWZ)",
     "dispositionReason": "Captured from the publisher's own page (owner-approved page read, 2026-09-26). Used for canonical record SVC-FDV-004. On the owner's 2026-09-26 decision the helpline is the first family-violence route, with 1800RESPECT listed straight after it. The record stays pending the owner's clinical sign-off",
     "notes": "States a free 24-hour line, 1800 007 339, for women with or without children experiencing family and domestic violence in Western Australia, offering information, advice, referral to advocacy and safe accommodation, and police liaison.",
@@ -3361,10 +3033,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Self-harm"
-    ],
+    "topics": ["Dictionary", "Self-harm"],
     "rung": 3,
     "capturedAt": "2026-09-26",
     "capturedFor": "Dictionary sense drafts name the National Ambulance Surveillance System categories reported here. Captured for terminology provenance only; surveillance data definitions are not clinical guidance or an individual risk prediction.",
@@ -3394,10 +3063,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Self-harm"
-    ],
+    "topics": ["Dictionary", "Self-harm"],
     "rung": 3,
     "capturedAt": "2026-09-26",
     "capturedFor": "Dictionary sense drafts reference self-harm and suicidal-ideation data definitions from this glossary. Captured for terminology provenance only; data definitions are not an individual risk prediction and do not certify short tokens for documentation.",
@@ -3427,10 +3093,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Dictionary", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-26",
     "capturedFor": "Dictionary sense drafts expand MHAS and describe its statutory advocacy role. Captured for terminology provenance only; eligibility and statutory functions must be read from current service information and the Mental Health Act 2014.",
@@ -3460,10 +3123,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Helplines"
-    ],
+    "topics": ["Dictionary", "Helplines"],
     "rung": 2,
     "capturedAt": "2026-09-26",
     "capturedFor": "Dictionary sense drafts expand MHERL and describe the service. Captured for terminology provenance only; service boundaries and contact arrangements can change and must be read from the current page.",
@@ -3493,10 +3153,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Dictionary",
-      "Mental Health Act 2014"
-    ],
+    "topics": ["Dictionary", "Mental Health Act 2014"],
     "rung": 2,
     "capturedAt": "2026-09-26",
     "capturedFor": "Dictionary sense drafts reference WA statutory terminology and roles introduced on this page. Captured for terminology provenance only; this is an official explanatory page, not the consolidated legislation, and legal requirements must be checked in the Act.",
@@ -3524,11 +3181,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Clozapine",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Clozapine", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-03",
     "capturedFor": "Outstanding issue #05WXHX step 2: a real source link on the clozapine medication page, pointing at the TGA-approved Product Information (brands requested: Clozaril, Clopine).",
@@ -3553,11 +3206,7 @@
     "documentStatus": "review_due",
     "validationStatus": "unverified",
     "contentMode": "link_only",
-    "topics": [
-      "Lithium",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Lithium", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-03",
     "capturedFor": "Outstanding issue #05WXHX step 2: a real source link on the lithium carbonate (immediate and slow release) medication page, pointing at the TGA-approved Product Information.",
@@ -3582,11 +3231,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Clozapine",
-      "Medications",
-      "Paediatrics"
-    ],
+    "topics": ["Clozapine", "Medications", "Paediatrics"],
     "rung": 1,
     "capturedAt": "2026-10-03",
     "capturedFor": "Outstanding issue #05WXHX step 2: rung 1 search before linking the clozapine medication page to the TGA Product Information.",
@@ -3611,11 +3256,7 @@
     "documentStatus": "current",
     "validationStatus": "unverified",
     "contentMode": "metadata_only",
-    "topics": [
-      "Lithium",
-      "Medications",
-      "Paediatrics"
-    ],
+    "topics": ["Lithium", "Medications", "Paediatrics"],
     "rung": 1,
     "capturedAt": "2026-10-03",
     "capturedFor": "Outstanding issue #05WXHX step 2: rung 1 search before linking the lithium carbonate medication page to the TGA Product Information.",
@@ -3642,12 +3283,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Sodium valproate",
-      "Anticonvulsants / teratogens",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Sodium valproate", "Anticonvulsants / teratogens", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for sodium-valproate-oral-iv (Anticonvulsants / teratogens), pointing at the TGA-approved Product Information.",
@@ -3677,12 +3313,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Clomipramine",
-      "Tricyclic antidepressants (overdose lethality)",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Clomipramine", "Tricyclic antidepressants (overdose lethality)", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for clomipramine (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
@@ -3712,12 +3343,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Tranylcypromine",
-      "Irreversible MAOIs",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Tranylcypromine", "Irreversible MAOIs", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for tranylcypromine (Irreversible MAOIs), pointing at the TGA-approved Product Information.",
@@ -3747,12 +3373,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Citalopram",
-      "High QTc-prolongation antidepressants",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Citalopram", "High QTc-prolongation antidepressants", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for citalopram (High QTc-prolongation antidepressants), pointing at the TGA-approved Product Information.",
@@ -3782,12 +3403,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Nortriptyline",
-      "Tricyclic antidepressants (overdose lethality)",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Nortriptyline", "Tricyclic antidepressants (overdose lethality)", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for nortriptyline (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
@@ -3817,12 +3433,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Flupentixol decanoate",
-      "Long-acting injectable antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Flupentixol decanoate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for flupentixol-decanoate (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
@@ -3852,12 +3463,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Ziprasidone",
-      "High QTc-prolongation antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Ziprasidone", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for ziprasidone (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
@@ -3887,12 +3493,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Escitalopram",
-      "High QTc-prolongation antidepressants",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Escitalopram", "High QTc-prolongation antidepressants", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for escitalopram (High QTc-prolongation antidepressants), pointing at the TGA-approved Product Information.",
@@ -3957,12 +3558,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Paliperidone palmitate",
-      "Long-acting injectable antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Paliperidone palmitate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for paliperidone-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
@@ -3992,12 +3588,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Risperidone",
-      "Long-acting injectable antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Risperidone", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for risperidone-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4027,12 +3618,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Droperidol",
-      "High QTc-prolongation antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Droperidol", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for droperidol (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4062,12 +3648,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Carbamazepine",
-      "Anticonvulsants / teratogens",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Carbamazepine", "Anticonvulsants / teratogens", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for carbamazepine-ir-cr (Anticonvulsants / teratogens), pointing at the TGA-approved Product Information.",
@@ -4097,12 +3678,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Amisulpride",
-      "High QTc-prolongation antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Amisulpride", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for amisulpride (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4132,12 +3708,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Phenelzine",
-      "Irreversible MAOIs",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Phenelzine", "Irreversible MAOIs", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for phenelzine (Irreversible MAOIs), pointing at the TGA-approved Product Information.",
@@ -4167,12 +3738,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Aripiprazole",
-      "Long-acting injectable antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Aripiprazole", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for aripiprazole-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4202,12 +3768,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Methadone",
-      "Opioid agonist therapy / QTc and overdose risk",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Methadone", "Opioid agonist therapy / QTc and overdose risk", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for methadone (Opioid agonist therapy / QTc and overdose risk), pointing at the TGA-approved Product Information.",
@@ -4237,12 +3798,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Amitriptyline",
-      "Tricyclic antidepressants (overdose lethality)",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Amitriptyline", "Tricyclic antidepressants (overdose lethality)", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for amitriptyline (Tricyclic antidepressants (overdose lethality)), pointing at the TGA-approved Product Information.",
@@ -4272,12 +3828,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Lamotrigine",
-      "Anticonvulsants / SJS-TEN risk",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Lamotrigine", "Anticonvulsants / SJS-TEN risk", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for lamotrigine (Anticonvulsants / SJS-TEN risk), pointing at the TGA-approved Product Information.",
@@ -4307,12 +3858,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Haloperidol decanoate",
-      "Long-acting injectable antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Haloperidol decanoate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for haloperidol-decanoate (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4342,12 +3888,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Olanzapine pamoate",
-      "Long-acting injectable antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Olanzapine pamoate", "Long-acting injectable antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for olanzapine-pamoate-lai (Long-acting injectable antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4377,12 +3918,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Haloperidol",
-      "High QTc-prolongation antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Haloperidol", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for haloperidol-oral-im-iv (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",
@@ -4412,12 +3948,7 @@
     "documentStatus": "current",
     "validationStatus": "locally_reviewed",
     "contentMode": "link_only",
-    "topics": [
-      "Chlorpromazine",
-      "High QTc-prolongation antipsychotics",
-      "Medications",
-      "Product information"
-    ],
+    "topics": ["Chlorpromazine", "High QTc-prolongation antipsychotics", "Medications", "Product information"],
     "rung": 3,
     "capturedAt": "2026-10-16",
     "capturedFor": "Outstanding issue #05WXHX: high-risk medication source link for chlorpromazine (High QTc-prolongation antipsychotics), pointing at the TGA-approved Product Information.",

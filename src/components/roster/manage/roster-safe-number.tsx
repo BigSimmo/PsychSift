@@ -200,10 +200,8 @@ function Editor({
         const hasCellConflict = SAFE_NUMBER_KINDS.some((kind) =>
           grid[kind].some((value, index) => {
             if (value === confirmed[kind][index]) return false;
-            return checkOptimisticLock(
-              { version: read[kind][index] },
-              { expectedVersion: confirmed[kind][index] },
-            ).conflict;
+            return checkOptimisticLock({ version: read[kind][index] }, { expectedVersion: confirmed[kind][index] })
+              .conflict;
           }),
         );
         if (hasCellConflict) {
@@ -255,10 +253,9 @@ function Editor({
     try {
       setState({ kind: "saving" });
       // Build on a fresh read, so a need or a number another manager set since this page opened is kept.
-      const result = await writeOverFresh(
-        (fresh) => applySafeNumberChanges(fresh, confirmed, grid),
-        { checkCellConflicts: !forceOverwrite },
-      );
+      const result = await writeOverFresh((fresh) => applySafeNumberChanges(fresh, confirmed, grid), {
+        checkCellConflicts: !forceOverwrite,
+      });
       if (!result) return;
       const { written: saved, read: previous } = result;
       setConfirmed(saved);
@@ -349,11 +346,7 @@ function Editor({
             >
               Reload latest
             </WorkButton>
-            <WorkButton
-              variant="primary"
-              testId="safe-number-conflict-overwrite"
-              onClick={() => void save(true)}
-            >
+            <WorkButton variant="primary" testId="safe-number-conflict-overwrite" onClick={() => void save(true)}>
               Overwrite with my changes
             </WorkButton>
           </div>

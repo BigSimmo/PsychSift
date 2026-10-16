@@ -235,7 +235,12 @@ export function RosterImportFlow({
     const retainedOther = shifts.shifts.filter(
       (shift) => !(shift.source === "import" && (shift.workplace ?? "") === place && shiftIsInWindow(shift, window)),
     );
-    const conflicts = detectOwnConflicts([...retainedOther, ...read.shifts]);
+    const readShiftKeys = new Set(read.shifts.map((s) => `${s.startsAt}|${s.endsAt}|${s.title}|${s.location ?? ""}`));
+    const conflicts = detectOwnConflicts([...retainedOther, ...read.shifts]).filter(
+      (c) =>
+        readShiftKeys.has(`${c.first.startsAt}|${c.first.endsAt}|${c.first.title}|${c.first.location ?? ""}`) ||
+        readShiftKeys.has(`${c.second.startsAt}|${c.second.endsAt}|${c.second.title}|${c.second.location ?? ""}`),
+    );
     return { ...read, window, diff, conflicts, unchanged: Math.max(0, read.shifts.length - diff.added - diff.changed) };
   }, [loaded, rowIndex, codes, shifts.shifts, place]);
 

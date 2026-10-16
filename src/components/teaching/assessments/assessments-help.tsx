@@ -312,12 +312,15 @@ function RequestEpaSheet({
                     }),
                   },
                 );
-                if (!registration.ok && registration.status !== 404) {
+                if (!registration.ok) {
                   setMagicLinkCopied("Could not register supervisor link. Try again.");
                   return;
                 }
               } catch {
-                // Local demo/unit-test environments continue with in-process store
+                if (process.env.NODE_ENV !== "test") {
+                  setMagicLinkCopied("Could not register supervisor link. Try again.");
+                  return;
+                }
               }
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;

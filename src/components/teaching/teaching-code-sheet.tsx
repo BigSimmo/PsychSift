@@ -192,12 +192,19 @@ export function TeachingCodeSheet({
             onClose={() => setShowScanner(false)}
             onScanCode={(scanned) => {
               const trimmed = scanned.trim();
-              const checkInUrlMatch = trimmed.match(/\/teaching\/c\/([A-Za-z0-9_-]+)/);
-              if (checkInUrlMatch?.[1]) {
+              if (trimmed.includes("/teaching/c/")) {
                 if (typeof window !== "undefined") {
-                  window.location.assign(`/teaching/c/${encodeURIComponent(checkInUrlMatch[1])}`);
+                  try {
+                    const parsedUrl = new URL(trimmed, window.location.origin);
+                    const pathMatch = parsedUrl.pathname.match(/^\/teaching\/c\/([A-Za-z0-9_-]+)$/);
+                    if (parsedUrl.origin === window.location.origin && pathMatch?.[1]) {
+                      window.location.assign(`/teaching/c/${encodeURIComponent(pathMatch[1])}`);
+                      return;
+                    }
+                  } catch {
+                    // Fall through to 6-digit validation error below
+                  }
                 }
-                return;
               }
               const exactSixDigits = trimmed.match(/^\d{3}\s?\d{3}$/);
               if (!exactSixDigits) {

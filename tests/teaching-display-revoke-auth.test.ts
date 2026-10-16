@@ -5,13 +5,7 @@ import { hashTeachingSecret, teachingServiceMutation } from "@/lib/teaching/repo
 
 type MockDisplayLink = { id: string; created_by: string | null } | null;
 
-function createMockClient({
-  link,
-  isOrganiser,
-}: {
-  link: MockDisplayLink;
-  isOrganiser: boolean;
-}) {
+function createMockClient({ link, isOrganiser }: { link: MockDisplayLink; isOrganiser: boolean }) {
   const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
   const from = vi.fn((table: string) => {
     if (table === "teaching_display_links") {

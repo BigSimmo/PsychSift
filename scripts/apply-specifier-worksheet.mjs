@@ -88,8 +88,14 @@ export function parseCatatoniaWorksheet(markdown) {
       const cleaned = cleanField(match[1]);
       if (cleaned) currentQuoteLines.push(cleaned);
     } else if (currentQuoteLines.length > 0) {
-      quoteBlocks.push(currentQuoteLines.join(" "));
-      currentQuoteLines = [];
+      const trimmedLine = line.trim();
+      if (trimmedLine && !/^#{1,6}\s|^[-*+]\s|^\d+\.\s/.test(trimmedLine)) {
+        const cleaned = cleanField(trimmedLine);
+        if (cleaned) currentQuoteLines.push(cleaned);
+      } else {
+        quoteBlocks.push(currentQuoteLines.join(" "));
+        currentQuoteLines = [];
+      }
     }
   }
   if (currentQuoteLines.length > 0) {
@@ -180,7 +186,16 @@ export function applyCatatoniaWorksheet(document, parsed) {
   const categories = (document.categories ?? []).map((category) => ({
     ...category,
     disorders: (category.disorders ?? []).map((disorder) => {
-      const nextIcd11Context = disorder.icd11Context || undefined;
+      const matchedOverrides = (disorder.groups ?? []).flatMap((group) =>
+        (group.items ?? []).map((item) => byRowKey.get(item?.review?.rowKey)).filter(Boolean),
+      );
+      const distinctIcd11 = [...new Set(matchedOverrides.map((entry) => entry.icd11Context).filter(Boolean))];
+      if (distinctIcd11.length > 1) {
+        throw new Error(
+          `Conflicting ICD-11 routes for disorder ${disorder.id ?? disorder.name}: ${distinctIcd11.join(" vs ")}`,
+        );
+      }
+      const nextIcd11Context = distinctIcd11[0] || disorder.icd11Context || undefined;
       const groups = (disorder.groups ?? []).map((group) => ({
         ...group,
         items: (group.items ?? []).map((item) => {
