@@ -54,6 +54,7 @@ export type CreateEpaMagicLinkInput = {
   readonly clinicalSetting?: string | null;
   readonly now?: Date;
   readonly ttlDays?: number;
+  readonly persist?: boolean;
 };
 
 export type EpaMagicLinkSubmission = {
@@ -350,9 +351,11 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
   const tokenHash = hashEpaMagicToken(token);
   const record = buildMagicLinkRecord(tokenHash, { ...input, now });
 
-  evictMagicLinkStoreIfNeeded(now);
-  magicLinkStore.set(tokenHash, record);
-  persistMagicLinksFromStore();
+  if (input.persist !== false) {
+    evictMagicLinkStoreIfNeeded(now);
+    magicLinkStore.set(tokenHash, record);
+    persistMagicLinksFromStore();
+  }
 
   return {
     token,
@@ -361,6 +364,12 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
     expiresAt: record.expiresAt,
     request: record,
   };
+}
+
+export function revokeEpaMagicLinkToken(token: string): boolean {
+  const trimmed = token.trim();
+  if (!trimmed) return false;
+  return magicLinkStore.delete(hashEpaMagicToken(trimmed));
 }
 
 export function registerEpaMagicLinkRecord(token: string, input: CreateEpaMagicLinkInput): EpaMagicLinkRecord {

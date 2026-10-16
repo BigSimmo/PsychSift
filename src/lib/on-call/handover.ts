@@ -12,6 +12,7 @@ import {
 } from "@/lib/on-call/call-log";
 import { onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABEL_FALLBACK_LIFETIME_MS,
   parsePatientLabelExpiryStamp,
   patientLabelStorageKey,
@@ -237,9 +238,16 @@ export function removeOnCallHandoverPatient(id: string, now: Date = new Date()):
   );
 }
 
-export function loadOnCallHandoverScratchpad(): string {
+export function loadOnCallHandoverScratchpad(now: Date = new Date()): string {
   if (typeof window === "undefined") return "";
-  return readPatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY) ?? "";
+  try {
+    const rawStamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY);
+    const stamp = parsePatientLabelExpiryStamp(rawStamp);
+    if (!stamp || now.getTime() >= stamp.expiresAt) return "";
+  } catch {
+    return "";
+  }
+  return readPatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY, { now: now.getTime() }) ?? "";
 }
 
 export function saveOnCallHandoverScratchpad(text: string): void {

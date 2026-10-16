@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import formsContentReview from "../data/forms-content-review.json";
 import { formRecords } from "@/lib/forms";
 import { defaultServiceRecords } from "@/lib/registry-fixtures";
 import {
@@ -20,6 +21,13 @@ function formCodeForRecord(form: (typeof formRecords)[number]): string {
     .trim();
 }
 
+const canonicalPinByCode = new Map(
+  (formsContentReview as { forms: Array<{ code: string; reviewedContentSha256: string }> }).forms.map((row) => [
+    row.code.trim().toLowerCase(),
+    row.reviewedContentSha256,
+  ]),
+);
+
 function signedServiceReviews(): ClinicalSignOffEntry[] {
   return defaultServiceRecords().map((service) => ({
     id: String(service.catalogPayload?.stableId ?? service.slug),
@@ -32,14 +40,17 @@ function signedServiceReviews(): ClinicalSignOffEntry[] {
 }
 
 function signedFormReviews(): ClinicalSignOffEntry[] {
-  return formRecords.map((form) => ({
-    code: formCodeForRecord(form),
-    slug: form.slug,
-    status: "reviewed",
-    reviewedBy: NAMED_REVIEWER,
-    reviewedAt: REVIEWED_AT,
-    reviewedContentSha256: REVIEWED_SHA256,
-  }));
+  return formRecords.map((form) => {
+    const code = formCodeForRecord(form);
+    return {
+      code,
+      slug: form.slug,
+      status: "reviewed",
+      reviewedBy: NAMED_REVIEWER,
+      reviewedAt: REVIEWED_AT,
+      reviewedContentSha256: canonicalPinByCode.get(code.toLowerCase()) ?? REVIEWED_SHA256,
+    };
+  });
 }
 
 describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
@@ -95,6 +106,15 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
         reviewedContentSha256: "not-a-sha256",
       },
     ],
+    [
+      "stale or mismatched content sha256 pin",
+      {
+        status: "reviewed",
+        reviewedBy: NAMED_REVIEWER,
+        reviewedAt: REVIEWED_AT,
+        reviewedContentSha256: "0".repeat(64),
+      },
+    ],
   ])("refuses a batch when any record has %s", (_label, badOverride) => {
     const sampleForm = formRecords[0]!;
     const code = formCodeForRecord(sampleForm);
@@ -147,7 +167,7 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     }
   });
 
-  it("parses CLI flags and refuses --execute without ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true", async () => {
+  it("parses CLI flags and refuses --execute without ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true and live Supabase credentials", async () => {
     expect(parseFirstPublicationCliArgs(["--dry-run", "--kind", "service", "--batch-size", "50"])).toMatchObject({
       dryRun: true,
       execute: false,
@@ -158,5 +178,12 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     await expect(runFirstPublicationCli(["--execute"], { NODE_ENV: "test" })).rejects.toThrow(
       /ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true/,
     );
+
+    await expect(
+      runFirstPublicationCli(["--execute"], {
+        NODE_ENV: "test",
+        ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT: "true",
+      }),
+    ).rejects.toThrow(/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/);
   });
 });

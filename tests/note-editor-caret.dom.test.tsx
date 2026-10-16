@@ -257,4 +257,42 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     expect(onSave).toHaveBeenCalledWith("Review de-identified overnight admission");
     expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saved");
   });
+
+  it("does not cancel debounced auto-save when parent re-renders with a new inline onChange, and clears Unsaved changes when reverting to lastSavedValue", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const React = await import("react");
+
+    function Wrapper() {
+      const [, setDraft] = React.useState("Initial assessment stable");
+      return (
+        <ClinicalNoteEditor
+          initialValue="Initial assessment stable"
+          onChange={(next) => setDraft(next)}
+          onSave={onSave}
+          debounceMs={300}
+        />
+      );
+    }
+
+    render(<Wrapper />);
+
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "Initial assessment stablex" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    // Reverting back to the initial/lastSavedValue before debounce fires resets status to Idle
+    fireEvent.change(textarea, { target: { value: "Initial assessment stable" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Idle");
+    expect(screen.getByTestId("note-editor-save-btn")).toBeDisabled();
+
+    // Typing a new change still auto-saves even though Wrapper creates a new inline onChange every render
+    fireEvent.change(textarea, { target: { value: "Reviewed overnight by night registrar" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledWith("Reviewed overnight by night registrar");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saved");
+  });
 });

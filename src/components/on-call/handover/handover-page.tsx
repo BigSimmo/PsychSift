@@ -67,6 +67,7 @@ import {
 } from "@/lib/on-call/handover";
 import { ON_CALL_SHIFT_PICK_TTL_MS, useOnCallShiftPick } from "@/lib/on-call/shift-context";
 import {
+  clearExpiredPatientLabels,
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABELS_CLEARED_EVENT,
   patientLabelStorageKey,
@@ -602,13 +603,18 @@ export function OnCallHandoverPage() {
     };
   }, [reset]);
 
+  const shiftExpiresAt = draftExpiresAt ?? view?.expiresAt ?? null;
+
   // The draft's shift ends while the page is open: clear it on time, not at the next keystroke.
   useEffect(() => {
-    if (draftExpiresAt === null) return;
+    if (shiftExpiresAt === null) return;
     const check = () => {
-      if (Date.now() >= draftExpiresAt) reset();
+      if (Date.now() >= shiftExpiresAt) {
+        clearExpiredPatientLabels();
+        reset();
+      }
     };
-    const timer = window.setTimeout(check, Math.max(0, draftExpiresAt - Date.now()));
+    const timer = window.setTimeout(check, Math.max(0, shiftExpiresAt - Date.now()));
     window.addEventListener("focus", check);
     window.addEventListener("pageshow", check);
     document.addEventListener("visibilitychange", check);
@@ -618,7 +624,7 @@ export function OnCallHandoverPage() {
       window.removeEventListener("pageshow", check);
       document.removeEventListener("visibilitychange", check);
     };
-  }, [draftExpiresAt, reset]);
+  }, [shiftExpiresAt, reset]);
 
   // The record being edited vanished (deleted in another tab, or it lapsed): start a fresh one.
   const currentGone = currentId !== null && view !== null && !patients.some((patient) => patient.id === currentId);
@@ -628,9 +634,31 @@ export function OnCallHandoverPage() {
     reset();
   }, [currentGone, reset]);
 
+  const persistScratchpad = useCallback(
+    (text: string) => {
+      if (shiftExpiresAt !== null && Date.now() >= shiftExpiresAt) {
+        clearExpiredPatientLabels();
+        reset();
+        setProblem("The shift has ended. This handover was cleared.");
+        return;
+      }
+      if (text.trim() !== "" && shiftExpiresAt === null) {
+        const started = startPatientLabelRetention();
+        if (started === null) {
+          setProblem("The shift expiry could not be set. This handover cannot be kept on this device.");
+          throw new Error("The shift expiry could not be set.");
+        }
+        setDraftExpiresAt(started);
+      }
+      saveOnCallHandoverScratchpad(text);
+    },
+    [shiftExpiresAt, reset],
+  );
+
   /** Every change is kept as it is typed, so nothing is lost if the phone locks. */
   const commit = (next: OnCallHandoverDraft, id: string | null = currentId) => {
-    if (draftExpiresAt !== null && Date.now() >= draftExpiresAt) {
+    if (shiftExpiresAt !== null && Date.now() >= shiftExpiresAt) {
+      clearExpiredPatientLabels();
       reset();
       setProblem("The shift has ended. This handover was cleared.");
       return;
@@ -640,13 +668,15 @@ export function OnCallHandoverPage() {
       setProblem(null);
       return;
     }
-    let expiresAt = draftExpiresAt;
+    let expiresAt = shiftExpiresAt;
     if (expiresAt === null) {
       expiresAt = startPatientLabelRetention();
       if (expiresAt === null) {
         setProblem("The shift expiry could not be set. This handover cannot be kept on this device.");
         return;
       }
+      setDraftExpiresAt(expiresAt);
+    } else if (draftExpiresAt === null) {
       setDraftExpiresAt(expiresAt);
     }
     const result = saveOnCallHandoverPatient(id, next);
@@ -746,7 +776,7 @@ export function OnCallHandoverPage() {
                 <h1 className={underBand ? "sr-only" : "text-2xl font-semibold text-[color:var(--text-heading)]"}>
                   Handover
                 </h1>
-                {patients.length > 0 && !confirmClear ? (
+                {(patients.length > 0 || scratchpadText.trim() !== "") && !confirmClear ? (
                   <button
                     type="button"
                     onClick={() => setConfirmClear(true)}
@@ -757,16 +787,18 @@ export function OnCallHandoverPage() {
                   </button>
                 ) : null}
               </div>
-              {patients.length > 0 && confirmClear ? (
+              {(patients.length > 0 || scratchpadText.trim() !== "") && confirmClear ? (
                 <div
                   className="grid min-w-0 gap-2 rounded-lg border border-[color:var(--border)] p-3 forced-colors:border"
                   role="group"
                   aria-label="Clear the handover"
                 >
                   <p className="text-sm text-[color:var(--text-heading)]">
-                    {patients.length === 1
-                      ? "Clear the one patient from this phone? This cannot be undone."
-                      : `Clear all ${patients.length} patients from this phone? This cannot be undone.`}
+                    {patients.length === 0
+                      ? "Clear the shift scratchpad from this phone? This cannot be undone."
+                      : patients.length === 1
+                        ? "Clear the one patient from this phone? This cannot be undone."
+                        : `Clear all ${patients.length} patients from this phone? This cannot be undone.`}
                   </p>
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Button
@@ -780,7 +812,11 @@ export function OnCallHandoverPage() {
                       }}
                       testId="on-call-handover-clear-confirm"
                     >
-                      {patients.length === 1 ? "Clear the patient" : `Clear all ${patients.length} patients`}
+                      {patients.length === 0
+                        ? "Clear scratchpad"
+                        : patients.length === 1
+                          ? "Clear the patient"
+                          : `Clear all ${patients.length} patients`}
                     </Button>
                     <Button
                       variant="ghost"
@@ -997,14 +1033,14 @@ export function OnCallHandoverPage() {
                       setScratchpadText(text);
                       if (isSharedDevice()) return;
                       try {
-                        saveOnCallHandoverScratchpad(text);
+                        persistScratchpad(text);
                       } catch {
                         // Handled by explicit save status
                       }
                     }}
                     onSave={(text) => {
                       setScratchpadText(text);
-                      saveOnCallHandoverScratchpad(text);
+                      persistScratchpad(text);
                     }}
                   />
                 </>

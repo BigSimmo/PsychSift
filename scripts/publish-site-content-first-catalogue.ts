@@ -41,8 +41,10 @@ import {
   type CanonicalPublicRegistrySnapshot,
   type CanonicalRegistrySiteContentProjection,
 } from "@/lib/site-content/adapters/registry";
+import formsCatalog from "../data/forms-catalog.json";
 import { compareCanonicalSiteContentIdentifiers, siteContentValueHash } from "@/lib/site-content/site-content-manifest";
 import { reconciliationHash } from "@/lib/site-content/site-content-reconciliation";
+import { recordContentSha256 } from "./lib/clinical-record-review-contract.mjs";
 
 export type FirstPublicationKind = "service" | "form" | "all";
 
@@ -50,6 +52,9 @@ export type ClinicalSignOffEntry = {
   id?: string;
   code?: string;
   slug?: string;
+  sections?: readonly string[];
+  contextualSections?: readonly string[];
+  basis?: string;
   status: string;
   reviewedBy: string | null;
   reviewedAt: string | null;
@@ -123,6 +128,7 @@ function validateSignOffEntry(
   recordId: string,
   slug: string,
   review: ClinicalSignOffEntry | undefined,
+  expectedContentSha256?: string | null,
 ): FirstPublicationRejectedRecord | null {
   if (!review) {
     return {
@@ -164,7 +170,38 @@ function validateSignOffEntry(
       reason: `reviewedContentSha256 ${JSON.stringify(review.reviewedContentSha256)} is missing or not a valid 64-character hex SHA-256 digest`,
     };
   }
+  if (expectedContentSha256 && review.reviewedContentSha256 !== expectedContentSha256) {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason: `reviewedContentSha256 ${review.reviewedContentSha256.slice(0, 12)}… does not match current content pin ${expectedContentSha256.slice(0, 12)}… (stale sign-off pin)`,
+    };
+  }
   return null;
+}
+
+function expectedFormContentPin(
+  formCode: string,
+  review: ClinicalSignOffEntry | undefined,
+  canonicalReview: ClinicalSignOffEntry | undefined,
+): string | null {
+  const baseReview = review?.basis !== undefined ? review : canonicalReview;
+  if (!baseReview || baseReview.basis === undefined) {
+    return null;
+  }
+  try {
+    return recordContentSha256(
+      {
+        ...baseReview,
+        code: baseReview.code ?? formCode,
+      },
+      "form",
+      { catalog: formsCatalog },
+    );
+  } catch {
+    return null;
+  }
 }
 
 function toOwnerlessRegistryRow(
@@ -208,13 +245,23 @@ export function buildFirstPublicationCataloguePlan(
         );
 
   const serviceReviews = options.serviceReviews ?? loadDefaultServiceReviews();
-  const formReviews = options.formReviews ?? loadDefaultFormReviews();
+  const canonicalFormReviews = loadDefaultFormReviews();
+  const formReviews = options.formReviews ?? canonicalFormReviews;
 
   const serviceReviewByKey = new Map<string, ClinicalSignOffEntry>();
   for (const entry of serviceReviews) {
     for (const candidateKey of [entry.id, entry.slug, entry.code]) {
       if (typeof candidateKey === "string" && candidateKey.trim()) {
         serviceReviewByKey.set(candidateKey.trim().toLowerCase(), entry);
+      }
+    }
+  }
+
+  const canonicalFormReviewByKey = new Map<string, ClinicalSignOffEntry>();
+  for (const entry of canonicalFormReviews) {
+    for (const candidateKey of [entry.code, entry.id, entry.slug]) {
+      if (typeof candidateKey === "string" && candidateKey.trim()) {
+        canonicalFormReviewByKey.set(candidateKey.trim().toLowerCase(), entry);
       }
     }
   }
@@ -263,7 +310,12 @@ export function buildFirstPublicationCataloguePlan(
       formReviewByKey.get(formCode.toLowerCase()) ??
       formReviewByKey.get(form.slug.trim().toLowerCase()) ??
       formReviewByKey.get(formRecordId.toLowerCase());
-    const problem = validateSignOffEntry("form", formCode, form.slug, review);
+    const canonicalReview =
+      canonicalFormReviewByKey.get(formCode.toLowerCase()) ??
+      canonicalFormReviewByKey.get(form.slug.trim().toLowerCase()) ??
+      canonicalFormReviewByKey.get(formRecordId.toLowerCase());
+    const expectedPin = expectedFormContentPin(formCode, review, canonicalReview);
+    const problem = validateSignOffEntry("form", formCode, form.slug, review, expectedPin);
     if (problem) {
       rejected.push(problem);
       continue;
@@ -429,10 +481,17 @@ export async function runFirstPublicationCli(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<FirstPublicationCataloguePlan> {
   const options = parseFirstPublicationCliArgs(argv);
-  if (options.execute && env.ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT !== "true") {
-    throw new Error(
-      "Refusing live first-publication execution: --execute requires ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true.",
-    );
+  if (options.execute) {
+    if (env.ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT !== "true") {
+      throw new Error(
+        "Refusing live first-publication execution: --execute requires ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true.",
+      );
+    }
+    if (!env.NEXT_PUBLIC_SUPABASE_URL?.trim() || !env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+      throw new Error(
+        "Refusing live first-publication execution: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for --execute (use --dry-run for offline plan generation).",
+      );
+    }
   }
 
   const plan = buildFirstPublicationCataloguePlan({

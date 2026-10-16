@@ -43,22 +43,29 @@ export function ClinicalNoteEditor({
 }: NoteEditorProps) {
   const instanceId = useId();
   const isControlled = controlledValue !== undefined;
-  const [internalValue, setInternalValue] = useState(initialValue);
-  const currentValue = isControlled ? controlledValue : internalValue;
+  const [internalValue, setInternalValue] = useState(controlledValue ?? initialValue);
+  const [privacyProblem, setPrivacyProblem] = useState<PatientDetailProblem | null>(() =>
+    checkPatientDetail(controlledValue ?? initialValue),
+  );
+  const currentValue = isControlled && privacyProblem === null ? controlledValue : internalValue;
   const sharedDevice = useSharedDevice();
 
-  const [privacyProblem, setPrivacyProblem] = useState<PatientDetailProblem | null>(() =>
-    checkPatientDetail(currentValue),
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
+    checkPatientDetail(controlledValue ?? initialValue) ? "error" : "idle",
   );
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>(() => (checkPatientDetail(currentValue) ? "error" : "idle"));
-  const [lastSavedValue, setLastSavedValue] = useState(currentValue);
+  const [lastSavedValue, setLastSavedValue] = useState(controlledValue ?? initialValue);
+  const hasSavedRef = useRef(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const latestValueRef = useRef(currentValue);
+  const onChangeRef = useRef(onChange);
   useEffect(() => {
     latestValueRef.current = currentValue;
   }, [currentValue]);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Store selection state to restore across re-renders/saves
   const selectionRef = useRef<{
@@ -123,7 +130,12 @@ export function ClinicalNoteEditor({
         setSaveStatus("idle");
         return;
       }
-      if (textToSave === lastSavedValue && saveStatus !== "error") return;
+      if (textToSave === lastSavedValue && saveStatus !== "error") {
+        if (saveStatus === "unsaved") {
+          setSaveStatus(hasSavedRef.current ? "saved" : "idle");
+        }
+        return;
+      }
 
       // Capture caret position before triggering save
       recordSelection();
@@ -131,6 +143,7 @@ export function ClinicalNoteEditor({
 
       try {
         await onSave(textToSave);
+        hasSavedRef.current = true;
         setLastSavedValue(textToSave);
         if (latestValueRef.current === textToSave) {
           setSaveStatus("saved");
@@ -145,10 +158,7 @@ export function ClinicalNoteEditor({
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     recordSelection();
-
-    if (!isControlled) {
-      setInternalValue(newValue);
-    }
+    setInternalValue(newValue);
 
     const problem = checkPatientDetail(newValue);
     setPrivacyProblem(problem);
@@ -171,6 +181,11 @@ export function ClinicalNoteEditor({
 
     if (!onSave) {
       setSaveStatus("idle");
+      return;
+    }
+
+    if (newValue === lastSavedValue) {
+      setSaveStatus(hasSavedRef.current ? "saved" : "idle");
       return;
     }
 
@@ -224,11 +239,12 @@ export function ClinicalNoteEditor({
         saveTimerRef.current = null;
       }
       selectionRef.current = { start: 0, end: 0, direction: "none" };
+      hasSavedRef.current = false;
       setInternalValue("");
       setLastSavedValue("");
       setPrivacyProblem(null);
       setSaveStatus("idle");
-      onChange?.("");
+      onChangeRef.current?.("");
     };
 
     if (typeof window !== "undefined") {
@@ -248,7 +264,7 @@ export function ClinicalNoteEditor({
         window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, clearEditorState);
       }
     };
-  }, [onChange]);
+  }, []);
 
   const showSaveControls = Boolean(onSave) || privacyProblem !== null || saveStatus === "error";
   const describedBy =

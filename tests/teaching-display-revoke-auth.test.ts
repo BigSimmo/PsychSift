@@ -173,4 +173,25 @@ describe("teachingServiceMutation display.revoke authorization", () => {
     expect(from).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledOnce();
   });
+
+  it("rejects an organiser when granted_at or joined_at timestamp is missing or unparseable", async () => {
+    const { client, rpc } = createMockClient({
+      link: { id: "link-1", created_by: null },
+      isOrganiser: true,
+      roleGrantedAt: "",
+      memberJoinedAt: "2026-01-01T00:00:00Z",
+    });
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        token,
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      details: { code: "teaching_role_denied" },
+    } satisfies Partial<PublicApiError>);
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });
