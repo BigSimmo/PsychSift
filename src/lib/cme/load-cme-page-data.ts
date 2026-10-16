@@ -34,6 +34,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type CmePageData = {
+  /** Authenticated owner identity used to scope client-side unsaved drafts. */
+  readonly ownerId: string | null;
   readonly state: "ready" | "unconfigured" | "signed-out" | "unavailable";
   readonly demoMode: boolean;
   readonly year: number;
@@ -170,6 +172,7 @@ async function load(
   }
   const now = new Date();
   const empty = {
+    ownerId: null,
     demoMode: false,
     year: year ?? cpdYearOf(now),
     set: null,
@@ -242,6 +245,7 @@ async function load(
     const allYears = await loadAllYears(admin, auth.user.id, targetYear, entries, options);
     // Preserve the original settings and history for explicit owner repair.
     return {
+      ownerId: auth.user.id,
       state,
       demoMode: false,
       year: targetYear,

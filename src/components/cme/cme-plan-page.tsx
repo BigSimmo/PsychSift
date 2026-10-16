@@ -58,8 +58,8 @@ function nextKey(): string {
   return `goal-${draftKey}`;
 }
 
-export function cmePlanDraftStorageKey(year: number): string {
-  return `psychsift:cme:plan-draft:v1:${year}`;
+export function cmePlanDraftStorageKey(year: number, ownerId: string): string {
+  return `psychsift:cme:plan-draft:v1:${ownerId}:${year}`;
 }
 
 function draftsDifferFromSaved(
@@ -74,10 +74,14 @@ function draftsDifferFromSaved(
   });
 }
 
-function readPersistedCmePlanDraft(year: number, savedGoals: readonly { id: string; goal: string }[]): Draft[] | null {
+function readPersistedCmePlanDraft(
+  year: number,
+  ownerId: string,
+  savedGoals: readonly { id: string; goal: string }[],
+): Draft[] | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.sessionStorage.getItem(cmePlanDraftStorageKey(year));
+    const raw = window.sessionStorage.getItem(cmePlanDraftStorageKey(year, ownerId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<PersistedCmePlanDraft> | null;
     if (!parsed || typeof parsed !== "object" || parsed.version !== 1 || parsed.year !== year) {
@@ -114,6 +118,7 @@ function readPersistedCmePlanDraft(year: number, savedGoals: readonly { id: stri
 
 function writePersistedCmePlanDraft(
   year: number,
+  ownerId: string,
   savedGoals: readonly { id: string; goal: string }[],
   drafts: readonly Draft[],
 ): void {
@@ -125,16 +130,16 @@ function writePersistedCmePlanDraft(
       expectedGoals: savedGoals.map((goal) => ({ id: goal.id, goal: goal.goal })),
       drafts: drafts.map((draft) => (draft.id ? { id: draft.id, goal: draft.goal } : { goal: draft.goal })),
     };
-    window.sessionStorage.setItem(cmePlanDraftStorageKey(year), JSON.stringify(payload));
+    window.sessionStorage.setItem(cmePlanDraftStorageKey(year, ownerId), JSON.stringify(payload));
   } catch {
     // Ignore storage quota or privacy-mode errors.
   }
 }
 
-function clearPersistedCmePlanDraft(year: number): void {
+function clearPersistedCmePlanDraft(year: number, ownerId: string): void {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.removeItem(cmePlanDraftStorageKey(year));
+    window.sessionStorage.removeItem(cmePlanDraftStorageKey(year, ownerId));
   } catch {
     // Ignore storage errors.
   }
@@ -148,6 +153,7 @@ export function CmePlanPage({
   now = new Date(),
   nextYearConfirmed = null,
   nextYearGoals,
+  ownerId,
 }: {
   set: CmeRequirementSet;
   goals: readonly CmePlanGoal[];
@@ -158,7 +164,9 @@ export function CmePlanPage({
   nextYearConfirmed?: boolean | null;
   /** Required before enabling carry, so adding a goal cannot replace or duplicate a saved next-year goal. */
   nextYearGoals?: readonly CmePlanGoal[];
+  ownerId?: string;
 }) {
+  const draftOwnerId = ownerId ?? "demo";
   const router = useRouter();
   const readOnly = Boolean(set.closedAt) || demoMode;
   const [savedGoals, setSavedGoals] = useState(() => goals.map((goal) => ({ id: goal.id, goal: goal.goal })));
@@ -167,6 +175,7 @@ export function CmePlanPage({
       ? null
       : readPersistedCmePlanDraft(
           set.year,
+          draftOwnerId,
           goals.map((goal) => ({ id: goal.id, goal: goal.goal })),
         ),
   );
@@ -239,7 +248,7 @@ export function CmePlanPage({
     if (activeYearRef.current !== set.year) {
       activeYearRef.current = set.year;
       const nextSaved = goals.map((goal) => ({ id: goal.id, goal: goal.goal }));
-      const restored = readOnly ? null : readPersistedCmePlanDraft(set.year, nextSaved);
+      const restored = readOnly ? null : readPersistedCmePlanDraft(set.year, draftOwnerId, nextSaved);
       setSavedGoals(nextSaved);
       setDrafts(
         restored
@@ -255,15 +264,15 @@ export function CmePlanPage({
     }
     if (readOnly) return;
     if (isDirty) {
-      writePersistedCmePlanDraft(set.year, savedGoals, drafts);
+      writePersistedCmePlanDraft(set.year, draftOwnerId, savedGoals, drafts);
     } else {
-      clearPersistedCmePlanDraft(set.year);
+      clearPersistedCmePlanDraft(set.year, draftOwnerId);
     }
-  }, [drafts, goals, isDirty, readOnly, savedGoals, set.year]);
+  }, [draftOwnerId, drafts, goals, isDirty, readOnly, savedGoals, set.year]);
 
   useEffect(() => {
     return subscribeAccountTransition(() => {
-      clearPersistedCmePlanDraft(set.year);
+      clearPersistedCmePlanDraft(set.year, draftOwnerId);
       const nextSaved = goals.map((goal) => ({ id: goal.id, goal: goal.goal }));
       setSavedGoals(nextSaved);
       setDrafts(
@@ -303,7 +312,7 @@ export function CmePlanPage({
       }
       if (!response.ok) throw new Error(payload?.message ?? `Could not save your plan (${response.status}).`);
       const nextSavedGoals = (payload?.goals ?? []).map((goal) => ({ id: goal.id, goal: goal.goal }));
-      clearPersistedCmePlanDraft(set.year);
+      clearPersistedCmePlanDraft(set.year, draftOwnerId);
       setSavedGoals(nextSavedGoals);
       setDrafts(
         nextSavedGoals.length > 0
@@ -470,7 +479,7 @@ export function CmePlanPage({
                   <CmeTextLink
                     onClick={() => {
                       if (saving) return;
-                      clearPersistedCmePlanDraft(set.year);
+                      clearPersistedCmePlanDraft(set.year, draftOwnerId);
                       setDrafts(savedGoals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal })));
                       setSaveConflict(false);
                       setMessage(null);
@@ -558,5 +567,18 @@ export function CmePlanPage({
         </div>
       </WorkBody>
     </main>
+  );
+}
+n>
+  );
+}
+
+  );
+}
+}
+n>
+  );
+}
+
   );
 }
