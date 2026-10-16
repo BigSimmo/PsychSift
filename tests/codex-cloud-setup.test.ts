@@ -350,7 +350,18 @@ describe("Codex Cloud environment contract", () => {
       { CODEX_CLOUD_ACCESS_PROFILE: "" },
       "CODEX_CLOUD_ACCESS_PROFILE must be offline or connected",
     ],
-    ["invalid RAG mode", [], { RAG_PROVIDER_MODE: "live" }, "RAG_PROVIDER_MODE must be an approved value"],
+    [
+      "connected live RAG mode",
+      [],
+      { CODEX_CLOUD_ACCESS_PROFILE: "connected", RAG_PROVIDER_MODE: "live" },
+      "RAG_PROVIDER_MODE must be an approved value",
+    ],
+    [
+      "connected auto RAG mode",
+      [],
+      { CODEX_CLOUD_ACCESS_PROFILE: "connected", RAG_PROVIDER_MODE: "auto" },
+      "RAG_PROVIDER_MODE must be an approved value",
+    ],
     [
       "runtime provider boundary",
       ["--runtime"],
@@ -412,6 +423,88 @@ describe("Codex Cloud environment contract", () => {
     expect(result.stdout).not.toContain("Raw Env] PASS");
     expect(readdirSync(home)).toContain("profile-loaded");
   });
+
+  it.each([
+    { requested: "offline", mode: "auto" },
+    { requested: "connected", mode: "" },
+  ])("pins automatic child RAG mode offline for %j", ({ requested, mode }) => {
+    const home = temporaryDirectory("codex-cloud-auto-profile-rag-pin-");
+    writeFileSync(
+      path.join(home, ".clinical-kb-codex-cloud.sh"),
+      [
+        '[[ "$RAG_PROVIDER_MODE" = offline ]] || return 94',
+        `export CODEX_CLOUD_ACCESS_PROFILE=${requested} RAG_PROVIDER_MODE=offline`,
+        "export NEXT_PUBLIC_DEMO_MODE=true PLAYWRIGHT_OFFLINE_MODE=true",
+        "",
+      ].join("\n"),
+    );
+    const result = spawnSync(process.execPath, ["scripts/check-codex-cloud-setup.mjs", "--environment"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: {
+        ...fixtureEnvironment,
+        NODE_ENV: "production",
+        HOME: home,
+        CODEX_CLOUD: "1",
+        CODEX_CLOUD_ACCESS_PROFILE: requested,
+        RAG_PROVIDER_MODE: mode,
+      },
+    });
+
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(result.stdout).toContain("PASS: static and environment Cloud contracts match.");
+    expect(result.stdout).toContain("RAG_PROVIDER_MODE=offline");
+  });
+
+  it.each(["auto", "live"])("rejects inherited RAG %s when the cached profile selects connected", (mode) => {
+    const home = temporaryDirectory("codex-cloud-auto-profile-cached-rag-");
+    const runtime = path.join(home, "reexec-node");
+    writeFileSync(runtime, '#!/usr/bin/env bash\nprintf "called\\n" > "$HOME/runtime-called"\n');
+    chmodSync(runtime, 0o755);
+    writeFileSync(
+      path.join(home, ".clinical-kb-codex-cloud.sh"),
+      [
+        'printf "sourced\\n" > "$HOME/profile-loaded"',
+        "export CODEX_CLOUD_ACCESS_PROFILE=connected RAG_PROVIDER_MODE=offline",
+        "export NEXT_PUBLIC_DEMO_MODE=true PLAYWRIGHT_OFFLINE_MODE=true",
+        'node_exec="$HOME/reexec-node"',
+        "",
+      ].join("\n"),
+    );
+    const result = spawnSync(process.execPath, ["scripts/check-codex-cloud-setup.mjs", "--runtime"], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { ...fixtureEnvironment, NODE_ENV: "production", HOME: home, CODEX_CLOUD: "1", RAG_PROVIDER_MODE: mode },
+    });
+
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(1);
+    expect(result.stderr).toContain("RAG_PROVIDER_MODE must be offline for the selected connected legacy profile");
+    expect(result.stdout).not.toContain("PASS:");
+    expect(readdirSync(home)).toContain("profile-loaded");
+    expect(readdirSync(home)).not.toContain("runtime-called");
+  });
+
+  it.each(["--environment", "--runtime"])(
+    "requires effective offline RAG without automatic sourcing for %s",
+    (flag) => {
+      const result = spawnSync(process.execPath, ["scripts/check-codex-cloud-setup.mjs", flag], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: {
+          ...fixtureEnvironment,
+          CODEX_CLOUD: "1",
+          CODEX_CLOUD_ACCESS_PROFILE: "offline",
+          RAG_PROVIDER_MODE: "auto",
+          NEXT_PUBLIC_DEMO_MODE: "true",
+          PLAYWRIGHT_OFFLINE_MODE: "true",
+        },
+      });
+
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(1);
+      expect(result.stderr).toContain("RAG_PROVIDER_MODE must be an approved value");
+      expect(result.stdout).not.toContain("PASS:");
+    },
+  );
 
   it.each(["offline", "connected"])(
     "rejects an automatic profile that replaces the explicit %s selection before child runtime execution",

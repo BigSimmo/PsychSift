@@ -1381,14 +1381,22 @@ export function shouldAutoSourceCloudProfile(env = process.env) {
 }
 
 /** Validate explicit inherited selectors before a cached profile can replace them. */
-function validateInheritedCloudProfileSelection(env = process.env) {
+function validateInheritedCloudProfileSelection(env = process.env, autoSourceProfile = false) {
   const profile = env.CODEX_CLOUD_ACCESS_PROFILE;
   if (profile !== undefined && !["offline", "connected"].includes(profile)) {
     return ["CODEX_CLOUD_ACCESS_PROFILE must be offline or connected."];
   }
   const errors = [];
+  // Only a sourced child can pin an offline selection or normalize an empty
+  // connected mode. An unsourced effective environment must already be offline.
+  if (
+    env.RAG_PROVIDER_MODE !== undefined &&
+    env.RAG_PROVIDER_MODE !== "offline" &&
+    (!autoSourceProfile || (profile === "connected" && env.RAG_PROVIDER_MODE !== ""))
+  ) {
+    errors.push("RAG_PROVIDER_MODE must be an approved value for the selected legacy profile.");
+  }
   for (const [name, allowed] of Object.entries({
-    RAG_PROVIDER_MODE: ["offline"],
     NEXT_PUBLIC_DEMO_MODE: profile === "offline" ? ["true"] : ["true", "false"],
     PLAYWRIGHT_OFFLINE_MODE: profile === "offline" ? ["true"] : ["true", "false"],
   })) {
@@ -1407,7 +1415,7 @@ if (isDirectEntrypoint(import.meta.url)) {
   const inputErrors = [
     ...validateHostedAppInventoryArguments(commandArguments),
     ...validateHostedAppInventory(hostedAppInventory),
-    ...(environment || autoSourceProfile ? validateInheritedCloudProfileSelection() : []),
+    ...(environment || autoSourceProfile ? validateInheritedCloudProfileSelection(process.env, autoSourceProfile) : []),
   ];
   // A profile may populate missing modes and scrub an authorized offline child,
   // but a failed inherited boundary cannot become full runtime acceptance.
@@ -1431,7 +1439,7 @@ if (isDirectEntrypoint(import.meta.url)) {
       bashExecutable,
       [
         "-c",
-        'profile_path="$1"; node_exec="$2"; script_path="$3"; requested_cloud_check_profile="$4"; shift 4; saved_args=("$@"); set --; . "$profile_path" && { if [[ -n "$requested_cloud_check_profile" && "${CODEX_CLOUD_ACCESS_PROFILE-}" != "$requested_cloud_check_profile" ]]; then printf "%s\\n" "[Codex Cloud Check] FAIL: Cached CODEX_CLOUD_ACCESS_PROFILE differs from the requested profile; rerun setup with the intended profile." >&2; exit 1; fi; export CODEX_CLOUD_PROFILE_LOADED=1; exec "$node_exec" "$script_path" "${saved_args[@]}"; }',
+        'profile_path="$1"; node_exec="$2"; script_path="$3"; requested_cloud_check_profile="$4"; requested_cloud_check_rag_mode="${RAG_PROVIDER_MODE:-offline}"; shift 4; saved_args=("$@"); set --; export RAG_PROVIDER_MODE=offline; . "$profile_path" && { if [[ -n "$requested_cloud_check_profile" && "${CODEX_CLOUD_ACCESS_PROFILE-}" != "$requested_cloud_check_profile" ]]; then printf "%s\\n" "[Codex Cloud Check] FAIL: Cached CODEX_CLOUD_ACCESS_PROFILE differs from the requested profile; rerun setup with the intended profile." >&2; exit 1; fi; if [[ "${CODEX_CLOUD_ACCESS_PROFILE-}" = connected && "$requested_cloud_check_rag_mode" != offline ]]; then printf "%s\\n" "[Codex Cloud Check] FAIL: RAG_PROVIDER_MODE must be offline for the selected connected legacy profile." >&2; exit 1; fi; export CODEX_CLOUD_PROFILE_LOADED=1; exec "$node_exec" "$script_path" "${saved_args[@]}"; }',
         "codex-cloud-check",
         runtimeProfilePath.replaceAll("\\", "/"),
         process.execPath,
