@@ -329,6 +329,16 @@ function useOptionalSearchParams() {
   }
 }
 
+function ClinicalMathPanels({ isDesktopSidebar }: { isDesktopSidebar: boolean }) {
+  const state = useClinicalMathPanelState();
+  return (
+    <>
+      {isDesktopSidebar ? <ClinicalMathPanel state={state} /> : null}
+      {!isDesktopSidebar ? <ClinicalMathPanel state={state} /> : null}
+    </>
+  );
+}
+
 export function CalculatorsSearchPage({
   initialQuery = "",
   initialCalculatorId,
@@ -345,7 +355,6 @@ export function CalculatorsSearchPage({
     () => false,
   );
   const isDesktopSidebar = useSyncExternalStore(subscribeDesktopSidebar, getDesktopSidebarSnapshot, () => false);
-  const clinicalMath = useClinicalMathPanelState();
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
@@ -606,14 +615,14 @@ export function CalculatorsSearchPage({
         sidebar={
           <>
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
+            {isDesktopSidebar ? <ClinicalMathPanels isDesktopSidebar={isDesktopSidebar} /> : null}
             <AboutPanel />
           </>
         }
         sidebarMobile={
           <div className="grid gap-4 xl:hidden">
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {!isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
+            {!isDesktopSidebar ? <ClinicalMathPanels isDesktopSidebar={isDesktopSidebar} /> : null}
             <AboutPanel />
           </div>
         }
