@@ -333,21 +333,26 @@ export async function teachingServiceMutation(
     }
     case "display.revoke": {
       const tokenHash = hashTeachingSecret(input.token);
-      if (typeof client.from === "function") {
-        const linkTable = client.from("teaching_display_links");
+      type DynamicQueryChain = {
+        select: (cols: string) => DynamicQueryChain;
+        eq: (col: string, val: string) => DynamicQueryChain;
+        is: (col: string, val: null) => DynamicQueryChain;
+        maybeSingle?: () => Promise<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
+      } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
+      const dynamicClient = client as unknown as { from?: (table: string) => DynamicQueryChain };
+      if (typeof dynamicClient.from === "function") {
+        const linkTable = dynamicClient.from("teaching_display_links");
         if (linkTable && typeof linkTable.select === "function") {
           const linkQuery = linkTable
             .select("id, created_by, teaching_occurrences!inner(service_id)")
             .eq("link_hash", tokenHash)
             .eq("teaching_occurrences.service_id", serviceId);
-          const linkRes = (
-            typeof linkQuery.maybeSingle === "function" ? await linkQuery.maybeSingle() : await linkQuery
-          ) as { data?: unknown; error?: { message: string; code?: string | null } | null } | null;
+          const linkRes = typeof linkQuery.maybeSingle === "function" ? await linkQuery.maybeSingle() : await linkQuery;
           if (linkRes?.error) throw teachingRpcError(linkRes.error);
           const link = linkRes?.data;
           const linkRow = (Array.isArray(link) ? link[0] : link) as { id?: string; created_by?: string | null } | null;
           if (linkRow && (!linkRow.created_by || linkRow.created_by !== actorId)) {
-            const roleTable = client.from("teaching_member_roles");
+            const roleTable = dynamicClient.from("teaching_member_roles");
             if (roleTable && typeof roleTable.select === "function") {
               const roleQuery = roleTable
                 .select("role")
@@ -355,9 +360,8 @@ export async function teachingServiceMutation(
                 .eq("user_id", actorId)
                 .eq("role", "organiser")
                 .is("revoked_at", null);
-              const roleRes = (
-                typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery
-              ) as { data?: unknown; error?: { message: string; code?: string | null } | null } | null;
+              const roleRes =
+                typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
               if (roleRes?.error) throw teachingRpcError(roleRes.error);
               const roleRow = roleRes?.data;
               const activeOrganiser = Array.isArray(roleRow) ? roleRow[0] : roleRow;

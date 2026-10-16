@@ -17,6 +17,19 @@ export const runtime = "nodejs";
 
 const noStore = { "Cache-Control": "private, no-store, max-age=0" };
 
+function errorWithHeaders(
+  message: string,
+  status: number,
+  code: string,
+  headers: Record<string, string> = noStore,
+): NextResponse {
+  const response = publicErrorResponse(message, status, { code });
+  for (const [key, value] of Object.entries(headers)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
 const submissionSchema = z
   .object({
     level: z.enum(["direct", "proximal", "minimal"]).nullable().optional(),
@@ -45,27 +58,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
   try {
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-read");
     if (rate.limited) {
-      return publicErrorResponse("Too many requests. Wait a minute and try again.", 429, {
-        code: "rate_limited",
-        headers: { ...noStore, "Retry-After": String(rate.retryAfterSeconds) },
+      return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
+        ...noStore,
+        "Retry-After": String(rate.retryAfterSeconds),
       });
     }
     const { token } = await params;
     const lookup = getEpaMagicLinkByToken(token);
     if (!lookup.ok) {
       const status = lookup.status === "not_found" ? 404 : 410;
-      return publicErrorResponse(lookup.message, status, {
-        code: lookup.code,
-        headers: noStore,
-      });
+      return errorWithHeaders(lookup.message, status, lookup.code);
     }
     return NextResponse.json({ request: lookup.request }, { headers: noStore });
   } catch (error) {
     if (error instanceof EpaMagicLinkError) {
-      return publicErrorResponse(error.message, error.status, {
-        code: error.code,
-        headers: noStore,
-      });
+      return errorWithHeaders(error.message, error.status, error.code);
     }
     return jsonError(error);
   }
@@ -75,9 +82,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
   try {
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
     if (rate.limited) {
-      return publicErrorResponse("Too many requests. Wait a minute and try again.", 429, {
-        code: "rate_limited",
-        headers: { ...noStore, "Retry-After": String(rate.retryAfterSeconds) },
+      return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
+        ...noStore,
+        "Retry-After": String(rate.retryAfterSeconds),
       });
     }
     const { token } = await params;
@@ -90,10 +97,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
     return NextResponse.json({ ok: true, request: record }, { headers: noStore });
   } catch (error) {
     if (error instanceof EpaMagicLinkError) {
-      return publicErrorResponse(error.message, error.status, {
-        code: error.code,
-        headers: noStore,
-      });
+      return errorWithHeaders(error.message, error.status, error.code);
     }
     return jsonError(error);
   }
@@ -103,9 +107,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   try {
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
     if (rate.limited) {
-      return publicErrorResponse("Too many requests. Wait a minute and try again.", 429, {
-        code: "rate_limited",
-        headers: { ...noStore, "Retry-After": String(rate.retryAfterSeconds) },
+      return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
+        ...noStore,
+        "Retry-After": String(rate.retryAfterSeconds),
       });
     }
     const { token } = await params;
@@ -124,18 +128,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
             : result.status === "completed"
               ? 409
               : 400;
-      return publicErrorResponse(result.message, status, {
-        code: result.code,
-        headers: noStore,
-      });
+      return errorWithHeaders(result.message, status, result.code);
     }
     return NextResponse.json({ ok: true, request: result.request }, { headers: noStore });
   } catch (error) {
     if (error instanceof EpaMagicLinkError) {
-      return publicErrorResponse(error.message, error.status, {
-        code: error.code,
-        headers: noStore,
-      });
+      return errorWithHeaders(error.message, error.status, error.code);
     }
     return jsonError(error);
   }

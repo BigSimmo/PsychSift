@@ -20,7 +20,8 @@ import {
 } from "@/lib/roster/import/grid";
 import { RosterReadError, tableToGrid } from "@/lib/roster/import/table";
 import { type ShiftKind } from "@/lib/roster/shift-kind";
-import { detectOwnShiftConflicts, diffRoster, rosterWindow, shiftIsInWindow } from "@/lib/roster/shifts/diff";
+import { detectOwnConflicts } from "@/lib/roster/shifts/conflicts";
+import { diffRoster, rosterWindow, shiftIsInWindow } from "@/lib/roster/shifts/diff";
 import {
   ON_CALL_SHIFT_FILE_NAME_MAX,
   type OnCallShiftChange,
@@ -234,7 +235,7 @@ export function RosterImportFlow({
     const retainedOther = shifts.shifts.filter(
       (shift) => !(shift.source === "import" && (shift.workplace ?? "") === place && shiftIsInWindow(shift, window)),
     );
-    const conflicts = detectOwnShiftConflicts([...retainedOther, ...read.shifts]);
+    const conflicts = detectOwnConflicts([...retainedOther, ...read.shifts]);
     return { ...read, window, diff, conflicts, unchanged: Math.max(0, read.shifts.length - diff.added - diff.changed) };
   }, [loaded, rowIndex, codes, shifts.shifts, place]);
 
@@ -430,7 +431,7 @@ export function RosterImportFlow({
           {review.conflicts.length > 0 ? (
             <ModeNotice tone="warning" testId="roster-own-shift-conflict-warning">
               {review.conflicts.length === 1
-                ? `Double-booked shift: ${review.conflicts[0]!.first.title} overlaps ${review.conflicts[0]!.second.title} by ${review.conflicts[0]!.overlapMinutes} min.`
+                ? `Double-booked shift: ${review.conflicts[0]!.first.title} overlaps ${review.conflicts[0]!.second.title}.`
                 : `${review.conflicts.length} overlapping shifts found in your roster.`}
             </ModeNotice>
           ) : null}

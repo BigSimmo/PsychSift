@@ -114,6 +114,8 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
       batchSize: 50,
     });
 
-    await expect(runFirstPublicationCli(["--execute"], {})).rejects.toThrow(/ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true/);
+    await expect(runFirstPublicationCli(["--execute"], { NODE_ENV: "test" })).rejects.toThrow(
+      /ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true/,
+    );
   });
 });
