@@ -47,8 +47,16 @@ export function ClinicalNoteEditor({
   const [privacyProblem, setPrivacyProblem] = useState<PatientDetailProblem | null>(() =>
     checkPatientDetail(controlledValue ?? initialValue),
   );
-  const currentValue = isControlled && privacyProblem === null ? controlledValue : internalValue;
+  const currentValue = internalValue;
   const sharedDevice = useSharedDevice();
+
+  // Keep controlled updates as the source of truth when the parent changes them,
+  // but do not switch away from the locally typed value while it is being checked.
+  useEffect(() => {
+    if (!isControlled) return;
+    setInternalValue(controlledValue);
+    setPrivacyProblem(checkPatientDetail(controlledValue));
+  }, [controlledValue, isControlled]);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
     checkPatientDetail(controlledValue ?? initialValue) ? "error" : "idle",
