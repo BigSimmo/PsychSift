@@ -137,6 +137,7 @@
     "tests/work-screens-my-day-earlier-alerts.test.ts",
     "tests/work-search*",
     "tests/work-sync-client.dom.test.tsx",
+    "tests/work-sync-hardening.test.ts",
     "tests/work-sync.test.ts",
     "tests/work-text*",
     "tests/work-time-format.test.ts",

@@ -42,11 +42,22 @@ RUN for attempt in 1 2 3; do \
       sleep $((attempt * 10)); \
     done
 COPY . .
+ARG RAILWAY_GIT_COMMIT_SHA=
+ARG GITHUB_SHA=
+ARG SOURCE_COMMIT_SHA=
+ARG COMMIT_SHA=
+ARG SENTRY_RELEASE=
+ENV RAILWAY_GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA}
+ENV GITHUB_SHA=${GITHUB_SHA}
+ENV SOURCE_COMMIT_SHA=${SOURCE_COMMIT_SHA}
+ENV COMMIT_SHA=${COMMIT_SHA}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 # supabase/migrations is only present in the build context, not the slim
 # runtime image, so the deploy pre-deploy gate's manifest of migration
 # versions this build expects is baked in now and copied into the runner
 # below (see scripts/deploy/write-migration-manifest.mjs).
 RUN node scripts/deploy/write-migration-manifest.mjs
+RUN node scripts/deploy/write-release-manifest.mjs
 RUN node scripts/build-worker.mjs
 
 # Production-only node_modules for the runtime stage. The preinstall/
@@ -105,6 +116,11 @@ RUN /opt/docling-venv/bin/docling-tools models download --output-dir /opt/doclin
     --manifest /tmp/docling-verify/model-artifacts.json \
   && chmod -R a+rX /opt/docling-models \
   && rm -rf /tmp/docling-verify
+ARG RAILWAY_GIT_COMMIT_SHA=
+ARG GITHUB_SHA=
+ARG SOURCE_COMMIT_SHA=
+ARG COMMIT_SHA=
+ARG SENTRY_RELEASE=
 ENV WORKER_DOCLING_PYTHON_BIN=/opt/docling-venv/bin/python
 ENV DOCLING_ARTIFACTS_PATH=/opt/docling-models
 ENV TORCHDYNAMO_DISABLE=1
@@ -113,11 +129,15 @@ ENV PATH="/opt/ocr-venv/bin:${PATH}"
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV NODE_ENV=production
+ENV RAILWAY_GIT_COMMIT_SHA=${RAILWAY_GIT_COMMIT_SHA}
+ENV COMMIT_SHA=${COMMIT_SHA}
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 # Railway deploy pre-deploy gate (docs/worker-deploy-runbook.md §0): blocks/
 # observes this service's deploy until migrations this build expects are live.
 COPY --from=build /app/deploy/expected-migrations.json ./deploy/expected-migrations.json
+COPY --from=build /app/deploy/release-identity.json ./deploy/release-identity.json
 COPY --from=build /app/scripts/deploy/await-migrations.mjs ./scripts/deploy/await-migrations.mjs
 COPY --from=build /app/scripts/deploy/migration-versions.mjs ./scripts/deploy/migration-versions.mjs
 COPY worker/python worker/python

@@ -60,9 +60,19 @@ export function selectAnswerRouteEvidence(args: {
   return { crossDocumentPlan, eligibleResults: eligible.results, rawResults, routeSelection };
 }
 
-export function buildSelectedEvidenceArtifacts(query: string, results: SearchResult[]) {
+export function buildSelectedEvidenceArtifacts(
+  query: string,
+  results: SearchResult[],
+  fallbackResults?: SearchResult[],
+) {
   const quoteCards = extractQuoteCards(results, query);
   const memoryCardsUsed = collectMemoryCards(results);
+  const directVisualEvidence = buildVisualEvidence(results);
+  const retainedDocumentIds = new Set(results.map((result) => result.document_id));
+  const visualEvidence =
+    directVisualEvidence.length > 0 || !fallbackResults?.length || retainedDocumentIds.size === 0
+      ? directVisualEvidence
+      : buildVisualEvidence(fallbackResults.filter((result) => retainedDocumentIds.has(result.document_id)));
   return {
     relevance: buildEvidenceRelevance(query, results),
     quoteCards,
@@ -71,7 +81,7 @@ export function buildSelectedEvidenceArtifacts(query: string, results: SearchRes
     evidenceSummary: buildEvidenceSummary(results, quoteCards),
     sourceCoverage: buildSourceCoverage(results),
     conflictsOrGaps: detectConflictsOrGaps(results),
-    visualEvidence: buildVisualEvidence(results),
+    visualEvidence,
     bestSource: selectBestSourceRecommendation(results, quoteCards),
     memoryCardsUsed,
     indexingQuality: buildIndexingQuality(results, memoryCardsUsed),
@@ -127,13 +137,17 @@ export function applySelectedEvidenceArtifacts(args: {
   preserveBestSource?: boolean;
 }) {
   const { answer, query, results, relatedDocuments, artifacts, preserveBestSource = false } = args;
+  const retainedDocumentIds = new Set(results.map((result) => result.document_id));
+  const fallbackVisualEvidence = (answer.visualEvidence ?? []).filter((item) =>
+    retainedDocumentIds.has(item.document_id),
+  );
   answer.sources = results;
   answer.quoteCards = reconcileQuoteCards(answer.quoteCards, results, query);
   answer.documentBreakdown = artifacts.documentBreakdown;
   answer.evidenceSummary = artifacts.evidenceSummary;
   answer.sourceCoverage = artifacts.sourceCoverage;
   answer.conflictsOrGaps = answer.conflictsOrGaps?.length ? answer.conflictsOrGaps : artifacts.conflictsOrGaps;
-  answer.visualEvidence = artifacts.visualEvidence;
+  answer.visualEvidence = artifacts.visualEvidence.length ? artifacts.visualEvidence : fallbackVisualEvidence;
   answer.bestSource = preserveBestSource
     ? answer.bestSource
     : (selectBestSourceRecommendation(results, answer.quoteCards) ?? artifacts.bestSource);
@@ -835,6 +849,9 @@ export function selectRetrievalEvidence(args: {
     if (right.score !== left.score) return right.score - left.score;
     if ((right.lexicalScore ?? 0) !== (left.lexicalScore ?? 0))
       return (right.lexicalScore ?? 0) - (left.lexicalScore ?? 0);
+    const leftTitlePhrase = left.matchedSignals.includes("document_title_phrase") ? 1 : 0;
+    const rightTitlePhrase = right.matchedSignals.includes("document_title_phrase") ? 1 : 0;
+    if (rightTitlePhrase !== leftTitlePhrase) return rightTitlePhrase - leftTitlePhrase;
     if ((right.rerankScore ?? 0) !== (left.rerankScore ?? 0)) return (right.rerankScore ?? 0) - (left.rerankScore ?? 0);
     // Exact tie on every clamped key (routine on the embedding-free fast path, where imputed
     // primaries are byte-identical and confidences saturate at 1.0): prefer the candidate whose

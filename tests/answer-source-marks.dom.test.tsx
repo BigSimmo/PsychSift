@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { useState } from "react";
 
 import { render, screen, within } from "@testing-library/react";
@@ -17,6 +19,7 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import { AnswerSourceDrawer } from "@/components/clinical-dashboard/answer-source-drawer";
 import { NaturalLanguageAnswer, primaryAnswerDisplayText } from "@/components/clinical-dashboard/answer-content";
+import { AnswerSourceMark, AnswerSourceMarkOverflow } from "@/components/clinical-dashboard/answer-source-mark";
 import { compactVerificationWordingFor } from "@/components/ui/verification-notice";
 import { type AnswerSourceRow } from "@/components/clinical-dashboard/answer-source-rows";
 import { normalizeSourceMetadata } from "@/lib/source-metadata";
@@ -363,6 +366,29 @@ describe("in-prose source marks", () => {
     for (const card of screen.getAllByTestId("answer-source-rail-row")) {
       expect(card).toHaveAttribute("data-cited", "false");
     }
+  });
+
+  it("splits the inter-mark gap between adjacent source marks and overflow marks so ::before hit targets do not overlap (R03)", () => {
+    render(
+      <p>
+        First sentence.
+        <AnswerSourceMark
+          index={0}
+          label="Source 1: Maudsley Prescribing Guidelines, page 42 — direct support"
+          onOpen={vi.fn()}
+        />
+        <AnswerSourceMarkOverflow count={2} />
+      </p>,
+    );
+    const mark = screen.getByTestId("answer-source-mark");
+    const overflow = screen.getByTestId("answer-source-mark-overflow");
+    expect(mark.nextElementSibling).toBe(overflow);
+    expect(mark).toHaveClass("answer-source-mark");
+    expect(overflow).toHaveClass("answer-source-mark-overflow");
+
+    const css = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(css).toContain(".answer-source-mark + .answer-source-mark-overflow::before");
+    expect(css).toContain(".answer-source-mark:has(+ .answer-source-mark-overflow)::before");
   });
 });
 

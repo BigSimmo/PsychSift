@@ -19,6 +19,7 @@ export class WorkerAbortError extends Error {
 
 export class WorkerRuntimeControl {
   #stopped = false;
+  #abortController = new AbortController();
   #cleanup: (() => void)[] = [];
   #signalSource?: Pick<EventEmitter, "on" | "off">;
   #attached = false;
@@ -31,9 +32,14 @@ export class WorkerRuntimeControl {
     return this.#stopped;
   }
 
+  get signal(): AbortSignal {
+    return this.#abortController.signal;
+  }
+
   stop(): void {
     if (this.#stopped) return;
     this.#stopped = true;
+    this.#abortController.abort();
     for (const cb of this.#cleanup) {
       try {
         cb();

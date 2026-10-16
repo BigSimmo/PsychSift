@@ -13,11 +13,14 @@
 import { createServer } from "node:http";
 import { createAdminClient } from "../src/lib/supabase/admin";
 import { probeSupabaseHealth } from "../src/lib/supabase/health";
+import { resolveDeploymentCommitSha } from "../src/lib/observability/sentry-release";
 import { safeErrorLogDetails } from "../src/lib/privacy";
 
-interface HealthResponse {
+export interface HealthResponse {
   status: "ok" | "degraded" | "error";
   timestamp: string;
+  deploymentCommitSha: string | null;
+  claimLoopPaused?: boolean;
   checks: {
     supabase: {
       status: "ok" | "error";
@@ -31,14 +34,34 @@ interface HealthResponse {
   };
 }
 
+export type WorkerHealthSnapshot = HealthResponse;
+
+export function isWorkerClaimLoopPaused(env: Record<string, string | undefined> = process.env): boolean {
+  const pausedRaw = env.WORKER_PAUSED?.trim().toLowerCase();
+  if (pausedRaw === "true" || pausedRaw === "1") {
+    return true;
+  }
+  const enabledRaw = env.WORKER_CLAIM_LOOP_ENABLED?.trim().toLowerCase();
+  if (enabledRaw === "false" || enabledRaw === "0") {
+    return true;
+  }
+  return false;
+}
+
 // Global state: track last successful claim processing for staleness detection.
 let lastClaimProcessedAt: Date | null = null;
+let claimLoopPausedOverride: boolean | null = null;
+
 export function recordClaimProcessed() {
   lastClaimProcessedAt = new Date();
 }
 
 export function getLastClaimProcessedAt(): Date | null {
   return lastClaimProcessedAt;
+}
+
+export function setClaimLoopPausedForTests(paused: boolean | null) {
+  claimLoopPausedOverride = paused;
 }
 
 let cachedPythonStatus: { status: "ok" | "error"; message?: string } | null = null;
@@ -95,12 +118,13 @@ export function setLastClaimProcessedAtForTests(date: Date | null) {
 
 export function resetHealthStateForTests() {
   lastClaimProcessedAt = null;
+  claimLoopPausedOverride = null;
   cachedPythonStatus = null;
   lastPythonCheckAt = 0;
 }
 
-export async function performHealthCheck(): Promise<HealthResponse> {
-  const checks: HealthResponse["checks"] = {
+export async function performHealthCheck(): Promise<WorkerHealthSnapshot> {
+  const checks: WorkerHealthSnapshot["checks"] = {
     supabase: { status: "ok" },
     python_venv: { status: "ok" },
   };
@@ -109,7 +133,7 @@ export async function performHealthCheck(): Promise<HealthResponse> {
 
   // Check 1: Supabase connectivity
   try {
-    const health = await probeSupabaseHealth(createAdminClient());
+    const health = await probeSupabaseHealth(createAdminClient(), AbortSignal.timeout(30_000));
     // The probe returns an unhealthy result for query/network failures rather
     // than throwing. Honour that result so Railway cannot promote a worker
     // whose database check failed. Keep provider details out of this endpoint.
@@ -137,12 +161,19 @@ export async function performHealthCheck(): Promise<HealthResponse> {
   }
 
   const status = computeOverallHealthStatus(hasErrors, lastClaimProcessedAt);
+  const claimLoopPaused = claimLoopPausedOverride ?? isWorkerClaimLoopPaused(process.env);
 
   return {
     status,
     timestamp: new Date().toISOString(),
+    deploymentCommitSha: resolveDeploymentCommitSha(),
+    claimLoopPaused,
     checks,
   };
+}
+
+export async function getWorkerHealthSnapshot(): Promise<WorkerHealthSnapshot> {
+  return performHealthCheck();
 }
 
 export function createHealthCheckServer() {
@@ -154,7 +185,7 @@ export function createHealthCheckServer() {
     }
 
     try {
-      const health = await performHealthCheck();
+      const health = await getWorkerHealthSnapshot();
       const statusCode = health.status === "ok" ? 200 : health.status === "degraded" ? 200 : 503;
 
       res.writeHead(statusCode, {

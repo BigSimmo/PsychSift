@@ -11,6 +11,8 @@ function expectPublicFixtureCache(response: Response) {
 
 function expectPrivateCache(response: Response) {
   expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("vary")).toContain("Cookie");
+  expect(response.headers.get("vary")).toContain("Authorization");
 }
 const recordId = "11111111-1111-4111-8111-111111111111";
 
@@ -681,9 +683,33 @@ describe("medications survive an unusable catalogue", () => {
     mockRuntime(client);
     const { GET } = await import("../src/app/api/medications/route");
 
-    const payload = (await (await GET(request("/api/medications"))).json()) as { retainedSnapshot?: boolean };
+    const response = await GET(request("/api/medications"));
+    const payload = (await response.json()) as { retainedSnapshot?: boolean };
 
     expect(payload.retainedSnapshot).toBe(true);
+    expectPrivateCache(response);
+  });
+
+  it("never publicly caches authenticated seed_uninitialized or degraded fallback medication responses", async () => {
+    const { clearCatalogueSeedFallbackCooldown } = await import("@/lib/site-content/catalogue-seed-fallback");
+    clearCatalogueSeedFallbackCooldown();
+    const uninitializedClient = createSupabaseMock();
+    mockRuntime(uninitializedClient);
+    const { GET } = await import("../src/app/api/medications/route");
+
+    const authedSeedResponse = await GET(authedRequest("/api/medications"));
+    expect(authedSeedResponse.status).toBe(200);
+    expectPrivateCache(authedSeedResponse);
+
+    clearCatalogueSeedFallbackCooldown();
+    const degradedClient = createSupabaseMock(undefined, {
+      canonicalRead: () => Promise.reject(new Error("canonical read failed")),
+    });
+    mockRuntime(degradedClient);
+    const { GET: getDegraded } = await import("../src/app/api/medications/route");
+    const degradedResponse = await getDegraded(request("/api/medications"));
+    expect(degradedResponse.status).toBe(200);
+    expectPrivateCache(degradedResponse);
   });
 
   it("does not label a healthy canonical read as a retained copy", async () => {

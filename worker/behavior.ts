@@ -20,6 +20,137 @@ import { isPartialIndexWriteConflict, isRetryableIngestionError, nextRetryAt } f
 import { ProviderEgressDeniedError } from "../src/lib/document-ingress-safety";
 import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-egress";
 
+export const WORKER_CONTROL_PLANE_TIMEOUT_MS = 30_000;
+export const WORKER_SUPABASE_TIMEOUT_MS = 120_000;
+
+export function resolveWorkerControlPlaneTimeoutMs(
+  environment: Record<string, string | undefined> = process.env,
+): number {
+  const raw = Number(environment.WORKER_CONTROL_PLANE_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_CONTROL_PLANE_TIMEOUT_MS;
+}
+
+export function resolveWorkerSupabaseTimeoutMs(environment: Record<string, string | undefined> = process.env): number {
+  const raw = Number(environment.WORKER_SUPABASE_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_SUPABASE_TIMEOUT_MS;
+}
+
+export function controlPlaneAbortSignal(
+  stopSignal?: AbortSignal,
+  timeoutMs = resolveWorkerControlPlaneTimeoutMs(),
+): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return stopSignal ? AbortSignal.any([stopSignal, timeoutSignal]) : timeoutSignal;
+}
+
+function racePromiseLikeWithAbortSignal<T>(promiseLike: PromiseLike<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason ?? new DOMException("The control-plane operation was aborted.", "AbortError"));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      reject(signal.reason ?? new DOMException("The control-plane operation was aborted.", "AbortError"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    Promise.resolve(promiseLike).then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
+export function ensureAbortableQuery<T extends object>(
+  query: T & { abortSignal?: (signal: AbortSignal) => T },
+): T & { abortSignal: (signal: AbortSignal) => T } {
+  if (query && typeof query.abortSignal === "function") {
+    return query as T & { abortSignal: (signal: AbortSignal) => T };
+  }
+  if (!query || (typeof query !== "object" && typeof query !== "function")) {
+    return query as T & { abortSignal: (signal: AbortSignal) => T };
+  }
+  let attachedSignal: AbortSignal | undefined;
+  const proxy: T & { abortSignal: (signal: AbortSignal) => T } = new Proxy(query, {
+    get(target, prop, receiver) {
+      if (prop === "abortSignal") {
+        return (signal: AbortSignal) => {
+          attachedSignal = signal;
+          return proxy;
+        };
+      }
+      if (prop === "then") {
+        const origThen = Reflect.get(target, prop, target);
+        if (typeof origThen !== "function") return undefined;
+        return (
+          onfulfilled?: ((value: unknown) => unknown) | null,
+          onrejected?: ((reason: unknown) => unknown) | null,
+        ) => {
+          const basePromise = new Promise<unknown>((resolve, reject) => {
+            (origThen as (res: (v: unknown) => void, rej: (e: unknown) => void) => void).call(target, resolve, reject);
+          });
+          const raced = attachedSignal ? racePromiseLikeWithAbortSignal(basePromise, attachedSignal) : basePromise;
+          return raced.then(onfulfilled, onrejected);
+        };
+      }
+      const value = Reflect.get(target, prop, receiver);
+      if (typeof value === "function") {
+        const fn = value as (...fnArgs: unknown[]) => unknown;
+        return (...args: unknown[]) => {
+          const next = fn.apply(target, args);
+          if (next && (typeof next === "object" || typeof next === "function")) {
+            const wrappedNext = ensureAbortableQuery(next as object);
+            return attachedSignal ? wrappedNext.abortSignal(attachedSignal) : wrappedNext;
+          }
+          return next;
+        };
+      }
+      return value;
+    },
+  }) as T & { abortSignal: (signal: AbortSignal) => T };
+  return proxy;
+}
+
+const CONTROL_PLANE_WRAPPED = Symbol.for("psychsift.worker.controlPlaneWrapped");
+
+export function withControlPlaneAbortClient<T extends object>(
+  client: T,
+  signalFactory: (stopSignal?: AbortSignal) => AbortSignal = (stopSignal) => controlPlaneAbortSignal(stopSignal),
+): T {
+  if (client && typeof client === "object" && (client as Record<symbol, unknown>)[CONTROL_PLANE_WRAPPED]) {
+    return client;
+  }
+  const wrapped = Object.create(client) as T & {
+    rpc?: (...args: unknown[]) => object;
+    from?: (...args: unknown[]) => { select?: (...selectArgs: unknown[]) => object };
+  };
+  const baseClient = client as {
+    rpc: (...args: unknown[]) => object;
+    from?: (...args: unknown[]) => { select?: (...selectArgs: unknown[]) => object };
+  };
+  Object.defineProperty(wrapped, CONTROL_PLANE_WRAPPED, { value: true, enumerable: false });
+  wrapped.rpc = (...args: unknown[]) => ensureAbortableQuery(baseClient.rpc(...args));
+  if (typeof baseClient.from === "function") {
+    wrapped.from = (...fromArgs: unknown[]) => {
+      const tableBuilder = baseClient.from!(...fromArgs);
+      if (!tableBuilder || typeof tableBuilder.select !== "function") {
+        return tableBuilder;
+      }
+      const wrappedTable = Object.create(tableBuilder) as { select: (...selectArgs: unknown[]) => object };
+      wrappedTable.select = (...selectArgs: unknown[]) => {
+        const selectBuilder = ensureAbortableQuery(tableBuilder.select!(...selectArgs));
+        return selectBuilder.abortSignal(signalFactory());
+      };
+      return wrappedTable;
+    };
+  }
+  return wrapped;
+}
+
 export type IngestionFailureDecision = {
   retry: boolean;
   documentStatus: "queued" | "failed" | "indexed";

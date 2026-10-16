@@ -194,10 +194,31 @@ describe("recovery readiness evidence", () => {
       { ...base.restoreDrill, environment: "production" },
       { ...base.restoreDrill, databaseRestored: false },
       { ...base.restoreDrill, storageRestored: false },
+      { ...base.restoreDrill, authRestored: false },
+      { ...base.restoreDrill, configRestored: false },
+      { ...base.restoreDrill, measuredRpoSeconds: -1 },
+      { ...base.restoreDrill, measuredRpoSeconds: 86_401 },
+      { ...base.restoreDrill, measuredRtoSeconds: 0 },
+      { ...base.restoreDrill, measuredRtoSeconds: 86_401 },
       { ...base.restoreDrill, outcome: "failed" },
     ]) {
       expect(() => parseRecoveryReadinessEvidence(evidenceInput({ restoreDrill }))).toThrow();
     }
+
+    const withFullDrillMetrics = parsedEvidence({
+      restoreDrill: {
+        ...base.restoreDrill,
+        authRestored: true,
+        configRestored: true,
+        measuredRpoSeconds: 120,
+        measuredRtoSeconds: 480,
+      },
+    });
+    expect(withFullDrillMetrics.restoreDrill.authRestored).toBe(true);
+    expect(withFullDrillMetrics.restoreDrill.configRestored).toBe(true);
+    expect(withFullDrillMetrics.restoreDrill.measuredRpoSeconds).toBe(120);
+    expect(withFullDrillMetrics.restoreDrill.measuredRtoSeconds).toBe(480);
+
     const stale = parsedEvidence({
       restoreDrill: { ...base.restoreDrill, completedAt: "2026-07-24T11:59:59.000Z" },
     });

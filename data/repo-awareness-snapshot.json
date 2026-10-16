@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-16"
+    "committed_at": "2026-10-17"
   },
   "routes": {
     "modes": [
@@ -10627,6 +10627,14 @@
         "scope": "Node 24.15 engine floor: engines.node, preinstall hook, check:runtime, session-start provisioning, codex-cloud assertion",
         "outcome": "Authored and handed off as PR #1771; closes #285; operationalRisk true, clinicalRisk/ragRanking false",
         "checks": "test 5800 passed/1 pre-existing root-uid failure (pr-handoff-stop, confirmed on stashed clean tree); lint 0; typecheck 0; prettier --check . pass; check:runtime pass; check:codex-cloud pass; check:outstanding-issues pass; preinstall boundary proof 24.13/24.14.9 reject, 24.15/24.19 accept, 25.0.0 reject; contract test mutation-checked red"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "codex/cloud-policy-clarity",
+        "head": "3e0876f6e81d765f6d3695c74385d5b5a91b7951",
+        "scope": "Codex Cloud environment script and shell-profile hardening",
+        "outcome": "PASS (0 blocking findings; hardened .bashrc prepend, command-shim fallback, check-codex-cloud auto-profile load, Node 24.15.0 diagnostic floor, offline provider env scrubbing, and receipt schema cleanup)",
+        "checks": "check:codex-cloud, vitest (tests/codex-cloud-diagnose.test.ts, tests/codex-cloud-setup.test.ts: 50 passed), docs:maintain, check-format-changed, typecheck"
       },
       {
         "date": "2026-08-04",

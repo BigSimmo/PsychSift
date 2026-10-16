@@ -7,8 +7,15 @@ import { env } from "@/lib/env";
 // /api/setup-status (detailed setup checks) so both surfaces gate internal error text and
 // project posture behind the same secret. Constant-time compare; fails closed when the secret
 // is unset or the token length/value differs.
-export function allowDeepHealthProbe(request: Request): boolean {
-  const secret = env.HEALTH_DEEP_PROBE_SECRET;
+function constantTimeTokenEquals(expectedSecret: string, receivedToken: string): boolean {
+  const expected = Buffer.from(expectedSecret, "utf8");
+  const received = Buffer.from(receivedToken, "utf8");
+  if (expected.length !== received.length) return false;
+  return timingSafeEqual(expected, received);
+}
+
+export function allowDeepHealthProbe(request: Request, environment?: Record<string, string | undefined>): boolean {
+  const secret = environment ? environment.HEALTH_DEEP_PROBE_SECRET : env.HEALTH_DEEP_PROBE_SECRET;
   if (!secret) return false;
   const token = request.headers.get("x-health-deep-token");
   if (!token) return false;
@@ -16,8 +23,14 @@ export function allowDeepHealthProbe(request: Request): boolean {
   // token with the same code-unit count but a different byte count would otherwise pass a
   // `token.length === secret.length` check and make timingSafeEqual throw on mismatched buffers
   // (an unhandled RangeError → crafted-header 500). Build the buffers first, then length-gate.
-  const expected = Buffer.from(secret, "utf8");
-  const received = Buffer.from(token, "utf8");
-  if (expected.length !== received.length) return false;
-  return timingSafeEqual(expected, received);
+  if (constantTimeTokenEquals(secret, token)) return true;
+
+  const previousSecret = (
+    environment
+      ? environment.HEALTH_DEEP_PROBE_SECRET_PREVIOUS
+      : ((env as unknown as Record<string, string | undefined>).HEALTH_DEEP_PROBE_SECRET_PREVIOUS ??
+        process.env.HEALTH_DEEP_PROBE_SECRET_PREVIOUS)
+  )?.trim();
+  if (!previousSecret) return false;
+  return constantTimeTokenEquals(previousSecret, token);
 }

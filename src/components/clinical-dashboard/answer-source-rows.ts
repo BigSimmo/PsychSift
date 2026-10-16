@@ -147,7 +147,9 @@ export function sourceBadgeDisplay(source: AnswerSourceRow, index: number) {
 
 /** The spoken counterpart, so an uncited row is never announced as "Source 4". */
 export function sourceSpokenName(source: AnswerSourceRow, index: number) {
-  return source.cited === false ? "Also found" : sourceSpokenLabel(index);
+  if (source.cited === false) return "Also found";
+  if ((source as { badge?: string }).badge === "—") return "Searched document";
+  return sourceSpokenLabel(index);
 }
 
 /**
@@ -156,7 +158,9 @@ export function sourceSpokenName(source: AnswerSourceRow, index: number) {
  * source" where the rail card reads "Also found".
  */
 export function sourceStepSpokenLabel(source: AnswerSourceRow, index: number) {
-  return source.cited === false ? "Also found source" : sourceSpokenLabel(index);
+  if (source.cited === false) return "Also found source";
+  if ((source as { badge?: string }).badge === "—") return "Searched document";
+  return sourceSpokenLabel(index);
 }
 
 export function sourceBadgeToneClass(metadata: ReturnType<typeof normalizeSourceMetadata>, index: number) {
@@ -179,6 +183,9 @@ export function sourceBadgeToneClass(metadata: ReturnType<typeof normalizeSource
  * the claim this surface must never make. Removed with the index parameter.
  */
 export function sourceSupportLabel(source: AnswerSourceRow) {
+  if (source.cited === false || (source as { badge?: string }).badge === "—") {
+    return "Searched, not cited";
+  }
   if (!source.sourceStrength || source.sourceStrength === "none") return "Unsupported";
   if (source.sourceStrength === "strong") return "Direct";
   return "Partial";
@@ -206,6 +213,9 @@ export function sourceSupportSentence(
   claimSupport?: "direct" | "partial" | "unsupported" | null,
 ): string | null {
   if (!source || index === null) return null;
+  if (!claimSupport && (source.cited === false || (source as { badge?: string }).badge === "—")) {
+    return "Searched, not cited in the answer.";
+  }
   const support =
     claimSupport === "direct"
       ? "Direct"
@@ -256,6 +266,10 @@ export function buildAnswerSourceRows(
     rows.push(row);
   };
 
+  const sourceById = new Map(sources.map((source) => [source.id, source]));
+  const fallbackExcerpt = (source?: SearchResult) =>
+    source?.content?.trim() || source?.retrieval_synopsis?.trim() || undefined;
+
   sourceLinks.slice(0, 6).forEach((source) => {
     pushRow({
       id: source.chunk_id,
@@ -267,7 +281,7 @@ export function buildAnswerSourceRows(
       sourceMetadata: source.sourceMetadata,
       score: source.score ?? 0,
       href: source.href,
-      snippet: source.snippet,
+      snippet: source.snippet || fallbackExcerpt(sourceById.get(source.chunk_id)),
       sourceStrength: source.sourceStrength,
       cited: isCited(source.chunk_id, true),
     });
@@ -284,6 +298,8 @@ export function buildAnswerSourceRows(
       sourceMetadata: bestSource.source_metadata,
       score: bestSource.score,
       href: bestSource.viewer_href,
+      snippet:
+        (bestSource as { snippet?: string }).snippet?.trim() || fallbackExcerpt(sourceById.get(bestSource.chunk_id)),
       sourceStrength: bestSource.source_strength,
       cited: isCited(bestSource.chunk_id, true),
     });
@@ -300,6 +316,7 @@ export function buildAnswerSourceRows(
       sourceMetadata: source.source_metadata,
       score: source.hybrid_score ?? source.similarity ?? source.lexical_score ?? 0,
       href: sourceResultHref(source),
+      snippet: fallbackExcerpt(source),
       sourceStrength: source.source_strength,
       // Retrieved but not cited by the answer: the rail's "also found" group.
       cited: isCited(source.id, false),

@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 export type RuntimeCheckResult = {
   ok: boolean;
   expectedMajor: number;
   actualVersion: string;
+  driftDetected?: boolean;
   message: string;
 };
 
@@ -106,8 +110,73 @@ export function checkNpmRuntime(
   return runtimeResult("npm", version, expectedMajor);
 }
 
+export function readInstalledNodeTypesVersion(
+  packageJsonPath = resolve(process.cwd(), "node_modules/@types/node/package.json"),
+): string {
+  try {
+    const raw = JSON.parse(readFileSync(packageJsonPath, "utf8")) as { version?: unknown };
+    return typeof raw.version === "string" && raw.version.trim() ? raw.version.trim() : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+export function checkNodeTypesRuntime(
+  version = readInstalledNodeTypesVersion(),
+  expectedMajor = 24,
+  options?: { strictMajor?: boolean },
+): RuntimeCheckResult {
+  if (version === "unknown") {
+    return {
+      ok: true,
+      expectedMajor,
+      actualVersion: "unknown",
+      message: `@types/node package version was not detected; skipping @types/node ${expectedMajor}.x check.`,
+    };
+  }
+
+  const actualMajor = Number(version.split(".")[0]);
+  if (!Number.isFinite(actualMajor)) {
+    return {
+      ok: false,
+      expectedMajor,
+      actualVersion: version,
+      message: `Could not parse @types/node version "${version}". Expected @types/node ${expectedMajor}.x.`,
+    };
+  }
+
+  if (actualMajor < expectedMajor) {
+    return {
+      ok: false,
+      expectedMajor,
+      actualVersion: version,
+      driftDetected: true,
+      message: `@types/node ${version} is older than required Node ${expectedMajor}.x runtime types.`,
+    };
+  }
+
+  if (actualMajor > expectedMajor) {
+    const strictMajor = options?.strictMajor ?? process.env.CHECK_NODE_TYPES_STRICT_MAJOR === "1";
+    return {
+      ok: !strictMajor,
+      expectedMajor,
+      actualVersion: version,
+      driftDetected: true,
+      message: `@types/node ${version} (major ${actualMajor}) is ahead of the Node ${expectedMajor}.x runtime target; avoid relying on Node >${expectedMajor} APIs.`,
+    };
+  }
+
+  return {
+    ok: true,
+    expectedMajor,
+    actualVersion: version,
+    driftDetected: false,
+    message: `@types/node ${version} matches required Node ${expectedMajor}.x runtime target.`,
+  };
+}
+
 function main() {
-  const results = [checkNodeRuntime(process.versions.node), checkNpmRuntime()];
+  const results = [checkNodeRuntime(process.versions.node), checkNpmRuntime(), checkNodeTypesRuntime()];
   for (const result of results) {
     console.log(`[Runtime Check] ${result.ok ? "PASS" : "FAIL"}: ${result.message}`);
   }
