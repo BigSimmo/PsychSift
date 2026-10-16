@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { logger } from "../src/lib/logger";
+import {
+  IngestionAttempt,
+  parseIngestionFence,
+  type IngestionFence,
+} from "../supabase/functions/_shared/ingestion-attempt";
+import { runIngestionMutation } from "./behavior";
 
 /**
  * Runtime shape contracts for inbound database rows consumed by the ingestion worker.
@@ -18,7 +24,7 @@ import { logger } from "../src/lib/logger";
  * no env read at module load — so Vitest can exercise it directly even though
  * `worker/main.ts` itself cannot be imported in tests.
  *
- * Every contract here follows the same two rules:
+ * Every accepted-row contract here follows the same two rules:
  *
  * - **`z.looseObject`, never `z.object`.** Zod strips unknown keys by default, which would be
  *   silent data loss whenever the live column set is ahead of this repo. Unknown keys pass
@@ -153,11 +159,64 @@ export function assertClaimedJobRow(row: unknown): asserts row is ClaimedJobRow 
   assertAgainst(claimedJobRowSchema, row, "claim_ingestion_jobs");
 }
 
-/** Rejected rows cannot authorize any mutation; the durable lease may expire for reclaim. */
+/** A malformed payload never enters processing; only an independently valid fence may fail it. */
 export type RejectedClaimedJobRow = {
   error: WorkerRowShapeError;
-  failable: null;
+  failable: { fence: IngestionFence; expiresAt: number } | null;
 };
+
+// A rejection-only projection: omitted payload fields are never processed or written back.
+const rejectedClaimIdentitySchema = z.object({
+  id: z.uuid(),
+  document_id: z.uuid(),
+  locked_by: z.string().min(1),
+  lease_token: z.uuid(),
+  lease_expected_generation_id: z.uuid().nullable(),
+  lease_authority_digest: z.string().regex(/^sha256:[0-9a-f]{64}$/),
+  lease_expires_at: z.iso.datetime({ offset: true }),
+});
+
+function rejectedClaimIdentity(row: unknown): RejectedClaimedJobRow["failable"] {
+  const result = rejectedClaimIdentitySchema.safeParse(row);
+  if (!result.success) return null;
+  const claim = result.data;
+  try {
+    return {
+      fence: parseIngestionFence({
+        job_kind: "node",
+        job_id: claim.id,
+        document_id: claim.document_id,
+        worker_id: claim.locked_by,
+        lease_token: claim.lease_token,
+        expected_generation_id: claim.lease_expected_generation_id,
+        authority_digest: claim.lease_authority_digest,
+      }),
+      expiresAt: Date.parse(claim.lease_expires_at),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Server-side fencing remains authoritative if the claim expires or is replaced in flight. */
+export async function failRejectedClaimedJobRow(
+  rejection: RejectedClaimedJobRow,
+  workerId: string,
+  rpc: Parameters<typeof runIngestionMutation>[1],
+  now = Date.now(),
+): Promise<boolean> {
+  const identity = rejection.failable;
+  if (!identity || identity.fence.worker_id !== workerId || identity.expiresAt <= now) return false;
+  await runIngestionMutation(new IngestionAttempt(identity.fence), rpc, "fail_or_retry_ingestion_job", {
+    // The locked job supplies the batch and document status; malformed payloads supply neither.
+    p_batch_id: null,
+    p_retry: false,
+    p_stage: "failed shape contract",
+    p_error_message: rejection.error.message,
+    p_next_run_at: null,
+  });
+  return true;
+}
 
 /**
  * Partition a claimed batch into rows that may enter the job lifecycle and rows that must
@@ -181,7 +240,7 @@ export function partitionClaimedJobRows(rows: readonly unknown[]): {
       accepted.push(row);
     } catch (error) {
       if (!(error instanceof WorkerRowShapeError)) throw error;
-      rejected.push({ error, failable: null });
+      rejected.push({ error, failable: rejectedClaimIdentity(row) });
     }
   }
   return { accepted, rejected };

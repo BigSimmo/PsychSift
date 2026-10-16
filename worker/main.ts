@@ -54,6 +54,7 @@ import {
   assertEnrichmentChunkRows,
   assertEnrichmentImageRows,
   partitionClaimedJobRows,
+  failRejectedClaimedJobRow,
   type RejectedClaimedJobRow,
 } from "./row-contracts";
 import {
@@ -356,9 +357,10 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     // #212 T4: per-row fail-soft validation. A batch-wide throw here would bypass the job
     // lifecycle entirely â€” the run-loop claim catch backs off and repolls (and exits the
     // process under --once) â€” while the RPC has already committed leases and attempt_count
-    // increments for every row, orphaning valid siblings. Rejected rows are left for bounded
-    // lease recovery because their shape does not provide a trustworthy durable fence;
-    // terminallyFailRejectedClaimedRow only logs them (failable is always null).
+    // increments for every row, orphaning valid siblings. A row that fails the contract is
+    // failed terminally instead (a shape mismatch is deterministic; retrying reruns the same
+    // to_jsonb over the same columns) and never reaches processJob. Only a row whose claim
+    // identity independently parses into a current fence for this worker can be failed.
     const { accepted, rejected } = partitionClaimedJobRows(data ?? []);
     for (const job of accepted) registerClaimedJobAttempt(job, attempts, documentAttempts);
     for (const rejection of rejected) await terminallyFailRejectedClaimedRow(rejection);
@@ -366,10 +368,18 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   }
 
   async function terminallyFailRejectedClaimedRow(rejection: RejectedClaimedJobRow) {
-    // A rejected row has no trustworthy durable fence. Leave it to bounded lease recovery.
-    console.warn("Claimed job row failed the shape contract; leaving to stale reclaim", {
-      issues: rejection.error.issues,
-    });
+    try {
+      if (
+        await failRejectedClaimedJobRow(rejection, workerId, (name, payload) => ingestionRpcClient.rpc(name, payload))
+      )
+        return;
+      console.warn("Claimed job row failed the shape contract without a current worker fence", {
+        issues: rejection.error.issues,
+      });
+    } catch (error) {
+      // A stale/replaced fence or a transport failure must not strand valid siblings.
+      console.warn("Rejected claimed job terminal transition failed", safeErrorLogDetails(error));
+    }
   }
 
   async function downloadDocument(storagePath: string) {

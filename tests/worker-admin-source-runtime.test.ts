@@ -224,6 +224,51 @@ function fixture() {
 }
 
 describe("approved admin source normal runtime composition", () => {
+  it("accepts optional TXT layout absence through registration and interrupted-retention recovery", async () => {
+    const f = fixture();
+    const { sourceSectionLayout: _layout, ...withoutLayout } = f.source;
+    void _layout;
+    f.loadApprovedSource.mockResolvedValue(withoutLayout);
+    expect(await f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).toBeUndefined();
+    const realMutation = vi.mocked(f.context.mutation).getMockImplementation()!;
+    vi.mocked(f.context.mutation)
+      .mockImplementationOnce(realMutation)
+      .mockRejectedValueOnce(new Error("synthetic retain interruption"));
+    await expect(f.hooks.initializeManagedAdminTextGeneration!(f.job, f.attempt, f.context)).rejects.toThrow(
+      "synthetic retain interruption",
+    );
+    vi.mocked(f.context.mutation).mockClear();
+    await f.hooks.initializeManagedAdminTextGeneration!(f.job, f.attempt, f.context);
+    expect(vi.mocked(f.context.mutation).mock.calls.map(([name]) => name)).toEqual([
+      "retain_ingestion_generation_artifacts",
+    ]);
+  });
+
+  it("still refuses a supplied TXT layout bound to different source bytes", async () => {
+    const f = fixture();
+    f.loadApprovedSource.mockResolvedValue({
+      ...f.source,
+      sourceSectionLayout: { ...f.source.sourceSectionLayout!, sourceSha256: `sha256:${"0".repeat(64)}` },
+    });
+    await expect(f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).rejects.toThrow(
+      "current_input_required",
+    );
+    expect(f.context.mutation).not.toHaveBeenCalled();
+  });
+
+  it("requires PDF suppliers to omit the TXT-only layout", async () => {
+    const f = fixture();
+    f.job.documents.file_type = "application/pdf";
+    const { sourceSectionLayout: _layout, ...withoutLayout } = f.source;
+    void _layout;
+    f.loadApprovedSource.mockResolvedValue({ ...withoutLayout, sourceFamily: "native_pdf" });
+    expect(await f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).toBeUndefined();
+    f.loadApprovedSource.mockResolvedValue({ ...f.source, sourceFamily: "native_pdf" });
+    await expect(f.hooks.loadManagedAdminTextSectionLayout!(f.job, f.source.sourceSha256)).rejects.toThrow(
+      "current_input_required",
+    );
+  });
+
   it("keeps unconfigured and unmatched sources on the existing path without inventory or writes", async () => {
     const f = fixture();
     expect(await loadAdminSourceRuntimeOptions(f.client, "synthetic-bucket", "")).toEqual({});
