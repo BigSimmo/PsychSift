@@ -452,9 +452,10 @@ separate lifecycles:
    local to that disposable container until committed, pushed, and merged (or selected as the
    starting branch for a new task).
 2. **Cloud environment settings (setup/maintenance scripts, environment variables, secrets, connectors):**
-   Configured in the Codex Cloud environment UI. Changes take effect only when a fresh task container
-   is provisioned (or after a container cache reset / maintenance run), never retroactively inside a
-   running container.
+   Configured in the Codex Cloud environment UI. Changes are captured when a fresh task container
+   is provisioned, or when setup is explicitly rerun in the existing container; they never apply
+   retroactively to already-running processes. Routine maintenance reuses the existing generated
+   profile and only refreshes these settings if it falls back to full setup.
 3. **Existing chat context and running process state:**
    An open chat retains the instruction text already loaded into its conversation history, and a
    running container process retains environment variables (`GH_TOKEN`, `OPENAI_BASE_URL`, etc.)
