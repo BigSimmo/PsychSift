@@ -575,15 +575,21 @@ export function OnCallHandoverPage() {
     setScratchpadResetKey((key) => key + 1);
   }, []);
 
-  const reset = useCallback(() => {
+  // Starts a fresh patient form. The shift scratchpad is separate and survives this.
+  const resetForm = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
     setCurrentId(null);
     setCopiedWard("");
     setDraftExpiresAt(null);
     setMode("form");
+  }, []);
+
+  // A wipe or shift end clears the scratchpad along with the form.
+  const reset = useCallback(() => {
+    resetForm();
     setScratchpadText("");
     setScratchpadResetKey((k) => k + 1);
-  }, []);
+  }, [resetForm]);
 
   // A wipe (end of shift, sign-out, another user, another tab) also drops the half-typed record.
   useEffect(() => {
@@ -632,8 +638,8 @@ export function OnCallHandoverPage() {
   useEffect(() => {
     if (!currentGone) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    reset();
-  }, [currentGone, reset]);
+    resetForm();
+  }, [currentGone, resetForm]);
 
   /** Every change is kept as it is typed, so nothing is lost if the phone locks. */
   const commit = (next: OnCallHandoverDraft, id: string | null = currentId) => {
@@ -658,7 +664,7 @@ export function OnCallHandoverPage() {
     }
     const result = saveOnCallHandoverPatient(id, next);
     if (!result.ok) {
-      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) reset();
+      if (result.problem === ON_CALL_HANDOVER_GONE_MESSAGE) resetForm();
       setProblem(result.problem);
       return;
     }
@@ -1002,7 +1008,8 @@ export function OnCallHandoverPage() {
                     initialValue={scratchpadText}
                     onChange={(text) => {
                       setScratchpadText(text);
-                      if (isSharedDevice()) return;
+                      // On a shared device only Save now keeps text, but clearing still removes any stored copy.
+                      if (isSharedDevice() && text.trim() !== "") return;
                       try {
                         saveOnCallHandoverScratchpad(text);
                       } catch {

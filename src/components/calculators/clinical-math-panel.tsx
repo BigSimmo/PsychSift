@@ -319,7 +319,7 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
               >
                 {!hasRenalBaseInput ? (
                   <p className="text-[color:var(--text-muted)]">
-                    Enter patient age, weight, and serum creatinine above to calculate renal clearance.
+                    Enter patient age and serum creatinine above to calculate eGFR. Add weight for Cockcroft-Gault CrCl.
                   </p>
                 ) : cgResult.isValid || ckdResult.isValid ? (
                   <>

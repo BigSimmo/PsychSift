@@ -162,6 +162,8 @@ export function TeachingQrCheckinSheet({
       if (cancelled || !videoRef.current) return;
       try {
         const codes = await detector.detect(videoRef.current);
+        // The scanner may have been stopped or closed while detect() was pending.
+        if (cancelled) return;
         if (codes?.length) {
           const raw = String(codes[0]?.rawValue ?? "").trim();
           if (raw.includes("/teaching/c/")) {

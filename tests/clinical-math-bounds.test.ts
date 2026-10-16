@@ -398,7 +398,7 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       const renalResults = screen.getByTestId("clinical-math-renal-results");
       expect(renalResults).toBeInTheDocument();
       expect(renalResults).toHaveTextContent(
-        "Enter patient age, weight, and serum creatinine above to calculate renal clearance.",
+        "Enter patient age and serum creatinine above to calculate eGFR. Add weight for Cockcroft-Gault CrCl.",
       );
       expect(renalResults).not.toHaveTextContent("92.25");
       expect(screen.queryByTestId("clinical-math-renal-errors")).toBeNull();
@@ -425,7 +425,7 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       );
       expect(screen.queryByTestId("clinical-math-lithium-dose-errors")).toBeNull();
 
-      // 2. Populate Renal inputs and verify CKD-EPI partial state + full Cockcroft-Gault (92.25 mL/min)
+      // 2. Populate Renal inputs and verify CKD-EPI partial state + full Cockcroft-Gault (97.38 mL/min)
       await user.click(screen.getByTestId("clinical-math-tab-renal"));
       fireEvent.change(screen.getByTestId("clinical-math-age"), { target: { value: "45" } });
       fireEvent.change(screen.getByTestId("clinical-math-creatinine"), { target: { value: "90" } });

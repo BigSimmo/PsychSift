@@ -184,9 +184,10 @@ export function RosterDecisionSheet({
       return;
     }
     setReview(null);
-    const needsRuleAck = Boolean(fresh.rules && (!fresh.rules.checkable || fresh.rules.warnings.length > 0));
+    // A manager who reviewed this exact set of checks acknowledges them, including a server-only warning.
+    const acknowledged = reviewedFingerprint !== undefined && reviewedFingerprint === (fresh.rules?.fingerprint ?? "");
     const action = decisionAction(fresh.current, approve, {
-      acknowledgeRuleWarnings: approve && needsRuleAck && reviewedFingerprint === fresh.rules?.fingerprint,
+      acknowledgeRuleWarnings: approve && acknowledged,
     });
     const result = await postRosterAction(serviceId, action);
     onChanged();
@@ -204,9 +205,11 @@ export function RosterDecisionSheet({
           });
           return;
         }
-      } else {
-        setBusy(false);
+        // Keep the request open so the manager can try again or close it deliberately.
+        setError("The team rules could not be rechecked. Try again, or close to refresh the list.");
+        return;
       }
+      setBusy(false);
       setError(result.message);
       setCurrent(null);
       return;
