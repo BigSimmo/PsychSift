@@ -14,7 +14,10 @@
  * 1. Fail-closed clinical sign-off check: every record included in the plan must carry
  *    `status === "reviewed"`, a named human reviewer (`isNamedPerson(reviewedBy)` — rejecting
  *    `"PsychSift"`, `"System"`, bare titles, etc.), and a valid UTC `reviewedAt` timestamp.
- * 2. Offline by default: `--dry-run` and `--out <path>` never import or call a live Supabase
+ * 2. Content pin check: each sign-off's `reviewedContentSha256` must still match the content it
+ *    signed, worked out the same way npm run clinical:review wrote it. A record edited after its
+ *    sign-off is refused, so a stale approval can never publish changed text.
+ * 3. Offline by default: `--dry-run` and `--out <path>` never import or call a live Supabase
  *    client. Live execution requires BOTH `--execute` and `ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true`.
  *
  * USAGE
@@ -44,6 +47,9 @@ import {
 import { compareCanonicalSiteContentIdentifiers, siteContentValueHash } from "@/lib/site-content/site-content-manifest";
 import { reconciliationHash } from "@/lib/site-content/site-content-reconciliation";
 
+import { recordPinState } from "./lib/clinical-record-review-contract.mjs";
+import { loadContext as loadServiceSignOffContext } from "./lib/signoff-kinds/services.mjs";
+
 export type FirstPublicationKind = "service" | "form" | "all";
 
 export type ClinicalSignOffEntry = {
@@ -55,6 +61,14 @@ export type ClinicalSignOffEntry = {
   reviewedAt: string | null;
   reviewedContentSha256?: string | null;
 };
+
+/**
+ * Whether a sign-off's content pin still matches what it signed. `unverifiable` means the
+ * content the pin covers could not be loaded, which is refused like a stale pin.
+ */
+export type SignOffPinState = "current" | "stale" | "unsigned" | "unverifiable";
+
+export type SignOffPinCheck = (kind: "service" | "form", review: ClinicalSignOffEntry) => SignOffPinState;
 
 export type FirstPublicationRejectedRecord = {
   kind: "service" | "form";
@@ -94,6 +108,10 @@ export type BuildFirstPublicationOptions = {
   serviceReviews?: readonly ClinicalSignOffEntry[];
   formReviews?: readonly ClinicalSignOffEntry[];
   onlySlugs?: readonly string[];
+  /** Checks each content pin. Defaults to the clinical:review contract over the repository data. */
+  pinState?: SignOffPinCheck;
+  /** The curated service records a service pin covers (from the services sign-off kind). */
+  serviceSignOffContext?: object;
 };
 
 export type FirstPublicationCliOptions = {
@@ -118,11 +136,27 @@ function isValidReviewTimestamp(value: string | null | undefined): boolean {
   return normalized.slice(0, 19) === trimmed.slice(0, 19);
 }
 
+/** The default pin check: the same digest npm run clinical:review wrote at sign-off. */
+export function createSignOffPinCheck(
+  options: { serviceContext?: object; formsCatalogPath?: string } = {},
+): SignOffPinCheck {
+  let formsCatalog: unknown;
+  return (kind, review) => {
+    if (kind === "service") {
+      if (!options.serviceContext) return "unverifiable";
+      return recordPinState(review, "service", options.serviceContext);
+    }
+    formsCatalog ??= JSON.parse(readFileSync(resolve(options.formsCatalogPath ?? "data/forms-catalog.json"), "utf8"));
+    return recordPinState(review, "form", { catalog: formsCatalog });
+  };
+}
+
 function validateSignOffEntry(
   kind: "service" | "form",
   recordId: string,
   slug: string,
   review: ClinicalSignOffEntry | undefined,
+  pinState: SignOffPinCheck,
 ): FirstPublicationRejectedRecord | null {
   if (!review) {
     return {
@@ -162,6 +196,24 @@ function validateSignOffEntry(
       recordId,
       slug,
       reason: `reviewedContentSha256 ${JSON.stringify(review.reviewedContentSha256)} is missing or not a valid 64-character hex SHA-256 digest`,
+    };
+  }
+  const pin = pinState(kind, review);
+  if (pin === "unverifiable") {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason: "the content its sign-off covers could not be loaded, so the content pin could not be checked",
+    };
+  }
+  if (pin !== "current") {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason:
+        "content changed since sign-off (reviewedContentSha256 no longer matches); re-review it with npm run clinical:review",
     };
   }
   return null;
@@ -209,6 +261,7 @@ export function buildFirstPublicationCataloguePlan(
 
   const serviceReviews = options.serviceReviews ?? loadDefaultServiceReviews();
   const formReviews = options.formReviews ?? loadDefaultFormReviews();
+  const pinState = options.pinState ?? createSignOffPinCheck({ serviceContext: options.serviceSignOffContext });
 
   const serviceReviewByKey = new Map<string, ClinicalSignOffEntry>();
   for (const entry of serviceReviews) {
@@ -238,7 +291,7 @@ export function buildFirstPublicationCataloguePlan(
       serviceReviewByKey.get(stableId.toLowerCase()) ??
       serviceReviewByKey.get(service.slug.trim().toLowerCase()) ??
       (serviceWithId.id ? serviceReviewByKey.get(serviceWithId.id.trim().toLowerCase()) : undefined);
-    const problem = validateSignOffEntry("service", stableId, service.slug, review);
+    const problem = validateSignOffEntry("service", stableId, service.slug, review, pinState);
     if (problem) {
       rejected.push(problem);
       continue;
@@ -263,7 +316,7 @@ export function buildFirstPublicationCataloguePlan(
       formReviewByKey.get(formCode.toLowerCase()) ??
       formReviewByKey.get(form.slug.trim().toLowerCase()) ??
       formReviewByKey.get(formRecordId.toLowerCase());
-    const problem = validateSignOffEntry("form", formCode, form.slug, review);
+    const problem = validateSignOffEntry("form", formCode, form.slug, review, pinState);
     if (problem) {
       rejected.push(problem);
       continue;
@@ -278,7 +331,7 @@ export function buildFirstPublicationCataloguePlan(
       .join("\n");
     const remainder = rejected.length > 10 ? `\n  ...and ${rejected.length - 10} more record(s).` : "";
     throw new Error(
-      `First-publication plan refused: ${rejected.length} record(s) lack clinical sign-off by a named person:\n${preview}${remainder}`,
+      `First-publication plan refused: ${rejected.length} record(s) lack a current clinical sign-off by a named person:\n${preview}${remainder}`,
     );
   }
 
@@ -440,6 +493,8 @@ export async function runFirstPublicationCli(
     batchSize: options.batchSize,
     serviceReviews: loadDefaultServiceReviews(options.servicesReviewPath),
     formReviews: loadDefaultFormReviews(options.formsReviewPath),
+    serviceSignOffContext:
+      options.kind === "form" ? undefined : await loadServiceSignOffContext("service", process.cwd()),
   });
 
   if (options.out) {
