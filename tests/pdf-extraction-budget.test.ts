@@ -221,6 +221,23 @@ describe("PDF extraction budgets", () => {
     ).rejects.toMatchObject({ code: "PDF_EXTRACTION_BUDGET_EXCEEDED" });
   });
 
+  it("extracts a real embedded image through the JavaScript fallback", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-image-fallback-test-"));
+    roots.push(root);
+    const fakeExtractor = path.join(root, "missing-dependency.py");
+    await writeFile(
+      fakeExtractor,
+      "import sys\nprint('PyMuPDF unavailable', file=sys.stderr)\nraise SystemExit(2)\n",
+      "utf8",
+    );
+
+    const extracted = await extractPdf(await createImagePdf(), { scriptPathOverride: fakeExtractor });
+    roots.push(...(extracted.temporaryPaths ?? []));
+    expect(extracted.images.length).toBeGreaterThan(0);
+    const imageBytes = await readFile(extracted.images[0]!.path);
+    expect(imageBytes.subarray(0, 8)).toEqual(Buffer.from("89504e470d0a1a0a", "hex"));
+  });
+
   it("rejects an oversized embedded image before the JavaScript fallback decodes it", async () => {
     const getTextSpy = vi.spyOn(PdfjsFallbackParser.prototype, "getText");
     const getImageSpy = vi.spyOn(PdfjsFallbackParser.prototype, "getImage");

@@ -109,11 +109,13 @@ export class PdfjsFallbackParser {
           if (fn !== pdfjs.OPS.paintInlineImageXObject && fn !== pdfjs.OPS.paintImageXObject) continue;
           // An inline image carries its pixels in the operator itself; only XObjects are looked up by id.
           // Looking an inline image up by id waits on an object that never resolves, so the page would hang.
+          const args = ops.argsArray[index];
           const inline = fn === pdfjs.OPS.paintInlineImageXObject;
-          const name = inline ? `inline-${index}` : (ops.argsArray[index][0] as string);
-          const { width, height, kind, data } = inline
-            ? toEmbeddedImage(ops.argsArray[index][0], name, canvasFactory)
+          const name = inline ? `inline-${index}` : (args[0] as string);
+          const image = inline
+            ? normalizeEmbeddedImage(args[0], name, canvasFactory)
             : await resolveEmbeddedImage(page.commonObjs.has(name) ? page.commonObjs : page.objs, name, canvasFactory);
+          const { width, height, kind, data } = image;
           if (params.imageThreshold >= width || params.imageThreshold >= height) continue;
           const { canvas, context } = canvasFactory.create(width, height);
           const imageData = context.createImageData(width, height);
@@ -169,26 +171,16 @@ async function pageText(page: PdfPage) {
 
 type PdfObjects = { get(name: string, callback: (data: unknown) => void): unknown };
 
-function resolveEmbeddedImage(objects: PdfObjects, name: string, canvasFactory: CanvasFactory): Promise<EmbeddedImage> {
-  return new Promise((resolve, reject) => {
-    objects.get(name, (raw) => {
-      try {
-        resolve(toEmbeddedImage(raw, name, canvasFactory));
-      } catch (error) {
-        reject(error);
-      }
-    });
-  });
-}
+type RawEmbeddedImage = {
+  width: number;
+  height: number;
+  kind?: number | null;
+  data?: ArrayBufferView;
+  bitmap?: { width: number; height: number };
+};
 
-function toEmbeddedImage(raw: unknown, name: string, canvasFactory: CanvasFactory): EmbeddedImage {
-  const image = raw as {
-    width: number;
-    height: number;
-    kind?: number | null;
-    data?: ArrayBufferView;
-    bitmap?: { width: number; height: number };
-  } | null;
+function normalizeEmbeddedImage(raw: unknown, name: string, canvasFactory: CanvasFactory): EmbeddedImage {
+  const image = raw as RawEmbeddedImage | null;
   if (!image) throw new Error(`Image object ${name} not found`);
   let data: Uint8Array | undefined;
   if (image.data instanceof Uint8Array) {
@@ -211,6 +203,18 @@ function toEmbeddedImage(raw: unknown, name: string, canvasFactory: CanvasFactor
   return { width: image.width, height: image.height, kind: image.kind, data };
 }
 
+function resolveEmbeddedImage(objects: PdfObjects, name: string, canvasFactory: CanvasFactory): Promise<EmbeddedImage> {
+  return new Promise((resolve, reject) => {
+    objects.get(name, (raw) => {
+      try {
+        resolve(normalizeEmbeddedImage(raw, name, canvasFactory));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+}
+
 function convertToRgba(
   pdfjs: PdfjsModule,
   {
@@ -230,12 +234,12 @@ function convertToRgba(
   if (kind === pdfjs.ImageKind.RGB_24BPP) {
     fromRgb();
   } else if (kind === pdfjs.ImageKind.GRAYSCALE_1BPP) {
-    let pixel = 0;
-    for (const byte of src) {
-      for (let bit = 7; bit >= 0; bit -= 1) {
-        if (pixel >= pixels) break;
-        const gray = ((byte >> bit) & 1) === 1 ? 255 : 0;
-        dest[pixel++] = (255 << 24) | (gray << 16) | (gray << 8) | gray;
+    const rowBytes = (width + 7) >> 3;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const byte = src[y * rowBytes + (x >> 3)] ?? 0;
+        const gray = ((byte >> (7 - (x & 7))) & 1) === 1 ? 255 : 0;
+        dest[y * width + x] = (255 << 24) | (gray << 16) | (gray << 8) | gray;
       }
     }
   } else if (kind === undefined || kind === null) {
