@@ -94,8 +94,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 export async function PUT(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
     refuseEphemeralMagicLinkStore();
-    const client = createAdminClient();
-    await requireAuthenticatedUser(request, client);
+    // Rate limit before the sign-in lookup, so bad tokens cannot hammer the auth check.
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
@@ -103,6 +102,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
         "Retry-After": String(rate.retryAfterSeconds),
       });
     }
+    const client = createAdminClient();
+    await requireAuthenticatedUser(request, client);
     const { token } = await params;
     const body = (await parseJsonBody(
       request,

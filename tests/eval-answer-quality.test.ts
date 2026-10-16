@@ -225,6 +225,103 @@ describe("answer dump records", () => {
     expect(Object.keys(diagnostics[0])).not.toContain("document_id");
   });
 
+  it("records the scores and pipeline reasons behind each source's rank", () => {
+    const [ranked, bare] = buildBoundedRagSourceDiagnostics([
+      {
+        id: "chunk-ranked",
+        document_id: "doc-ranked",
+        title: "Assessment Documentation (AKG)",
+        file_name: "Assessment Documentation (AKG).pdf",
+        page_number: 3,
+        chunk_index: 0,
+        section_heading: null,
+        content: "Assessment documentation must be completed.",
+        image_ids: [],
+        similarity: 0.48,
+        hybrid_score: 0.600049,
+        images: [],
+        score_explanation: { rankScore: 1.34751, releaseRankScore: 0.6, finalScore: 1, finalRank: 4 },
+        match_explanation: { reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"] },
+      },
+      {
+        id: "chunk-bare",
+        document_id: "doc-bare",
+        title: "Bare",
+        file_name: "bare.pdf",
+        page_number: 1,
+        chunk_index: 0,
+        section_heading: null,
+        content: "Text.",
+        image_ids: [],
+        similarity: 0.5,
+        images: [],
+      },
+    ] as unknown as RagAnswer["sources"]);
+    expect(ranked.ranking).toEqual({
+      answer_evidence_score: null,
+      hybrid_score: 0.6,
+      rank_score: 1.3475,
+      release_rank_score: 0.6,
+      final_score: 1,
+      final_rank: 4,
+      match_reasons: ["retrieval_signal:document_title_phrase", "second_stage_rerank"],
+    });
+    expect(bare.ranking).toEqual({
+      answer_evidence_score: null,
+      hybrid_score: null,
+      rank_score: null,
+      release_rank_score: null,
+      final_score: null,
+      final_rank: null,
+      match_reasons: [],
+    });
+  });
+
+  it("scores each dumped source with the answer-stage ranking that set the emitted order", () => {
+    const sources = [
+      {
+        id: "chunk-on-topic",
+        document_id: "doc-on-topic",
+        title: "Lithium Monitoring",
+        file_name: "lithium-monitoring.pdf",
+        page_number: 2,
+        chunk_index: 0,
+        section_heading: "Monitoring",
+        content: "Lithium monitoring requires serum levels, renal function and thyroid function.",
+        image_ids: [],
+        similarity: 0.4,
+        hybrid_score: 0.4,
+        images: [],
+        score_explanation: { rankScore: 0.4, finalScore: 0.4, finalRank: 2 },
+      },
+      {
+        id: "chunk-off-topic",
+        document_id: "doc-off-topic",
+        title: "Pressure Injury Prevention",
+        file_name: "pressure-injury.pdf",
+        page_number: 7,
+        chunk_index: 0,
+        section_heading: null,
+        content: "Complete the skin integrity form.",
+        image_ids: [],
+        similarity: 0.6,
+        hybrid_score: 0.6,
+        images: [],
+        score_explanation: { rankScore: 0.6, finalScore: 0.6, finalRank: 1 },
+      },
+    ] as unknown as RagAnswer["sources"];
+    const record = buildRagDiagnosticDumpRecord("answer-order", "What lithium monitoring is required?", {
+      ...answer,
+      queryClass: "document_lookup",
+      sources,
+    } as RagAnswer);
+    const [onTopic, offTopic] = record.sources;
+    expect(onTopic.ranking.final_rank).toBe(2);
+    expect(onTopic.ranking.answer_evidence_score).toEqual(expect.any(Number));
+    expect(offTopic.ranking.answer_evidence_score).toEqual(expect.any(Number));
+    expect(onTopic.ranking.answer_evidence_score!).toBeGreaterThan(offTopic.ranking.answer_evidence_score!);
+  });
+
   it("redacts the question, answer, routing and section fields while preserving clinical prose", () => {
     const hostileAnswer = {
       ...answer,

@@ -173,4 +173,30 @@ describe("teachingServiceMutation display.revoke authorization", () => {
     expect(from).toHaveBeenCalledTimes(1);
     expect(rpc).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    { field: "granted_at", value: "", roleGrantedAt: "", memberJoinedAt: "2026-01-01T00:00:00Z" },
+    { field: "granted_at", value: "unparseable", roleGrantedAt: "not-a-date", memberJoinedAt: "2026-01-01T00:00:00Z" },
+    { field: "joined_at", value: "", roleGrantedAt: "2026-01-02T00:00:00Z", memberJoinedAt: "" },
+    { field: "joined_at", value: "unparseable", roleGrantedAt: "2026-01-02T00:00:00Z", memberJoinedAt: "not-a-date" },
+  ])("rejects an organiser when $field is $value", async ({ roleGrantedAt, memberJoinedAt }) => {
+    const { client, rpc } = createMockClient({
+      link: { id: "link-1", created_by: null },
+      isOrganiser: true,
+      roleGrantedAt,
+      memberJoinedAt,
+    });
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        token,
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      details: { code: "teaching_role_denied" },
+    } satisfies Partial<PublicApiError>);
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });

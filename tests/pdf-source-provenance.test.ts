@@ -11,7 +11,7 @@ import {
 } from "@/lib/extractors/pdf-source-provenance";
 import { extractPdf, parseExtractedDocumentPayload } from "@/lib/extractors/document";
 import { buildDocumentPageRowsForPersistence } from "../worker/behavior";
-import { PDFParse } from "pdf-parse";
+import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
 
 function packet(): PdfPageSourceProvenance {
   const hash = extractedTextSha256("synthetic page");
@@ -185,7 +185,7 @@ describe("native PDF source-only provenance", () => {
     async ({ source, code }) => {
       const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-provenance-test-"));
       const script = path.join(root, "fake.py");
-      const fallback = vi.spyOn(PDFParse.prototype, "getText");
+      const fallback = vi.spyOn(PdfjsFallbackParser.prototype, "getText");
       try {
         await writeFile(
           script,
