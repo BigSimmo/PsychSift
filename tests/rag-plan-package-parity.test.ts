@@ -178,11 +178,11 @@ describe("RAG plan execution packages", () => {
       }),
     ).toThrow();
     expect(() =>
-      execFileSync(
-        process.execPath,
-        ["scripts/rag-phase-launch-check.mjs", "--target", "P01", "--effort", "xhigh", "--xhigh-confirmed"],
-        { cwd: process.cwd(), encoding: "utf8", stdio: "pipe" },
-      ),
+      execFileSync(process.execPath, ["scripts/rag-phase-launch-check.mjs", "--target", "P01", "--effort", "xhigh"], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        stdio: "pipe",
+      }),
     ).not.toThrow();
   });
 

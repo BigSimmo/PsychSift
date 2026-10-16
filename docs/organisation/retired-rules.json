@@ -24,6 +24,15 @@
       "pattern": "npm run arbiter|gate[- ]arbiter|GATE_ARBITER|consult the arbiter|arbiter'?s? verdict",
       "allowedContext": "no longer|removed|removal|retir(ed|ement)|deleted|there is no|formerly|previously|superseded|dropped|replaced|deprecated|gone|do not wait|no need",
       "record": "diff-integrity.json: scripts/gate-arbiter.mjs deleted in the owner-approved governance cut of 2026-09-17; gate receipts kept"
+    },
+    {
+      "id": "cloud-xhigh-marker-gate",
+      "retired": "2026-10-16",
+      "summary": "The Cloud `xhigh` prompt marker and resubmission gate were retired; plain-language confirmation suffices.",
+      "pattern": "\\[xhigh-confirmed\\]|--xhigh-confirmed|xhighConfirmationMarker|Cloud `?xhigh`? (confirmation )?gate|resubmit (the same request |a prompt )?with `?\\[xhigh-confirmed\\]",
+      "allowedContext": "no longer|removed|removal|retir(ed|ement)|there is no|formerly|previously|superseded|dropped|replaced|deprecated|gone|do not demand|without requiring",
+      "record": "docs/agents/codex-reasoning-effort.md, Cloud reasoning effort and plain-language confirmation: the former Cloud prompt-marker and prompt-resubmission gate was retired on 2026-10-16",
+      "decision": "docs/decisions/2026-10-16-remove-cloud-xhigh-marker-gate.md"
     }
   ]
 }

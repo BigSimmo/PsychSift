@@ -2575,6 +2575,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-remove-cloud-xhigh-marker-gate.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/decisions/2026-09-25-youth-crisis-wording-shows-both-lines.md",
         "section": "decisions",
         "catalogued": true

@@ -11,7 +11,11 @@
 #   test:live, check:supabase-project) still need explicit confirmation per AGENTS.md
 # Hosted ChatGPT/Codex tools come only from installed, authenticated apps; this file is not runtime proof.
 
-# Model and reasoning effort are deliberately left to the task or desktop picker.
+# Model and reasoning effort are deliberately left to the task or desktop picker:
+# this file does not force `model` or `model_reasoning_effort`, and Cloud agents accept
+# plain-language confirmation rather than a prompt token (see docs/agents/codex-reasoning-effort.md).
+# Cloud shell-environment exclusions (`[shell_environment_policy]`) are written to
+# `$HOME/.codex/config.toml` by `scripts/setup-codex-cloud.sh`, not committed here.
 
 [mcp_servers.figma_cloud]
 url = "https://mcp.figma.com/mcp"

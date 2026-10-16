@@ -213,9 +213,7 @@ describe("local smart allocation", () => {
       ]),
     );
     expect(result.dispatch.model).toBe("gpt-6-astra");
-    expect(
-      cli("scripts/rag-phase-launch-check.mjs", ["--target", "P01", "--effort", "xhigh", "--xhigh-confirmed"]),
-    ).toContain("PASS");
+    expect(cli("scripts/rag-phase-launch-check.mjs", ["--target", "P01", "--effort", "xhigh"])).toContain("PASS");
     expect(() => cli("scripts/rag-phase-launch-check.mjs", ["--target", "P01", "--effort", "high"])).toThrow();
   });
   it("local task briefs carry honest provenance and R3 continuation constraints", () => {
