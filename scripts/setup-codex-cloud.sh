@@ -271,14 +271,16 @@ trap - EXIT
 profile_source='[ -f "$HOME/.clinical-kb-codex-cloud.sh" ] && . "$HOME/.clinical-kb-codex-cloud.sh"'
 for shell_profile in "$HOME/.bashrc" "$HOME/.profile" "$HOME/.bash_profile"; do
   touch "$shell_profile"
-  if ! grep -Fq '.clinical-kb-codex-cloud.sh' "$shell_profile"; then
-    profile_existing="$(<"$shell_profile")"
-    if [[ -n "$profile_existing" ]]; then
-      printf '# PsychSift Codex Cloud runtime\n%s\n\n%s\n' "$profile_source" "$profile_existing" > "$shell_profile"
-    else
-      printf '# PsychSift Codex Cloud runtime\n%s\n' "$profile_source" > "$shell_profile"
-    fi
+  profile_existing="$(<"$shell_profile")"
+  profile_existing="$(printf '%s\n' "$profile_existing" | grep -Fvx '# PsychSift Codex Cloud runtime' || true)"
+  profile_existing="$(printf '%s\n' "$profile_existing" | grep -Fvx "$profile_source" || true)"
+  profile_candidate="$(mktemp "${shell_profile}.XXXXXX")"
+  if [[ -n "$profile_existing" ]]; then
+    printf '# PsychSift Codex Cloud runtime\n%s\n\n%s\n' "$profile_source" "$profile_existing" > "$profile_candidate"
+  else
+    printf '# PsychSift Codex Cloud runtime\n%s\n' "$profile_source" > "$profile_candidate"
   fi
+  mv -f "$profile_candidate" "$shell_profile"
 done
 
 # Test harness only: write the runtime profile + shell policy, then stop before
