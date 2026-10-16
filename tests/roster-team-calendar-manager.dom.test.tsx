@@ -701,9 +701,7 @@ describe("Team calendar, manager layer", () => {
     expect(posts).toEqual([]);
     expect(within(review).getByText(/Team rules could not be fully checked/)).toBeTruthy();
     fireEvent.click(within(review).getByRole("button", { name: "Approve after review" }));
-    await waitFor(() =>
-      expect(posts).toEqual([{ acknowledgeRuleWarnings: true, action: "swap.approve", swapId: ID(57) }]),
-    );
+    await waitFor(() => expect(posts).toEqual([{ action: "swap.approve", swapId: ID(57) }]));
   });
 
   it("requires explicit review of a rest warning introduced after the calendar loaded", async () => {

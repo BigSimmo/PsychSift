@@ -140,9 +140,7 @@ it("rechecks a waiting swap before approving and sends no actor", async () => {
   const review = await screen.findByRole("dialog", { name: "Review fresh roster checks" });
   expect(posts).toEqual([]);
   fireEvent.click(within(review).getByRole("button", { name: "Approve after review" }));
-  await waitFor(() =>
-    expect(posts).toEqual([{ acknowledgeRuleWarnings: true, action: "swap.approve", swapId: "swap" }]),
-  );
+  await waitFor(() => expect(posts).toEqual([{ action: "swap.approve", swapId: "swap" }]));
   expect(fetcher.mock.calls.some(([input]) => String(input).includes("what=assignments"))).toBe(true);
 });
 it("saves all settings fields together when only one changes", async () => {

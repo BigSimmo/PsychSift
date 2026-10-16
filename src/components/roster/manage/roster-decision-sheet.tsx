@@ -146,7 +146,7 @@ export function RosterDecisionSheet({
   const [current, setCurrent] = useState<ManagerDecision | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [review, setReview] = useState<{ fingerprint: string; words: string[] } | null>(null);
+  const [review, setReview] = useState<{ fingerprint: string; words: string[]; serverWarning?: boolean } | null>(null);
   useEffect(() => {
     let alive = true;
     void recheckDecision(serviceId, decision).then((outcome) => {
@@ -166,7 +166,7 @@ export function RosterDecisionSheet({
       alive = false;
     };
   }, [decision, serviceId]);
-  async function act(approve: boolean, reviewedFingerprint?: string) {
+  async function act(approve: boolean, reviewedFingerprint?: string, reviewedServerWarning = false) {
     if (!current || busy) return;
     setBusy(true);
     const fresh = await recheckDecision(serviceId, current);
@@ -184,10 +184,12 @@ export function RosterDecisionSheet({
       return;
     }
     setReview(null);
-    // A manager who reviewed this exact set of checks acknowledges them, including a server-only warning.
-    const acknowledged = reviewedFingerprint !== undefined && reviewedFingerprint === (fresh.rules?.fingerprint ?? "");
+    // Acknowledge only warnings the manager has actually read: checked team-rule warnings, or the
+    // server's own warning. "Could not be fully checked" alone never skips the server's rule check.
+    const sameChecks = reviewedFingerprint !== undefined && reviewedFingerprint === (fresh.rules?.fingerprint ?? "");
+    const readRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
     const action = decisionAction(fresh.current, approve, {
-      acknowledgeRuleWarnings: approve && acknowledged,
+      acknowledgeRuleWarnings: approve && sameChecks && (readRuleWarnings || reviewedServerWarning),
     });
     const result = await postRosterAction(serviceId, action);
     onChanged();
@@ -201,7 +203,8 @@ export function RosterDecisionSheet({
           setChecked(refreshed.checkedAt);
           setReview({
             fingerprint: refreshed.rules?.fingerprint ?? "",
-            words: refreshedWords.length ? refreshedWords : [result.message],
+            words: refreshedWords.length ? [...refreshedWords, result.message] : [result.message],
+            serverWarning: true,
           });
           return;
         }
@@ -236,7 +239,7 @@ export function RosterDecisionSheet({
           ))}
           confirmLabel="Approve after review"
           onCancel={() => setReview(null)}
-          onConfirm={() => void act(true, review?.fingerprint)}
+          onConfirm={() => void act(true, review?.fingerprint, review?.serverWarning)}
           busy={busy}
         />
         {current?.kind === "swap" ? (
