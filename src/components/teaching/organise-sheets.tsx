@@ -646,56 +646,43 @@ export function AttendanceGapsSheet({
   organise,
   onClose,
   checkInCountsByUserId,
+  loadingCounts = false,
+  demoMode = false,
 }: {
   organise: OrganiseRead;
   onClose: () => void;
   checkInCountsByUserId?: Record<string, number>;
+  loadingCounts?: boolean;
+  demoMode?: boolean;
 }) {
-  const [filter, setFilter] = useState("");
-  const needle = filter.trim().toLowerCase();
   const countsMap = checkInCountsByUserId ?? {};
-  const zeroCheckInMembers = organise.members.filter((m) => {
-    const role = m.role as string | undefined;
-    if (role && role !== "doctor" && role !== "registrar") return false;
-    const count = (m as { checkInsCount?: number }).checkInsCount ?? countsMap[m.userId] ?? 0;
-    return count === 0;
-  });
-  const shown = zeroCheckInMembers.filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle));
-  const rosterMembers: RegistrarMember[] = organise.members
-    .filter((m) => !needle || memberLabel(m).toLowerCase().includes(needle))
-    .map((m) => ({
-      userId: m.userId,
-      name: (m as { displayName?: string }).displayName ?? memberLabel(m),
-      role: m.role,
-      checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
-      joinedAt: m.joinedAt,
-    }));
+  const rosterMembers: RegistrarMember[] = organise.members.map((m) => ({
+    userId: m.userId,
+    name: (m as { displayName?: string }).displayName ?? memberLabel(m),
+    role: m.role,
+    checkInsCount: (m as { checkInsCount?: number }).checkInsCount,
+    joinedAt: m.joinedAt,
+  }));
   return (
     <Sheet open onClose={onClose} title="Attendance gaps">
       <div className="grid gap-2" data-testid="teaching-attendance-gaps-sheet">
-        <p className={cn("text-xs leading-5", textMuted)}>Enrolled doctors with no check-ins recorded this term.</p>
-        <TextField
-          label="Filter doctors"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          autoComplete="off"
-          spellCheck={false}
-          data-gramm="false"
-          data-enable-grammarly="false"
-        />
-        <AttendanceRoster members={rosterMembers} checkInCountsByUserId={countsMap} initialFilterGapsOnly={true} />
-        {shown.length > 0 ? (
-          <ul className="sr-only" aria-label="Attendance gap summary">
-            {shown.map((m) => (
-              <li key={m.userId} data-testid={`attendance-gap-${m.userId}`}>
-                {`${memberLabel(m)} · No check-ins recorded this term`}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={cn("text-sm", textMuted)} data-testid="teaching-attendance-gaps-empty">
-            {needle ? "No doctor matches that filter." : "No attendance gaps recorded."}
+        <p className={cn("text-xs leading-5", textMuted)}>
+          {demoMode
+            ? "Example service. Enrolled doctors with no check-ins recorded this term."
+            : "Enrolled doctors with no check-ins recorded this term."}
+        </p>
+        {loadingCounts ? (
+          <p className={cn("text-xs leading-5", textMuted)} role="status">
+            Loading term attendance records…
           </p>
+        ) : (
+          <AttendanceRoster
+            members={rosterMembers}
+            checkInCountsByUserId={countsMap}
+            initialFilterGapsOnly={true}
+            searchAriaLabel="Filter doctors"
+            emptyTestId="teaching-attendance-gaps-empty"
+          />
         )}
       </div>
     </Sheet>

@@ -8,6 +8,8 @@ import type {
   RenalStage,
 } from "./types";
 
+export const CREATININE_UMOL_PER_MG_DL = 88.42;
+
 function classifyRenalStage(value: number): RenalStage {
   if (value >= 90) return "normal";
   if (value >= 60) return "mild_impairment";
@@ -105,7 +107,7 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
 
   let ibwKg: number | null = null;
   let effectiveWeightKg = input.weightKg;
-  let weightBasis: "actual" | "ideal" = "actual";
+  let weightBasis: "actual" | "ideal" | "adjusted" = "actual";
 
   if (input.heightCm !== undefined) {
     if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
@@ -116,7 +118,7 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
         const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
         const isObeseExcess = input.weightKg > ibwKg * 1.2;
         effectiveWeightKg = isObeseExcess ? abwKg : ibwKg;
-        weightBasis = "ideal";
+        weightBasis = isObeseExcess ? "adjusted" : "ideal";
         const ibwCrCl =
           Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
           100;
@@ -207,7 +209,8 @@ export function calculateCkdEpi2021(input: CkdEpiInput): CkdEpiResult {
   }
 
   // Convert to mg/dL if supplied in umol/L
-  const scrMgDl = input.creatinineUnit === "umol/L" ? input.serumCreatinine / 88.42 : input.serumCreatinine;
+  const scrMgDl =
+    input.creatinineUnit === "umol/L" ? input.serumCreatinine / CREATININE_UMOL_PER_MG_DL : input.serumCreatinine;
 
   const isFemale = input.sex === "female";
   const kappa = isFemale ? 0.7 : 0.9;

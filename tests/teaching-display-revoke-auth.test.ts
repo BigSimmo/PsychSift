@@ -5,7 +5,19 @@ import { hashTeachingSecret, teachingServiceMutation } from "@/lib/teaching/repo
 
 type MockDisplayLink = { id: string; created_by: string | null } | null;
 
-function createMockClient({ link, isOrganiser }: { link: MockDisplayLink; isOrganiser: boolean }) {
+function createMockClient({
+  link,
+  isOrganiser,
+  roleGrantedAt = "2026-01-02T00:00:00Z",
+  isActiveMember = true,
+  memberJoinedAt = "2026-01-01T00:00:00Z",
+}: {
+  link: MockDisplayLink;
+  isOrganiser: boolean;
+  roleGrantedAt?: string;
+  isActiveMember?: boolean;
+  memberJoinedAt?: string;
+}) {
   const rpc = vi.fn().mockResolvedValue({ data: { ok: true }, error: null });
   const from = vi.fn((table: string) => {
     if (table === "teaching_display_links") {
@@ -26,9 +38,26 @@ function createMockClient({ link, isOrganiser }: { link: MockDisplayLink; isOrga
             eq: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
                 is: vi.fn().mockReturnValue({
-                  maybeSingle: vi
-                    .fn()
-                    .mockResolvedValue({ data: isOrganiser ? { role: "organiser" } : null, error: null }),
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: isOrganiser ? { role: "organiser", granted_at: roleGrantedAt } : null,
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      };
+    }
+    if (table === "on_call_service_members") {
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: isActiveMember ? { joined_at: memberJoinedAt } : null,
+                  error: null,
                 }),
               }),
             }),
@@ -51,6 +80,47 @@ describe("teachingServiceMutation display.revoke authorization", () => {
     const { client, rpc } = createMockClient({
       link: { id: "link-1", created_by: null },
       isOrganiser: false,
+    });
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        token,
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      details: { code: "teaching_role_denied" },
+    } satisfies Partial<PublicApiError>);
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects an organiser whose service membership is revoked or missing", async () => {
+    const { client, rpc } = createMockClient({
+      link: { id: "link-1", created_by: null },
+      isOrganiser: true,
+      isActiveMember: false,
+    });
+
+    await expect(
+      teachingServiceMutation(client, actorId, serviceId, {
+        action: "display.revoke",
+        token,
+      }),
+    ).rejects.toMatchObject({
+      status: 403,
+      details: { code: "teaching_access_denied" },
+    } satisfies Partial<PublicApiError>);
+
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("rejects a stale organiser role granted before the member rejoined", async () => {
+    const { client, rpc } = createMockClient({
+      link: { id: "link-1", created_by: null },
+      isOrganiser: true,
+      roleGrantedAt: "2026-01-01T00:00:00Z",
+      memberJoinedAt: "2026-02-01T00:00:00Z",
     });
 
     await expect(

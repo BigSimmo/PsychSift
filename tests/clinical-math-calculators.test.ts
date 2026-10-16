@@ -116,6 +116,7 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
 
       expect(obeseWithHeight.isValid).toBe(true);
+      expect(obeseWithHeight.weightBasis).toBe("adjusted");
       // Uses Adjusted Body Weight (82.2 kg): (140 - 50) * 82.2 * 1.23 / 100 = 91.00 mL/min
       expect(obeseWithHeight.crClMlMin).toBeCloseTo(91.0, 1);
       expect(obeseWithHeight.warnings).toEqual(
@@ -397,6 +398,7 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
       expect(boundaryToxicTarget.isValid).toBe(false);
       expect(boundaryToxicTarget.suggestedDoseMg).toBeNull();
+      expect(boundaryToxicTarget.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic threshold")]));
       const toxicAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 1000,
         currentLevelMmolL: 1.5,
@@ -410,10 +412,11 @@ describe("Clinical Math Calculators (CS-001)", () => {
       const toxicTarget = calculateProportionalLithiumDose({
         currentDoseMg: 1000,
         currentLevelMmolL: 0.8,
-        targetLevelMmolL: 1.2,
+        targetLevelMmolL: 1.3,
       });
       expect(toxicTarget.isValid).toBe(false);
       expect(toxicTarget.suggestedDoseMg).toBeNull();
+      expect(toxicTarget.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic threshold")]));
     });
 
     it("fails closed when calculated proportional dose rounds to zero mg or rounds above the 2000 mg/day ceiling", () => {

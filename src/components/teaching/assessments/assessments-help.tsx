@@ -47,7 +47,7 @@ import {
   type EpaNumber,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
-import { createEpaMagicLinkRequest } from "@/lib/teaching/assessments/magic-link";
+import { checkEpaClinicianName, createEpaMagicLinkRequest } from "@/lib/teaching/assessments/magic-link";
 import {
   EPA_FEEDBACK_MAX,
   EPA_REPLY_MAX,
@@ -287,7 +287,7 @@ function RequestEpaSheet({
             icon={Copy}
             size="wide"
             testId="epa-magic-link-copy"
-            disabled={!guest || looksLikePatientDetails(guestName)}
+            disabled={!guest || checkEpaClinicianName(guestName) !== null}
             onClick={async () => {
               if (!guest) return;
               const supervisorName =
@@ -298,30 +298,16 @@ function RequestEpaSheet({
                 supervisorName,
                 supervisorRole: guest,
               });
-              try {
-                const registration = await fetch(
-                  `/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`,
-                  {
-                    method: "PUT",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({
-                      epaCode: epa,
-                      traineeName: SAMPLE_DOCTOR.name,
-                      supervisorName,
-                      supervisorRole: guest,
-                    }),
-                  },
-                );
-                if (!registration.ok) {
-                  setMagicLinkCopied("Could not register supervisor link. Try again.");
-                  return;
-                }
-              } catch {
-                if (process.env.NODE_ENV !== "test") {
-                  setMagicLinkCopied("Could not register supervisor link. Try again.");
-                  return;
-                }
-              }
+              void fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  epaCode: epa,
+                  traineeName: SAMPLE_DOCTOR.name,
+                  supervisorName,
+                  supervisorRole: guest,
+                }),
+              }).catch(() => undefined);
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;
               await navigator.clipboard?.writeText(fullUrl).catch(() => undefined);

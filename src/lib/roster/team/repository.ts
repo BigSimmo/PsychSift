@@ -123,7 +123,12 @@ function parseRules(raw: unknown): RosterRules {
   return parsed.success ? parsed.data : {};
 }
 
-async function verifySwapApproveRules(client: AdminClient, serviceId: string, swapId: string): Promise<void> {
+async function verifySwapApproveRules(
+  client: AdminClient,
+  actorId: string,
+  serviceId: string,
+  swapId: string,
+): Promise<void> {
   if (typeof client.from !== "function") return;
   const fromFn = client.from.bind(client) as (table: string) => unknown;
 
@@ -135,17 +140,15 @@ async function verifySwapApproveRules(client: AdminClient, serviceId: string, sw
   if (swapRes?.error) throw rosterApiError(swapRes.error);
   const swapRow = swapRes.data;
   if (!swapRow) return;
+  if (swapRow.status !== undefined && swapRow.status !== "accepted") return;
 
-  let settingsQuery = fromFn("roster_team_settings");
-  settingsQuery = chainCall(settingsQuery, "select", "rules");
-  settingsQuery = chainCall(settingsQuery, "eq", "service_id", serviceId);
-  const settingsRes = await resolveSingle(settingsQuery);
-  if (settingsRes?.error) throw rosterApiError(settingsRes.error);
-  const settingsRow = settingsRes.data;
-
-  const rules = parseRules(settingsRow?.rules);
-  const lookbackDays = ruleLookbackDays(rules);
-  if (lookbackDays === 0) return;
+  const expiresAt =
+    typeof swapRow.expires_at === "string"
+      ? swapRow.expires_at
+      : typeof swapRow.expiresAt === "string"
+        ? swapRow.expiresAt
+        : null;
+  if (expiresAt && Date.parse(expiresAt) <= Date.now()) return;
 
   const requesterId =
     typeof swapRow.requesterId === "string"
@@ -160,9 +163,57 @@ async function verifySwapApproveRules(client: AdminClient, serviceId: string, sw
         ? swapRow.counterparty_id
         : null;
   if (!requesterId || !counterpartyId) return;
+  if (actorId === requesterId || actorId === counterpartyId) return;
 
-  const inlineGive = toRosterAssignment(swapRow.give as Record<string, unknown> | undefined);
-  const inlineTake = toRosterAssignment(swapRow.take as Record<string, unknown> | undefined);
+  let roleQuery: unknown;
+  try {
+    roleQuery = fromFn("roster_member_roles");
+  } catch {
+    roleQuery = null;
+  }
+  if (roleQuery) {
+    roleQuery = chainCall(roleQuery, "select", "*");
+    roleQuery = chainCall(roleQuery, "eq", "service_id", serviceId);
+    roleQuery = chainCall(roleQuery, "eq", "user_id", actorId);
+    roleQuery = chainCall(roleQuery, "eq", "role", "manager");
+    roleQuery = chainCall(roleQuery, "is", "revoked_at", null);
+    const roleRes = await resolveSingle(roleQuery);
+    if (roleRes?.error) throw rosterApiError(roleRes.error);
+    if (
+      !roleRes.data ||
+      roleRes.data.revoked_at != null ||
+      roleRes.data.revokedAt != null ||
+      ("confirmed_at" in roleRes.data && roleRes.data.confirmed_at == null) ||
+      ("confirmedAt" in roleRes.data && roleRes.data.confirmedAt == null)
+    ) {
+      return;
+    }
+  }
+
+  let settingsQuery = fromFn("roster_team_settings");
+  settingsQuery = chainCall(settingsQuery, "select", "rules");
+  settingsQuery = chainCall(settingsQuery, "eq", "service_id", serviceId);
+  const settingsRes = await resolveSingle(settingsQuery);
+  if (settingsRes?.error) throw rosterApiError(settingsRes.error);
+  const settingsRow = settingsRes.data;
+
+  const rules = parseRules(settingsRow?.rules);
+  const lookbackDays = ruleLookbackDays(rules);
+  if (lookbackDays === 0) return;
+
+  const rawGive =
+    swapRow.give && typeof swapRow.give === "object" ? (swapRow.give as Record<string, unknown>) : undefined;
+  const rawTake =
+    swapRow.take && typeof swapRow.take === "object" ? (swapRow.take as Record<string, unknown>) : undefined;
+  if (
+    (rawGive && (rawGive.superseded_at != null || rawGive.supersededAt != null)) ||
+    (rawTake && (rawTake.superseded_at != null || rawTake.supersededAt != null))
+  ) {
+    return;
+  }
+
+  const inlineGive = toRosterAssignment(rawGive);
+  const inlineTake = toRosterAssignment(rawTake);
   const giveId =
     inlineGive?.id ??
     (typeof swapRow.giveAssignmentId === "string"
@@ -188,10 +239,12 @@ async function verifySwapApproveRules(client: AdminClient, serviceId: string, sw
     let anchorQuery = fromFn("roster_assignments");
     anchorQuery = chainCall(anchorQuery, "select", "*");
     anchorQuery = chainCall(anchorQuery, "eq", "service_id", serviceId);
+    anchorQuery = chainCall(anchorQuery, "is", "superseded_at", null);
     anchorQuery = chainCall(anchorQuery, "in", "id", missingAnchorIds);
     const anchorRes = await resolveList(anchorQuery);
     if (anchorRes?.error) throw rosterApiError(anchorRes.error);
     const anchorAssignments = anchorRes.data
+      .filter((row) => row.superseded_at == null && row.supersededAt == null)
       .map((row) => toRosterAssignment(row))
       .filter((row): row is RosterAssignment => row !== null);
     if (!resolvedGive && giveId) {
@@ -223,12 +276,13 @@ async function verifySwapApproveRules(client: AdminClient, serviceId: string, sw
   const assignmentsRes = await resolveList(assignQuery);
   if (assignmentsRes?.error) throw rosterApiError(assignmentsRes.error);
   const assignments = assignmentsRes.data
+    .filter((row) => row.superseded_at == null && row.supersededAt == null)
     .map((row) => toRosterAssignment(row))
     .filter((row): row is RosterAssignment => row !== null);
 
   const give = resolvedGive ?? (giveId ? (assignments.find((row) => row.id === giveId) ?? null) : null);
   const take = resolvedTake ?? (takeId ? (assignments.find((row) => row.id === takeId) ?? null) : null);
-  if (!give && !take) return;
+  if ((giveId && !give) || (takeId && !take) || (!give && !take)) return;
 
   const flags = swapRuleFlags(assignments, rules, {
     requesterId,
@@ -297,7 +351,7 @@ export async function rosterCommand(
 ): Promise<RosterCommandResult> {
   requireActor(actorId);
   if (action.action === "swap.approve" && !action.acknowledgeRuleWarnings) {
-    await verifySwapApproveRules(client, serviceId, action.swapId);
+    await verifySwapApproveRules(client, actorId, serviceId, action.swapId);
   }
   const { action: name, ...payload } = action;
   // The safe number goes through the stale check, which refuses it once anyone has saved since the editor's read.

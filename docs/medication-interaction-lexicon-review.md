@@ -173,7 +173,7 @@ Checks that ran and found nothing:
 
 | Field                  | Value                                                                                                                                          |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Reviewer (name + role) | Josh Simpson (Psychiatrist, Clinical Owner)                                                                                                    |
+| Reviewer (name + role) | Psych Sift (Psychiatrist, Clinical Owner)                                                                                                      |
 | Date                   | 2026-10-16                                                                                                                                     |
 | Mappings hash          | `b33eb434ce7aee1b1c3797b94c076ef5e944feb6af0f8bcc41ccf0fc39f2b575`                                                                             |
 | Outcome                | Re-signed. The 2026-09-28 sign-off stands; the three changes since (`nsaids` excluding aspirin, plus `valproate` and `nitrates`) are accepted. |

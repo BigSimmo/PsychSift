@@ -7,6 +7,7 @@ import { focusRing } from "@/components/card-recipes";
 import { TextField } from "@/components/ui/text-field";
 import { cn, eyebrowText, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primitives";
 import {
+  CREATININE_UMOL_PER_MG_DL,
   calculateCkdEpi2021,
   calculateCockcroftGault,
   calculateProportionalLithiumDose,
@@ -24,34 +25,39 @@ export interface ClinicalMathPanelProps {
   defaultTab?: ActiveTab;
 }
 
+function parseStrictNumber(value: string): number {
+  const trimmed = value.trim();
+  return trimmed === "" ? Number.NaN : Number(trimmed);
+}
+
 export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }: ClinicalMathPanelProps) {
   const panelId = useId();
   const [open, setOpen] = useState(defaultOpen);
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
 
   // Renal state
-  const [age, setAge] = useState("45");
+  const [age, setAge] = useState("");
   const [sex, setSex] = useState<BiologicalSex>("male");
-  const [weightKg, setWeightKg] = useState("75");
+  const [weightKg, setWeightKg] = useState("");
   const [heightCm, setHeightCm] = useState("");
-  const [creatinine, setCreatinine] = useState("90");
+  const [creatinine, setCreatinine] = useState("");
   const [creatinineUnit, setCreatinineUnit] = useState<CreatinineUnit>("umol/L");
 
   // QTc state
-  const [qtMs, setQtMs] = useState("400");
-  const [hrBpm, setHrBpm] = useState("68");
+  const [qtMs, setQtMs] = useState("");
+  const [hrBpm, setHrBpm] = useState("");
 
   // Lithium state
-  const [lithiumLevel, setLithiumLevel] = useState("0.7");
+  const [lithiumLevel, setLithiumLevel] = useState("");
   const [lithiumIndication, setLithiumIndication] = useState<LithiumIndication>("maintenance");
-  const [currentDoseMg, setCurrentDoseMg] = useState("750");
-  const [targetLevel, setTargetLevel] = useState("0.8");
+  const [currentDoseMg, setCurrentDoseMg] = useState("");
+  const [targetLevel, setTargetLevel] = useState("");
   const [tabletIncrementMg, setTabletIncrementMg] = useState<125 | 225 | 250 | 450>(125);
 
-  const parsedAge = Number.parseFloat(age);
-  const parsedWeight = Number.parseFloat(weightKg);
-  const parsedHeight = heightCm.trim() === "" ? undefined : Number.parseFloat(heightCm);
-  const parsedCreatinine = Number.parseFloat(creatinine);
+  const parsedAge = parseStrictNumber(age);
+  const parsedWeight = parseStrictNumber(weightKg);
+  const parsedHeight = heightCm.trim() === "" ? undefined : parseStrictNumber(heightCm);
+  const parsedCreatinine = parseStrictNumber(creatinine);
 
   const cgResult = calculateCockcroftGault({
     age: parsedAge,
@@ -70,12 +76,12 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
   });
 
   const qtcResult = calculateQtc({
-    qtMs: Number.parseFloat(qtMs),
-    heartRateBpm: Number.parseFloat(hrBpm),
+    qtMs: parseStrictNumber(qtMs),
+    heartRateBpm: parseStrictNumber(hrBpm),
     sex,
   });
 
-  const parsedLithiumLevel = Number.parseFloat(lithiumLevel);
+  const parsedLithiumLevel = parseStrictNumber(lithiumLevel);
   const lithiumEval = evaluateLithiumLevel({
     serumLevelMmolL: parsedLithiumLevel,
     indication: lithiumIndication,
@@ -83,11 +89,29 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
   });
 
   const lithiumDose = calculateProportionalLithiumDose({
-    currentDoseMg: Number.parseFloat(currentDoseMg),
+    currentDoseMg: parseStrictNumber(currentDoseMg),
     currentLevelMmolL: parsedLithiumLevel,
-    targetLevelMmolL: Number.parseFloat(targetLevel),
+    targetLevelMmolL: parseStrictNumber(targetLevel),
     tabletIncrementMg,
   });
+
+  const hasRenalBaseInput = age.trim() !== "" && creatinine.trim() !== "";
+  const hasWeightInput = weightKg.trim() !== "";
+  const hasHeightInput = heightCm.trim() !== "";
+  const renalErrors = hasRenalBaseInput
+    ? hasWeightInput
+      ? [...new Set([...cgResult.errors, ...ckdResult.errors])]
+      : [
+          ...new Set([
+            ...ckdResult.errors,
+            ...(hasHeightInput ? cgResult.errors.filter((err) => !err.toLowerCase().includes("weight")) : []),
+          ]),
+        ]
+    : [];
+
+  const hasQtcInput = qtMs.trim() !== "" && hrBpm.trim() !== "";
+  const hasLithiumTroughInput = lithiumLevel.trim() !== "" && age.trim() !== "";
+  const hasLithiumDoseInput = lithiumLevel.trim() !== "" && currentDoseMg.trim() !== "" && targetLevel.trim() !== "";
 
   return (
     <section
@@ -265,10 +289,12 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                       type="button"
                       onClick={() => {
                         if (unit === creatinineUnit) return;
-                        const current = Number.parseFloat(creatinine);
+                        const current = parseStrictNumber(creatinine);
                         if (Number.isFinite(current) && current > 0) {
                           const converted =
-                            unit === "mg/dL" ? Math.round((current / 88.4) * 100) / 100 : Math.round(current * 88.4);
+                            unit === "mg/dL"
+                              ? Math.round((current / CREATININE_UMOL_PER_MG_DL) * 100) / 100
+                              : Math.round(current * CREATININE_UMOL_PER_MG_DL);
                           setCreatinine(String(converted));
                         }
                         setCreatinineUnit(unit);
@@ -287,50 +313,68 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                 </div>
               </div>
 
-              {cgResult.isValid || ckdResult.isValid ? (
-                <div
-                  className="grid gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-xs"
-                  data-testid="clinical-math-renal-results"
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    {cgResult.isValid ? (
-                      <span className="font-bold text-[color:var(--text-heading)]">
-                        Cockcroft-Gault CrCl: {cgResult.crClMlMin} mL/min
-                      </span>
+              <div
+                className="grid gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-xs"
+                data-testid="clinical-math-renal-results"
+              >
+                {!hasRenalBaseInput ? (
+                  <p className="text-[color:var(--text-muted)]">
+                    Enter patient age, weight, and serum creatinine above to calculate renal clearance.
+                  </p>
+                ) : cgResult.isValid || ckdResult.isValid ? (
+                  <>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      {cgResult.isValid ? (
+                        <span className="font-bold text-[color:var(--text-heading)]">
+                          Cockcroft-Gault CrCl: {cgResult.crClMlMin} mL/min
+                        </span>
+                      ) : !hasWeightInput ? (
+                        <span className="text-[color:var(--text-muted)]">Enter weight to calculate CrCl</span>
+                      ) : null}
+                      {ckdResult.isValid ? (
+                        <span className="font-mono text-2xs text-[color:var(--text-muted)]">
+                          CKD-EPI 2021 eGFR: {ckdResult.egfr} mL/min/1.73m²
+                        </span>
+                      ) : null}
+                    </div>
+                    {cgResult.isValid && cgResult.ibwKg ? (
+                      <p className="text-2xs text-[color:var(--text-muted)]">
+                        Ideal Body Weight (Devine): {cgResult.ibwKg} kg · Weight used: {cgResult.effectiveWeightKg} kg (
+                        {cgResult.weightBasis === "adjusted"
+                          ? "ABW"
+                          : cgResult.weightBasis === "ideal"
+                            ? "IBW"
+                            : "Actual"}
+                        )
+                      </p>
                     ) : null}
-                    {ckdResult.isValid ? (
-                      <span className="font-mono text-2xs text-[color:var(--text-muted)]">
-                        CKD-EPI 2021 eGFR: {ckdResult.egfr} mL/min/1.73m²
-                      </span>
+                    {cgResult.isValid && cgResult.lithiumClinicalNote ? (
+                      <p
+                        className="text-2xs font-medium text-[color:var(--text)]"
+                        data-testid="clinical-math-renal-lithium-note"
+                      >
+                        {cgResult.lithiumClinicalNote}
+                      </p>
                     ) : null}
-                  </div>
-                  {cgResult.isValid && cgResult.ibwKg ? (
-                    <p className="text-2xs text-[color:var(--text-muted)]">
-                      Ideal Body Weight (Devine): {cgResult.ibwKg} kg · Weight used: {cgResult.effectiveWeightKg} kg (
-                      {cgResult.weightBasis})
-                    </p>
-                  ) : null}
-                  {cgResult.isValid && cgResult.lithiumClinicalNote ? (
-                    <p
-                      className="text-2xs font-medium text-[color:var(--text)]"
-                      data-testid="clinical-math-renal-lithium-note"
-                    >
-                      {cgResult.lithiumClinicalNote}
-                    </p>
-                  ) : null}
-                  {cgResult.warnings.map((w, idx) => (
-                    <p key={idx} className={cn("rounded border px-2 py-1 text-2xs", toneWarning)}>
-                      {w}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {!cgResult.isValid || !ckdResult.isValid ? (
+                    {cgResult.warnings.map((w, idx) => (
+                      <p key={idx} className={cn("rounded border px-2 py-1 text-2xs", toneWarning)}>
+                        {w}
+                      </p>
+                    ))}
+                  </>
+                ) : (
+                  <p className="text-[color:var(--text-muted)]">
+                    Enter valid physiological values above to calculate renal clearance.
+                  </p>
+                )}
+              </div>
+              {renalErrors.length > 0 ? (
                 <div
+                  role="alert"
                   className={cn("rounded-md border p-2.5 text-xs", toneDanger)}
                   data-testid="clinical-math-renal-errors"
                 >
-                  {[...new Set([...cgResult.errors, ...ckdResult.errors])].join(" · ")}
+                  {renalErrors.join(" · ")}
                 </div>
               ) : null}
             </div>
@@ -369,33 +413,45 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
                 />
               </div>
 
-              {qtcResult.isValid ? (
+              <div
+                className="grid gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-xs"
+                data-testid="clinical-math-qtc-results"
+              >
+                {!hasQtcInput ? (
+                  <p className="text-[color:var(--text-muted)]">
+                    Enter measured QT interval and heart rate above to calculate corrected QT (QTc).
+                  </p>
+                ) : qtcResult.isValid ? (
+                  <>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-bold text-[color:var(--text-heading)]">
+                        Fridericia QTc: {qtcResult.fridericiaMs} ms · Bazett QTc: {qtcResult.bazettMs} ms
+                      </span>
+                      <span className="font-mono text-2xs uppercase text-[color:var(--text-muted)]">
+                        Risk: {qtcResult.riskCategory?.replace(/_/g, " ")}
+                      </span>
+                    </div>
+                    {qtcResult.alerts.map((alert, idx) => (
+                      <p key={idx} className={cn("rounded border px-2 py-1 text-2xs", toneWarning)}>
+                        {alert}
+                      </p>
+                    ))}
+                  </>
+                ) : (
+                  <p className="text-[color:var(--text-muted)]">
+                    Enter valid physiological QT interval and heart rate values above to calculate corrected QT (QTc).
+                  </p>
+                )}
+              </div>
+              {hasQtcInput && !qtcResult.isValid ? (
                 <div
-                  className="grid gap-1.5 rounded-md border border-[color:var(--border)] bg-[color:var(--surface-subtle)] p-3 text-xs"
-                  data-testid="clinical-math-qtc-results"
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-bold text-[color:var(--text-heading)]">
-                      Fridericia QTc: {qtcResult.fridericiaMs} ms · Bazett QTc: {qtcResult.bazettMs} ms
-                    </span>
-                    <span className="font-mono text-2xs uppercase text-[color:var(--text-muted)]">
-                      Risk: {qtcResult.riskCategory?.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                  {qtcResult.alerts.map((alert, idx) => (
-                    <p key={idx} className={cn("rounded border px-2 py-1 text-2xs", toneWarning)}>
-                      {alert}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <div
+                  role="alert"
                   className={cn("rounded-md border p-2.5 text-xs", toneDanger)}
                   data-testid="clinical-math-qtc-errors"
                 >
                   {qtcResult.errors.join(" · ")}
                 </div>
-              )}
+              ) : null}
             </div>
           ) : null}
 
@@ -506,45 +562,72 @@ export function ClinicalMathPanel({ defaultOpen = false, defaultTab = "renal" }:
               <div
                 className={cn(
                   "grid gap-1.5 rounded-md border p-3 text-xs",
-                  lithiumEval.status === "toxic"
-                    ? toneDanger
-                    : lithiumEval.status === "therapeutic"
-                      ? toneSuccess
-                      : toneWarning,
+                  !hasLithiumTroughInput
+                    ? "border-[color:var(--border)] bg-[color:var(--surface-subtle)]"
+                    : lithiumEval.status === "toxic" || lithiumEval.status === "invalid"
+                      ? toneDanger
+                      : lithiumEval.status === "therapeutic"
+                        ? toneSuccess
+                        : toneWarning,
                 )}
                 data-testid="clinical-math-lithium-results"
               >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-bold capitalize">
-                    Level status: {lithiumEval.status} (target {lithiumEval.targetRange.min}–
-                    {lithiumEval.targetRange.max} mmol/L)
-                  </span>
-                  {lithiumDose.isValid ? (
-                    <span className="font-mono font-bold" data-testid="clinical-math-lithium-suggested-dose">
-                      Suggested dose: {lithiumDose.suggestedDoseMg} mg/day
-                    </span>
-                  ) : null}
+                {!hasLithiumTroughInput ? (
+                  <p className="text-[color:var(--text-muted)]">
+                    Enter current 12-hour trough level and patient age above to evaluate lithium status.
+                  </p>
+                ) : lithiumEval.status === "invalid" ? (
+                  lithiumEval.clinicalGuidance.map((g, idx) => (
+                    <p key={idx} className="text-2xs font-semibold">
+                      {g}
+                    </p>
+                  ))
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-bold capitalize">
+                        Level status: {lithiumEval.status} (target {lithiumEval.targetRange.min}–
+                        {lithiumEval.targetRange.max} mmol/L)
+                      </span>
+                    </div>
+                    {lithiumEval.clinicalGuidance.map((g, idx) => (
+                      <p key={idx} className="text-2xs">
+                        {g}
+                      </p>
+                    ))}
+                  </>
+                )}
+
+                <div className="mt-1 border-t border-[color:var(--border)] pt-1.5">
+                  {!hasLithiumDoseInput ? (
+                    <p
+                      className="text-2xs text-[color:var(--text-muted)]"
+                      data-testid="clinical-math-lithium-suggested-dose"
+                    >
+                      Enter current daily dose and target level above to calculate proportional dose adjustment.
+                    </p>
+                  ) : lithiumDose.isValid ? (
+                    <>
+                      <span className="font-mono font-bold" data-testid="clinical-math-lithium-suggested-dose">
+                        Suggested dose: {lithiumDose.suggestedDoseMg} mg/day
+                      </span>
+                      {lithiumDose.note ? (
+                        <p className="mt-1 text-2xs font-medium" data-testid="clinical-math-lithium-dose-note">
+                          {lithiumDose.note}
+                        </p>
+                      ) : null}
+                      {lithiumDose.warnings?.map((w, idx) => (
+                        <p key={idx} className="mt-1 text-2xs">
+                          {w}
+                        </p>
+                      ))}
+                    </>
+                  ) : (
+                    <p role="alert" className="text-2xs font-semibold" data-testid="clinical-math-lithium-dose-errors">
+                      {lithiumDose.errors.join(" · ")}
+                    </p>
+                  )}
                 </div>
-                {lithiumEval.clinicalGuidance.map((g, idx) => (
-                  <p key={idx} className="text-2xs">
-                    {g}
-                  </p>
-                ))}
-                {lithiumDose.isValid && lithiumDose.note ? (
-                  <p className="text-2xs font-medium" data-testid="clinical-math-lithium-dose-note">
-                    {lithiumDose.note}
-                  </p>
-                ) : null}
-                {lithiumDose.warnings?.map((w, idx) => (
-                  <p key={idx} className="text-2xs">
-                    {w}
-                  </p>
-                ))}
-                {!lithiumDose.isValid ? (
-                  <p className="text-2xs font-semibold" data-testid="clinical-math-lithium-dose-errors">
-                    {lithiumDose.errors.join(" · ")}
-                  </p>
-                ) : null}
               </div>
             </div>
           ) : null}

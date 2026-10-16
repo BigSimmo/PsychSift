@@ -1,23 +1,14 @@
 "use client";
 
-import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type ChangeEvent,
-} from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { buttonFaceClass } from "@/components/ui/button-face";
 import { cn, toneDanger, toneSuccess, toneWarning } from "@/components/ui-primitives";
 import { ACCOUNT_TRANSITION_EVENT } from "@/lib/account-scoped-browser-state";
-import { isSharedDevice } from "@/lib/alerts/shared-device";
+import { useSharedDevice } from "@/lib/alerts/shared-device";
 import { PATIENT_LABELS_CLEARED_EVENT } from "@/lib/patient-label-storage";
-import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
+import { checkPatientDetail, type PatientDetailProblem } from "@/lib/work-text/patient-detail-check";
 
 export type SaveStatus = "idle" | "unsaved" | "saving" | "saved" | "error";
 
@@ -32,8 +23,6 @@ export interface NoteEditorProps {
   className?: string;
   label?: string;
 }
-
-const subscribeNoop = () => () => {};
 
 /**
  * Clinical Note Editor with debounced auto-save and caret preservation (#TDKF8T).
@@ -56,17 +45,20 @@ export function ClinicalNoteEditor({
   const isControlled = controlledValue !== undefined;
   const [internalValue, setInternalValue] = useState(initialValue);
   const currentValue = isControlled ? controlledValue : internalValue;
-  const sharedDevice = useSyncExternalStore(
-    subscribeNoop,
-    () => isSharedDevice(),
-    () => false,
-  );
+  const sharedDevice = useSharedDevice();
 
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [privacyProblem, setPrivacyProblem] = useState<PatientDetailProblem | null>(() =>
+    checkPatientDetail(currentValue),
+  );
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(() => (checkPatientDetail(currentValue) ? "error" : "idle"));
   const [lastSavedValue, setLastSavedValue] = useState(currentValue);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const latestValueRef = useRef(currentValue);
+  useEffect(() => {
+    latestValueRef.current = currentValue;
+  }, [currentValue]);
 
   // Store selection state to restore across re-renders/saves
   const selectionRef = useRef<{
@@ -115,27 +107,39 @@ export function ClinicalNoteEditor({
 
   const performSave = useCallback(
     async (textToSave: string) => {
-      if (readOnly || textToSave === lastSavedValue) return;
-      if (checkPatientDetail(textToSave)) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (readOnly) return;
+      const problem = checkPatientDetail(textToSave);
+      if (problem !== null) {
+        setPrivacyProblem(problem);
         setSaveStatus("error");
         return;
       }
+      setPrivacyProblem(null);
+      if (!onSave) {
+        setSaveStatus("idle");
+        return;
+      }
+      if (textToSave === lastSavedValue && saveStatus !== "error") return;
 
       // Capture caret position before triggering save
       recordSelection();
       setSaveStatus("saving");
 
       try {
-        if (onSave) {
-          await onSave(textToSave);
-        }
+        await onSave(textToSave);
         setLastSavedValue(textToSave);
-        setSaveStatus("saved");
+        if (latestValueRef.current === textToSave) {
+          setSaveStatus("saved");
+        }
       } catch {
         setSaveStatus("error");
       }
     },
-    [readOnly, lastSavedValue, onSave, recordSelection],
+    [readOnly, lastSavedValue, saveStatus, onSave, recordSelection],
   );
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -145,8 +149,10 @@ export function ClinicalNoteEditor({
     if (!isControlled) {
       setInternalValue(newValue);
     }
-    onChange?.(newValue);
-    if (checkPatientDetail(newValue)) {
+
+    const problem = checkPatientDetail(newValue);
+    setPrivacyProblem(problem);
+    if (problem !== null) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
@@ -154,7 +160,8 @@ export function ClinicalNoteEditor({
       setSaveStatus("error");
       return;
     }
-    setSaveStatus("unsaved");
+
+    onChange?.(newValue);
 
     // Clear existing timer
     if (saveTimerRef.current) {
@@ -162,14 +169,21 @@ export function ClinicalNoteEditor({
       saveTimerRef.current = null;
     }
 
+    if (!onSave) {
+      setSaveStatus("idle");
+      return;
+    }
+
+    setSaveStatus("unsaved");
+
     // Suppress background auto-save on shared clinical devices
-    if (isSharedDevice()) {
+    if (sharedDevice) {
       return;
     }
 
     // Schedule debounced auto-save
     saveTimerRef.current = setTimeout(() => {
-      performSave(newValue);
+      void performSave(newValue);
     }, debounceMs);
   };
 
@@ -182,12 +196,12 @@ export function ClinicalNoteEditor({
     isFocusedRef.current = false;
     recordSelection();
     // Save on blur if unsaved and not on a shared device
-    if (saveStatus === "unsaved" && !isSharedDevice()) {
+    if (onSave && saveStatus === "unsaved" && !sharedDevice && privacyProblem === null) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
         saveTimerRef.current = null;
       }
-      performSave(currentValue);
+      void performSave(currentValue);
     }
   };
 
@@ -212,6 +226,7 @@ export function ClinicalNoteEditor({
       selectionRef.current = { start: 0, end: 0, direction: "none" };
       setInternalValue("");
       setLastSavedValue("");
+      setPrivacyProblem(null);
       setSaveStatus("idle");
       onChange?.("");
     };
@@ -235,47 +250,62 @@ export function ClinicalNoteEditor({
     };
   }, [onChange]);
 
+  const showSaveControls = Boolean(onSave) || privacyProblem !== null || saveStatus === "error";
+  const describedBy =
+    [showSaveControls ? `${instanceId}-status` : null, privacyProblem ? `${instanceId}-privacy-warning` : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
     <div className={cn("clinical-note-editor flex flex-col gap-2", className)} data-testid="clinical-note-editor">
       <div className="flex items-center justify-between text-xs">
         <label htmlFor={`${instanceId}-textarea`} className="font-semibold text-[color:var(--text)]">
           {label}
         </label>
-        <div className="flex items-center gap-2">
-          <span
-            id={`${instanceId}-status`}
-            className={cn(
-              "rounded border px-2 py-0.5 font-mono text-xs",
-              saveStatus === "saving"
-                ? toneWarning
+        {showSaveControls ? (
+          <div className="flex items-center gap-2">
+            <span
+              id={`${instanceId}-status`}
+              className={cn(
+                "rounded border px-2 py-0.5 font-mono text-xs",
+                saveStatus === "saving"
+                  ? toneWarning
+                  : saveStatus === "saved"
+                    ? toneSuccess
+                    : saveStatus === "error"
+                      ? toneDanger
+                      : "border-transparent text-[color:var(--text-muted)]",
+              )}
+              data-testid="note-editor-status"
+            >
+              {saveStatus === "saving"
+                ? "Saving..."
                 : saveStatus === "saved"
-                  ? toneSuccess
+                  ? "Saved"
                   : saveStatus === "error"
-                    ? toneDanger
-                    : "border-transparent text-[color:var(--text-muted)]",
-            )}
-            data-testid="note-editor-status"
-          >
-            {saveStatus === "saving"
-              ? "Saving..."
-              : saveStatus === "saved"
-                ? "Saved"
-                : saveStatus === "error"
-                  ? "Save error"
-                  : saveStatus === "unsaved"
-                    ? "Unsaved changes"
-                    : "Idle"}
-          </span>
-          <button
-            type="button"
-            onClick={() => performSave(currentValue)}
-            disabled={readOnly || saveStatus === "saving" || saveStatus === "saved"}
-            className={buttonFaceClass({ variant: "secondary", size: "sm" })}
-            data-testid="note-editor-save-btn"
-          >
-            Save now
-          </button>
-        </div>
+                    ? "Save error"
+                    : saveStatus === "unsaved"
+                      ? "Unsaved changes"
+                      : "Idle"}
+            </span>
+            {onSave ? (
+              <button
+                type="button"
+                onClick={() => void performSave(currentValue)}
+                disabled={
+                  readOnly ||
+                  privacyProblem !== null ||
+                  saveStatus === "saving" ||
+                  (currentValue === lastSavedValue && saveStatus !== "error")
+                }
+                className={buttonFaceClass({ variant: "secondary", size: "sm" })}
+                data-testid="note-editor-save-btn"
+              >
+                Save now
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {sharedDevice ? (
@@ -284,9 +314,22 @@ export function ClinicalNoteEditor({
         </p>
       ) : null}
 
+      {privacyProblem ? (
+        <div
+          id={`${instanceId}-privacy-warning`}
+          role="alert"
+          className={cn("rounded-lg border p-3 text-xs", toneDanger)}
+          data-testid="note-editor-privacy-warning"
+        >
+          <p className="font-semibold">{privacyProblem.title}</p>
+          <p>{privacyProblem.body}</p>
+          {privacyProblem.suggestion ? <p className="mt-1">{privacyProblem.suggestion}</p> : null}
+        </div>
+      ) : null}
+
       <textarea
         id={`${instanceId}-textarea`}
-        aria-describedby={`${instanceId}-status`}
+        aria-describedby={describedBy}
         ref={textareaRef}
         value={currentValue}
         onChange={handleChange}

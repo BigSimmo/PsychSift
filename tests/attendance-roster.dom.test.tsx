@@ -112,8 +112,10 @@ describe("AttendanceRoster (#WVS32F)", () => {
     );
 
     expect(screen.getByTestId("teaching-attendance-roster")).toBeInTheDocument();
+    expect(screen.getAllByTestId("attendance-roster-search")).toHaveLength(1);
     expect(screen.getByTestId("attendance-roster-row-00000000-0000-4000-8000-000000000001")).toBeInTheDocument();
     expect(screen.queryByTestId("attendance-roster-row-00000000-0000-4000-8000-000000000002")).toBeNull();
+    expect(screen.queryByTestId("teaching-attendance-gaps-empty")).toBeNull();
 
     // Toggling to All Registrars reveals Wilson as well
     fireEvent.click(screen.getByTestId("roster-view-all-btn"));

@@ -214,9 +214,11 @@ export function useRosterDecision(serviceId: string, onChanged: () => void) {
       return;
     }
     setReview(null);
-    const hasRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
-    const acknowledged = approve && hasRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint;
-    const action = decisionAction(fresh.current, approve);
+    const needsRuleAck = Boolean(fresh.rules && (!fresh.rules.checkable || fresh.rules.warnings.length > 0));
+    const acknowledged = approve && needsRuleAck && reviewedFingerprint === fresh.rules?.fingerprint;
+    const action = decisionAction(fresh.current, approve, {
+      acknowledgeRuleWarnings: approve && needsRuleAck && acknowledged,
+    });
     let sent = await post(action);
     if (!sent.ok && sent.code === "roster_swap_rule_warning" && acknowledged) {
       sent = await post(decisionAction(fresh.current, approve, { acknowledgeRuleWarnings: true }));

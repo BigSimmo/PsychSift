@@ -63,6 +63,22 @@ type Density = "comfortable" | "compact";
 
 const subscribeNoop = () => () => undefined;
 
+function subscribeDesktopSidebar(onStoreChange: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return () => undefined;
+  }
+  const mql = window.matchMedia("(min-width: 1280px)");
+  mql.addEventListener("change", onStoreChange);
+  return () => mql.removeEventListener("change", onStoreChange);
+}
+
+function getDesktopSidebarSnapshot() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia("(min-width: 1280px)").matches;
+}
+
 /**
  * The calculator whose tile should take focus back once closing it has finished
  * navigating. Module-scoped, not component state: dropping `?calculator=` is a
@@ -328,6 +344,7 @@ export function CalculatorsSearchPage({
     () => true,
     () => false,
   );
+  const isDesktopSidebar = useSyncExternalStore(subscribeDesktopSidebar, getDesktopSidebarSnapshot, () => false);
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
@@ -588,14 +605,14 @@ export function CalculatorsSearchPage({
         sidebar={
           <>
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            <ClinicalMathPanel />
+            {isDesktopSidebar ? <ClinicalMathPanel /> : null}
             <AboutPanel />
           </>
         }
         sidebarMobile={
           <div className="grid gap-4 xl:hidden">
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            <ClinicalMathPanel />
+            {!isDesktopSidebar ? <ClinicalMathPanel /> : null}
             <AboutPanel />
           </div>
         }

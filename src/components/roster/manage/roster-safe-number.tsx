@@ -190,7 +190,7 @@ function Editor({
    */
   async function writeOverFresh(
     build: (fresh: SafeNumberGrid) => SafeNumberGrid,
-    options?: { checkCellConflicts?: boolean },
+    options?: { checkCellConflicts?: boolean; expectedFreshGrid?: SafeNumberGrid },
   ): Promise<{ written: SafeNumberGrid; read: SafeNumberGrid; needs: RosterMaker["needs"] } | null> {
     for (let attempt = 1; ; attempt += 1) {
       const fresh = await readFresh();
@@ -205,6 +205,21 @@ function Editor({
           }),
         );
         if (hasCellConflict) {
+          setState({ kind: "conflict", freshGrid: read, freshNeeds: fresh.needs });
+          return null;
+        }
+      } else if (options?.expectedFreshGrid) {
+        const expectedFreshGrid = options.expectedFreshGrid;
+        const hasThirdConcurrentEdit = SAFE_NUMBER_KINDS.some((kind) =>
+          grid[kind].some((value, index) => {
+            if (value === confirmed[kind][index]) return false;
+            return checkOptimisticLock(
+              { version: read[kind][index] },
+              { expectedVersion: expectedFreshGrid[kind][index] },
+            ).conflict;
+          }),
+        );
+        if (hasThirdConcurrentEdit) {
           setState({ kind: "conflict", freshGrid: read, freshNeeds: fresh.needs });
           return null;
         }
@@ -249,12 +264,14 @@ function Editor({
       setState({ kind: "example" });
       return;
     }
+    const expectedFreshGrid = forceOverwrite && state.kind === "conflict" ? state.freshGrid : undefined;
     busy.current = true;
     try {
       setState({ kind: "saving" });
       // Build on a fresh read, so a need or a number another manager set since this page opened is kept.
       const result = await writeOverFresh((fresh) => applySafeNumberChanges(fresh, confirmed, grid), {
         checkCellConflicts: !forceOverwrite,
+        expectedFreshGrid,
       });
       if (!result) return;
       const { written: saved, read: previous } = result;

@@ -43,6 +43,7 @@ import {
   ON_CALL_HANDOVER_TYPES,
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
+  loadOnCallHandoverScratchpad,
   onCallHandoverCallsNotIn,
   onCallHandoverShiftDates,
   onCallHandoverDraftFromCall,
@@ -54,6 +55,7 @@ import {
   onCallHandoverStorageKey,
   removeOnCallHandoverPatient,
   saveOnCallHandoverPatient,
+  saveOnCallHandoverScratchpad,
   visibleOnCallHandover,
   type OnCallHandoverDraft,
   type OnCallHandoverPatient,
@@ -66,6 +68,7 @@ import {
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABELS_CLEARED_EVENT,
   startPatientLabelRetention,
+  subscribePatientLabelsCleared,
 } from "@/lib/patient-label-storage";
 
 /*
@@ -559,6 +562,7 @@ export function OnCallHandoverPage() {
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
   const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
+  const [scratchpadText, setScratchpadText] = useState<string>(() => loadOnCallHandoverScratchpad());
   const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
 
   const reset = useCallback(() => {
@@ -567,6 +571,7 @@ export function OnCallHandoverPage() {
     setCopiedWard("");
     setDraftExpiresAt(null);
     setMode("form");
+    setScratchpadText("");
     setScratchpadResetKey((k) => k + 1);
   }, []);
 
@@ -583,10 +588,10 @@ export function OnCallHandoverPage() {
         onCleared();
       }
     };
-    window.addEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
+    const unsubscribe = subscribePatientLabelsCleared(onCleared);
     window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener(PATIENT_LABELS_CLEARED_EVENT, onCleared);
+      unsubscribe();
       window.removeEventListener("storage", onStorage);
     };
   }, [reset]);
@@ -978,7 +983,23 @@ export function OnCallHandoverPage() {
 
                   <CallsToAdd patients={patients} onAdd={(next) => commit(next, null)} />
 
-                  <ClinicalNoteEditor key={scratchpadResetKey} label="Shift scratchpad (de-identified)" />
+                  <ClinicalNoteEditor
+                    key={scratchpadResetKey}
+                    label="Shift scratchpad (de-identified)"
+                    initialValue={scratchpadText}
+                    onChange={(text) => {
+                      setScratchpadText(text);
+                      try {
+                        saveOnCallHandoverScratchpad(text);
+                      } catch {
+                        // Handled by explicit save status
+                      }
+                    }}
+                    onSave={(text) => {
+                      setScratchpadText(text);
+                      saveOnCallHandoverScratchpad(text);
+                    }}
+                  />
                 </>
               )}
             </>

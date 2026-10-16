@@ -89,7 +89,10 @@ export function parseCatatoniaWorksheet(markdown) {
       if (cleaned) currentQuoteLines.push(cleaned);
     } else if (currentQuoteLines.length > 0) {
       const trimmedLine = line.trim();
-      if (trimmedLine && !/^#{1,6}\s|^[-*+]\s|^\d+\.\s/.test(trimmedLine)) {
+      if (trimmedLine === "") {
+        quoteBlocks.push(currentQuoteLines.join(" "));
+        currentQuoteLines = [];
+      } else if (!/^#{1,6}\s|^[-*+]\s|^\d+\.\s/.test(trimmedLine)) {
         const cleaned = cleanField(trimmedLine);
         if (cleaned) currentQuoteLines.push(cleaned);
       } else {

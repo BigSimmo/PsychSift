@@ -19,6 +19,7 @@ import {
   cpdSavedSchema,
   displayCodeSchema,
   displayCreatedSchema,
+  emptyTeachingResultSchema,
   exportResultSchema,
   groupDeletedSchema,
   groupMembersSetSchema,
@@ -355,7 +356,7 @@ export async function teachingServiceMutation(
             const roleTable = dynamicClient.from("teaching_member_roles");
             if (roleTable && typeof roleTable.select === "function") {
               const roleQuery = roleTable
-                .select("role")
+                .select("role, granted_at")
                 .eq("service_id", serviceId)
                 .eq("user_id", actorId)
                 .eq("role", "organiser")
@@ -363,17 +364,47 @@ export async function teachingServiceMutation(
               const roleRes =
                 typeof roleQuery.maybeSingle === "function" ? await roleQuery.maybeSingle() : await roleQuery;
               if (roleRes?.error) throw teachingRpcError(roleRes.error);
-              const roleRow = roleRes?.data;
-              const activeOrganiser = Array.isArray(roleRow) ? roleRow[0] : roleRow;
+              const roleData = roleRes?.data;
+              const activeOrganiser = (Array.isArray(roleData) ? roleData[0] : roleData) as {
+                role?: string;
+                granted_at?: string | null;
+              } | null;
               if (!activeOrganiser) {
                 throw teachingRpcError({ message: "teaching_role_denied" });
+              }
+              const memberTable = dynamicClient.from("on_call_service_members");
+              if (memberTable && typeof memberTable.select === "function") {
+                const memberQuery = memberTable
+                  .select("joined_at")
+                  .eq("service_id", serviceId)
+                  .eq("user_id", actorId)
+                  .is("revoked_at", null);
+                const memberRes =
+                  typeof memberQuery.maybeSingle === "function" ? await memberQuery.maybeSingle() : await memberQuery;
+                if (memberRes?.error) throw teachingRpcError(memberRes.error);
+                const memberData = memberRes?.data;
+                const activeMember = (Array.isArray(memberData) ? memberData[0] : memberData) as {
+                  joined_at?: string | null;
+                } | null;
+                if (!activeMember) {
+                  throw teachingRpcError({ message: "teaching_access_denied" });
+                }
+                if (
+                  activeOrganiser.granted_at &&
+                  activeMember.joined_at &&
+                  Date.parse(activeOrganiser.granted_at) < Date.parse(activeMember.joined_at)
+                ) {
+                  throw teachingRpcError({ message: "teaching_role_denied" });
+                }
               }
             }
           }
         }
       }
-      await teachingCommand(client, actorId, serviceId, input.action, { linkHash: tokenHash });
-      return {};
+      return parseTeachingResult(
+        emptyTeachingResultSchema,
+        await teachingCommand(client, actorId, serviceId, input.action, { linkHash: tokenHash }),
+      );
     }
     case "series.save":
       return parseTeachingResult(

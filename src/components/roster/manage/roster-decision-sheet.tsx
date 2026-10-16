@@ -184,18 +184,34 @@ export function RosterDecisionSheet({
       return;
     }
     setReview(null);
-    const hasRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
+    const needsRuleAck = Boolean(fresh.rules && (!fresh.rules.checkable || fresh.rules.warnings.length > 0));
     const action = decisionAction(fresh.current, approve, {
-      acknowledgeRuleWarnings: approve && hasRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint,
+      acknowledgeRuleWarnings: approve && needsRuleAck && reviewedFingerprint === fresh.rules?.fingerprint,
     });
     const result = await postRosterAction(serviceId, action);
-    setBusy(false);
     onChanged();
     if (!result.ok) {
+      if (result.code === "roster_swap_rule_warning") {
+        const refreshed = await recheckDecision(serviceId, current);
+        setBusy(false);
+        if (refreshed.ok) {
+          const refreshedWords = decisionReviewWords(refreshed.rules);
+          setCurrent(refreshed.current);
+          setChecked(refreshed.checkedAt);
+          setReview({
+            fingerprint: refreshed.rules?.fingerprint ?? "",
+            words: refreshedWords.length ? refreshedWords : [result.message],
+          });
+          return;
+        }
+      } else {
+        setBusy(false);
+      }
       setError(result.message);
       setCurrent(null);
       return;
     }
+    setBusy(false);
     onClose();
   }
   return (

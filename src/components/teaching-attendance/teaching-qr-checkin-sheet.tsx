@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
+import { parseCheckinToken } from "@/lib/teaching/checkin-token";
 import { teachingErrorMessage, teachingPost, teachingServiceUrl } from "@/lib/teaching/client";
 
 /**
@@ -162,9 +163,42 @@ export function TeachingQrCheckinSheet({
       try {
         const codes = await detector.detect(videoRef.current);
         if (codes?.length) {
-          const raw = String(codes[0]?.rawValue ?? "");
-          const digits = raw.replace(/\D/g, "").slice(0, 6);
-          if (digits.length === 6) {
+          const raw = String(codes[0]?.rawValue ?? "").trim();
+          if (raw.includes("/teaching/c/")) {
+            let validCheckinUrl: URL | null = null;
+            try {
+              const parsedUrl = new URL(raw, window.location.origin);
+              const normalizedPath = parsedUrl.pathname.replace(/\/+$/, "");
+              const pathMatch = normalizedPath.match(/^\/teaching\/c\/([^/]+)$/);
+              let token = "";
+              if (pathMatch?.[1]) {
+                try {
+                  token = decodeURIComponent(pathMatch[1]);
+                } catch {
+                  token = "";
+                }
+              }
+              if (parsedUrl.origin === window.location.origin && token && parseCheckinToken(token)) {
+                validCheckinUrl = new URL(`/teaching/c/${encodeURIComponent(token)}`, window.location.origin);
+              }
+            } catch {
+              validCheckinUrl = null;
+            }
+            stopCamera();
+            if (!validCheckinUrl) {
+              setError("Scanned QR code is not a valid check-in link for this site.");
+              return;
+            }
+            if (!live) {
+              setError("The demo doesn't save check-ins.");
+              return;
+            }
+            window.location.assign(validCheckinUrl.href);
+            return;
+          }
+          const codeMatch = raw.match(/^(?:[A-Za-z]{2,8}-)?(\d{3}\s?\d{3})$/);
+          if (codeMatch?.[1]) {
+            const digits = codeMatch[1].replace(/\D/g, "");
             stopCamera();
             await submitCode(digits);
             return;
@@ -180,7 +214,7 @@ export function TeachingQrCheckinSheet({
       cancelled = true;
       cancelAnimationFrame(id);
     };
-  }, [scanning, hasBarcodeDetector, stopCamera, submitCode]);
+  }, [scanning, hasBarcodeDetector, live, stopCamera, submitCode]);
 
   return (
     <Sheet
@@ -242,7 +276,11 @@ export function TeachingQrCheckinSheet({
             className="field-control h-tap w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-raised)] px-3 text-center text-lg font-mono tracking-widest text-[color:var(--text)]"
             data-testid="teaching-typed-code-input"
           />
-          {error ? <p className="text-xs text-[color:var(--danger)]">{error}</p> : null}
+          {error ? (
+            <p role="alert" className="text-xs text-[color:var(--danger)]">
+              {error}
+            </p>
+          ) : null}
           <Button
             type="submit"
             variant="primary"

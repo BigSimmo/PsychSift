@@ -11,7 +11,7 @@
       "sections": ["26", "36", "40", "41", "42", "43", "44"],
       "contextualSections": ["25", "31", "37", "39", "45", "46", "547"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 26, s 36, s 40, s 41, s 42, s 43, s 44 with s 25, s 31, s 37, s 39, s 45, s 46, s 547 as context, and from the approved Form 1A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "eb950d3c48dba095ef61d7b0645709d90316ed475b5eb6602b670e62e6e07ad1"
     },
@@ -21,7 +21,7 @@
       "sections": ["41", "42"],
       "contextualSections": ["26", "36"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 41, s 42 with s 26, s 36 as context, and from the approved Form 1A attachment as listed on the Office of the Chief Psychiatrist register. Section basis: The attachment carries referral information given in confidence by someone other than the person. s 41(c) and (d) require the referral to set out the information the suspicion rests on and to distinguish its source; s 42(2) is the exception that keeps information supplied on condition of non-disclosure from the person.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "50c9d0d7b072e076da8830c54f6c35ff608f7a7ca338721701b9a2f96db79717"
     },
@@ -31,7 +31,7 @@
       "sections": ["45", "46"],
       "contextualSections": ["26", "41", "44"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 45, s 46 with s 26, s 41, s 44 as context, and from the approved Form 1B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "933af3a84c6ce4b698e314fed0553bccec0ca8c54b2797a791ce88c93df048a7"
     },
@@ -41,7 +41,7 @@
       "sections": ["34", "35"],
       "contextualSections": ["25", "36"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 34, s 35 with s 25, s 36 as context, and from the approved Form 2 as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-10-06T09:19:27.897Z",
       "reviewedContentSha256": "9f8dd86e02761c72372037d1e3b1046c70e4444e1177c3b2c870c2c1581bc098"
     },
@@ -51,7 +51,7 @@
       "sections": ["28", "62"],
       "contextualSections": ["26", "61"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 28, s 62 with s 26, s 61 as context, and from the approved Form 3A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "04f66d823c0f88123e5c2c8aeeaa3609f1c36515769abf6955083c6a6804a7c3"
     },
@@ -61,7 +61,7 @@
       "sections": ["28", "59", "62"],
       "contextualSections": ["26", "58", "61"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 28, s 59, s 62 with s 26, s 58, s 61 as context, and from the approved Form 3B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "11ddcb0d7750d907c29ee1e2452e78c886ca38846f08bf6eeff2e93d300c46c2"
     },
@@ -71,7 +71,7 @@
       "sections": ["55", "56"],
       "contextualSections": ["52", "53"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56 with s 52, s 53 as context, and from the approved Form 3C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:14:18.043Z",
       "reviewedContentSha256": "8bf94f175892125cf8bd077a2eab041930175c94f260b39bb82426c5954d847d"
     },
@@ -81,7 +81,7 @@
       "sections": ["61"],
       "contextualSections": ["62", "63", "69"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 61 with s 62, s 63, s 69 as context, and from the approved Form 3D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "302c105b548a4248246905d2bb839cec01295b0edbea5c09ee2d4688f27ffb58"
     },
@@ -91,7 +91,7 @@
       "sections": ["55", "56", "61", "72"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, and from the approved Form 3E as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "8418a51499269d6a8a0ee0b7816d6743941caff7b4dc028d24118f4216cafacb"
     },
@@ -101,7 +101,7 @@
       "sections": ["29", "63", "67", "92", "112", "129", "133", "148", "150", "154"],
       "contextualSections": ["152", "153"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 29, s 63, s 67, s 92, s 112, s 129, s 133, s 148, s 150, s 154 with s 152, s 153 as context, and from the approved Form 4A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "00913d4155717b2da2d3635cbfcbd8427af5dd66849f618fb0b81a286d2ee9b2"
     },
@@ -111,7 +111,7 @@
       "sections": ["152"],
       "contextualSections": ["148", "150"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 152 with s 148, s 150 as context, and from the approved Form 4B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "8db3f7db90766bb5f8faf1774501c19f985b4f97c9342f95528ac0c19e7545dc"
     },
@@ -121,7 +121,7 @@
       "sections": ["66", "91"],
       "contextualSections": ["67", "92"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 66, s 91 with s 67, s 92 as context, and from the approved Form 4C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "94d6a2b10922bb21b2b6ba92c55194bbae5a34baa81fd9045db6bd12412cfed6"
     },
@@ -131,7 +131,7 @@
       "sections": ["555"],
       "contextualSections": ["551"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 555 with s 551 as context, and from the approved Form 4D as listed on the Office of the Chief Psychiatrist register. Section basis: s 555 is the interstate transfer order: the person in charge of a hospital, with the Chief Psychiatrist's written approval, may order a State inpatient's transfer to an interstate mental health service.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "37c313bfe24c80353139d302e83e220fa88eef1ecb4e599f7318fccbeda054d4"
     },
@@ -141,7 +141,7 @@
       "sections": ["557"],
       "contextualSections": ["551"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 557 with s 551 as context, and from the approved Form 4E as listed on the Office of the Chief Psychiatrist register. Section basis: s 557 creates the transfer approval order, by which the person in charge of a hospital, with the Chief Psychiatrist's written consent, approves an interstate inpatient's transfer to that hospital.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "e48c4707ad2328cd5086fe9e59dfac23b13a63cf123413294ade27fdaecb53e0"
     },
@@ -151,7 +151,7 @@
       "sections": ["55", "56", "61", "72", "75", "76"],
       "contextualSections": ["25", "114", "115", "116", "117", "120", "123", "131"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 61, s 72, s 75, s 76 with s 25, s 114, s 115, s 116, s 117, s 120, s 123, s 131 as context, and from the approved Form 5A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "97a7ed35ee582dd764fee035ce0238afec82e3ffeb8046f69c45c279351b2e07"
     },
@@ -161,7 +161,7 @@
       "sections": ["121"],
       "contextualSections": ["118", "120"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 121 with s 118, s 120 as context, and from the approved Form 5B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "97cd3fb2701fc2817ccc9a9811e95909a424c4adafd111c83f777f1b13bf989e"
     },
@@ -171,7 +171,7 @@
       "sections": ["122"],
       "contextualSections": ["115", "135", "137"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 122 with s 115, s 135, s 137 as context, and from the approved Form 5C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "151a61fe17b7e05a6e5fb1556ce2500cdf5d461195222440372a097643d4960a"
     },
@@ -181,7 +181,7 @@
       "sections": ["118", "119"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 118, s 119, and from the approved Form 5D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "bc5bede61cca0ed4a0b75c570878793287d632ebc954ab411dae41580b657b81"
     },
@@ -191,7 +191,7 @@
       "sections": ["127"],
       "contextualSections": ["126"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 127 with s 126 as context, and from the approved Form 5E as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "055e581ec4e9d8507430ec598b91c297ecdefce9e1a7d5e805d4c371f46e184c"
     },
@@ -201,7 +201,7 @@
       "sections": ["128"],
       "contextualSections": ["127", "129"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 128 with s 127, s 129 as context, and from the approved Form 5F as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "6735c7bb7a9c5d66f147cf5292ed4a3deee218d76117073cc29260e42e5eb7d2"
     },
@@ -211,7 +211,7 @@
       "sections": ["55", "56", "72", "87"],
       "contextualSections": ["25", "89", "90", "120", "123", "131"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 55, s 56, s 72, s 87 with s 25, s 89, s 90, s 120, s 123, s 131 as context, and from the approved Form 6A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "7f6f49a4d962b452f6be7b7eda705e2b6d7c92724661bde57c9f41c647d247a2"
     },
@@ -221,7 +221,7 @@
       "sections": ["61", "87"],
       "contextualSections": ["65", "66", "68", "89", "90", "131"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 61, s 87 with s 65, s 66, s 68, s 89, s 90, s 131 as context, and from the approved Form 6B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "da8736e41d2cd3f2505e6d2e2dfb286dd8890741cfefc69a44db87a3b47d305e"
     },
@@ -231,7 +231,7 @@
       "sections": ["65"],
       "contextualSections": ["61", "87", "89"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 65 with s 61, s 87, s 89 as context, and from the approved Form 6B attachment as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "6b9188f60ed7f897f95b99caac3077e9737abd7452cd6ccb830c30f838cb2bf2"
     },
@@ -241,7 +241,7 @@
       "sections": ["89"],
       "contextualSections": ["87", "90"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 89 with s 87, s 90 as context, and from the approved Form 6C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "58960bdc41245e790f261272cefae6e481ddd02e9c4053b1be9bc4109e88fcf7"
     },
@@ -251,7 +251,7 @@
       "sections": ["68", "124"],
       "contextualSections": ["61", "66", "120", "123"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 68, s 124 with s 61, s 66, s 120, s 123 as context, and from the approved Form 6D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "9ba2496ef4ff40424107c705203cf1ff8a5abbf9121167ca0ff0a5567cedbb8c"
     },
@@ -261,7 +261,7 @@
       "sections": ["105"],
       "contextualSections": ["90"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 105 with s 90 as context, and from the approved Form 7A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "a47687a483103681ef546e760157d2701c0cd335c1bcb7c18de6651ad7b64215"
     },
@@ -271,7 +271,7 @@
       "sections": ["106"],
       "contextualSections": ["105", "110"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 106 with s 105, s 110 as context, and from the approved Form 7B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "29812cfccd9120636fb8a9a42dd932d6a5d56ab64a13d1a9dbf309fd4e14c066"
     },
@@ -281,7 +281,7 @@
       "sections": ["110"],
       "contextualSections": ["112"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 110 with s 112 as context, and from the approved Form 7C as listed on the Office of the Chief Psychiatrist register. Section basis: s 110 is the cancelling-leave power: where a psychiatrist reasonably believes it is inappropriate for an involuntary inpatient to remain away on leave, they may order the leave cancelled.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "142743958ac5534679359c0030e6e7aabaf7eefeb788f3a77b4630431da37c7c"
     },
@@ -291,7 +291,7 @@
       "sections": ["98", "101"],
       "contextualSections": ["97", "99", "100"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 98, s 101 with s 97, s 99, s 100 as context, and from the approved Form 7D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "f9871c48eab4364242bbee4ace894164e10dbf0b30974ee4b3c5424b4c6d61e6"
     },
@@ -301,7 +301,7 @@
       "sections": ["165"],
       "contextualSections": ["159", "162", "166"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 165 with s 159, s 162, s 166 as context, and from the approved Form 8A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "50ab2c19a7bda52c0c7429b194f0a59941ec44ec6d502f5cf7c033254a68babb"
     },
@@ -311,7 +311,7 @@
       "sections": ["167"],
       "contextualSections": ["162", "166"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 167 with s 162, s 166 as context, and from the approved Form 8B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "87e8bca7e93166a7825aca88d5757f6d16564fb86d4edbd09abb8aee3a93ed16"
     },
@@ -321,7 +321,7 @@
       "sections": ["204"],
       "contextualSections": ["202", "203"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 204 with s 202, s 203 as context, and from the approved Form 9A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "3cfb4a73e3b70cd624869ac6be78e6ed81cc32e70fb923ccd027dd0e7f736480"
     },
@@ -331,7 +331,7 @@
       "sections": ["242"],
       "contextualSections": ["240", "241"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 242 with s 240, s 241 as context, and from the approved Form 9B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "80cd346e45c3caeb84c45240bac4129850ff064a356c4af99c00e04783ac775d"
     },
@@ -341,7 +341,7 @@
       "sections": ["230"],
       "contextualSections": ["232"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 230 with s 232 as context, and from the approved Form 10A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "b387de0a23c1bc227d8da4913df2dcd4db255fccc656bf8e5faa295970eb29c3"
     },
@@ -351,7 +351,7 @@
       "sections": ["231"],
       "contextualSections": ["232"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 231 with s 232 as context, and from the approved Form 10B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:14:23.764Z",
       "reviewedContentSha256": "30dcd439366783c96abc3e827d0f8378c3f851b5f5044e65231313c97814e24f"
     },
@@ -361,7 +361,7 @@
       "sections": ["230", "231", "233"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 230, s 231, s 233, and from the approved Form 10C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "3969ac09dd042aa9fe4a8844ac6649a83703973af5471eb9935ee150ec3d51e1"
     },
@@ -371,7 +371,7 @@
       "sections": ["238"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 238, and from the approved Form 10D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "7c087fb285d1ef9054067ac4fc272249e147d44a19285141302cffc5be1a22f6"
     },
@@ -381,7 +381,7 @@
       "sections": ["234", "238"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 234, s 238, and from the approved Form 10E as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:14:28.175Z",
       "reviewedContentSha256": "b834adf3b6a3524672262d4b5dd3a387af38a57b6a23d753ed7f31811388e9c0"
     },
@@ -391,7 +391,7 @@
       "sections": ["234"],
       "contextualSections": ["238"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 234 with s 238 as context, and from the approved Form 10F as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "f0406453839048cffea1461ee51a6fefd29ffc3c7ff3c1edab79df4ceb5afdcc"
     },
@@ -401,7 +401,7 @@
       "sections": ["235", "237"],
       "contextualSections": ["239"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 235, s 237 with s 239 as context, and from the approved Form 10G as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "a063e3ea9ff7fad8580b1ce4d0cfda22a15926f069b3c510482be39f05e63d78"
     },
@@ -411,7 +411,7 @@
       "sections": ["238"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 238, and from the approved Form 10H as listed on the Office of the Chief Psychiatrist register. Section basis: s 238(5) requires a psychiatrist to review the use of bodily restraint once a person has been restrained for more than 6 hours, and to record the date, time and results.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "de8afc8023f9546fbcfbe243ee442657e08477b309c7f9d998172c663ba89987"
     },
@@ -421,7 +421,7 @@
       "sections": ["239"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 239, and from the approved Form 10I as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "36a060bf718be535db818f56d0d06c638bbf8dc16dc7bd43a7a3d0f9a1165c02"
     },
@@ -431,7 +431,7 @@
       "sections": ["214"],
       "contextualSections": ["216"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 214 with s 216 as context, and from the approved Form 11A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "2aaeb27a46594658cf1539ebe64680ece9f671a145f758652818ffcf321d3118"
     },
@@ -441,7 +441,7 @@
       "sections": ["215"],
       "contextualSections": ["216"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 215 with s 216 as context, and from the approved Form 11B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:14:35.024Z",
       "reviewedContentSha256": "f146cf71bd4da3b092bccd2bad5693212109178265e5a8d8e7c684552705e642"
     },
@@ -451,7 +451,7 @@
       "sections": ["214", "215", "217"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 214, s 215, s 217, and from the approved Form 11C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "2843a9033385d0d6252309dfa3859530d033e21e570334c32a84a5565af21900"
     },
@@ -461,7 +461,7 @@
       "sections": ["222"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 222, and from the approved Form 11D as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "147ea97578a2ecca6093a6b129979c9f05641470cceeb987f38f81b0da91569a"
     },
@@ -471,7 +471,7 @@
       "sections": ["218", "222"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 218, s 222, and from the approved Form 11E as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "ce7c4d6b81131d8b1f8ae19cf8bca7cd0807c3fcce35e27b3e2922f767f4b345"
     },
@@ -481,7 +481,7 @@
       "sections": ["219", "221"],
       "contextualSections": ["223"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 219, s 221 with s 223 as context, and from the approved Form 11F as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "f6370eb461a77a93c6cd901d297f2d2668e7cdaf92ab501befb36aaaaa5300ee"
     },
@@ -491,7 +491,7 @@
       "sections": ["223"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 223, and from the approved Form 11G as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "be090f33603afbc5d01f5faa938c472fb90950b83dd8dd44976eafd64ee8b0f1"
     },
@@ -501,7 +501,7 @@
       "sections": ["275"],
       "contextualSections": ["263", "266", "273", "274", "276", "277", "278"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 275 with s 263, s 266, s 273, s 274, s 276, s 277, s 278 as context, and from the approved Form 12A as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "6e15eb400780d6bb8be598dff13831b20ac929cfb1afee591666743de77c37db"
     },
@@ -511,7 +511,7 @@
       "sections": ["248", "249"],
       "contextualSections": [],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 248, s 249, and from the approved Form 12B as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "7aac0062daf89cd772500faf22167b9769c32f0d49472a75b51129a4d9a9595e"
     },
@@ -521,7 +521,7 @@
       "sections": ["262"],
       "contextualSections": ["261"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 262 with s 261 as context, and from the approved Form 12C as listed on the Office of the Chief Psychiatrist register.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "3b202a3de5fb63fbc4139e35b72a1d694fbcd96ab825fc9dc6e5b179049c02f7"
     },
@@ -531,7 +531,7 @@
       "sections": ["262"],
       "contextualSections": ["261"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 262 with s 261 as context, and from the approved Form 12C attachment as listed on the Office of the Chief Psychiatrist register. Section basis: s 262(7) and (8) require a psychiatrist to review a communication-restriction order before the end of each 24-hour period and to confirm, amend or revoke it, filing a record and the reasons.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "d0c16853019cb610af7ae63308a04e12fa62c6fca62917e75309eef7f5913ef2"
     },
@@ -541,7 +541,7 @@
       "sections": ["201"],
       "contextualSections": ["199"],
       "basis": "Drafted from Mental Health Act 2014 (WA) s 201 with s 199 as context, and from the approved Form 13 as listed on the Office of the Chief Psychiatrist register. Section basis: s 201 is the ECT statistics duty: the person in charge of a mental health service where ECT is performed must report monthly to the Chief Psychiatrist.",
-      "reviewedBy": "Josh Simpson",
+      "reviewedBy": "Psych Sift",
       "reviewedAt": "2026-09-26T17:20:51.637Z",
       "reviewedContentSha256": "c95b4fafb2144233036083cde68034e14e97f1413532d04dde5fa80eca40e209"
     }

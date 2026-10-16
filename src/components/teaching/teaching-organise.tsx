@@ -163,6 +163,26 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
   // R9: the change reaches the session's series' groups, and the occurrence read names its series.
   const changing = open?.kind === "change" ? open.session : null;
   const changingDetail = useSessionDetail(demoMode ? null : (changing?.occurrenceId ?? null), demoMode, now);
+  const attendanceExport = useTeachingResource<{ rows: ExportRow[] }>(
+    open?.kind === "attendance-gaps" && serviceId && !demoMode && today
+      ? teachingServiceUrl(serviceId, { action: "export.attendance", from: addDays(today, -83), to: today })
+      : null,
+  );
+  const checkInCountsByUserId = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (demoMode && demo) {
+      demo.read.members.forEach((m, index) => {
+        counts[m.userId] = index % 2 === 0 ? 2 : 0;
+      });
+      return counts;
+    }
+    for (const row of attendanceExport.data?.rows ?? []) {
+      if (row.userId) {
+        counts[row.userId] = (counts[row.userId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [attendanceExport.data, demo, demoMode]);
 
   let screen: OrganiserScreen | null = null;
   let body;
@@ -533,6 +553,9 @@ function TeachingOrganiseContent({ demoMode }: { demoMode: boolean }) {
         {open?.kind === "attendance-gaps" ? (
           <AttendanceGapsSheet
             organise={data}
+            checkInCountsByUserId={checkInCountsByUserId}
+            loadingCounts={!isDemo && (attendanceExport.status === "loading" || attendanceExport.status === "idle")}
+            demoMode={isDemo}
             onClose={() => {
               setOpen(null);
             }}

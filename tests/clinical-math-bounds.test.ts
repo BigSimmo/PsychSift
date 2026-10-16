@@ -394,13 +394,63 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       const user = userEvent.setup();
       render(h(ClinicalMathPanel, { defaultOpen: true }));
 
-      expect(screen.getByTestId("clinical-math-renal-results")).toBeInTheDocument();
+      // 1. Verify empty-state prompts with zero fabricated patient numbers or error banners
+      const renalResults = screen.getByTestId("clinical-math-renal-results");
+      expect(renalResults).toBeInTheDocument();
+      expect(renalResults).toHaveTextContent(
+        "Enter patient age, weight, and serum creatinine above to calculate renal clearance.",
+      );
+      expect(renalResults).not.toHaveTextContent("92.25");
+      expect(screen.queryByTestId("clinical-math-renal-errors")).toBeNull();
 
       await user.click(screen.getByTestId("clinical-math-tab-qtc"));
-      expect(screen.getByTestId("clinical-math-qtc-results")).toBeInTheDocument();
+      const qtcResults = screen.getByTestId("clinical-math-qtc-results");
+      expect(qtcResults).toBeInTheDocument();
+      expect(qtcResults).toHaveTextContent(
+        "Enter measured QT interval and heart rate above to calculate corrected QT (QTc).",
+      );
+      expect(qtcResults).not.toHaveTextContent("417 ms");
+      expect(screen.queryByTestId("clinical-math-qtc-errors")).toBeNull();
 
       await user.click(screen.getByTestId("clinical-math-tab-lithium"));
-      expect(screen.getByTestId("clinical-math-lithium-results")).toBeInTheDocument();
+      const lithiumResults = screen.getByTestId("clinical-math-lithium-results");
+      expect(lithiumResults).toBeInTheDocument();
+      expect(lithiumResults).toHaveTextContent(
+        "Enter current 12-hour trough level and patient age above to evaluate lithium status.",
+      );
+      expect(lithiumResults).not.toHaveTextContent("Level status: invalid");
+      expect(lithiumResults).not.toHaveTextContent("875 mg/day");
+      expect(screen.getByTestId("clinical-math-lithium-suggested-dose")).toHaveTextContent(
+        "Enter current daily dose and target level above to calculate proportional dose adjustment.",
+      );
+      expect(screen.queryByTestId("clinical-math-lithium-dose-errors")).toBeNull();
+
+      // 2. Populate Renal inputs and verify CKD-EPI partial state + full Cockcroft-Gault (92.25 mL/min)
+      await user.click(screen.getByTestId("clinical-math-tab-renal"));
+      fireEvent.change(screen.getByTestId("clinical-math-age"), { target: { value: "45" } });
+      fireEvent.change(screen.getByTestId("clinical-math-creatinine"), { target: { value: "90" } });
+      expect(screen.getByTestId("clinical-math-renal-results")).toHaveTextContent("Enter weight to calculate CrCl");
+      expect(screen.queryByTestId("clinical-math-renal-errors")).toBeNull();
+
+      fireEvent.change(screen.getByTestId("clinical-math-weight"), { target: { value: "75" } });
+      expect(screen.getByTestId("clinical-math-renal-results")).toHaveTextContent("97.38 mL/min");
+
+      // 3. Populate QTc inputs and verify Fridericia QTc (417 ms)
+      await user.click(screen.getByTestId("clinical-math-tab-qtc"));
+      fireEvent.change(screen.getByTestId("clinical-math-qt"), { target: { value: "400" } });
+      fireEvent.change(screen.getByTestId("clinical-math-hr"), { target: { value: "68" } });
+      expect(screen.getByTestId("clinical-math-qtc-results")).toHaveTextContent("417 ms");
+
+      // 4. Populate Lithium inputs and verify therapeutic status and proportional dose (875 mg/day)
+      await user.click(screen.getByTestId("clinical-math-tab-lithium"));
+      fireEvent.change(screen.getByTestId("clinical-math-lithium-level"), { target: { value: "0.7" } });
+      expect(screen.getByTestId("clinical-math-lithium-results")).toHaveTextContent(
+        "Level status: therapeutic (target 0.6–0.8 mmol/L)",
+      );
+      expect(screen.queryByTestId("clinical-math-lithium-dose-errors")).toBeNull();
+
+      fireEvent.change(screen.getByTestId("clinical-math-lithium-dose"), { target: { value: "750" } });
+      fireEvent.change(screen.getByTestId("clinical-math-lithium-target"), { target: { value: "0.8" } });
       expect(screen.getByTestId("clinical-math-lithium-suggested-dose")).toHaveTextContent("875 mg/day");
     });
   });
