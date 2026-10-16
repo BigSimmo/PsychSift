@@ -19,13 +19,16 @@ const KNOWN_UNCALLED = new Set([
   "create_uploaded_document_with_ingestion_job",
   "document_label_metadata",
   "document_summary_text",
+  "get_visual_evidence_cards",
   "invoke_indexing_v3_agent",
   "match_document_embedding_fields_text",
   "on_call_shifts_replace",
   "prepare_completed_admin_text_reference",
   "read_completed_admin_text_source_layout",
   "record_public_source_activation",
+  "repair_enrichment_quality_batch",
   "roster_rotation_can_manage",
+  "run_all_visual_eval_cases",
   "set_document_corpus_access_mode",
   "stamp_document_deep_memory_version",
   "teaching_platform_command",
@@ -55,10 +58,21 @@ function expectedFunctionNames(): string[] {
   return [...new Set(names)].sort();
 }
 
+// A name that only appears in a comment is not a caller. Block comments, `//` comments that start a
+// line or follow whitespace (so URLs inside strings survive), and `#` or `--` line comments in Python
+// and SQL files are dropped before collecting words.
+function withoutCodeComments(source: string, file: string): string {
+  const extension = path.extname(file);
+  if (extension === ".py") return source.replace(/(^|\s)#.*$/gm, "$1");
+  if (extension === ".sql") return source.replace(/--.*$/gm, "");
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/.*$/gm, "$1");
+}
+
 function codeWords(): Set<string> {
   const words = new Set<string>();
   for (const file of CODE_ROOTS.flatMap((dir) => walk(dir))) {
-    for (const word of readFileSync(path.join(root, file), "utf8").match(/[A-Za-z0-9_]+/g) ?? []) words.add(word);
+    const source = withoutCodeComments(readFileSync(path.join(root, file), "utf8"), file);
+    for (const word of source.match(/[A-Za-z0-9_]+/g) ?? []) words.add(word);
   }
   return words;
 }
