@@ -2,8 +2,8 @@
   "generated_at": "2026-10-16T00:03:20.700Z",
   "generator": "scripts/generate-drift-manifest.ts",
   "postgres_image": "supabase/postgres:17.6.1.127@sha256:be60aee15997daca475b710b734bc6bfe52cd544dcd7e9fd2ff58210b6747d83",
-  "schema_sha256": "0c47cf5d2f13bdaa9a01c53d4f4816e2f41c609849853ea0b4b694571651d874",
-  "replay_seconds": 28,
+  "schema_sha256": "dfcc97045228f29090e9ea8f53315d60e76bcc5caa4c388f3526829f83a25046",
+  "replay_seconds": 34,
   "snapshot": {
     "views": [
       {
@@ -23767,6 +23767,11 @@
       {
         "def": "PRIMARY KEY (service_id, post_key)",
         "name": "roster_open_post_keys_pkey",
+        "table": "roster_open_post_keys"
+      },
+      {
+        "def": "FOREIGN KEY (posted_by) REFERENCES auth.users(id) ON DELETE SET NULL",
+        "name": "roster_open_post_keys_posted_by_fkey",
         "table": "roster_open_post_keys"
       },
       {
