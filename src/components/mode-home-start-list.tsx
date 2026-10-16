@@ -212,7 +212,10 @@ function ModeHomeStartListBody({ modeId, config }: { modeId: StartListMode; conf
       {config.favouriteType ? (
         <FavouritesGroupWhenAccount modeId={modeId} favouriteType={config.favouriteType} />
       ) : null}
-      {emptyHome && config.browse.length > 1 ? (
+      {/* An empty home always gets the Browse card list, even with one link:
+          Services and Documents have a single catalogue link, and as a bare
+          text link it read as unlike every other Clinical home. */}
+      {emptyHome && config.browse.length > 0 ? (
         <ModeHomeStartGroup id={`${modeId}-home-browse`} title="Browse" testId="mode-home-browse-list">
           {config.browse.slice(0, EMPTY_HOME_BROWSE_SHOWN).map((link) => (
             <ModeHomeStartRow key={link.href} href={link.href} icon={LayoutList} title={link.label} />

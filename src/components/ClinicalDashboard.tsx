@@ -10,20 +10,25 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
 } from "react";
 import { useSharedHomeDocumentTitle } from "@/components/clinical-dashboard/use-shared-home-document-title";
+import { useDashboardBulkActions } from "@/components/clinical-dashboard/use-dashboard-bulk-actions";
 import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use-dashboard-document-actions";
+import {
+  useDashboardLibraryRefresh,
+  useDashboardLibraryState,
+} from "@/components/clinical-dashboard/use-dashboard-library-data";
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
 import { extractSafetyFindings } from "@/lib/clinical-safety";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
 import { scrollSurface } from "@/components/clinical-dashboard/scroll-surface";
 import { incrementalEvidencePreviewRenderingEnabled, isLocalNoAuthMode, resolveClientDemoMode } from "@/lib/client-env";
 import { isAdministratorUser } from "@/lib/authorization";
-import { readLocalProjectIdentity, unsafeLocalProjectMessage } from "@/lib/local-project-identity";
 import { isDeployedClinicalKb } from "@/lib/deployed-app";
 import { appBackdrop, cn, EmptyState, floatingControl, InlineNotice, primaryControl } from "@/components/ui-primitives";
 import { useAuthSession } from "@/lib/supabase/client";
@@ -59,7 +64,6 @@ import {
   hasReadyRequiredPublicSearchConfig,
   hasReadyPublicSearchSetup,
   type SetupCheck,
-  type IngestionQualityReviewItem,
 } from "@/components/clinical-dashboard/document-manager-contracts";
 import { GuideTrigger } from "@/components/clinical-dashboard/dashboard-shell";
 import { loadGuideDialog } from "@/components/clinical-dashboard/lazy-guide-dialog";
@@ -97,19 +101,13 @@ import { SearchCommandProvider } from "@/components/clinical-dashboard/search-co
 import {
   resultUsable,
   compactScopeFilters,
-  hasActiveIndexingWork,
   hasNonProductionSupabaseApiKeyFallback,
   isAbortError,
   releaseOwnedAbortController,
   replaceOwnedAbortController,
-  mergeDocumentRefresh,
   normalizeNavigationHash,
-  setupNeedsSlowRecheck,
-  setupRecheckPollMs,
-  shorterPollDelay,
 } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
 import { answerRecovery, errorCopy } from "@/lib/ui-copy";
-import { useDashboardBulkActions } from "@/components/clinical-dashboard/dashboard-bulk-actions";
 import { useDashboardAnswerFeedback } from "@/components/clinical-dashboard/dashboard-answer-feedback";
 import { buildTagSearchScopeFilters } from "@/components/clinical-dashboard/dashboard-tag-search";
 import {
@@ -120,23 +118,11 @@ import { useDashboardRecentQueries } from "@/components/clinical-dashboard/dashb
 import { DashboardSidebarDialogs } from "@/components/clinical-dashboard/dashboard-sidebar-dialogs";
 import { useDashboardDrawerOpeners } from "@/components/clinical-dashboard/dashboard-drawer-openers";
 import { useDashboardClipboard } from "@/components/clinical-dashboard/dashboard-clipboard";
+import { type DocumentDrawerStatusFilter } from "@/components/clinical-dashboard/dashboard-contracts";
 import {
-  type DocumentDrawerStatusFilter,
-  type DocumentPagination,
-} from "@/components/clinical-dashboard/dashboard-contracts";
-import {
-  activeIndexingPollFallbackMs,
   clinicalQueryModeOptions,
-  documentPageSize,
-  indexingWorkDetailsPollMs,
   stagedDashboardExtraction,
-  type BatchesPayload,
-  type DocumentsPayload,
-  type IngestionQualityPayload,
-  type JobsPayload,
-  type RefreshOptions,
   type SearchResultModePayload,
-  type SetupStatusPayload,
   type SourceLibrarySearchMode,
 } from "@/components/clinical-dashboard/clinical-dashboard-payloads";
 import { type IndexingMonitorFilter, type LibraryHealthTarget } from "@/components/clinical-dashboard/document-admin";
@@ -231,11 +217,8 @@ import {
 
 import { type SmartDocumentTag, type SmartDocumentTagFacet } from "@/lib/document-tags";
 import type {
-  ClinicalDocument,
   DocumentMatch,
   EvidenceRelevance,
-  ImportBatch,
-  IngestionJob,
   SearchResult,
   SearchScopeSummary,
   ClinicalQueryMode,
@@ -245,7 +228,7 @@ import { DashboardDesktopResultComposerSlot } from "@/components/clinical-dashbo
 import { useDifferentialsCompareHasSelection } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId, patientDetailsAddonSlotId } from "@/lib/mode-home-composer";
 import { toolCatalogRecords } from "@/lib/tools-catalog";
-import { createQuoteFollowUp, type AnswerViewMode, shouldPollForUpdates } from "@/lib/ward-output";
+import { createQuoteFollowUp, type AnswerViewMode } from "@/lib/ward-output";
 import {
   type AnswerTurn,
   maxVisiblePriorTurns,
@@ -285,31 +268,27 @@ function ClinicalDashboardContent({
   const scrollFrameRef = useRef<number | null>(null);
   const navSyncLockRef = useRef<number | null>(null);
   const autoRunSearchSignatureRef = useRef<string | null>(null);
-  const refreshInFlightRef = useRef<{
-    epoch: number;
-    dataScope: number;
-    promise: Promise<void>;
-  } | null>(null);
-  const dashboardDataLoadedRef = useRef(false);
-  const administrationDataLoadedRef = useRef(false);
-  const nextWorkStatePollRef = useRef(0);
   const urlSearchBootstrappedRef = useRef(false);
   const urlDocumentSearchBootstrappedRef = useRef(false);
   const lastSyncedSearchParamsRef = useRef(searchParams.toString());
   const modeChangeFromUiRef = useRef(false);
-  const [documents, setDocuments] = useState<ClinicalDocument[]>([]);
-  const documentsRef = useRef(documents);
-  const [documentsPagination, setDocumentsPagination] = useState<DocumentPagination | null>(null);
+  const library = useDashboardLibraryState();
+  const {
+    documents,
+    setDocuments,
+    documentsPagination,
+    dashboardDataLoading,
+    loadingMoreDocuments,
+    jobs,
+    batches,
+    qualityItems,
+    setIndexingActive,
+    setUserStartedIngestion,
+    resetForSignOut: resetLibraryForSignOut,
+  } = library;
   const indexedDocumentTotal = documentsPagination?.total ?? documents.length;
   // Recent and library views list PDFs only; the admin view still lists every file.
   const libraryPdfDocuments = useMemo(() => documents.filter(isPdfDocument), [documents]);
-  const [dashboardDataLoading, setDashboardDataLoading] = useState(false);
-  const [loadingMoreDocuments, setLoadingMoreDocuments] = useState(false);
-  const [jobs, setJobs] = useState<IngestionJob[]>([]);
-  const [batches, setBatches] = useState<ImportBatch[]>([]);
-  const [qualityItems, setQualityItems] = useState<IngestionQualityReviewItem[]>([]);
-  const jobsRef = useRef(jobs);
-  const batchesRef = useRef(batches);
   const answerThreadBootstrappedRef = useRef(false);
   const activeAnswerThreadOwnerIdRef = useRef<string | null>(null);
   const [answerThreadBootstrapped, setAnswerThreadBootstrapped] = useState(false);
@@ -436,20 +415,6 @@ function ClinicalDashboardContent({
   // differentials results view can tell live-edited catalogue results apart
   // from evidence that belongs to a previously submitted search.
   const [differentialEvidenceQuery, setDifferentialEvidenceQuery] = useState<string | null>(null);
-  const clearModeResultState = useCallback(() => {
-    resetAnswerThread();
-    setAnswer(null);
-    setSources([]);
-    setDocumentMatches([]);
-    setSearchRelevance(null);
-    setSearchFacets(null);
-    setSearchScope(null);
-    setSourceGovernanceWarnings([]);
-    setError(null);
-    setAnswerProgress(null);
-    setAnswerEvidencePreview(null);
-    setDifferentialEvidenceQuery(null);
-  }, [resetAnswerThread]);
   const [scopeFilters, setScopeFilters] = useState<SearchScopeFilters>(initialSearchNavigationContext.scopeFilters);
   const [searchScope, setSearchScope] = useState<SearchScopeSummary | null>(null);
   const [sourceGovernanceWarnings, setSourceGovernanceWarnings] = useState<SourceGovernanceWarning[]>([]);
@@ -464,6 +429,33 @@ function ClinicalDashboardContent({
   const [answerEvidencePreview, setAnswerEvidencePreview] = useState<VerifiedEvidencePreviewUnit | null>(null);
   const [answerLifecycle, dispatchAnswerLifecycle] = useReducer(answerLifecycleReducer, initialAnswerLifecycle);
   const [error, setError] = useState<string | null>(null);
+  const clearModeResultState = useCallback(() => {
+    resetAnswerThread();
+    setAnswer(null);
+    setSources([]);
+    setDocumentMatches([]);
+    setSearchRelevance(null);
+    setSearchFacets(null);
+    setSearchScope(null);
+    setSourceGovernanceWarnings([]);
+    setError(null);
+    setAnswerProgress(null);
+    setAnswerEvidencePreview(null);
+    setDifferentialEvidenceQuery(null);
+  }, [
+    resetAnswerThread,
+    setAnswer,
+    setSources,
+    setDocumentMatches,
+    setSearchRelevance,
+    setSearchFacets,
+    setSearchScope,
+    setSourceGovernanceWarnings,
+    setError,
+    setAnswerProgress,
+    setAnswerEvidencePreview,
+    setDifferentialEvidenceQuery,
+  ]);
   // Companion state for `error`, used to pick the right recovery UI (retry vs.
   // a calm no-results panel) and to re-run the exact query that failed. Only read
   // while `error` is truthy, and set alongside every `setError(<message>)` so a
@@ -513,9 +505,6 @@ function ClinicalDashboardContent({
     [deferredQuery, searchMode],
   );
   const [indexingActionId, setIndexingActionId] = useState<string | null>(null);
-  const [indexingActive, setIndexingActive] = useState(false);
-  const [userStartedIngestion, setUserStartedIngestion] = useState(false);
-  const [nextRefreshDelayMs, setNextRefreshDelayMs] = useState<number | null>(null);
   const auth = useAuthSession();
   const { clinicalAskSession, clinicalAskMode, runModeClinicalAsk } = useClinicalAskDashboardChrome({
     accountId: auth.session?.user.id,
@@ -582,6 +571,18 @@ function ClinicalDashboardContent({
       cancelled = true;
     };
   }, [auth.session?.user.id, authStatus, routedSearchContext.scopeRef]);
+  // Audit M10: monotonically increasing token identifying the latest search.
+  // Concurrent searches (URL-bootstrap auto-search racing a user submit) can
+  // resolve out of order; only the latest request may commit answer/sources/
+  // error/loading state, or a stale response would display one query's answer
+  // under another query's composer text.
+  const searchRequestSeqRef = useRef(0);
+  // Aborts the in-flight answer/library search when the user presses Stop, a
+  // newer search supersedes the prior one, or the component unmounts.
+  const searchAbortRef = useRef<AbortController | null>(null);
+  // Distinguishes a timeout-driven abort from an explicit user/supersede abort.
+  const answerTimedOutRef = useRef(false);
+
   const prevAuthStatusRef = useRef(authStatus);
   useEffect(() => {
     const previous = prevAuthStatusRef.current;
@@ -590,18 +591,10 @@ function ClinicalDashboardContent({
       searchRequestSeqRef.current += 1;
       searchAbortRef.current?.abort();
       searchAbortRef.current = null;
-      refreshInFlightRef.current = null;
+      resetLibraryForSignOut();
       resetAnswerThread();
       setAnswer(null);
       setSources([]);
-      setDocuments([]);
-      setDocumentsPagination(null);
-      setJobs([]);
-      setBatches([]);
-      setQualityItems([]);
-      dashboardDataLoadedRef.current = false;
-      administrationDataLoadedRef.current = false;
-      setUserStartedIngestion(false);
       setSelectedDocumentIds([]);
       setDocumentMatches([]);
       setSearchScope(null);
@@ -613,7 +606,7 @@ function ClinicalDashboardContent({
       dispatchAnswerLifecycle({ type: "reset" });
       latestAnswerTurnRef.current = null;
     }
-  }, [authStatus, resetAnswerThread]);
+  }, [authStatus, resetAnswerThread, resetLibraryForSignOut]);
   const supabaseEnvStatus = setupChecks.find((check) => check.id === "env")?.status;
   const browserAuthUnavailableDemoFallback = !auth.isConfigured && supabaseEnvStatus !== "ready";
   const localNoAuthMode = isLocalNoAuthMode();
@@ -756,7 +749,14 @@ function ClinicalDashboardContent({
         document.getElementById(targetId)?.scrollIntoView({ behavior: resolveScrollBehavior(), block: "start" });
       }, 0);
     },
-    [canUseAdministrativeApis, closeDashboardTransientSurfaces, settingsState],
+    [
+      canUseAdministrativeApis,
+      closeDashboardTransientSurfaces,
+      settingsState,
+      setActionNotice,
+      setDocumentDrawerStatusFilter,
+      setIndexingMonitorFilter,
+    ],
   );
 
   // The dashboard renders directly on "/" without the standalone search shell,
@@ -781,296 +781,41 @@ function ClinicalDashboardContent({
     enabled: answerThreadBootstrapped && searchMode === "answer",
     answer,
     priorTurns: priorAnswerTurns,
-    latestTurn: latestAnswerTurnRef.current,
+    latestTurnRef: latestAnswerTurnRef,
     collapsedTurnIds,
     showEarlierTurns,
-    metadata: latestAnswerSnapshotMetadataRef.current,
+    metadataRef: latestAnswerSnapshotMetadataRef,
   });
 
-  useEffect(() => {
-    documentsRef.current = documents;
-  }, [documents]);
+  const dashboardDataSurfaceVisible =
+    settingsState.documentScopeOpen || settingsState.documentsDrawerOpen || settingsState.indexingAdminDrawerOpen;
+  const administrationSurfaceVisible =
+    canUseAdministrativeApis &&
+    (settingsState.indexingAdminDrawerOpen ||
+      (settingsState.documentsDrawerOpen && settingsState.documentsDrawerMode === "admin"));
 
-  useEffect(() => {
-    jobsRef.current = jobs;
-  }, [jobs]);
-
-  useEffect(() => {
-    batchesRef.current = batches;
-  }, [batches]);
-
-  const refresh: (options?: RefreshOptions) => Promise<void> = useCallback(
-    async (options: RefreshOptions = {}) => {
-      const includeDashboardData = options.includeDashboardData ?? true;
-      const includeAdministrationData = options.includeAdministrationData ?? includeDashboardData;
-      const requestedDataScope = (includeDashboardData ? 1 : 0) | (includeAdministrationData ? 2 : 0);
-      while (refreshInFlightRef.current?.epoch === authEpoch) {
-        const activeRefresh = refreshInFlightRef.current;
-        const needsFollowUp = (requestedDataScope & ~activeRefresh.dataScope) !== 0;
-        await activeRefresh.promise;
-        // A setup-only refresh cannot satisfy a data request that arrived
-        // while it was in flight. Run one follow-up request; same-scope calls
-        // stay coalesced on the original promise.
-        if (!needsFollowUp) return;
-        // The promise is complete, so release its coalescing slot now. The
-        // owning call still releases its auth request in its own finally.
-        if (refreshInFlightRef.current === activeRefresh) refreshInFlightRef.current = null;
-      }
-
-      const controller = new AbortController();
-      const authRequest = registerAuthRequest(controller);
-      const canCommit = () => isAuthEpochCurrent(authRequest.epoch) && !controller.signal.aborted;
-
-      const promise = (async () => {
-        const trackDashboardLoading = requestedDataScope !== 0;
-        await Promise.resolve();
-        if (trackDashboardLoading) setDashboardDataLoading(true);
-
-        const includeSetup = options.includeSetup ?? true;
-        const includeDocumentMeta = options.includeDocumentMeta ?? true;
-        let nextDemoMode = clientDemoMode;
-        let routeIndexingActive = false;
-        let routePollDelayMs: number | null = null;
-
-        setApiUnavailable(false);
-
-        const localIdentity = await readLocalProjectIdentity().catch(() => null);
-        if (!canCommit()) return;
-        if (!localIdentity?.localServer?.safeLocalOrigin) {
-          setLocalProjectReady(false);
-          setApiUnavailable(true);
-          setSetupWarning(unsafeLocalProjectMessage(localIdentity));
-          setDocuments([]);
-          setDocumentsPagination(null);
-          setJobs([]);
-          setBatches([]);
-          setQualityItems([]);
-          setIndexingActive(false);
-          setNextRefreshDelayMs(null);
-          return;
-        }
-        setLocalProjectReady(true);
-
-        if (includeSetup) {
-          const setupResponse = await fetch("/api/setup-status", {
-            cache: "no-store",
-            headers: authorizationHeader,
-            signal: controller.signal,
-          }).catch(() => null);
-          if (!canCommit()) return;
-
-          if (!setupResponse) {
-            if (isDeployedClinicalKb()) {
-              setSetupWarning("Setup status could not be loaded. You can still try search.");
-            } else {
-              setApiUnavailable(true);
-              setSetupWarning("The local API is unavailable.");
-              return;
-            }
-          } else if (setupResponse.ok) {
-            const payload = (await setupResponse.json()) as SetupStatusPayload;
-            setSetupChecks(payload.checks ?? fallbackSetupChecks);
-            nextDemoMode = Boolean(payload.demoMode);
-            routeIndexingActive = Boolean(payload.indexingActive);
-            routePollDelayMs = shorterPollDelay(routePollDelayMs, payload.pollAfterMs);
-            if (nextDemoMode) setDemoMode(true);
-          } else if (isDeployedClinicalKb()) {
-            setSetupWarning("Setup status could not be loaded. You can still try search.");
-          } else {
-            setApiUnavailable(true);
-            return;
-          }
-        }
-
-        if (!nextDemoMode && !canUsePrivateApis) {
-          setDocuments([]);
-          setDocumentsPagination(null);
-          setJobs([]);
-          setBatches([]);
-          setQualityItems([]);
-          setIndexingActive(routeIndexingActive);
-          setNextRefreshDelayMs(routePollDelayMs);
-          return;
-        }
-
-        if (requestedDataScope === 0) {
-          setIndexingActive(routeIndexingActive);
-          setNextRefreshDelayMs(routePollDelayMs);
-          return;
-        }
-
-        const protectedHeaders = nextDemoMode ? undefined : authorizationHeader;
-        const documentParams = new URLSearchParams({ limit: String(documentPageSize) });
-        if (!includeDocumentMeta) {
-          documentParams.set("includeMeta", "false");
-        }
-
-        const now = Date.now();
-        const shouldRefreshWorkState =
-          includeAdministrationData && (!administrationDataLoadedRef.current || now >= nextWorkStatePollRef.current);
-        if (shouldRefreshWorkState) nextWorkStatePollRef.current = now + indexingWorkDetailsPollMs;
-
-        const [documentsResponse, jobsResponse, batchesResponse, qualityResponse] = await Promise.all([
-          includeDashboardData
-            ? fetch(`/api/documents?${documentParams.toString()}`, {
-                headers: protectedHeaders,
-                signal: controller.signal,
-              })
-            : Promise.resolve(null as Response | null),
-          shouldRefreshWorkState
-            ? fetch("/api/ingestion/jobs", { headers: protectedHeaders, signal: controller.signal })
-            : Promise.resolve(null as Response | null),
-          shouldRefreshWorkState
-            ? fetch("/api/ingestion/batches", { headers: protectedHeaders, signal: controller.signal })
-            : Promise.resolve(null as Response | null),
-          shouldRefreshWorkState
-            ? fetch("/api/ingestion/quality", { headers: protectedHeaders, signal: controller.signal })
-            : Promise.resolve(null as Response | null),
-        ]);
-        if (!canCommit()) return;
-        if (
-          (documentsResponse !== null && documentsResponse.status === 401) ||
-          (jobsResponse !== null && jobsResponse.status === 401) ||
-          (batchesResponse !== null && batchesResponse.status === 401) ||
-          (qualityResponse !== null && qualityResponse.status === 401)
-        ) {
-          markSessionExpired();
-          setDocuments([]);
-          setDocumentsPagination(null);
-          setJobs([]);
-          setBatches([]);
-          setQualityItems([]);
-          setIndexingActive(false);
-          setNextRefreshDelayMs(null);
-          return;
-        }
-
-        let nextDocuments: ClinicalDocument[] = includeDashboardData ? [] : documentsRef.current;
-        let nextJobs: IngestionJob[] = shouldRefreshWorkState ? [] : jobsRef.current;
-        let nextBatches: ImportBatch[] = shouldRefreshWorkState ? [] : batchesRef.current;
-
-        if (documentsResponse?.ok) {
-          const payload = (await documentsResponse.json()) as DocumentsPayload;
-          nextDocuments = payload.documents ?? [];
-          setDocuments((current) =>
-            includeDocumentMeta ? nextDocuments : mergeDocumentRefresh(current, nextDocuments),
-          );
-          setDocumentsPagination(payload.pagination ?? null);
-          dashboardDataLoadedRef.current = true;
-          routeIndexingActive ||= Boolean(payload.indexing?.active);
-          routePollDelayMs = shorterPollDelay(routePollDelayMs, payload.indexing?.pollAfterMs);
-          if (payload.demoMode) setDemoMode(true);
-          if (payload.setupRequired) setSetupWarning(payload.error ?? null);
-        } else if (includeDashboardData) {
-          setApiUnavailable(true);
-        }
-
-        if (shouldRefreshWorkState && jobsResponse && jobsResponse.ok) {
-          const payload = (await jobsResponse.json()) as JobsPayload;
-          nextJobs = payload.jobs ?? [];
-          setJobs(nextJobs);
-          routeIndexingActive ||= Boolean(payload.hasActiveJobs);
-          routePollDelayMs = shorterPollDelay(routePollDelayMs, payload.pollAfterMs);
-          if (payload.demoMode) setDemoMode(true);
-          if (payload.setupRequired) setSetupWarning(payload.error ?? null);
-        } else if (shouldRefreshWorkState) {
-          setApiUnavailable(true);
-        }
-
-        if (shouldRefreshWorkState && batchesResponse && batchesResponse.ok) {
-          const payload = (await batchesResponse.json()) as BatchesPayload;
-          nextBatches = payload.batches ?? [];
-          setBatches(nextBatches);
-          routeIndexingActive ||= Boolean(payload.hasActiveBatches);
-          routePollDelayMs = shorterPollDelay(routePollDelayMs, payload.pollAfterMs);
-          if (payload.demoMode) setDemoMode(true);
-        } else if (shouldRefreshWorkState) {
-          setApiUnavailable(true);
-        }
-
-        if (shouldRefreshWorkState && qualityResponse && qualityResponse.ok) {
-          const payload = (await qualityResponse.json()) as IngestionQualityPayload;
-          setQualityItems(payload.items ?? []);
-          if (payload.demoMode) setDemoMode(true);
-        } else if (shouldRefreshWorkState) {
-          setApiUnavailable(true);
-        }
-
-        if (jobsResponse?.ok && batchesResponse?.ok && qualityResponse?.ok) {
-          administrationDataLoadedRef.current = true;
-        }
-
-        const activeWork = hasActiveIndexingWork(nextDocuments, nextJobs, nextBatches, routeIndexingActive);
-        setIndexingActive(activeWork);
-        setNextRefreshDelayMs(routePollDelayMs ?? (activeWork ? activeIndexingPollFallbackMs : null));
-      })();
-
-      refreshInFlightRef.current = { epoch: authRequest.epoch, dataScope: requestedDataScope, promise };
-      try {
-        return await promise;
-      } finally {
-        authRequest.release();
-        if (requestedDataScope !== 0 && canCommit()) setDashboardDataLoading(false);
-        if (refreshInFlightRef.current?.promise === promise) {
-          refreshInFlightRef.current = null;
-        }
-      }
-    },
-    [
-      authEpoch,
-      authorizationHeader,
-      canUsePrivateApis,
-      clientDemoMode,
-      isAuthEpochCurrent,
-      markSessionExpired,
-      registerAuthRequest,
-    ],
-  );
-
-  const loadMoreDocuments = useCallback(async () => {
-    if (!documentsPagination?.hasMore || loadingMoreDocuments || !canUsePrivateApis) {
-      return;
-    }
-
-    setLoadingMoreDocuments(true);
-    try {
-      const protectedHeaders = clientDemoMode ? undefined : authorizationHeader;
-      const { response, requestEpoch } = await authBoundFetch(
-        `/api/documents?limit=${documentPageSize}&offset=${documentsPagination.nextOffset}`,
-        { headers: protectedHeaders },
-      );
-      if (response.status === 401) {
-        markSessionExpired();
-        return;
-      }
-      if (!response.ok) {
-        if (!isAuthEpochCurrent(requestEpoch)) return;
-        setApiUnavailable(true);
-        return;
-      }
-      const payload = await response.json();
-      if (!isAuthEpochCurrent(requestEpoch)) return;
-      const nextDocuments = (payload.documents ?? []) as ClinicalDocument[];
-      setDocuments((current) => {
-        const seen = new Set(current.map((document) => document.id));
-        return [...current, ...nextDocuments.filter((document) => !seen.has(document.id))];
-      });
-      setDocumentsPagination(payload.pagination ?? null);
-    } catch (error) {
-      if (!isAbortError(error)) setApiUnavailable(true);
-    } finally {
-      setLoadingMoreDocuments(false);
-    }
-  }, [
+  const { refresh, loadMoreDocuments } = useDashboardLibraryRefresh({
+    library,
+    authEpoch,
+    ownerId: auth.session?.user.id ?? null,
+    authStatus,
     authorizationHeader,
     authBoundFetch,
+    registerAuthRequest,
+    isAuthEpochCurrent,
+    markSessionExpired,
     canUsePrivateApis,
     clientDemoMode,
-    documentsPagination,
-    isAuthEpochCurrent,
-    loadingMoreDocuments,
-    markSessionExpired,
-  ]);
+    demoMode,
+    setupChecks,
+    setSetupChecks,
+    setSetupWarning,
+    setDemoMode,
+    setApiUnavailable,
+    setLocalProjectReady,
+    dashboardDataSurfaceVisible,
+    administrationSurfaceVisible,
+  });
 
   const {
     retryJob,
@@ -1097,29 +842,23 @@ function ClinicalDashboardContent({
     setSources,
     setUserStartedIngestion,
   });
+  const { bulkActionStatus, bulkActionBusy, bulkReindexSelected, bulkAssignCollection, bulkUpdateMetadata } =
+    useDashboardBulkActions({
+      authBoundFetch,
+      authorizationHeader,
+      isAuthEpochCurrent,
+      markSessionExpired,
+      refresh,
+      selectedDocumentIds,
+      setIndexingActive,
+      setUserStartedIngestion,
+    });
 
   useEffect(() => {
     if (actionNotice?.tone !== "success") return undefined;
     const timer = window.setTimeout(() => setActionNotice(null), 4000);
     return () => window.clearTimeout(timer);
   }, [actionNotice]);
-
-  const activeIndexingWork = useMemo(
-    () => hasActiveIndexingWork(documents, jobs, batches, indexingActive),
-    [documents, jobs, batches, indexingActive],
-  );
-  const needsSetupRecheck = useMemo(() => setupNeedsSlowRecheck(setupChecks), [setupChecks]);
-  const dashboardDataSurfaceVisible =
-    settingsState.documentScopeOpen || settingsState.documentsDrawerOpen || settingsState.indexingAdminDrawerOpen;
-  const administrationSurfaceVisible =
-    canUseAdministrativeApis &&
-    (settingsState.indexingAdminDrawerOpen ||
-      (settingsState.documentsDrawerOpen && settingsState.documentsDrawerMode === "admin"));
-
-  useEffect(() => {
-    dashboardDataLoadedRef.current = false;
-    administrationDataLoadedRef.current = false;
-  }, [authEpoch]);
 
   // Losing administrator access must not leave jobs, batches and quality data on screen. The render
   // guard on the drawer stops painting immediately; this clears the state behind it too, so
@@ -1132,94 +871,6 @@ function ClinicalDashboardContent({
     settingsState.setIndexingAdminDrawerOpen(false);
     setIndexingMonitorFilter("all");
   }
-
-  useEffect(() => {
-    refresh({ includeSetup: true, includeDashboardData: false, includeDocumentMeta: false }).catch(() => undefined);
-  }, [authStatus, authorizationHeader, clientDemoMode, refresh]);
-
-  useEffect(() => {
-    const includeDashboardData = dashboardDataSurfaceVisible && !dashboardDataLoadedRef.current;
-    const includeAdministrationData = administrationSurfaceVisible && !administrationDataLoadedRef.current;
-    if (!includeDashboardData && !includeAdministrationData) return;
-    refresh({
-      includeSetup: false,
-      includeDashboardData,
-      includeAdministrationData,
-      includeDocumentMeta: includeDashboardData,
-    }).catch(() => undefined);
-  }, [administrationSurfaceVisible, authEpoch, dashboardDataSurfaceVisible, refresh]);
-
-  useEffect(() => {
-    if (!userStartedIngestion || !dashboardDataLoadedRef.current || activeIndexingWork) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) setUserStartedIngestion(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeIndexingWork, userStartedIngestion]);
-
-  useEffect(() => {
-    const visibleSurfaceHasActiveWork = dashboardDataSurfaceVisible && activeIndexingWork;
-    const userOperationHasActiveWork = userStartedIngestion && activeIndexingWork;
-    const shouldPollDashboardData = visibleSurfaceHasActiveWork || userOperationHasActiveWork;
-    const hasScheduledWork = shouldPollDashboardData || needsSetupRecheck;
-    const pollingAllowed =
-      userOperationHasActiveWork || shouldPollForUpdates(demoMode, document.visibilityState, hasScheduledWork);
-    if (!pollingAllowed) {
-      return;
-    }
-
-    const delay = shouldPollDashboardData ? (nextRefreshDelayMs ?? activeIndexingPollFallbackMs) : setupRecheckPollMs;
-    const timeout = window.setTimeout(() => {
-      const stillAllowed =
-        userOperationHasActiveWork || shouldPollForUpdates(demoMode, document.visibilityState, hasScheduledWork);
-      if (!stillAllowed) {
-        return;
-      }
-
-      refresh({
-        includeSetup: !shouldPollDashboardData,
-        includeDashboardData: shouldPollDashboardData,
-        includeAdministrationData: shouldPollDashboardData && (administrationSurfaceVisible || userStartedIngestion),
-        includeDocumentMeta: false,
-      }).catch(() => undefined);
-    }, delay);
-
-    return () => window.clearTimeout(timeout);
-  }, [
-    activeIndexingWork,
-    administrationSurfaceVisible,
-    dashboardDataSurfaceVisible,
-    demoMode,
-    needsSetupRecheck,
-    nextRefreshDelayMs,
-    refresh,
-    userStartedIngestion,
-  ]);
-
-  useEffect(() => {
-    const refreshVisibleDashboard = () => {
-      if (document.visibilityState !== "visible") {
-        return;
-      }
-
-      refresh({
-        includeSetup: true,
-        includeDashboardData: dashboardDataSurfaceVisible || (userStartedIngestion && activeIndexingWork),
-        includeAdministrationData: administrationSurfaceVisible || (userStartedIngestion && activeIndexingWork),
-        includeDocumentMeta: false,
-      }).catch(() => undefined);
-    };
-
-    document.addEventListener("visibilitychange", refreshVisibleDashboard);
-    window.addEventListener("focus", refreshVisibleDashboard);
-    return () => {
-      document.removeEventListener("visibilitychange", refreshVisibleDashboard);
-      window.removeEventListener("focus", refreshVisibleDashboard);
-    };
-  }, [activeIndexingWork, administrationSurfaceVisible, dashboardDataSurfaceVisible, refresh, userStartedIngestion]);
 
   useEffect(() => {
     const updateOnline = () => setIsOnline(navigator.onLine);
@@ -1251,8 +902,11 @@ function ClinicalDashboardContent({
 
   // The URL sync reads the current mode to tell a stale UI-change flag from a
   // genuine one, without the mode becoming one of its dependencies.
+  // Refreshed in a layout effect, which runs before any effect that reads it.
   const searchModeRef = useRef(searchMode);
-  searchModeRef.current = searchMode;
+  useLayoutEffect(() => {
+    searchModeRef.current = searchMode;
+  });
   useHomeModeSeed({
     pathname,
     searchParams,
@@ -1295,9 +949,11 @@ function ClinicalDashboardContent({
   }, [clearModeResultState, focusComposerInput]);
 
   const executeSearchRef = useRef(executeSearch);
-  executeSearchRef.current = executeSearch;
   const scopeFiltersRef = useRef(scopeFilters);
-  scopeFiltersRef.current = scopeFilters;
+  useLayoutEffect(() => {
+    executeSearchRef.current = executeSearch;
+    scopeFiltersRef.current = scopeFilters;
+  });
 
   useEffect(() => {
     if (urlDocumentSearchBootstrappedRef.current) return;
@@ -1510,18 +1166,6 @@ function ClinicalDashboardContent({
     }
     throw lastError;
   }
-
-  // Audit M10: monotonically increasing token identifying the latest search.
-  // Concurrent searches (URL-bootstrap auto-search racing a user submit) can
-  // resolve out of order; only the latest request may commit answer/sources/
-  // error/loading state, or a stale response would display one query's answer
-  // under another query's composer text.
-  const searchRequestSeqRef = useRef(0);
-  // Aborts the in-flight answer/library search when the user presses Stop, a
-  // newer search supersedes the prior one, or the component unmounts.
-  const searchAbortRef = useRef<AbortController | null>(null);
-  // Distinguishes a timeout-driven abort from an explicit user/supersede abort.
-  const answerTimedOutRef = useRef(false);
 
   function stopSearch() {
     searchRequestSeqRef.current += 1;
@@ -2046,7 +1690,9 @@ function ClinicalDashboardContent({
     );
   }
   const askRef = useRef(ask);
-  askRef.current = ask;
+  useLayoutEffect(() => {
+    askRef.current = ask;
+  });
 
   useEffect(() => {
     const trimmedQuery = query.trim();
@@ -2307,31 +1953,6 @@ function ClinicalDashboardContent({
     void runDocumentSearchShortcut(searchText, nextFilters, true, targetMode);
   }
 
-  const {
-    bulkActionStatus,
-    bulkActionBusy,
-    bulkReindexSelected,
-    bulkUpdateMetadata: runBulkUpdateMetadata,
-  } = useDashboardBulkActions({
-    selectedDocumentIds,
-    authBoundFetch,
-    authorizationHeader,
-    markSessionExpired,
-    isAuthEpochCurrent,
-    setUserStartedIngestion,
-    setIndexingActive,
-    refresh,
-  });
-
-  async function bulkAssignCollection(collection: string) {
-    if (!selectedDocumentIds.length || !collection.trim()) return;
-    await bulkUpdateMetadata({ collection: collection.trim() });
-  }
-
-  async function bulkUpdateMetadata(metadata: Record<string, unknown>) {
-    await runBulkUpdateMetadata(metadata);
-  }
-
   function selectSearchMode(mode: AppModeId) {
     if (mode === "favourites" && !favouritesAccessible) {
       openAccountSetup("favourites");
@@ -2527,7 +2148,7 @@ function ClinicalDashboardContent({
       documentMatches.length,
       deferredQuery,
       answerRenderModel?.quoteCards.length,
-      answerRenderModel?.reviewSources.length,
+      answerRenderModel?.reviewSources,
       visualEvidence.length,
       weakEvidence,
     ],
