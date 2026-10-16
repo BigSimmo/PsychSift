@@ -1,4 +1,5 @@
 import type { SessionSummary } from "@/lib/teaching/model";
+import { perthDateKey } from "@/components/teaching/teaching-dates";
 
 /** The next teaching session that has not finished, soonest first; cancelled sessions never lead. */
 export function nextTeachingSession(sessions: readonly SessionSummary[], now: Date): SessionSummary | null {
@@ -8,7 +9,10 @@ export function nextTeachingSession(sessions: readonly SessionSummary[], now: Da
   for (const session of sessions) {
     if (seen.has(session.occurrenceId)) continue;
     seen.add(session.occurrenceId);
-    if (session.status === "cancelled" || session.allDay || Date.parse(session.endsAt) <= at) continue;
+    if (session.status === "cancelled") continue;
+    if (session.allDay) {
+      if (perthDateKey(session.startsAt) < perthDateKey(now)) continue;
+    } else if (Date.parse(session.endsAt) <= at) continue;
     if (!next || session.startsAt.localeCompare(next.startsAt) < 0) next = session;
   }
   return next;
