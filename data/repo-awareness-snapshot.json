@@ -2455,6 +2455,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-stuck-final-attempt-uses-existing-recovery.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/developer-area-access.md",
         "section": "root",
         "catalogued": true
@@ -2862,6 +2867,11 @@
       {
         "path": "docs/superpowers/rag-upgrade/canonical/START-HERE.cloud.md",
         "section": "superpowers",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-sign-off-pins-cover-source-records.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

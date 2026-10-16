@@ -18,7 +18,7 @@ jobs:
   # Advisory static application security testing. Semgrep is used instead of CodeQL
   # because this repository is private without GitHub Advanced Security, so the
   # code-scanning SARIF upload CodeQL relies on is unavailable. The document parsers
-  # (pdf-parse, pdfjs-dist, mammoth, exceljs, jszip) and the answer/ingestion
+  # (pdfjs-dist, mammoth, exceljs, jszip) and the answer/ingestion
   # paths process untrusted uploaded documents, so ERROR-severity findings remain
   # visible without making mutable registry rules a required merge dependency.
   # Runs OSS-engine only — no Semgrep account or token required.
