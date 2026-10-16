@@ -184,9 +184,8 @@ function validateSignOffEntry(
 function expectedFormContentPin(
   formCode: string,
   review: ClinicalSignOffEntry | undefined,
-  canonicalReview: ClinicalSignOffEntry | undefined,
 ): string | null {
-  const baseReview = review?.basis !== undefined ? review : canonicalReview;
+  const baseReview = review;
   if (!baseReview || baseReview.basis === undefined) {
     return null;
   }
@@ -257,15 +256,6 @@ export function buildFirstPublicationCataloguePlan(
     }
   }
 
-  const canonicalFormReviewByKey = new Map<string, ClinicalSignOffEntry>();
-  for (const entry of canonicalFormReviews) {
-    for (const candidateKey of [entry.code, entry.id, entry.slug]) {
-      if (typeof candidateKey === "string" && candidateKey.trim()) {
-        canonicalFormReviewByKey.set(candidateKey.trim().toLowerCase(), entry);
-      }
-    }
-  }
-
   const formReviewByKey = new Map<string, ClinicalSignOffEntry>();
   for (const entry of formReviews) {
     for (const candidateKey of [entry.code, entry.id, entry.slug]) {
@@ -314,7 +304,7 @@ export function buildFirstPublicationCataloguePlan(
       canonicalFormReviewByKey.get(formCode.toLowerCase()) ??
       canonicalFormReviewByKey.get(form.slug.trim().toLowerCase()) ??
       canonicalFormReviewByKey.get(formRecordId.toLowerCase());
-    const expectedPin = expectedFormContentPin(formCode, review, canonicalReview);
+    const expectedPin = expectedFormContentPin(formCode, review);
     const problem = validateSignOffEntry("form", formCode, form.slug, review, expectedPin);
     if (problem) {
       rejected.push(problem);
@@ -517,6 +507,12 @@ if (invokedPath === import.meta.url) {
       );
     },
     (error) => {
+      console.error(`publish-site-content-first-catalogue: ${error instanceof Error ? error.message : String(error)}`);
+      process.exitCode = 1;
+    },
+  );
+}
+error) => {
       console.error(`publish-site-content-first-catalogue: ${error instanceof Error ? error.message : String(error)}`);
       process.exitCode = 1;
     },
