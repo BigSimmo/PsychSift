@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import math
@@ -1596,12 +1597,88 @@ def extract(pdf_path, output_dir, budget=None):
     os.makedirs(output_dir, exist_ok=True)
     document = open_pdf_for_extraction(pdf_path)
     try:
-        return _extract_document(document, output_dir, budget)
+        identity = {
+            "sourceContentSha256": file_sha256(pdf_path),
+            "producer": {
+                "contractVersion": "pdf-native-page-source-v1",
+                "route": "python_pdf",
+                "scriptSha256": file_sha256(__file__),
+                "pythonVersion": sys.version.split()[0] or None,
+                "pymupdfVersion": str(getattr(fitz, "VersionBind", "") or getattr(fitz, "__version__", "")) or None,
+            },
+        }
+        return _extract_document(document, output_dir, budget, identity)
     finally:
         document.close()
 
 
-def _extract_document(document, output_dir, budget):
+def file_sha256(file_path):
+    digest = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return "sha256:" + digest.hexdigest()
+
+
+SURROGATE_PATTERN = re.compile("[\ud800-\udfff]")
+
+
+def text_sha256(text):
+    """Hash text exactly as the TypeScript side hashes the JSON-decoded string.
+
+    Node hashes a JS string as UTF-8, replacing each unpaired surrogate with U+FFFD, and
+    JSON decoding joins an escaped high/low surrogate pair into one character. Round-trip
+    through UTF-16 so a Python string carrying surrogates hashes to the same bytes instead
+    of raising UnicodeEncodeError. Ordinary text is unchanged by the round trip.
+    """
+    if SURROGATE_PATTERN.search(text):
+        text = text.encode("utf-16-le", "surrogatepass").decode("utf-16-le", "replace")
+    return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def page_source_provenance(geometry, page_number, native_text, text, ocr_used, needs_ocr, identity):
+    """Per-page source observations checked by src/lib/extractors/pdf-source-provenance.ts.
+
+    Metadata only: it records hashes of the final page text and never alters that text.
+    """
+    ocr_unverified = ocr_used or needs_ocr
+    reasons = []
+    if geometry["rotation"] != 0 or geometry["cropBox"] != geometry["mediaBox"]:
+        reasons.append("pdf_geometry_transform_unverified")
+    if ocr_unverified:
+        reasons.append("pdf_ocr_unverified")
+    if identity["producer"]["pythonVersion"] is None or identity["producer"]["pymupdfVersion"] is None:
+        reasons.append("pdf_runtime_identity_unknown")
+    text_hash = text_sha256(text)
+    return {
+        "version": "extracted-page-source-v1",
+        "format": "pdf",
+        "coordinateSpace": "pymupdf_observed_page_points",
+        "physicalPageNumber": page_number,
+        **identity,
+        "pageGeometry": geometry,
+        "nativeTextSha256": text_sha256(native_text),
+        "structuralDisposition": "unverified" if reasons else "retained",
+        "reasonCodes": reasons,
+        "ocr": {
+            "status": "unverified" if ocr_unverified else "not_requested",
+            "confidence": None,
+            "confidenceStatus": "unavailable",
+            "textToPageMapping": "not_established",
+            "comparison": "not_compared" if ocr_unverified else "not_applicable",
+        },
+        "textMapping": {"status": "not_established", "offsets": None},
+        "textIdentity": {
+            "originalExtractedTextSha256": text_hash,
+            "persistedTextSha256": text_hash,
+            "normalizationApplied": False,
+            "metadataNormalizationApplied": False,
+            "qualification": "UTF-8 extracted/persisted text bytes; not original PDF spans",
+        },
+    }
+
+
+def _extract_document(document, output_dir, budget, identity):
     pages = []
     images = []
     warnings = []
@@ -1609,6 +1686,14 @@ def _extract_document(document, output_dir, budget):
 
     for page_index, page in enumerate(document):
         page_number = page_index + 1
+        # Some reader helpers temporarily alter the page crop; retain the source
+        # observations before table detection or crop rendering can touch them.
+        source_geometry = {
+            "pageRect": list(page.rect),
+            "cropBox": list(page.cropbox),
+            "mediaBox": list(page.mediabox),
+            "rotation": page.rotation,
+        }
         # Detect grid tables BEFORE assembling page text: the same candidates feed
         # the table-aware text assembly and the table-candidate pass below, so
         # find_tables() runs once per page rather than twice.
@@ -1652,6 +1737,9 @@ def _extract_document(document, output_dir, budget):
                 "needsOcr": needs_ocr,
                 "metadata": {
                     "image_coverage_ratio": round(image_coverage, 4),
+                    "source_provenance": page_source_provenance(
+                        source_geometry, page_number, raw_page_text, text, ocr_used, needs_ocr, identity
+                    ),
                 },
             }
         )
