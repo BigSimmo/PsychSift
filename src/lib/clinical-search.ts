@@ -1483,7 +1483,7 @@ export function buildClinicalTextSearchQuery(query: string) {
     );
   const wantsClozapineBloodActionThreshold =
     wantsClozapineBloodMonitoring &&
-    /\b(?:threshold|withhold|withheld|withholding|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation)\b/i.test(
+    /\b(?:threshold|withh(?:old|olds|eld|olding)|ceas(?:e|es|ed|ing)|stop(?:s|ped|ping)?|discontinu(?:e|es|ed|ing|ation))\b/i.test(
       correctedQueryText,
     );
   const wantsClozapineMissedDose =
