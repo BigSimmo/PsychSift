@@ -77,12 +77,13 @@ These are short operator checklists. Preserve evidence and identifiers, but do n
    WHERE owner_id = '<owner-uuid>'
       OR payload::text LIKE '%<document-uuid>%';
    ```
-4. Before declaring containment, verify the source remains directly browsable but cannot participate in retrieval or answer generation:
+4. Before declaring containment, verify the source remains directly browsable but cannot participate in retrieval or answer generation. The status query below confirms the review status only; it does not prove retrieval exclusion:
    ```sql
    SELECT id, title, source_review_status
    FROM public.documents
    WHERE id = '<document-uuid>';
    ```
+   Then run a search or question that previously returned this document (using a synthetic or de-identified query) and confirm the document is not returned as a source or citation. If it still appears, keep the step 2 containment in place and do not declare containment.
 5. Re-run source-governance and focused answer tests. Live data repair or migration requires explicit approval (if the primary owner is unavailable, the backup operator must leave the source quarantined and `rag_response_cache` purged until explicit approval is obtained):
    ```bash
    npm run audit:source-governance

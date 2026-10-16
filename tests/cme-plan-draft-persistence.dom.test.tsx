@@ -64,7 +64,7 @@ describe("CmePlanPage draft persistence across navigation and failed saves (R09)
       target: { value: "Review perinatal lithium dosing protocols across trimesters" },
     });
 
-    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026))).not.toBeNull();
+    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026, "demo"))).not.toBeNull();
     expect(screen.getByTestId("cme-plan-status-link")).toHaveAttribute("href", "/cme/setup#cme-setup-steps");
 
     // Simulate navigating away via "Record it" and returning after recording the plan-written date.
@@ -145,7 +145,7 @@ describe("CmePlanPage draft persistence across navigation and failed saves (R09)
 
     // Draft remains in the editor and in sessionStorage after failed save.
     expect(screen.getByLabelText("Goal 1")).toHaveValue("Updated sedation audit goal for 2026");
-    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026))).not.toBeNull();
+    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026, "demo"))).not.toBeNull();
 
     // Retry save succeeds and clears sessionStorage.
     fireEvent.click(screen.getByTestId("cme-plan-save"));
@@ -154,16 +154,16 @@ describe("CmePlanPage draft persistence across navigation and failed saves (R09)
       expect(screen.getByTestId("cme-plan-message")).toHaveTextContent("Plan saved.");
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026))).toBeNull();
+    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026, "demo"))).toBeNull();
 
     // Editing again and clicking Cancel clears sessionStorage and reverts to saved goals.
     fireEvent.click(screen.getByTestId("cme-plan-edit"));
     fireEvent.change(screen.getByLabelText("Goal 1"), {
       target: { value: "Temporary unsaved edit before cancel" },
     });
-    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026))).not.toBeNull();
+    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026, "demo"))).not.toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026))).toBeNull();
+    expect(window.sessionStorage.getItem(cmePlanDraftStorageKey(2026, "demo"))).toBeNull();
   });
 });

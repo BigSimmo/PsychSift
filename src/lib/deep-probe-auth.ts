@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { env } from "@/lib/env";
 
 // Shared operator gate for internal health/status detail. A caller proves it is an operator
@@ -6,11 +6,12 @@ import { env } from "@/lib/env";
 // `x-health-deep-token` header. Used by /api/health (deep Supabase probe) and
 // /api/setup-status (detailed setup checks) so both surfaces gate internal error text and
 // project posture behind the same secret. Constant-time compare; fails closed when the secret
-// is unset or the token length/value differs.
+// is unset or the token differs.
 function constantTimeTokenEquals(expectedSecret: string, receivedToken: string): boolean {
-  const expected = Buffer.from(expectedSecret, "utf8");
-  const received = Buffer.from(receivedToken, "utf8");
-  if (expected.length !== received.length) return false;
+  // Hash both inputs to a fixed 32-byte digest first, so the comparison never branches on the
+  // length of either value and cannot throw on mismatched buffer sizes.
+  const expected = createHash("sha256").update(expectedSecret, "utf8").digest();
+  const received = createHash("sha256").update(receivedToken, "utf8").digest();
   return timingSafeEqual(expected, received);
 }
 
@@ -22,10 +23,6 @@ export function allowDeepHealthProbe(
   if (!secret) return false;
   const token = request.headers.get("x-health-deep-token");
   if (!token) return false;
-  // Compare UTF-8 BYTE lengths, not JS string (UTF-16 code-unit) lengths: a crafted multi-byte
-  // token with the same code-unit count but a different byte count would otherwise pass a
-  // `token.length === secret.length` check and make timingSafeEqual throw on mismatched buffers
-  // (an unhandled RangeError → crafted-header 500). Build the buffers first, then length-gate.
   if (constantTimeTokenEquals(secret, token)) return true;
 
   const previousSecret = (

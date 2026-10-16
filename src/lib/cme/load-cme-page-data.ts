@@ -144,6 +144,7 @@ async function load(
     const entry = entryId ? (DEMO_CME_ENTRIES.find((e) => e.id === entryId) ?? null) : null;
     const targetYear = entry ? Number(entry.date.slice(0, 4)) : (year ?? DEMO_CME_YEAR.year);
     return {
+      ownerId: null,
       state: targetYear === DEMO_CME_YEAR.year ? "ready" : "unconfigured",
       demoMode: true,
       year: targetYear,

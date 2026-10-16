@@ -136,6 +136,7 @@ SELECT
     FROM pg_index i
     WHERE i.indrelid = c.conrelid
       AND i.indisvalid
+      AND i.indpred IS NULL -- a partial index can omit referencing rows, so it is not full coverage
       AND i.indkey[0] = a.attnum
   ) AS has_leading_column_index
 FROM pg_constraint c

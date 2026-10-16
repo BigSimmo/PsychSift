@@ -22,6 +22,33 @@ import { IngestionProviderEgressRefusal } from "../src/lib/ingestion-provider-eg
 
 export const WORKER_CONTROL_PLANE_TIMEOUT_MS = 30_000;
 export const WORKER_SUPABASE_TIMEOUT_MS = 120_000;
+/**
+ * Deadline for data-plane ingestion RPCs that carry whole-document payloads (artifact writes, index
+ * commits, table facts). It must sit above the server-side `statement_timeout` (180 s) so the client
+ * never abandons a commit that Postgres may still complete.
+ */
+export const WORKER_DATA_PLANE_TIMEOUT_MS = 240_000;
+
+/** Small lease, progress, claim and bookkeeping calls that keep the 30 s control-plane deadline. */
+const CONTROL_PLANE_RPC_NAMES: ReadonlySet<string> = new Set([
+  "claim_ingestion_jobs",
+  "heartbeat_ingestion_job",
+  "update_ingestion_job_progress",
+  "fail_or_retry_ingestion_job",
+  "complete_ingestion_job",
+  "patch_ingestion_document_state",
+  "persist_ingestion_index_quality",
+  "read_ingestion_generation_inventory",
+  "read_ingestion_prepared_supplier_artifacts",
+  "record_ingestion_generation_accounting",
+  "begin_ingestion_generation_evidence",
+  "declare_ingestion_generation_evidence",
+]);
+
+export function resolveWorkerDataPlaneTimeoutMs(environment: Record<string, string | undefined> = process.env): number {
+  const raw = Number(environment.WORKER_DATA_PLANE_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : WORKER_DATA_PLANE_TIMEOUT_MS;
+}
 
 export function resolveWorkerControlPlaneTimeoutMs(
   environment: Record<string, string | undefined> = process.env,
@@ -41,6 +68,16 @@ export function controlPlaneAbortSignal(
 ): AbortSignal {
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   return stopSignal ? AbortSignal.any([stopSignal, timeoutSignal]) : timeoutSignal;
+}
+
+/**
+ * Abort signal for one ingestion RPC. Known control-plane calls get the short deadline; every other
+ * fenced RPC is treated as data-plane and gets the longer one, so a large commit is not cut off at 30 s.
+ */
+export function ingestionRpcAbortSignal(rpcName: string, stopSignal?: AbortSignal): AbortSignal {
+  return CONTROL_PLANE_RPC_NAMES.has(rpcName)
+    ? controlPlaneAbortSignal(stopSignal)
+    : controlPlaneAbortSignal(stopSignal, resolveWorkerDataPlaneTimeoutMs());
 }
 
 function racePromiseLikeWithAbortSignal<T>(promiseLike: PromiseLike<T>, signal: AbortSignal): Promise<T> {

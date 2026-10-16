@@ -5,6 +5,7 @@ import {
   WORKER_SUPABASE_TIMEOUT_MS,
   controlPlaneAbortSignal,
   ensureAbortableQuery,
+  ingestionRpcAbortSignal,
   resolveWorkerControlPlaneTimeoutMs,
   resolveWorkerSupabaseTimeoutMs,
   withControlPlaneAbortClient,
@@ -167,5 +168,19 @@ describe("worker pause and finite control-plane deadlines (R01, R18, R34)", () =
     expect(workerMainSource).toContain('.rpc("analyze_rag_tables")');
     expect(workerMainSource).toContain("patchDocumentState");
     expect(workerMainSource).toContain(".abortSignal(controlPlaneAbortSignal(");
+  });
+
+  it("gives data-plane ingestion RPCs a longer deadline than control-plane calls", async () => {
+    vi.stubEnv("WORKER_CONTROL_PLANE_TIMEOUT_MS", "20");
+    vi.stubEnv("WORKER_DATA_PLANE_TIMEOUT_MS", "5000");
+    try {
+      const control = ingestionRpcAbortSignal("heartbeat_ingestion_job");
+      const dataPlane = ingestionRpcAbortSignal("commit_document_index_generation");
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(control.aborted).toBe(true);
+      expect(dataPlane.aborted).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

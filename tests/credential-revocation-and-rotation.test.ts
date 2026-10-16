@@ -189,19 +189,25 @@ describe("R33 credential revocation, audit logging, and rotation overlap", () =>
       });
     });
 
-    it("automatically revokes prior unrevoked display links for the same occurrence on display.create", async () => {
+    it("creates the new display link first, then revokes only the prior unrevoked links for the occurrence", async () => {
       const priorHash = hashTeachingSecret("c".repeat(64));
       const rpc = vi
         .fn()
-        .mockResolvedValueOnce({ data: {}, error: null })
-        .mockResolvedValueOnce({ data: { expiresAt: "2026-10-16T12:00:00Z" }, error: null });
+        .mockResolvedValueOnce({ data: { expiresAt: "2026-10-16T12:00:00Z" }, error: null })
+        .mockResolvedValueOnce({ data: {}, error: null });
       const from = vi.fn(() => ({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockResolvedValue({
-                data: [{ id: "prior-link", link_hash: priorHash }],
-                error: null,
+              eq: vi.fn().mockReturnValue({
+                // The lookup runs after the create, so it also returns the link just created.
+                is: vi.fn().mockImplementation(async () => ({
+                  data: [
+                    { id: "prior-link", link_hash: priorHash },
+                    { id: "new-link", link_hash: rpc.mock.calls[0]![1].p_payload.linkHash },
+                  ],
+                  error: null,
+                })),
               }),
             }),
           }),
@@ -216,13 +222,8 @@ describe("R33 credential revocation, audit logging, and rotation overlap", () =>
       })) as { token: string; expiresAt: string };
 
       expect(created.token).toMatch(/^[0-9a-f]{64}$/);
+      expect(rpc).toHaveBeenCalledTimes(2);
       expect(rpc).toHaveBeenNthCalledWith(1, "teaching_command", {
-        p_actor_id: actorId,
-        p_service_id: serviceId,
-        p_action: "display.revoke",
-        p_payload: { linkHash: priorHash },
-      });
-      expect(rpc).toHaveBeenNthCalledWith(2, "teaching_command", {
         p_actor_id: actorId,
         p_service_id: serviceId,
         p_action: "display.create",
@@ -231,6 +232,12 @@ describe("R33 credential revocation, audit logging, and rotation overlap", () =>
           stream: "room",
           linkHash: hashTeachingSecret(created.token),
         },
+      });
+      expect(rpc).toHaveBeenNthCalledWith(2, "teaching_command", {
+        p_actor_id: actorId,
+        p_service_id: serviceId,
+        p_action: "display.revoke",
+        p_payload: { linkHash: priorHash },
       });
     });
   });

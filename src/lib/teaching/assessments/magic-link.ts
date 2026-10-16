@@ -372,8 +372,6 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
   };
 }
 
-export const createEpaMagicLink = createEpaMagicLinkRequest;
-
 export function revokeEpaMagicLinkToken(token: string): boolean {
   loadPersistedMagicLinksIntoStore();
   const trimmed = token.trim();
@@ -661,5 +659,3 @@ export function submitEpaMagicLinkResponse(
     request: completedRecord,
   };
 }
-
-export const submitEpaMagicLinkAssessment = submitEpaMagicLinkResponse;

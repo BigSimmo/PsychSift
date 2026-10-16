@@ -3,7 +3,7 @@
 import { BookOpen, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { focusRing } from "@/components/card-recipes";
 import { CmeFlatList, CmeFlatRow, CmeGroup, CmeNote, CmeRowMark, CmeTextLink } from "@/components/cme/cme-flat-list";
@@ -56,6 +56,10 @@ let draftKey = 0;
 function nextKey(): string {
   draftKey += 1;
   return `goal-${draftKey}`;
+}
+
+function subscribeNever(): () => void {
+  return () => undefined;
 }
 
 export function cmePlanDraftStorageKey(year: number, ownerId: string): string {
@@ -170,21 +174,12 @@ export function CmePlanPage({
   const router = useRouter();
   const readOnly = Boolean(set.closedAt) || demoMode;
   const [savedGoals, setSavedGoals] = useState(() => goals.map((goal) => ({ id: goal.id, goal: goal.goal })));
-  const [initialRestoredDrafts] = useState<Draft[] | null>(() =>
-    readOnly
-      ? null
-      : readPersistedCmePlanDraft(
-          set.year,
-          draftOwnerId,
-          goals.map((goal) => ({ id: goal.id, goal: goal.goal })),
-        ),
-  );
+  // The first render must match the server HTML, so it never reads sessionStorage. A saved unsent draft
+  // is restored in a mount effect below.
   const [drafts, setDrafts] = useState<Draft[]>(() =>
-    initialRestoredDrafts
-      ? initialRestoredDrafts
-      : goals.length
-        ? goals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal }))
-        : [{ key: nextKey(), goal: "" }],
+    goals.length
+      ? goals.map((goal) => ({ key: nextKey(), id: goal.id, goal: goal.goal }))
+      : [{ key: nextKey(), goal: "" }],
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -196,7 +191,7 @@ export function CmePlanPage({
   // Goals read as text until Edit. A plan with no goals yet has nothing to
   // read, so an editable year opens straight into the editor. Restored
   // unsaved drafts also reopen directly in the editor.
-  const [editing, setEditing] = useState(() => !readOnly && (goals.length === 0 || initialRestoredDrafts !== null));
+  const [editing, setEditing] = useState(() => !readOnly && goals.length === 0);
   const planRequirement = set.requirements.find((requirement) => requirement.id === "plan");
   // From the goals as last saved here, so a just-saved wording shows at once rather than after a refresh.
   const tally = hoursByGoal(
@@ -243,10 +238,30 @@ export function CmePlanPage({
   const isDirty = useMemo(() => draftsDifferFromSaved(drafts, savedGoals), [drafts, savedGoals]);
   useDirtyStateGuard(isDirty && !readOnly);
   const activeYearRef = useRef(set.year);
+  const activeOwnerRef = useRef(draftOwnerId);
+  // False on the server and during hydration, true afterwards, so the saved-draft restore below
+  // cannot change what the first client render shows.
+  const hydrated = useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false,
+  );
+  const [draftRestoreChecked, setDraftRestoreChecked] = useState(false);
+  if (hydrated && !draftRestoreChecked) {
+    // Restore an unsent draft saved earlier in this browser session (after internal navigation or a
+    // failed save). Runs once, after hydration.
+    setDraftRestoreChecked(true);
+    const restored = readOnly ? null : readPersistedCmePlanDraft(set.year, draftOwnerId, savedGoals);
+    if (restored) {
+      setDrafts(restored);
+      setEditing(true);
+    }
+  }
 
   useEffect(() => {
-    if (activeYearRef.current !== set.year) {
+    if (activeYearRef.current !== set.year || activeOwnerRef.current !== draftOwnerId) {
       activeYearRef.current = set.year;
+      activeOwnerRef.current = draftOwnerId;
       const nextSaved = goals.map((goal) => ({ id: goal.id, goal: goal.goal }));
       const restored = readOnly ? null : readPersistedCmePlanDraft(set.year, draftOwnerId, nextSaved);
       setSavedGoals(nextSaved);
@@ -263,12 +278,14 @@ export function CmePlanPage({
       return;
     }
     if (readOnly) return;
+    // Until the saved-draft check has run, the state is not-yet-restored, so it must not clear a stored draft.
+    if (!draftRestoreChecked) return;
     if (isDirty) {
       writePersistedCmePlanDraft(set.year, draftOwnerId, savedGoals, drafts);
     } else {
       clearPersistedCmePlanDraft(set.year, draftOwnerId);
     }
-  }, [draftOwnerId, drafts, goals, isDirty, readOnly, savedGoals, set.year]);
+  }, [draftOwnerId, draftRestoreChecked, drafts, goals, isDirty, readOnly, savedGoals, set.year]);
 
   useEffect(() => {
     return subscribeAccountTransition(() => {
@@ -284,7 +301,7 @@ export function CmePlanPage({
       setSaveConflict(false);
       setMessage(null);
     });
-  }, [goals, readOnly, set.year]);
+  }, [draftOwnerId, goals, readOnly, set.year]);
 
   async function save() {
     setSaving(true);
@@ -567,18 +584,5 @@ export function CmePlanPage({
         </div>
       </WorkBody>
     </main>
-  );
-}
-n>
-  );
-}
-
-  );
-}
-}
-n>
-  );
-}
-
   );
 }

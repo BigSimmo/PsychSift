@@ -93,8 +93,8 @@ async function markOpenPostAlertDelivered(
   openShiftId: string,
 ): Promise<void> {
   const key = openPostAlertKey(serviceId, openShiftId);
-  deliveredOpenPostAlerts.add(key);
-  pendingOrFailedOpenPostAlerts.delete(key);
+  // Delivery is recorded in memory only after the durable write succeeds below, so a
+  // failed write leaves the key retryable for a same-process replay.
   try {
     const fromFn = (client as unknown as { from?: (table: string) => unknown })?.from;
     if (typeof fromFn === "function") {
@@ -240,15 +240,19 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
 
     if (isOpenPostOffer && result.openShiftId) {
       const key = openPostAlertKey(event.serviceId, result.openShiftId);
-      const existingInFlight = inFlightOpenPostAlerts.get(key);
-      if (existingInFlight) {
-        await existingInFlight.catch(() => undefined);
-      }
-      if (await isOpenPostAlertDelivered(client, event.serviceId, result.openShiftId, result.replayed === true)) {
-        return;
-      }
-      pendingOrFailedOpenPostAlerts.add(key);
-      const runPromise = runRosterAlertDispatch(client, event, result, true);
+      const openShiftId = result.openShiftId;
+      // Claim the in-flight slot synchronously, before any await, so two close-together
+      // requests for one shift queue behind each other instead of both sending the alert.
+      const prior = inFlightOpenPostAlerts.get(key) ?? Promise.resolve();
+      const runPromise: Promise<void> = prior
+        .catch(() => undefined)
+        .then(async () => {
+          if (await isOpenPostAlertDelivered(client, event.serviceId, openShiftId, result.replayed === true)) {
+            return;
+          }
+          pendingOrFailedOpenPostAlerts.add(key);
+          await runRosterAlertDispatch(client, event, result, true);
+        });
       inFlightOpenPostAlerts.set(key, runPromise);
       try {
         await runPromise;
@@ -261,12 +265,6 @@ export async function dispatchRosterAlerts(client: RosterAdminClient, event: Ros
     }
 
     await runRosterAlertDispatch(client, event, result, false);
-  } catch {
-    // A phone alert must never turn a successful roster change into an error.
-    // No identity, endpoint or payload is logged here.
-  }
-}
-   await runRosterAlertDispatch(client, event, result, false);
   } catch {
     // A phone alert must never turn a successful roster change into an error.
     // No identity, endpoint or payload is logged here.

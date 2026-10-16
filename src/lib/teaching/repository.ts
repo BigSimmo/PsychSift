@@ -329,44 +329,48 @@ export async function teachingServiceMutation(
         is?: (col: string, val: null) => DynamicCreateQueryChain;
       } & PromiseLike<{ data?: unknown; error?: { message: string; code?: string | null } | null }>;
       const dynamicCreateClient = client as unknown as { from?: (table: string) => DynamicCreateQueryChain };
-      const revokePriorLinks = async () => {
+      const revokePriorLinks = async (newLinkHash: string) => {
         if (typeof dynamicCreateClient.from === "function") {
           try {
-          const linkTable = dynamicCreateClient.from("teaching_display_links");
-          const q1 = linkTable?.select?.("id, link_hash, teaching_occurrences!inner(service_id)");
-          const q2 = q1?.eq?.("occurrence_id", input.occurrenceId);
-          const q3 = q2?.eq?.("teaching_occurrences.service_id", serviceId);
-          const q4 = q3?.eq?.("stream", input.stream);
-          const q5 = q4?.is?.("revoked_at", null);
-          if (q5 && typeof q5.then === "function") {
-            const existingRes = await q5;
-            if (!existingRes?.error && existingRes?.data) {
-              const priorRows = (Array.isArray(existingRes.data) ? existingRes.data : [existingRes.data]) as Array<{
-                link_hash?: string | null;
-              }>;
-              for (const prior of priorRows) {
-                if (prior?.link_hash) {
-                  try {
-                    await teachingCommand(client, actorId, serviceId, "display.revoke", { linkHash: prior.link_hash });
-                  } catch {
-                    // Best-effort cleanup: a presenter creating a new link may not own an earlier link created by an organiser.
+            const linkTable = dynamicCreateClient.from("teaching_display_links");
+            const q1 = linkTable?.select?.("id, link_hash, teaching_occurrences!inner(service_id)");
+            const q2 = q1?.eq?.("occurrence_id", input.occurrenceId);
+            const q3 = q2?.eq?.("teaching_occurrences.service_id", serviceId);
+            const q4 = q3?.eq?.("stream", input.stream);
+            const q5 = q4?.is?.("revoked_at", null);
+            if (q5 && typeof q5.then === "function") {
+              const existingRes = await q5;
+              if (!existingRes?.error && existingRes?.data) {
+                const priorRows = (Array.isArray(existingRes.data) ? existingRes.data : [existingRes.data]) as Array<{
+                  link_hash?: string | null;
+                }>;
+                for (const prior of priorRows) {
+                  // The query runs after the new link exists, so it must never revoke that link.
+                  if (prior?.link_hash && prior.link_hash !== newLinkHash) {
+                    try {
+                      await teachingCommand(client, actorId, serviceId, "display.revoke", {
+                        linkHash: prior.link_hash,
+                      });
+                    } catch {
+                      // Best-effort cleanup: a presenter creating a new link may not own an earlier link created by an organiser.
+                    }
                   }
                 }
               }
             }
-          }
           } catch {
             // Best-effort prior-link cleanup when table query helper is not available on mock clients.
           }
         }
       };
       const secret = newTeachingSecret();
+      const newLinkHash = hashTeachingSecret(secret);
       const data = await teachingCommand(client, actorId, serviceId, input.action, {
         occurrenceId: input.occurrenceId,
         stream: input.stream,
-        linkHash: hashTeachingSecret(secret),
+        linkHash: newLinkHash,
       });
-      await revokePriorLinks();
+      await revokePriorLinks(newLinkHash);
       // `token` for the UI part's own link building, `path` for callers that only need the address.
       return { ...parseTeachingResult(displayCreatedSchema, data), token: secret, path: teachingDisplayPath(secret) };
     }

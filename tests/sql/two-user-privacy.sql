@@ -436,7 +436,9 @@ where id = pg_temp.uid('b');
 do $$
 declare
   v_uid uuid := pg_temp.uid('b');
-  v_now_epoch bigint := extract(epoch from pg_catalog.statement_timestamp())::bigint;
+  -- floor, not a rounding cast: rounding up can place the timestamp in the future, which the
+  -- function rejects as "not recent", masking the demoted-administrator check under test.
+  v_now_epoch bigint := pg_catalog.floor(extract(epoch from pg_catalog.statement_timestamp()))::bigint;
 begin
   perform set_config('request.jwt.claim.sub', v_uid::text, true);
   perform set_config(

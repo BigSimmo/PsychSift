@@ -71,6 +71,7 @@ import {
   resolveWorkerControlPlaneTimeoutMs,
   resolveWorkerSupabaseTimeoutMs,
   controlPlaneAbortSignal,
+  ingestionRpcAbortSignal,
   withControlPlaneAbortClient,
   buildDocumentPageRowsForPersistence,
   serializeDocumentPageRowsForCommit,
@@ -255,7 +256,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     runIngestionMutation(
       attempt,
       (rpcName, payload) =>
-        ingestionRpcClient.rpc(rpcName, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+        ingestionRpcClient.rpc(rpcName, payload).abortSignal(ingestionRpcAbortSignal(rpcName, attempt.signal)),
       name,
       args,
     );
@@ -307,7 +308,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     const attempt = attemptForJob(job.id);
     return runIngestionStrictCompletion(
       attempt,
-      (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+      (name, payload) =>
+        ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, attempt.signal)),
       {
         p_stage: "indexed; enrichment completed",
         p_agent_version: "visual-core-v3",
@@ -406,7 +408,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     try {
       if (
         await failRejectedClaimedJobRow(rejection, workerId, (name, payload) =>
-          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(activeStopSignal)),
+          ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, activeStopSignal)),
         )
       )
         return;
@@ -1061,7 +1063,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         generation: indexGenerationId,
         extension: ext.slice(1).toLowerCase(),
         rpc: (name, payload) =>
-          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+          ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, attempt.signal)),
         upload: (storagePath, options) =>
           supabase.storage
             .from(env.SUPABASE_IMAGE_BUCKET)
@@ -1471,7 +1473,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       const attempt = attemptForJob(job.id);
       await writeIngestionTableFacts(
         attempt,
-        (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+        (name, payload) =>
+          ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, attempt.signal)),
         indexGenerationId,
         tableFacts,
       );
@@ -1897,7 +1900,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             packet: terminalPacket,
             stopHeartbeat: () => clearInterval(heartbeat),
             rpc: (name, payload) =>
-              ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+              ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, attempt.signal)),
           });
           invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
           return;
@@ -1942,7 +1945,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 try {
                   const { data, error } = await ingestionRpcClient
                     .rpc(name, payload)
-                    .abortSignal(controlPlaneAbortSignal(attempt.signal));
+                    .abortSignal(ingestionRpcAbortSignal(name, attempt.signal));
                   attempt.check();
                   if (error) throw supabaseStageError("read private candidate rows", error);
                   if (!data || data.ok !== true) {
@@ -1999,7 +2002,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 }),
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) =>
-                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+                  ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, attempt.signal)),
               });
               return;
             }
@@ -2021,7 +2024,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 packet: evaluated.packet,
                 stopHeartbeat: () => clearInterval(heartbeat),
                 rpc: (name, payload) =>
-                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+                  ingestionRpcClient.rpc(name, payload).abortSignal(ingestionRpcAbortSignal(name, attempt.signal)),
               });
               invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
               return;
@@ -2442,11 +2445,13 @@ const FAILURE_WEBHOOK_TIMEOUT_MS = 5_000;
 
 export async function runWorkerMain() {
   try {
-    const client = withControlPlaneAbortClient(
-      createAdminClient({ timeoutMs: resolveWorkerSupabaseTimeoutMs(process.env) }),
-      (stopSignal) => controlPlaneAbortSignal(stopSignal),
+    const client = createAdminClient({ timeoutMs: resolveWorkerSupabaseTimeoutMs(process.env) });
+    // Startup reads get a finite deadline here. The runtime wraps the unwrapped client itself, so its
+    // wrapper can also abort on worker stop; wrapping first would make that second wrap a no-op.
+    const adminSourceOptions = await loadAdminSourceRuntimeOptions(
+      withControlPlaneAbortClient(client, (stopSignal) => controlPlaneAbortSignal(stopSignal)),
+      env.SUPABASE_DOCUMENT_BUCKET,
     );
-    const adminSourceOptions = await loadAdminSourceRuntimeOptions(client, env.SUPABASE_DOCUMENT_BUCKET);
     await createWorkerRuntime({ client, ...adminSourceOptions }).run();
     process.exit(0);
   } catch (error) {

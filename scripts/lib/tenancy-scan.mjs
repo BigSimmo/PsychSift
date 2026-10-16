@@ -1378,10 +1378,10 @@ export const SCOPE_EXEMPTIONS = [
     file: "src/lib/observability/answer-slo.ts",
     table: "rag_queries",
     fn: "answerSloSnapshot",
-    queries: 1,
+    queries: 2,
     proof: PROOF_KINDS.REVIEWED_INDIRECT,
     reason:
-      "Deliberate cross-tenant operator aggregate: reads only `metadata` for rows carrying a hybrid_rpc_errors map, to name which retrieval RPC degraded. Same HEALTH_DEEP_PROBE_SECRET gate; no query text, answer text, or owner identity leaves the probe.",
+      "Deliberate cross-tenant operator aggregate: two bounded reads of only `metadata`. One covers rows carrying a hybrid_rpc_errors map, to name which retrieval RPC degraded; the other is a bounded sample of the window's answers, used only to count source-gap, unsupported and latency-budget outcomes. Same HEALTH_DEEP_PROBE_SECRET gate; no query text, answer text, or owner identity leaves the probe.",
   },
   {
     file: "src/lib/observability/spend-metrics.ts",

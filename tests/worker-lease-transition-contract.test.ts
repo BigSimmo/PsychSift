@@ -125,8 +125,9 @@ describe("worker job transitions have no unfenced fallback", () => {
     expect(completeJob).not.toContain("markSupersededSiblingJobs");
     expect(completeJob).toContain('await mutation(attemptForJob(job.id), "complete_ingestion_job",');
     expect(completeJob).toMatch(/await mutation\([\s\S]*?\);\s*invalidateRagCachesForDocumentMutation/);
-    expect(mutationAdapter).toContain(
-      "runIngestionMutation(attempt, (rpcName, payload) => ingestionRpcClient.rpc(rpcName, payload), name, args)",
+    // Still the fenced RPC adapter; the only addition is a finite abort deadline on each call.
+    expect(mutationAdapter).toMatch(
+      /runIngestionMutation\(\s*attempt,\s*\(rpcName, payload\) =>\s*ingestionRpcClient\s*\.rpc\(rpcName, payload\)\s*\.abortSignal\(ingestionRpcAbortSignal\(rpcName, attempt\.signal\)\),\s*name,\s*args,?\s*\)/,
     );
     expect(fencedMutation).toContain("p_fence: attempt.fence");
     expect(fencedMutation).toContain("if (result.error) throw new Error(result.error.message)");

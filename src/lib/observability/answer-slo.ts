@@ -188,13 +188,23 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
       // discriminator without hiding normal production answers from the SLO.
       .is("metadata->>event_type", null);
 
+  // Identity evidence reads only rows that carry a hybrid RPC error, so a busy window cannot push
+  // those rows out of the bounded sample.
+  const hybridRpcIdentityRows = client
+    .from("rag_queries")
+    .select("metadata")
+    .gt("created_at", sinceIso)
+    .is("metadata->>event_type", null)
+    .not("metadata->hybrid_rpc_errors", "is", null)
+    .limit(maxHybridRpcIdentityRows);
+  // Bounded sample of the window's answers for the source-gap, unsupported and latency-budget rates.
   const windowMetadataRows = client
     .from("rag_queries")
     .select("metadata")
     .gt("created_at", sinceIso)
     .is("metadata->>event_type", null)
     .limit(maxHybridRpcIdentityRows);
-  const [total, hybrid, degraded, truncation, timeout, hybridIdentity] = await Promise.all([
+  const [total, hybrid, degraded, truncation, timeout, hybridIdentity, qualitySample] = await Promise.all([
     base(),
     base().not("metadata->hybrid_rpc_errors", "is", null),
     // Source-only/extractive answers can be intentional and healthy. Count only
@@ -207,10 +217,11 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
     // and "...generation_fallback:provider_timeout" (confirmed in live rag_queries).
     base().or("metadata->>provider_generation_truncated.eq.true,metadata->>fallback_reason.ilike.%max_output_tokens%"),
     base().or("metadata->>fallback_reason_code.eq.provider_timeout,metadata->>fallback_reason.ilike.%timeout%"),
+    hybridRpcIdentityRows,
     windowMetadataRows,
   ]);
 
-  for (const result of [total, hybrid, degraded, truncation, timeout, hybridIdentity]) {
+  for (const result of [total, hybrid, degraded, truncation, timeout, hybridIdentity, qualitySample]) {
     if (result.error) {
       if (result.error instanceof Error) throw result.error;
       // Supabase surfaces a plain PostgrestError object ({ message, code, ... }),
@@ -228,18 +239,14 @@ export async function answerSloSnapshot(client: SloProbeClient, windowMinutes = 
   const degradedQueries = degraded.count ?? 0;
   const truncationFallbackQueries = truncation.count ?? 0;
   const timeoutFallbackQueries = timeout.count ?? 0;
-  const metadataRows = hybridIdentity.data ?? [];
-  const hybridErrorRows = metadataRows.filter(
-    (row) =>
-      row.metadata &&
-      typeof row.metadata === "object" &&
-      !Array.isArray(row.metadata) &&
-      "hybrid_rpc_errors" in row.metadata &&
-      (row.metadata as { hybrid_rpc_errors?: unknown }).hybrid_rpc_errors !== null &&
-      (row.metadata as { hybrid_rpc_errors?: unknown }).hybrid_rpc_errors !== undefined,
+  const hybridRpcIdentity = hybridRpcIdentityEvidence(hybridIdentity.data ?? [], hybridRpcErrorQueries);
+  const sampledRows = qualitySample.data ?? [];
+  // The rates describe the sampled rows. When the window is larger than the sample, dividing sampled
+  // counts by the full window total would understate every rate, so the sample size is the denominator.
+  const qualityMetrics = computeAnswerQualitySloMetrics(
+    sampledRows,
+    totalQueries > sampledRows.length ? sampledRows.length : totalQueries,
   );
-  const hybridRpcIdentity = hybridRpcIdentityEvidence(hybridErrorRows, hybridRpcErrorQueries);
-  const qualityMetrics = computeAnswerQualitySloMetrics(metadataRows, totalQueries);
 
   return {
     windowMinutes,

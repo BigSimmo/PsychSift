@@ -181,4 +181,49 @@ describe("R22: durable open.post alert delivery tracking and replay recovery", (
     });
     expect(mocks.send).not.toHaveBeenCalled();
   });
+
+  it("sends the offer alert once when two requests for the same open shift arrive together", async () => {
+    const OPEN_SHIFT_ID = "5e000000-0000-4000-8000-000000000401";
+    const client = {} as Parameters<typeof dispatchRosterAlerts>[0];
+    const action = makeOpenPostAction("5e000000-0000-4000-8000-000000000501");
+    const event = {
+      serviceId: SERVICE,
+      actorId: MANAGER,
+      action,
+      result: { openShiftId: OPEN_SHIFT_ID, status: "open" },
+    };
+
+    await Promise.all([dispatchRosterAlerts(client, event), dispatchRosterAlerts(client, event)]);
+
+    expect(mocks.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the alert retryable when the durable delivery record cannot be written", async () => {
+    const OPEN_SHIFT_ID = "5e000000-0000-4000-8000-000000000402";
+    const action = makeOpenPostAction("5e000000-0000-4000-8000-000000000502");
+    const upsert = vi.fn().mockResolvedValue({ error: { message: "write failed" } });
+    const client = {
+      from: vi.fn(() => ({
+        select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }),
+        upsert,
+      })),
+    } as unknown as Parameters<typeof dispatchRosterAlerts>[0];
+
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: MANAGER,
+      action,
+      result: { openShiftId: OPEN_SHIFT_ID, status: "open" },
+    });
+    await dispatchRosterAlerts(client, {
+      serviceId: SERVICE,
+      actorId: MANAGER,
+      action,
+      result: { openShiftId: OPEN_SHIFT_ID, status: "open", replayed: true },
+    });
+
+    // The first delivery was never recorded durably, so the replay sends again.
+    expect(upsert).toHaveBeenCalledTimes(2);
+    expect(mocks.send).toHaveBeenCalledTimes(2);
+  });
 });

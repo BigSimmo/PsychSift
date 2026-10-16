@@ -177,10 +177,19 @@ jobs:
             sbom-worker.cdx.json
           if-no-files-found: warn
 
+      - name: Download Trivy vulnerability database
+        # The scan containers run with --network=none, so they cannot fetch the database themselves.
+        # This is the only networked Trivy step. If it fails, the scan below reports STATUS=unassessed
+        # and the gate after it fails closed.
+        continue-on-error: true
+        run: node scripts/trivy-image-scan.mjs --prefetch-db "$RUNNER_TEMP/trivy-db"
+
       - name: Vulnerability scan (HIGH,CRITICAL)
         # Non-blocking step wrapper so the evaluation step below can inspect the
         # summary and fail closed with an explicit unassessed or finding error.
         continue-on-error: true
+        env:
+          TRIVY_DB_CACHE_DIR: ${{ runner.temp }}/trivy-db
         run: |
           docker builder prune -af || true
           : > trivy-scan-summary.txt

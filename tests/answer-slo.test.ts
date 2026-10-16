@@ -16,7 +16,10 @@ function fakeClient(
     degraded: number;
     truncation?: number;
     timeout?: number;
+    /** Rows returned by the hybrid-error-filtered identity read. */
     hybridRows?: Array<{ metadata: unknown }>;
+    /** Rows returned by the unfiltered, bounded quality sample. */
+    sampleRows?: Array<{ metadata: unknown }>;
   },
   error?: unknown,
   observedBaseFilters: Array<{ column: string; value: null }> = [],
@@ -55,6 +58,7 @@ function fakeClient(
     return builder;
   };
   const buildIdentity = () => {
+    let filteredToHybridErrors = false;
     const builder = {
       gt: () => builder,
       is: (column: string, value: null) => {
@@ -63,11 +67,15 @@ function fakeClient(
       },
       not: (column: string, _operator: string, value: null) => {
         observedNarrowingFilters.push({ method: "not", column, value });
+        filteredToHybridErrors = true;
         return builder;
       },
       limit: () => builder,
       then: (resolve: (value: { data: Array<{ metadata: unknown }>; error: unknown }) => unknown) =>
-        resolve({ data: error ? [] : (counts.hybridRows ?? []), error: error ?? null }),
+        resolve({
+          data: error ? [] : filteredToHybridErrors ? (counts.hybridRows ?? []) : (counts.sampleRows ?? []),
+          error: error ?? null,
+        }),
     };
     return builder;
   };
@@ -122,9 +130,10 @@ describe("answerSloSnapshot", () => {
     );
 
     expect(snapshot.totalQueries).toBe(7);
-    // Six queries scope by event_type, including the bounded hybrid-RPC identity evidence read.
+    // Seven queries scope by event_type, including the bounded hybrid-RPC identity evidence read and
+    // the bounded quality sample.
     expect(observedBaseFilters).toEqual(
-      Array.from({ length: 6 }, () => ({ column: "metadata->>event_type", value: null })),
+      Array.from({ length: 7 }, () => ({ column: "metadata->>event_type", value: null })),
     );
   });
 
@@ -203,10 +212,10 @@ describe("answerSloSnapshot", () => {
   it("computes sourceGap, unsupported, and latencyBudgetBreach metrics even when hybrid_rpc_errors is zero (R27)", async () => {
     const snapshot = await answerSloSnapshot(
       fakeClient({
-        total: 10,
+        total: 4,
         hybrid: 0,
         degraded: 0,
-        hybridRows: [
+        sampleRows: [
           { metadata: { source_gap: true, latency_ms: 4000, mode: "fast" } },
           { metadata: { unsupported: true, latency_ms: 12000, mode: "fast" } },
           { metadata: { latency_ms: 30000, mode: "strong" } },
@@ -217,10 +226,43 @@ describe("answerSloSnapshot", () => {
     expect(snapshot.hybridRpcErrorQueries).toBe(0);
     expect(snapshot.hybridRpcIdentityEvidenceComplete).toBe(true);
     expect(snapshot.sourceGapQueries).toBe(1);
-    expect(snapshot.sourceGapRate).toBeCloseTo(0.1, 5);
+    expect(snapshot.sourceGapRate).toBeCloseTo(0.25, 5);
     expect(snapshot.unsupportedQueries).toBe(1);
-    expect(snapshot.unsupportedRate).toBeCloseTo(0.1, 5);
+    expect(snapshot.unsupportedRate).toBeCloseTo(0.25, 5);
     expect(snapshot.latencyBudgetBreachQueries).toBe(2);
-    expect(snapshot.latencyBudgetBreachRate).toBeCloseTo(0.2, 5);
+    expect(snapshot.latencyBudgetBreachRate).toBeCloseTo(0.5, 5);
+  });
+
+  it("uses the sampled row count as the denominator when the window is larger than the sample", async () => {
+    // 3,000 answers in the window but only 4 sampled rows: dividing by 3,000 would hide a real breach.
+    const snapshot = await answerSloSnapshot(
+      fakeClient({
+        total: 3000,
+        hybrid: 0,
+        degraded: 0,
+        sampleRows: [
+          { metadata: { source_gap: true } },
+          { metadata: { source_gap: true } },
+          { metadata: {} },
+          { metadata: {} },
+        ],
+      }),
+    );
+    expect(snapshot.totalQueries).toBe(3000);
+    expect(snapshot.sourceGapRate).toBeCloseTo(0.5, 5);
+  });
+
+  it("reads hybrid RPC identity evidence from the filtered query, not the quality sample", async () => {
+    const snapshot = await answerSloSnapshot(
+      fakeClient({
+        total: 2,
+        hybrid: 1,
+        degraded: 0,
+        hybridRows: [{ metadata: { hybrid_rpc_errors: { hybrid_search: "timeout" } } }],
+        sampleRows: [{ metadata: {} }, { metadata: {} }],
+      }),
+    );
+    expect(snapshot.hybridRpcIdentityEvidenceComplete).toBe(true);
+    expect(snapshot.hybridRpcErrorCounts).toEqual({ hybrid_search: 1 });
   });
 });

@@ -13,6 +13,8 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
   refresh.mockReset();
+  // Unsent plan edits persist for the browser session by design, so one test's draft must not reach the next.
+  window.sessionStorage.clear();
 });
 
 const SET = createAustralianRanzcpPreset(2026, "2026-01-05");

@@ -4455,16 +4455,6 @@
         "catalogued": true
       },
       {
-        "path": "docs/branch-review-index.md",
-        "section": "root",
-        "catalogued": true
-      },
-      {
-        "path": "docs/branch-review-index.md",
-        "section": "root",
-        "catalogued": true
-      },
-      {
         "path": "docs/audit/2026-09-17-external-audit-refutations.md",
         "section": "audit",
         "catalogued": true
@@ -25469,6 +25459,14 @@
         "scope": "branch-cleanup",
         "outcome": "Retained for open PR #592.",
         "checks": "Fresh GitHub open-PR query matched this branch."
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "fix/adversarial-r01-r34-20261016",
+        "head": "eca2da722c8d27fd2304db122be6460f5f1ce804",
+        "scope": "R01-R34 reconciled adversarial review remediation",
+        "outcome": "pass (2 independent adversarial reviewers)",
+        "checks": "typecheck,lint,27-vitest-suites-176-tests,maintainability-budgets,migration-immutability,function-grants,diff-integrity,docs-maintain"
       },
       {
         "date": "2026-07-22",

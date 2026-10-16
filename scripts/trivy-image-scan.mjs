@@ -9,7 +9,7 @@
  * daemon socket, which would be equivalent to root on the host.
  */
 import { basename, dirname, join, resolve } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -19,6 +19,12 @@ import { fileURLToPath } from "node:url";
 export const TRIVY_VERSION = "0.59.1";
 export const TRIVY_IMAGE =
   "aquasec/trivy:0.59.1@sha256:029e990b328d149bf0a9ffe355919041e1f86192db2df47e217f8a36dd42ceac";
+/**
+ * Host directory holding a pre-downloaded Trivy vulnerability database. The scan container runs with
+ * `--network=none`, so it cannot fetch the database itself; a separate networked step fills this
+ * directory first (`--prefetch-db`), and the isolated scan then reads it with updates skipped.
+ */
+export const TRIVY_DB_CACHE_ENV = "TRIVY_DB_CACHE_DIR";
 export const REQUIRED_TRIVY_SCAN_IMAGES = Object.freeze(["clinical-kb-app:ci", "clinical-kb-worker:ci"]);
 
 function run(cmd, args, opts = {}) {
@@ -172,9 +178,23 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null } = {}) {
     if (outputHostPath) {
       mounts.push("-v", `${dirname(resolve(outputHostPath))}:/out`);
     }
+    const dbCacheDir = process.env[TRIVY_DB_CACHE_ENV];
+    let effectiveTrivyArgs = trivyArgs;
+    if (dbCacheDir) {
+      mounts.push("-v", `${resolve(dbCacheDir)}:/trivy-cache`);
+      // Global scan flags follow the subcommand: use the prefetched database and never try the network.
+      effectiveTrivyArgs = [
+        trivyArgs[0],
+        "--cache-dir",
+        "/trivy-cache",
+        "--skip-db-update",
+        "--skip-java-db-update",
+        ...trivyArgs.slice(1),
+      ];
+    }
 
     const dockerArgs = ["run", "--rm", "--network=none", ...mounts, TRIVY_IMAGE];
-    for (const arg of trivyArgs) {
+    for (const arg of effectiveTrivyArgs) {
       if (arg === "__IMAGE__") {
         dockerArgs.push("--input", `/work/${tarName}`);
       } else if (arg === "__OUT__" && outputHostPath) {
@@ -190,8 +210,40 @@ function runDockerTrivy(imageRef, trivyArgs, { outputHostPath = null } = {}) {
   }
 }
 
+/**
+ * Downloads the vulnerability database into `cacheDir` using the pinned Trivy image. This is the only
+ * networked Trivy step; scans themselves stay `--network=none` and read the result.
+ */
+function prefetchDatabase(cacheDir) {
+  if (!cacheDir) {
+    console.error("Usage: node scripts/trivy-image-scan.mjs --prefetch-db <cache-dir>");
+    process.exit(1);
+  }
+  mkdirSync(resolve(cacheDir), { recursive: true });
+  const result = run("docker", [
+    "run",
+    "--rm",
+    "-v",
+    `${resolve(cacheDir)}:/trivy-cache`,
+    TRIVY_IMAGE,
+    "image",
+    "--download-db-only",
+    "--cache-dir",
+    "/trivy-cache",
+  ]);
+  if (result.status !== 0) {
+    console.error(result.stderr || result.stdout || "Trivy vulnerability database download failed");
+    process.exit(1);
+  }
+  console.log(`Trivy vulnerability database downloaded to ${resolve(cacheDir)}`);
+}
+
 function main() {
   const [imageRef, ...rest] = process.argv.slice(2);
+  if (imageRef === "--prefetch-db") {
+    prefetchDatabase(rest[0]);
+    return;
+  }
   if (!imageRef) {
     console.error("Usage: node scripts/trivy-image-scan.mjs <image:tag> [--severity SEV] [--sbom <output.json>]");
     process.exit(1);

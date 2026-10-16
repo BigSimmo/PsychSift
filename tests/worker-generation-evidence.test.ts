@@ -539,7 +539,7 @@ describe("actual source to retained prerequisite packet", () => {
     expect(readEnd).toBeGreaterThan(readStart);
     const reader = branch.slice(readStart, readEnd);
     expect(reader).toContain("runIngestionPreparedWork(");
-    expect(reader).toContain("ingestionRpcClient.rpc(name, payload)");
+    expect(reader).toMatch(/ingestionRpcClient\s*\.rpc\(name, payload\)/);
     expect(reader).toContain('mutation(attempt, "heartbeat_ingestion_job")');
     expect(reader).toContain("attempt.check()");
     expect(reader).toContain("attempt.cancel()");

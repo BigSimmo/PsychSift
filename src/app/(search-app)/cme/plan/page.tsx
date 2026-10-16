@@ -39,7 +39,7 @@ export default async function CmePlanRoute({ searchParams }: { searchParams: Pro
         now={data.now}
         nextYearConfirmed={data.nextYearConfirmed}
         nextYearGoals={data.nextYearGoals}
-        ownerId={data.ownerId!}
+        ownerId={data.ownerId ?? undefined}
       />
       <aside aria-label="Year-end actions" className="mx-auto w-full max-w-3xl px-4 pb-6 sm:px-6">
         <CmeYearEndActions
