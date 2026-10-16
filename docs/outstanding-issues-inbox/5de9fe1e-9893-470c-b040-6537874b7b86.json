@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "5de9fe1e-9893-470c-b040-6537874b7b86",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#08216B",
+    "outcome": "Implemented Devine IBW and Adjusted Body Weight guidance in calculateCockcroftGault (renal.ts), aligned the >= 1.2 mmol/L lithium toxic boundary, clarified >= 2.0 mmol/L severe toxicity vs haemodialysis clinical thresholds, and updated proportional lithium dose rounding to 125 mg Australian scored-tablet increments (lithium.ts, types.ts, tests/clinical-math-calculators.test.ts, tests/clinical-math-bounds.test.ts).",
+    "baseRowFingerprint": "834fe6aa641790add81301bfbcb49b8a69f7adac632f43bc1c9f2ea4feab099b",
+    "targetUlid": "01M4ZM796108216B8VGP235CHK"
+  }
+}

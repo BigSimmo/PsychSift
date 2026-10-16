@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "f3352f44-2b82-4c14-b91a-c4485c7bd738",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#3B4S3Z",
+    "outcome": "Verified implemented on main: writeOverFresh in src/components/roster/manage/roster-safe-number.tsx:185-204 passes expectedIds to 20261010081500_roster_needs_stale_check.sql with retry and stale_safe_number conflict recovery, covered by tests/safe-number-concurrency.test.ts and tests/roster-safe-number.dom.test.tsx.",
+    "baseRowFingerprint": "5ca7346ae1268a5752fd839ff3e89d8fd67a63224e80172aaafe403fdab6aa93",
+    "targetUlid": "01M4HWPJ213B4S3ZYZJN2W4S2F"
+  }
+}

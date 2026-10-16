@@ -9,7 +9,7 @@ import { addDaysToDate, formatPerthDay, perthDateOf } from "@/lib/roster/shifts/
 import { personalRosterChanges, timelineSpan } from "@/lib/roster/team/team-view";
 import type { RosterTeam } from "@/lib/roster/team/model";
 import type { RosterDisplayShift } from "@/lib/roster/team/team-view";
-import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
+import { isWaPublicHolidayDate } from "@/lib/on-call/wa-public-holidays";
 import { formatShiftRange } from "@/components/roster/roster-format";
 import { RosterChangeRows } from "@/components/roster/roster-change-rows";
 import { teamChangeNotices } from "@/lib/roster/what-changed";
@@ -77,7 +77,7 @@ function TeamSummary({
   const cutoff = overview.data.nextCutoffOn;
   const holiday = Array.from({ length: 8 }, (_, offset) => addDaysToDate(today, offset)).find(
     (date) =>
-      WA_PUBLIC_HOLIDAYS.has(date) && assignments.some((row) => row.userId === actorId && timelineSpan(row, date)),
+      isWaPublicHolidayDate(date) && assignments.some((row) => row.userId === actorId && timelineSpan(row, date)),
   );
   const rotationEndsOn = overview.data.me.rotationEndsOn;
   const nextTeamShift = rotationEndsOn

@@ -171,7 +171,7 @@ export function waPublicHolidaysByRule(year: number): string[] {
 const ruleCache = new Map<number, ReadonlySet<string>>();
 
 function holidaysFor(year: number): ReadonlySet<string> {
-  if (year <= WA_PUBLIC_HOLIDAYS_LAST_YEAR) return WA_PUBLIC_HOLIDAYS;
+  if (year >= 2026 && year <= WA_PUBLIC_HOLIDAYS_LAST_YEAR) return WA_PUBLIC_HOLIDAYS;
   let set = ruleCache.get(year);
   if (!set) {
     set = new Set(waPublicHolidaysByRule(year));
@@ -180,12 +180,22 @@ function holidaysFor(year: number): ReadonlySet<string> {
   return set;
 }
 
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Whether a calendar `YYYY-MM-DD` date key is a WA public holiday (published
+ * list through `WA_PUBLIC_HOLIDAYS_LAST_YEAR`, statutory rules for later years).
+ */
+export function isWaPublicHolidayDate(dateKey: string): boolean {
+  if (!DATE_KEY_PATTERN.test(dateKey)) return false;
+  return holidaysFor(Number(dateKey.slice(0, 4))).has(dateKey);
+}
+
 /**
  * Read in the work time zone, like `isOnCallOutOfHours` beside it in "Who do I
  * call now?": the two answers combine into one "in hours or not", so they must
  * read the same clock, and both take the same `zone`.
  */
 export function isWaPublicHoliday(now: Date, zone: string = currentWorkTimeZone()): boolean {
-  const key = onCallLocalDateKey(now, zone);
-  return holidaysFor(Number(key.slice(0, 4))).has(key);
+  return isWaPublicHolidayDate(onCallLocalDateKey(now, zone));
 }

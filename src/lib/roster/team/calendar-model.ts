@@ -1,6 +1,6 @@
 import { addDays, addMonthsClamped, dateKeyToUtcMillis } from "@/lib/calendar/calendar-event";
 import { monthGrid, monthGridRange, monthKeyOf } from "@/lib/calendar/month-grid";
-import { WA_PUBLIC_HOLIDAYS } from "@/lib/on-call/wa-public-holidays";
+import { isWaPublicHolidayDate } from "@/lib/on-call/wa-public-holidays";
 import { gradeRank } from "./eligibility";
 import { ROSTER_GRADES, type RosterAssignment, type RosterGrade } from "./model";
 import { assignmentStartDate, withMe } from "./team-view";
@@ -186,7 +186,7 @@ export function monthCells(monthKey: string, rows: readonly RosterAssignment[], 
       return {
         date,
         inMonth,
-        holiday: WA_PUBLIC_HOLIDAYS.has(date),
+        holiday: isWaPublicHolidayDate(date),
         shifts,
         mine: me === null ? [] : shifts.filter((row) => row.userId === me),
       };

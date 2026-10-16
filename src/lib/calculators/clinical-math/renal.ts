@@ -1,4 +1,12 @@
-import type { CkdEpiInput, CkdEpiResult, CockcroftGaultInput, CockcroftGaultResult, RenalStage } from "./types";
+import type {
+  BiologicalSex,
+  CkdEpiInput,
+  CkdEpiResult,
+  CockcroftGaultInput,
+  CockcroftGaultResult,
+  CreatinineUnit,
+  RenalStage,
+} from "./types";
 
 function classifyRenalStage(value: number): RenalStage {
   if (value >= 90) return "normal";
@@ -6,6 +14,24 @@ function classifyRenalStage(value: number): RenalStage {
   if (value >= 30) return "moderate_impairment";
   if (value >= 15) return "severe_impairment";
   return "kidney_failure";
+}
+
+function computeRawCrCl(
+  age: number,
+  weightKg: number,
+  sex: BiologicalSex,
+  serumCreatinine: number,
+  creatinineUnit: CreatinineUnit,
+): number {
+  if (creatinineUnit === "umol/L") {
+    // Standard Australasian formula: (140 - age) * weight * factor / SCr (umol/L)
+    // Factor: 1.23 for males, 1.04 for females
+    const factor = sex === "female" ? 1.04 : 1.23;
+    return ((140 - age) * weightKg * factor) / serumCreatinine;
+  }
+  // US formula: (140 - age) * weight / (72 * SCr) * (0.85 if female)
+  const factor = sex === "female" ? 0.85 : 1.0;
+  return (((140 - age) * weightKg) / (72 * serumCreatinine)) * factor;
 }
 
 /**
@@ -58,17 +84,36 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     };
   }
 
-  let crCl: number;
-  if (input.creatinineUnit === "umol/L") {
-    // Standard Australasian formula: (140 - age) * weight * factor / SCr (umol/L)
-    // Factor: 1.23 for males, 1.04 for females
-    const factor = input.sex === "female" ? 1.04 : 1.23;
-    crCl = ((140 - input.age) * input.weightKg * factor) / input.serumCreatinine;
-  } else {
-    // US formula: (140 - age) * weight / (72 * SCr) * (0.85 if female)
-    const factor = input.sex === "female" ? 0.85 : 1.0;
-    crCl = (((140 - input.age) * input.weightKg) / (72 * input.serumCreatinine)) * factor;
+  if (input.heightCm !== undefined) {
+    if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
+      const rawIbw = (input.sex === "male" ? 50 : 45.5) + 0.9 * (input.heightCm - 152.4);
+      const ibwKg = Math.round(rawIbw * 10) / 10;
+      if (ibwKg > 0 && input.weightKg > ibwKg) {
+        const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
+        const ibwCrCl =
+          Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
+          100;
+        const abwCrCl =
+          Math.round(computeRawCrCl(input.age, abwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
+          100;
+        const excessLabel =
+          input.weightKg > ibwKg * 1.2 ? "exceeds Ideal Body Weight by >20%" : "exceeds Ideal Body Weight";
+        warnings.push(
+          `Actual weight (${input.weightKg} kg) ${excessLabel} (Devine IBW: ${ibwKg.toFixed(1)} kg; Adjusted Body Weight: ${abwKg.toFixed(1)} kg). Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (CrCl ${ibwCrCl} mL/min) or Adjusted Body Weight (CrCl ${abwCrCl} mL/min) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.`,
+        );
+      }
+    } else {
+      warnings.push(
+        "Height outside adult Devine IBW range (120–230 cm); Ideal Body Weight not calculated. Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal or Adjusted Body Weight in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium.",
+      );
+    }
+  } else if (input.weightKg >= 90) {
+    warnings.push(
+      "Weight >= 90 kg (height omitted): Australian Therapeutic Guidelines / Cockcroft-Gault use Ideal Body Weight (IBW) or Adjusted Body Weight (ABW) in overweight/obese patients so CrCl is not overestimated for renally cleared drugs like lithium (provide heightCm to compute Devine IBW/ABW).",
+    );
   }
+
+  const crCl = computeRawCrCl(input.age, input.weightKg, input.sex, input.serumCreatinine, input.creatinineUnit);
 
   const rounded = Math.round(crCl * 100) / 100;
   if (!Number.isFinite(rounded)) {

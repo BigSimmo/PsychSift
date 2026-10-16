@@ -11,6 +11,7 @@ import {
   assessTestFile,
   changedPaths,
   countAssertions,
+  countSkippedCases,
   countTestCases,
   evaluate,
   isTestFile,
@@ -71,9 +72,25 @@ describe("countTestCases", () => {
     expect(countTestCases("const matched = /brand names?/i.test(row.key);")).toBe(0);
   });
 
-  it("counts a parameterised table once on each side of the comparison", () => {
-    expect(countTestCases('test.each([1, 2, 3])("case %i", () => {});')).toBe(1);
-    expect(countTestCases('it.each([["a"], ["b"]])("case %s", () => {});')).toBe(1);
+  it("weights inline parameterised array literals by element count and counts table references once", () => {
+    expect(countTestCases('test.each([1, 2, 3])("case %i", () => {});')).toBe(3);
+    expect(countTestCases('it.each([["a"], ["b"]])("case %s", () => {});')).toBe(2);
+    expect(countTestCases('it.each([1, 2, 3, 4, 5])("case %i", () => {});')).toBe(5);
+    expect(countTestCases('test.each(table)("case %i", () => {});')).toBe(1);
+    expect(countTestCases('test.each([])("empty %i", () => {});')).toBe(1);
+  });
+
+  it("detects when rows are deleted from an inline it.each array literal", () => {
+    const beforeSource = 'it.each([1, 2, 3, 4, 5])("case %i", () => {});';
+    const afterSource = 'it.each([1])("case %i", () => {});';
+    const before = countTestCases(beforeSource);
+    const after = countTestCases(afterSource);
+    expect(before).toBe(5);
+    expect(after).toBe(1);
+    const strictConfig = { ...config, perFileMinRemovedCases: 3 };
+    const verdict = assessTestFile({ path: "tests/param.test.ts", before, after, config: strictConfig });
+    expect(verdict.ok).toBe(false);
+    expect(verdict.message).toContain("lost 4 of 5");
   });
 
   it("ignores in-body annotations and sub-steps that take no title", () => {
@@ -92,7 +109,7 @@ describe("countTestCases", () => {
     // Counting it as zero would let that whole file be regenerated away with no signal.
     expect(countTestCases('it.runIf(process.platform !== "win32")("a", () => {});')).toBe(1);
     expect(countTestCases('test.skipIf(isCI)("b", () => {});')).toBe(1);
-    expect(countTestCases('test.for([1, 2])("c %i", () => {});')).toBe(1);
+    expect(countTestCases('test.for([1, 2])("c %i", () => {});')).toBe(2);
   });
 
   it("agrees with the real repository files that use those modifiers", () => {
@@ -109,6 +126,58 @@ describe("countTestCases", () => {
 
   it("parses TSX specs", () => {
     expect(countTestCases('it("renders", () => { render(<A />); });', "a.dom.test.tsx")).toBe(1);
+  });
+
+  it("counts Python test_ functions, ignores comments/docstrings, and expands @pytest.mark.parametrize lists", () => {
+    const pySource = [
+      "# def test_commented_out():",
+      "#     assert False",
+      '"""',
+      "def test_inside_docstring():",
+      "    assert False",
+      '"""',
+      "@pytest.mark.parametrize(",
+      '    "raw,expected",',
+      "    [",
+      '        ("a, b", 1),',
+      '        ("c", 2),',
+      '        ("d", 3),',
+      "    ],",
+      ")",
+      "def test_parametrized(raw, expected):",
+      "    assert expected > 0",
+      "",
+      "async def test_async_extraction():",
+      "    assert True",
+      "",
+      "def helper_not_a_test():",
+      "    return 1",
+    ].join("\n");
+    expect(countTestCases(pySource, "worker/python/test_extract.py")).toBe(4);
+  });
+});
+
+describe("countSkippedCases", () => {
+  it("counts .skip and .fixme declarations in TS/JS and @pytest.mark.skip in Python", () => {
+    const tsSource = [
+      'it("active", () => {});',
+      'it.skip("skipped", () => {});',
+      'test.fixme("fixme", () => {});',
+      'describe.skip("skipped suite", () => {});',
+      'test.describe.skip("playwright skipped suite", () => {});',
+      'test("inBody", () => { test.skip(); });',
+    ].join("\n");
+    expect(countSkippedCases(tsSource, "tests/example.test.ts")).toBe(4);
+
+    const pySource = [
+      "@pytest.mark.skip(reason='pending')",
+      "def test_skipped_one():",
+      "    assert True",
+      "",
+      "def test_active():",
+      "    assert True",
+    ].join("\n");
+    expect(countSkippedCases(pySource, "worker/python/test_extract.py")).toBe(1);
   });
 });
 
@@ -134,6 +203,22 @@ describe("countAssertions", () => {
     ].join("\n");
     expect(countAssertions(source, "button.dom.test.tsx")).toBe(1);
   });
+
+  it("counts assert, self.assert*, and pytest.raises in Python test files while ignoring comments and strings", () => {
+    const pySource = [
+      "# assert False",
+      '"""',
+      "assert False",
+      '"""',
+      "def test_extract(self):",
+      '    msg = "assert not counted"',
+      "    assert len(msg) > 0",
+      "    self.assertEqual(1, 1)",
+      "    with pytest.raises(ValueError):",
+      "        raise ValueError('bad')",
+    ].join("\n");
+    expect(countAssertions(pySource, "worker/python/test_extract.py")).toBe(3);
+  });
 });
 
 describe("assessTestFile — the per-file ceiling", () => {
@@ -142,6 +227,27 @@ describe("assessTestFile — the per-file ceiling", () => {
     expect(verdict.ok).toBe(false);
     expect(verdict.message).toContain("lost 80 of 89");
     expect(verdict.message).toContain("diff-integrity.json");
+  });
+
+  it("fails when active tests are mass-converted to it.skip without changing total count", () => {
+    const beforeSource = Array.from({ length: 12 }, (_, i) => `it("case ${i}", () => { expect(1).toBe(1); });`).join(
+      "\n",
+    );
+    const afterSource = Array.from({ length: 12 }, (_, i) =>
+      i < 10 ? `it.skip("case ${i}", () => { expect(1).toBe(1); });` : `it("case ${i}", () => { expect(1).toBe(1); });`,
+    ).join("\n");
+    const verdict = assessTestFile({
+      path: "tests/mass-skip.test.ts",
+      before: countTestCases(beforeSource),
+      after: countTestCases(afterSource),
+      skippedBefore: countSkippedCases(beforeSource),
+      skippedAfter: countSkippedCases(afterSource),
+      config,
+    });
+    expect(verdict.before).toBe(12);
+    expect(verdict.after).toBe(12);
+    expect(verdict.ok).toBe(false);
+    expect(verdict.message).toContain("newly skipped/fixme cases reduced active test coverage");
   });
 
   it("stays quiet for small trims and ordinary edits", () => {
@@ -327,11 +433,24 @@ describe("parseConfig", () => {
 });
 
 describe("isTestFile", () => {
-  it("recognises spec and test files across the extensions the repo uses", () => {
-    for (const path of ["tests/ui-smoke.spec.ts", "tests/a.dom.test.tsx", "tests/b.test.ts", "scripts/c.test.mjs"]) {
+  it("recognises spec and test files across the extensions the repo uses, including Python tests", () => {
+    for (const path of [
+      "tests/ui-smoke.spec.ts",
+      "tests/a.dom.test.tsx",
+      "tests/b.test.ts",
+      "scripts/c.test.mjs",
+      "worker/python/test_extract.py",
+      "worker/python/extract_test.py",
+      "test_root.py",
+    ]) {
       expect(isTestFile(path)).toBe(true);
     }
-    for (const path of ["src/app/page.tsx", "tests/playwright-settlement.ts", "docs/testing.md"]) {
+    for (const path of [
+      "src/app/page.tsx",
+      "tests/playwright-settlement.ts",
+      "docs/testing.md",
+      "worker/python/extract_pdf_assets.py",
+    ]) {
       expect(isTestFile(path)).toBe(false);
     }
   });

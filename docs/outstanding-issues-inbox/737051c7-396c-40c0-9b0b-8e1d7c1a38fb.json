@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "id": "737051c7-396c-40c0-9b0b-8e1d7c1a38fb",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#WFYDV6",
+    "outcome": "Fixed statutory discrepancies and branding in-place in src/components/forms/wa-mha-form-print.tsx: replaced Form 6B Chief Psychiatrist consent wording with statutory post-order Report to the Chief Psychiatrist wording matching form-register.ts, replaced official WA Department of Health branding with an explicit Non-Statutory Study Layout header and warning banner, and updated tests/wa-mha-form-print.dom.test.tsx (retaining the file per the 30-day dead-code policy).",
+    "baseRowFingerprint": "12bf5ed86d69467316951bcf49533246a868ea2c23daffeb423f671022b5f156",
+    "targetUlid": "01M4ZM793BWFYDV65NNBHBP53K"
+  }
+}
