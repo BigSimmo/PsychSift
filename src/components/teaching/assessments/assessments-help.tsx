@@ -289,7 +289,7 @@ function RequestEpaSheet({
                 supervisorName,
                 supervisorRole: guest,
               });
-              void fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
+              const registration = await fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
                 method: "PUT",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({
@@ -298,7 +298,11 @@ function RequestEpaSheet({
                   supervisorName,
                   supervisorRole: guest,
                 }),
-              }).catch(() => {});
+              });
+              if (!registration.ok) {
+                setMagicLinkCopied("Could not register supervisor link. Please try again.");
+                return;
+              }
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;
               void navigator.clipboard?.writeText(fullUrl).catch(() => undefined);
@@ -752,4 +756,6 @@ export function AssessmentsSheets({
       </div>
     </Sheet>
   );
+}
+ );
 }
