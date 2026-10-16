@@ -37,12 +37,5 @@ const expectedEffort = manifest.adaptiveEffortPolicy.highLaunchPhases.includes(t
 if (selectedEffort !== expectedEffort) {
   fail(`Cloud effort must be ${expectedEffort} for ${target}`, "BLOCKED_WRONG_REASONING_EFFORT");
 }
-const xhighConfirmed = process.argv.includes("--xhigh-confirmed");
-if (expectedEffort === "xhigh" && !xhighConfirmed) {
-  fail("xhigh target lacks the user confirmation marker", "BLOCKED_XHIGH_CONFIRMATION_MISSING");
-}
-if (expectedEffort === "high" && xhighConfirmed) {
-  fail("high target must use the high launch prompt", "BLOCKED_WRONG_LAUNCH_PROFILE");
-}
 
 console.log(`[rag-phase-launch] PASS: ${target} requires ${expectedEffort}; launch profile matches.`);

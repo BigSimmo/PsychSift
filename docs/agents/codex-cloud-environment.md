@@ -49,13 +49,25 @@ Use `docs/codex-cloud.md` as the environment contract:
   separately without printing secret values.
 - In a fresh Cloud task, run `bash scripts/check-codex-cloud-raw-env.sh` before sourcing a
   profile or entering a login shell. It must report only provider variable names and presence,
-  never values. Treat exit `1` / `FAIL`+`STOP` as a hard stop for any unexpected inherited name.
-  Only exit `2` / `FAIL-KNOWN` for `OPENAI_BASE_URL` alone may use the restricted
-  profile-and-shim continue path; do not generalize that allowance. Exit `2` is still a failed raw
-  boundary — future automation must not treat non-1 as success or as a blind retry. That name can
-  redirect OpenAI-bound traffic, so never invoke OpenAI clients from the raw parent or any binary
-  that bypasses the profile/`node`/`npm`/`npx` scrub. Then run
-  `npm run check:codex-cloud` directly; it must report the static-and-environment PASS line. Run
+  never values. The probe establishes presence in the unsanitized parent process, not where a
+  variable originated, and repository edits cannot remove a variable from an already-running
+  process. When exit `1` / `FAIL`+`STOP` or a failed credential check occurs, application
+  execution (`npm run ensure`), live provider access, and full runtime acceptance remain blocked
+  and require a fresh task once the environment source is cleared; however, explicitly requested
+  local policy, documentation, and configuration inspection and repair are permitted, along with
+  scrubbed offline checks (`git diff --check`, `npm run check:codex-cloud`,
+  `npm run check:instructions`, `npm run check:decisions`, and offline unit tests run after
+  sourcing `~/.clinical-kb-codex-cloud.sh` or through `~/.local/bin/{node,npm,npx}` command shims,
+  which `unset` `GH_TOKEN`, `OPENAI_BASE_URL`, and all other provider variables before Node
+  executes). Exit `2` / `FAIL-KNOWN` for the documented launcher-injected names (`OPENAI_BASE_URL`
+  and `GH_TOKEN`) uses the restricted profile-and-shim continue path for provider-free work; do
+  not generalize that allowance to other provider credentials. Exit `2` is still a failed raw
+  boundary — future automation must not treat non-1 as success or as a blind retry. Because
+  `OPENAI_BASE_URL` can redirect OpenAI-bound traffic and `GH_TOKEN` carries host GitHub
+  credentials, never invoke OpenAI or GitHub clients from the raw parent or any binary that
+  bypasses the profile/`node`/`npm`/`npx` scrub. In non-login shells (`bash -c`), source
+  `~/.clinical-kb-codex-cloud.sh` before running `npm run check:codex-cloud` so the scrubbed
+  profile is active; it must report the static-and-environment PASS line. Run
   `npm run check:codex-cloud -- --runtime` with `CODEX_CLOUD_EXPECTED_BASE_SHA` set to the
   intended merge/base commit when the checkout has only a task HEAD. Setup and maintenance may
   report freshness as unverified so provisioning remains repairable, but explicit acceptance must
@@ -108,8 +120,9 @@ Use `docs/codex-cloud.md` as the environment contract:
 - Confirm the exact repository and PR/thread/job before a write, and verify the connector
   result before treating the write as successful. A repository cannot sanitize a variable
   already inherited by the top-level task process; the tracked shims protect normal
-  `node`/`npm`/`npx` commands. Report raw-parent exposure as a Codex Cloud launcher defect
-  rather than weakening the provider-variable contract.
+  `node`/`npm`/`npx` commands. Report raw-parent exposure as a Codex Cloud environment or launcher
+  finding rather than weakening the provider-variable contract, while still completing any
+  explicitly requested local policy/doc inspection and scrubbed offline checks.
 - Cloud browser proof is Playwright/Chromium, Firefox, or WebKit container evidence, not
   physical iPhone Safari/PWA acceptance.
 
@@ -122,7 +135,7 @@ Codex Cloud uses an isolated Linux container and does not inherit desktop creden
 
 - Default to `CODEX_CLOUD_ACCESS_PROFILE=offline` for ordinary/RAG work; use `connected` only with explicit provider authorization.
 - Personal Pro split control plane: Codex Cloud for code and GitHub connector; ChatGPT web for Railway and read-only Supabase metadata.
-- Acceptance: run `bash scripts/check-codex-cloud-raw-env.sh`, `npm run check:codex-cloud`, and `npm run check:codex-cloud -- --runtime` (with `CODEX_CLOUD_EXPECTED_BASE_SHA`).
+- Acceptance: run `bash scripts/check-codex-cloud-raw-env.sh`, `npm run check:codex-cloud`, and `npm run check:codex-cloud -- --runtime` (with `CODEX_CLOUD_EXPECTED_BASE_SHA`). Exit 1 (`FAIL`/`STOP`) blocks app execution and provider access, not explicitly requested local policy repair or scrubbed offline checks; exit 2 (`FAIL-KNOWN`, only `OPENAI_BASE_URL`/`GH_TOKEN`) still fails the raw boundary but permits provider-free work, including app/runtime commands, through the generated profile and command shims.
 - Do not expose provider secrets (OpenAI, Supabase, Railway, GitHub PATs) in Cloud agent shells or committed config.
 - Authenticated live tests run via `.github/workflows/authenticated-live-tests.yml` with manual dispatch, never from Cloud agent shells.
 - Branch deletion helper `bash scripts/delete-codex-cloud-branch-with-pat.sh` is operator-only outside Cloud.

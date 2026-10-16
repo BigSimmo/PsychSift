@@ -26,7 +26,7 @@ current hosted availability:
 Use other supported effort levels when justified. Astra High is the preferred
 controller for substantial programmes; preserve the user's selected main-chat
 model and effort. Never pin them in the repository configuration. The
-[reasoning calibration and Cloud confirmation requirements](codex-reasoning-effort.md)
+[reasoning effort calibration and Cloud guidance](codex-reasoning-effort.md)
 remain binding; a lighter starting route cannot lower a required floor.
 
 ## Dispatch and coordinate

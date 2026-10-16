@@ -310,6 +310,29 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(result.targetRange).toEqual({ min: 0.8, max: 1.0 });
     });
 
+    it("flags a toxic level even when age is missing, without inventing a target range", () => {
+      for (const age of [Number.NaN, 0]) {
+        const moderate = evaluateLithiumLevel({ serumLevelMmolL: 1.2, indication: "maintenance", age });
+        expect(moderate.status).toBe("toxic");
+        expect(moderate.severity).toBe("moderate");
+        expect(moderate.requiresUrgentAction).toBe(true);
+        expect(moderate.targetRangeKnown).toBe(false);
+        expect(moderate.clinicalGuidance[0]).toMatch(/^TOXICITY ALERT/);
+
+        const severe = evaluateLithiumLevel({ serumLevelMmolL: 2.4, indication: "acute_mania", age });
+        expect(severe.status).toBe("toxic");
+        expect(severe.severity).toBe("severe");
+        expect(severe.clinicalGuidance[0]).toMatch(/^CRITICAL/);
+      }
+      // Below the toxic threshold the age decides the target range, so a missing age stays invalid.
+      expect(evaluateLithiumLevel({ serumLevelMmolL: 1.19, indication: "maintenance", age: Number.NaN }).status).toBe(
+        "invalid",
+      );
+      expect(evaluateLithiumLevel({ serumLevelMmolL: 1.2, indication: "maintenance", age: 40 }).targetRangeKnown).toBe(
+        true,
+      );
+    });
+
     it("flags toxic levels >= 1.2 and severe toxicity >= 2.0 mmol/L with accurate haemodialysis guidance", () => {
       const boundaryTox = evaluateLithiumLevel({
         serumLevelMmolL: 1.2,

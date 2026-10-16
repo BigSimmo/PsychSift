@@ -190,7 +190,9 @@ export function ClinicalMathPanel({
     : [];
 
   const hasQtcInput = qtMs.trim() !== "" && hrBpm.trim() !== "";
-  const hasLithiumTroughInput = lithiumLevel.trim() !== "" && age.trim() !== "";
+  // A toxic level is shown even before an age is entered: the toxicity thresholds do not depend on age.
+  const hasLithiumTroughInput =
+    lithiumLevel.trim() !== "" && (age.trim() !== "" || lithiumEval.targetRangeKnown === false);
   const hasLithiumDoseInput = lithiumLevel.trim() !== "" && currentDoseMg.trim() !== "" && targetLevel.trim() !== "";
 
   return (
@@ -666,8 +668,10 @@ export function ClinicalMathPanel({
                   <>
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="font-bold capitalize">
-                        Level status: {lithiumEval.status} (target {lithiumEval.targetRange.min}–
-                        {lithiumEval.targetRange.max} mmol/L)
+                        Level status: {lithiumEval.status}
+                        {lithiumEval.targetRangeKnown === false
+                          ? null
+                          : ` (target ${lithiumEval.targetRange.min}–${lithiumEval.targetRange.max} mmol/L)`}
                       </span>
                     </div>
                     {lithiumEval.clinicalGuidance.map((g, idx) => (

@@ -912,3 +912,66 @@ describe("teaching migration: depth decisions (R23)", () => {
     expect(left).not.toMatch(/supervisor_id|display_name|topics|minutes|teaching_audit|for share|pg_advisory/);
   });
 });
+
+describe("teaching migration: admins may export attendance (20261016134500)", () => {
+  const followUpName = "20261016134500_teaching_admin_attendance_export.sql";
+  const followUp = readFileSync(`supabase/migrations/${followUpName}`, "utf8");
+  const schema = readFileSync("supabase/schema.sql", "utf8");
+  const oldGuard = "if v_role <> 'organiser' then raise exception 'teaching_role_denied'; end if;";
+  const newGuard = "if v_role not in ('organiser','admin') then raise exception 'teaching_role_denied'; end if;";
+
+  /** One `create [or replace] function public.teaching_command(` definition, through its grant line. */
+  function commandDefinition(text: string, opener: string): string {
+    const start = text.indexOf(`${opener} public.teaching_command(`);
+    if (start < 0) return "";
+    const grant = "grant execute on function public.teaching_command(uuid, uuid, text, jsonb) to service_role;";
+    const end = text.indexOf(grant, start);
+    return end < 0 ? "" : text.slice(start, end + grant.length);
+  }
+
+  const original = commandDefinition(sql, "create function");
+  const replaced = commandDefinition(followUp, "create or replace function");
+
+  it("lets an organiser or an admin export attendance, and still refuses every other role", () => {
+    const exported = actionBranch(replaced, "export.attendance");
+    expect(exported).not.toBe("");
+    // The role check is an allow-list, so 'doctor' (the default role) and any other role are refused.
+    expect(exported).toContain(`p_action = 'export.attendance' then\n    ${newGuard}`);
+    expect(exported).not.toContain(oldGuard);
+    expect(exported.match(/v_role/g)).toHaveLength(1);
+    expect(exported).not.toContain("doctor");
+    // The original branch was organiser-only.
+    expect(actionBranch(original, "export.attendance")).toContain(oldGuard);
+  });
+
+  it("changes nothing else in teaching_command, and restates the same grants", () => {
+    expect(original).not.toBe("");
+    expect(replaced).not.toBe("");
+    const expected = original
+      .replace("create function public.teaching_command(", "create or replace function public.teaching_command(")
+      .replace(
+        `elsif p_action = 'export.attendance' then\n    ${oldGuard}`,
+        `elsif p_action = 'export.attendance' then\n    ${newGuard}`,
+      );
+    expect(expected).not.toBe(original);
+    expect(replaced).toBe(expected);
+    expect(replaced).toContain(
+      "revoke all on function public.teaching_command(uuid, uuid, text, jsonb) from public, anon, authenticated;",
+    );
+  });
+
+  it("is the latest definition of teaching_command, and schema.sql mirrors it", () => {
+    const redefiners = readdirSync("supabase/migrations")
+      .filter((name) => name.endsWith(".sql"))
+      .filter((name) =>
+        /create (or replace )?function public\.teaching_command\(/.test(
+          readFileSync(`supabase/migrations/${name}`, "utf8"),
+        ),
+      )
+      .sort();
+    expect(redefiners.at(-1)).toBe(followUpName);
+    expect(commandDefinition(schema, "create function")).toBe(
+      replaced.replace("create or replace function", "create function"),
+    );
+  });
+});
