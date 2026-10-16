@@ -298,16 +298,31 @@ function RequestEpaSheet({
                 supervisorName,
                 supervisorRole: guest,
               });
-              void fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  epaCode: epa,
-                  traineeName: SAMPLE_DOCTOR.name,
-                  supervisorName,
-                  supervisorRole: guest,
-                }),
-              }).catch(() => undefined);
+              try {
+                const registration = await fetch(`/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    epaCode: epa,
+                    traineeName: SAMPLE_DOCTOR.name,
+                    supervisorName,
+                    supervisorRole: guest,
+                  }),
+                });
+                if (!registration.ok) {
+                  setMagicLinkCopied(
+                    registration.status === 401
+                      ? "Please sign in to register a supervisor link."
+                      : registration.status === 503
+                        ? "Supervisor links are temporarily unavailable. Try again."
+                        : "Could not register supervisor link. Try again.",
+                  );
+                  return;
+                }
+              } catch {
+                setMagicLinkCopied("Could not register supervisor link. Try again.");
+                return;
+              }
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;
               await navigator.clipboard?.writeText(fullUrl).catch(() => undefined);
