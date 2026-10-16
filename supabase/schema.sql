@@ -34582,7 +34582,7 @@ begin
         and (
           (section.index_generation_id = v_committed and section.producer = 'local-worker'
             and section.metadata->>'generated_by' = 'local-worker')
-          or (section.index_generation_id is null and section.artifact_generation_id is null
+          or ((section.index_generation_id is null or section.index_generation_id = v_committed) and section.artifact_generation_id is null
             and (section.producer = 'local-worker' or section.producer is null)
             and (section.metadata->>'generated_by' = 'local-worker'
               or (nullif(section.metadata->>'generated_by', '') is null

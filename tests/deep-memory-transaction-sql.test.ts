@@ -94,6 +94,16 @@ describe("fenced deep-memory commit legacy cleanup", () => {
     }
   });
 
+  it("guards foreign section links with the same legacy predicate the section delete uses", () => {
+    const guard = fenced.slice(
+      fenced.indexOf("-- refuse to null another producer's card"),
+      fenced.indexOf("-- 2. activate"),
+    );
+    expect(guard).toContain(
+      legacyBranch.replace(/(index_generation_id|artifact_generation_id|producer|metadata)/g, "section.$1"),
+    );
+  });
+
   it("never infers deep-memory ownership from missing markers alone", () => {
     expect(supersede).not.toContain("coalesce(nullif(metadata->>'generated_by', ''), 'local-worker')");
   });
