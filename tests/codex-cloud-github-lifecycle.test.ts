@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -20,6 +20,7 @@ function fixture(
   options: {
     mode?: string;
     profile?: string;
+    environment?: Record<string, string | undefined>;
     secret?: boolean;
     cached?: boolean;
     authFailure?: boolean;
@@ -33,6 +34,10 @@ function fixture(
   roots.push(root);
   mkdirSync(path.join(root, "bin"));
   mkdirSync(path.join(root, "scripts"));
+  copyFileSync(
+    path.resolve("scripts/check-codex-cloud-raw-env.sh"),
+    path.join(root, "scripts/check-codex-cloud-raw-env.sh"),
+  );
   const executable = (file: string, lines: string[]) => {
     const target = path.join(root, file);
     writeFileSync(target, ["#!/usr/bin/env bash", "set -eu", ...lines, ""].join("\n"));
@@ -53,7 +58,7 @@ function fixture(
   ]);
   executable("bin/node", [
     'case "$1" in',
-    '  --version) [[ "$NODE_MISSING" != 1 || -f "$FIXTURE_ROOT/node-restored" ]] ;;',
+    '  --version) printf "node-version\\n" >> "$FIXTURE_ROOT/runtime-probes"; [[ "$NODE_MISSING" != 1 || -f "$FIXTURE_ROOT/node-restored" ]] ;;',
     '  *ensure-codex-cloud-git-remote.mjs) printf "origin\\n" >> "$FIXTURE_ROOT/events" ;;',
     "  *check-github-shell-access.mjs)",
     '    printf "auth-preflight\\n" >> "$FIXTURE_ROOT/events"',
@@ -87,7 +92,11 @@ function fixture(
   ]);
   if (options.cached) writeFileSync(path.join(root, "authenticated"), "");
   const environment: NodeJS.ProcessEnv = {
-    ...process.env,
+    NODE_ENV: "test",
+    SystemRoot: process.env.SystemRoot,
+    WINDIR: process.env.WINDIR,
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
     HOME: bashPath(root),
     NVM_DIR: bashPath(path.join(root, ".nvm")),
     FIXTURE_ROOT: bashPath(root),
@@ -96,8 +105,6 @@ function fixture(
     CODEX_CLOUD: "1",
     CODEX_CLOUD_ACCESS_PROFILE: options.profile ?? "connected",
     RAG_PROVIDER_MODE: "offline",
-    GH_TOKEN: "synthetic-shadow-token",
-    GITHUB_TOKEN: "synthetic-shadow-token",
     npm_config_http_proxy: "synthetic-obsolete-proxy",
     AUTH_FAILURE: options.authFailure ? "1" : "0",
     LOGIN_FAILURE: options.loginFailure ? "1" : "0",
@@ -107,6 +114,7 @@ function fixture(
   };
   delete environment.CODEX_CLOUD_GITHUB_PAT;
   if (options.secret) environment.CODEX_CLOUD_GITHUB_PAT = secret;
+  Object.assign(environment, options.environment);
   // Git for Windows prepends its real Git to PATH while starting bash.exe.
   // Reset the fixture PATH inside the shell so no mocked call reaches a real service.
   const result = spawnSync(
@@ -126,19 +134,66 @@ function fixture(
       windowsHide: true,
     },
   );
-  const events = (() => {
+  const readEvents = (name: string) => {
     try {
-      return readFileSync(path.join(root, "events"), "utf8").trim().split("\n");
+      return readFileSync(path.join(root, name), "utf8").trim().split("\n");
     } catch {
       return [];
     }
-  })();
+  };
   expect(result.error).toBeUndefined();
   expect(result.stdout + result.stderr).not.toContain(secret);
-  return { ...result, events };
+  return { ...result, events: readEvents("events"), runtimeProbes: readEvents("runtime-probes") };
 }
 
 describe("authorized Cloud GitHub lifecycle", () => {
+  it.each(["", "live", "synthetic-invalid-rag-selection"])(
+    "rejects RAG selection %j before login or runtime restoration",
+    (mode) => {
+      const result = fixture({ secret: true, nodeMissing: true, environment: { RAG_PROVIDER_MODE: mode } });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("GH_RAG_MODE_INVALID");
+      if (mode) expect(result.stderr).not.toContain(mode);
+      expect(result.events).toEqual([]);
+      expect(result.runtimeProbes).toEqual([]);
+    },
+  );
+
+  it.each([
+    "OPENAI_API_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "DATABASE_URL",
+    "RAILWAY_API_TOKEN",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "GITLAB_TOKEN",
+  ])("rejects unexpected inherited %s before the setup PAT can authenticate", (name) => {
+    const value = "synthetic-unexpected-provider-value";
+    const result = fixture({ secret: true, nodeMissing: true, environment: { [name]: value } });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(name);
+    expect(result.stdout + result.stderr).not.toContain(value);
+    expect(result.events).toEqual([]);
+    expect(result.runtimeProbes).toEqual([]);
+  });
+
+  it("preserves the failed known-launcher boundary before provider lifecycle actions", () => {
+    const value = "synthetic-known-launcher-url";
+    const result = fixture({ secret: true, nodeMissing: true, environment: { OPENAI_BASE_URL: value } });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain("FAIL-KNOWN");
+    expect(result.stdout + result.stderr).not.toContain(value);
+    expect(result.events).toEqual([]);
+    expect(result.runtimeProbes).toEqual([]);
+  });
+
+  it("defaults an absent RAG mode to offline before the authorized PAT lifecycle", () => {
+    const result = fixture({ secret: true, environment: { RAG_PROVIDER_MODE: undefined } });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.events).toEqual(["login", "origin", "auth-preflight", "setup", "shims", "helper", "live-gate"]);
+    expect(result.stdout).not.toContain("Raw Env] PASS");
+  });
+
   it("authenticates before setup and removes secrets before child commands, even with caller tracing", () => {
     const result = fixture({ secret: true });
     expect(result.status, result.stderr).toBe(0);

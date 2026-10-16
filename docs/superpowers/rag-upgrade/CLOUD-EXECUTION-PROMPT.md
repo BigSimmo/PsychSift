@@ -2,7 +2,7 @@
 
 Use the final handover message's filled prompt, not this unfilled template. Run one fresh Cloud task per P00–P17 phase. Before launch, set `TARGET_PHASE`, `PACKAGE_SOURCE_REF`, immutable `PACKAGE_HEAD_SHA`, `PACKAGE_BASE_SHA`, `PROGRAMME_BRANCH` and the matching UI effort from the manifest.
 
-For a high phase, the prompt begins with `TARGET_PHASE=...` and contains no xhigh confirmation claim. For an xhigh phase, the first line is the repository's exact xhigh confirmation marker and the second line declares the target. A running task cannot raise itself.
+Declare `TARGET_PHASE=...` and the selected effort. For an xhigh phase, the user must confirm that xhigh is selected; ordinary-language confirmation is sufficient. No literal prompt token or resubmission is required. A high phase omits the xhigh attestation flag. A running task cannot raise itself.
 
 ## Shared prompt body
 
@@ -14,17 +14,17 @@ The programme must deliver repository-wide retrieval across approved public cont
 
 This prompt authorizes read-only repository inspection, offline/provider-free work for the one target phase, synthetic tests, task/correction/phase-receipt commits, and pushing only the exact accepted tip to the named programme branch. For P17 only, it also authorizes the separate atomic `PROGRAMME.json` metadata commit after the full-programme review passes. It does not authorize protected content, source browsing/acquisition, hosted Supabase, migrations, hosted types/functions, providers/live evals, reindex, deployment, activation, rollback, cleanup, merging, another PR or branch/worktree deletion.
 
-### First command and bootstrap
+### Current host readiness and programme acceptance
 
-Before login/profile/setup, run the raw Cloud environment check exactly as `cloud/START-HERE.md` requires. Exit 1 hard-stops; exit 2 uses only the documented `OPENAI_BASE_URL` restricted profile/shim path. Then perform Cloud-equivalent identity/branch/status checks, setup and shims, direct static Cloud check, runtime Cloud check pinned to `PACKAGE_BASE_SHA`, runtime and lock parity.
+Follow the current-host policy in `docs/agents/codex-cloud-environment.md` and the readiness order in `cloud/START-HERE.md`. Establish repository identity, branch and status, host capabilities, runtime and lock parity. Run the legacy raw probe, setup, shims and Cloud acceptance checks only if the owner or selected environment configuration explicitly adopts that repository-managed setup. In that setup, preserve its raw exit codes, recovery, restrictions and base-pinned acceptance; its bounded policy-repair exception does not authorize programme execution or establish acceptance. Other host-managed environments use their supported readiness checks. Keep programme execution provider-free on every host.
 
-For P00, fetch `PACKAGE_SOURCE_REF`, verify exact `PACKAGE_HEAD_SHA`, create `PROGRAMME_BRANCH` from it and run the package publish check. For P01–P17, fetch the exact remote programme tip with no rebase. Run the tracked launch helper with the declared target/effort (and the xhigh-confirmed flag only for an xhigh launch), package parity and `npm run plans:rag:receipts:check -- --before TARGET_PHASE`. The declared target must be exactly next; never select a different phase after launch.
+For P00, fetch `PACKAGE_SOURCE_REF`, verify exact `PACKAGE_HEAD_SHA`, create `PROGRAMME_BRANCH` from it and run the package publish check. For P01–P17, fetch the exact remote programme tip with no rebase. Run the tracked launch helper with the declared target/effort (and `--xhigh-confirmed` only after the user confirms an xhigh selection, including in ordinary language), package parity and `npm run plans:rag:receipts:check -- --before TARGET_PHASE`. The declared target must be exactly next; never select a different phase after launch.
 
 ### Required knowledge and capabilities
 
 Read completely: root `AGENTS.md`; Cloud `START-HERE.md`; manifest; execution order; approval matrix; SDD and connected-execution contracts; verification matrix; route-evidence, phase and programme schemas/templates; both RAG specifications; the selected task plan; `.agents/skills/rag-cloud-sdd/SKILL.md`; and every phase skill profile.
 
-Hash the tracked controller skill, helper and resolved phase skills. Dispatch one fresh read-only probe subagent and record its ID/tool/authoritative dispatch metadata. Stop with `BLOCKED_MISSING_SUBAGENT_RUNTIME` or `BLOCKED_MISSING_CAPABILITY` rather than manually substituting.
+Hash the tracked controller skill, helper and resolved phase skills. Assign the fresh read-only probe a bounded inspection of target-phase dependencies, accepted receipts and relevant source conflicts; retain its findings and ID/tool/authoritative dispatch metadata. Do not dispatch a dummy task solely to demonstrate tool availability. Stop with `BLOCKED_MISSING_SUBAGENT_RUNTIME` or `BLOCKED_MISSING_CAPABILITY` rather than manually substituting.
 
 Prove controller and every subagent model/effort from sanitized host or dispatch metadata. Save the host-emitted record directly in the tracked route-evidence JSON shape; never author it from model prose. The checker parses it and binds source event, agent, host, provider, model, effort, mapping, fallback and escalation fields to the receipt. This is structural provenance validation, not a cryptographic host signature: if the Cloud host cannot directly expose the required record, stop with `BLOCKED_MODEL_ROUTE_UNVERIFIED`. Codex Cloud requires the exact manifest route with no provider mapping or fallback.
 

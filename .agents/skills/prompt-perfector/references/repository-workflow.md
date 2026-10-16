@@ -61,10 +61,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Repository isolation verification failed.' }
 
 ### Codex Cloud checkout
 
-Codex Cloud does not have the Windows bootstrap. It may use its single disposable checkout as the primary Git worktree only when `CODEX_CLOUD=1`, the checkout is clean, and it is on a task-specific non-protected branch. Create a branch before verification if the supplied checkout is detached or protected.
+Use this mode when the current host or task configuration establishes a disposable Cloud task checkout. `--cloud` explicitly attests that workflow choice; the legacy `CODEX_CLOUD=1` marker is neither required nor sufficient. The verifier binds the choice to the expected repository, branch and `HEAD`, and permits a primary checkout only when it is the sole registered worktree, clean, and on a task-specific non-protected branch. Create a branch before verification if the supplied checkout is detached or protected. If current host evidence does not establish a disposable Cloud checkout, use the applicable local worktree workflow above.
 
 ```bash
-test "${CODEX_CLOUD:-}" = "1" || { echo 'CODEX_CLOUD=1 is required.' >&2; exit 1; }
 test -z "$(git status --porcelain --untracked-files=all)" || { echo 'Cloud checkout is dirty.' >&2; exit 1; }
 branch="$(git branch --show-current)"
 case "$branch" in
@@ -83,7 +82,7 @@ node .agents/skills/prompt-perfector/scripts/verify-repository-isolation.mjs \
 5. Re-run the verifier immediately before editing. If any condition is unproved or changes unexpectedly, stop and request direction.
 6. For a same-task dirty continuation, first run the verifier without `--allow-dirty`, inventory every changed path, and record the emitted `SAFE_STATUS_HASH`. Re-run with `--allow-dirty --expected-status-hash <hash>` plus the same expected repo, branch, and `HEAD` values. Include `--cloud` in Cloud.
 
-The verifier is read-only and establishes workflow isolation; it does not provide an OS-level sandbox or protection from unrelated processes. State that limit honestly.
+The verifier is read-only and establishes workflow isolation; it does not provide an OS-level sandbox or protection from unrelated processes. `--cloud` does not detect or prove platform isolation, provider authorization or readiness of the legacy bootstrap. State those limits honestly.
 
 ## Execution and verification
 

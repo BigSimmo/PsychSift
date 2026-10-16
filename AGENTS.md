@@ -102,8 +102,7 @@ For Windows Codex Desktop worktree bootstrap and dry-run instructions, see [`doc
 
 # Reasoning effort calibration
 
-For the Codex reasoning-effort baseline, the Cloud `xhigh` confirmation gate, and the
-plan-effort/build-effort table, see
+For user-controlled Codex reasoning effort, confirmation and scoped specialist requirements, see
 [`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md).
 
 # Process hardening phases
@@ -237,7 +236,7 @@ Read and follow [Publication workflows](docs/agents/native-startup/publication-w
 
 ## Codex Cloud environment
 
-For the Codex Cloud environment specification, access profiles, MCP limits, and acceptance checks, see [`docs/agents/codex-cloud-environment.md`](docs/agents/codex-cloud-environment.md).
+For current-host capability checks and the scope of the optional legacy Cloud setup, see [`docs/agents/codex-cloud-environment.md`](docs/agents/codex-cloud-environment.md).
 
 ## Cursor Cloud specific instructions (not Codex Cloud)
 

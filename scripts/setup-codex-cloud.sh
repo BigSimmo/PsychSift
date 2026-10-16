@@ -40,16 +40,42 @@ diagnose_setup_failure() {
     if [[ -n "$diagnostic_python_bin" ]]; then
       diagnostic_args+=(--python-bin "$diagnostic_python_bin")
     fi
-    CODEX_CLOUD=1 node scripts/diagnose-codex-cloud.mjs "${diagnostic_args[@]}" || true
+    CODEX_CLOUD=1 node scripts/diagnose-codex-cloud.mjs --legacy-profile "${diagnostic_args[@]}" || true
   else
     printf '[codex-cloud:setup] FIX: review the first error above, then retry setup.\n' >&2
   fi
   exit "$status"
 }
-trap diagnose_setup_failure ERR
-
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "Run this script from the PsychSift repository."
 cd "$repo_root"
+
+# Validate the inherited boundary before loading profiles or invoking runtimes.
+# A failing probe must not trigger Node diagnostics or become a scrubbed pass.
+if bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh; then
+  :
+else
+  raw_boundary_status="$?"
+  exit "$raw_boundary_status"
+fi
+
+# Validate selection before runtime discovery, nvm or package-manager work.
+# Missing selects the legacy default; an explicitly empty value is invalid.
+setup_step="runtime-profile"
+access_profile="${CODEX_CLOUD_ACCESS_PROFILE-offline}"
+case "$access_profile" in
+  offline|connected) ;;
+  *) fail "Unsupported CODEX_CLOUD_ACCESS_PROFILE; expected offline or connected." ;;
+esac
+
+# Pin configured retrieval mode without permitting provider execution.
+if [[ "$access_profile" = "connected" ]]; then
+  rag_provider_mode="${RAG_PROVIDER_MODE:-offline}"
+  [[ "$rag_provider_mode" = "offline" ]] ||
+    fail "The selected legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline; run live OpenAI checks only in the protected provider workflow."
+else
+  rag_provider_mode="offline"
+fi
+trap diagnose_setup_failure ERR
 
 expected_node_major="$(tr -cd '0-9' < .node-version)"
 expected_node_range="$(sed -n 's/.*"node"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' package.json | head -n 1)"
@@ -123,25 +149,6 @@ if [[ "$policy_only_harness" != "1" ]]; then
   fi
 fi
 
-setup_step="runtime-profile"
-access_profile="${CODEX_CLOUD_ACCESS_PROFILE:-offline}"
-case "$access_profile" in
-  offline|connected) ;;
-  *) fail "Unsupported CODEX_CLOUD_ACCESS_PROFILE: $access_profile" ;;
-esac
-
-# Resolve the retrieval mode at setup time so the generated profile pins the
-# value configured in the Codex environment. The agent shell does not inherit
-# these variables, so a runtime `${RAG_PROVIDER_MODE:-auto}` fallback would
-# override a connected environment configured for offline retrieval.
-if [[ "$access_profile" = "connected" ]]; then
-  rag_provider_mode="${RAG_PROVIDER_MODE:-offline}"
-  [[ "$rag_provider_mode" = "offline" ]] ||
-    fail "Ordinary Codex Cloud must keep RAG_PROVIDER_MODE=offline; run live OpenAI checks only in the protected provider workflow."
-else
-  rag_provider_mode="offline"
-fi
-
 runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
 setup_step="runtime-profile"
 cat > "$runtime_profile" <<EOF
@@ -160,9 +167,14 @@ export PLAYWRIGHT_OFFLINE_MODE="\${PLAYWRIGHT_OFFLINE_MODE:-true}"
 cloud_expected_base_file="\$HOME/.cache/clinical-kb-codex/cloud-expected-base-sha"
 if [ -r "\$cloud_expected_base_file" ]; then
   IFS= read -r cloud_expected_base < "\$cloud_expected_base_file" || true
-  if [[ "\$cloud_expected_base" =~ ^[0-9a-f]{40}\$ ]]; then
-    export CODEX_CLOUD_EXPECTED_BASE_SHA="\$cloud_expected_base"
-  fi
+  case "\$cloud_expected_base" in
+    *[!0-9a-f]*|'') ;;
+    *)
+      if [ "\${#cloud_expected_base}" -eq 40 ]; then
+        export CODEX_CLOUD_EXPECTED_BASE_SHA="\$cloud_expected_base"
+      fi
+      ;;
+  esac
 fi
 unset cloud_expected_base cloud_expected_base_file
 unset npm_config_http_proxy npm_config_https_proxy npm_config_proxy
@@ -226,11 +238,14 @@ mkdir -p "$codex_config_dir"
 codex_policy_begin="# BEGIN clinical-kb-codex-cloud shell policy (managed by setup-codex-cloud.sh)"
 codex_policy_end="# END clinical-kb-codex-cloud shell policy (managed by setup-codex-cloud.sh)"
 if [[ -f "$codex_config_file" ]]; then
-  # An interrupted prior write can leave BEGIN without END. The sed range below
-  # would then delete from BEGIN to EOF and discard unrelated settings, so fail
-  # before rewriting rather than silently truncating preserved config.
-  if grep -Fq "$codex_policy_begin" "$codex_config_file" && ! grep -Fq "$codex_policy_end" "$codex_config_file"; then
-    fail "Incomplete managed shell policy block in $codex_config_file; remove the incomplete BEGIN marker before re-running setup."
+  # Validate ordering as well as presence: END before BEGIN also makes sed
+  # discard everything from BEGIN to EOF. Reject duplicate/partial blocks.
+  if ! awk -v begin="$codex_policy_begin" -v end="$codex_policy_end" '
+    $0 == begin { if (seen_begin || seen_end) invalid = 1; seen_begin++; next }
+    $0 == end { if (seen_begin != 1 || seen_end) invalid = 1; seen_end++; next }
+    END { exit (invalid || seen_begin != seen_end) ? 1 : 0 }
+  ' "$codex_config_file"; then
+    fail "Incomplete managed shell policy block or invalid marker order in $codex_config_file; repair the managed markers before re-running setup."
   fi
   codex_config_preserved="$(sed "/^${codex_policy_begin}\$/,/^${codex_policy_end}\$/d" "$codex_config_file")"
   # After stripping the managed block, reject every supported TOML declaration
@@ -344,7 +359,7 @@ fi
 
 python_bin="$(select_codex_cloud_python "$expected_cloud_python" || true)"
 [[ -n "$python_bin" ]] || fail "Python ${expected_cloud_python} is unavailable after system package setup."
-actual_python_version="$($python_bin -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+actual_python_version="$("$python_bin" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 [[ "$actual_python_version" = "$expected_cloud_python" ]] || fail "Python ${expected_cloud_python} is required for the Cloud worker lock; detected ${actual_python_version}. Select Python ${expected_cloud_python} in the Cloud environment."
 ocr_venv="$HOME/.cache/clinical-kb-codex/ocr-venv-${expected_cloud_python}"
 if [[ ! -x "$ocr_venv/bin/python" ]]; then
@@ -377,6 +392,6 @@ npm run check:installed-lock-parity
 npm run check:worker-python-locks:static
 npm run check:codex-cloud
 CODEX_CLOUD_PROVISIONING=1 npm run check:codex-cloud -- --runtime
-CODEX_CLOUD=1 npm run diagnose:codex-cloud
+CODEX_CLOUD=1 npm run diagnose:codex-cloud -- --legacy-profile
 trap - ERR
 log "Setup complete with ${CODEX_CLOUD_ACCESS_PROFILE} access profile."

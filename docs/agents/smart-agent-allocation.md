@@ -8,26 +8,23 @@ clinical, privacy, provider and publication requirements take precedence.
 
 ## Choose the route for the work
 
-Use the least costly supported route with sufficient capability for the difficulty,
-uncertainty and consequences. These are starting points, not quotas or a claim of
-current hosted availability:
+Use the least costly currently supported route that can handle the task's uncertainty and
+consequences. Inspect the live tool schema/model inventory before choosing; do not copy model IDs
+from an older session, pin a model family as the permanent controller, or invent unavailable effort
+controls. The user's main-chat selection stays unchanged.
 
-- Luna (`gpt-5.6-luna`) / Medium: mechanical edits, inventories and straightforward
-  static checks. Terra (`gpt-5.6-terra`) / Medium: bounded low-risk analysis or
-  mechanical work where it is a better fit.
-- Sol (`gpt-5.6-sol`) / Medium: well-defined implementation with settled interfaces.
-- Sol / High: complex shared components, debugging across components and independent
-  review of substantive changes.
-- Astra (`gpt-6-astra`) / High: architecture, ambiguous clinical/privacy/security
-  boundaries, concurrency, evidence contracts and difficult integration decisions.
-- Astra / Extra High (`xhigh`): demonstrated unresolved reasoning problems or
-  required formal review. It is not the default for every task or final check.
+- Mechanical edits and bounded inventories can use a lighter supported route.
+- Settled implementation and routine review need a capable supported coding/review route.
+- Architecture, ambiguous security/privacy boundaries, concurrency and evidence contracts need
+  sufficient reasoning and independent review for the risk.
+- Escalate for a demonstrated unresolved problem or an explicit specialist requirement, rather
+  than automatically for every final check.
 
-Use other supported effort levels when justified. Astra High is the preferred
-controller for substantial programmes; preserve the user's selected main-chat
-model and effort. Never pin them in the repository configuration. The
-[reasoning calibration and Cloud confirmation requirements](codex-reasoning-effort.md)
-remain binding; a lighter starting route cannot lower a required floor.
+These are allocation guidelines, not proof of availability or a startup gate. Follow
+[reasoning and confirmation guidance](codex-reasoning-effort.md); preserve explicitly selected
+specialist programme review and evidence requirements. If a programme names an unavailable route,
+report that specific capability gap rather than silently lowering its floor or imposing it on
+unrelated tasks.
 
 ## Dispatch and coordinate
 
@@ -85,4 +82,5 @@ claim documentation or static checks prove hosted execution.
 Official references: [instruction discovery](https://developers.openai.com/codex/guides/agents-md)
 and [subagent configuration](https://developers.openai.com/codex/subagents). The
 session's actual tools remain the authority for available controls. See the
-[Cloud environment contract](../codex-cloud.md) for environment and provider limits.
+[current Cloud policy](codex-cloud-environment.md) for environment and provider limits; its linked
+legacy bootstrap runbook applies only when explicitly selected.

@@ -161,6 +161,9 @@ describe("Database skill catalog", () => {
     expect(workflow).toContain("git worktree add");
     expect(workflow).toContain("git rev-parse --show-toplevel");
     expect(workflow).toContain("CODEX_CLOUD=1");
+    expect(workflow).toContain("marker is neither required nor sufficient");
+    expect(workflow).toContain("`--cloud` explicitly attests that workflow choice");
+    expect(workflow).not.toContain("CODEX_CLOUD=1 is required.");
     expect(workflow).toContain("--expected-status-hash");
     expect(workflow).toContain("--allow-dirty");
     expect(workflow).toContain("does not provide an OS-level sandbox");
@@ -169,6 +172,7 @@ describe("Database skill catalog", () => {
     expect(verifier).toContain("dirty_override_requires_expected_state");
     expect(verifier).toContain("expected_state_required");
     expect(verifier).toContain("primary_worktree");
+    expect(verifier).not.toContain("process.env.CODEX_CLOUD");
     expect(verifier).not.toContain("node_modules");
 
     const selfTest = spawnSync(
@@ -181,7 +185,7 @@ describe("Database skill catalog", () => {
       },
     );
     expect(selfTest.status, `${selfTest.stdout}\n${selfTest.stderr}`).toBe(0);
-    expect(selfTest.stdout).toContain("prompt-perfector isolation self-test passed: 14/14");
+    expect(selfTest.stdout).toContain("prompt-perfector isolation self-test passed: 24/24");
   });
 });
 

@@ -186,6 +186,28 @@ describe("RAG plan execution packages", () => {
     ).not.toThrow();
   });
 
+  it("accepts xhigh user attestation without a literal prompt token and keeps phase effort floors", () => {
+    const launch = (...args: string[]) =>
+      execFileSync(process.execPath, ["scripts/rag-phase-launch-check.mjs", ...args], {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        stdio: "pipe",
+      });
+
+    // --xhigh-confirmed attests a user's confirmation, which may be ordinary language.
+    // Neither the old prompt token nor any prompt text is an input to the helper.
+    expect(launch("--target", "P01", "--effort", "xhigh", "--xhigh-confirmed")).toContain("PASS");
+    expect(launch("--target", "P00", "--effort", "high")).toContain("PASS");
+    expect(() => launch("--target", "P00", "--effort", "high", "--xhigh-confirmed")).toThrow();
+    try {
+      launch("--target", "P01", "--effort", "xhigh");
+      throw new Error("expected missing xhigh attestation to fail");
+    } catch (error) {
+      expect(error).toMatchObject({ status: 1 });
+      expect(String((error as { stderr?: string }).stderr)).toContain("ordinary language is sufficient");
+    }
+  });
+
   it("ships a valid resumable phase-receipt contract", () => {
     expect(() =>
       execFileSync(process.execPath, ["scripts/check-rag-phase-receipts.mjs"], {

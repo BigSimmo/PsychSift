@@ -20,8 +20,29 @@ case "$1" in
   *) fail 'Usage: bash scripts/run-codex-cloud-github.sh setup|maintenance' ;;
 esac
 
+# Reject an invalid retrieval selection before authentication can persist a
+# credential. The connected legacy lifecycle remains provider-free for RAG.
+rag_provider_mode="${RAG_PROVIDER_MODE-offline}"
+[[ "$rag_provider_mode" == "offline" ]] ||
+  fail 'GH_RAG_MODE_INVALID: the connected legacy profile requires RAG_PROVIDER_MODE=offline.'
+export RAG_PROVIDER_MODE="$rag_provider_mode"
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail 'GH_REPOSITORY_REQUIRED'
 cd "$repo_root"
+
+# Only the explicitly authorized setup-only PAT is exempt here. Validate every
+# other inherited provider name before login, runtime restoration or helpers.
+# Suppress the child's PASS line: this exception is not a raw-parent pass.
+if (
+  unset CODEX_CLOUD_GITHUB_PAT
+  bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh >/dev/null
+); then
+  :
+else
+  raw_boundary_status="$?"
+  exit "$raw_boundary_status"
+fi
+
 command -v gh >/dev/null 2>&1 || fail 'GH_CLI_MISSING'
 command -v timeout >/dev/null 2>&1 || fail 'GH_TIMEOUT_COMMAND_MISSING'
 
@@ -30,8 +51,6 @@ export GH_PROMPT_DISABLED=1
 export GH_COLOR_LABELS=0
 export NO_COLOR=1
 export NODE_USE_ENV_PROXY=1
-# Ambient tokens must not shadow the deliberately configured gh credential.
-unset GH_TOKEN GITHUB_TOKEN
 unset npm_config_http_proxy npm_config_https_proxy npm_config_proxy
 
 if [[ -n "${CODEX_CLOUD_GITHUB_PAT:-}" ]]; then

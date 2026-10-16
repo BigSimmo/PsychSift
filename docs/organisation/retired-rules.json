@@ -2,6 +2,38 @@
   "version": 1,
   "rules": [
     {
+      "id": "cloud-unavailable-route-defaults",
+      "retired": "2026-10-16",
+      "summary": "General routing no longer imposes historical model IDs, an Astra controller or unavailable Ultra-mode subagents. Use current supported tool controls; specialist programme contracts remain scoped.",
+      "pattern": "Astra High is the preferred controller|Ultra-mode subagents|Luna \\(`gpt-5\\.6-luna`\\)|Terra \\(`gpt-5\\.6-terra`\\)",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|historical|not required",
+      "decision": "docs/decisions/2026-10-16-cloud-operating-policy-overhaul.md"
+    },
+    {
+      "id": "cloud-variable-proves-host",
+      "retired": "2026-10-16",
+      "summary": "A legacy CODEX_CLOUD marker is no longer required to recognise a host-managed Cloud checkout. Explicit workflow selection and verified repository/branch/HEAD checks remain mandatory where the isolation verifier is used.",
+      "pattern": "Proceed only when `CODEX_CLOUD=1`|Require `CODEX_CLOUD=1`|first line is the repository.s exact xhigh confirmation marker|only when the xhigh prompt marker is present",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|legacy|not required",
+      "decision": "docs/decisions/2026-10-16-remove-obsolete-cloud-startup-instructions.md"
+    },
+    {
+      "id": "cloud-legacy-profile-default",
+      "retired": "2026-10-16",
+      "summary": "The older offline/connected bootstrap is no longer imposed on every Cloud task. Use current host capabilities and select the legacy profile explicitly; its executable credential and acceptance checks remain intact.",
+      "pattern": "Default to `CODEX_CLOUD_ACCESS_PROFILE=offline`|The active hosted workspace is \\*\\*Personal Pro\\*\\*|both wordings stand",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced|legacy",
+      "decision": "docs/decisions/2026-10-16-cloud-legacy-profile-scope.md"
+    },
+    {
+      "id": "cloud-xhigh-marker-gate",
+      "retired": "2026-10-16",
+      "summary": "The general Cloud xhigh marker/resubmission gate is retired. Respect user-selected effort and ordinary-language confirmation; specialist programme launch contracts remain separate.",
+      "pattern": "Cloud xhigh gate|Cloud `xhigh` confirmation gate|prompt does not contain the exact marker|resubmit the same request",
+      "allowedContext": "no longer|retir(ed|ement)|removed|formerly|previously|superseded|dropped|replaced",
+      "decision": "docs/decisions/2026-10-16-user-controlled-reasoning-effort.md"
+    },
+    {
       "id": "owner-approved-label-gate",
       "retired": "2026-09-25",
       "summary": "The `owner-approved` label gate and the `Owner approval` commit status were removed; no PR waits for the owner's label. Supabase merges still need an approved window.",

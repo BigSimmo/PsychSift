@@ -36,45 +36,16 @@ ALL_TIERS=(profile plugins gh deno browsers python)
 log() { printf '[claude-cloud] %s\n' "$*"; }
 warn() { printf '[claude-cloud] WARNING: %s\n' "$*" >&2; }
 
-# Resolve the checkout from this script's OWN location, never from the caller's cwd and never from
-# `git rev-parse --show-toplevel`. This repository keeps its Claude worktrees at
-# .claude/worktrees/<name>, i.e. inside the main working tree, so `--show-toplevel` run from inside
-# one returns the MAIN repository instead of the worktree — verified 2026-08-21. A provisioner that
-# believed it would npm/pip against a different checkout than the session is actually using.
-# CLAUDE_PROJECT_DIR wins when set, because that is the session's own answer to the same question.
-repo_root="${CLAUDE_PROJECT_DIR:-"$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"}"
-cd "$repo_root" || exit 1
-
-marker_dir="$HOME/.cache/clinical-kb-claude-cloud"
-mkdir -p "$marker_dir"
-
+# Install the session exit contract before resolving the checkout or creating markers: either can
+# fail before provisioning begins. Detect --session independently of argument order.
 selected=()
 force=0
 allow_local=0
 session_mode=0
-for arg in "$@"; do
-  case "$arg" in
-    --list)
-      printf '%s\n' "${ALL_TIERS[@]}"
-      exit 0
-      ;;
-    --force) force=1 ;;
-    --allow-local) allow_local=1 ;;
-    --session) session_mode=1 ;;
-    --tier=*) selected+=("${arg#--tier=}") ;;
-    --tier) ;;
-    --*) warn "ignoring unknown option $arg" ;;
-    *) selected+=("$arg") ;;
-  esac
-done
-if [ "${#selected[@]}" -eq 0 ] && [ "$session_mode" -eq 0 ]; then
-  selected=("${ALL_TIERS[@]}")
-fi
-
-# Single exit path. It releases the provisioning lock if this run holds one, and — in session mode —
-# forces success, because a SessionStart hook must never be able to fail a session. Outside session
-# mode the real exit code survives, so a human or a gate running this directly still sees failure.
 lock_dir=""
+for arg in "$@"; do
+  [ "$arg" != "--session" ] || session_mode=1
+done
 cleanup() {
   local code=$?
   [ -n "$lock_dir" ] && rm -rf "$lock_dir" 2>/dev/null
@@ -85,15 +56,107 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Hard guard. Every tier here writes outside the repository — into ~/.claude, into apt, into a global
-# npm prefix. That is correct for a disposable Linux container and wrong for the operator's Windows
-# workstation, whose real ~/.claude is the ORIGIN of the checked-in profile. Getting this backwards
-# would overwrite the source of truth with a snapshot of itself.
+argument_error() {
+  warn "$1"
+  if [ "$session_mode" -eq 1 ]; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"claude-cloud provisioning incomplete: invalid tier arguments; no tiers were run"}}'
+  fi
+  exit 2
+}
+
+# A missing --tier value or a misspelled option must never select every installer by falling
+# through to the no-arguments default. Validate the complete command before entering any tier.
+list_tiers=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --list) list_tiers=1 ;;
+    --force) force=1 ;;
+    --allow-local) allow_local=1 ;;
+    --session) ;;
+    --tier=*)
+      [ -n "${1#--tier=}" ] || argument_error "--tier requires a tier name"
+      selected+=("${1#--tier=}")
+      ;;
+    --tier)
+      [ "$#" -gt 1 ] && [[ "$2" != --* ]] || argument_error "--tier requires a tier name"
+      shift
+      selected+=("$1")
+      ;;
+    --*) argument_error "unknown option $1" ;;
+    *) selected+=("$1") ;;
+  esac
+  shift
+done
+
+if [ "$list_tiers" -eq 1 ]; then
+  printf '%s\n' "${ALL_TIERS[@]}"
+  exit 0
+fi
+
+# Every provisioning tier writes outside the checkout. Local no-op and metadata paths must return
+# before checking the checkout or creating any cache state.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ] && [ "$allow_local" -eq 0 ]; then
   log "not a Claude Code cloud container (CLAUDE_CODE_REMOTE is not true); nothing to do"
   log "to provision this machine anyway, re-run with --allow-local"
   exit 0
 fi
+
+if [ "${#selected[@]}" -eq 0 ]; then
+  if [ "$session_mode" -eq 1 ]; then
+    read -r -a selected <<< "${CLAUDE_CLOUD_SESSION_TIERS-profile plugins gh deno}"
+  else
+    selected=("${ALL_TIERS[@]}")
+  fi
+fi
+background_tiers=()
+if [ "$session_mode" -eq 1 ]; then
+  read -r -a background_tiers <<< "${CLAUDE_CLOUD_BACKGROUND_TIERS-browsers python}"
+fi
+# Check the entire selection, including detached work, before any valid earlier tier can mutate
+# the profile. Do not report invalid override values inside JSON context.
+known_tier() {
+  local candidate
+  for candidate in "${ALL_TIERS[@]}"; do
+    [ "$1" != "$candidate" ] || return 0
+  done
+  return 1
+}
+for tier in "${selected[@]}" "${background_tiers[@]}"; do
+  if ! known_tier "$tier"; then
+    warn "unknown tier '$tier' (known: ${ALL_TIERS[*]})"
+    if [ "$session_mode" -eq 1 ]; then
+      printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"claude-cloud provisioning incomplete: invalid tier selection; no tiers were run"}}'
+    fi
+    exit 1
+  fi
+done
+
+# Resolve the checkout from this script's OWN location, never from the caller's cwd and never from
+# `git rev-parse --show-toplevel`. This repository keeps its Claude worktrees at
+# .claude/worktrees/<name>, i.e. inside the main working tree, so `--show-toplevel` run from inside
+# one returns the MAIN repository instead of the worktree — verified 2026-08-21. A provisioner that
+# believed it would npm/pip against a different checkout than the session is actually using.
+# CLAUDE_PROJECT_DIR wins when set, because that is the session's own answer to the same question.
+repo_root="${CLAUDE_PROJECT_DIR:-"$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"}"
+if ! cd "$repo_root"; then
+  if [ "$session_mode" -eq 1 ]; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"claude-cloud provisioning incomplete: project directory is unavailable; no tiers were run"}}'
+  fi
+  exit 1
+fi
+
+marker_dir="$HOME/.cache/clinical-kb-claude-cloud"
+if ! mkdir -p "$marker_dir"; then
+  if [ "$session_mode" -eq 1 ]; then
+    printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"claude-cloud provisioning incomplete: marker directory is unavailable; no tiers were run"}}'
+  fi
+  exit 1
+fi
+
+# Hard guard. Every tier here writes outside the repository — into ~/.claude, into apt, into a global
+# npm prefix. That is correct for a disposable Linux container and wrong for the operator's Windows
+# workstation, whose real ~/.claude is the ORIGIN of the checked-in profile. Getting this backwards
+# would overwrite the source of truth with a snapshot of itself.
 if [ "${CLAUDE_CODE_REMOTE:-}" != "true" ]; then
   warn "--allow-local on a non-cloud machine: the profile tier will OVERWRITE ~/.claude/CLAUDE.md and"
   warn "~/.claude/skills/* with the checked-in snapshot in .claude/cloud-profile/. On the workstation"
@@ -111,7 +174,14 @@ tier_is_done() {
   local tier="$1" signature="$2" marker="$marker_dir/$1.marker"
   [ "$force" -eq 0 ] || return 1
   [ -f "$marker" ] || return 1
-  [ "$(cat "$marker" 2>/dev/null)" = "$signature" ]
+  [ "$(cat "$marker" 2>/dev/null)" = "$signature" ] || return 1
+  # A cache marker outlives a binary removed from PATH or replaced by an unsupported version.
+  # Validate the cheap CLI prerequisites before reusing their installation receipt.
+  case "$tier" in
+    gh) have gh && gh --version >/dev/null 2>&1 ;;
+    deno) have deno && [ "$(deno --version 2>/dev/null | sed -n '1s/^deno \([0-9]*\).*/\1/p')" = "2" ] ;;
+    *) return 0 ;;
+  esac
 }
 
 mark_tier_done() {
@@ -367,12 +437,6 @@ tier_signature() {
 # Run
 # --------------------------------------------------------------------------------------------
 
-# Session mode: the SessionStart hook's entry point. Fast tiers run inline here; the slow ones are
-# re-launched detached below, after the inline work finishes.
-if [ "$session_mode" -eq 1 ] && [ "${#selected[@]}" -eq 0 ]; then
-  read -r -a selected <<< "${CLAUDE_CLOUD_SESSION_TIERS-profile plugins gh deno}"
-fi
-
 # Locking is PER TIER, not per run. A global lock would deadlock the design: the session hook forks a
 # detached child for the slow tiers while the parent still holds the lock, and the child would see it
 # held and quietly do nothing. Tiers are independent, so a per-tier lock is both the correct
@@ -401,15 +465,6 @@ release_tier_lock() {
 }
 
 for tier in "${selected[@]}"; do
-  case " ${ALL_TIERS[*]} " in
-    *" $tier "*) ;;
-    *)
-      warn "unknown tier '$tier' (known: ${ALL_TIERS[*]})"
-      failed+=("$tier")
-      continue
-      ;;
-  esac
-
   case "$skip_list" in
     *",$tier,"*)
       log "tier ${tier}: skipped by CLAUDE_CLOUD_SKIP_TIERS"
@@ -448,7 +503,6 @@ done
 # ~/.cache/ms-playwright and the OCR venv in ~/.cache — so they cannot race a build or test the model
 # starts meanwhile.
 if [ "$session_mode" -eq 1 ]; then
-  read -r -a background_tiers <<< "${CLAUDE_CLOUD_BACKGROUND_TIERS-browsers python}"
   pending=()
   for tier in "${background_tiers[@]}"; do
     # Signature, not bare marker existence. A marker whose signature no longer matches means the

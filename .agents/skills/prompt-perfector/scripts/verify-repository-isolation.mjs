@@ -65,7 +65,6 @@ export function evaluateRepositoryState(state, options = {}) {
   const currentIndex = state.worktrees.findIndex(
     (worktree) => normalizePath(String(worktree.worktree)) === currentPath,
   );
-  const cloudEnvironment = options.cloudEnvironment ?? false;
 
   if (!path.isAbsolute(state.root)) reasons.push("repository_path_not_absolute");
   if (!state.branch) reasons.push("detached_head");
@@ -74,7 +73,6 @@ export function evaluateRepositoryState(state, options = {}) {
   else if (currentIndex === 0 && !options.cloud) reasons.push("primary_worktree");
   else if (currentIndex === 0 && options.cloud && state.worktrees.length !== 1)
     reasons.push("cloud_primary_requires_single_worktree");
-  if (options.cloud && !cloudEnvironment) reasons.push("cloud_environment_required");
   if (state.operations.length) reasons.push("git_operation_in_progress");
   if (options.expectedRepo && normalizePath(options.expectedRepo) !== currentPath) reasons.push("repository_drift");
   if (options.expectedBranch && options.expectedBranch !== state.branch) reasons.push("branch_drift");
@@ -192,17 +190,30 @@ function runSelfTest() {
     expectedBranch: cloudBase.branch,
     expectedHead: head,
     cloud: true,
-    cloudEnvironment: true,
   };
   const cases = [
     ["safe secondary worktree", base, expected, true, ""],
     ["safe Cloud primary", cloudBase, cloudExpected, true, ""],
-    [
-      "Cloud flag without environment",
+    ["Cloud primary without explicit mode", cloudBase, { ...cloudExpected, cloud: false }, false, "primary_worktree"],
+    ...["expectedRepo", "expectedBranch", "expectedHead"].map((key) => [
+      `Cloud missing ${key}`,
       cloudBase,
-      { ...cloudExpected, cloudEnvironment: false },
+      { ...cloudExpected, [key]: undefined },
       false,
-      "cloud_environment_required",
+      "expected_state_required",
+    ]),
+    ["Cloud repository drift", cloudBase, { ...cloudExpected, expectedRepo: "/other" }, false, "repository_drift"],
+    ["Cloud branch drift", cloudBase, { ...cloudExpected, expectedBranch: "codex/other" }, false, "branch_drift"],
+    ["Cloud HEAD drift", cloudBase, { ...cloudExpected, expectedHead: "b".repeat(40) }, false, "head_drift"],
+    ["Cloud protected branch", { ...cloudBase, branch: "main" }, cloudExpected, false, "protected_branch"],
+    ["Cloud detached HEAD", { ...cloudBase, branch: "" }, cloudExpected, false, "detached_head"],
+    ["Cloud dirty default", { ...cloudBase, status: dirtyStatus }, cloudExpected, false, "dirty_worktree"],
+    [
+      "Cloud dirty content drift",
+      { ...cloudBase, status: dirtyStatus, statusHash: changedContentHash },
+      { ...cloudExpected, allowDirty: true, expectedStatusHash: dirtyHash },
+      false,
+      "status_drift",
     ],
     [
       "Cloud primary with sibling worktree",
@@ -267,7 +278,6 @@ function main() {
     const options = parseArguments(process.argv.slice(2));
     if (options.selfTest) runSelfTest();
     else {
-      options.cloudEnvironment = process.env.CODEX_CLOUD === "1";
       const state = inspectRepository(process.cwd());
       const result = evaluateRepositoryState(state, options);
       emit(result, state, options);

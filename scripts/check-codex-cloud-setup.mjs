@@ -21,8 +21,6 @@ export const expectedCloudCliVersions = Object.freeze({
   codex: "0.147.0",
 });
 
-export const expectedHostedWorkspaceClass = "personal-pro";
-
 export const expectedMcpConfiguration = Object.freeze({
   // Canonical form matches `.mcp.json` (no trailing slash).
   railwayUrl: "https://mcp.railway.com",
@@ -548,6 +546,17 @@ export function codexCloudValidationScope({ runtime = false, environment = false
   return "static";
 }
 
+/**
+ * Select legacy acceptance deliberately; a generic Cloud host marker is insufficient.
+ * @param {string[]} [args]
+ * @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env]
+ */
+export function codexCloudValidationSelection(args = [], env = process.env) {
+  const runtime = args.includes("--runtime");
+  const environment = runtime || args.includes("--environment") || env.CODEX_CLOUD_ACCESS_PROFILE !== undefined;
+  return { runtime, environment };
+}
+
 function commandAvailable(command) {
   return spawnSync(command, ["--version"], { encoding: "utf8", shell: false }).status === 0;
 }
@@ -560,7 +569,9 @@ export function sanitizedCloudCapabilityLines(env = process.env, options = {}) {
   const mcpServers = options.mcpServers ?? parseMcpServerMetadata(read(".mcp.json"));
   const checkout = options.checkout ?? gitCheckoutFreshness(repoRoot, env);
   const lines = [
-    `hosted_workspace.class_documented=${expectedHostedWorkspaceClass}`,
+    "validation.contract=legacy-repository-managed-cloud-profile",
+    "hosted_workspace.class=unverified",
+    "provider_routes=external-unverified",
     `CODEX_CLOUD=${approvedModeValue(env.CODEX_CLOUD, ["1"])}`,
     `CODEX_CLOUD_ACCESS_PROFILE=${approvedModeValue(env.CODEX_CLOUD_ACCESS_PROFILE ?? "offline", ["offline", "connected"])}`,
     `RAG_PROVIDER_MODE=${approvedModeValue(env.RAG_PROVIDER_MODE, ["offline"])}`,
@@ -569,9 +580,6 @@ export function sanitizedCloudCapabilityLines(env = process.env, options = {}) {
   ];
   for (const name of providerCredentialVariables) lines.push(`${name}.present=${Boolean(env[name])}`);
   lines.push(hostedAppInventoryCapabilityLine(options.hostedAppInventory ?? null));
-  lines.push("provider_route.github=codex-native-connector");
-  lines.push("provider_route.railway=chatgpt-official-app");
-  lines.push("provider_route.supabase=chatgpt-project-scoped-read-only-app");
   lines.push(`codex.cli_available=${codexCliAvailable}`);
   lines.push(pythonWorkerVersionLine(env.CODEX_CLOUD_OCR_PYTHON));
   lines.push(`git.origin_configured=${origin.configured}`);
@@ -621,7 +629,7 @@ function fullGitRevision(root, ref) {
 }
 
 function normalizedExpectedBase(root, value) {
-  if (!value) return "unset";
+  if (value === undefined) return "unset";
   const candidate = String(value);
   if (!/^[0-9a-f]{40}$/i.test(candidate)) return "invalid";
   const revision = fullGitRevision(root, `${candidate}^{commit}`);
@@ -647,7 +655,7 @@ export function gitCheckoutFreshness(root = process.cwd(), env = process.env) {
   const freshness =
     expectedBaseAncestor === "true"
       ? "verified"
-      : expectedBaseAncestor === "false"
+      : expectedBase === "invalid" || expectedBaseAncestor === "false"
         ? "invalid"
         : taskOnly
           ? "unverified"
@@ -705,6 +713,15 @@ export function pythonWorkerImportError(pythonCommand, run = spawnSync) {
   return `Python worker imports failed: ${pythonWorkerImports.join(", ")}.`;
 }
 
+/**
+ * @param {string} pythonCommand
+ * @param {(
+ *   command: string,
+ *   args: string[],
+ *   options?: { encoding?: BufferEncoding; shell?: boolean },
+ * ) => { status: number | null }} [run]
+ * @returns {string[]}
+ */
 export function pythonWorkerDependencyErrors(pythonCommand, run = spawnSync) {
   if (!pythonCommand || !executableFile(pythonCommand)) {
     return ["The configured Codex Cloud OCR Python executable is unavailable."];
@@ -719,13 +736,13 @@ export function pythonWorkerDependencyErrors(pythonCommand, run = spawnSync) {
   const requirements = readFileSync(path.join(repoRoot, "worker/python/requirements-cloud.txt"));
   const expectedHash = createHash("sha256").update(requirements).digest("hex");
   const markerPath = path.resolve(path.dirname(pythonCommand), "..", ".requirements-cloud.sha256");
-  let installedHash = "";
+  let installedHash = null;
   try {
     installedHash = readFileSync(markerPath, "utf8").trim();
   } catch {
     errors.push("Python worker requirements fingerprint is missing; rerun Cloud setup.");
   }
-  if (installedHash && installedHash !== expectedHash) {
+  if (installedHash !== null && installedHash !== expectedHash) {
     errors.push("Python worker requirements fingerprint is stale; rerun Cloud setup.");
   }
 
@@ -1155,13 +1172,15 @@ function validateCheckoutAndRawEnvironmentContracts(sources, errors) {
 function validateGuideAndMcpContracts(sources, errors) {
   const { guide, mcp, codexProjectConfig } = sources;
   for (const [pattern, message] of [
-    [/bash scripts\/setup-codex-cloud\.sh/, "The guide must provide the setup command."],
-    [/install-codex-cloud-command-shims\.sh/, "The guide must document the command-shim workaround."],
-    [/CODEX_CLOUD_ACCESS_PROFILE=connected/, "The guide must document connected access."],
-    [/CODEX_CLOUD_GITHUB_PAT/, "The guide must document the narrowly scoped PAT exception."],
-    [/GitHub connector/, "The guide must document GitHub connector access."],
-    [/Personal Pro/, "The guide must identify the active Personal Pro workspace."],
-    [/split control plane/, "The guide must document the Personal Pro provider workaround."],
+    [/current-host capability checks/, "The active Cloud guide must use current-host capability checks."],
+    [
+      /applies only when explicitly selected/,
+      "The active Cloud guide must scope the legacy profile to explicit selection.",
+    ],
+    [
+      /archive\/codex-cloud-legacy-profile-2026-10-16\.md/,
+      "The active Cloud guide must link the archived legacy bootstrap runbook.",
+    ],
   ]) {
     requireMatch(errors, guide, pattern, message);
   }
@@ -1287,13 +1306,15 @@ async function appendBrowserRuntimeErrors(env, errors) {
   }
 }
 
-function appendCheckoutRuntimeErrors(env, errors) {
+/** @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env] */
+export function validateCodexCloudCheckout(root = repoRoot, env = process.env) {
+  const errors = [];
   const obsoleteProxyNames = obsoleteNpmProxyVariables(env);
   if (obsoleteProxyNames.length > 0) {
     errors.push(`Obsolete npm proxy variable names are set: ${obsoleteProxyNames.join(", ")}.`);
   }
-  const baseline = localGitBaseline(repoRoot, env);
-  const checkout = gitCheckoutFreshness(repoRoot, env);
+  const baseline = localGitBaseline(root, env);
+  const checkout = gitCheckoutFreshness(root, env);
   if (!baseline) {
     errors.push("Neither local main, origin/main, nor a Cloud task HEAD is available.");
   } else if (baseline === "HEAD" && checkout.freshness === "unverified" && env.CODEX_CLOUD_PROVISIONING !== "1") {
@@ -1301,9 +1322,12 @@ function appendCheckoutRuntimeErrors(env, errors) {
       "Checkout freshness is unverified: set CODEX_CLOUD_EXPECTED_BASE_SHA to the intended merge/base commit.",
     );
   }
-  if (checkout.expectedBaseAncestor === "false") {
+  if (checkout.expectedBase === "invalid") {
+    errors.push("CODEX_CLOUD_EXPECTED_BASE_SHA must identify an available 40-character commit SHA.");
+  } else if (checkout.expectedBaseAncestor === "false") {
     errors.push("CODEX_CLOUD_EXPECTED_BASE_SHA is not an ancestor of the current HEAD.");
   }
+  return errors;
 }
 
 function appendOriginRuntimeErrors(errors) {
@@ -1315,6 +1339,8 @@ function appendOriginRuntimeErrors(errors) {
 
 export async function validateCodexCloudRuntime(env = process.env) {
   const errors = validateCodexCloudEnvironment(env);
+  // A rejected legacy boundary must not execute runtime binaries or load dependencies.
+  if (errors.length > 0) return errors;
 
   // Hosted Railway access is the OAuth ChatGPT/Codex app, not CLI token auth.
   // Do not reintroduce `railway --version` or RAILWAY_API_TOKEN-vs-RAILWAY_TOKEN
@@ -1323,7 +1349,7 @@ export async function validateCodexCloudRuntime(env = process.env) {
   appendPythonWorkerErrors(env, errors);
   appendRepositoryRuntimeErrors(errors);
   await appendBrowserRuntimeErrors(env, errors);
-  appendCheckoutRuntimeErrors(env, errors);
+  errors.push(...validateCodexCloudCheckout(repoRoot, env));
   appendOriginRuntimeErrors(errors);
   return errors;
 }
@@ -1336,12 +1362,13 @@ if (isDirectEntrypoint(import.meta.url)) {
   const hostedAppInventoryErrors = validateHostedAppInventory(hostedAppInventory);
   const hostedAppInputErrors = [...hostedAppArgumentErrors, ...hostedAppInventoryErrors];
   errors.push(...hostedAppInputErrors);
-  const runtime = process.argv.includes("--runtime");
-  const environment = runtime || process.env.CODEX_CLOUD === "1" || process.argv.includes("--environment");
-  if (runtime) errors.push(...(await validateCodexCloudRuntime()));
+  const { runtime, environment } = codexCloudValidationSelection(commandArguments);
+  const runtimeAllowed = runtime && errors.length === 0;
+  if (runtimeAllowed) errors.push(...(await validateCodexCloudRuntime()));
   else if (environment) errors.push(...validateCodexCloudEnvironment());
   if (
-    runtime &&
+    runtimeAllowed &&
+    errors.length === 0 &&
     process.env.CODEX_CLOUD_PROVISIONING === "1" &&
     gitCheckoutFreshness(repoRoot).freshness === "unverified"
   ) {
@@ -1349,8 +1376,8 @@ if (isDirectEntrypoint(import.meta.url)) {
       "[Codex Cloud Check] WARN: checkout freshness is unverified during provisioning; run explicit acceptance with CODEX_CLOUD_EXPECTED_BASE_SHA.",
     );
   }
-  if (environment && hostedAppInputErrors.length === 0) {
-    console.log("[Codex Cloud Environment] sanitized effective modes and capabilities:");
+  if (environment && errors.length === 0) {
+    console.log("[Codex Cloud Environment] sanitized legacy profile modes and capabilities:");
     for (const line of sanitizedCloudCapabilityLines(process.env, { hostedAppInventory })) console.log(`  ${line}`);
   }
   if (errors.length > 0) {

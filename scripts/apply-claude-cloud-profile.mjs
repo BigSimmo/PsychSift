@@ -4,7 +4,7 @@
  *
  * Claude Code on the web starts from a bare Linux container holding the repository checkout and
  * nothing else. Everything that lives in the operator's Windows home directory — the personal
- * CLAUDE.md writing-style file, the enabled user skills, this project's saved memories, and the
+ * CLAUDE.md writing-style file, the enabled user skills, curated project guidance seeds, and the
  * user-level settings that turn on auto permission mode and the four plugins — is absent, so a cloud
  * session behaves noticeably differently from a local one. The repository cannot reach into that home
  * directory, so the durable fix is to carry a copy in-tree (.claude/cloud-profile/) and unpack it into
@@ -16,6 +16,8 @@
  *     Windows workstation must never have its real ~/.claude overwritten by a checked-in snapshot.
  *   - Memory files are copied only when absent. Memories the container writes during a session are
  *     newer than the snapshot and must win; clobbering them would silently delete work.
+ *     Only seed-manifest.json entries are installed; unlisted files and archived session state are
+ *     never fallback sources. Existing host memory is never purged.
  *   - ~/.claude/settings.json is DEEP-MERGED, not replaced, with the profile winning per key, so
  *     anything the platform put there (auth state, machine ids, feature flags) survives.
  *   - An existing ~/.claude/CLAUDE.md is backed up once to CLAUDE.md.pre-cloud-profile before the
@@ -27,7 +29,19 @@
  */
 
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  constants,
+  copyFileSync,
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -40,6 +54,12 @@ const args = process.argv.slice(2);
 const force = args.includes("--force");
 const dryRun = args.includes("--dry-run");
 const quiet = args.includes("--quiet");
+for (const arg of args) {
+  if (!["--force", "--dry-run", "--quiet"].includes(arg) && !arg.startsWith("--skip=")) {
+    console.error("[cloud-profile] ERROR: unknown argument; use --force, --dry-run, --quiet or --skip=<parts>");
+    process.exit(2);
+  }
+}
 
 // --skip=settings,claude-md,skills,memory. The skills part is several megabytes across ~500 files, so
 // re-copying it is by far the slowest thing here; skipping it keeps a targeted re-run (and the tests
@@ -105,9 +125,12 @@ function deepMerge(base, overlay) {
 
 function readJsonOr(path, fallback) {
   if (!existsSync(path)) return fallback;
+  const content = readFileSync(path, "utf8");
   try {
-    return JSON.parse(readFileSync(path, "utf8"));
-  } catch (error) {
+    const parsed = JSON.parse(content);
+    if (!isPlainObject(parsed)) throw new Error("settings must be an object");
+    return parsed;
+  } catch {
     // A corrupt settings file must not take the session down with it. Preserve it and start clean:
     // losing the merge is recoverable, losing whatever the platform wrote there may not be.
     let backup = `${path}.unparseable`;
@@ -117,7 +140,9 @@ function readJsonOr(path, fallback) {
       suffix += 1;
     }
     if (!dryRun) renameSync(path, backup);
-    note(`WARNING: ${path} was not valid JSON (${error.message}); preserved as ${backup}`);
+    // JSON.parse errors can contain snippets of private host settings. Keep the content in the
+    // backup only, and report neither the parser message nor the original text.
+    note(`WARNING: ${path} was not a valid settings object; preserved as ${backup}`);
     return fallback;
   }
 }
@@ -126,13 +151,24 @@ function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
+// Validate the selected seed source before changing settings, instructions or skills. A rejected
+// manifest must not leave an otherwise-applied profile behind.
+const profileMemory = join(profileDir, "memory");
+const memoryFiles = existsSync(profileMemory) && !skipped.has("memory") ? memorySeedNames(profileMemory) : [];
+
 // ---------------------------------------------------------------------------
 // 1. user-level settings — deep merge, profile wins
 // ---------------------------------------------------------------------------
 const profileSettingsPath = join(profileDir, "settings.json");
 if (existsSync(profileSettingsPath) && !skipped.has("settings")) {
   const settingsPath = join(claudeHome, "settings.json");
-  const profileSettings = JSON.parse(readFileSync(profileSettingsPath, "utf8"));
+  let profileSettings;
+  try {
+    profileSettings = JSON.parse(readFileSync(profileSettingsPath, "utf8"));
+  } catch {
+    fail("profile settings must be valid JSON");
+  }
+  if (!isPlainObject(profileSettings)) fail("profile settings must be an object");
   const existing = readJsonOr(settingsPath, {});
   const merged = deepMerge(existing, profileSettings);
   const serialised = `${JSON.stringify(merged, null, 2)}\n`;
@@ -193,9 +229,48 @@ if (existsSync(profileSkills) && !skipped.has("skills")) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. project memories — copy only what is absent, so container-written memories always win
+// 4. curated project memories — copy only listed, absent files; host memories always win
 // ---------------------------------------------------------------------------
-const profileMemory = join(profileDir, "memory");
+function memorySeedNames(directory) {
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(join(directory, "seed-manifest.json"), "utf8"));
+  } catch {
+    fail("memory seed manifest is missing or invalid JSON");
+  }
+  if (
+    !isPlainObject(manifest) ||
+    manifest.version !== 1 ||
+    !Array.isArray(manifest.files) ||
+    Object.keys(manifest).some((key) => !["version", "files"].includes(key))
+  ) {
+    fail("memory seed manifest must declare version 1 and a files array");
+  }
+  const names = new Set();
+  for (const name of manifest.files) {
+    if (typeof name !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(name)) {
+      fail("memory seed manifest entries must be plain Markdown filenames");
+    }
+    const key = name.toLowerCase();
+    if (names.has(key)) fail("memory seed manifest contains duplicate filenames");
+    names.add(key);
+    const source = join(directory, name);
+    if (!existsSync(source) || !lstatSync(source).isFile()) {
+      fail("memory seed manifest entry is missing or is not a regular file");
+    }
+  }
+  if (!manifest.files.includes("MEMORY.md")) fail("memory seed manifest must include MEMORY.md");
+  const index = readFileSync(join(directory, "MEMORY.md"), "utf8");
+  const targets = [
+    ...Array.from(index.matchAll(/\[[^\]]*\]\(([^)]+)\)/g), (match) => match[1]),
+    ...Array.from(index.matchAll(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g), (match) => `${match[1]}.md`),
+  ];
+  if (targets.some((target) => !manifest.files.includes(target))) {
+    fail("memory seed index refers to an unlisted seed");
+  }
+  return manifest.files;
+}
+
 if (existsSync(profileMemory) && !skipped.has("memory")) {
   // Claude Code keys project state by the working directory with path separators and the Windows
   // drive colon flattened to dashes: D:\Repos\Database -> D--Repos-Database, and in a Linux container
@@ -204,16 +279,26 @@ if (existsSync(profileMemory) && !skipped.has("memory")) {
   const slug = projectDir.replace(/[/\\:]/g, "-");
   const target = join(claudeHome, "projects", slug, "memory");
   ensureDir(target);
-  const files = readdirSync(profileMemory).filter((file) => file.endsWith(".md"));
   let copied = 0;
   let kept = 0;
-  for (const file of files) {
+  for (const file of memoryFiles) {
     const destination = join(target, file);
-    if (existsSync(destination)) {
+    // A dangling symlink is still a host-owned record. existsSync follows it and would treat it as
+    // absent, replacing the link. Exclusive creation also preserves a file created by another run
+    // after this check.
+    if (lstatSync(destination, { throwIfNoEntry: false })) {
       kept += 1;
       continue;
     }
-    if (!dryRun) cpSync(join(profileMemory, file), destination);
+    if (!dryRun) {
+      try {
+        copyFileSync(join(profileMemory, file), destination, constants.COPYFILE_EXCL);
+      } catch (error) {
+        if (error.code !== "EEXIST") throw error;
+        kept += 1;
+        continue;
+      }
+    }
     copied += 1;
   }
   note(`memories: ${copied} installed, ${kept} already present (kept) in projects/${slug}/memory`);

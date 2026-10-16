@@ -1,8 +1,15 @@
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { diagnoseCodexCloud } from "../scripts/diagnose-codex-cloud.mjs";
+import {
+  diagnoseCodexCloud,
+  legacyCloudDiagnosticsSelected,
+  parseDiagnosticArguments,
+} from "../scripts/diagnose-codex-cloud.mjs";
 
 const healthy = {
   nodeVersion: "24.18.1",
@@ -17,6 +24,28 @@ const healthy = {
 describe("Codex Cloud diagnostics", () => {
   it("reports a healthy aligned runtime", () => {
     expect(diagnoseCodexCloud(healthy)).toEqual([]);
+  });
+
+  it.each([
+    ["24.14.99", false],
+    ["24.15.0", true],
+    ["24.18.1", true],
+    ["25.0.0", false],
+    ["unavailable", false],
+  ])("checks Node %s against the repository engine range", (nodeVersion, accepted) => {
+    const nodeRange = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).engines.node;
+    const issues = diagnoseCodexCloud({ ...healthy, nodeVersion });
+    expect(issues.map((issue) => issue.code)).toEqual(accepted ? [] : ["NODE_RUNTIME"]);
+    if (!accepted) expect(issues[0]?.issue).toContain(`Node ${nodeRange} is required`);
+  });
+
+  it("keeps the pure diagnostic API usable with an explicitly supplied engine contract", () => {
+    expect(diagnoseCodexCloud({ ...healthy, nodeVersion: "25.1.2", expectedNodeRange: ">=25.1.2 <26" })).toEqual([]);
+    expect(
+      diagnoseCodexCloud({ ...healthy, nodeVersion: "25.1.1", expectedNodeRange: ">=25.1.2 <26" }).map(
+        (issue) => issue.code,
+      ),
+    ).toEqual(["NODE_RUNTIME"]);
   });
 
   it("explains the Python lock mismatch that previously stopped setup", () => {
@@ -38,19 +67,120 @@ describe("Codex Cloud diagnostics", () => {
     expect(issues[0]?.fix).toContain("Python 3.12");
   });
 
-  it("does not mistake a desktop Python version for Cloud runtime drift", () => {
-    const environment = { ...process.env };
-    delete environment.CODEX_CLOUD;
-    delete environment.CODEX_CLOUD_OCR_PYTHON;
+  it.each([
+    ["desktop", undefined],
+    ["host-managed Cloud", "1"],
+  ])("does not apply legacy Python requirements to an unselected %s host", (_name, marker) => {
     const result = spawnSync(process.execPath, ["scripts/diagnose-codex-cloud.mjs"], {
       cwd: process.cwd(),
       encoding: "utf8",
-      env: environment,
+      env: { PATH: process.env.PATH, NODE_ENV: "test", CODEX_CLOUD: marker },
     });
 
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("status=NOT_APPLICABLE issues=0");
     expect(result.stdout).toContain("local Python versions are not Cloud runtime evidence");
     expect(result.stdout).not.toContain("CLOUD_PYTHON_RUNTIME");
+  });
+
+  it.each([
+    [[], {}, false],
+    [[], { CODEX_CLOUD: "1" }, false],
+    [[], { CODEX_CLOUD_ACCESS_PROFILE: "offline" }, true],
+    [[], { CODEX_CLOUD_ACCESS_PROFILE: "connected" }, true],
+    [[], { CODEX_CLOUD_ACCESS_PROFILE: "invalid" }, true],
+    [[], { CODEX_CLOUD_ACCESS_PROFILE: "" }, true],
+    [["--legacy-profile"], {}, true],
+  ])("requires explicit selection before legacy runtime diagnosis: %j %j", (args, environment, expected) => {
+    expect(legacyCloudDiagnosticsSelected(args, environment)).toBe(expected);
+  });
+
+  it.each([
+    ["unknown flag", ["--unknown"], {}],
+    ["missing Python path", ["--legacy-profile", "--python-bin"], {}],
+    ["flag instead of Python path", ["--legacy-profile", "--python-bin", "--exit-code", "1"], {}],
+    ["duplicate flag", ["--legacy-profile", "--legacy-profile"], {}],
+    ["invalid exit code", ["--legacy-profile", "--exit-code", "invalid"], {}],
+    ["out of range exit code", ["--legacy-profile", "--exit-code", "256"], {}],
+    ["invalid step", ["--legacy-profile", "--setup-step", "invalid step"], {}],
+    ["unselected options", ["--exit-code", "1"], {}],
+    ["invalid configured profile", [], { CODEX_CLOUD_ACCESS_PROFILE: "invalid" }],
+    ["empty configured profile", [], { CODEX_CLOUD_ACCESS_PROFILE: "" }],
+  ])("fails safely on %s before runtime diagnosis", (_label, args, environment) => {
+    const result = spawnSync(process.execPath, ["scripts/diagnose-codex-cloud.mjs", ...args], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { PATH: process.env.PATH, NODE_ENV: "test", ...environment },
+    });
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toContain("status=INVALID_INPUT");
+    expect(result.stdout).not.toMatch(/NOT_APPLICABLE|HEALTHY|CLOUD_PYTHON_RUNTIME/);
+    expect(result.stderr).not.toContain("invalid step");
+  });
+
+  it("refuses selected runtime diagnostics at an inherited provider boundary", () => {
+    const result = spawnSync(process.execPath, ["scripts/diagnose-codex-cloud.mjs", "--legacy-profile"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: { PATH: process.env.PATH, NODE_ENV: "test", OPENAI_API_KEY: "synthetic-provider-value" },
+    });
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toContain("status=BLOCKED_ENVIRONMENT");
+    expect(result.stderr).toContain("OPENAI_API_KEY");
+    expect(result.stderr).not.toContain("synthetic-provider-value");
+    expect(result.stdout).not.toMatch(/HEALTHY|CLOUD_PYTHON_RUNTIME/);
+  });
+
+  it("accepts the setup failure trap's flags without depending on order", () => {
+    expect(
+      parseDiagnosticArguments(
+        [
+          "--exit-code",
+          "1",
+          "--python-bin",
+          process.execPath,
+          "--legacy-profile",
+          "--setup-step",
+          "python-worker-requirements",
+        ],
+        {},
+      ),
+    ).toEqual({
+      options: {
+        "--exit-code": "1",
+        "--python-bin": process.execPath,
+        "--legacy-profile": true,
+        "--setup-step": "python-worker-requirements",
+      },
+      errors: [],
+    });
+  });
+
+  it("reads the repository lock independently of the caller's directory", () => {
+    const script = path.resolve("scripts/diagnose-codex-cloud.mjs");
+    const result = spawnSync(process.execPath, [script, "--legacy-profile", "--python-bin", process.execPath], {
+      cwd: os.tmpdir(),
+      encoding: "utf8",
+      env: { PATH: process.env.PATH, NODE_ENV: "test" },
+    });
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(1);
+    expect(result.stdout).toContain("CLOUD_PYTHON_RUNTIME");
+    expect(result.stdout).not.toContain("CLOUD_PYTHON_LOCK_MISSING");
+  });
+
+  it("retains failing runtime diagnostics when the legacy profile is explicitly requested", () => {
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/diagnose-codex-cloud.mjs", "--legacy-profile", "--python-bin", process.execPath],
+      {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        env: { PATH: process.env.PATH, NODE_ENV: "test" },
+      },
+    );
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(1);
+    expect(result.stdout).toContain("status=DEGRADED");
+    expect(result.stdout).toContain("CLOUD_PYTHON_RUNTIME");
+    expect(result.stdout).not.toContain("NOT_APPLICABLE");
   });
 });

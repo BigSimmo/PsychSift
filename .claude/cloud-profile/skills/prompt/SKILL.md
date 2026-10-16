@@ -1,6 +1,6 @@
 ---
 name: prompt
-description: Perfect a rough request or draft prompt using relevant context, attachments, files, and the minimum necessary skills or tools, then answer or execute it. Use when the user invokes $prompt or asks to improve, rewrite, sharpen, expand, contextualize, or optimize their prompt before acting. For code-changing prompts, also prepare a safe repository workflow: a fresh worktree and branch per task. Do not use for ordinary code or content review unless prompt improvement is requested.
+description: Perfect a rough request or draft prompt using relevant context, attachments, files, and the minimum necessary skills or tools, then answer or execute it. Use when the user invokes $prompt or asks to improve, rewrite, sharpen, expand, contextualize, or optimize their prompt before acting. For code-changing prompts, verify task ownership and use an isolated checkout when needed; preserve verified same-task continuation. Do not use for ordinary code or content review unless prompt improvement is requested.
 ---
 
 # Prompt
@@ -73,7 +73,7 @@ For machine-consumed output, specify an exact schema, required fields, permitted
 
 When the perfected task depends on local repository evidence or will write to a Git repository, read `references/coding-workflow.md` before relying on findings or editing. Apply its freshness rules to review and diagnosis; apply its branch, environment, implementation, and validation rules only to repository writes. Skip the reference for prompt-only or answer-only work that does not depend on repository state.
 
-For any repository write, start the task in a fresh worktree on a new branch cut from the latest remote default branch — one task, one worktree, one branch. Never edit the main checkout or reuse another task's worktree; the reference gives the exact commands and exceptions.
+Before repository writes, verify the checkout, branch, task ownership and existing changes. Continue verified same-task work, including owned uncommitted changes; isolate unrelated work when needed. The reference gives the branch, freshness and authority checks.
 
 ## API and ChatGPT prompt practice
 

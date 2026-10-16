@@ -2,18 +2,60 @@
 
 set -Eeuo pipefail
 
+fail() {
+  printf '[codex-cloud:maintenance] ERROR: %s\n' "$1" >&2
+  exit 1
+}
+
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   printf '[codex-cloud:maintenance] ERROR: Run this script from the PsychSift repository.\n' >&2
   exit 1
 }
 cd "$repo_root"
 
-export CODEX_CLOUD=1
-
-if [[ -f "$HOME/.clinical-kb-codex-cloud.sh" ]]; then
-  # shellcheck source=/dev/null
-  source "$HOME/.clinical-kb-codex-cloud.sh"
+if bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh; then
+  :
+else
+  raw_boundary_status="$?"
+  exit "$raw_boundary_status"
 fi
+
+# A cached profile must not hide an invalid inherited selection. Retain an
+# explicit valid selection so a different cached profile cannot replace it.
+requested_cloud_profile_set="${CODEX_CLOUD_ACCESS_PROFILE+yes}"
+requested_cloud_profile="${CODEX_CLOUD_ACCESS_PROFILE-}"
+if [[ "$requested_cloud_profile_set" = "yes" ]]; then
+  case "$requested_cloud_profile" in
+    offline|connected) ;;
+    *) fail "Unsupported CODEX_CLOUD_ACCESS_PROFILE; expected offline or connected." ;;
+  esac
+fi
+if [[ "${RAG_PROVIDER_MODE+yes}" = "yes" && "$RAG_PROVIDER_MODE" != "offline" ]]; then
+  fail "The selected legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline."
+fi
+
+runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
+if [[ ! -f "$runtime_profile" ]]; then
+  printf '[codex-cloud:maintenance] Generated runtime profile unavailable; rerunning full setup.\n'
+  exec bash scripts/setup-codex-cloud.sh
+fi
+
+load_runtime_profile() {
+  # shellcheck source=/dev/null
+  source "$runtime_profile"
+  case "${CODEX_CLOUD_ACCESS_PROFILE-}" in
+    offline|connected) ;;
+    *) fail "Cached CODEX_CLOUD_ACCESS_PROFILE is invalid; rerun setup with the intended profile." ;;
+  esac
+  if [[ "$requested_cloud_profile_set" = "yes" && "$CODEX_CLOUD_ACCESS_PROFILE" != "$requested_cloud_profile" ]]; then
+    fail "Cached CODEX_CLOUD_ACCESS_PROFILE differs from the requested profile; rerun setup with the intended profile."
+  fi
+  [[ "${RAG_PROVIDER_MODE-}" = "offline" ]] ||
+    fail "The cached legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline; rerun setup."
+}
+
+export CODEX_CLOUD=1
+load_runtime_profile
 
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
   printf '[codex-cloud:maintenance] Node/npm unavailable; rerunning full setup.\n'
@@ -22,8 +64,7 @@ fi
 
 node scripts/ensure-codex-cloud-git-remote.mjs --configure-gh-helper
 bash scripts/refresh-codex-cloud-base.sh
-# shellcheck source=/dev/null
-source "$HOME/.clinical-kb-codex-cloud.sh"
+load_runtime_profile
 npm run check:codex-cloud
 if ! CODEX_CLOUD_PROVISIONING=1 npm run check:codex-cloud -- --runtime; then
   printf '[codex-cloud:maintenance] Runtime or toolchain drift detected; rerunning full setup.\n'

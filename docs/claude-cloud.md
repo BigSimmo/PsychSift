@@ -1,29 +1,35 @@
 # Claude Code on the web — container parity
 
-Claude Code on the web runs in a disposable Linux container that starts with the repository checkout
-and nothing else. Everything that lives in the operator's Windows home directory is absent, and so are
-Playwright, Python, Tesseract, Deno and the GitHub CLI. That is why a cloud session used to behave
-noticeably differently from a local one, and why browser proof and worker checks failed there.
-
-This document is the contract for closing that gap. The Codex Cloud equivalent is
+This document describes the repository's Claude web container provisioner. Inspect the current
+host's permissions, tools and installed dependencies before relying on it; a fresh container need
+not have the same capabilities as an earlier one. Workstation home files, credentials and services
+do not automatically transfer. Earlier missing-tool incidents motivated this provisioner.
+The Codex Cloud equivalent is
 [codex-cloud.md](codex-cloud.md); the two are deliberately separate environments with separate
 provisioners.
 
 ## What runs, and when
 
-`.claude/settings.json` registers two `SessionStart` hooks in order:
+`.claude/settings.json` registers these two provisioning commands under `SessionStart`,
+alongside base-freshness, issue-queue, testing-policy and organisation context hooks:
 
 | Order | Command                                   | Timeout | Does                                               |
 | ----- | ----------------------------------------- | ------- | -------------------------------------------------- |
 | 1     | `.claude/hooks/session-start.sh`          | 900s    | Installs Node 24 to `$HOME/.node24`, then `npm ci` |
 | 2     | `scripts/setup-claude-cloud.sh --session` | 300s    | Everything below                                   |
 
-Both no-op instantly unless `CLAUDE_CODE_REMOTE=true`, so a local Windows session is untouched.
+Both no-op instantly unless `CLAUDE_CODE_REMOTE=true`. This guard selects their execution; it does
+not attest that provisioning succeeded or that the current host has provider authority.
 
 ## The tiers
 
 `scripts/setup-claude-cloud.sh` is tiered, marker-guarded and idempotent. A warm container re-runs in
 about a second; a cold one can be resumed after an interrupted run without redoing completed work.
+
+All selected tier names, including session and background overrides, are validated before any tier
+runs. Listing tiers and the local no-op path create no cache or profile state. Cached `gh` and `deno`
+markers also require their commands to work; Deno must still report major version 2. A marker alone
+is not current runtime evidence.
 
 | Tier       | Installs                                                                                 | Cost when cold |
 | ---------- | ---------------------------------------------------------------------------------------- | -------------- |
@@ -70,27 +76,47 @@ empty string to disable it), and `CLAUDE_CLOUD_BROWSERS`.
 
 ## The checked-in user profile
 
-`.claude/cloud-profile/` is a snapshot of the operator's user-level Claude Code configuration. The
+`.claude/cloud-profile/` is a reviewed, portable subset of the operator's user-level Claude Code configuration. The
 repository cannot reach into a Windows home directory, so the snapshot travels in-tree and
 `scripts/apply-claude-cloud-profile.mjs` unpacks it into the container's `~/.claude`.
 
-| Path                                  | Becomes                             | Merge rule                                 |
-| ------------------------------------- | ----------------------------------- | ------------------------------------------ |
-| `.claude/cloud-profile/CLAUDE.md`     | `~/.claude/CLAUDE.md`               | Replaced; any existing copy backed up once |
-| `.claude/cloud-profile/settings.json` | `~/.claude/settings.json`           | **Deep-merged**, profile wins per key      |
-| `.claude/cloud-profile/skills/`       | `~/.claude/skills/`                 | Replaced per skill                         |
-| `.claude/cloud-profile/memory/`       | `~/.claude/projects/<slug>/memory/` | Copied **only when absent**                |
+| Path                                  | Becomes                             | Merge rule                                    |
+| ------------------------------------- | ----------------------------------- | --------------------------------------------- |
+| `.claude/cloud-profile/CLAUDE.md`     | `~/.claude/CLAUDE.md`               | Replaced; any existing copy backed up once    |
+| `.claude/cloud-profile/settings.json` | `~/.claude/settings.json`           | **Deep-merged**, profile wins per key         |
+| `.claude/cloud-profile/skills/`       | `~/.claude/skills/`                 | Replaced per skill                            |
+| `.claude/cloud-profile/memory/`       | `~/.claude/projects/<slug>/memory/` | Reusable guidance copied **only when absent** |
 
 Any part can be skipped for a targeted re-run —
 `node scripts/apply-claude-cloud-profile.mjs --skip=skills,memory` — and `--dry-run` reports without
 writing.
 
+The memory seed directory carries curated reusable guidance and dated examples. Its
+`seed-manifest.json` lists the only Markdown files the applier may copy. The manifest must use
+unique plain filenames naming existing regular files and must include `MEMORY.md`; index links
+must refer to listed seeds. Invalid manifests or index links reject the selected profile before
+settings, instructions or skills are changed. An unlisted
+file placed in the source directory is not installed, and the archive is never a fallback source.
+Keep the manifest, reviewed seed content and seed index aligned when refreshing the profile.
+
+The seed directory must not copy old coordination boards, open-task queues, workstation locations or prior session authority
+into a new host. The seven records retired on 2026-10-16 are preserved byte-for-byte in
+[the Cloud session-state archive](archive/cloud-session-state-2026-10-16/README.md), outside the
+applier's source directory. Their original dates and links remain historical evidence.
+
+This source cleanup affects fresh seeding only. Existing host-authored memories and indexes are
+preserved, including files with retired seed names. The applier neither purges host memory nor
+rewrites an existing `MEMORY.md`; do not claim that updating this repository cleans an already
+provisioned host. Follow the current repository instructions and verify current task facts when
+retained memory disagrees.
+
 Three rules are load-bearing:
 
 - **Settings are merged, never replaced.** Whatever the platform put in `~/.claude/settings.json` —
   auth state, machine ids, feature flags — survives. Only the profile's own keys are imposed.
-- **Memories are never clobbered.** A memory the container writes during a session is newer than the
-  snapshot and must win, so the copy is skip-if-present. Clobbering would silently delete work.
+- **Memories are never clobbered.** The copy is skip-if-present to preserve host-written work.
+  Existence or recency does not make memory authoritative; current instructions and verified facts
+  win when content conflicts. Correcting host memory requires its applicable exact-content approval.
 - **The applier refuses to run unless `CLAUDE_CODE_REMOTE=true`**, or `--force` is passed. The
   operator's real `~/.claude` is the _origin_ of this snapshot; overwriting it with a copy of itself
   is the one genuinely destructive thing this tooling could do. `scripts/setup-claude-cloud.sh` carries
@@ -99,10 +125,16 @@ Three rules are load-bearing:
 ### Refreshing the snapshot
 
 The profile is a snapshot, not a live link — it goes stale as the workstation configuration changes.
-Refresh it deliberately by copying the current `~/.claude/CLAUDE.md`, `~/.claude/skills/*` (resolving
-the symlinks into `~/.agents/skills`) and the project's memory directory back into
-`.claude/cloud-profile/`, then commit. Keep `settings.json` hand-maintained: the workstation copy
-carries Windows-only entries (the Shellular notification hook, Desktop Commander MCP permissions) that
+Refresh it deliberately by reviewing the current `~/.claude/CLAUDE.md` and selected `~/.claude/skills/*`
+(resolving symlinks into `~/.agents/skills`) before copying portable content into `.claude/cloud-profile/`.
+Retain reviewed repository adaptations, including current-tool routing and same-task continuation;
+a workstation copy must not restore stale model inventories, mandatory remote setup or unavailable
+commands. These vendored files are maintained here; changing them does not update their external origin. Review project
+memories individually and copy only reusable guidance, checking the seed index too. Preserve
+dated session records in `docs/archive/` instead of importing a workstation's entire memory
+directory as active guidance. Commit the reviewed source changes through the authorised workflow.
+Keep `settings.json` hand-maintained: the workstation copy carries Windows-only entries
+(the Shellular notification hook, Desktop Commander MCP permissions) that
 must **not** be pushed into a Linux container.
 
 Two things about `skills/` in particular:
@@ -127,17 +159,16 @@ on a valid intermediate state. Both properties are pinned by that test file.
 
 Provisioning cannot supply credentials or authorise connections. In a fresh cloud container:
 
-1. **Credentials — and cloud has nowhere safe to put them.** A cloud environment's variables box is
-   not a secrets store: Anthropic's own guidance is not to put API keys or credentials there, because
-   every value is readable by anyone using the environment, and `Static API tokens and credentials`
-   is listed as unavailable in cloud sessions with "no dedicated secrets store exists yet". Nothing
-   in this repository can change that.
+1. **Credentials and provider authority.** Earlier Claude web documentation described shared-readable
+   environment variables and no dedicated secrets store. Treat that as historical platform evidence,
+   not proof of the current host's account settings. Inspect supported host metadata and current
+   documentation when authorised; never inspect credential values to establish readiness or paste
+   secrets into a shared-readable variables box.
 
-   So treat **demo mode as the normal cloud posture.** With Supabase and OpenAI configuration absent,
-   `isDemoMode()` serves the synthetic corpus and the app works — that is designed behaviour, not a
-   failure. Cloud is then good for code, tests, docs and review, and is simply not where live-data or
-   provider-backed work happens; that stays on the workstation, which is also where the
-   provider-confirmation rules in `AGENTS.md` assume it happens.
+   Demo mode is the default when Supabase and OpenAI configuration is absent: `isDemoMode()` serves
+   synthetic data. Live/provider work needs applicable user authority, a supported authenticated
+   route and the project safeguards. The provider-confirmation boundary applies on every host;
+   it does not assume that the work happens on a workstation. Provisioning grants no such authority.
 
    Live mode would need `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PROJECT_REF`, `SUPABASE_PROJECT_NAME`,
    `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY`, plus
@@ -145,24 +176,25 @@ Provisioning cannot supply credentials or authorise connections. In a fresh clou
    row-level security on a database holding clinical documents, so it is the one value that should
    never be pasted into a shared-readable box under any circumstances.
 
-2. **`gh` is installed and authenticated — but only REST is served.** The `gh` tier puts the binary on
-   `PATH`; it does not log it in. Anthropic keeps git credentials outside the sandbox deliberately —
-   cloning, branching and pushing go through a credential proxy — so the container holds no token of
-   its own. This entry used to predict that `gh api` / `gh pr` would therefore fail on
-   authentication, and record that as unverified. **A real session settled it on 2026-08-21, and the
-   prediction was wrong in a way worth knowing:** the platform does inject GitHub access, `gh api`
-   REST calls succeed, and the wall is at the API layer instead.
+2. **GitHub access must be verified for the current session.** The `gh` tier installs a binary;
+   it does not log it in or prove connector access. Git transport, shell REST/GraphQL and hosted
+   connectors can have separate permissions. Prefer currently callable authenticated connectors
+   for authorised work; no token copying or login repair is implied by this runbook.
 
-   `gh` GraphQL is refused with `HTTP 403: This GraphQL query is not enabled for this session — only
+   **Historical session, 2026-08-21:** injected GitHub REST access worked while selected GraphQL
+   operations failed. The following records that session's limits and alternatives, not a current
+   guarantee or authority to make those calls.
+
+   In that session, `gh` GraphQL was refused with `HTTP 403: This GraphQL query is not enabled for this session — only
 the pinned set of PR-review operations is served. Use REST via gh api repos/{owner}/{repo}/...`.
-   The trap is that this takes out subcommands that look purely RESTful: `gh pr create` and
-   `gh pr view` both fail on their GraphQL repo-info preamble before doing any work, and the error
-   names GraphQL rather than the subcommand, so it reads like a broken install rather than a scoped
-   permission.
+   That also affected subcommands that looked purely RESTful: `gh pr create` and
+   `gh pr view` failed on their GraphQL repo-info preamble before doing any work. The error
+   named GraphQL rather than the subcommand, which looked like a broken install rather than
+   a scoped permission.
 
    What worked in that session, all through the injected credential: reading pull requests and their
    commits, files and check runs; posting a review-thread reply; deleting a review comment; and
-   creating a pull request. Use REST or the GitHub MCP tools and none of it is blocked:
+   creating a pull request. That session used REST or GitHub MCP tools for those operations:
 
    ```bash
    gh api repos/{owner}/{repo}/pulls/{n} --jq '{state,merged,mergeable_state}'
@@ -171,34 +203,31 @@ the pinned set of PR-review operations is served. Use REST via gh api repos/{own
    gh api repos/{owner}/{repo}/pulls --method POST --input payload.json
    ```
 
-   Review-thread **resolution** is the one job REST cannot do — it is GraphQL-only, and that mutation
-   is outside the pinned set. Use the `resolve_review_thread` GitHub MCP tool, which reaches GitHub
-   through Anthropic's servers rather than the container, and takes a thread node id from
-   `pull_request_read` with `method: "get_review_comments"`.
+   Review-thread **resolution** needed GraphQL and that mutation was outside the pinned set.
+   The session used the hosted `resolve_review_thread` GitHub MCP tool instead. Verify current tool names and argument schemas;
+   do not assume `resolve_review_thread` or `pull_request_read` exists on the current host.
 
    Treat the pinned set as liable to change: prefer the MCP tools when they cover the job, and fall
    back to REST rather than assuming a GraphQL path will keep working.
 
-3. **MCP sign-in.** `.mcp.json` declares the Railway and Supabase HTTP servers and
-   `.claude/settings.json` enables them, so both reach a cloud session. Authenticating them there is
-   a separate matter. Anthropic documents browser-based interactive auth as unsupported in cloud
-   sessions, so the in-container OAuth path is doubtful. The route that does work is a **claude.ai
-   connector**: connectors added at claude.ai/customize/connectors authenticate once in your browser
-   on the claude.ai side, and their traffic reaches a cloud session through Anthropic servers rather
-   than the container network. Prefer a connector over the `.mcp.json` entry for anything you need in
-   cloud, and treat the `.mcp.json` route as unverified there.
+3. **MCP sign-in.** Tracked MCP files are secret-free templates, not proof of hosted registration,
+   authentication or loaded tools. Keep disabled-by-default servers disabled and preserve the
+   Supabase project/read-only feature scope. Inspect actual callable tools; a hosted connector
+   configured through supported account settings is a separate route. Browser OAuth and connector
+   support vary by host. Neither this document nor provisioner activation grants provider access.
 4. **Plugins.** The supported route is the repository's `.claude/settings.json`: Claude Code installs
    anything in its `enabledPlugins` from the declared `extraKnownMarketplaces` when the session
-   starts. That is what makes plugins work here. The `plugins` tier is a repair path for when that
-   install does not happen, and it also runs `npm install` inside each plugin, which the installer
-   itself does not do — a plugin with runtime dependencies otherwise unpacks clean and fails at first
-   use. A tier-installed plugin only takes effect in the _next_ session.
-5. **Network egress allowlist for Playwright browsers and CI traces.** In Claude Code on the web
-   (`CLAUDE_CODE_REMOTE=true`), container egress is mediated by Anthropic's network proxy (`/root/.ccr/`).
-   The default egress policy blocks the mirrors needed for Playwright browser installation and GitHub
-   Actions trace artifact downloads.
+   starts, where supported by the current host. Verify actual installation and loaded skills.
+   The `plugins` tier is a repair path and runs `npm install` inside each plugin because earlier
+   installs omitted runtime dependencies. Check current readiness before choosing that repair.
+   Installation is separate from activation; use a supported reload or fresh session if required
+   by the current host.
+5. **Network egress for Playwright browsers and CI traces.** Earlier containers used a proxy at
+   `/root/.ccr/` and blocked the mirrors below. These are recorded observations, not a diagnosis of
+   this host. Check current network policy and dependency versions before proposing a repair;
+   preserve host proxy/CA settings and do not bypass a denied route.
 
-   **The three blocked hostnames (verified by request, not inferred):**
+   **Hostnames blocked in the recorded environment (verified then by request):**
    - `cdn.playwright.dev` (returns `HTTP 403 request blocked`): Primary mirror in `playwright-core@1.63.0`'s
      `PLAYWRIGHT_CDN_MIRRORS`. Without access, `scripts/setup-claude-cloud.sh browsers` fails to download
      Chromium, Firefox, and WebKit binaries.
@@ -218,19 +247,21 @@ the pinned set of PR-review operations is served. Use REST via gh api repos/{own
    by `pdfjs-dist@6.3.289`, causing document-viewer failures in `tests/ui-smoke.spec.ts`).
 
    **Remediation (Operator environment configuration):**
-   Add the following hostnames to the Claude Cloud environment egress allowlist in container network settings:
+   If the current authorised workflow needs these hosts and current evidence confirms they are blocked,
+   the operator can review the applicable environment egress settings for:
    - `cdn.playwright.dev`
    - `playwright.download.prss.microsoft.com`
    - `*.blob.core.windows.net`
 
-   This is an operator configuration in the Claude Cloud environment settings (tracked under task `#PM71Z1`);
-   no repository code change is required.
+   The earlier operator request was tracked under task `#PM71Z1`; recheck its current status rather
+   than treating this record as an open task. Any host-policy change needs applicable authority.
 
 ## What cannot be replicated
 
-Desktop Commander, the Docker MCP toolbox, the frontend-checklist MCP server, Claude in Chrome,
-computer-use, and the Shellular desktop notification hook are all bound to the Windows workstation.
-Cloud sessions will not have them, and no provisioning step can change that.
+The historical workstation used Desktop Commander, a Docker MCP toolbox, the frontend-checklist MCP
+server, Claude in Chrome, computer-use and the Shellular notification hook. Their workstation
+configuration does not transfer through this provisioner. Check current host tools instead of
+assuming either their availability or permanent absence.
 
 Cloud browser evidence is Playwright/Chromium, Firefox or WebKit container evidence. It does not close
 physical Safari or installed-PWA acceptance gaps — the same limit `codex-cloud.md` records.

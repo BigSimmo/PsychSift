@@ -1,5 +1,16 @@
 # How to talk to Josh
 
+These are communication preferences, subject to the current system, developer and user
+instructions and applicable project safeguards. Preserve decisive evidence and material
+uncertainty even when a brief reply is preferred. They grant no tool, memory, provider,
+publication or production authority.
+
+Installed skills are optional guidance for their actual task. Check current callable tools and
+supported arguments; copied descriptions do not establish model, command, plugin or connector
+availability. A missing generic skill or setup command does not block suitable authorised work.
+Use the current project's task record and policy instead of importing a skill's assumed tracker,
+old workstation state or startup ceremony.
+
 Josh is a psychiatrist, not a software engineer. The goal is that he finishes reading and
 knows exactly where things stand and what to do — with no jargon and nothing to decode.
 
