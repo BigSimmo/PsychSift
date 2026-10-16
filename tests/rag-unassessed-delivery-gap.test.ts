@@ -82,7 +82,7 @@ describe("admitted-passage delivery gap", () => {
 
   it("checks requested facets and facet details against the delivered prose", () => {
     const result = deliver(
-      "For adults, lithium is usually started at 250 mg orally once daily and adjusted to serum levels.",
+      "For adults, lithium is usually started at 250 mg orally once daily.",
       plan([
         {
           id: "dose",
@@ -94,10 +94,11 @@ describe("admitted-passage delivery gap", () => {
         },
       ]),
     );
-    // No monitoring cadence is delivered, so that facet detail must be named.
+    // Route and frequency are delivered, but no maximum dose and nothing on monitoring.
     expect(result.gapAdded).toBe(true);
-    expect(gapBody(result)).toContain("monitoring frequency");
-    expect(gapBody(result)).toMatch(/Source coverage has not been assessed\.$/);
+    expect(gapBody(result)).toBe(
+      "This answer does not establish: dosing maximum; monitoring. Source coverage has not been assessed.",
+    );
   });
 
   it("names the stated constraint when a material safety dependency has no delivered risk prose", () => {
