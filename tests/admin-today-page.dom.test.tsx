@@ -45,6 +45,20 @@ vi.mock("@/components/clinical-dashboard/account-setup-dialog", () => ({
   AccountSetupDialog: () => null,
 }));
 
+// Records what the page hands the band, so the date line over the title can be checked
+// without a band on screen. The real hook still runs.
+const bandHeadings = vi.hoisted(() => [] as unknown[]);
+vi.mock("@/components/mode-band/mode-band", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/mode-band/mode-band")>();
+  return {
+    ...actual,
+    useModeBandHeading: (heading: Parameters<typeof actual.useModeBandHeading>[0]) => {
+      bandHeadings.push(heading);
+      actual.useModeBandHeading(heading);
+    },
+  };
+});
+
 import { AdminTodayPage } from "@/components/admin/admin-today-page";
 
 // 09:00 on Sat 26 Sep 2026 in Perth, the same fixed instant the selector tests use.
@@ -122,6 +136,12 @@ describe("AdminTodayPage", () => {
     expect(greeting.textContent).toContain("Saturday 26 September");
     expect(greeting.textContent).not.toMatch(/\d+ (items|renewals|due)/);
     expect(screen.queryByRole("navigation", { name: "Sections of this page" })).toBeNull();
+  });
+
+  it("puts the date line over the title in the band, like every other Work page", () => {
+    bandHeadings.length = 0;
+    render(<AdminTodayPage now={NOW} />);
+    expect(bandHeadings.at(-1)).toEqual({ eyebrow: expect.stringContaining("Saturday 26 September"), title: "Admin" });
   });
 
   it("shows static skeletons while loading, nothing ready-shaped", () => {

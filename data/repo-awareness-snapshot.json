@@ -2501,6 +2501,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-admin-shows-the-date-line.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/product/clinical-trust-direction.md",
         "section": "product",
         "catalogued": true
