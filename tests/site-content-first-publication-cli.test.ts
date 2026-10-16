@@ -214,7 +214,7 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     }
   });
 
-  it("parses CLI flags and refuses --execute without ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true", async () => {
+  it("parses CLI flags and refuses --execute without ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true and live Supabase credentials", async () => {
     expect(parseFirstPublicationCliArgs(["--dry-run", "--kind", "service", "--batch-size", "50"])).toMatchObject({
       dryRun: true,
       execute: false,
@@ -225,5 +225,12 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
     await expect(runFirstPublicationCli(["--execute"], { NODE_ENV: "test" })).rejects.toThrow(
       /ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true/,
     );
+
+    await expect(
+      runFirstPublicationCli(["--execute"], {
+        NODE_ENV: "test",
+        ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT: "true",
+      }),
+    ).rejects.toThrow(/NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/);
   });
 });

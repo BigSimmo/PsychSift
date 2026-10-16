@@ -12,6 +12,7 @@ import {
 } from "@/lib/on-call/call-log";
 import { onCallDeviceStoreChangedEvent } from "@/lib/on-call/device-state-keys";
 import {
+  PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABEL_FALLBACK_LIFETIME_MS,
   parsePatientLabelExpiryStamp,
   patientLabelStorageKey,
@@ -237,9 +238,31 @@ export function removeOnCallHandoverPatient(id: string, now: Date = new Date()):
   );
 }
 
-export function loadOnCallHandoverScratchpad(): string {
+/**
+ * The shift's stored end time, kept even once it has passed. The on-screen view hides an expired
+ * shift, so a late timer must check this before it starts a fresh stamp for stale text.
+ */
+export function readOnCallHandoverStoredExpiry(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (
+      parsePatientLabelExpiryStamp(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY))?.expiresAt ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function loadOnCallHandoverScratchpad(now: Date = new Date()): string {
   if (typeof window === "undefined") return "";
-  return readPatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY) ?? "";
+  try {
+    const rawStamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY);
+    const stamp = parsePatientLabelExpiryStamp(rawStamp);
+    if (!stamp || now.getTime() >= stamp.expiresAt || now.getTime() < stamp.startedAt - 5 * 60 * 1000) return "";
+    return window.localStorage.getItem(patientLabelStorageKey(HANDOVER_SCRATCHPAD_STORAGE_KEY)) ?? "";
+  } catch {
+    return "";
+  }
 }
 
 export function saveOnCallHandoverScratchpad(text: string): void {

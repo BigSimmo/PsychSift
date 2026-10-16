@@ -47,7 +47,11 @@ import {
   type EpaNumber,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
-import { checkEpaClinicianName, createEpaMagicLinkRequest } from "@/lib/teaching/assessments/magic-link";
+import {
+  checkEpaClinicianName,
+  createEpaMagicLinkRequest,
+  revokeEpaMagicLinkToken,
+} from "@/lib/teaching/assessments/magic-link";
 import {
   EPA_FEEDBACK_MAX,
   EPA_REPLY_MAX,
@@ -313,6 +317,7 @@ function RequestEpaSheet({
                   },
                 );
                 if (!registration.ok) {
+                  revokeEpaMagicLinkToken(generated.token);
                   setMagicLinkCopied(
                     registration.status === 401
                       ? "Please sign in to register a supervisor link."
@@ -323,13 +328,26 @@ function RequestEpaSheet({
                   return;
                 }
               } catch {
+                revokeEpaMagicLinkToken(generated.token);
                 setMagicLinkCopied("Could not register supervisor link. Try again.");
                 return;
               }
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;
-              await navigator.clipboard?.writeText(fullUrl).catch(() => undefined);
-              setMagicLinkCopied(`Supervisor link ready (${generated.urlPath})`);
+              let copied = false;
+              if (typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function") {
+                try {
+                  await navigator.clipboard.writeText(fullUrl);
+                  copied = true;
+                } catch {
+                  copied = false;
+                }
+              }
+              setMagicLinkCopied(
+                copied
+                  ? `Supervisor link ready (${generated.urlPath})`
+                  : `Clipboard unavailable — copy supervisor link manually: ${fullUrl}`,
+              );
             }}
           >
             Copy supervisor link

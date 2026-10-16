@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import PDFDocument from "pdfkit";
-import { PDFParse } from "pdf-parse";
+import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { extractPdf, runPythonPdfExtractor } from "@/lib/extractors/document";
 import {
@@ -221,9 +221,26 @@ describe("PDF extraction budgets", () => {
     ).rejects.toMatchObject({ code: "PDF_EXTRACTION_BUDGET_EXCEEDED" });
   });
 
+  it("extracts a real embedded image through the JavaScript fallback", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-image-fallback-test-"));
+    roots.push(root);
+    const fakeExtractor = path.join(root, "missing-dependency.py");
+    await writeFile(
+      fakeExtractor,
+      "import sys\nprint('PyMuPDF unavailable', file=sys.stderr)\nraise SystemExit(2)\n",
+      "utf8",
+    );
+
+    const extracted = await extractPdf(await createImagePdf(), { scriptPathOverride: fakeExtractor });
+    roots.push(...(extracted.temporaryPaths ?? []));
+    expect(extracted.images.length).toBeGreaterThan(0);
+    const imageBytes = await readFile(extracted.images[0]!.path);
+    expect(imageBytes.subarray(0, 8)).toEqual(Buffer.from("89504e470d0a1a0a", "hex"));
+  });
+
   it("rejects an oversized embedded image before the JavaScript fallback decodes it", async () => {
-    const getTextSpy = vi.spyOn(PDFParse.prototype, "getText");
-    const getImageSpy = vi.spyOn(PDFParse.prototype, "getImage");
+    const getTextSpy = vi.spyOn(PdfjsFallbackParser.prototype, "getText");
+    const getImageSpy = vi.spyOn(PdfjsFallbackParser.prototype, "getImage");
     const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-image-budget-test-"));
     roots.push(root);
     const fakeExtractor = path.join(root, "missing-dependency.py");
@@ -272,11 +289,11 @@ describe("PDF extraction budgets", () => {
       "import sys\nprint('PyMuPDF unavailable', file=sys.stderr)\nraise SystemExit(2)\n",
       "utf8",
     );
-    vi.spyOn(PDFParse.prototype, "getText").mockResolvedValue({
+    vi.spyOn(PdfjsFallbackParser.prototype, "getText").mockResolvedValue({
       pages: [{ num: 1, text: "Short fallback text." }],
       text: "Short fallback text.",
     } as never);
-    vi.spyOn(PDFParse.prototype, "getImage").mockResolvedValue({
+    vi.spyOn(PdfjsFallbackParser.prototype, "getImage").mockResolvedValue({
       pages: [
         {
           pageNumber: 1,
@@ -287,7 +304,7 @@ describe("PDF extraction budgets", () => {
         },
       ],
     } as never);
-    vi.spyOn(PDFParse.prototype, "destroy").mockResolvedValue(undefined);
+    vi.spyOn(PdfjsFallbackParser.prototype, "destroy").mockResolvedValue(undefined);
 
     const extracted = await extractPdf(await createTextPdf(), { scriptPathOverride: fakeExtractor });
     roots.push(...(extracted.temporaryPaths ?? []));
@@ -297,7 +314,7 @@ describe("PDF extraction budgets", () => {
     expect(extracted.pages[0]?.needsOcr).toBe(true);
   });
 
-  it("preserves text and OCR evidence when pdf-parse rejects malformed image data", async () => {
+  it("preserves text and OCR evidence when the PDF fallback rejects malformed image data", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-pdf-rejected-image-test-"));
     roots.push(root);
     const fakeExtractor = path.join(root, "missing-dependency.py");
@@ -306,14 +323,14 @@ describe("PDF extraction budgets", () => {
       "import sys\nprint('PyMuPDF unavailable', file=sys.stderr)\nraise SystemExit(2)\n",
       "utf8",
     );
-    vi.spyOn(PDFParse.prototype, "getText").mockResolvedValue({
+    vi.spyOn(PdfjsFallbackParser.prototype, "getText").mockResolvedValue({
       pages: [{ num: 1, text: "Short fallback text." }],
       text: "Short fallback text.",
     } as never);
-    vi.spyOn(PDFParse.prototype, "getImage").mockRejectedValue(
+    vi.spyOn(PdfjsFallbackParser.prototype, "getImage").mockRejectedValue(
       new Error("Image object img_p0_1: data field is empty or invalid. Available fields: width, height"),
     );
-    vi.spyOn(PDFParse.prototype, "destroy").mockResolvedValue(undefined);
+    vi.spyOn(PdfjsFallbackParser.prototype, "destroy").mockResolvedValue(undefined);
 
     const extracted = await extractPdf(await createTextPdf(), { scriptPathOverride: fakeExtractor });
     roots.push(...(extracted.temporaryPaths ?? []));
