@@ -72,5 +72,10 @@ fi
 
 printf '[Codex Cloud Raw Env] FAIL-KNOWN: inherited documented launcher defect names: %s\n' "${known[*]}" >&2
 printf '[Codex Cloud Raw Env] CONTINUE-RESTRICTED: use only the generated profile and command shims; raw boundary remains failed.\n' >&2
-printf '[Codex Cloud Raw Env] CONTINUE-RESTRICTED: OPENAI_BASE_URL can redirect OpenAI-bound traffic; never invoke OpenAI clients from the raw parent or any binary that bypasses the profile/shim scrub.\n' >&2
+for name in "${known[@]}"; do
+  case "$name" in
+    OPENAI_BASE_URL) printf '[Codex Cloud Raw Env] CONTINUE-RESTRICTED: OPENAI_BASE_URL can redirect OpenAI-bound traffic; never invoke OpenAI clients from the raw parent or any binary that bypasses the profile/shim scrub.\n' >&2 ;;
+    GH_TOKEN) printf '[Codex Cloud Raw Env] CONTINUE-RESTRICTED: GH_TOKEN carries host GitHub credentials; never invoke gh/GitHub clients from the raw parent or any binary that bypasses the profile/shim scrub.\n' >&2 ;;
+  esac
+done
 exit 2

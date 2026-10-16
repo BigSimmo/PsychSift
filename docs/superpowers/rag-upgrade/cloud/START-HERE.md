@@ -24,7 +24,7 @@ raw_status=$?
 set -e
 ```
 
-Exit 0 continues. Exit 1 is a hard stop and requires a fresh task. Exit 2 continues only for the documented `OPENAI_BASE_URL`-alone restricted path: never run OpenAI clients from the raw parent or bypass the generated profile and `node`/`npm`/`npx` shims. No other inherited name may use that path.
+Exit 0 continues. Exit 1 is a hard stop and requires a fresh task. Exit 2 continues only for the documented restricted path for only `OPENAI_BASE_URL` and/or `GH_TOKEN`: never run OpenAI or gh/GitHub clients from the raw parent or bypass the generated profile and `node`/`npm`/`npx` shims. No other inherited name may use that path.
 
 Cloud has no Windows task-start script. Perform the equivalent read-only repository identity, branch, HEAD, status and worktree checks. Require a clean disposable checkout on a task-specific non-protected branch.
 
