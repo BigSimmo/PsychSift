@@ -243,11 +243,11 @@ export function loadOnCallHandoverScratchpad(now: Date = new Date()): string {
   try {
     const rawStamp = window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY);
     const stamp = parsePatientLabelExpiryStamp(rawStamp);
-    if (!stamp || now.getTime() >= stamp.expiresAt) return "";
+    if (!stamp || now.getTime() >= stamp.expiresAt || now.getTime() < stamp.startedAt - 5 * 60 * 1000) return "";
+    return window.localStorage.getItem(patientLabelStorageKey(HANDOVER_SCRATCHPAD_STORAGE_KEY)) ?? "";
   } catch {
     return "";
   }
-  return readPatientLabels(HANDOVER_SCRATCHPAD_STORAGE_KEY, { now: now.getTime() }) ?? "";
 }
 
 export function saveOnCallHandoverScratchpad(text: string): void {

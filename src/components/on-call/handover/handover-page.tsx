@@ -27,7 +27,7 @@ import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
-import { isSharedDevice } from "@/lib/alerts/shared-device";
+import { isSharedDevice, useSharedDevice } from "@/lib/alerts/shared-device";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -1040,7 +1040,20 @@ export function OnCallHandoverPage() {
                     }}
                     onSave={(text) => {
                       setScratchpadText(text);
+                      if (isSharedDevice()) return;
                       persistScratchpad(text);
+                    }}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </InformationPageShell>
+    </>
+  );
+}
+                     persistScratchpad(text);
                     }}
                   />
                 </>
