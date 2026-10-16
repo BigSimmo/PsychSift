@@ -302,7 +302,7 @@ export type BuildAbandonedGenerationStorageCleanupJobsArgs = {
 /**
  * Builds storage_cleanup_jobs payload rows from abandoned document_images / generation storage paths.
  * Deduplicates object paths and excludes any path still referenced by the document's committed
- * metadata.index_generation_id or most-recent staged generation.
+ * metadata.index_generation_id or an unassigned legacy image row.
  * Also skips legacy documents where metadata.index_generation_id is absent.
  */
 export function buildAbandonedGenerationStorageCleanupJobs(
@@ -376,25 +376,9 @@ export function buildAbandonedGenerationStorageCleanupJobs(
     return [];
   }
 
-  // Determine the newest staged generation (preserved if in flight or uncommitted)
-  let newestStagedGenId = input.activeStagedGenerationId?.trim() ?? null;
-  if (!newestStagedGenId) {
-    let maxTime = -Infinity;
-    for (const [genId, info] of stagedGenerations.entries()) {
-      if (info.maxTime > maxTime) {
-        maxTime = info.maxTime;
-        newestStagedGenId = genId;
-      }
-    }
-  }
-
-  const newestStagedPaths =
-    newestStagedGenId && stagedGenerations.has(newestStagedGenId)
-      ? stagedGenerations.get(newestStagedGenId)!.paths
-      : new Set<string>();
-
-  // Abandoned generations are all staged generations EXCEPT the newest staged generation
-  const abandonedGenIds = Array.from(stagedGenerations.keys()).filter((genId) => genId !== newestStagedGenId);
+  // The cleanup RPC removes every non-committed generation once no ingestion is in flight,
+  // including the newest staged generation. Keep the sets aligned so every deleted row has a job.
+  const abandonedGenIds = Array.from(stagedGenerations.keys());
   if (abandonedGenIds.length === 0) {
     return [];
   }
@@ -405,8 +389,8 @@ export function buildAbandonedGenerationStorageCleanupJobs(
     const info = stagedGenerations.get(genId);
     if (!info) continue;
     for (const p of info.paths) {
-      // Exclude paths referenced by committed generation, newest staged generation, or unassigned rows
-      if (!committedPaths.has(p) && !newestStagedPaths.has(p) && !unassignedPaths.has(p)) {
+      // Exclude paths referenced by committed generation or unassigned rows.
+      if (!committedPaths.has(p) && !unassignedPaths.has(p)) {
         candidatePaths.add(p);
       }
     }
