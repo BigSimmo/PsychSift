@@ -94,7 +94,7 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
       warnings.push(
         "Devine Ideal Body Weight formula is not validated at this height (computed IBW < 20 kg); actual body weight was used. Seek specialist pharmacist input for renal dosing.",
       );
-    } else if (input.weightKg > ibwKg) {
+    } else if (input.weightKg > ibwKg && input.weightKg / ((input.heightCm / 100) ** 2) >= 30) {
       effectiveWeightKg = ibwKg;
       weightBasis = "ideal";
       warnings.push(
