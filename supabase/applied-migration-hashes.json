@@ -314,6 +314,7 @@
     "20261014164220_validate_managed_ingestion_historical_reconciliation.sql": "8ffd75292620e82065300eb1e1d008c229545dde37826862820bfd6ea1314587",
     "20261015160000_document_child_policies_check_parent_owner.sql": "71210bbc5aecdca74bee2ae32181ba2861e65017ca1a5e87995aa8e557946094",
     "20261015174500_roster_open_post_once.sql": "a4edfe07497e3b833c4bedecf1b41d0d7b9fb0b73a798a71b3c17bccb9f851ff",
+    "20261015180000_prefilter_text_only_governed_retrieval.sql": "8ff1f445269ad6413d5f00b304fc169dd2521f0d01e215415bbc4f573d2a926a",
     "20261015185000_fenced_ingestion_reset_and_deep_memory.sql": "aebdfb67162c5dabc6d0a9bdc8bbf3b0c9f1457178addb8d1c95b034ec372dd8",
     "20261015200000_fenced_ingestion_followups.sql": "21bee7afaf86007b24890ff7abd553ea9cea24d9889cfa12589cccf1dc59357a"
   }

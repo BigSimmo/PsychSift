@@ -380,6 +380,9 @@ function asReviewOnlyCitations(citations: readonly Citation[]): Citation[] {
   return citations.map((citation) => ({ ...citation, provenance: "review_only" as const }));
 }
 
+// Search deadline for the admin client. See searchChunksWithTiming for why it exceeds the shared 30 s default.
+const SEARCH_SUPABASE_TIMEOUT_MS = 90_000;
+
 const confidenceOrder = {
   unsupported: 0,
   low: 1,
@@ -1144,11 +1147,12 @@ async function searchChunksWithTiming(
     recordSearchScoreTelemetry(telemetry, []);
     return finishSearch(searchTiming, { results: [] as SearchResult[], telemetry });
   }
-  // No client-side deadline here. PR #3454 (11 Oct 2026) gave the shared admin client a
-  // 30 s default, and the keyword RPC can take 30-48 s on the live corpus, so it was
-  // aborted and returned nothing for 9 of the 36 golden cases (eval canaries from 11 Oct).
-  // Search keeps the caller's own abort signal, as it did before that change.
-  const supabase = createAdminClient({ timeoutMs: null });
+  // Longer deadline than the shared 30 s default. PR #3454 (11 Oct 2026) gave the shared
+  // admin client that default, and the keyword RPC can take 30-48 s on the live corpus, so it
+  // was aborted and returned nothing for 9 of the 36 golden cases (eval canaries from 11 Oct).
+  // 90 s clears the slowest observed keyword call while still bounding a stalled request,
+  // including the query-correction RPC.
+  const supabase = createAdminClient({ timeoutMs: SEARCH_SUPABASE_TIMEOUT_MS });
   // Source-only retrieval never calls embeddings.
   const sourceOnlyRetrieval = isSourceOnlyMode();
   if (args.forceEmbedding && sourceOnlyRetrieval) {
@@ -1333,11 +1337,22 @@ async function searchChunksWithTiming(
     shouldApplyUnsupportedSearchShortCircuit(retrievalQuery, queryAnalysis, ragAliasExpansions)
   ) {
     // RC6: correct a would-be unsupported typo once before retrieval short-circuits.
+    let correctionFailed = false;
     if (!args.typoCorrected && !sourceOnlyRetrieval) {
-      const { data: corrected } = await supabase.rpc("correct_clinical_query_terms", {
+      // Carry the caller's abort signal so a cancelled search does not leave this call running
+      // until the 90 s client deadline.
+      let correctionQuery = supabase.rpc("correct_clinical_query_terms", {
         input_query: retrievalQuery,
         min_sim: 0.45,
       });
+      if (args.signal) correctionQuery = correctionQuery.abortSignal(args.signal);
+      const { data: corrected, error: correctionError } = await correctionQuery;
+      // A cancelled call resolves with an error rather than throwing; stop before the empty
+      // short-circuit result below is written to the search cache.
+      throwIfAborted(args.signal);
+      // A failed or timed-out correction is not proof the query has no match, so the empty
+      // result below must not be cached.
+      if (correctionError) correctionFailed = true;
       if (typeof corrected === "string" && corrected && corrected.toLowerCase() !== retrievalQuery.toLowerCase()) {
         const correctedSearch = await searchChunksWithTelemetry(
           {
@@ -1360,6 +1375,7 @@ async function searchChunksWithTiming(
     recordSearchScoreTelemetry(telemetry, []);
     // Skip only when a reachable classifier could have produced a nondeterministic soft-tail zero.
     if (
+      !correctionFailed &&
       !shouldSkipUnsupportedSoftTailCacheWrite(retrievalQuery, queryAnalysis, {
         openAiApiKeyPresent: Boolean(env.OPENAI_API_KEY),
       })

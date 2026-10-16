@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type RefObject } from "react";
 
 import {
   clearPersistedAnswerThread,
@@ -27,21 +27,27 @@ export function usePersistedAnswerThread({
   enabled,
   answer,
   priorTurns,
-  latestTurn,
+  latestTurnRef,
   collapsedTurnIds,
   showEarlierTurns,
-  metadata,
+  metadataRef,
 }: {
   ownerId: string | null;
   enabled: boolean;
   answer: ClientRagAnswerPayload | null;
   priorTurns: StoredAnswerTurn[];
-  latestTurn: Omit<StoredAnswerTurn, "id"> | null;
+  latestTurnRef: RefObject<Omit<StoredAnswerTurn, "id"> | null>;
   collapsedTurnIds: Set<string>;
   showEarlierTurns: boolean;
-  metadata: AnswerThreadSnapshotMetadata | null;
+  metadataRef: RefObject<AnswerThreadSnapshotMetadata | null>;
 }) {
+  // The latest turn and snapshot metadata live in refs that are written next to
+  // the answer state updates, so they are read here, after the commit, rather
+  // than during render. Every write is followed by an answer or thread state
+  // change, which re-runs this effect with the current values.
   useEffect(() => {
+    const latestTurn = latestTurnRef.current;
+    const metadata = metadataRef.current;
     if (!enabled) return;
     if (!answer && priorTurns.length === 0) {
       if (ownerId) clearPersistedAnswerThread(ownerId);
@@ -57,5 +63,5 @@ export function usePersistedAnswerThread({
       latestSubmissionSignature: metadata.latestSubmissionSignature,
       expiresAt: metadata.expiresAt,
     });
-  }, [answer, collapsedTurnIds, enabled, latestTurn, metadata, ownerId, priorTurns, showEarlierTurns]);
+  }, [answer, collapsedTurnIds, enabled, latestTurnRef, metadataRef, ownerId, priorTurns, showEarlierTurns]);
 }
