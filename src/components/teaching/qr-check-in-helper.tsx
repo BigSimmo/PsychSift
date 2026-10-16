@@ -53,7 +53,7 @@ export async function requestMobileCameraStream(): Promise<CameraStreamResult> {
         stream: null,
         status: "denied",
         errorMessage:
-          "Camera access denied. Please enable camera permissions in your browser or enter the 6-digit code below.",
+          "Camera access denied. Please enable camera permissions in your browser or type the 6-digit code instead.",
       };
     }
 
@@ -71,7 +71,7 @@ export async function requestMobileCameraStream(): Promise<CameraStreamResult> {
           stream: null,
           status: "denied",
           errorMessage:
-            "Camera access denied. Please enable camera permissions in your browser or enter the 6-digit code below.",
+            "Camera access denied. Please enable camera permissions in your browser or type the 6-digit code instead.",
         };
       }
       return {

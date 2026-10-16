@@ -212,7 +212,7 @@ export function AttendanceRoster({
       </div>
 
       {displayedRegistrars.some((r) => r.hasGap) ? (
-        <ul className="sr-only" aria-label="Attendance gap summary">
+        <ul className="sr-only" aria-hidden="true">
           {displayedRegistrars
             .filter((r) => r.hasGap)
             .map((r) => (
