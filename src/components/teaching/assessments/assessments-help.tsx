@@ -47,7 +47,7 @@ import {
   type EpaNumber,
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
-import { createEpaMagicLinkRequest } from "@/lib/teaching/assessments/magic-link";
+import { checkEpaClinicianName, createEpaMagicLinkRequest } from "@/lib/teaching/assessments/magic-link";
 import {
   EPA_FEEDBACK_MAX,
   EPA_REPLY_MAX,
@@ -287,7 +287,7 @@ function RequestEpaSheet({
             icon={Copy}
             size="wide"
             testId="epa-magic-link-copy"
-            disabled={!guest || looksLikePatientDetails(guestName)}
+            disabled={!guest || checkEpaClinicianName(guestName) !== null}
             onClick={async () => {
               if (!guest) return;
               const supervisorName =
@@ -303,7 +303,7 @@ function RequestEpaSheet({
                   `/api/teaching/assessments/respond/${encodeURIComponent(generated.token)}`,
                   {
                     method: "PUT",
-                    headers: { "content-type": "application/json" },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       epaCode: epa,
                       traineeName: SAMPLE_DOCTOR.name,
@@ -313,14 +313,18 @@ function RequestEpaSheet({
                   },
                 );
                 if (!registration.ok) {
-                  setMagicLinkCopied("Could not register supervisor link. Try again.");
+                  setMagicLinkCopied(
+                    registration.status === 401
+                      ? "Please sign in to register a supervisor link."
+                      : registration.status === 503
+                        ? "Supervisor links are temporarily unavailable. Try again."
+                        : "Could not register supervisor link. Try again.",
+                  );
                   return;
                 }
               } catch {
-                if (process.env.NODE_ENV !== "test") {
-                  setMagicLinkCopied("Could not register supervisor link. Try again.");
-                  return;
-                }
+                setMagicLinkCopied("Could not register supervisor link. Try again.");
+                return;
               }
               const fullUrl =
                 typeof window !== "undefined" ? `${window.location.origin}${generated.urlPath}` : generated.urlPath;

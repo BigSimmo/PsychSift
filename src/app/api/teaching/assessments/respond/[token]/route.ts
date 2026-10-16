@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import {
   consumePublicApiRateLimit,
   EpaMagicLinkError,
@@ -16,6 +18,16 @@ import { parseJsonBody } from "@/lib/validation/body";
 export const runtime = "nodejs";
 
 const noStore = { "Cache-Control": "private, no-store, max-age=0" };
+
+function refuseEphemeralMagicLinkStore(): void {
+  if (process.env.NODE_ENV === "production") {
+    throw new EpaMagicLinkError(
+      "EPA magic-link assessments are disabled in production until backed by a durable database store.",
+      "assessment_store_unavailable",
+      503,
+    );
+  }
+}
 
 function errorWithHeaders(
   message: string,
@@ -56,6 +68,7 @@ const registrationSchema = z
 
 export async function GET(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
+    refuseEphemeralMagicLinkStore();
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-read");
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
@@ -80,6 +93,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ toke
 
 export async function PUT(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
+    refuseEphemeralMagicLinkStore();
+    const client = createAdminClient();
+    await requireAuthenticatedUser(request, client);
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {
@@ -96,6 +112,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
     const record = registerEpaMagicLinkRecord(token, body);
     return NextResponse.json({ ok: true, request: record }, { headers: noStore });
   } catch (error) {
+    if (error instanceof AuthenticationError) {
+      return unauthorizedResponse(error);
+    }
     if (error instanceof EpaMagicLinkError) {
       return errorWithHeaders(error.message, error.status, error.code);
     }
@@ -105,6 +124,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ toke
 
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
+    refuseEphemeralMagicLinkStore();
     const rate = consumePublicApiRateLimit(request, "teaching-epa-magic-link-write");
     if (rate.limited) {
       return errorWithHeaders("Too many requests. Wait a minute and try again.", 429, "rate_limited", {

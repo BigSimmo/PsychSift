@@ -134,7 +134,15 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     expect(onScan).toHaveBeenCalledWith("951753");
   });
 
-  it("toggles QrCheckInHelper inside TeachingCodeSheet and populates scanned code", () => {
+  it("toggles QrCheckInHelper inside TeachingCodeSheet with hideManualEntry and enforces demo-mode guard", async () => {
+    vi.useFakeTimers();
+
+    class MockBarcodeDetector {
+      detect = vi.fn().mockResolvedValue([{ rawValue: "654321" }]);
+    }
+    // @ts-expect-error - assign mock detector
+    window.BarcodeDetector = MockBarcodeDetector;
+
     render(
       <TeachingCodeSheet
         open={true}
@@ -149,11 +157,88 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     fireEvent.click(toggleBtn);
 
     expect(screen.getByTestId("qr-check-in-helper")).toBeInTheDocument();
+    expect(screen.queryByTestId("qr-typed-code-fallback")).toBeNull();
 
-    const helperInput = screen.getByTestId("qr-typed-code-input");
-    fireEvent.change(helperInput, { target: { value: "654321" } });
-    fireEvent.click(screen.getByTestId("qr-typed-code-submit-btn"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("start-camera-scan-btn"));
+    });
 
-    expect(screen.getByLabelText("Or type the six digits")).toHaveValue("654321");
+    const video = screen.getByTestId("qr-camera-video") as HTMLVideoElement;
+    Object.defineProperty(video, "readyState", { value: 4, configurable: true });
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("The demo doesn't save check-ins.");
+  });
+
+  it("rejects invalid /teaching/c/ URLs and navigates on valid check-in tokens in live TeachingCodeSheet", async () => {
+    vi.useFakeTimers();
+    const validToken = `${"a".repeat(32)}r123456${"b".repeat(32)}`;
+    const detectMock = vi
+      .fn()
+      .mockResolvedValueOnce([{ rawValue: `${window.location.origin}/teaching/c/not-a-valid-token` }])
+      .mockResolvedValueOnce([{ rawValue: `${window.location.origin}/teaching/c/${validToken}/` }]);
+
+    class MockBarcodeDetector {
+      detect = detectMock;
+    }
+    // @ts-expect-error - assign mock detector
+    window.BarcodeDetector = MockBarcodeDetector;
+
+    const assignSpy = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, origin: "http://localhost:3000", assign: assignSpy },
+      writable: true,
+      configurable: true,
+    });
+
+    try {
+      render(
+        <TeachingCodeSheet
+          open={true}
+          onClose={vi.fn()}
+          session={{ serviceId: "svc-1", occurrenceId: "occ-1", hasJoinLink: false }}
+          live={true}
+          onDone={vi.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("toggle-in-app-qr-scanner"));
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("start-camera-scan-btn"));
+      });
+      const video = screen.getByTestId("qr-camera-video") as HTMLVideoElement;
+      Object.defineProperty(video, "readyState", { value: 4, configurable: true });
+
+      await act(async () => {
+        vi.advanceTimersByTime(350);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Scanned QR code is not a valid check-in link for this site.",
+      );
+      expect(assignSpy).not.toHaveBeenCalled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("start-camera-scan-btn"));
+      });
+      const video2 = screen.getByTestId("qr-camera-video") as HTMLVideoElement;
+      Object.defineProperty(video2, "readyState", { value: 4, configurable: true });
+
+      await act(async () => {
+        vi.advanceTimersByTime(350);
+      });
+
+      expect(assignSpy).toHaveBeenCalledWith(`http://localhost:3000/teaching/c/${encodeURIComponent(validToken)}`);
+    } finally {
+      Object.defineProperty(window, "location", {
+        value: originalLocation,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 });

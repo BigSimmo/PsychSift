@@ -280,6 +280,16 @@ function evictMagicLinkStoreIfNeeded(now: Date) {
   }
 }
 
+export function checkEpaClinicianName(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const normalizedClinician = trimmed.replace(
+    /^(?:dr|prof|mr|mrs|ms|miss|mx)\.?\s+(?:\p{L}\.?\s+)?(\p{L}[\p{L}\p{M}'-]{1,})/iu,
+    "Dr $1",
+  );
+  return checkPatientDetail(normalizedClinician, { allowName: true, allowCapitals: true });
+}
+
 function assertSafeMagicLinkRequestInput(input: CreateEpaMagicLinkInput) {
   const checks: Array<{ value: string | null | undefined; allowName: boolean }> = [
     { value: input.traineeName, allowName: true },
@@ -289,7 +299,9 @@ function assertSafeMagicLinkRequestInput(input: CreateEpaMagicLinkInput) {
   for (const item of checks) {
     const text = item.value?.trim();
     if (!text) continue;
-    const problem = checkPatientDetail(text, { allowName: item.allowName, allowCapitals: true });
+    const problem = item.allowName
+      ? checkEpaClinicianName(text)
+      : checkPatientDetail(text, { allowName: false, allowCapitals: true });
     if (problem) {
       throw new EpaMagicLinkError(problem.body, "magic_link_patient_details", 400);
     }
@@ -401,6 +413,10 @@ export function consumePublicApiRateLimit(
   if (magicRateLimitStore.size >= MAX_MAGIC_LINKS) {
     for (const [k, v] of magicRateLimitStore.entries()) {
       if (nowMs >= v.resetAtMs) magicRateLimitStore.delete(k);
+    }
+    if (magicRateLimitStore.size >= MAX_MAGIC_LINKS) {
+      const oldestKey = magicRateLimitStore.keys().next().value;
+      if (oldestKey !== undefined) magicRateLimitStore.delete(oldestKey);
     }
   }
 
@@ -544,7 +560,7 @@ export function submitEpaMagicLinkResponse(
   }
 
   if (assessorName) {
-    const nameProblem = checkPatientDetail(assessorName, { allowCapitals: true });
+    const nameProblem = checkEpaClinicianName(assessorName);
     if (nameProblem) {
       return {
         ok: false,

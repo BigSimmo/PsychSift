@@ -24,7 +24,7 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
   });
 
   it("renders with initial value, idle status, de-identified placeholder, and privacy attributes", () => {
-    render(<ClinicalNoteEditor initialValue="Initial psychiatric assessment notes." />);
+    render(<ClinicalNoteEditor initialValue="Initial psychiatric assessment notes." onSave={vi.fn()} />);
 
     const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
     expect(textarea.value).toBe("Initial psychiatric assessment notes.");
@@ -190,5 +190,71 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     });
 
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("does not display a false Saved status or Save now button when onSave is omitted", async () => {
+    const onChange = vi.fn();
+    render(<ClinicalNoteEditor initialValue="Initial draft" onChange={onChange} debounceMs={200} />);
+
+    expect(screen.queryByTestId("note-editor-save-btn")).toBeNull();
+    expect(screen.queryByTestId("note-editor-status")).toBeNull();
+
+    const textarea = screen.getByTestId("note-editor-textarea");
+    fireEvent.change(textarea, { target: { value: "Updated de-identified clinical note" } });
+
+    expect(onChange).toHaveBeenCalledWith("Updated de-identified clinical note");
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.queryByText("Saved")).toBeNull();
+    expect(screen.queryByTestId("note-editor-status")).toBeNull();
+    expect(screen.queryByTestId("note-editor-save-btn")).toBeNull();
+  });
+
+  it("blocks onSave and onChange and renders a privacy warning when patient identifiers are typed", async () => {
+    const onChange = vi.fn();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <ClinicalNoteEditor
+        initialValue="Initial de-identified draft"
+        onChange={onChange}
+        onSave={onSave}
+        debounceMs={200}
+      />,
+    );
+
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "Review John Smith UMRN 1234567" } });
+
+    expect(textarea.value).toBe("Review John Smith UMRN 1234567");
+    expect(onChange).not.toHaveBeenCalled();
+
+    const warning = screen.getByTestId("note-editor-privacy-warning");
+    expect(warning).toHaveAttribute("role", "alert");
+    expect(warning).toHaveTextContent(/This looks like/i);
+    expect(warning).toHaveTextContent("This can't hold patient details. This check catches some details, not all.");
+
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Save error");
+    expect(screen.getByTestId("note-editor-save-btn")).toBeDisabled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Removing the patient identifiers clears the warning and allows saving
+    fireEvent.change(textarea, { target: { value: "Review de-identified overnight admission" } });
+    expect(screen.queryByTestId("note-editor-privacy-warning")).toBeNull();
+    expect(onChange).toHaveBeenCalledWith("Review de-identified overnight admission");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(onSave).toHaveBeenCalledWith("Review de-identified overnight admission");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saved");
   });
 });

@@ -306,4 +306,48 @@ describe("RosterSafeNumber live route cell-level conflict detection (#3B4S3Z)", 
     expect(posts).toHaveLength(1);
     expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("6");
   });
+
+  it("re-flags conflict on Overwrite with my changes if a third edit arrived on the same cell after the conflict banner opened", async () => {
+    let currentNeeds = baselineNeeds;
+    const posts: unknown[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          posts.push(JSON.parse(String(init.body)));
+          return Response.json({ result: { ok: true } });
+        }
+        return Response.json({ codes: [], needs: currentNeeds, drafts: [] });
+      }),
+    );
+
+    render(React.createElement(RosterSafeNumber, { serviceId: "team", overview }));
+
+    const incrementBtn = await screen.findByRole("button", { name: "One more, Day, Monday to Friday" });
+    fireEvent.click(incrementBtn);
+
+    // Second concurrent edit (2 -> 4) before initial save
+    currentNeeds = baselineNeeds.map((need) => ({ ...need, needed: 4 }));
+    fireEvent.click(screen.getByRole("button", { name: "Save safe number" }));
+
+    await screen.findByTestId("safe-number-conflict-banner");
+    expect(posts).toHaveLength(0);
+
+    // Third concurrent edit (4 -> 7) arrives AFTER the conflict banner opened
+    currentNeeds = baselineNeeds.map((need) => ({ ...need, needed: 7 }));
+    fireEvent.click(screen.getByTestId("safe-number-conflict-overwrite"));
+
+    // Should re-flag conflict and not clobber the unseen third edit
+    await waitFor(() => {
+      expect(screen.getByTestId("safe-number-conflict-banner")).toBeTruthy();
+    });
+    expect(posts).toHaveLength(0);
+
+    // Now server state still matches the updated freshGrid (7), so Overwrite succeeds
+    fireEvent.click(screen.getByTestId("safe-number-conflict-overwrite"));
+    expect(await screen.findByText(/^Saved\./)).toBeTruthy();
+    expect(posts).toHaveLength(1);
+    expect((screen.getByLabelText("Day, Monday to Friday") as HTMLInputElement).value).toBe("3");
+  });
 });

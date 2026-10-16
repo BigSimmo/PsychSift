@@ -13,6 +13,7 @@ import {
   type SupervisionLevel,
 } from "@/lib/teaching/assessments/content";
 import {
+  checkEpaClinicianName,
   getEpaMagicLinkByToken,
   submitEpaMagicLinkResponse,
   type EpaMagicLinkRecord,
@@ -102,7 +103,7 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
   const patientProblem =
     checkPatientDetail(strengths) ??
     checkPatientDetail(improvements) ??
-    (assessorName.trim() ? checkPatientDetail(assessorName, { allowCapitals: true }) : null);
+    (assessorName.trim() ? checkEpaClinicianName(assessorName) : null);
 
   async function handleSubmit() {
     setFormError(null);
@@ -139,44 +140,45 @@ function EpaMagicLinkRespondBody({ token }: { readonly token: string }) {
         request?: EpaMagicLinkRecord;
         message?: string;
       } | null;
-      if (response.ok && payload?.request) {
-        submitEpaMagicLinkResponse(token, {
-          level,
-          complexity,
-          assessorName: resolvedAssessorName,
-          strengths,
-          improvements,
-        });
-        setCompleted(payload.request);
-        setRecord(payload.request);
-        return;
-      }
-      if (!response.ok) {
+      if (response.ok) {
+        if (payload?.request) {
+          submitEpaMagicLinkResponse(token, {
+            level,
+            complexity,
+            assessorName: resolvedAssessorName,
+            strengths,
+            improvements,
+          });
+          setCompleted(payload.request);
+          setRecord(payload.request);
+          return;
+        }
         setFormError(payload?.message ?? "Could not submit this EPA response.");
         return;
       }
+      setFormError(payload?.message ?? "Could not submit this EPA response.");
+      return;
     } catch {
       if (process.env.NODE_ENV !== "test") {
         setFormError("Could not submit this EPA response. Check your connection and try again.");
         return;
       }
+      const localResult = submitEpaMagicLinkResponse(token, {
+        level,
+        complexity,
+        assessorName: resolvedAssessorName,
+        strengths,
+        improvements,
+      });
+      if (localResult.ok) {
+        setCompleted(localResult.request);
+        setRecord(localResult.request);
+        return;
+      }
+      setFormError(localResult.message);
     } finally {
       setSubmitting(false);
     }
-
-    const localResult = submitEpaMagicLinkResponse(token, {
-      level,
-      complexity,
-      assessorName: resolvedAssessorName,
-      strengths,
-      improvements,
-    });
-    if (localResult.ok) {
-      setCompleted(localResult.request);
-      setRecord(localResult.request);
-      return;
-    }
-    setFormError(localResult.message);
   }
 
   return (

@@ -10,6 +10,7 @@ import { WorkButton } from "@/components/mode-kit/work";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { wasAlreadyCheckedIn } from "@/components/teaching/checkin/checkin-recorded";
+import { parseCheckinToken } from "@/lib/teaching/checkin-token";
 import { teachingErrorMessage, teachingPostTimed, teachingServiceUrl } from "@/lib/teaching/client";
 import type { AttendanceMethod, CheckinStream } from "@/lib/teaching/model";
 
@@ -189,26 +190,39 @@ export function TeachingCodeSheet({
         </form>
         {showScanner ? (
           <QrCheckInHelper
+            hideManualEntry
             onClose={() => setShowScanner(false)}
             onScanCode={(scanned) => {
+              if (!live) {
+                setError("The demo doesn't save check-ins.");
+                return;
+              }
               const trimmed = scanned.trim();
               if (trimmed.includes("/teaching/c/")) {
                 if (typeof window !== "undefined") {
                   try {
                     const parsedUrl = new URL(trimmed, window.location.origin);
-                    const pathMatch = parsedUrl.pathname.match(/^\/teaching\/c\/([A-Za-z0-9_-]+)$/);
-                    if (parsedUrl.origin === window.location.origin && pathMatch?.[1]) {
-                      const destUrl = new URL(
-                        `/teaching/c/${encodeURIComponent(pathMatch[1])}`,
-                        window.location.origin,
-                      );
+                    const normalizedPath = parsedUrl.pathname.replace(/\/+$/, "");
+                    const pathMatch = normalizedPath.match(/^\/teaching\/c\/([^/]+)$/);
+                    let token = "";
+                    if (pathMatch?.[1]) {
+                      try {
+                        token = decodeURIComponent(pathMatch[1]);
+                      } catch {
+                        token = "";
+                      }
+                    }
+                    if (parsedUrl.origin === window.location.origin && token && parseCheckinToken(token)) {
+                      const destUrl = new URL(`/teaching/c/${encodeURIComponent(token)}`, window.location.origin);
                       window.location.assign(destUrl.href);
                       return;
                     }
                   } catch {
-                    // Fall through to 6-digit validation error below
+                    // Fall through to link validation error below
                   }
                 }
+                setError("Scanned QR code is not a valid check-in link for this site.");
+                return;
               }
               const exactSixDigits = trimmed.match(/^\d{3}\s?\d{3}$/);
               if (!exactSixDigits) {

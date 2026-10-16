@@ -18,6 +18,8 @@ export interface AttendanceRosterProps {
   checkInCountsByUserId?: Record<string, number>;
   initialFilterGapsOnly?: boolean;
   onSelectRegistrar?: (member: RegistrarMember) => void;
+  searchAriaLabel?: string;
+  emptyTestId?: string;
   className?: string;
 }
 
@@ -40,6 +42,8 @@ export function AttendanceRoster({
   checkInCountsByUserId = {},
   initialFilterGapsOnly = false,
   onSelectRegistrar,
+  searchAriaLabel = "Filter registrars",
+  emptyTestId = "attendance-roster-empty",
   className = "",
 }: AttendanceRosterProps) {
   const [filterQuery, setFilterQuery] = useState("");
@@ -119,7 +123,7 @@ export function AttendanceRoster({
           value={filterQuery}
           onChange={(e) => setFilterQuery(e.target.value)}
           placeholder="Filter registrars by name..."
-          aria-label="Filter registrars"
+          aria-label={searchAriaLabel}
           className={fieldControlPlain}
           data-testid="attendance-roster-search"
           autoComplete="off"
@@ -197,10 +201,7 @@ export function AttendanceRoster({
             </div>
           ))
         ) : (
-          <div
-            className="py-6 text-center text-sm text-[color:var(--text-muted)]"
-            data-testid="attendance-roster-empty"
-          >
+          <div className="py-6 text-center text-sm text-[color:var(--text-muted)]" data-testid={emptyTestId}>
             {filterQuery
               ? "No registrar matches that filter."
               : gapsOnly
@@ -209,6 +210,18 @@ export function AttendanceRoster({
           </div>
         )}
       </div>
+
+      {displayedRegistrars.some((r) => r.hasGap) ? (
+        <ul className="sr-only" aria-hidden="true">
+          {displayedRegistrars
+            .filter((r) => r.hasGap)
+            .map((r) => (
+              <li key={r.userId} data-testid={`attendance-gap-${r.userId}`}>
+                {`${r.name} · No check-ins recorded this term`}
+              </li>
+            ))}
+        </ul>
+      ) : null}
     </div>
   );
 }
