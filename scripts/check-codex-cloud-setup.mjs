@@ -364,24 +364,26 @@ export function validateHostedAppInventory(appNames) {
 }
 
 export const providerCredentialVariables = Object.freeze([
-  ...providerEnvironmentKeys,
-  "RAILWAY_API_TOKEN",
-  "RAILWAY_TOKEN",
-  "GH_TOKEN",
-  "GITHUB_TOKEN",
-  "CODEX_CLOUD_GITHUB_PAT",
-  "GITLAB_TOKEN",
-  "GLAB_TOKEN",
-  "CODEX_TRIGGER_TOKEN",
-  "HEALTH_DEEP_PROBE_SECRET",
-  "INDEXING_V3_AGENT_SECRET",
-  "CROSS_TENANT_SERVICE_ROLE_KEY",
-  "FIGMA_CLIENT_ID",
-  "FIGMA_CLIENT_SECRET",
-  "FIGMA_ACCESS_TOKEN",
-  "FIGMA_PERSONAL_ACCESS_TOKEN",
-  "FIGMA_TOKEN",
-  "FIGMA_NPM_TOKEN",
+  ...new Set([
+    ...providerEnvironmentKeys,
+    "RAILWAY_API_TOKEN",
+    "RAILWAY_TOKEN",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "CODEX_CLOUD_GITHUB_PAT",
+    "GITLAB_TOKEN",
+    "GLAB_TOKEN",
+    "CODEX_TRIGGER_TOKEN",
+    "HEALTH_DEEP_PROBE_SECRET",
+    "INDEXING_V3_AGENT_SECRET",
+    "CROSS_TENANT_SERVICE_ROLE_KEY",
+    "FIGMA_CLIENT_ID",
+    "FIGMA_CLIENT_SECRET",
+    "FIGMA_ACCESS_TOKEN",
+    "FIGMA_PERSONAL_ACCESS_TOKEN",
+    "FIGMA_TOKEN",
+    "FIGMA_NPM_TOKEN",
+  ]),
 ]);
 
 function read(relativePath) {
@@ -1328,40 +1330,81 @@ export async function validateCodexCloudRuntime(env = process.env) {
   return errors;
 }
 
+function readableRuntimeProfile(env = process.env) {
+  if (!env.HOME) return null;
+  const profilePath = path.join(env.HOME, ".clinical-kb-codex-cloud.sh");
+  try {
+    return statSync(profilePath).isFile() && (accessSync(profilePath, constants.R_OK), profilePath);
+  } catch {
+    return null;
+  }
+}
+
+export function shouldAutoSourceCloudProfile(env = process.env) {
+  return (
+    env.CODEX_CLOUD === "1" &&
+    env.NODE_ENV !== "test" &&
+    env.CODEX_CLOUD_PROFILE_LOADED !== "1" &&
+    Boolean(readableRuntimeProfile(env))
+  );
+}
+
 if (isDirectEntrypoint(import.meta.url)) {
-  const errors = validateCodexCloudSetup();
-  const commandArguments = process.argv.slice(2);
-  const hostedAppArgumentErrors = validateHostedAppInventoryArguments(commandArguments);
-  const hostedAppInventory = parseHostedAppInventoryArgument(commandArguments);
-  const hostedAppInventoryErrors = validateHostedAppInventory(hostedAppInventory);
-  const hostedAppInputErrors = [...hostedAppArgumentErrors, ...hostedAppInventoryErrors];
-  errors.push(...hostedAppInputErrors);
-  const runtime = process.argv.includes("--runtime");
-  const environment = runtime || process.env.CODEX_CLOUD === "1" || process.argv.includes("--environment");
-  if (runtime) errors.push(...(await validateCodexCloudRuntime()));
-  else if (environment) errors.push(...validateCodexCloudEnvironment());
-  if (
-    runtime &&
-    process.env.CODEX_CLOUD_PROVISIONING === "1" &&
-    gitCheckoutFreshness(repoRoot).freshness === "unverified"
-  ) {
-    console.warn(
-      "[Codex Cloud Check] WARN: checkout freshness is unverified during provisioning; run explicit acceptance with CODEX_CLOUD_EXPECTED_BASE_SHA.",
+  const runtimeProfilePath = shouldAutoSourceCloudProfile(process.env) ? readableRuntimeProfile(process.env) : null;
+  if (runtimeProfilePath) {
+    const bashExecutable =
+      process.platform === "win32"
+        ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
+        : "bash";
+    const reexec = spawnSync(
+      bashExecutable,
+      [
+        "-c",
+        'profile_path="$1"; node_exec="$2"; script_path="$3"; shift 3; saved_args=("$@"); set --; . "$profile_path" && export CODEX_CLOUD_PROFILE_LOADED=1 && exec "$node_exec" "$script_path" "${saved_args[@]}"',
+        "codex-cloud-check",
+        runtimeProfilePath.replaceAll("\\", "/"),
+        process.execPath,
+        fileURLToPath(import.meta.url),
+        ...process.argv.slice(2),
+      ],
+      { cwd: repoRoot, stdio: "inherit" },
     );
-  }
-  if (environment && hostedAppInputErrors.length === 0) {
-    console.log("[Codex Cloud Environment] sanitized effective modes and capabilities:");
-    for (const line of sanitizedCloudCapabilityLines(process.env, { hostedAppInventory })) console.log(`  ${line}`);
-  }
-  if (errors.length > 0) {
-    for (const error of errors) console.error(`[Codex Cloud Check] FAIL: ${error}`);
-    process.exitCode = 1;
+    process.exitCode = reexec.status ?? 1;
   } else {
-    const scope = codexCloudValidationScope({
-      runtime,
-      environment,
-      browserInstallSkipped: process.env.CODEX_CLOUD_SKIP_BROWSER_INSTALL === "1",
-    });
-    console.log(`[Codex Cloud Check] PASS: ${scope} Cloud contracts match.`);
+    const errors = validateCodexCloudSetup();
+    const commandArguments = process.argv.slice(2);
+    const hostedAppArgumentErrors = validateHostedAppInventoryArguments(commandArguments);
+    const hostedAppInventory = parseHostedAppInventoryArgument(commandArguments);
+    const hostedAppInventoryErrors = validateHostedAppInventory(hostedAppInventory);
+    const hostedAppInputErrors = [...hostedAppArgumentErrors, ...hostedAppInventoryErrors];
+    errors.push(...hostedAppInputErrors);
+    const runtime = process.argv.includes("--runtime");
+    const environment = runtime || process.env.CODEX_CLOUD === "1" || process.argv.includes("--environment");
+    if (runtime) errors.push(...(await validateCodexCloudRuntime()));
+    else if (environment) errors.push(...validateCodexCloudEnvironment());
+    if (
+      runtime &&
+      process.env.CODEX_CLOUD_PROVISIONING === "1" &&
+      gitCheckoutFreshness(repoRoot).freshness === "unverified"
+    ) {
+      console.warn(
+        "[Codex Cloud Check] WARN: checkout freshness is unverified during provisioning; run explicit acceptance with CODEX_CLOUD_EXPECTED_BASE_SHA.",
+      );
+    }
+    if (environment && hostedAppInputErrors.length === 0) {
+      console.log("[Codex Cloud Environment] sanitized effective modes and capabilities:");
+      for (const line of sanitizedCloudCapabilityLines(process.env, { hostedAppInventory })) console.log(`  ${line}`);
+    }
+    if (errors.length > 0) {
+      for (const error of errors) console.error(`[Codex Cloud Check] FAIL: ${error}`);
+      process.exitCode = 1;
+    } else {
+      const scope = codexCloudValidationScope({
+        runtime,
+        environment,
+        browserInstallSkipped: process.env.CODEX_CLOUD_SKIP_BROWSER_INSTALL === "1",
+      });
+      console.log(`[Codex Cloud Check] PASS: ${scope} Cloud contracts match.`);
+    }
   }
 }

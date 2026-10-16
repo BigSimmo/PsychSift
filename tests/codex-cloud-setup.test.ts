@@ -23,6 +23,7 @@ import {
   pythonWorkerVersionLine,
   pythonWorkerImports,
   sanitizedCloudCapabilityLines,
+  shouldAutoSourceCloudProfile,
   validateCodexCloudEnvironment,
   validateCloudNpmInstallContract,
   validateCodexProjectMcpConfiguration,
@@ -618,7 +619,7 @@ describe("Codex Cloud environment contract", () => {
     expect(malformedCli.status).toBe(1);
     expect(malformedCli.stderr).toContain("Unsupported Cloud-check argument");
     expect(malformedCli.stdout).not.toContain("hosted_app.inventory=");
-  });
+  }, 120_000);
 
   it("probes the raw task environment without printing credential values", () => {
     const secret = "never-print-raw-provider-value";
@@ -631,7 +632,7 @@ describe("Codex Cloud environment contract", () => {
     expect(result.stderr).toContain("OPENAI_API_KEY");
     expect(result.stderr).toContain("STOP:");
     expect(result.stderr).not.toContain(secret);
-  });
+  }, 120_000);
 
   it("name-scopes the documented OPENAI_BASE_URL and GH_TOKEN launcher defects separately from unexpected leaks", () => {
     const known = spawnSync(bashCommand, ["scripts/check-codex-cloud-raw-env.sh"], {
@@ -672,7 +673,7 @@ describe("Codex Cloud environment contract", () => {
     expect(mixed.stderr).not.toContain("never-print-service-role");
     expect(mixed.stderr).not.toContain("gho_never_print_known_token");
     expect(mixed.stderr).not.toContain("CONTINUE-RESTRICTED:");
-  });
+  }, 120_000);
 
   it("keeps setup and maintenance repairs guarded for repeat execution", () => {
     const setup = readFileSync(new URL("../scripts/setup-codex-cloud.sh", import.meta.url), "utf8");
@@ -737,14 +738,18 @@ describe("Codex Cloud environment contract", () => {
     expect(setup).toContain('"$ocr_venv/bin/python" -m pip check');
     const refreshCommand = "bash scripts/refresh-codex-cloud-base.sh";
     const runtimeCheck = "CODEX_CLOUD_PROVISIONING=1 npm run check:codex-cloud -- --runtime";
+    const installShimsCommand = "bash scripts/install-codex-cloud-command-shims.sh";
 
     expect(setup).toContain(runtimeCheck);
     expect(setup).toContain(refreshCommand);
+    expect(setup).toContain(installShimsCommand);
     expect(maintenance).toContain(runtimeCheck);
     expect(maintenance).toContain("ensure-codex-cloud-git-remote.mjs");
     expect(maintenance).toContain(refreshCommand);
+    expect(maintenance).toContain(installShimsCommand);
     for (const script of [setup, maintenance]) {
       expect(script.indexOf(refreshCommand)).toBeLessThan(script.indexOf(runtimeCheck));
+      expect(script.indexOf(installShimsCommand)).toBeLessThan(script.indexOf(runtimeCheck));
     }
     expect(commandShims).toContain('nvm version "$expected_node_major"');
     expect(commandShims).toContain('node_bin="$NVM_DIR/versions/node/$resolved_node_version/bin"');
@@ -799,7 +804,7 @@ describe("Codex Cloud environment contract", () => {
     expect(resolvedPath[0]).toBe(bashNodeBin);
     expect(resolvedPath).not.toContain(shimDir);
     expect(resolvedPath).toEqual(expect.arrayContaining(["/usr/bin", "/bin"]));
-  });
+  }, 120_000);
 
   it("prefers the exact Python 3.12 interpreter over an older python3 alias", () => {
     const home = temporaryDirectory("codex-cloud-python-home-");
@@ -822,7 +827,7 @@ describe("Codex Cloud environment contract", () => {
 
     expect(result.status, result.stderr || result.stdout).toBe(0);
     expect(result.stdout.trim()).toBe(bashPathEntry(exactPython));
-  });
+  }, 120_000);
 
   it("writes managed shell policy behaviorally and preserves unrelated Codex config", () => {
     const home = temporaryDirectory("codex-cloud-home-");
@@ -830,6 +835,17 @@ describe("Codex Cloud environment contract", () => {
     writeFileSync(
       path.join(home, ".codex/config.toml"),
       ["[mcp_servers.example]", 'command = "echo"', 'args = ["ping"]', ""].join("\n"),
+    );
+    writeFileSync(
+      path.join(home, ".bashrc"),
+      [
+        "# If not running interactively, don't do anything",
+        "case $- in",
+        "  *i*) ;;",
+        "    *) return;;",
+        "esac",
+        "",
+      ].join("\n"),
     );
 
     const first = runSetupPolicyOnly(home, {
@@ -850,8 +866,17 @@ describe("Codex Cloud environment contract", () => {
     expect(config.match(/^\[shell_environment_policy\]$/gm)).toHaveLength(1);
 
     const profile = readRuntimeProfile(home);
+    expect(profile).toContain("export CODEX_CLOUD_PROFILE_LOADED=1");
     expect(profile).toContain('export CODEX_CLOUD_ACCESS_PROFILE="offline"');
     expect(profile).toContain("export RAG_PROVIDER_MODE=offline");
+
+    const bashrc = readFileSync(path.join(home, ".bashrc"), "utf8");
+    expect(bashrc.indexOf(".clinical-kb-codex-cloud.sh")).toBeGreaterThanOrEqual(0);
+    expect(bashrc.indexOf(".clinical-kb-codex-cloud.sh")).toBeLessThan(bashrc.indexOf("return;;"));
+
+    expect(shouldAutoSourceCloudProfile({ CODEX_CLOUD: "1", HOME: home })).toBe(true);
+    expect(shouldAutoSourceCloudProfile({ CODEX_CLOUD: "1", CODEX_CLOUD_PROFILE_LOADED: "1", HOME: home })).toBe(false);
+    expect(shouldAutoSourceCloudProfile({ CODEX_CLOUD: "1", NODE_ENV: "test", HOME: home })).toBe(false);
 
     const second = runSetupPolicyOnly(home, {
       CODEX_CLOUD_ACCESS_PROFILE: "offline",

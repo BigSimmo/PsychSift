@@ -18,11 +18,24 @@ runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
 
 # shellcheck source=/dev/null
 source "$runtime_profile"
-command -v nvm >/dev/null 2>&1 || fail "nvm is unavailable after loading the Cloud runtime profile."
 
-resolved_node_version="$(nvm version "$expected_node_major")"
-[[ "$resolved_node_version" != "N/A" ]] || fail "Node ${expected_node_major} is unavailable through nvm."
-node_bin="$NVM_DIR/versions/node/$resolved_node_version/bin"
+resolved_node_version=""
+if command -v nvm >/dev/null 2>&1; then
+  resolved_node_version="$(nvm version "$expected_node_major")"
+fi
+if [[ -n "$resolved_node_version" && "$resolved_node_version" != "N/A" ]]; then
+  node_bin="$NVM_DIR/versions/node/$resolved_node_version/bin"
+else
+  fallback_path=":$PATH:"
+  while [[ "$fallback_path" == *":$HOME/.local/bin:"* ]]; do
+    fallback_path="${fallback_path//:$HOME\/.local\/bin:/:}"
+  done
+  fallback_path="${fallback_path#:}"
+  fallback_path="${fallback_path%:}"
+  fallback_node="$(PATH="$fallback_path" command -v node 2>/dev/null || true)"
+  [[ -n "$fallback_node" ]] || fail "Node ${expected_node_major} is unavailable through nvm or PATH."
+  node_bin="$(cd "$(dirname "$fallback_node")" && pwd)"
+fi
 mkdir -p "$HOME/.local/bin"
 for command_name in node npm npx; do
   [[ -x "$node_bin/$command_name" ]] || fail "${command_name} is unavailable in Node ${expected_node_major}."

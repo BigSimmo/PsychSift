@@ -19,6 +19,12 @@ describe("Codex Cloud diagnostics", () => {
     expect(diagnoseCodexCloud(healthy)).toEqual([]);
   });
 
+  it("flags Node 24 versions below the 24.15.0 engine floor", () => {
+    const issues = diagnoseCodexCloud({ ...healthy, nodeVersion: "24.13.0" });
+    expect(issues.map((issue) => issue.code)).toEqual(["NODE_RUNTIME"]);
+    expect(issues[0]?.issue).toContain(">=24.15.0 <25");
+  });
+
   it("explains the Python lock mismatch that previously stopped setup", () => {
     const issues = diagnoseCodexCloud({
       ...healthy,
