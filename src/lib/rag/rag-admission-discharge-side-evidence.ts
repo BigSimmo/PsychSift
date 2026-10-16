@@ -46,7 +46,10 @@ export function withAdmissionDischargeSideEvidence(args: {
     sourceBoundComparisonFacts({ ...side, results: pool }),
   );
   const communityAdmissionFacts = rawAdmissionFacts.filter((fact) => isCommunityAdmissionResult(fact.result));
-  const admissionFacts = communityAdmissionFacts.length > 0 ? communityAdmissionFacts : rawAdmissionFacts;
+  const admissionFacts =
+    communityAdmissionFacts.length > 0
+      ? [...communityAdmissionFacts, ...rawAdmissionFacts.filter((fact) => !isCommunityAdmissionResult(fact.result))]
+      : rawAdmissionFacts;
   const selectedAdmissionDocs = new Set(
     admissionFacts.filter((fact) => selectedIds.has(fact.result.id)).map((fact) => fact.result.document_id),
   );
