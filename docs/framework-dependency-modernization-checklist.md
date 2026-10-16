@@ -222,7 +222,7 @@ responseHeaders)` and copy all supplied headers onto every rebuilt
       Testing Library, Playwright, and axe. Respect peer ceilings.
 - [ ] Backend SDK group: Supabase SSR/client/realtime, OpenAI, and Zod. Run auth,
       validation, rate-limit, privacy, and public-error contract tests.
-- [ ] Document group: pdf-parse, pdfjs-dist, PDFKit, Mammoth, ExcelJS, and JSZip.
+- [ ] Document group: pdfjs-dist, PDFKit, Mammoth, ExcelJS, and JSZip.
       Run adversarial resource-budget fixtures before normal happy paths.
 - [ ] UI group: Tailwind/PostCSS and lucide-react. Run generated CSS, forced
       colors, reduced motion, icon-scale, and representative browser checks.
