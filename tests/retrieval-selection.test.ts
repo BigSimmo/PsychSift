@@ -1135,6 +1135,28 @@ describe("whole document title named in the query", () => {
     expect(scores.get("radiotherapy")).toBe(scores.get("admissions"));
   });
 
+  it("does not count a title as named when the query leaves out its population qualifier", () => {
+    const tracheostomy = source({
+      id: "tracheostomy-adult",
+      document_id: "tracheostomy-adult",
+      title: "Tracheostomy Management (Adult) (FSH)",
+      file_name: "Tracheostomy Management (Adult) (FSH).pdf",
+      content: "Tracheostomy management steps for adult inpatients.",
+      hybrid_score: 0.5,
+    });
+    const signalsFor = (query: string) =>
+      selectRetrievalEvidence({
+        query,
+        queryClass: "document_lookup",
+        results: [tracheostomy],
+        topK: 8,
+        maxResultsPerDocument: 4,
+      }).candidates[0]?.matchedSignals ?? [];
+
+    expect(signalsFor("Tracheostomy management in children")).not.toContain("document_title_phrase");
+    expect(signalsFor("Tracheostomy management adult")).toContain("document_title_phrase");
+  });
+
   it("keeps the boost inside the clamped score", () => {
     const selection = selectRetrievalEvidence({
       query,

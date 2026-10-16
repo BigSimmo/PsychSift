@@ -391,10 +391,12 @@ function titleWords(value: string) {
 
 /**
  * Core title words: the title (or file name) without its extension or bracketed publisher code,
- * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation".
+ * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation". Only short
+ * upper-case codes such as "(AKG)" or "(FSH)" are dropped. Qualifiers such as "(Adult)" or
+ * "(v2.1)" stay, so a query must name them too before the title counts as named.
  */
 function coreDocumentTitle(value: string) {
-  return titleWords(value.replace(/\.(?:pdf|docx?|txt|md)$/i, "").replace(/\([^)]*\)/g, " "));
+  return titleWords(value.replace(/\.(?:pdf|docx?|txt|md)$/i, "").replace(/\(\s*[A-Z][A-Z0-9&]{1,7}\s*\)/g, " "));
 }
 
 /**
