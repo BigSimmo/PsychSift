@@ -33,7 +33,7 @@ node_version_supported() {
 # $HOME/.local/bin.
 fallback_path=":$PATH:"
 while [[ "$fallback_path" == *":$HOME/.local/bin:"* ]]; do
-  fallback_path="${fallback_path//:$HOME\/.local\/bin:/:}"
+  fallback_path="${fallback_path//":$HOME/.local/bin:"/:}"
 done
 fallback_path="${fallback_path#:}"
 fallback_path="${fallback_path%:}"
