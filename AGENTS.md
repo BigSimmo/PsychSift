@@ -102,7 +102,7 @@ For Windows Codex Desktop worktree bootstrap and dry-run instructions, see [`doc
 
 # Reasoning effort calibration
 
-For the Codex reasoning-effort baseline, the Cloud `xhigh` confirmation gate, and the
+For the Codex reasoning-effort baseline, plain-language Cloud confirmation, and the
 plan-effort/build-effort table, see
 [`docs/agents/codex-reasoning-effort.md`](docs/agents/codex-reasoning-effort.md).
 

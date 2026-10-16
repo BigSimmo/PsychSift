@@ -3,11 +3,14 @@
 set -Eeuo pipefail
 
 # Run this directly with a pristine shell before sourcing profiles or invoking
-# node/npm shims. It reports names and presence only, never values.
+# node/npm shims. It reports names and presence only, never values, and
+# establishes presence in the raw parent process rather than variable origin.
 #
 # Exit codes:
 #   0 — no provider variables inherited (raw boundary passed)
-#   1 — unexpected provider variable names present; stop and start a fresh task
+#   1 — unexpected provider variable names present; app execution and provider
+#       access require a fresh task, while explicitly requested local policy/doc
+#       repair and scrubbed offline checks may proceed
 #   2 — only the documented Personal Pro launcher defect (`OPENAI_BASE_URL`) is
 #       present. The raw boundary still failed; continue only through the
 #       generated profile and command shims, never by treating this as a pass.
@@ -62,7 +65,7 @@ done
 
 if (( ${#unexpected[@]} > 0 )); then
   printf '[Codex Cloud Raw Env] FAIL: inherited provider variable names: %s\n' "${present[*]}" >&2
-  printf '[Codex Cloud Raw Env] STOP: unexpected credential-bearing names require a fresh task; do not continue.\n' >&2
+  printf '[Codex Cloud Raw Env] STOP: unexpected credential-bearing names require a fresh task before app execution or provider access; explicitly requested local policy/doc repair and scrubbed offline checks may proceed.\n' >&2
   exit 1
 fi
 

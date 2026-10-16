@@ -15,13 +15,14 @@ Retention and rotation: [`branch-review-archival-policy.md`](branch-review-archi
 
 ## Summary
 
-- Records: 699
-- Distinct ref cells: 449
-- Distinct reviewed heads: 681
-- Date range: `2026-08-12` to `2026-10-15`
+- Records: 701
+- Distinct ref cells: 451
+- Distinct reviewed heads: 683
+- Date range: `2026-08-12` to `2026-10-16`
 
 Records per date, newest first:
 
+- `2026-10-16` — 2 records
 - `2026-10-15` — 3 records
 - `2026-10-14` — 1 record
 - `2026-10-13` — 2 records
@@ -77,6 +78,8 @@ Scope and outcome are truncated; follow the record link for the full six-cell ro
 
 | Date | Ref | Scope | Outcome | Record |
 | --- | --- | --- | --- | --- |
+| 2026-10-16 | fix/adversarial-remediation-20261016 | Adversarial assessment + parallel fix swarm + post-fix adversarial review across calculato… | All P0/P1/P2 findings fixed and verified; zero RAG files touched | [2a6b6200](branch-review-records/2a6b620065f5371039438fdbff73be97da6baf6c40dace3596e26c7bad0047dd.record.md) |
+| 2026-10-16 | feat/backlog-remediation-20261016 | prlanded | PR #3571 squash-merged cleanly into main (e526f8a4d5ad00ad05c5b780262b… | [ad2c45bc](branch-review-records/ad2c45bc2f3c606a7847421acc887ddf4861ab0563a5b96b4c6315b066837d90.record.md) |
 | 2026-10-15 | codex/ingestion-rag-pilot-handover-20261014 | Uncommitted admin pilot shared announcement correction; file SHA256 0f76deaa4d8d9ad46139d0… | Independent frontend source review ACCEPT; visible message and polite… | [263f1f06](branch-review-records/263f1f0680e9d5cda1bed9bb2a62853d3a34b78b5ad60054971520fdc884cf1c.record.md) |
 | 2026-10-15 | codex/ingestion-rag-pilot-handover-20261014 | Uncommitted native-PDF layout v5 producer 352d178978ef9086df1df708aa71266538076a2f5050a526… | Independent technical P1/P2 closure and qualified representative-sourc… | [6d2fd2e8](branch-review-records/6d2fd2e81761e17d32bb56bd41261efe8f9239ef266cf85a512c1021f889dd4b.record.md) |
 | 2026-10-15 | PR #3546 / codex/ingestion-rag-pilot-handover-20261014 | bounded OCR detail source safety and independent whole-table fidelity | ACCEPT by independent ingestion-worker and clinical-governance reviewe… | [7c72c71e](branch-review-records/7c72c71e0806655f9c5223a2a42aa255d84ff820805f3f6a50edea27cc174ac2.record.md) |
