@@ -255,8 +255,9 @@ export function buildBoundedRagSourceDiagnostics(
       // Ordering evidence: which scores and pipeline steps put this source at this rank, so a
       // live misorder (e.g. a later rerank undoing a selection boost) is diagnosable offline.
       ranking: {
-        // The answer-stage score (rankAnswerEvidence) sets the emitted order; the retrieval
-        // scores below are from the earlier selection and can disagree with `rank`.
+        // rankAnswerEvidence score, the first answer-stage reorder after retrieval. Context
+        // selection can still move sources afterwards, so where this score's order disagrees
+        // with `rank`, that later stage moved the source. Retrieval scores follow.
         answer_evidence_score: diagnosticScore(answerEvidenceScores?.get(source.id)),
         hybrid_score: diagnosticScore(source.hybrid_score),
         rank_score: diagnosticScore(source.score_explanation?.rankScore),
@@ -281,8 +282,8 @@ export function buildRagDiagnosticDumpRecord(id: string, question: string, answe
   const hasOpenAIUsage = openAIUsage.input_tokens + openAIUsage.cached_input_tokens + openAIUsage.output_tokens > 0;
   const observedProviderRequestIdCount = answer.openAIRequestIds?.filter(Boolean).length ?? 0;
   const generationLatencyMs = answer.latencyTimings?.generation_latency_ms ?? 0;
-  // Re-score the emitted sources with the answer-stage ranking that ordered them, as
-  // answerScopedEvidenceMetadata does for telemetry, so the dump shows why each sits where it does.
+  // Re-score the emitted sources with the answer-stage ranking, as answerScopedEvidenceMetadata
+  // does for telemetry. It explains rankAnswerEvidence's reorder, not later context selection.
   const answerEvidenceScores = rankAnswerEvidence(question, answer.sources, answer.queryClass).scoresByChunkId;
   const providerAttempted = Boolean(
     hasOpenAIUsage ||
