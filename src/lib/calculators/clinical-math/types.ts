@@ -85,6 +85,8 @@ export type LithiumLevelEvaluation = {
   toxicitySeverity?: LithiumToxicitySeverity;
   requiresUrgentAction?: boolean;
   targetRange: { min: number; max: number };
+  /** False when no valid age was given, so the age-dependent target range is unknown. */
+  targetRangeKnown?: boolean;
   clinicalGuidance: string[];
 };
 
