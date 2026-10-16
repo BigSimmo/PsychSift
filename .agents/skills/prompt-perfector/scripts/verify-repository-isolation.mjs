@@ -65,12 +65,18 @@ export function evaluateRepositoryState(state, options = {}) {
   const currentIndex = state.worktrees.findIndex(
     (worktree) => normalizePath(String(worktree.worktree)) === currentPath,
   );
+  const cloudEnvironment =
+    options.cloudEnvironment ??
+    (process.env.CODEX_CLOUD === "1" ||
+      process.env.CLAUDE_CODE_REMOTE === "true" ||
+      process.env.CODEX_CLOUD_HOST === "1");
 
   if (!path.isAbsolute(state.root)) reasons.push("repository_path_not_absolute");
   if (!state.branch) reasons.push("detached_head");
   else if (protectedBranch(state.branch)) reasons.push("protected_branch");
   if (currentIndex < 0) reasons.push("unregistered_worktree");
   else if (currentIndex === 0 && !options.cloud) reasons.push("primary_worktree");
+  else if (currentIndex === 0 && options.cloud && !cloudEnvironment) reasons.push("cloud_environment_required");
   else if (currentIndex === 0 && options.cloud && state.worktrees.length !== 1)
     reasons.push("cloud_primary_requires_single_worktree");
   if (state.operations.length) reasons.push("git_operation_in_progress");
@@ -190,10 +196,18 @@ function runSelfTest() {
     expectedBranch: cloudBase.branch,
     expectedHead: head,
     cloud: true,
+    cloudEnvironment: true,
   };
   const cases = [
     ["safe secondary worktree", base, expected, true, ""],
     ["safe Cloud primary", cloudBase, cloudExpected, true, ""],
+    [
+      "Cloud primary without host signal",
+      cloudBase,
+      { ...cloudExpected, cloudEnvironment: false },
+      false,
+      "cloud_environment_required",
+    ],
     ["Cloud primary without explicit mode", cloudBase, { ...cloudExpected, cloud: false }, false, "primary_worktree"],
     ...["expectedRepo", "expectedBranch", "expectedHead"].map((key) => [
       `Cloud missing ${key}`,
