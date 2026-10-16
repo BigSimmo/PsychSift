@@ -390,13 +390,48 @@ function titleWords(value: string) {
 }
 
 /**
+ * Publisher, site and index codes that only say where a document came from. Anything else in
+ * brackets, such as "(Adult)", "(CAMHS)", "(ICU)" or "(v2.1)", stays in the core title. An
+ * unknown code also stays, which only means no boost, never a wrong one.
+ */
+const TITLE_PUBLISHER_CODES = new Set([
+  "AKG",
+  "BH",
+  "CAHS",
+  "EMHS",
+  "FH",
+  "FSH",
+  "KEMH",
+  "MHERL",
+  "NCBI",
+  "NICE",
+  "NMHS",
+  "OPH",
+  "PCH",
+  "PMC",
+  "RANZCP",
+  "RKPG",
+  "RPBG",
+  "RPH",
+  "SAMHSA",
+  "SCGH",
+  "SMHS",
+  "WA",
+  "WACHS",
+]);
+
+/**
  * Core title words: the title (or file name) without its extension or bracketed publisher code,
- * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation". Only short
- * upper-case codes such as "(AKG)" or "(FSH)" are dropped. Qualifiers such as "(Adult)" or
- * "(v2.1)" stay, so a query must name them too before the title counts as named.
+ * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation". A query must
+ * name any other bracketed qualifier too before the title counts as named.
  */
 function coreDocumentTitle(value: string) {
-  return titleWords(value.replace(/\.(?:pdf|docx?|txt|md)$/i, "").replace(/\(\s*[A-Z][A-Z0-9&]{1,7}\s*\)/g, " "));
+  const withoutCodes = value
+    .replace(/\.(?:pdf|docx?|txt|md)$/i, "")
+    .replace(/\(\s*([A-Za-z]+)\s*\)/g, (match, code: string) =>
+      TITLE_PUBLISHER_CODES.has(code.toUpperCase()) ? " " : match,
+    );
+  return titleWords(withoutCodes);
 }
 
 /**

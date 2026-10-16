@@ -1157,6 +1157,28 @@ describe("whole document title named in the query", () => {
     expect(signalsFor("Tracheostomy management adult")).toContain("document_title_phrase");
   });
 
+  it("does not drop a setting or population acronym such as (CAMHS) from the title", () => {
+    const camhs = source({
+      id: "camhs-agitation",
+      document_id: "camhs-agitation",
+      title: "Arousal and Agitation Drug Management (CAMHS)",
+      file_name: "Arousal and Agitation Drug Management (CAMHS).pdf",
+      content: "Agitation drug management for young people.",
+      hybrid_score: 0.5,
+    });
+    const signalsFor = (query: string) =>
+      selectRetrievalEvidence({
+        query,
+        queryClass: "document_lookup",
+        results: [camhs],
+        topK: 8,
+        maxResultsPerDocument: 4,
+      }).candidates[0]?.matchedSignals ?? [];
+
+    expect(signalsFor("Arousal and agitation drug management for adults")).not.toContain("document_title_phrase");
+    expect(signalsFor("Arousal and agitation drug management CAMHS")).toContain("document_title_phrase");
+  });
+
   it("keeps the boost inside the clamped score", () => {
     const selection = selectRetrievalEvidence({
       query,
