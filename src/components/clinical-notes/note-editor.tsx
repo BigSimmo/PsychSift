@@ -52,7 +52,9 @@ export function ClinicalNoteEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   // Store selection state to restore across re-renders/saves
   const selectionRef = useRef<{
