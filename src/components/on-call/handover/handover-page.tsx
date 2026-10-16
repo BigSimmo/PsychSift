@@ -27,6 +27,7 @@ import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
 import { onCallActionLink, onCallFilledButton, onCallOutlineButton } from "@/components/on-call/kit/calm";
 import { useModeBandShown } from "@/components/mode-band/mode-band-shown";
+import { isSharedDevice } from "@/lib/alerts/shared-device";
 import { OnCallToolNavHeader } from "@/components/on-call/on-call-nav-header";
 import { preloadablePanel } from "@/components/on-call/preloadable-panel";
 import { ModeNotice } from "@/components/mode-kit/notice";
@@ -43,6 +44,7 @@ import {
   ON_CALL_HANDOVER_TYPES,
   clearOnCallHandover,
   emptyOnCallHandoverDraft,
+  HANDOVER_SCRATCHPAD_STORAGE_KEY,
   loadOnCallHandoverScratchpad,
   onCallHandoverCallsNotIn,
   onCallHandoverShiftDates,
@@ -67,6 +69,7 @@ import { ON_CALL_SHIFT_PICK_TTL_MS, useOnCallShiftPick } from "@/lib/on-call/shi
 import {
   PATIENT_LABEL_EXPIRY_STORAGE_KEY,
   PATIENT_LABELS_CLEARED_EVENT,
+  patientLabelStorageKey,
   startPatientLabelRetention,
   subscribePatientLabelsCleared,
 } from "@/lib/patient-label-storage";
@@ -562,8 +565,13 @@ export function OnCallHandoverPage() {
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
   const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
-  const [scratchpadText, setScratchpadText] = useState<string>(() => loadOnCallHandoverScratchpad());
+  const [scratchpadText, setScratchpadText] = useState<string>("");
   const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
+
+  useEffect(() => {
+    setScratchpadText(loadOnCallHandoverScratchpad());
+    setScratchpadResetKey((key) => key + 1);
+  }, []);
 
   const reset = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
@@ -584,7 +592,10 @@ export function OnCallHandoverPage() {
     // Another tab's wipe reaches this one only as a `storage` event: a full clear
     // (key null) or the shift's expiry stamp being removed.
     const onStorage = (event: StorageEvent) => {
-      if (event.key === null || (event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY && event.newValue === null)) {
+      if (event.key === patientLabelStorageKey(HANDOVER_SCRATCHPAD_STORAGE_KEY)) {
+        setScratchpadText(loadOnCallHandoverScratchpad());
+        setScratchpadResetKey((key) => key + 1);
+      } else if (event.key === null || (event.key === PATIENT_LABEL_EXPIRY_STORAGE_KEY && event.newValue === null)) {
         onCleared();
       }
     };
@@ -989,6 +1000,7 @@ export function OnCallHandoverPage() {
                     initialValue={scratchpadText}
                     onChange={(text) => {
                       setScratchpadText(text);
+                      if (isSharedDevice()) return;
                       try {
                         saveOnCallHandoverScratchpad(text);
                       } catch {
