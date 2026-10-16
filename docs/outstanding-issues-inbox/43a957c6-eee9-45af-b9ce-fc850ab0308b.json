@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "43a957c6-eee9-45af-b9ce-fc850ab0308b",
+  "createdOn": "2026-10-16",
+  "action": "update",
+  "payload": {
+    "id": "#54N8ZN",
+    "detail": "Remaining from PR 3546's CodeRabbit review: docs/design-system/evidence/admin-source-pilot.json records a passed browser and screen-reader proof against an earlier pilot-client digest; rerun the proof or mark it pending. Closed since: the XLSX per-sheet shared-string and style projection (branch claude/ingestion-review-lbw6rf, 16 Oct) and the paid canary pair (runs 119 vs 120, zero per-case rr regressions, 16 Oct).",
+    "targetUlid": "01M520SQ7T54N8ZNCFC7KJ4HKC"
+  }
+}
