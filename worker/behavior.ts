@@ -117,20 +117,54 @@ export function enrichmentRepairDecision(args: {
   };
 }
 
-/** Importable actual transport seam: transport failure cancels the whole attempt. */
+/**
+ * The database answered with an error and rolled the call back, so the lease is still held and
+ * the job can still be failed or retried through the normal path.
+ */
+export class IngestionRpcRejectedError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+  ) {
+    super(message);
+    this.name = "IngestionRpcRejectedError";
+  }
+}
+
+/**
+ * Only a Postgres SQLSTATE proves the statement ran and rolled back. Connection (class 08) and
+ * operator-intervention (57P) codes, PostgREST gateway codes and missing codes stay uncertain.
+ */
+function confirmedRpcRejection(error: { message: string; code?: string | null }) {
+  const code = typeof error.code === "string" ? error.code : "";
+  if (!/^[0-9A-Z]{5}$/.test(code) || code.startsWith("08") || code.startsWith("57P")) return null;
+  return new IngestionRpcRejectedError(error.message, code);
+}
+
+type IngestionRpcResult = { data: unknown; error: { message: string; code?: string | null } | null };
+
+/**
+ * Importable actual transport seam: an uncertain outcome cancels the whole attempt, while a
+ * confirmed database rejection leaves it live so the caller can still record the failure.
+ */
 export async function runIngestionMutation(
   attempt: IngestionAttempt,
-  rpc: (
-    name: string,
-    args: Record<string, unknown>,
-  ) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  rpc: (name: string, args: Record<string, unknown>) => PromiseLike<IngestionRpcResult>,
   name: string,
   payload: Record<string, unknown> = {},
 ) {
   return attempt.serialize(async () => {
     attempt.check();
+    let result: IngestionRpcResult;
     try {
-      const result = await rpc(name, { ...payload, p_fence: attempt.fence });
+      result = await rpc(name, { ...payload, p_fence: attempt.fence });
+    } catch (error) {
+      attempt.cancel();
+      throw error;
+    }
+    const rejection = result.error ? confirmedRpcRejection(result.error) : null;
+    if (rejection) throw rejection;
+    try {
       if (result.error) throw new Error(result.error.message);
       const accepted =
         name === "commit_document_index_generation"
@@ -189,7 +223,7 @@ export function runIngestionStrictCompletion(
   return attempt.serialize(async () => {
     try {
       const { data, error } = await rpc("complete_strict_enrichment_job", { ...payload, p_fence: attempt.fence });
-      if (error) throw new Error(error.message);
+      if (error) throw confirmedRpcRejection(error) ?? new Error(error.message);
       attempt.check();
       if (data && typeof data === "object" && !Array.isArray(data)) {
         const result = data as Record<string, unknown>;
@@ -211,7 +245,7 @@ export function runIngestionStrictCompletion(
       attempt.cancel();
       return { completed: true, missing: [] as string[], message: null };
     } catch (error) {
-      attempt.cancel();
+      if (!(error instanceof IngestionRpcRejectedError)) attempt.cancel();
       throw error;
     }
   });

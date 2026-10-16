@@ -104,6 +104,54 @@ describe("Node mutation handoff and cancellation", () => {
   });
 });
 
+describe("Node confirmed database rejection", () => {
+  it("keeps the attempt live so the final try can still be failed or retried", async () => {
+    const attempt = new IngestionAttempt(fence);
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({ data: null, error: { message: "synthetic check violation", code: "23514" } })
+      .mockResolvedValueOnce({ data: { ok: true }, error: null });
+    await expect(runIngestionMutation(attempt, rpc, "persist_ingestion_index_quality")).rejects.toMatchObject({
+      name: "IngestionRpcRejectedError",
+      code: "23514",
+    });
+    expect(attempt.signal.aborted).toBe(false);
+    await expect(runIngestionMutation(attempt, rpc, "fail_or_retry_ingestion_job")).resolves.toMatchObject({
+      ok: true,
+    });
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(attempt.signal.aborted).toBe(true);
+  });
+
+  it.each([undefined, "", "08006", "57P01", "PGRST000"])(
+    "treats error code %s as uncertain and cancels",
+    async (code) => {
+      const attempt = new IngestionAttempt(fence);
+      const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "synthetic uncertain failure", code } });
+      await expect(runIngestionMutation(attempt, rpc, "persist_ingestion_index_quality")).rejects.toThrow(
+        "synthetic uncertain failure",
+      );
+      expect(attempt.signal.aborted).toBe(true);
+    },
+  );
+
+  it("cancels when the transport itself throws", async () => {
+    const attempt = new IngestionAttempt(fence);
+    const rpc = vi.fn().mockRejectedValue(new Error("synthetic socket reset"));
+    await expect(runIngestionMutation(attempt, rpc, "persist_ingestion_index_quality")).rejects.toThrow(
+      "synthetic socket reset",
+    );
+    expect(attempt.signal.aborted).toBe(true);
+  });
+
+  it("keeps strict completion's attempt live after a confirmed rejection", async () => {
+    const attempt = new IngestionAttempt({ ...fence, expected_generation_id: generation });
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: "synthetic raise", code: "P0001" } });
+    await expect(runIngestionStrictCompletion(attempt, rpc, {})).rejects.toMatchObject({ code: "P0001" });
+    expect(attempt.signal.aborted).toBe(false);
+  });
+});
+
 describe("Node strict completion object contract", () => {
   it("cancels after a transport failure and does not authorize a repair write", async () => {
     const attempt = new IngestionAttempt({ ...fence, expected_generation_id: generation });
