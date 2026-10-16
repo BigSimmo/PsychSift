@@ -2578,6 +2578,7 @@
         "tests/viewport-fill-contract.test.ts",
         "tests/work-tab-swipe-blocked.dom.test.tsx",
         "tests/xlsx-extraction-budget.test.ts",
+        "tests/xlsx-sheet-dictionary-projection.test.ts",
         "tests/xlsx-source-provenance.test.ts"
       ],
       "baseline": {

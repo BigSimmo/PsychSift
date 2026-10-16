@@ -950,9 +950,14 @@ async function preflight(buffer: Buffer): Promise<XlsxOriginalSourceContext> {
     referencedStringIndices = new Set<number>();
   const dictionaryStrings = new Map<number, XlsxStringRuns>();
   const dictionaryStyles = new Map<number, XlsxSourceFacts["styleRefs"][number]>();
-  const retainStyle = (indexToken: string | null) => {
+  // Each worksheet's facts carry only the dictionary entries that worksheet references, so its page
+  // and the summed provenance budget are charged for its own use rather than the whole workbook's.
+  const sheetDictionaryUse = new Map<string, { styles: Set<number>; strings: Set<number> }>();
+  const retainStyle = (indexToken: string | null, sheetStyles: Set<number>) => {
     const index = strictIndex(indexToken);
-    if (index === null || index >= cellXfs.length || !stylesSource || dictionaryStyles.has(index)) return;
+    if (index === null || index >= cellXfs.length || !stylesSource) return;
+    sheetStyles.add(index);
+    if (dictionaryStyles.has(index)) return;
     referencedStyleIndices.add(index);
     xlsxBound(referencedStyleIndices.size, L.styles);
     const xf = cellXfs[index],
@@ -997,7 +1002,10 @@ async function preflight(buffer: Buffer): Promise<XlsxOriginalSourceContext> {
       otherChildren: XlsxFeature[] = [],
       printNodes: XlsxNodeToken[] = [];
     const rowIds = new Set<number>(),
-      addresses = new Set<string>();
+      addresses = new Set<string>(),
+      sheetStyles = new Set<number>(),
+      sheetStrings = new Set<number>();
+    sheetDictionaryUse.set(source.part.name, { styles: sheetStyles, strings: sheetStrings });
     if (data)
       for (const rowNode of children(data)) {
         if (!ss(rowNode, "row")) {
@@ -1008,7 +1016,7 @@ async function preflight(buffer: Buffer): Promise<XlsxOriginalSourceContext> {
           rowNumber = strictIndex(rowNumberToken);
         if (rowNumber === null || rowNumber < 1 || rowNumber > 1_048_576 || rowIds.has(rowNumber)) xlsxInvalid();
         rowIds.add(rowNumber);
-        retainStyle(attr(rowNode, "s"));
+        retainStyle(attr(rowNode, "s"), sheetStyles);
         const cells: XlsxCell[] = [],
           rowOther: XlsxFeature[] = [];
         for (const cellNode of children(rowNode)) {
@@ -1044,17 +1052,15 @@ async function preflight(buffer: Buffer): Promise<XlsxOriginalSourceContext> {
             stringIndex = strictIndex(sharedStringIndexToken),
             explicitStyleIndexToken = attr(cellNode, "s"),
             styleIndex = strictIndex(explicitStyleIndexToken);
-          if (
-            stringIndex !== null &&
-            stringIndex < allStringElements.length &&
-            stringsSource &&
-            !dictionaryStrings.has(stringIndex)
-          ) {
-            referencedStringIndices.add(stringIndex);
-            xlsxBound(referencedStringIndices.size, L.strings);
-            dictionaryStrings.set(stringIndex, stringRuns(allStringElements[stringIndex], stringsSource, budget));
+          if (stringIndex !== null && stringIndex < allStringElements.length && stringsSource) {
+            sheetStrings.add(stringIndex);
+            if (!dictionaryStrings.has(stringIndex)) {
+              referencedStringIndices.add(stringIndex);
+              xlsxBound(referencedStringIndices.size, L.strings);
+              dictionaryStrings.set(stringIndex, stringRuns(allStringElements[stringIndex], stringsSource, budget));
+            }
           }
-          retainStyle(explicitStyleIndexToken);
+          retainStyle(explicitStyleIndexToken, sheetStyles);
           const cell: XlsxCell = {
             elementIndex: cells.length,
             address,
@@ -1102,7 +1108,7 @@ async function preflight(buffer: Buffer): Promise<XlsxOriginalSourceContext> {
           max = strictIndex(maxToken);
         if (min === null || max === null || min < 1 || max < min || max > 16_384) xlsxInvalid();
         columns.push({ elementIndex: columns.length, minToken, maxToken, attributes: attrs(column) });
-        retainStyle(attr(column, "style"));
+        retainStyle(attr(column, "style"), sheetStyles);
       }
     if (mergesRoot)
       for (const merge of children(mergesRoot)) {
@@ -1191,16 +1197,19 @@ async function preflight(buffer: Buffer): Promise<XlsxOriginalSourceContext> {
   xlsxBound(packageRelationships.length, L.relationships);
   const worksheets = sheets
     .filter((sheet) => sheet.status === "emitted_worksheet")
-    .map((sheet): XlsxSourceFacts => ({
-      packageRelationships,
-      workbook,
-      worksheet: worksheetFacts.get(sheet.resolvedPart.name)!,
-      stylesPart,
-      styleRefs,
-      sharedStringsPart,
-      sharedStringRefs,
-      packageFeatures,
-    }));
+    .map((sheet): XlsxSourceFacts => {
+      const use = sheetDictionaryUse.get(sheet.resolvedPart.name)!;
+      return {
+        packageRelationships,
+        workbook,
+        worksheet: worksheetFacts.get(sheet.resolvedPart.name)!,
+        stylesPart,
+        styleRefs: styleRefs.filter((style) => use.styles.has(style.sourceIndex)),
+        sharedStringsPart,
+        sharedStringRefs: sharedStringRefs.filter((string) => use.strings.has(string.sourceIndex)),
+        packageFeatures,
+      };
+    });
   return {
     sourceContentSha256: archive.sourceContentSha256,
     packageAudit: {
