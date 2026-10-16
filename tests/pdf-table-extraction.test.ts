@@ -5,13 +5,14 @@ import { describe, expect, it } from "vitest";
 import { resolvePythonBin } from "@/lib/python-bin";
 
 const pythonBin = resolvePythonBin();
-const hasPyMuPDF = spawnSync(pythonBin, ["-c", "import fitz"], { encoding: "utf8" }).status === 0;
+const hasPyMuPDF = spawnSync(pythonBin, ["-c", "import pymupdf"], { encoding: "utf8" }).status === 0;
 const extractorDir = path.join(process.cwd(), "worker", "python");
 
 describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () => {
   it("rejects a 3-line wrapped prose paragraph in the bottom strip below a 3-column table", () => {
     const script = [
-      "import json, sys, fitz",
+      "import json, sys",
+      "import pymupdf as fitz",
       `sys.path.insert(0, ${JSON.stringify(extractorDir)})`,
       "import extract_pdf_assets as e",
       "doc = fitz.open()",
@@ -45,7 +46,8 @@ describe.runIf(hasPyMuPDF)("PDF table edge-strip row recovery (3344a3a9)", () =>
 
   it("recovers genuine multi-column cells in the bottom strip aligned with column x-ranges and preserves top/bottom order", () => {
     const script = [
-      "import json, sys, fitz",
+      "import json, sys",
+      "import pymupdf as fitz",
       `sys.path.insert(0, ${JSON.stringify(extractorDir)})`,
       "import extract_pdf_assets as e",
       "doc = fitz.open()",
