@@ -3,7 +3,7 @@ import { identifierShapeWarning } from "@/lib/clinical-ask/context";
 const MAX_DETAILS_DEPTH = 8;
 
 const extraIdentifierPatterns = [
-  /\b(?:medical record|record|patient|hospital|u?mrn|urn|nhi)\s*(?:number|no\.?|#|id)?\s*[:=-]?\s*[A-Z0-9-]{4,}\b/i,
+  /\b(?:medical record|record|patient|hospital|u?mrn|urn|nhi)\s*(?:number|no\.?|#|id)?\s*[:=-]?\s*(?=[A-Z0-9-]*\d)[A-Z0-9-]{4,}\b/i,
   /\b[A-Z]\d{6,8}\b/,
   /\b(?:dob|date of birth|born|d\.o\.b\.)\s*[:=-]?\s*(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2})\b/i,
   /\b(?:patient|pt)\s*[:=-]?\s*[A-Z][a-z]+\s+[A-Z][a-z]+\b/,
