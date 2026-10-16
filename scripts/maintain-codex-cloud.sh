@@ -30,7 +30,7 @@ if [[ "$requested_cloud_profile_set" = "yes" ]]; then
     *) fail "Unsupported CODEX_CLOUD_ACCESS_PROFILE; expected offline or connected." ;;
   esac
 fi
-if [[ "${RAG_PROVIDER_MODE+yes}" = "yes" && "$RAG_PROVIDER_MODE" != "offline" ]]; then
+if [[ "$requested_cloud_profile" = "connected" && "${RAG_PROVIDER_MODE+yes}" = "yes" && "$RAG_PROVIDER_MODE" != "offline" ]]; then
   fail "The selected legacy Codex Cloud profile must keep RAG_PROVIDER_MODE=offline."
 fi
 
