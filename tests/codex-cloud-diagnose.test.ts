@@ -27,6 +27,7 @@ describe("Codex Cloud diagnostics", () => {
   });
 
   it.each([
+    ["24.13.0", false],
     ["24.14.99", false],
     ["24.15.0", true],
     ["24.18.1", true],

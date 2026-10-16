@@ -161,6 +161,7 @@ fi
 export PATH="\$HOME/.local/bin:\$HOME/.deno/bin:\$HOME/.cache/clinical-kb-codex/ocr-venv-${expected_cloud_python}/bin:\$PATH"
 export CODEX_CLOUD_OCR_PYTHON="\$HOME/.cache/clinical-kb-codex/ocr-venv-${expected_cloud_python}/bin/python"
 export CODEX_CLOUD=1
+export CODEX_CLOUD_PROFILE_LOADED=1
 export CODEX_CLOUD_ACCESS_PROFILE="${access_profile}"
 export NEXT_PUBLIC_DEMO_MODE="\${NEXT_PUBLIC_DEMO_MODE:-true}"
 export PLAYWRIGHT_OFFLINE_MODE="\${PLAYWRIGHT_OFFLINE_MODE:-true}"
@@ -282,6 +283,23 @@ fi
 mv -f "$codex_config_candidate" "$codex_config_file"
 trap - EXIT
 
+profile_source='[ -f "$HOME/.clinical-kb-codex-cloud.sh" ] && . "$HOME/.clinical-kb-codex-cloud.sh"'
+for shell_profile in "$HOME/.bashrc" "$HOME/.profile" "$HOME/.bash_profile"; do
+  touch "$shell_profile"
+  profile_existing="$(<"$shell_profile")"
+  profile_existing="$(printf '%s\n' "$profile_existing" | grep -Fvx '# PsychSift Codex Cloud runtime' || true)"
+  profile_existing="$(printf '%s\n' "$profile_existing" | grep -Fvx "$profile_source" || true)"
+  # Drop the separator a previous run wrote after the block so reruns stay idempotent.
+  profile_existing="$(printf '%s\n' "$profile_existing" | sed '/./,$!d')"
+  profile_candidate="$(mktemp "${shell_profile}.XXXXXX")"
+  if [[ -n "$profile_existing" ]]; then
+    printf '# PsychSift Codex Cloud runtime\n%s\n\n%s\n' "$profile_source" "$profile_existing" > "$profile_candidate"
+  else
+    printf '# PsychSift Codex Cloud runtime\n%s\n' "$profile_source" > "$profile_candidate"
+  fi
+  mv -f "$profile_candidate" "$shell_profile"
+done
+
 # Test harness only: write the runtime profile + shell policy, then stop before
 # toolchain installs so unit tests can exercise config merge without a runtime.
 if [[ "$policy_only_harness" = "1" ]]; then
@@ -289,16 +307,9 @@ if [[ "$policy_only_harness" = "1" ]]; then
   exit 0
 fi
 
-profile_source='[ -f "$HOME/.clinical-kb-codex-cloud.sh" ] && . "$HOME/.clinical-kb-codex-cloud.sh"'
-for shell_profile in "$HOME/.bashrc" "$HOME/.profile" "$HOME/.bash_profile"; do
-  touch "$shell_profile"
-  if ! grep -Fq '.clinical-kb-codex-cloud.sh' "$shell_profile"; then
-    printf '\n# PsychSift Codex Cloud runtime\n%s\n' "$profile_source" >> "$shell_profile"
-  fi
-done
-
 # shellcheck source=/dev/null
 source "$runtime_profile"
+bash scripts/install-codex-cloud-command-shims.sh
 
 log "Installing locked Node dependencies."
 setup_step="node-dependencies"

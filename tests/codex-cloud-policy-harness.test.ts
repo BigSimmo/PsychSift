@@ -259,16 +259,19 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
 
   it("retains the documented restricted shim path for the known launcher name", () => {
     const test = fixture("missing");
-    const nodeBin = path.join(test.home, ".nvm/versions/node/v24.0.0/bin");
+    const nodeBin = path.join(test.home, ".nvm/versions/node/v24.15.0/bin");
     mkdirSync(nodeBin, { recursive: true });
     for (const command of ["node", "npm", "npx"]) {
       const executable = path.join(nodeBin, command);
-      writeFileSync(executable, "#!/bin/bash\nexit 0\n");
+      writeFileSync(
+        executable,
+        command === "node" ? "#!/bin/bash\nprintf '%s\\n' '24.15.0'\n" : "#!/bin/bash\nexit 0\n",
+      );
       chmodSync(executable, 0o755);
     }
     writeFileSync(
       path.join(test.home, ".clinical-kb-codex-cloud.sh"),
-      'export NVM_DIR="$HOME/.nvm"\nunset OPENAI_BASE_URL\nnvm() { printf "%s\\n" v24.0.0; }\n',
+      'export NVM_DIR="$HOME/.nvm"\nunset OPENAI_BASE_URL\nnvm() { printf "%s\\n" v24.15.0; }\n',
     );
 
     const result = test.run(
@@ -332,8 +335,13 @@ describe("Codex Cloud policy-only harness runtime isolation", () => {
     expect(config).toContain(test.config);
     expect(config).toContain("[shell_environment_policy]");
     expect(existsSync(path.join(test.home, ".clinical-kb-codex-cloud.sh"))).toBe(true);
+    // Setup now puts the Cloud profile at the top of each shell profile before the harness stops,
+    // so a non-interactive early return cannot skip it. That is shell configuration only: the
+    // runtime-call log above still proves no runtime was probed or installed.
     for (const profile of [".bashrc", ".profile", ".bash_profile"]) {
-      expect(existsSync(path.join(test.home, profile))).toBe(false);
+      const contents = readFileSync(path.join(test.home, profile), "utf8");
+      expect(contents.startsWith("# PsychSift Codex Cloud runtime\n")).toBe(true);
+      expect(contents).toContain('. "$HOME/.clinical-kb-codex-cloud.sh"');
     }
   });
 

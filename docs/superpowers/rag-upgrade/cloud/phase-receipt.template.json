@@ -11,7 +11,6 @@
   "programmeImplementationBase": "f3d1a3cce2c943ad3083425ed9c7c46dbef23087",
   "branch": "codex/rag-upgrade-p00",
   "launchProfile": "high",
-  "xhighConfirmed": false,
   "controllerRouting": {
     "agentId": "controller-p00",
     "runtimeHost": "codex-cloud",

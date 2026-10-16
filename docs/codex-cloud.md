@@ -12,6 +12,14 @@ The [archived legacy bootstrap](archive/codex-cloud-legacy-profile-2026-10-16.md
 applies only when explicitly selected by the owner or environment, or when testing/repairing it.
 Its executable checks remain fail-closed. The archive is not a fallback operating policy.
 
+Within that explicitly selected legacy workflow, setup prepends the generated sanitized profile
+to `.bashrc`, `.profile` and `.bash_profile`, ahead of shell early-return guards, and installs
+profile-loading `node`/`npm`/`npx` shims. Maintenance validates and reloads the profile, then
+reinstalls those shims before acceptance checks. The selected legacy checker can load its generated
+profile when shell PATH ordering bypasses a shim; that child-process protection does not prove the
+raw parent clean or select the legacy workflow for an unrelated current host. Raw-boundary guards
+still run before setup or maintenance mutations; follow the canonical recovery policy below.
+
 ## Tools and authentication
 
 For the cross-client Desktop/CLI template versus a separately installed/authenticated workspace app,

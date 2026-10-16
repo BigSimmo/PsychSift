@@ -362,24 +362,26 @@ export function validateHostedAppInventory(appNames) {
 }
 
 export const providerCredentialVariables = Object.freeze([
-  ...providerEnvironmentKeys,
-  "RAILWAY_API_TOKEN",
-  "RAILWAY_TOKEN",
-  "GH_TOKEN",
-  "GITHUB_TOKEN",
-  "CODEX_CLOUD_GITHUB_PAT",
-  "GITLAB_TOKEN",
-  "GLAB_TOKEN",
-  "CODEX_TRIGGER_TOKEN",
-  "HEALTH_DEEP_PROBE_SECRET",
-  "INDEXING_V3_AGENT_SECRET",
-  "CROSS_TENANT_SERVICE_ROLE_KEY",
-  "FIGMA_CLIENT_ID",
-  "FIGMA_CLIENT_SECRET",
-  "FIGMA_ACCESS_TOKEN",
-  "FIGMA_PERSONAL_ACCESS_TOKEN",
-  "FIGMA_TOKEN",
-  "FIGMA_NPM_TOKEN",
+  ...new Set([
+    ...providerEnvironmentKeys,
+    "RAILWAY_API_TOKEN",
+    "RAILWAY_TOKEN",
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "CODEX_CLOUD_GITHUB_PAT",
+    "GITLAB_TOKEN",
+    "GLAB_TOKEN",
+    "CODEX_TRIGGER_TOKEN",
+    "HEALTH_DEEP_PROBE_SECRET",
+    "INDEXING_V3_AGENT_SECRET",
+    "CROSS_TENANT_SERVICE_ROLE_KEY",
+    "FIGMA_CLIENT_ID",
+    "FIGMA_CLIENT_SECRET",
+    "FIGMA_ACCESS_TOKEN",
+    "FIGMA_PERSONAL_ACCESS_TOKEN",
+    "FIGMA_TOKEN",
+    "FIGMA_NPM_TOKEN",
+  ]),
 ]);
 
 function read(relativePath) {
@@ -1096,13 +1098,16 @@ function validateMaintenanceAndCommandShims(sources, errors) {
   }
   for (const [pattern, message] of [
     [/nvm version/, "Cloud command shims must resolve the selected Node version without following their own wrappers."],
-    [/clean_path=.*\.local.*bin/, "Cloud command shims must remove their directory before running child npm scripts."],
+    [
+      /\[\[ "\\\$path_entry" == "\\\$HOME\/\.local\/bin" \]\] && continue[\s\S]*clean_path\+="\\\$path_entry"/,
+      "Cloud command shims must remove their directory before running child npm scripts.",
+    ],
     [/mkdir -p "\$HOME\/\.local\/bin"/, "Cloud command shims must create their destination directory."],
     [/\.clinical-kb-codex-cloud\.sh/, "Cloud command shims must load the generated profile."],
   ]) {
     requireMatch(errors, commandShims, pattern, message);
   }
-  if (!commandShims.includes('exec "$node_bin/$command_name" "\\$@"')) {
+  if (!commandShims.includes('exec "$command_path" "\\$@"')) {
     errors.push("Cloud command shims must execute absolute Node commands.");
   }
 }
@@ -1354,41 +1359,124 @@ export async function validateCodexCloudRuntime(env = process.env) {
   return errors;
 }
 
+/** @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env] */
+function readableRuntimeProfile(env = process.env) {
+  if (!env.HOME) return null;
+  const profilePath = path.join(env.HOME, ".clinical-kb-codex-cloud.sh");
+  try {
+    return statSync(profilePath).isFile() && (accessSync(profilePath, constants.R_OK), profilePath);
+  } catch {
+    return null;
+  }
+}
+
+/** @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env] */
+export function shouldAutoSourceCloudProfile(env = process.env) {
+  return (
+    env.CODEX_CLOUD === "1" &&
+    env.NODE_ENV !== "test" &&
+    env.CODEX_CLOUD_PROFILE_LOADED !== "1" &&
+    Boolean(readableRuntimeProfile(env))
+  );
+}
+
+/** Validate explicit inherited selectors before a cached profile can replace them. */
+function validateInheritedCloudProfileSelection(env = process.env) {
+  const profile = env.CODEX_CLOUD_ACCESS_PROFILE;
+  if (profile !== undefined && !["offline", "connected"].includes(profile)) {
+    return ["CODEX_CLOUD_ACCESS_PROFILE must be offline or connected."];
+  }
+  const errors = [];
+  for (const [name, allowed] of Object.entries({
+    RAG_PROVIDER_MODE: ["offline"],
+    NEXT_PUBLIC_DEMO_MODE: profile === "offline" ? ["true"] : ["true", "false"],
+    PLAYWRIGHT_OFFLINE_MODE: profile === "offline" ? ["true"] : ["true", "false"],
+  })) {
+    if (env[name] !== undefined && !allowed.includes(env[name])) {
+      errors.push(`${name} must be an approved value for the selected legacy profile.`);
+    }
+  }
+  return errors;
+}
+
 if (isDirectEntrypoint(import.meta.url)) {
-  const errors = validateCodexCloudSetup();
   const commandArguments = process.argv.slice(2);
-  const hostedAppArgumentErrors = validateHostedAppInventoryArguments(commandArguments);
   const hostedAppInventory = parseHostedAppInventoryArgument(commandArguments);
-  const hostedAppInventoryErrors = validateHostedAppInventory(hostedAppInventory);
-  const hostedAppInputErrors = [...hostedAppArgumentErrors, ...hostedAppInventoryErrors];
-  errors.push(...hostedAppInputErrors);
   const { runtime, environment } = codexCloudValidationSelection(commandArguments);
-  const runtimeAllowed = runtime && errors.length === 0;
-  if (runtimeAllowed) errors.push(...(await validateCodexCloudRuntime()));
-  else if (environment) errors.push(...validateCodexCloudEnvironment());
-  if (
-    runtimeAllowed &&
-    errors.length === 0 &&
-    process.env.CODEX_CLOUD_PROVISIONING === "1" &&
-    gitCheckoutFreshness(repoRoot).freshness === "unverified"
-  ) {
-    console.warn(
-      "[Codex Cloud Check] WARN: checkout freshness is unverified during provisioning; run explicit acceptance with CODEX_CLOUD_EXPECTED_BASE_SHA.",
+  const autoSourceProfile = shouldAutoSourceCloudProfile(process.env);
+  const inputErrors = [
+    ...validateHostedAppInventoryArguments(commandArguments),
+    ...validateHostedAppInventory(hostedAppInventory),
+    ...(environment || autoSourceProfile ? validateInheritedCloudProfileSelection() : []),
+  ];
+  // A profile may populate missing modes and scrub an authorized offline child,
+  // but a failed inherited boundary cannot become full runtime acceptance.
+  const inheritedProviderNames = configuredProviderCredentialNames();
+  if (runtime && inheritedProviderNames.length > 0) {
+    const profile = process.env.CODEX_CLOUD_ACCESS_PROFILE ?? "offline";
+    inputErrors.push(
+      `${profile === "connected" ? "Connected" : "Offline"} mode exposes provider environment variables: ${inheritedProviderNames.join(", ")}.`,
     );
   }
-  if (environment && errors.length === 0) {
-    console.log("[Codex Cloud Environment] sanitized legacy profile modes and capabilities:");
-    for (const line of sanitizedCloudCapabilityLines(process.env, { hostedAppInventory })) console.log(`  ${line}`);
-  }
-  if (errors.length > 0) {
-    for (const error of errors) console.error(`[Codex Cloud Check] FAIL: ${error}`);
+  const runtimeProfilePath = inputErrors.length === 0 && autoSourceProfile ? readableRuntimeProfile(process.env) : null;
+  if (inputErrors.length > 0) {
+    for (const error of inputErrors) console.error(`[Codex Cloud Check] FAIL: ${error}`);
     process.exitCode = 1;
+  } else if (runtimeProfilePath) {
+    const bashExecutable =
+      process.platform === "win32"
+        ? path.join(process.env.ProgramFiles || "C:\\Program Files", "Git/bin/bash.exe")
+        : "bash";
+    const reexec = spawnSync(
+      bashExecutable,
+      [
+        "-c",
+        'profile_path="$1"; node_exec="$2"; script_path="$3"; shift 3; saved_args=("$@"); set --; . "$profile_path" && export CODEX_CLOUD_PROFILE_LOADED=1 && exec "$node_exec" "$script_path" "${saved_args[@]}"',
+        "codex-cloud-check",
+        runtimeProfilePath.replaceAll("\\", "/"),
+        process.execPath,
+        fileURLToPath(import.meta.url),
+        ...process.argv.slice(2),
+      ],
+      { cwd: repoRoot, stdio: "inherit" },
+    );
+    if (reexec.error) {
+      console.error(
+        `[Codex Cloud Check] FAIL: could not re-exec through bash to load ${runtimeProfilePath}: ${reexec.error.message}`,
+      );
+    } else if (reexec.signal) {
+      console.error(`[Codex Cloud Check] FAIL: bash re-exec was terminated by signal ${reexec.signal}.`);
+    }
+    process.exitCode = reexec.status ?? 1;
   } else {
-    const scope = codexCloudValidationScope({
-      runtime,
-      environment,
-      browserInstallSkipped: process.env.CODEX_CLOUD_SKIP_BROWSER_INSTALL === "1",
-    });
-    console.log(`[Codex Cloud Check] PASS: ${scope} Cloud contracts match.`);
+    const errors = validateCodexCloudSetup();
+    const runtimeAllowed = runtime && errors.length === 0;
+    if (runtimeAllowed) errors.push(...(await validateCodexCloudRuntime()));
+    else if (environment) errors.push(...validateCodexCloudEnvironment());
+    if (
+      runtimeAllowed &&
+      errors.length === 0 &&
+      process.env.CODEX_CLOUD_PROVISIONING === "1" &&
+      gitCheckoutFreshness(repoRoot).freshness === "unverified"
+    ) {
+      console.warn(
+        "[Codex Cloud Check] WARN: checkout freshness is unverified during provisioning; run explicit acceptance with CODEX_CLOUD_EXPECTED_BASE_SHA.",
+      );
+    }
+    if (environment && errors.length === 0) {
+      console.log("[Codex Cloud Environment] sanitized legacy profile modes and capabilities:");
+      for (const line of sanitizedCloudCapabilityLines(process.env, { hostedAppInventory })) console.log(`  ${line}`);
+    }
+    if (errors.length > 0) {
+      for (const error of errors) console.error(`[Codex Cloud Check] FAIL: ${error}`);
+      process.exitCode = 1;
+    } else {
+      const scope = codexCloudValidationScope({
+        runtime,
+        environment,
+        browserInstallSkipped: process.env.CODEX_CLOUD_SKIP_BROWSER_INSTALL === "1",
+      });
+      console.log(`[Codex Cloud Check] PASS: ${scope} Cloud contracts match.`);
+    }
   }
 }
