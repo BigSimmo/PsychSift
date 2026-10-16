@@ -19,9 +19,20 @@ runtime_profile="$HOME/.clinical-kb-codex-cloud.sh"
 # shellcheck source=/dev/null
 source "$runtime_profile"
 
+node_version_supported() {
+  local version="$1"
+  local actual_major actual_minor actual_patch
+  [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || return 1
+  IFS=. read -r actual_major actual_minor actual_patch <<< "$version"
+  (( actual_major < 25 )) || return 1
+  (( actual_major > 24 )) && return 0
+  (( actual_minor > 15 )) && return 0
+  (( actual_minor == 15 && actual_patch >= 0 ))
+}
+
 resolved_node_version=""
 if command -v nvm >/dev/null 2>&1; then
-  resolved_node_version="$(nvm version "$expected_node_major")"
+  resolved_node_version="$(nvm version "$expected_node_major" 2>/dev/null || true)"
 fi
 if [[ -n "$resolved_node_version" && "$resolved_node_version" != "N/A" ]]; then
   node_bin="$NVM_DIR/versions/node/$resolved_node_version/bin"
@@ -34,11 +45,25 @@ else
   fallback_path="${fallback_path%:}"
   fallback_node="$(PATH="$fallback_path" command -v node 2>/dev/null || true)"
   [[ -n "$fallback_node" ]] || fail "Node ${expected_node_major} is unavailable through nvm or PATH."
+  fallback_node_version="$($fallback_node -p 'process.versions.node' 2>/dev/null || true)"
+  node_version_supported "$fallback_node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${fallback_node_version:-unavailable}."
   node_bin="$(cd "$(dirname "$fallback_node")" && pwd)"
 fi
+node_version="$($node_bin/node -p 'process.versions.node' 2>/dev/null || true)"
+node_version_supported "$node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${node_version:-unavailable}."
 mkdir -p "$HOME/.local/bin"
 for command_name in node npm npx; do
-  [[ -x "$node_bin/$command_name" ]] || fail "${command_name} is unavailable in Node ${expected_node_major}."
+  if [[ "$command_name" = node ]]; then
+    command_path="$node_bin/node"
+  else
+    command_path=""
+    if [[ -x "$node_bin/$command_name" ]]; then
+      command_path="$node_bin/$command_name"
+    else
+      command_path="$(PATH="${fallback_path:-$PATH}" command -v "$command_name" 2>/dev/null || true)"
+    fi
+  fi
+  [[ -x "$command_path" ]] || fail "${command_name} is unavailable in Node ${expected_node_major}."
   cat > "$HOME/.local/bin/$command_name" <<EOF
 #!/usr/bin/env bash
 set -Eeuo pipefail
@@ -57,7 +82,7 @@ else
   export PATH="$node_bin"
 fi
 unset clean_path
-exec "$node_bin/$command_name" "\$@"
+exec "$command_path" "\$@"
 EOF
   chmod 0755 "$HOME/.local/bin/$command_name"
 done
