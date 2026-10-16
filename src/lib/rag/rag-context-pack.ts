@@ -1,3 +1,4 @@
+import { estimateTokens } from "@/lib/chunking";
 import { createHash } from "node:crypto";
 
 import { retrievalAccessScopeKey, type RetrievalAccessScope } from "@/lib/owner-scope";
@@ -14,6 +15,8 @@ import {
   type CoverageEvidenceSelection,
 } from "@/lib/rag/rag-coverage";
 import {
+  recheckCheckedPublishedOriginalSectionLayout,
+  type CheckedPublishedOriginalSectionLayout,
   buildRagSourceBlock,
   buildPackedRagSourceBlock,
   compactContextText,
@@ -511,7 +514,36 @@ export function buildPackedCrossDocumentFusionBrief(query: string, selection: Pa
   return buildCrossDocumentFusionBrief(query, selection.results);
 }
 
+const checkedPublishedLayoutsByResults = new WeakMap<SearchResult[], CheckedPublishedOriginalSectionLayout>();
+export function checkedPublishedOriginalSectionLayoutForResults(results: SearchResult[]) {
+  const layout = checkedPublishedLayoutsByResults.get(results);
+  if (layout) recheckCheckedPublishedOriginalSectionLayout(layout, results);
+  return layout;
+}
+
+/** Whole selected-set admission uses actual serialized tokens and never silently drops units. */
+export function packCheckedPublishedOriginalSectionContext(
+  results: SearchResult[],
+  queryClass: RagQueryClass,
+  tokenBudget: number,
+  layout: CheckedPublishedOriginalSectionLayout,
+) {
+  recheckCheckedPublishedOriginalSectionLayout(layout, results);
+  if (
+    estimateTokens(buildRagSourceBlock(results, { queryClass, checkedOriginalSectionLayout: layout })) > tokenBudget
+  ) {
+    const error = new Error("Complete published original sections exceed the context budget.");
+    error.name = "OriginalSectionLayoutBindingError";
+    throw error;
+  }
+  recheckCheckedPublishedOriginalSectionLayout(layout, results);
+  checkedPublishedLayoutsByResults.set(results, layout);
+  return results;
+}
+
 export function buildContextSourceBlock(results: SearchResult[], options?: Parameters<typeof buildRagSourceBlock>[1]) {
+  const layout = checkedPublishedOriginalSectionLayoutForResults(results);
+  if (layout) return buildRagSourceBlock(results, { ...options, checkedOriginalSectionLayout: layout });
   const groups = packedGroupsByResultSet.get(results);
   return groups ? buildPackedRagSourceBlock(groups, options) : buildRagSourceBlock(results, options);
 }
@@ -620,6 +652,7 @@ export function createGenerationContextPacker(options: {
   snapshot: RagContextSnapshot;
   accessScope: RetrievalAccessScope;
   loadLegacy: (results: SearchResult[]) => Promise<SearchResult[]>;
+  loadCheckedPublishedOriginal?: (results: SearchResult[], tokenBudget: number) => Promise<SearchResult[] | null>;
   onCacheHit?: () => void;
   onDuration?: (durationMs: number) => void;
 }) {
@@ -636,8 +669,13 @@ export function createGenerationContextPacker(options: {
       snapshot: options.snapshot,
       accessScope: options.accessScope,
     };
+    // Recheck the actual selection even when a prior pack used the same row IDs.
+    if (options.loadCheckedPublishedOriginal) {
+      const complete = await options.loadCheckedPublishedOriginal(selection.results, tokenBudget);
+      if (complete) return complete;
+    }
     const key = packedContextCacheKey(selection.results, options.queryClass, identity);
-    const cached = cache.get(key);
+    const cached = options.loadCheckedPublishedOriginal ? undefined : cache.get(key);
     if (cached) {
       options.onCacheHit?.();
       return cached;
@@ -658,7 +696,7 @@ export function createGenerationContextPacker(options: {
           )
         : await options.loadLegacy(selection.results);
     options.onDuration?.(Date.now() - startedAt);
-    cache.set(key, packed);
+    if (!options.loadCheckedPublishedOriginal) cache.set(key, packed);
     return packed;
   };
 }

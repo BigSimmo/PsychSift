@@ -66,7 +66,16 @@ describe("Challenger M5-2: Empirical Stress Test & Verification Gates", () => {
     it("verifies CLI check-clinical-hazard-controls.mjs exits with code 1 when a sealed path is tampered", () => {
       // Create a temporary tampered copy in memory and write to a temporary JSON file to test CLI subprocess execution
       const tampered = structuredClone(manifest);
-      const testPath = "src/lib/answer-verification.ts";
+      // A sealed path under an active drift exception is deliberately tolerated, so the CLI
+      // must be proved on a sealed path with no exception. answer-verification.ts was the fixed
+      // choice until PR #3546 recorded a drift exception for it; pick the first unexcepted one.
+      const exceptionPaths = new Set((manifest.driftExceptions ?? []).map((exc: { path: string }) => exc.path.trim()));
+      const testPath = [...citedRegisterPaths(manifest)]
+        .sort()
+        .find((p: string) => !exceptionPaths.has(p) && tampered.reviewedPathDigests[p] !== undefined);
+      expect(testPath).toBeDefined();
+      if (!testPath) return;
+      expect(exceptionPaths.has(testPath)).toBe(false);
       tampered.reviewedPathDigests[testPath] = "0".repeat(64);
 
       const tempManifestPath = path.join(PROJECT_ROOT, "docs/clinical-hazard-controls.tamper-test.json");

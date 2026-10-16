@@ -45,7 +45,7 @@ import {
   type CalculatorFixture,
 } from "./calculator-fixtures";
 import { CalculatorSheet } from "./calculator-sheet";
-import { ClinicalMathPanel } from "./clinical-math-panel";
+import { ClinicalMathPanel, useClinicalMathPanelState } from "./clinical-math-panel";
 import { calculatorRecordById } from "./calculator-routes";
 import {
   MetaPill,
@@ -345,6 +345,7 @@ export function CalculatorsSearchPage({
     () => false,
   );
   const isDesktopSidebar = useSyncExternalStore(subscribeDesktopSidebar, getDesktopSidebarSnapshot, () => false);
+  const clinicalMath = useClinicalMathPanelState();
   const query = hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery;
   const normalizedQuery = normalizeCalculatorQuery(query);
   const smartExpansions = useMemo(() => smartSearchExpansions("calculators", query), [query]);
@@ -605,14 +606,14 @@ export function CalculatorsSearchPage({
         sidebar={
           <>
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {isDesktopSidebar ? <ClinicalMathPanel /> : null}
+            {isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
             <AboutPanel />
           </>
         }
         sidebarMobile={
           <div className="grid gap-4 xl:hidden">
             <ContinuePanel inProgress={inProgress} onOpen={openCalculator} />
-            {!isDesktopSidebar ? <ClinicalMathPanel /> : null}
+            {!isDesktopSidebar ? <ClinicalMathPanel state={clinicalMath} /> : null}
             <AboutPanel />
           </div>
         }

@@ -181,14 +181,33 @@ export function buildTableFactRows(args: {
     // rows of long dose/threshold tables are not silently dropped from the facts layer.
     for (const [rowIndex, rawCells] of image.tableRows.slice(0, 400).entries()) {
       const cells = rawCells.map((cell) => compactSearchText(cell, 240));
+      // Native table extraction can include the column headings as its first row.
+      // Retain the original row ordinal, but do not turn that heading into evidence.
+      if (
+        rowIndex === 0 &&
+        columns.length > 0 &&
+        cells.length === columns.length &&
+        cells.every((cell, index) => cell === columns[index])
+      )
+        continue;
       const rowText = cells.filter(Boolean).join(" ");
       if (!rowText) continue;
       const rowLabel = tableFactValue(cells, parameterIndex >= 0 ? parameterIndex : 0);
+      // Named columns constrain meaning: an unmatched concentration or interval
+      // remains in metadata.cells without being relabelled a threshold or action.
       const threshold =
-        tableFactValue(cells, thresholdIndex) ??
-        cells.find((cell) => /(?:\d|mg|mcg|mmol|anc|fbc|score|level|threshold|withhold|cease)/i.test(cell)) ??
-        null;
-      const action = tableFactValue(cells, actionIndex) ?? cells[cells.length - 1] ?? null;
+        thresholdIndex >= 0
+          ? tableFactValue(cells, thresholdIndex)
+          : columns.length === 0
+            ? (cells.find((cell) => /(?:\d|mg|mcg|mmol|anc|fbc|score|level|threshold|withhold|cease)/i.test(cell)) ??
+              null)
+            : null;
+      const action =
+        actionIndex >= 0
+          ? tableFactValue(cells, actionIndex)
+          : columns.length === 0
+            ? (cells[cells.length - 1] ?? null)
+            : null;
       const dedupeKey = [image.id, rowLabel, threshold, action, rowText, image.tableTitle, image.tableLabel]
         .map((value) => String(value ?? "").toLowerCase())
         .join("\u001f");

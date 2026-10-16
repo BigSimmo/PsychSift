@@ -1,0 +1,1137 @@
+{
+  "schemaVersion": 1,
+  "project": "PsychSift",
+  "objective": "rag-source-ingestion-continuation-v1",
+  "preparedAtUtc": "2026-10-14T15:57:43.4832618Z",
+  "publicationState": "EXTERNAL_SANITISED_HANDOVER_ONLY_NO_GIT_OR_PR_ACTION",
+  "sourceIdentity": {
+    "originalCapturedCommit": "8237f6b81fabfb59e1842f6bb2e1d006cd79ee79",
+    "reviewedCompositionBase": "4382217c3c61f2407d717e665cf9388c41ea2f5b",
+    "reviewedCompositionLive": "e3008dbd51f451ed57d842fb1b2f5f7c9aa0d0c8",
+    "finalNumericSha256": "559b62cba08fedf9330e2bd907442de08cee204dbc6f395b99e2d849627eb5c2",
+    "finalRendererSha256": "b0b1ac48bb3ccdfdad22b8b33f2b8dd1b0254082ce4d515034541150a27ffe17",
+    "finalHostedImageSha256": "ba0c5368cc570eda04c51d799f785803ff676350eef4fb2216389f2aef741b58",
+    "actualPRBase": "ROOT_MUST_RECORD_CURRENT_PUBLICATION_BASE; historical preimages are not current PR-base proof"
+  },
+  "originalClinicalRequirements": [
+    "Healthy adults18+ weekly10 and daily4 standard-drink limit with risk-lowering and no-safe/no-risk/abstention qualifiers",
+    "Children/under18 abstinence and no clear safe level",
+    "Pregnancy/planning abstinence and no safe level identified",
+    "Breastfeeding abstinence safest for baby and maternal no-safe-amount qualification",
+    "Direct correct cited source binding; preserve source status/authority and low trust",
+    "Unsupported value/population/source recommendations absent from delivered clinical text and prepared copy"
+  ],
+  "files": [
+    {
+      "path": "src/lib/rag/rag-extractive-answer.ts",
+      "kind": "retained RAG source/test",
+      "preimageChain": [
+        {
+          "stage": "ordinary18 finalizer/copy packet",
+          "beforeSha256": "6cf722a6aafb7180da2693cfa7ae98fc31805fd9bde05336d35dd9495d8c4dd8",
+          "afterSha256": "15f34f598929c13fe29faa073a91ec3d5d4fbfd9f52590ec4e6018e1ba434211",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "15f34f598929c13fe29faa073a91ec3d5d4fbfd9f52590ec4e6018e1ba434211",
+          "afterSha256": "15f34f598929c13fe29faa073a91ec3d5d4fbfd9f52590ec4e6018e1ba434211",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "reviewed main-line composition",
+          "beforeSha256": "F98400D407E40A7F8B94B0ADC3E2277956FA92FA8EE2E4E1AF6FFD8590BA7139",
+          "afterSha256": "CE178748EB4753EC265860F34DEE93498BCF5938A7E11480DA2E31546D53FDA6",
+          "beforeExistence": "recorded hosted preimage"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "4f52b5680f67f382d643554825727dd601e8e4e37f81bb54de63a99aff194803",
+          "afterSha256": "15f34f598929c13fe29faa073a91ec3d5d4fbfd9f52590ec4e6018e1ba434211",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "ce178748eb4753ec265860f34dee93498bcf5938a7e11480da2e31546d53fda6",
+        "bytes": 309688,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE",
+      "reviewedGitComposition": {
+        "baseCommit": "4382217c3c61f2407d717e665cf9388c41ea2f5b",
+        "liveCommit": "e3008dbd51f451ed57d842fb1b2f5f7c9aa0d0c8",
+        "baseSha256": "BE64B411D19E592A12F015BC31EA627CC7A989FC9F34775612E6815D5A3F092B",
+        "liveSha256": "632CCCB0824859D96E2C5BC850542F9A43E42417100E15C226F335E42CCF187D",
+        "overlap": {
+          "baseExists": true,
+          "hostedChangeHunks": 15,
+          "liveChangeHunks": 5,
+          "baseLineOverlap": false,
+          "mergeFileConflict": false,
+          "liveToCandidateEditTextExact": true,
+          "hostedToCandidate": {
+            "addedLines": 10,
+            "deletedLines": 5
+          }
+        }
+      }
+    },
+    {
+      "path": "src/components/clinical-dashboard/answer-copy-payload.ts",
+      "kind": "retained RAG source/test",
+      "preimageChain": [
+        {
+          "stage": "ordinary18 finalizer/copy packet",
+          "beforeSha256": "328fb5d881303458387c1397227d8cfa75730ea0b78317d47f1d9190481820b3",
+          "afterSha256": "70d471ca6e9efaa5b630ad8667b9813d5944cc1621b0f86f2dffcb452877bac6",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "f539c626408da5d8c37c365aa290c9d070ede1cf879692053d8dc07d4bfcbf28",
+          "afterSha256": "70d471ca6e9efaa5b630ad8667b9813d5944cc1621b0f86f2dffcb452877bac6",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "19cf8d435f0cecab7da6436d7de4c406759e47259d5fecab3db1248b452d1235",
+        "bytes": 13716,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-source-bound-alcohol-summary.ts",
+      "kind": "retained RAG source/test",
+      "preimageChain": [
+        {
+          "stage": "ordinary18 finalizer/copy packet",
+          "beforeSha256": null,
+          "afterSha256": "2e15180fdefc534a546c6a44eb945832f9a91889ab0f30ba2693cdaa92cec68f",
+          "beforeExistence": "recorded new file"
+        },
+        {
+          "stage": "final coupled recovery",
+          "beforeSha256": "2e15180fdefc534a546c6a44eb945832f9a91889ab0f30ba2693cdaa92cec68f",
+          "afterSha256": "02124fce9ffa8f7cf7374fcd58acf472d375781966fd562feb9c034e247e3464",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "final unsafe-output correction",
+          "beforeSha256": "02124fce9ffa8f7cf7374fcd58acf472d375781966fd562feb9c034e247e3464",
+          "afterSha256": "b0b1ac48bb3ccdfdad22b8b33f2b8dd1b0254082ce4d515034541150a27ffe17",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": null,
+          "afterSha256": "2e15180fdefc534a546c6a44eb945832f9a91889ab0f30ba2693cdaa92cec68f",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "b0b1ac48bb3ccdfdad22b8b33f2b8dd1b0254082ce4d515034541150a27ffe17",
+        "bytes": 14415,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "tests/rag-nhmrc-delivery.test.ts",
+      "kind": "retained RAG source/test",
+      "preimageChain": [
+        {
+          "stage": "ordinary18 finalizer/copy packet",
+          "beforeSha256": null,
+          "afterSha256": "22693e89712412b9f651d7826c7f50475fc294294ea381747b95efe281933a16",
+          "beforeExistence": "recorded new file"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": null,
+          "afterSha256": "22693e89712412b9f651d7826c7f50475fc294294ea381747b95efe281933a16",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
+      },
+      "publicationDisposition": "PRIVATE_RECORDED_FIXTURE_DEPENDENCY_DO_NOT_PUBLISH_AS_IS",
+      "retainedLocation": "RAG_PACKET/after/tests/rag-nhmrc-delivery.test.ts"
+    },
+    {
+      "path": "tests/fixtures/nhmrc-response18-consumer.json",
+      "kind": "retained RAG source/test",
+      "preimageChain": [
+        {
+          "stage": "ordinary18 finalizer/copy packet",
+          "beforeSha256": null,
+          "afterSha256": "e51ddf901345c1db6efadcb0d42c1179490e144ced1ad675e23e6a378454cc0d",
+          "beforeExistence": "recorded new file"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": null,
+          "afterSha256": "e51ddf901345c1db6efadcb0d42c1179490e144ced1ad675e23e6a378454cc0d",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
+      },
+      "publicationDisposition": "PRIVATE_RECORDED_FIXTURE_DEPENDENCY_DO_NOT_PUBLISH_AS_IS",
+      "retainedLocation": "RAG_PACKET/after/tests/fixtures/nhmrc-response18-consumer.json"
+    },
+    {
+      "path": "src/components/clinical-dashboard/answer-section-projector.ts",
+      "kind": "presentation dependency",
+      "preimageChain": [
+        {
+          "stage": "retained delivery projection",
+          "beforeSha256": null,
+          "afterSha256": "51d6bb4214eccdc8a34d7596e44c560027325af374daedb78148f16d75cbbf12",
+          "beforeExistence": "preimage not recorded here"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "e4aac1ff7bc5a110cb333dcd6a00db16e742f6f188e3822fe8f6bf18a4a29414",
+          "afterSha256": "6935c9abbdea70524f0bf5aec561ed225e9c65f332a5a14da62968cad7e7ec73",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "e4aac1ff7bc5a110cb333dcd6a00db16e742f6f188e3822fe8f6bf18a4a29414",
+        "bytes": 2241,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/components/clinical-dashboard/answer-result-surface.tsx",
+      "kind": "presentation dependency",
+      "preimageChain": [
+        {
+          "stage": "retained delivery projection",
+          "beforeSha256": null,
+          "afterSha256": "de9425e3d25b773fb61f6c247b10dc36e7d7f6b8a5ab31d0823171b47ff9bf86",
+          "beforeExistence": "preimage not recorded here"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "eec4a247d415c9b906415671ce063c7ed1cc3855c6db4fca22b364922c8faa6f",
+          "afterSha256": "de9425e3d25b773fb61f6c247b10dc36e7d7f6b8a5ab31d0823171b47ff9bf86",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "a3be9a31da357c243a740bf46d418ec0ec9d1a2786096d9b9993d0fa940b8409",
+        "bytes": 44912,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/components/clinical-dashboard/answer-thread-turn.tsx",
+      "kind": "presentation dependency",
+      "preimageChain": [
+        {
+          "stage": "retained delivery projection",
+          "beforeSha256": null,
+          "afterSha256": "a89ef2359f4a6a9348ad3375679c59f904a6647f3cefeb98cc2c920d2cd67e23",
+          "beforeExistence": "preimage not recorded here"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "0514bbe9a2cef13e7a34134bf462b08178afb96c71a09fc5735dfc86995e619f",
+          "afterSha256": "15f21faa24383081aee84ad798c4471f3845f43e1b987979d2c6da818aa1768d",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "0514bbe9a2cef13e7a34134bf462b08178afb96c71a09fc5735dfc86995e619f",
+        "bytes": 8605,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "tests/answer-section-projector.test.ts",
+      "kind": "presentation dependency",
+      "preimageChain": [
+        {
+          "stage": "retained delivery projection",
+          "beforeSha256": null,
+          "afterSha256": "07d725cb354abbe7861d3ae6d9379f6796306f15a522fe4bd8be0e5cb6c8523f",
+          "beforeExistence": "preimage not recorded here"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": null,
+          "afterSha256": "c3c37d3e7dac01f5dd711650692645cbf57c28dd8d56de4082fe5bf9f1337b39",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
+      },
+      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES"
+    },
+    {
+      "path": "src/app/api/answer/route.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "714cfab64dcb19f6f0970df5a1c96861c8d9b0507e2aebfda4817bebffdeb842",
+          "afterSha256": "d62c020f1e725a6c62ad6b802eec23190a84a4c5d644934915d8d613d9d1cdd4",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "bd4b87aad909a73caf48233ad3aad43762a095bce454b0232c77da95e9fce318",
+        "bytes": 9842,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/app/api/answer/stream/route.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "3224acf416c8b877da1d692be71febaf9245c4adfb632184965b770503b49be0",
+          "afterSha256": "d143e8b38b10f09f9c8bf6a245a72002bb6f4534b4e791dc6f67e89e87a0759f",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "abcca704b5d8b46829117d6bdc08c1c5a5e1c8aa3921f34946e0072309a7ad30",
+        "bytes": 17183,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-candidate-sources.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "516217396535019aca8f3263328ac545584dec2789ab7accb8cc0d0d3c6480cf",
+          "afterSha256": "af348ac1170f3b540fff43dd925c1c75153cbbc821c0f2f0a30fd63ea45da214",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "77b4f829a72d2480e60959e9b3fb2f7d70f46a39d4b0923cfb2840b1c234f525",
+        "bytes": 78047,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-context-pack.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "6cf505859c4e085ec88ffc9605381ae93bf6369b09d274aca1971ce26ca04ef0",
+          "afterSha256": "b7b6fd72c147ffe9c61db08992e30b3f97a835b74be68eb7ef02299f331549f4",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "c25ca83310829d3e56af8bd07a788ecfd49e6e1139a99a920492b99e201f3595",
+        "bytes": 31445,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-governed-search.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "0b346268a2792984d5949da08605fb65d33bbb276f1aff957b1162eca65ab06e",
+          "afterSha256": "eeef4833ac7b4858980658a073586ba5be3ca9f662055cbfffe46e7dbc8f20a9",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "eeef4833ac7b4858980658a073586ba5be3ca9f662055cbfffe46e7dbc8f20a9",
+        "bytes": 8913,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-source-block.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "f5c33cd5eaaca15cbc073ff4f362be398a481f85d0d378dc0b52d963e282e587",
+          "afterSha256": "100f5acf0ba2f1d2ea7992d8d31370e0e6e2e4bed0bcd89a73a520ff9004f995",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "84f8c6d83a66e8c5e197fc59cca2a7e4550ac6af23266ad75de4f165ce384416",
+          "afterSha256": "f5c33cd5eaaca15cbc073ff4f362be398a481f85d0d378dc0b52d963e282e587",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "cc5d39eecd00c86622d0ee0d09aca283bb9ea22c6d1759442b366b80d280c0db",
+        "bytes": 40042,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": "3a9c0b3bdc8eff45eac7b20a3699da98315a6ec6994b79a2421006f8e48e27e2",
+          "afterSha256": "25da8a0ffe8c82ba6b2df6a3129f1a0c1c4247009424bd97b67481d6049034a5",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "answer20-diagnostic-dispatch-v3/candidate-manifest.json",
+          "beforeSha256": "6b9888cd792b819092c33b34a44686b51d9c890196bbea06f1c3b43b7a0455eb",
+          "afterSha256": "f3468d56721f262df49557c10a146a6abf51ef76843af9ba351befda0f231899",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "reviewed main-line composition",
+          "beforeSha256": "10B31528BDE0F2B6C587E1EA56F816961BC65862BCBE1528892BB13E3C40EBF4",
+          "afterSha256": "AC9DB2E98EEFB52796E93C0B05C2C470EA63C62361A086E9E950E2189EE4720E",
+          "beforeExistence": "recorded hosted preimage"
+        },
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "4ced601b557a9b90bf80db65474dd867e40fb6b71d566c178e0627adf1c1d9a4",
+          "afterSha256": "3a9c0b3bdc8eff45eac7b20a3699da98315a6ec6994b79a2421006f8e48e27e2",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "f3468d56721f262df49557c10a146a6abf51ef76843af9ba351befda0f231899",
+        "bytes": 205844,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE",
+      "reviewedGitComposition": {
+        "baseCommit": "4382217c3c61f2407d717e665cf9388c41ea2f5b",
+        "liveCommit": "e3008dbd51f451ed57d842fb1b2f5f7c9aa0d0c8",
+        "baseSha256": "4CED601B557A9B90BF80DB65474DD867E40FB6B71D566C178E0627ADF1C1D9A4",
+        "liveSha256": "71DC3857BE9700183592EF3A25FF5EC7759C5F747C4DD3198E048D6EBEEBA264",
+        "overlap": {
+          "baseExists": true,
+          "hostedChangeHunks": 39,
+          "liveChangeHunks": 8,
+          "baseLineOverlap": false,
+          "mergeFileConflict": false,
+          "liveToCandidateEditTextExact": true,
+          "hostedToCandidate": {
+            "addedLines": 33,
+            "deletedLines": 4
+          }
+        }
+      }
+    },
+    {
+      "path": "src/lib/registered-public-answer-options.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": null,
+          "afterSha256": "32f6503f054d3498738109f7a48a940b1bbad7cccadb3fcde7231226794a86e0",
+          "beforeExistence": "recorded new file"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "56c00d5ba035c2aa991318685294b3fc7571ee142511e5f21140cdad36e93225",
+        "bytes": 7581,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "tests/rag-no-filter-published-original-context.test.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": null,
+          "afterSha256": "254338da145fbc3c9a47c2b7e96e32f845abd8e490881c3fdf097d0607525a5f",
+          "beforeExistence": "recorded new file"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
+      },
+      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES"
+    },
+    {
+      "path": "tests/registered-public-answer-no-filter.test.ts",
+      "kind": "source/context registration or focused test",
+      "preimageChain": [
+        {
+          "stage": "no-filter published-original manifest",
+          "beforeSha256": null,
+          "afterSha256": "cc13925a4dd13a264648a40bec3b2ee77b7a2b38ed1a7a60e20e2c53cca4bcc9",
+          "beforeExistence": "recorded new file"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "availability": "ABSENT_FROM_HOSTED_DEPLOYMENT_SNAPSHOT_NOT_A_DELETION_INSTRUCTION"
+      },
+      "publicationDisposition": "ROOT_LOCATES_RETAINED_TEST_AND_PUBLIC_SAFE_DEPENDENCIES"
+    },
+    {
+      "path": "src/lib/answer-pilot-diagnostic.js",
+      "kind": "finite diagnostic/budget dependency",
+      "preimageChain": [
+        {
+          "stage": "answer20-diagnostic-dispatch-v3/candidate-manifest.json",
+          "beforeSha256": "10d1f23e6945852d3fe39019192e442768817f660f71bf30564ee02fbb7dec8a",
+          "afterSha256": "cbc770a16c07374dc57f7da52d4d2b0a0145d99c1416a16716f0ae8fd69d0a21",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "answer22 section binding final",
+          "beforeSha256": "cbc770a16c07374dc57f7da52d4d2b0a0145d99c1416a16716f0ae8fd69d0a21",
+          "afterSha256": "c3c5954c49c5407ac6f0a31f5625146bf2b3f487d4db866a13847f9f5a7409ef",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "c3c5954c49c5407ac6f0a31f5625146bf2b3f487d4db866a13847f9f5a7409ef",
+        "bytes": 22392,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/answer-pilot-budget.js",
+      "kind": "finite diagnostic/budget dependency",
+      "preimageChain": [
+        {
+          "stage": "answer20-diagnostic-dispatch-v3/candidate-manifest.json",
+          "beforeSha256": "d9da270ed5cd881fc9938ceff86b56b6bdc32c80842ecc0bc16173ca4b21da5f",
+          "afterSha256": "909b9f51a42fa2546d2b788f3d399a4558ea4928833b1b1f304e7563c6adbd7a",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "answer21-refusal-witness-v1/candidate-manifest.json",
+          "beforeSha256": "909b9f51a42fa2546d2b788f3d399a4558ea4928833b1b1f304e7563c6adbd7a",
+          "afterSha256": "ee4a652539de4fdfa6bf0f1f54049e2aff75fc59fe463e7469635a5f577d4721",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "ee4a652539de4fdfa6bf0f1f54049e2aff75fc59fe463e7469635a5f577d4721",
+        "bytes": 6974,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/answer-wire-budget-guard.js",
+      "kind": "finite diagnostic/budget dependency",
+      "preimageChain": [
+        {
+          "stage": "answer20-diagnostic-dispatch-v3/candidate-manifest.json",
+          "beforeSha256": "942ede92130799bbec1897d188f954f1167903ab2e22a587173fd22f63974339",
+          "afterSha256": "f5aaa23de6a1b23abf129a6d0acb515bc11078e21179d4d04e992d01a517704e",
+          "beforeExistence": "recorded preimage"
+        },
+        {
+          "stage": "answer21-refusal-witness-v1/candidate-manifest.json",
+          "beforeSha256": "f5aaa23de6a1b23abf129a6d0acb515bc11078e21179d4d04e992d01a517704e",
+          "afterSha256": "f36ffb752f933019a75773232e056451071434868656f3d1774b80bd57f7947a",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "f36ffb752f933019a75773232e056451071434868656f3d1774b80bd57f7947a",
+        "bytes": 13920,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/answer-pilot-ticket.js",
+      "kind": "finite diagnostic/budget dependency",
+      "preimageChain": [
+        {
+          "stage": "answer20-diagnostic-dispatch-v3/candidate-manifest.json",
+          "beforeSha256": "3a599efebc4f355c99d1cd818c4d7c728c79178e87b2e6447527b7fa33a5a9e6",
+          "afterSha256": "3a599efebc4f355c99d1cd818c4d7c728c79178e87b2e6447527b7fa33a5a9e6",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "b3c413f165ec2f7a2d004758440379bd1eeb28c0c712718ac099da5dee73e4a5",
+        "bytes": 6074,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/answer-verification.ts",
+      "kind": "clinical numeric verifier",
+      "preimageChain": [
+        {
+          "stage": "final numeric age fix",
+          "beforeSha256": "0a340eeec7850282d8cbe50c90dd9a4369bc04bd92057d97005db323321f91ed",
+          "afterSha256": "559b62cba08fedf9330e2bd907442de08cee204dbc6f395b99e2d849627eb5c2",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "559b62cba08fedf9330e2bd907442de08cee204dbc6f395b99e2d849627eb5c2",
+        "bytes": 72399,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-admission-discharge-side-evidence.ts",
+      "kind": "preserved concurrent RAG dependency",
+      "preimageChain": [
+        {
+          "stage": "reviewed main-line composition",
+          "beforeSha256": "1B37DE40733F34CEE6CC3C1C6F9349880130389C2677D264C0F22F934EBC33F7",
+          "afterSha256": "1B37DE40733F34CEE6CC3C1C6F9349880130389C2677D264C0F22F934EBC33F7",
+          "beforeExistence": "recorded hosted preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "1b37de40733f34cee6cc3c1c6f9349880130389c2677d264c0f22f934ebc33f7",
+        "bytes": 3745,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "SOURCE_CANDIDATE_ROOT_RECONCILES_WITH_PR_BASE",
+      "reviewedGitComposition": {
+        "baseCommit": "4382217c3c61f2407d717e665cf9388c41ea2f5b",
+        "liveCommit": "e3008dbd51f451ed57d842fb1b2f5f7c9aa0d0c8",
+        "baseSha256": null,
+        "liveSha256": "1B37DE40733F34CEE6CC3C1C6F9349880130389C2677D264C0F22F934EBC33F7",
+        "overlap": {
+          "baseExists": false,
+          "liveAndHostedByteIdentical": true,
+          "overlap": "identical add; no composition edit",
+          "hostedToCandidate": {
+            "addedLines": 0,
+            "deletedLines": 0
+          }
+        }
+      }
+    },
+    {
+      "path": "src/lib/rag/rag-claim-support.ts",
+      "kind": "receipt-pinned prompt/support/cache compatibility dependency",
+      "preimageChain": [
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "7cdcfc84e8b5516588f6ac08163330eb8fbd52d6c6750dc63955110516ab345c",
+          "afterSha256": "1049f4a0cc7795dd774db25966045603a4c81efcc720444749e886f165235fb3",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "866ae98e48a1f5bb9f6599399f362017d4a04d76e0ac5aa8fb8c612488376702",
+        "bytes": 72680,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "ROOT_RECONCILES_RECEIPT_PIN_WITH_CURRENT_SNAPSHOT_AND_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-answer-instructions.ts",
+      "kind": "receipt-pinned prompt/support/cache compatibility dependency",
+      "preimageChain": [
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "ef2c6a3828001591b3f6c9df0a955c801138fd195b65086dee206a84f9041d76",
+          "afterSha256": "d78a729b4167c5c6078ee06f93061ad7c024e8f6c2400b6571da0250e2cb65e6",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "bd08663abfff0e762dc08b905d6221b7172245cf6164cc7cc0fe1783dc934e0b",
+        "bytes": 19040,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "ROOT_RECONCILES_RECEIPT_PIN_WITH_CURRENT_SNAPSHOT_AND_PR_BASE"
+    },
+    {
+      "path": "src/lib/rag/rag-cache.ts",
+      "kind": "receipt-pinned prompt/support/cache compatibility dependency",
+      "preimageChain": [
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "3ac3f3de599f6520f6f911c57e7de695770e1b273a6c0215f9a568bbf84c148f",
+          "afterSha256": "a6009927cfafbd084ef4f15004f896bc4416efd211bf6686048884d89691b974",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "3ac3f3de599f6520f6f911c57e7de695770e1b273a6c0215f9a568bbf84c148f",
+        "bytes": 66703,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "ROOT_RECONCILES_RECEIPT_PIN_WITH_CURRENT_SNAPSHOT_AND_PR_BASE"
+    },
+    {
+      "path": "tests/rag-generation-fingerprint.test.ts",
+      "kind": "receipt-pinned prompt/support/cache compatibility dependency",
+      "preimageChain": [
+        {
+          "stage": "consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+          "beforeSha256": "5d9f0ca5b4db871ec7e6a50b7efc88879c7fc5f99c0119654c564733b1f9deef",
+          "afterSha256": "56364a7b333f083d61831f5746573ca4f3d495d19634a6e0e4adad8c3d9c475e",
+          "beforeExistence": "recorded targetPreimage; absence does not imply new unless manifest says so"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "5d9f0ca5b4db871ec7e6a50b7efc88879c7fc5f99c0119654c564733b1f9deef",
+        "bytes": 4482,
+        "availability": "PRESENT_IN_HOSTED_SOURCE_SNAPSHOT"
+      },
+      "publicationDisposition": "ROOT_RECONCILES_RECEIPT_PIN_WITH_CURRENT_SNAPSHOT_AND_PR_BASE"
+    },
+    {
+      "path": "src/lib/openai.ts",
+      "kind": "required actual OpenAI SDK transport/budget guard integration",
+      "preimageChain": [
+        {
+          "stage": "INGESTION_PACKET/rag-ticket-adoption-receipt.json",
+          "beforeSha256": "dd2be21a5f40e0f2198920638ce704048ab8e26866e32c3fb12c268f2fdad55f",
+          "afterSha256": "d35609c62653a2d396b4ccdee1b9f31ace1783a762f88dcf16abddf930055d08",
+          "beforeExistence": "recorded preimage"
+        }
+      ],
+      "currentHostedSnapshot": {
+        "sha256": "d35609c62653a2d396b4ccdee1b9f31ace1783a762f88dcf16abddf930055d08",
+        "bytes": 50920,
+        "availability": "PRESENT_AND_MATCHES_ROOT_ADOPTION_RECEIPT"
+      },
+      "publicationDisposition": "REQUIRED_TRANSPORT_SOURCE_INCLUDE_WITH_FINITE_BUDGET_GUARD"
+    }
+  ],
+  "receiptIndex": [
+    {
+      "id": "nofilter",
+      "locator": "RAG_PACKET/consumer-rollout-preparation-v1/no-filter-published-original-integration-v1/candidate-manifest.json",
+      "state": "SOURCE_REVIEW_AND_PATCH_APPLICATION_HISTORICAL",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "5c10f55b3979d163ed750f961a609ba9c30eadb805109603e5e32d7893ce8c97"
+    },
+    {
+      "id": "v22-focused",
+      "locator": "RAG_PACKET/consumer-rollout-preparation-v1/no-filter-published-original-integration-v1/rpc-type-adaptation-v1/pipeline-diagnostic-correction-v1/assertion-type-correction-v1/final-focused-gate-readback-v22.json",
+      "state": "FOCUSED84_PASS_TYPECHECK1938_0_FULLDOMAIN350_360_FAILED",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "3e554fd77c3b0d32a6ac414f52444d31dce84727aed856ac125597d751db31b9"
+    },
+    {
+      "id": "main-composition",
+      "locator": "RAG_PACKET/live-main-rag-preservation-20261014/composition-manifest.json",
+      "state": "SOURCE_REVIEW_NO_NEW_TESTS",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "2cc20e47431e4979ca24df84e1e4d8869ef94f7c69050c224c5d88b66ce75e99"
+    },
+    {
+      "id": "v3",
+      "locator": "RAG_PACKET/answer20-diagnostic-dispatch-v3/proof-receipt.json",
+      "state": "12_FOCUSED_PASS",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "5ae0fd94233069b12ba65b33665b350fe5300176bc2e305a17446f70b78780f6"
+    },
+    {
+      "id": "refusal-witness",
+      "locator": "RAG_PACKET/answer21-refusal-witness-v1/proof-receipt.json",
+      "state": "21_FOCUSED_PASS",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "5a90f74d0925e8ad530549acce057306c1a0800bafa221dcd3398caa6f3c766d"
+    },
+    {
+      "id": "section-binding",
+      "locator": "RAG_PACKET/answer22-section-binding-fix-v1/proof-receipt.json",
+      "state": "28_FOCUSED_PASS",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "37aca5a955c5c9daf7cb4d40d7a66227fce427539585565abcfa30f02209093d"
+    },
+    {
+      "id": "section-producer",
+      "locator": "RAG_PACKET/answer22-section-binding-fix-v1/producer-chain-receipt.json",
+      "state": "BOUND_AUTHENTIC_RPC_SHAPE_PASS_QUALIFIED",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "ee87dcde2fb4d4adad022bdfbfbb13d55cedcc89ec8404bf311a87ba93eafc79"
+    },
+    {
+      "id": "numeric",
+      "locator": "RAG_PACKET/answer23-recorded-response-fix-v1/proof-receipt.json",
+      "state": "92_PASS_REUSED_FINAL_NUMERIC_UNCHANGED",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "24e6b0702ac821c49bb0b94b47dbcab87e9836d9fbc0c7898e6e6557d5312bd8"
+    },
+    {
+      "id": "numeric-replay",
+      "locator": "RAG_PACKET/answer23-recorded-response-fix-v1/recorded-response-receipt.json",
+      "state": "MAIN_RETAINED_QUALIFIERS_INCOMPLETE",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "6832691559872a44706208c9a8af58b252ef93e7fcd3cf5f67a0c01f69070107"
+    },
+    {
+      "id": "held-finite-replay",
+      "locator": "RAG_PACKET/answer23-final-delivery-qualifier-fix-v1/recorded-response-receipt.json",
+      "state": "POSITIVE13_PASS_NEGATIVE_COMPLETE_REFUSAL_INSUFFICIENT_UNSAFE_DRAFTS_RETAINED",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "031c22ebdbc6f391de977043d119f7b8480168a820434671a41dadd189081030"
+    },
+    {
+      "id": "final-safe-replay",
+      "locator": "RAG_PACKET/answer23-unsafe-negative-correction-v1/recorded-response-receipt.json",
+      "state": "POSITIVE13_AND3_ACTUAL_UNSAFE_ABSENCE_PASS",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "d6d863111d391fb3a8b6c3ed1201c42b217a690c597d8767ecc6d08c4a2f6d2e"
+    },
+    {
+      "id": "final-veto",
+      "locator": "RAG_PACKET/answer23-unsafe-negative-correction-v1/independent-frontier-veto.json",
+      "state": "EXACT_BOUNDED_CLINICAL_CODE_ACCEPT",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "703be43dc2d4613e79d51b857f50c4727ff5290a04026db6cbb8c76cbc9e45e1"
+    },
+    {
+      "id": "final-manifest",
+      "locator": "RAG_PACKET/answer23-unsafe-negative-correction-v1/candidate-manifest.json",
+      "state": "FINAL_SOURCE_PINS_FROZEN",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "6904fc418a87212ed1edaa6db4029fad182b0c8b8f70cb79963b0aafdd2871c2"
+    },
+    {
+      "id": "actual-a23-delivery",
+      "locator": "INGESTION_PACKET/hosted-answer23-20261014/actual-delivery-receipt.json",
+      "state": "GENUINE_LIVE_ANSWER_FAILED_COPIED_OUTPUT_UNVERIFIED_PRIVATE_CONTENT_EXCLUDED",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "98b660cc8cd3ed5a2f16acc7828089e7b7e6c45c8a61bb7dc6330b3a14a995d5"
+    },
+    {
+      "id": "actual-a23-capture",
+      "locator": "INGESTION_PACKET/hosted-answer23-20261014/actual-capture-manifest.json",
+      "state": "GENUINE_SERVER_CAPTURE_RETAINED_PRIVATE_NOT_FULL_SSE",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "2f0fc4a882a94467aa70ccfd15d8fada8c8f780f944f9d65493afc2e48d88b30"
+    },
+    {
+      "id": "final-hosted-ready",
+      "locator": "INGESTION_PACKET/final-minimum-hosted-ready-20261014.json",
+      "state": "DEPLOYMENT_SUCCESS_AND_ACTUAL_READY200_NOT_NEW_ANSWER",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "1768629dd1a7dd9cd8bc512e193f668202c06d2f0e15a5c1027b6c3ff5f76a50"
+    },
+    {
+      "id": "completed-txt",
+      "locator": "INGESTION_PACKET/controlled-txt-already-completed-20261014.json",
+      "state": "TXT_ALREADY_COMPLETED_NO_DUPLICATE_START",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "001d7923384750e7b34682d2fbc5c162cfd6e8bee2534c80132d86916cb045cf"
+    },
+    {
+      "id": "owner-adoption",
+      "locator": "INGESTION_PACKET/release-preparation/restricted-owner-adoption-20261014.json",
+      "state": "FOUR_OPERATING_DECISIONS_ADOPTED_QUALIFIED",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "4da0f2ad8c5b416d914123bc1fd5cf76a6630c4d7a2e3ccedf165e8fedb46592"
+    },
+    {
+      "id": "incident",
+      "locator": "INGESTION_PACKET/hosted-answer23-20261014/deployment-removal-incident.json",
+      "state": "HISTORICAL_SERVICE_REMOVAL_RESTORED_PRIOR_IMAGE_THEN_CORRECTED_DEPLOYMENT",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "a212f8c3e3ff629ea4537a09c69d0f5111f2f93043151e9b4df051eff8e4f47c"
+    },
+    {
+      "id": "ticket-adoption",
+      "locator": "INGESTION_PACKET/rag-ticket-adoption-receipt.json",
+      "state": "RECORDED_SOURCE_PREIMAGE_CHAIN_NO_NEW_EXECUTION",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "cb2896578b1896f5a4cabefd76c0dfd17ceb0771cc80558ec05d9efaa25be73d"
+    },
+    {
+      "id": "prompt-support-compatibility",
+      "locator": "RAG_PACKET/consumer-rollout-preparation-v1/consumer-patch-manifest-v4-prompt-cache-implemented.json",
+      "state": "RECORDED_SOURCE_PREIMAGE_CHAIN_NO_NEW_EXECUTION",
+      "contentPolicy": "PRIVATE_ORIGINAL_RETAINED_METADATA_ONLY_PUBLIC",
+      "sha256": "db5b2ba26d3b8d75b789efee0a56f5834bc29bfdad452f5d57c3139e38d24893"
+    }
+  ],
+  "proofStates": {
+    "historicV22": "focused84/84 PASS,typecheck1938files0diagnostics,scoped11format/lintPASS; fullselected350/360 FAIL with10identical unchanged-baseline failures",
+    "numeric": "92/92 PASS; reused on unchanged559b with33matching input pins; no final suite rerun",
+    "refusal": "21 focusedPASS",
+    "sectionBinding": "28 focusedPASS; genuine v2 RPC-shape producer proof qualified",
+    "finalReplay": "Actual recorded response parser/fulllegacyfinalizer/client/render/pureclipboard:13positivePASS,3same negative actualunsafeabsencePASS; wrongvalue/pop ungrounded+unsupported",
+    "independentReview": "Exact finite clinical-code delta ACCEPT; does not claim broad clinical signoff",
+    "hosted": "Final deployed app build/type checksPASS; actual ready endpoint200/statusok, demoModefalse; config/database readiness checksok",
+    "failed": "Original liveA23 delivery FAILED; heldF negative complete-refusal did not remove unsafe text and was superseded; OCR ratioheader failures retained",
+    "unrun": "Fresh corrected liveAnswer/browserclipboard/fullSSE; generalcorpus/OCR/bulk/reindex; new publication tests/build/reviews/CI"
+  },
+  "commands": [
+    {
+      "identity": "node dispatch-v3.test.mjs",
+      "evidence": "v3",
+      "coverage": "12 scoped groups; some extracted generator/SDK paths with explicit mocks",
+      "state": "REUSED_HISTORICAL_PASS"
+    },
+    {
+      "identity": "node refusal-witness.test.mjs",
+      "evidence": "refusal-witness",
+      "coverage": "21 groups",
+      "state": "REUSED_HISTORICAL_PASS"
+    },
+    {
+      "identity": "node section-binding.test.mjs",
+      "evidence": "section-binding",
+      "coverage": "28 groups plus separate genuine producer-shape receipt",
+      "state": "REUSED_HISTORICAL_PASS"
+    },
+    {
+      "identity": "vitest run --config vitest.config.mjs --reporter=json --outputFile vitest-results.json",
+      "evidence": "numeric",
+      "coverage": "80 existing numeric and12 new strict-age groups; retained invocation uses private snapshot paths",
+      "state": "92_PASS_REUSED_NO_RERUN"
+    },
+    {
+      "identity": "node replay-recorded-response.mjs",
+      "evidence": "final-safe-replay",
+      "coverage": "one positive13assertions plus3existing negative derivatives; actual pure copy preparation",
+      "state": "FINAL_RECORDED_REPLAY_PASS_NOT_HOSTED"
+    }
+  ],
+  "budget": {
+    "currency": "USD",
+    "ceiling": 32,
+    "conservativeRetainedReservations": 31.8506993,
+    "remaining": 0.1493007,
+    "newPublicationPaidRequests": 0,
+    "rule": "No refund/reallocation implied; next paid batch requires applicable separate cost authority"
+  },
+  "scope": {
+    "txt": "Agreed summaryTXT ingestion already completed; do not restart",
+    "nativePdf": "Actual selected4nativepage pilot completed with retained text/vector/artifact/provenance evidence; not wholeparent or generalPDF acceptance",
+    "ocr": "Scanned numerical tables held: original450DPI56/56numeric cells did not preserve ratioheader, laterPSM6 also lost riskheading; no OCRGO",
+    "enrichment": "Optional enrichment off initial critical path; noAIenrichmentstoredoutput acceptance",
+    "worker": "Persistent dispatch paused;4pendingPDFjobs remainoutsideadoptedTXTscope; generic claim API lacks docselector",
+    "owner": "Four restricted prospective operating decisions adopted;1Dec review/earlierchange. Overall legal/runtime activation requirements remainpending/qualified; not broadreleaseGO"
+  },
+  "dependenciesAndConflicts": [
+    "Publish runtime imports/type declarations coherently; finite diagnostic modules depend on ticket/budget/guard and rag.ts integration",
+    "Preserve reviewed current-main side-evidence changes in rag.ts/rag-extractive-answer.ts; historical composition had no conflicting hunks, currentPRbase conflicts must be assessed by root",
+    "Hosteddeployment artifact lacks several retained tests; absence is not proof of intentionaldeletion",
+    "rag-nhmrc-delivery.test.ts requires actual rawText/nativeRPCfixture; do not publish either as-is under rawcapture exclusion",
+    "age-only,SDK/refusal/section harnesses and finalreplay depend on private captures, localpaths and snapshottoolchain; index evidence ratherthan claiming portable publictests",
+    "No current repository ownership takeover or source edit by handover author; root owns source adoption/Git/publication",
+    "Root ingestion inventory owns extractor/worker/schema/releaseimplementation; thisRAGinventory cannot establish its exact sourcepreimages"
+  ],
+  "privateContinuity": {
+    "canonicalCheckpointLocator": "RAG_PACKET/local-checkpoint.json",
+    "checkpointSha256": "6dc649e1733462e2397c448d3bc225b830be9264d9dbd805722d633fb6b14e61",
+    "fullOriginals": "Preserve existing private packets/checkpoint/history; publish metadata only, no new ledger",
+    "excluded": [
+      "raw provider responses and nativeRPC capture contents",
+      "personal accounts/emails and private chat/approval transcripts",
+      "credentials/environment values/signed URLs",
+      "production SQL dumps/account rows and raw operational logs"
+    ]
+  },
+  "nextAction": "Root reconcile currentPRbase, selectively adopt complete owned source/test dependency sets, preserve privateevidence, prepare requested localcommit/PR without rerunning checks solelyforpublication. No merge/deploy/database/worker/provider action authorised by this inventory.",
+  "chronologicalProgress": [
+    {
+      "phase": 1,
+      "stage": "Retained original consumer/presentation work",
+      "outcome": "Four-population adult/underage/pregnancy/breastfeeding requirements preserved; source/copy projection and finite source-wording seam prepared",
+      "state": "RETAINED_SOURCE_HISTORY",
+      "evidence": "Private canonical checkpoint ownedFiles/presentationFiles; original preimages in file inventory"
+    },
+    {
+      "phase": 2,
+      "stage": "Registered original source/context integration",
+      "outcome": "Raw nomination, checked authority and full source prompt/finalizer transport; query/scoring/order intended preserved",
+      "state": "SOURCE_REVIEWED_AND_PATCH_CHECKED_HISTORICAL",
+      "evidence": "nofilter"
+    },
+    {
+      "phase": 3,
+      "stage": "Early composite diagnosis",
+      "outcome": "Initial selected336/350 with14failures; RPC/type/pipeline repairs preserved; not final acceptance",
+      "state": "FAILED_HISTORICAL",
+      "evidence": "Private original pipeline diagnostic records retained"
+    },
+    {
+      "phase": 4,
+      "stage": "Qualified V22 local gate",
+      "outcome": "84/84focusedPASS;1938files/0diagnostics;11fileformat/lintPASS; broader350/360FAIL with10identical unchanged-baseline failures",
+      "state": "PASS_FOCUSED_WITH_SEPARATE_FAILED_BROAD_DOMAIN",
+      "evidence": "v22-focused"
+    },
+    {
+      "phase": 5,
+      "stage": "Current-main overlap composition",
+      "outcome": "Two RAG integration files preserve reviewed main-line deltas; side-evidence add identical; no tests newly executed for composition",
+      "state": "SOURCE_ONLY_REVIEWED",
+      "evidence": "main-composition"
+    },
+    {
+      "phase": 6,
+      "stage": "Controlled diagnostic budget/dispatch V3",
+      "outcome": "12focusedSDK/generator groups; clinical/retrieval internals explicitly mocked; finite admission and cost bound",
+      "state": "PASS_QUALIFIED_LOCAL",
+      "evidence": "v3"
+    },
+    {
+      "phase": 7,
+      "stage": "Actual A20/A21",
+      "outcome": "Hosted compound Answer failed; diagnostic refusal did not establish paid Responses success",
+      "state": "FAILED_OR_REFUSED_LIVE",
+      "evidence": "Private original hosted receipts retained"
+    },
+    {
+      "phase": 8,
+      "stage": "Refusal witness and actual A22",
+      "outcome": "21groupsPASS; actual missing RPC section field refused fixed seed before Responses; no delivered Answer acceptance",
+      "state": "LOCAL_PASS_LIVE_REFUSAL",
+      "evidence": "refusal-witness"
+    },
+    {
+      "phase": 9,
+      "stage": "Section representation correction",
+      "outcome": "28groupsPASS plus qualified genuine RPC-shape producer proof; no source text/heading/authority mutation",
+      "state": "PASS_LOCAL_QUALIFIED",
+      "evidence": "section-binding; section-producer"
+    },
+    {
+      "phase": 10,
+      "stage": "Actual A23 completed generation",
+      "outcome": "Genuine nontruncated provider response captured; numeric age-unit mismatch removed main; source viewer opened; clipboard unavailable; full SSE unavailable",
+      "state": "FAILED_LIVE_DELIVERY_NOT_COUNTERFEIT_PASS",
+      "evidence": "actual-a23-delivery; actual-a23-capture"
+    },
+    {
+      "phase": 11,
+      "stage": "Narrow numeric age repair",
+      "outcome": "80existing+12strict cases92/92PASS; final559b unchanged and proof reused after33pins matched",
+      "state": "PASS_THEN_REUSED",
+      "evidence": "numeric"
+    },
+    {
+      "phase": 12,
+      "stage": "Initial recorded repair replay",
+      "outcome": "Main retained but important adult qualification and delivered/copy baby/no-safe qualifiers incomplete",
+      "state": "PARTIAL_NOT_CLINICAL_ACCEPTANCE",
+      "evidence": "numeric-replay"
+    },
+    {
+      "phase": 13,
+      "stage": "Held finite recovery packet",
+      "outcome": "First exactsignature replay6/13failed dueparsersemicolon removal; two literal fixes yielded13positive but complete-refusal negatives still exposed unsafe drafts",
+      "state": "SUPERSEDED_UNSAFE_NEGATIVE_ACCEPTANCE",
+      "evidence": "held-finite-replay; retained failed5ce6 receipt/log"
+    },
+    {
+      "phase": 14,
+      "stage": "Final actual unsafe-output correction",
+      "outcome": "Non-null failed completion invokes existingunsupported fallback; correct13retain, same3unsafe recommendations absent from delivery/allsections/preparedcopy; wrongvalue/pop ungrounded/unsupported",
+      "state": "PASS_RECORDED_FINITE_PROFILE",
+      "evidence": "final-safe-replay; final-veto; final-manifest"
+    },
+    {
+      "phase": 15,
+      "stage": "Operational deployment incident",
+      "outcome": "Prior app mistakenly removed by generic CLI removal; restored exactprior image, heldunsafe build removed; finalcorrected deployment subsequently succeeded",
+      "state": "INCIDENT_RECORDED_AND_RESTORED",
+      "evidence": "incident"
+    },
+    {
+      "phase": 16,
+      "stage": "Final hosted minimum ready",
+      "outcome": "Hosted build/typesPASS; actual readiness200/statusok/demoModefalse; no fresh corrected liveAnswer orclipboard",
+      "state": "DEPLOYED_AND_HEALTHY_NOT_LIVE_ANSWER_ACCEPTANCE",
+      "evidence": "final-hosted-ready"
+    },
+    {
+      "phase": 17,
+      "stage": "TXT/native/OCR scope closeout",
+      "outcome": "TXT alreadycompleted; selected4nativepages completed; scannednumeric OCR ratioheader/heading defects held; optionalenrichment notcriticalpath",
+      "state": "BOUNDED_INGESTION_COMPLETE_NO_BULK",
+      "evidence": "completed-txt; ingestion-owned native/OCR inventory"
+    },
+    {
+      "phase": 18,
+      "stage": "Restricted owner operating decisions",
+      "outcome": "Four prospective decisions adopted forrestrictedTXT withreview1Dec/earlierchange; unprovedlegal/runtime conditions remainpending",
+      "state": "ADOPTED_QUALIFIED_NOT_GENERAL_RELEASE_GO",
+      "evidence": "owner-adoption"
+    },
+    {
+      "phase": 19,
+      "stage": "Publication handover",
+      "outcome": "Sanitised source/preimage/receipt inventory and phaseplan prepared; rootsoleGit/PRowner; no newtests/models/provider execution",
+      "state": "PREPARED_NOT_COMMITTED_OR_PUBLISHED_BY_RAG",
+      "evidence": "This inventory and rag-handover.md"
+    }
+  ],
+  "boundedClosureCorrection": {
+    "reason": "Initial25path inventory omitted OpenAI transport and prompt/support/cache compatibility files",
+    "addedPaths": [
+      {
+        "path": "src/lib/rag/rag-claim-support.ts",
+        "recordedBefore": "7cdcfc84e8b5516588f6ac08163330eb8fbd52d6c6750dc63955110516ab345c",
+        "recordedCandidate": "1049f4a0cc7795dd774db25966045603a4c81efcc720444749e886f165235fb3",
+        "currentHostedSha256": "866ae98e48a1f5bb9f6599399f362017d4a04d76e0ac5aa8fb8c612488376702",
+        "matchesCurrent": false
+      },
+      {
+        "path": "src/lib/rag/rag-answer-instructions.ts",
+        "recordedBefore": "ef2c6a3828001591b3f6c9df0a955c801138fd195b65086dee206a84f9041d76",
+        "recordedCandidate": "d78a729b4167c5c6078ee06f93061ad7c024e8f6c2400b6571da0250e2cb65e6",
+        "currentHostedSha256": "bd08663abfff0e762dc08b905d6221b7172245cf6164cc7cc0fe1783dc934e0b",
+        "matchesCurrent": false
+      },
+      {
+        "path": "src/lib/rag/rag-cache.ts",
+        "recordedBefore": "3ac3f3de599f6520f6f911c57e7de695770e1b273a6c0215f9a568bbf84c148f",
+        "recordedCandidate": "a6009927cfafbd084ef4f15004f896bc4416efd211bf6686048884d89691b974",
+        "currentHostedSha256": "3ac3f3de599f6520f6f911c57e7de695770e1b273a6c0215f9a568bbf84c148f",
+        "matchesCurrent": false
+      },
+      {
+        "path": "tests/rag-generation-fingerprint.test.ts",
+        "recordedBefore": "5d9f0ca5b4db871ec7e6a50b7efc88879c7fc5f99c0119654c564733b1f9deef",
+        "recordedCandidate": "56364a7b333f083d61831f5746573ca4f3d495d19634a6e0e4adad8c3d9c475e",
+        "currentHostedSha256": "5d9f0ca5b4db871ec7e6a50b7efc88879c7fc5f99c0119654c564733b1f9deef",
+        "matchesCurrent": false
+      },
+      {
+        "path": "src/lib/openai.ts",
+        "recordedBefore": "dd2be21a5f40e0f2198920638ce704048ab8e26866e32c3fb12c268f2fdad55f",
+        "recordedCandidate": "d35609c62653a2d396b4ccdee1b9f31ace1783a762f88dcf16abddf930055d08",
+        "currentHostedSha256": "d35609c62653a2d396b4ccdee1b9f31ace1783a762f88dcf16abddf930055d08",
+        "matchesCurrent": true
+      }
+    ],
+    "declarations": "No answer-pilot or answer-wire-budget .d.ts declaration files present in current hosted src or found in retained RAG packet; do not invent them. Root must provide any separate adopted declaration locator if required.",
+    "externalDto": "worker/published-admin-source-layout-contract.ts supplies type-only PublishedAdminSectionRequest/Projection; owned by ingestion, preserve actual compatible source",
+    "capturedDependencyWarning": "Use accepted captured context-pack consumer, not incompatible retained private/public complete-section variant; preserve source-support implementation rather than export-name-only compatibility",
+    "newTestsOrSourceEdits": 0
+  }
+}
