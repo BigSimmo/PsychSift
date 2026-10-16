@@ -413,6 +413,46 @@ describe("Codex Cloud environment contract", () => {
     expect(readdirSync(home)).toContain("profile-loaded");
   });
 
+  it.each(["offline", "connected"])(
+    "rejects an automatic profile that replaces the explicit %s selection before child runtime execution",
+    (requested) => {
+      const home = temporaryDirectory("codex-cloud-auto-profile-mismatch-");
+      const cached = requested === "offline" ? "connected" : "offline";
+      const runtime = path.join(home, "reexec-node");
+      writeFileSync(runtime, '#!/usr/bin/env bash\nprintf "called\\n" > "$HOME/runtime-called"\n');
+      chmodSync(runtime, 0o755);
+      writeFileSync(
+        path.join(home, ".clinical-kb-codex-cloud.sh"),
+        [
+          'printf "sourced\\n" > "$HOME/profile-loaded"',
+          `export CODEX_CLOUD_ACCESS_PROFILE=${cached} RAG_PROVIDER_MODE=offline`,
+          "export NEXT_PUBLIC_DEMO_MODE=true PLAYWRIGHT_OFFLINE_MODE=true",
+          // Keep a broken implementation entirely inside the fixture: any
+          // attempted child runtime goes to this harmless logging executable.
+          'node_exec="$HOME/reexec-node"',
+          "",
+        ].join("\n"),
+      );
+      const result = spawnSync(process.execPath, ["scripts/check-codex-cloud-setup.mjs", "--runtime"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        env: {
+          ...fixtureEnvironment,
+          NODE_ENV: "production",
+          HOME: home,
+          CODEX_CLOUD: "1",
+          CODEX_CLOUD_ACCESS_PROFILE: requested,
+        },
+      });
+
+      expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(1);
+      expect(result.stderr).toContain("Cached CODEX_CLOUD_ACCESS_PROFILE differs from the requested profile");
+      expect(result.stdout).not.toContain("PASS:");
+      expect(readdirSync(home)).toContain("profile-loaded");
+      expect(readdirSync(home)).not.toContain("runtime-called");
+    },
+  );
+
   it("preserves an automatically sourced profile failure without reporting acceptance", () => {
     const home = temporaryDirectory("codex-cloud-auto-profile-failure-");
     writeFileSync(path.join(home, ".clinical-kb-codex-cloud.sh"), "return 43\n");

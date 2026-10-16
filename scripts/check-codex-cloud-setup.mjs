@@ -1431,11 +1431,12 @@ if (isDirectEntrypoint(import.meta.url)) {
       bashExecutable,
       [
         "-c",
-        'profile_path="$1"; node_exec="$2"; script_path="$3"; shift 3; saved_args=("$@"); set --; . "$profile_path" && export CODEX_CLOUD_PROFILE_LOADED=1 && exec "$node_exec" "$script_path" "${saved_args[@]}"',
+        'profile_path="$1"; node_exec="$2"; script_path="$3"; requested_cloud_check_profile="$4"; shift 4; saved_args=("$@"); set --; . "$profile_path" && { if [[ -n "$requested_cloud_check_profile" && "${CODEX_CLOUD_ACCESS_PROFILE-}" != "$requested_cloud_check_profile" ]]; then printf "%s\\n" "[Codex Cloud Check] FAIL: Cached CODEX_CLOUD_ACCESS_PROFILE differs from the requested profile; rerun setup with the intended profile." >&2; exit 1; fi; export CODEX_CLOUD_PROFILE_LOADED=1; exec "$node_exec" "$script_path" "${saved_args[@]}"; }',
         "codex-cloud-check",
         runtimeProfilePath.replaceAll("\\", "/"),
         process.execPath,
         fileURLToPath(import.meta.url),
+        process.env.CODEX_CLOUD_ACCESS_PROFILE ?? "",
         ...process.argv.slice(2),
       ],
       { cwd: repoRoot, stdio: "inherit" },
