@@ -111,6 +111,7 @@ async function main() {
         documentMetadata: doc.metadata,
         ownerId: doc.owner_id,
         imageRows: imageRowsByDoc.get(doc.id) ?? [],
+        preserveNewestStagedGeneration: false,
       }),
     );
     totalOrphanedPaths = cleanupJobs.reduce((sum, job) => sum + job.image_paths.length, 0);
@@ -153,11 +154,17 @@ async function main() {
     }
   }
 
-  // Enqueue storage cleanup jobs BEFORE deleting database rows so image storage_paths are preserved
+  // Stage jobs as failed (non-executable) before deleting rows. Activate them only
+  // after deletion succeeds, preventing a process stop from exposing live-row cleanup.
+  let stagedJobIds: string[] = [];
   if (cleanupJobs.length > 0) {
-    const { error: insertError } = await supabase.from("storage_cleanup_jobs").insert(cleanupJobs);
-    if (insertError) throw new Error(`Failed to enqueue storage cleanup jobs: ${insertError.message}`);
-    console.log(`Enqueued ${cleanupJobs.length} storage cleanup job(s) for ${totalOrphanedPaths} orphaned object(s).`);
+    const stagedJobs = cleanupJobs.map((job) => ({ ...job, status: "failed" as const }));
+    const { data: insertedJobs, error: insertError } = await supabase
+      .from("storage_cleanup_jobs")
+      .insert(stagedJobs)
+      .select("id");
+    if (insertError) throw new Error(`Failed to stage storage cleanup jobs: ${insertError.message}`);
+    stagedJobIds = (insertedJobs ?? []).map((job) => job.id);
   }
 
   const applied = await supabase.rpc("cleanup_abandoned_document_index_generations", {
@@ -166,6 +173,15 @@ async function main() {
     p_dry_run: false,
   });
   if (applied.error) throw new Error(applied.error.message);
+
+  if (stagedJobIds.length > 0) {
+    const { error: activateError } = await supabase
+      .from("storage_cleanup_jobs")
+      .update({ status: "pending" })
+      .in("id", stagedJobIds);
+    if (activateError) throw new Error(`Failed to activate storage cleanup jobs: ${activateError.message}`);
+    console.log(`Enqueued ${stagedJobIds.length} storage cleanup job(s) for ${totalOrphanedPaths} orphaned object(s).`);
+  }
 
   console.log("\nAbandoned staged generation cleanup applied.");
 }

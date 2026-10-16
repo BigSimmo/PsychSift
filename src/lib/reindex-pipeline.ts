@@ -296,13 +296,14 @@ export type BuildAbandonedGenerationStorageCleanupJobsArgs = {
   documentBucket?: string;
   imageBucket?: string;
   activeStagedGenerationId?: string | null;
+  preserveNewestStagedGeneration?: boolean;
   documentIdInJob?: boolean;
 };
 
 /**
  * Builds storage_cleanup_jobs payload rows from abandoned document_images / generation storage paths.
  * Deduplicates object paths and excludes any path still referenced by the document's committed
- * metadata.index_generation_id or most-recent staged generation.
+ * metadata.index_generation_id, an unassigned legacy image row, or (by default) the most-recent staged generation.
  * Also skips legacy documents where metadata.index_generation_id is absent.
  */
 export function buildAbandonedGenerationStorageCleanupJobs(
@@ -376,9 +377,9 @@ export function buildAbandonedGenerationStorageCleanupJobs(
     return [];
   }
 
-  // Determine the newest staged generation (preserved if in flight or uncommitted)
+  const shouldPreserveNewest = input.preserveNewestStagedGeneration ?? true;
   let newestStagedGenId = input.activeStagedGenerationId?.trim() ?? null;
-  if (!newestStagedGenId) {
+  if (!newestStagedGenId && shouldPreserveNewest) {
     let maxTime = -Infinity;
     for (const [genId, info] of stagedGenerations.entries()) {
       if (info.maxTime > maxTime) {
@@ -393,7 +394,6 @@ export function buildAbandonedGenerationStorageCleanupJobs(
       ? stagedGenerations.get(newestStagedGenId)!.paths
       : new Set<string>();
 
-  // Abandoned generations are all staged generations EXCEPT the newest staged generation
   const abandonedGenIds = Array.from(stagedGenerations.keys()).filter((genId) => genId !== newestStagedGenId);
   if (abandonedGenIds.length === 0) {
     return [];
@@ -405,7 +405,7 @@ export function buildAbandonedGenerationStorageCleanupJobs(
     const info = stagedGenerations.get(genId);
     if (!info) continue;
     for (const p of info.paths) {
-      // Exclude paths referenced by committed generation, newest staged generation, or unassigned rows
+      // Exclude paths referenced by committed generation, preserved staged generation, or unassigned rows.
       if (!committedPaths.has(p) && !newestStagedPaths.has(p) && !unassignedPaths.has(p)) {
         candidatePaths.add(p);
       }
