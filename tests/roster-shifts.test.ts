@@ -299,6 +299,10 @@ function fakeSupabase(rows: Record<string, unknown[]>) {
     calls.push(call);
     const result = () => {
       const owner = call.eq.find(([column]) => column === "owner_id" || column === "user_id")?.[1];
+      if (call.op === "insert" && table === "on_call_shifts") {
+        const inserted = (call.insertedRows ?? []) as Array<Record<string, unknown>>;
+        return { data: inserted.map((row, index) => ({ id: `new${index + 1}`, ...row })), error: null };
+      }
       const data = (rows[table] ?? []).filter((row) => (row as { owner_id: string }).owner_id === owner);
       return { data, error: null };
     };
@@ -675,6 +679,23 @@ describe("hand-added shifts", () => {
     expect(new Set(rows.map((row) => row.series_id)).size).toBe(1);
     expect(rows[0]?.series_id).not.toBeNull();
     expect(new Set(rows.map((row) => row.starts_at)).size).toBe(3);
+  });
+
+  it("reports an overlap with a shift already on the roster, and never a new shift against itself", async () => {
+    fakeSupabase(storedRows);
+    const response = await postManualShift(
+      manualRequest({ shift: shift("2099-01-01", "08:00", "17:00"), repeatWeeks: 0 }),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      shifts: Array<{ id: string }>;
+      conflicts: Array<{ first: { id: string }; second: { id: string } }>;
+    };
+    expect(body.shifts).toHaveLength(1);
+    expect(body.conflicts).toHaveLength(1);
+    const ids = [body.conflicts[0]!.first.id, body.conflicts[0]!.second.id].sort();
+    expect(ids).toContain("s1");
+    expect(ids[0]).not.toBe(ids[1]);
   });
 
   it("gives a single, non-repeating shift its own series, so it can be removed", async () => {

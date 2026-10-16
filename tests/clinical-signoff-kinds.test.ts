@@ -296,6 +296,9 @@ describe("batch sign-off from a review pack", () => {
   });
 });
 
+/** The specifier items as the sign-off test edits them: only the fields it reads or stamps. */
+type SpecifierItemLoose = { definitionStatus: string; review: Record<string, unknown> };
+
 describe("specifier sign-off", () => {
   // The site accepts a specifier sign-off only from a named person, and "Owner" is a role word.
   const SPECIFIER_REVIEWER = "Dr Alex Example";
@@ -389,7 +392,11 @@ describe("specifier sign-off", () => {
   it("offers product-stamped sign-offs for re-signing and refuses a reviewer without a full name", () => {
     const document = clone(specifiersContent);
     const firstDefined = document.categories
-      .flatMap((category) => category.disorders.flatMap((disorder) => disorder.groups.flatMap((group) => group.items)))
+      .flatMap((category) =>
+        category.disorders.flatMap((disorder) =>
+          disorder.groups.flatMap((group) => group.items as SpecifierItemLoose[]),
+        ),
+      )
       .find((item) => item.definitionStatus === "defined");
     if (firstDefined) {
       Object.assign(firstDefined.review, {
@@ -402,7 +409,7 @@ describe("specifier sign-off", () => {
       document.categories.flatMap((category) =>
         category.disorders.flatMap((disorder) =>
           disorder.groups.flatMap((group) =>
-            group.items
+            (group.items as SpecifierItemLoose[])
               .filter((item) => (item.review as Json).reviewedBy === "PsychSift" && item.definitionStatus === "defined")
               .map((item) => String(item.review.rowKey)),
           ),

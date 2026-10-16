@@ -20,6 +20,9 @@ import {
 import { addDaysToDate, perthWallToIso } from "@/lib/roster/shifts/perth-time";
 import { checkPatientDetail } from "@/lib/work-text/patient-detail-check";
 
+/** A stable empty list, so a sheet opened without existing shifts does not recompute its checks every render. */
+const NO_SHIFTS: readonly OnCallShiftInput[] = [];
+
 /**
  * "+ Add": one sheet, three ways in. Add a shift (can repeat weekly), Import a
  * file (closes the sheet and opens the import flow), Add a calendar link.
@@ -100,7 +103,7 @@ export function manualShiftFrom(
 
 function ShiftForm({
   today,
-  existingShifts = [],
+  existingShifts = NO_SHIFTS,
   onSubmit,
 }: {
   readonly today: string;
@@ -321,7 +324,7 @@ export function RosterAddSheet({
   onClose,
   today,
   workplaces,
-  existingShifts = [],
+  existingShifts = NO_SHIFTS,
   onImportFile,
   onAddShift,
   onAddLink,

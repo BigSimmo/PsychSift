@@ -27,6 +27,7 @@ describe("listOwnerTeams batched query performance", () => {
           select: vi.fn(() => chain),
           order: vi.fn(() => chain),
           limit: vi.fn(() => chain),
+          range: vi.fn(() => chain),
           eq: vi.fn(() => chain),
           is: vi.fn(() => chain),
           in: vi.fn((column: string, values: unknown[]) => {
@@ -108,5 +109,43 @@ describe("listOwnerTeams batched query performance", () => {
     const result = await listOwnerTeams(client as unknown as Parameters<typeof listOwnerTeams>[0]);
     expect(result).toEqual({ teams: [] });
     expect(fromCalls).toEqual(["on_call_services"]);
+  });
+
+  it("pages through every membership so counts stay exact beyond one page", async () => {
+    const serviceId = "5e000000-0000-4000-8000-000000000001";
+    const services = [
+      { id: serviceId, name: "Service", created_at: "2026-10-01T00:00:00Z", verified_at: null, is_demo: false },
+    ];
+    const memberRows = Array.from({ length: 1005 }, (_, index) => ({ service_id: serviceId, user_id: `u${index}` }));
+    const client = {
+      from: vi.fn((table: string) => {
+        let from = 0;
+        let to = 0;
+        const chain = {
+          select: vi.fn(() => chain),
+          order: vi.fn(() => chain),
+          limit: vi.fn(() => chain),
+          eq: vi.fn(() => chain),
+          is: vi.fn(() => chain),
+          in: vi.fn(() => chain),
+          range: vi.fn((start: number, end: number) => {
+            from = start;
+            to = end;
+            return chain;
+          }),
+          then: (resolve: (value: unknown) => unknown) => {
+            if (table === "on_call_services") return resolve({ data: services, error: null });
+            if (table === "on_call_service_members") {
+              return resolve({ data: memberRows.slice(from, to + 1), error: null });
+            }
+            return resolve({ data: [], error: null });
+          },
+        };
+        return chain;
+      }),
+    };
+
+    const result = await listOwnerTeams(client as unknown as Parameters<typeof listOwnerTeams>[0]);
+    expect(result.teams[0]).toMatchObject({ serviceId, activeMembers: 1005, managers: 0 });
   });
 });

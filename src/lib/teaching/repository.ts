@@ -305,6 +305,19 @@ export async function teachingServiceRead(
   }
 }
 
+/**
+ * The slice of the database client the display-link ownership check reads. These two tables are not in the
+ * generated client types (everything else here goes through the teaching RPCs), and tests pass bare fakes.
+ */
+type LooseFilter = PromiseLike<unknown> & {
+  eq: (column: string, value: unknown) => LooseFilter;
+  is: (column: string, value: unknown) => LooseFilter;
+  maybeSingle?: () => PromiseLike<unknown>;
+};
+type LooseTableClient = {
+  from?: (table: string) => { select?: (columns: string) => LooseFilter } | null | undefined;
+};
+
 export async function teachingServiceMutation(
   client: AdminClient,
   actorId: string,
@@ -333,8 +346,9 @@ export async function teachingServiceMutation(
     }
     case "display.revoke": {
       const tokenHash = hashTeachingSecret(input.token);
-      if (typeof client.from === "function") {
-        const linkTable = client.from("teaching_display_links");
+      const tables = client as unknown as LooseTableClient;
+      if (typeof tables.from === "function") {
+        const linkTable = tables.from("teaching_display_links");
         if (linkTable && typeof linkTable.select === "function") {
           const linkQuery = linkTable
             .select("id, created_by, teaching_occurrences!inner(service_id)")
@@ -347,7 +361,7 @@ export async function teachingServiceMutation(
           const link = linkRes?.data;
           const linkRow = (Array.isArray(link) ? link[0] : link) as { id?: string; created_by?: string | null } | null;
           if (linkRow && (!linkRow.created_by || linkRow.created_by !== actorId)) {
-            const roleTable = client.from("teaching_member_roles");
+            const roleTable = tables.from("teaching_member_roles");
             if (roleTable && typeof roleTable.select === "function") {
               const roleQuery = roleTable
                 .select("role")

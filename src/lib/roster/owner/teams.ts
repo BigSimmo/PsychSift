@@ -101,6 +101,24 @@ function mapOwnerRpcError(error: { message?: string | null }): PublicApiError {
   return unavailable();
 }
 
+const COUNT_PAGE_SIZE = 1000;
+
+/**
+ * Reads every matching row by paging, so per-service counts stay exact however many memberships exist
+ * (a single capped select would silently under-count). Returns null when any page fails.
+ */
+async function readAllRows<Row>(
+  page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>,
+): Promise<Row[] | null> {
+  const rows: Row[] = [];
+  for (let from = 0; ; from += COUNT_PAGE_SIZE) {
+    const { data, error } = await page(from, from + COUNT_PAGE_SIZE - 1);
+    if (error || !data) return null;
+    rows.push(...(data as Row[]));
+    if (data.length < COUNT_PAGE_SIZE) return rows;
+  }
+}
+
 /** Batched member and manager counts across all services in O(1) queries. */
 export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam[] }> {
   const { data: services, error } = await client
@@ -113,30 +131,38 @@ export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam
 
   const serviceIds = services.map((service) => service.id);
   const [members, roles] = await Promise.all([
-    client
-      .from("on_call_service_members")
-      .select("service_id,user_id")
-      .in("service_id", serviceIds)
-      .is("revoked_at", null)
-      .limit(10000),
-    client
-      .from("roster_member_roles")
-      .select("service_id,user_id")
-      .in("service_id", serviceIds)
-      .eq("role", "manager")
-      .is("revoked_at", null)
-      .limit(10000),
+    readAllRows<{ service_id?: string }>((from, to) =>
+      client
+        .from("on_call_service_members")
+        .select("service_id,user_id")
+        .in("service_id", serviceIds)
+        .is("revoked_at", null)
+        .order("service_id")
+        .order("user_id")
+        .range(from, to),
+    ),
+    readAllRows<{ service_id?: string }>((from, to) =>
+      client
+        .from("roster_member_roles")
+        .select("service_id,user_id")
+        .in("service_id", serviceIds)
+        .eq("role", "manager")
+        .is("revoked_at", null)
+        .order("service_id")
+        .order("user_id")
+        .range(from, to),
+    ),
   ]);
-  if (members.error || roles.error || !members.data || !roles.data) throw unavailable();
+  if (!members || !roles) throw unavailable();
 
   const memberCounts = new Map<string, number>();
-  for (const row of members.data as Array<{ service_id?: string }>) {
+  for (const row of members) {
     const key = row.service_id ?? (serviceIds.length === 1 ? serviceIds[0] : undefined);
     if (key) memberCounts.set(key, (memberCounts.get(key) ?? 0) + 1);
   }
 
   const managerCounts = new Map<string, number>();
-  for (const row of roles.data as Array<{ service_id?: string }>) {
+  for (const row of roles) {
     const key = row.service_id ?? (serviceIds.length === 1 ? serviceIds[0] : undefined);
     if (key) managerCounts.set(key, (managerCounts.get(key) ?? 0) + 1);
   }

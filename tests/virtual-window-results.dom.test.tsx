@@ -21,6 +21,9 @@ function makeStreamItem(index: number): DifferentialStreamItem {
     description: `Clinical summary for diagnosis ${num}.`,
     href: `/differentials/diagnoses/diagnosis-${num}`,
     status: num % 3 === 0 ? "emergent" : num % 2 === 0 ? "urgent" : "routine",
+    score: 0,
+    chapterId: "all-chapter",
+    chapterTitle: "All Diagnoses",
     isMatch: true,
     matchReasons: [],
     exclusionPreview: null,
@@ -35,6 +38,7 @@ function makeLargeModel(count: number): DifferentialStreamModel {
   const items = Array.from({ length: count }, (_, index) => makeStreamItem(index));
   return {
     stream: "diagnoses",
+    matchCount: items.length,
     items,
     chapters: [
       {
@@ -51,13 +55,7 @@ function makeLargeModel(count: number): DifferentialStreamModel {
   };
 }
 
-function HookHarness({
-  totalCount,
-  resetKey,
-}: {
-  readonly totalCount: number;
-  readonly resetKey: string;
-}) {
+function HookHarness({ totalCount, resetKey }: { readonly totalCount: number; readonly resetKey: string }) {
   const { visibleCount, hasMore, showMore, ensureIndexVisible, sentinelRef } = useVirtualWindow({
     totalCount,
     initialCount: 40,

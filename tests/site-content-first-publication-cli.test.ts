@@ -19,6 +19,9 @@ function formCodeForRecord(form: (typeof formRecords)[number]): string {
     .trim();
 }
 
+/** A made-up content pin for fixtures only; the real sign-off sidecars carry their own. */
+const SYNTHETIC_CONTENT_PIN = "a".repeat(64);
+
 function signedServiceReviews(): ClinicalSignOffEntry[] {
   return defaultServiceRecords().map((service) => ({
     id: String(service.catalogPayload?.stableId ?? service.slug),
@@ -26,6 +29,7 @@ function signedServiceReviews(): ClinicalSignOffEntry[] {
     status: "reviewed",
     reviewedBy: NAMED_REVIEWER,
     reviewedAt: REVIEWED_AT,
+    reviewedContentSha256: SYNTHETIC_CONTENT_PIN,
   }));
 }
 
@@ -36,6 +40,7 @@ function signedFormReviews(): ClinicalSignOffEntry[] {
     status: "reviewed",
     reviewedBy: NAMED_REVIEWER,
     reviewedAt: REVIEWED_AT,
+    reviewedContentSha256: SYNTHETIC_CONTENT_PIN,
   }));
 }
 
@@ -61,9 +66,29 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
       buildFirstPublicationCataloguePlan({
         kind: "form",
         forms: [sampleForm],
-        formReviews: [{ code, slug: sampleForm.slug, ...badOverride }],
+        formReviews: [{ code, slug: sampleForm.slug, reviewedContentSha256: SYNTHETIC_CONTENT_PIN, ...badOverride }],
       }),
     ).toThrow(/First-publication plan refused/);
+  });
+
+  it("refuses a sign-off with no valid content pin", () => {
+    const sampleForm = formRecords[0]!;
+    const review = {
+      code: formCodeForRecord(sampleForm),
+      slug: sampleForm.slug,
+      status: "reviewed" as const,
+      reviewedBy: NAMED_REVIEWER,
+      reviewedAt: REVIEWED_AT,
+    };
+    for (const reviewedContentSha256 of [undefined, "", "not-a-hash"]) {
+      expect(() =>
+        buildFirstPublicationCataloguePlan({
+          kind: "form",
+          forms: [sampleForm],
+          formReviews: [{ ...review, reviewedContentSha256 }],
+        }),
+      ).toThrow(/content pin/);
+    }
   });
 
   it("builds a deterministic batched first-publication plan once all 222 services and 54 forms have named clinician sign-off", () => {
@@ -114,6 +139,8 @@ describe("publish-site-content-first-catalogue CLI (#HTZPQ8 / #ZPHK2F)", () => {
       batchSize: 50,
     });
 
-    await expect(runFirstPublicationCli(["--execute"], {})).rejects.toThrow(/ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true/);
+    await expect(runFirstPublicationCli(["--execute"], {} as NodeJS.ProcessEnv)).rejects.toThrow(
+      /ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true/,
+    );
   });
 });
