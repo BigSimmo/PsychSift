@@ -1110,6 +1110,18 @@ describe("whole document title named in the query", () => {
     expect(selection.results[0]?.id).toBe("assessment-documentation");
   });
 
+  it("still matches when the query ends with punctuation", () => {
+    const selection = selectRetrievalEvidence({
+      query: "Find Assessment Documentation.",
+      queryClass: "document_lookup",
+      results: candidates(),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+
+    expect(selection.results[0]?.id).toBe("assessment-documentation");
+  });
+
   it("does not treat one shared title word as naming the document", () => {
     const selection = selectRetrievalEvidence({
       query: "What skin assessment is required?",

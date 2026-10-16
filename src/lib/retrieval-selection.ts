@@ -382,17 +382,19 @@ function medicationClinicalSubjectMatches(query: string, result: SearchResult) {
   return hasMedicationMonitoringSubjectEvidence(query, result);
 }
 
+/** Lower-case words only, so punctuation such as a trailing "." or a "v2.1" never blocks a match. */
+function titleWords(value: string) {
+  return normalize(value)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 /**
  * Core title words: the title (or file name) without its extension or bracketed publisher code,
  * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation".
  */
 function coreDocumentTitle(value: string) {
-  return normalize(
-    value
-      .replace(/\.(?:pdf|docx?|txt|md)$/i, "")
-      .replace(/\([^)]*\)/g, " ")
-      .replace(/[._]+/g, " "),
-  );
+  return titleWords(value.replace(/\.(?:pdf|docx?|txt|md)$/i, "").replace(/\([^)]*\)/g, " "));
 }
 
 /**
@@ -401,7 +403,7 @@ function coreDocumentTitle(value: string) {
  * single word, such as "assessment" in "Radiotherapy Skin Care Assessment", does not count.
  */
 function queryNamesWholeDocumentTitle(query: string, result: SearchResult) {
-  const paddedQuery = ` ${normalize(query)} `;
+  const paddedQuery = ` ${titleWords(query)} `;
   return [result.title, result.file_name].some((value) => {
     const core = coreDocumentTitle(value ?? "");
     return core.split(" ").length >= 2 && paddedQuery.includes(` ${core} `);
