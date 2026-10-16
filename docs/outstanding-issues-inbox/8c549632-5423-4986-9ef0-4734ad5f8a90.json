@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "8c549632-5423-4986-9ef0-4734ad5f8a90",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P3",
+    "type": "task",
+    "summary": "CME: render the claim-pack button on a reachable CME surface (follow-up to #G20QE6)",
+    "detail": "CmeClaimPackButton and its unit tests exist in src/components/cme/cme-claim-pack.tsx, but nothing imports or renders it, so clinicians cannot reach the study-budget export. Wire it into a reachable CME page with a user-facing test before closing.",
+    "source": "PR #3570 review; src/components/cme/cme-claim-pack.tsx; tests/cme-claim-pack.test.ts",
+    "issueUlid": "01M51JV9NVGR72PFX8VRN10Q7G"
+  }
+}
