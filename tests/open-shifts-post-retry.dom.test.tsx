@@ -116,6 +116,8 @@ describe("Posting a shift", () => {
     await waitFor(() => expect(mocks.push).toHaveBeenCalledOnce());
     expect(mocks.post).toHaveBeenCalledOnce();
     expect(mocks.push.mock.calls[0]![0]).toContain(liveShift().id);
+    // Confirmed from the list, so the saved key is gone and a later post of the same slot is a new one.
+    expect(window.sessionStorage.getItem("psychsift:open-shifts:post-keys-v1")).toBeNull();
   });
 
   it("after a post gets no answer, still sends it when the matching new shift was posted by someone else", async () => {

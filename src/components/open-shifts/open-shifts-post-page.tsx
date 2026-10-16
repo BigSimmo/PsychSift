@@ -255,6 +255,8 @@ export function OpenShiftsPostPage() {
       if (live) {
         attempts.push({ date: on, ok: true, openShiftId: live.id });
         nowDone[signature(on)] = live.id;
+        // Confirmed from the list, so a later deliberate post of the same slot gets a new key.
+        forgetPostKey(signature(on), postKeys.current);
         continue;
       }
       if (!onTimes) {
