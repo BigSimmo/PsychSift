@@ -82,7 +82,9 @@ const maxHybridRpcIdentityRows = 1000;
 const safeRpcIdentifier = /^[a-zA-Z][a-zA-Z0-9_]{0,127}$/;
 
 function resolveRouteLatencyBudgetMs(metadata: Record<string, unknown>): number {
-  const rawMode = String(metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast")
+  const rawMode = String(
+    metadata.routing_mode ?? metadata.mode ?? metadata.route_mode ?? metadata.answer_mode ?? "fast",
+  )
     .trim()
     .toLowerCase();
   if (rawMode === "strong") return ANSWER_LATENCY_BUDGET_MS.strong;
