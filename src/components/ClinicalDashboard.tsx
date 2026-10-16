@@ -2277,7 +2277,6 @@ function ClinicalDashboardContent({
   const handleRecheckRestoredAnswer = useEventCallback(() => {
     const queryToRerun = (latestAnswerQuery ?? deferredQuery).trim();
     if (!queryToRerun) return;
-    setRestoredAnswerSavedAt(null);
     void executeSearch(queryToRerun, "answer", scopeFilters, queryMode, true);
   });
   const handleCrossModeSearch = useEventCallback(crossModeSearch);
