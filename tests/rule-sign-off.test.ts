@@ -27,23 +27,24 @@ function signed(overrides: Partial<RuleSignOff> = {}): RuleSignOff {
 }
 
 describe("isNamedPerson", () => {
-  it("accepts a given and family name, with or without a title", () => {
+  it("accepts a given and family name, with or without a title, plus the owner's two-word display name", () => {
     expect(isNamedPerson("Jane Example")).toBe(true);
     expect(isNamedPerson("Dr Jane Example")).toBe(true);
     expect(isNamedPerson("  A/Prof   Jane   Example ")).toBe(true);
+    expect(isNamedPerson("Psych Sift")).toBe(true);
   });
 
   it("rejects system names, roles, single names and blanks", () => {
     for (const name of [
       "PsychSift",
       "psychsift",
-      "Psych Sift",
       "Psych-Sift",
       "System",
       "Locally reviewed",
       "Dr Jane",
       "Jane",
       "Dr",
+      "Jane Team,",
       "",
       "  ",
       null,

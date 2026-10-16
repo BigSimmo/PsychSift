@@ -373,8 +373,10 @@ describe("specifier sign-off", () => {
     for (const name of [
       "Dr Alex Example",
       "Jane Citizen",
+      "Psych Sift",
       "PsychSift",
       "Clinical Team",
+      "Jane Team,",
       "Psychiatry Registrar",
       "Josh",
       "Dr Smith",
@@ -404,11 +406,18 @@ describe("specifier sign-off", () => {
     expect(productStamped.length).toBeGreaterThan(0);
     for (const record of productStamped) expect(record).toMatchObject({ status: "drafted", reviewedBy: null });
 
-    for (const reviewedBy of ["PsychSift", "Josh", "Dr Smith"]) {
+    for (const reviewedBy of ["PsychSift", "Josh", "Dr Smith", "Jane Team,"]) {
       expect(() =>
         finalizeClinicalReview(productStamped[0], "specifier", { reviewedBy, reviewedAt: REVIEWED_AT, now: NOW }),
       ).toThrow(/full name/);
     }
+    expect(
+      finalizeClinicalReview(productStamped[0], "specifier", {
+        reviewedBy: "Psych Sift",
+        reviewedAt: REVIEWED_AT,
+        now: NOW,
+      }),
+    ).toMatchObject({ status: "reviewed", reviewedBy: "Psych Sift" });
   });
 });
 

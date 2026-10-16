@@ -795,17 +795,15 @@ describe("review-clinical-record CLI", () => {
 });
 
 describe("newSignatureAttributionProblem", () => {
-  it("refuses a product, role or single name for a new signature, and accepts a full name", async () => {
+  it("refuses a product, role or single name for a new signature, and accepts a full name or the owner's two-word display name", async () => {
     const { newSignatureAttributionProblem } = await import("../scripts/lib/clinical-record-review-contract.mjs");
     for (const name of [
       "PsychSift",
       "psychsift",
-      "Psych Sift",
       "Psych-Sift",
       "Clinical Team",
-      "Clinical Team.",
+      "Jane Team,",
       "Governance Committee",
-      "Governance Committee,",
       "Dr Simpson",
       "Josh",
       "Clinician",
@@ -813,6 +811,7 @@ describe("newSignatureAttributionProblem", () => {
       expect(newSignatureAttributionProblem(name)).toMatch(/full name/);
     }
     expect(newSignatureAttributionProblem("Dr Alex Morgan")).toBeNull();
+    expect(newSignatureAttributionProblem("Psych Sift")).toBeNull();
     expect(newSignatureAttributionProblem("<your full name>")).toMatch(/example/);
   });
 });

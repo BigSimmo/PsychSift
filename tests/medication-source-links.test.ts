@@ -73,19 +73,23 @@ describe("medication source links", () => {
     }
   });
 
-  it("shows nothing on the live pages until the owner signs the records off", () => {
-    for (const slug of Object.keys(medicationSourceLinkIds)) {
-      expect(medicationSourceLinks(slug)).toEqual([]);
-    }
+  it("returns the confirmed source links on the live pages now that the owner has signed the adopted records", () => {
+    expect(medicationSourceLinks("clozapine").map((link) => link.id)).toEqual(["wa-health-clozapine-guideline-2024"]);
+    expect(medicationSourceLinks("lithium-carbonate-ir-sr").map((link) => link.id)).toEqual([
+      "australian-prescriber-lithium-therapy-and-its-interactions",
+      "australian-prescriber-lithium-therapy-interactions-correction",
+    ]);
   });
 
   it("hides an unconfirmed record", () => {
     expect(medicationSourceLinks("clozapine", { links, records: [candidate()] })).toEqual([]);
   });
 
-  it("hides a record attested by a product name rather than a person", () => {
+  it("hides a record attested by a single-word product stamp while accepting the owner's two-word display name", () => {
     expect(medicationSourceLinks("clozapine", { links, records: [adoptedSigned()] })).not.toEqual([]);
-    const productName = { ...adoptedSigned(), attestedBy: "Psych Sift" };
+    const displayName = { ...adoptedSigned(), attestedBy: "Psych Sift" };
+    expect(medicationSourceLinks("clozapine", { links, records: [displayName] })).not.toEqual([]);
+    const productName = { ...adoptedSigned(), attestedBy: "PsychSift" };
     expect(medicationSourceLinks("clozapine", { links, records: [productName] })).toEqual([]);
   });
 

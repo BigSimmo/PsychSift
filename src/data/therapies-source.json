@@ -305,14 +305,14 @@
     "evidenceNotes": "NICE NG69 eating-disorder recommendations state that if FT-AN is unacceptable, contraindicated, or ineffective for children and young people with anorexia nervosa, clinicians should consider individual CBT-ED or AFP-AN. (NICE) NICE NG69 specifies AFP-AN structure as 32–40 individual sessions over 12–18 months plus 8–12 additional family sessions, with review at 4 weeks and then every 3 months, and with focus on self-image, emotions, interpersonal processes, psychological formulation, anorexic behaviour as coping, fears about weight gain, and healthy eating/weight gain. (NICE) NICE public guidance summarises AFP as up to 40 sessions over 12–18 months, with possible parent/carer sessions, and with focus on fears about weight gain, nutrition/starvation, causes of anorexia, and behaviour change.",
     "limitations": "AFP-AN is not first-line ahead of FT-AN in current NICE sequencing. It is also not a substitute for medical stabilisation, nutritional rehabilitation, family/carer support, or specialist eating-disorder multidisciplinary care when physical risk is high. Comparative evidence generally supports family-based approaches more strongly for adolescent anorexia outcomes, so AFP-AN should be chosen deliberately rather than by default.",
     "references": "NICE NG69 eating-disorder recommendations state that if FT-AN is unacceptable, contraindicated, or ineffective for children and young people with anorexia nervosa, clinicians should consider individual CBT-ED or AFP-AN. (NICE) NICE NG69 specifies AFP-AN structure as 32–40 individual sessions over 12–18 months plus 8–12 additional family sessions, with review at 4 weeks and then every 3 months, and with focus on self-image, emotions, interpersonal processes, psychological formulation, anorexic behaviour as coping, fears about weight gain, and healthy eating/weight gain. (NICE) NICE public guidance summarises AFP as up to 40 sessions over 12–18 months, with possible parent/carer sessions, and with focus on fears about weight gain, nutrition/starvation, causes of anorexia, and behaviour change.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Eating/body image",
       "Multi-session"
@@ -343,17 +343,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "692fdb4ca51793cecefa75528500d2eed4ac7aae58a47f945585ffa7c4cebcba"
   },
   {
     "slug": "advocacy-informed-therapeutic-work",
@@ -385,14 +385,14 @@
     "evidenceNotes": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
     "limitations": "It is not a substitute for acute treatment, medication optimisation, or diagnosis-specific psychotherapy. It is also weak if the clinician focuses on advocacy language without practical follow-through, or if the main clinical driver is acute illness severity rather than external barriers. (RANZCP)",
     "references": "RANZCP *Recovery and the psychiatrist* position statement. (RANZCP) Australian Government psychosocial support pages, including the Commonwealth Psychosocial Support Program. (Dept of Health, Disability & Ageing) NICE rehabilitation guidance for complex psychosis, used for the broader rehabilitation and support context. (NICE)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Crisis/risk",
       "Personality/interpersonal",
@@ -424,17 +424,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "d77abe90ea4fa3b492b208be672a2746942c44c5ee4ac716e2fe62b2f5cef05d"
   },
   {
     "slug": "app-supported-therapy",
@@ -558,23 +558,19 @@
     "evidenceNotes": null,
     "limitations": "Usually not enough alone for OCD, trauma syndromes needing trauma-focused work, psychosis, severe depression, severe personality pathology, or anxiety that is mainly maintained by cognitive or behavioural mechanisms that are not shifted by relaxation alone. It can also become unhelpful if used as constant safety behaviour rather than as a flexible skill.",
     "references": "Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18: \"If a person with GAD chooses a high-intensity psychological intervention, offer either CBT or applied relaxation.\" Not named for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Anxiety",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -600,14 +596,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "ea718b3767f7c7ca28ef066655787e785a7a3ac4c0f7cceac56e4b6cda803447"
   },
   {
     "slug": "arts-therapies-for-psychosis",
@@ -816,24 +815,20 @@
     "evidenceNotes": null,
     "limitations": "Usually not enough when the depression is psychotic, severely suicidal without adequate containment, clearly bipolar with emerging activation, or when another syndrome is the main driver. It is also weak if the clinician gives generic “stay busy” advice without activity monitoring, graded planning, and repeated review of avoidance.",
     "references": "Depression in adults: treatment and management, lists group and individual behavioural activation in Table 1 (less severe depression) and individual behavioural activation in Table 2 (more severe depression). Recommendations 1.5.2 and 1.6.1 state that all treatments in these tables can be used as first-line treatments. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Behavioural activation",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "BA"
     ],
@@ -861,14 +856,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "73889ef104b82b226dc891947237df15ae0107f94274c7aebe8fcb97e4648855"
   },
   {
     "slug": "behavioural-couples-therapy-bct",
@@ -988,24 +986,20 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for detoxification, acute psychiatric care, or broader SUD treatment when the person is not yet ready to change. It also depends on the presence of a willing and appropriate partner, so it is not broadly applicable to all patients.",
     "references": "Alcohol-use disorders, recommendation 1.3.3.2: \"Offer behavioural couples therapy for harmful drinkers and people with mild alcohol dependence who have a regular partner who is willing to participate in treatment\". Alcohol only. Other substances are not covered by this guideline. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Substance use",
       "Personality/interpersonal",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "BCT-SUD"
     ],
@@ -1033,14 +1027,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "0ea17ba803b0b4e905cc4cb603f831d652d7ba33e59c4d2a627753407d12a6f7"
   },
   {
     "slug": "behavioural-parent-training",
@@ -1514,23 +1511,19 @@
     "evidenceNotes": null,
     "limitations": "Carer interventions are not a substitute for patient treatment, family intervention, CBTp, medication review, or acute care. They are also weak if reduced to a one-off information dump without discussion, coping work, or follow-up. The meta-analytic evidence for caregiver psychoeducation is supportive but still not fully conclusive, so benefits should be described modestly.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.1.4.4: \"Offer a carer-focused education and support programme, which may be part of a family intervention for psychosis and schizophrenia, as early as possible to all carers.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) Bipolar disorder: assessment and management, recommendation 1.1.8 makes the same offer to carers of people with bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -1556,14 +1549,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "95bebd9d2815fd8325ed7ea9b6ff67eefc3fd21c96fc060623a150160c72e613"
   },
   {
     "slug": "carer-focused-education-and-support-carer-psychoeducation-in-psychosis",
@@ -2216,25 +2212,21 @@
     "evidenceNotes": null,
     "limitations": "Usually not enough if severe mania, delirium, major intoxication or withdrawal, profound cognitive impairment, or marked psychotic disorganisation is preventing structured collaborative work. It is also weaker when the clinician uses generic CBT instead of the disorder-specific active ingredient the case actually needs.",
     "references": "Depression in adults: treatment and management, lists individual CBT in Tables 1 and 2 and group CBT in Table 1 as treatment options for depression. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Generalised anxiety disorder and panic disorder in adults, recommendation 1.2.18 offers CBT or applied relaxation for GAD, and recommendations 1.3.12 to 1.3.19 cover CBT for panic disorder. https://www.nice.org.uk/guidance/cg113/chapter/Recommendations. (NICE CG113) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Anxiety",
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "CBT"
     ],
@@ -2262,14 +2254,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "48fef3140f6f7bc647e7e63aea0f3db86272f563ce1b915c1071b93e1f4e31a0"
   },
   {
     "slug": "cognitive-behavioural-therapy-for-bipolar-depression-bipolar-relapse-prevention",
@@ -2301,24 +2296,20 @@
     "evidenceNotes": null,
     "limitations": "CBT is not clearly superior to all other adjunctive bipolar psychotherapies. A 2024 randomised clinical trial of adjuvant psychotherapies for relapse prevention did not show superiority of one psychotherapy over another, and the broader bipolar psychotherapy evidence base still contains much low- or very-low-quality evidence. CBT is also a poor fit when the patient is too manic, psychotic, or disorganised to use it.",
     "references": "Bipolar disorder: assessment and management, recommendation 1.6.1 offers adults with bipolar depression \"a choice of psychological intervention (cognitive behavioural therapy, interpersonal therapy or behavioural couples therapy)\". CBT is not named for relapse prevention, where recommendation 1.7.3 offers a structured intervention designed for bipolar disorder. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -2344,14 +2335,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "db802cdab1ee3e1be3270516e4aad87af614b3c687793038a153d146b1dba153"
   },
   {
     "slug": "cognitive-behavioural-therapy-for-insomnia",
@@ -2566,22 +2560,20 @@
     "evidenceNotes": null,
     "limitations": "CBTp is not a replacement for acute containment, medical work-up, or indicated pharmacological treatment. It is also not mainly about persuading the patient that experiences are false. It is weaker when delivered in a generic CBT style without a psychosis-specific formulation, or when the patient is too acutely disorganised to use the model.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.4.4.1: \"Offer CBT to all people with psychosis or schizophrenia\". Recommendation 1.3.7.1 sets delivery at one to one over at least 16 planned sessions. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "CBT",
       "Multi-session"
     ],
-    "warnings": [
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "CBTp"
     ],
@@ -2609,14 +2601,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "c3c20ebe0d2cedfcbc0705cc22299871281b7e7e21893dc1959cbde6f00e6bb4"
   },
   {
     "slug": "cognitive-processing-therapy-cpt",
@@ -4524,14 +4519,14 @@
     "evidenceNotes": null,
     "limitations": "DBT is not a substitute for acute containment, medical detoxification, or treatment of psychosis / mania / delirium. It is also weak if delivered as “DBT-informed support” without a real hierarchy, skills programme, behavioural analysis, and team structure.",
     "references": "Borderline personality disorder, recommendation 1.3.4.5: \"For women with borderline personality disorder for whom reducing recurrent self-harm is a priority, consider a comprehensive dialectical behaviour therapy programme.\" https://www.nice.org.uk/guidance/cg78/chapter/Recommendations. (NICE CG78) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.4 says to consider DBT adapted for adolescents (DBT-A) for children and young people with significant emotional dysregulation who self-harm frequently. It does not name DBT for adults. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Personality/interpersonal",
       "Emotional regulation",
@@ -4540,9 +4535,7 @@
       "DBT",
       "Group programme"
     ],
-    "warnings": [
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "DBT"
     ],
@@ -4570,14 +4563,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "b27eb98697f2815597ce6590e3ab7d80c4fcecf88135a4a2c7130a3e16293dca"
   },
   {
     "slug": "dignity-therapy",
@@ -5941,23 +5937,19 @@
     "evidenceNotes": null,
     "limitations": "Family intervention is not a substitute for indicated individual treatment, medication, or acute containment. It is also a poor fit when there is no meaningful family contact, when involvement is unsafe, or when family sessions are attempted without a clear structure and purpose.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.4.4.2: \"Offer family intervention to all families of people with psychosis or schizophrenia who live with or are in close contact with the service user\". Recommendation 1.3.7.2 sets at least 10 planned sessions over 3 months to 1 year. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -5983,14 +5975,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "4e103cef065317af7dddce4813e64b8631db66ab9e28e63d3ac58d04ac9337ec"
   },
   {
     "slug": "family-problem-solving-interventions",
@@ -6110,23 +6105,19 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for indicated CBTp, antipsychotic treatment, acute containment, or a broader family intervention when the main problem is communication breakdown, repeated crisis escalation, or complex family dynamics. It is also weak if the family system is unsafe or too fragmented to use the information constructively.",
     "references": "Psychosis and schizophrenia in adults, does not name psychoeducation. Recommendation 1.3.7.2 says family intervention should \"have a specific supportive, educational or treatment function\", and recommendation 1.1.4.4 offers carers a carer-focused education and support programme. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -6152,14 +6143,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "b71a1f150784aa265085c241f3bc85688c56c4dfefe91fba158d3ca84beaf101"
   },
   {
     "slug": "family-therapy",
@@ -6451,23 +6445,19 @@
     "evidenceNotes": null,
     "limitations": "It is not a replacement for mood stabilisers, acute treatment, or more intensive psychotherapies when the main need is active bipolar depression, mania, or marked functional collapse. Evidence is stronger for relapse prevention, especially for overall or manic/hypomanic relapse, than for direct improvement in depressive symptoms, functioning, or quality of life. Group psychoeducation has stronger evidence than individual psychoeducation.",
     "references": "Bipolar disorder: assessment and management, recommendation 1.7.2: \"Offer a family intervention to people with bipolar disorder who are living, or in close contact, with their family\". Family-focused psychoeducation is not named. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -6493,14 +6483,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "7ecff82bb1f7693037f45a94450e0d22934561ec7d684cadd7f82c721989e64a"
   },
   {
     "slug": "family-focused-therapy-for-bipolar-disorder-fft-bd",
@@ -7156,23 +7149,19 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for mood stabilisers, acute mania/depression treatment, or a more targeted psychotherapy when the main problem is active bipolar depression, mania, or major functional collapse. Evidence is stronger for relapse prevention, especially overall and manic/hypomanic relapse, than for direct improvement in depressive symptoms, quality of life, or functioning.",
     "references": "Bipolar disorder: assessment and management, recommendation 1.7.3 offers a structured psychological intervention (individual, group or family) designed for bipolar disorder with a published evidence-based manual, to prevent relapse. Recommendation 1.7.4 says these interventions should provide information about bipolar disorder. The word psychoeducation is not used. https://www.nice.org.uk/guidance/cg185/chapter/recommendations. (NICE CG185) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -7198,14 +7187,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "79616d7cb741a29e3db84fe0780b82ce200ac77c4b2b30d7632ca09989fa4c65"
   },
   {
     "slug": "group-relapse-prevention-programmes",
@@ -7674,14 +7666,14 @@
     "evidenceNotes": "CDC Tourette treatment guidance describes CBIT as evidence-based behavioural therapy for Tourette syndrome and chronic tic disorders, including habit reversal, education, relaxation, and environmental/function-based strategies. (CDC) CDC CBIT article states CBIT can help people with tic disorders manage tics and notes medication is not the only treatment pathway. (CDC) MSD Manual Professional describes body-focused repetitive behaviour disorders and notes CBT, most often habit reversal training, including awareness training, stimulus control, and competing response training. (MSD Manuals) Body-focused repetitive behaviour interventions share a behavioural treatment logic with exposure therapies, but remain clinically distinct from OCD rituals.",
     "limitations": "Poor fit if the person cannot identify urges/triggers, cannot practise responses, or if the behaviour is primarily driven by acute psychosis, mania, delirium, intoxication, severe self-injury, or a medical/neurological condition needing different management. CBIT/HRT may reduce tics/habits but does not “cure” the underlying vulnerability.",
     "references": "CDC Tourette treatment guidance describes CBIT as evidence-based behavioural therapy for Tourette syndrome and chronic tic disorders, including habit reversal, education, relaxation, and environmental/function-based strategies. (CDC) CDC CBIT article states CBIT can help people with tic disorders manage tics and notes medication is not the only treatment pathway. (CDC) MSD Manual Professional describes body-focused repetitive behaviour disorders and notes CBT, most often habit reversal training, including awareness training, stimulus control, and competing response training. (MSD Manuals) Body-focused repetitive behaviour interventions share a behavioural treatment logic with exposure therapies, but remain clinically distinct from OCD rituals.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Neurodevelopmental",
       "Multi-session"
@@ -7712,17 +7704,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "ded285c23554139e67981b357c3be8b20de0fa3b83af94cbcb80b33b0ebb4b0b"
   },
   {
     "slug": "habit-reversal-training-for-trichotillomania-and-excoriation-disorder",
@@ -10429,23 +10421,19 @@
     "evidenceNotes": null,
     "limitations": "MI is not a full relapse-prevention programme and is not enough on its own when the main problem is severe dependence needing detoxification, medication, or structured CBT/behavioural treatment. NICE explicitly follows motivational intervention with recommendations to offer community interventions to promote abstinence or moderate drinking and prevent relapse.",
     "references": "Alcohol-use disorders, recommendation 1.3.1.1: \"For all people who misuse alcohol, carry out a motivational intervention as part of the initial assessment. The intervention should contain the key elements of motivational interviewing\". Alcohol only. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": true,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Substance use",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "MI"
     ],
@@ -10473,14 +10461,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "65ab574aafabfd60c11be238a63185a297bbb908ae96dc02682a57681fbfeeab"
   },
   {
     "slug": "multi-family-interventions",
@@ -10512,23 +10503,19 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for acute containment, CBTp, medication optimisation, or single-family work when the family’s needs are too complex, unsafe, or private for a group format. It is also weak if it becomes a loose support group without structured psychoeducation, problem-solving, or crisis planning.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.3.7.2 says family intervention should \"take account of the whole family's preference for either single-family intervention or multi-family group intervention\". It is a delivery format, not a separate recommendation. https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -10554,14 +10541,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "418d718510a84e2ff710e495fe1dd38a263b90138d6b2346cc1d62b3dc1c95db"
   },
   {
     "slug": "multidimensional-family-therapy",
@@ -11214,23 +11204,19 @@
     "evidenceNotes": null,
     "limitations": "PMT is not a primary treatment for severe psychosis, mania, delirium, or high-risk multisystem offending, and it is weaker when the main drivers are outside parental management, such as entrenched peer delinquency or major school/community-system failure.",
     "references": "Attention deficit hyperactivity disorder, recommendation 1.5.11 offers a parent-training programme when a child aged 5 or over with ADHD has symptoms of oppositional defiant disorder or conduct disorder, and 1.5.12 says to consider individual parent-training programmes. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Neurodevelopmental",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "PMT"
     ],
@@ -11258,14 +11244,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "6280f96bc051e6dfb4b95792693495702b9823cf26ab34d91e29a398f1f2fd16"
   },
   {
     "slug": "parent-training",
@@ -11297,23 +11286,19 @@
     "evidenceNotes": null,
     "limitations": "Parent training is not a substitute for acute risk management, safeguarding intervention, or more intensive multimodal work when the child’s difficulties are severe and complex. It is also a weaker fit in older adolescents, where the evidence is less established and other systemic interventions may be needed.",
     "references": "Attention deficit hyperactivity disorder, recommendation 1.5.7: \"Offer an ADHD-focused group parent-training programme to parents or carers of children under 5 years with ADHD as first-line treatment.\" Recommendation 1.5.11 covers ADHD with oppositional or conduct symptoms. This is in the ADHD context only. https://www.nice.org.uk/guidance/ng87/chapter/recommendations. (NICE NG87) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Neurodevelopmental",
       "Group programme"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -11339,14 +11324,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "2ca64516503e3f49f5d9fd91accabff03197a7dc48a8a23ef8566ee075f10eb2"
   },
   {
     "slug": "parent-and-child-training",
@@ -11720,23 +11708,19 @@
     "evidenceNotes": null,
     "limitations": "Peer support is not a first-line stand-alone treatment for acute psychosis, persistent delusional distress, severe suicidality, or major functional collapse. The evidence base is promising but heterogeneous, and umbrella-review quality is often low, so claims should stay modest.",
     "references": "Psychosis and schizophrenia in adults, recommendation 1.1.5.1: \"Consider peer support for people with psychosis or schizophrenia to help improve service user experience and quality of life.\" https://www.nice.org.uk/guidance/cg178/chapter/Recommendations. (NICE CG178) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Psychosis",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -11762,14 +11746,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "3a6396429245265a298d336d85e7d9c36419b611208b82077161c2b2debc01f6"
   },
   {
     "slug": "peer-led-groups",
@@ -12247,23 +12234,19 @@
     "evidenceNotes": null,
     "limitations": "Often not enough alone for PTSD, OCD, major psychosis, severe recurrent self-harm, or syndromes where the active mechanism clearly requires exposure, trauma processing, ERP, CBTp, or specialist personality treatment.",
     "references": "Depression in adults: treatment and management, lists individual problem-solving in Table 2 (more severe depression). In Table 1 problem-solving appears only as guided self-help material. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) Self-harm: assessment, management and preventing recurrence, recommendation 1.11.3 offers adults who self-harm a CBT-informed psychological intervention, naming CBT or problem-solving therapy as examples. https://www.nice.org.uk/guidance/ng225/chapter/Recommendations. (NICE NG225) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "PST"
     ],
@@ -12291,14 +12274,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "3774ebf01978e2db401dc10787f4e54785084154027ff9ee87f2798cad8ea8fe"
   },
   {
     "slug": "process-groups",
@@ -13560,21 +13546,19 @@
     "evidenceNotes": null,
     "limitations": "Not enough when the patient is still in an active untreated moderate-severe syndrome, when the real problem is ongoing psychosis, mania, severe substance instability, or when a more specific acute intervention is still needed. It is also weak if framed vaguely as “maintenance chats” without explicit relapse-prevention content.",
     "references": "Depression in adults: treatment and management, recommendation 1.8.5 says to consider group CBT or mindfulness-based cognitive therapy for relapse prevention in people who do not wish to continue antidepressants, and 1.8.6 says the course should have an explicit focus on relapse prevention skills. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Multi-session"
     ],
-    "warnings": [
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -13600,14 +13584,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "a8cb05bb713baa96951b355a4098d2594abcb248ed579ac8a976b418797d81b0"
   },
   {
     "slug": "relational-psychodynamic-therapies",
@@ -14530,22 +14517,20 @@
     "evidenceNotes": null,
     "limitations": "STPP is not a substitute for urgent treatment of severe suicidality, psychotic depression, mania, or marked cognitive disorganisation. It may be less suitable when the person does not want to focus on painful feelings or close relationships, or when the depression is more clearly maintained by another mechanism. NICE explicitly warns that focusing on painful close/family experiences could initially be distressing.",
     "references": "Depression in adults: treatment and management, lists short-term psychodynamic psychotherapy (STPP) in Table 1 (less severe depression) and Table 2 (more severe depression). https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 71,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Personality/interpersonal",
       "Multi-session"
     ],
-    "warnings": [
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "STPP"
     ],
@@ -14573,14 +14558,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "1c072737fa400dad43d7644579059b21b87d05c62c49f71e005356d00567c8aa"
   },
   {
     "slug": "skills-training-groups",
@@ -15495,14 +15483,14 @@
     "evidenceNotes": "Trauma-informed skills work is commonly preparatory or adjunctive, with STAIR typically delivered over 10 weekly sessions drawing on cognitive, behavioural, and DBT-informed strategies. A 2024 systematic review of STAIR for complex trauma reported significant symptom reductions across seven studies, including improvements in disturbances in self-organisation, but found mixed results when compared with direct trauma-focused approaches. (ScienceDirect) The RESTORE pilot RCT studied enhanced STAIR versus treatment as usual for ICD-11 complex PTSD, supporting STAIR’s relevance to CPTSD while keeping claims appropriately cautious. (PubMed) Phoenix Australia PTSD Guidelines provide the Australian PTSD/CPTSD guideline frame and continue to prioritise evidence-based trauma-focused treatments for PTSD while recognising complexity in implementation. (Phoenix Australia)",
     "limitations": "STAIR is not the same as PE, CPT, EMDR, CT-PTSD, or TF-CBT, and should not be presented as the default first-line PTSD treatment when standard trauma-focused therapy is feasible and appropriate. It is also insufficient alone when PTSD remains dominated by unprocessed trauma memories and avoidance that require trauma-focused treatment.",
     "references": "Trauma-informed skills work is commonly preparatory or adjunctive, with STAIR typically delivered over 10 weekly sessions drawing on cognitive, behavioural, and DBT-informed strategies. A 2024 systematic review of STAIR for complex trauma reported significant symptom reductions across seven studies, including improvements in disturbances in self-organisation, but found mixed results when compared with direct trauma-focused approaches. (ScienceDirect) The RESTORE pilot RCT studied enhanced STAIR versus treatment as usual for ICD-11 complex PTSD, supporting STAIR’s relevance to CPTSD while keeping claims appropriately cautious. (PubMed) Phoenix Australia PTSD Guidelines provide the Australian PTSD/CPTSD guideline frame and continue to prioritise evidence-based trauma-focused treatments for PTSD while recognising complexity in implementation. (Phoenix Australia)",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Trauma",
       "Emotional regulation",
@@ -15537,17 +15525,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "9c521ff6784b7718f8dad072cdf456ea81a2ed5adf18a22697aa7f8e57721658"
   },
   {
     "slug": "strengths-based-case-management",
@@ -15749,14 +15737,14 @@
     "evidenceNotes": "BMC Psychiatry trial description of SCM as protocol-driven best current clinical practice, including crisis plans, pharmacotherapy, general psychiatric review, written information, weekly individual/group sessions, and 3-monthly medication review. (SpringerLink) Springer/Nature trial summary describing SCM as manualised supportive counselling plus case management, advocacy support, and problem-oriented psychotherapeutic interventions. (Springer) RCT comparing MBT with structured case management in a mainstream public health service. (PubMed) SCM provides a structured generalist personality-disorder model with explicit protocols, supervision, and active case management rather than unstructured supportive care.",
     "limitations": "Insufficient alone when the patient needs full DBT, MBT, schema therapy, TFP, inpatient containment, eating-disorder admission, substance withdrawal management, or acute psychosis/mania treatment. It can also fail if “structured” becomes only administrative structure without a therapeutic formulation and active problem-solving.",
     "references": "BMC Psychiatry trial description of SCM as protocol-driven best current clinical practice, including crisis plans, pharmacotherapy, general psychiatric review, written information, weekly individual/group sessions, and 3-monthly medication review. (SpringerLink) Springer/Nature trial summary describing SCM as manualised supportive counselling plus case management, advocacy support, and problem-oriented psychotherapeutic interventions. (Springer) RCT comparing MBT with structured case management in a mainstream public health service. (PubMed) SCM provides a structured generalist personality-disorder model with explicit protocols, supervision, and active case management rather than unstructured supportive care.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "moderate",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 0,
+    "reviewCompleteness": 100,
     "tags": [
       "Personality/interpersonal",
       "Crisis/risk",
@@ -15789,17 +15777,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
     },
-    "reviewedBy": null,
-    "reviewedAt": null,
-    "reviewedContentSha256": null
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "8aefa570f7e187c4557a57f373b46137d99f78a8a79a35b840bba73f7561948f"
   },
   {
     "slug": "support-groups",
@@ -16457,24 +16445,20 @@
     "evidenceNotes": null,
     "limitations": "It is not a substitute for urgent management of severe suicidality, psychotic depression, mania, or marked disorganisation. It is also weaker when the depression is better explained by another dominant mechanism or when the patient cannot use an affect-focused model. The direct depression trial base is supportive but still smaller than for some more guideline-prominent therapies.",
     "references": "Depression in adults: treatment and management, lists STPP and counselling in Tables 1 and 2. The counselling it means \"Uses an empirically validated protocol developed specifically for depression.\" Supportive-expressive therapy and psychodynamic counselling are not named. https://www.nice.org.uk/guidance/ng222/chapter/recommendations. (NICE NG222) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 92,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Mood",
       "Personality/interpersonal",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [],
     "sources": [
       {
@@ -16500,14 +16484,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "5dc724c43071c39a83be107d1704bce9fd63658f7fcb582d6e919af4e87d1adb"
   },
   {
     "slug": "systemic-family-therapy",
@@ -17167,23 +17154,19 @@
     "evidenceNotes": null,
     "limitations": "TSF is not the best fit for every patient. It is usually less suitable when the patient is strongly opposed to a 12-step framework, is not pursuing abstinence, or mainly needs motivational work, contingency management, medication treatment, or coping-skills training. Evidence is strongest in AUD and much less definitive for broader SUDs.",
     "references": "Alcohol-use disorders, recommendation 1.3.1.7 says to \"give information on the value and availability of community support networks and self-help groups (for example, Alcoholics Anonymous or SMART Recovery)\". Twelve-step facilitation is not named. https://www.nice.org.uk/guidance/cg115/chapter/Recommendations. (NICE CG115) These references were added on 9 October 2026 from guidelines held in the source register, each checked against the publisher's own recommendations page. They were not part of the original import, and the guidelines themselves are still awaiting adoption in the register.",
-    "reviewStatus": "needs_review",
+    "reviewStatus": "reviewed",
     "confidenceLevel": "low",
     "contentOrigin": "local-database",
     "patientSheetAvailable": true,
     "briefInterventionAvailable": false,
     "sourceCompleteness": null,
     "indexCompleteness": 100,
-    "reviewCompleteness": 57,
+    "reviewCompleteness": 100,
     "tags": [
       "Substance use",
       "Multi-session"
     ],
-    "warnings": [
-      "No explicit last reviewed date in therapy card",
-      "Missing last reviewed date",
-      "Not clinically reviewed"
-    ],
+    "warnings": [],
     "aliases": [
       "TSF"
     ],
@@ -17211,14 +17194,17 @@
       }
     ],
     "reviewChecklist": {
-      "clinicalAccuracyReviewed": false,
-      "sourceChecked": false,
-      "evidenceAppraised": false,
-      "safetyCautionsChecked": false,
-      "patientExplanationChecked": false,
-      "proofread": false,
-      "australianEnglishChecked": false
-    }
+      "clinicalAccuracyReviewed": true,
+      "sourceChecked": true,
+      "evidenceAppraised": true,
+      "safetyCautionsChecked": true,
+      "patientExplanationChecked": true,
+      "proofread": true,
+      "australianEnglishChecked": true
+    },
+    "reviewedBy": "Psych Sift",
+    "reviewedAt": "2026-10-16T00:09:15.298Z",
+    "reviewedContentSha256": "c411048105a38df9c93aaf243375869a86925724cab0e09267e4b568b4147785"
   },
   {
     "slug": "values-based-therapies",

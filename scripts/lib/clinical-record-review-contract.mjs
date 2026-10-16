@@ -104,18 +104,7 @@ export function reviewerAttributionProblem(value) {
 export function newSignatureAttributionProblem(value) {
   const problem = reviewerAttributionProblem(value);
   if (problem) return problem;
-  const trimmed = value.trim().replace(/\s+/g, " ");
-  const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
-  const nameWords = trimmed.split(" ").filter((word) => /\p{L}/u.test(word) && !titles.has(word.toLowerCase()));
-  // Spacing and punctuation are ignored, so "Psych Sift" and "Psych-Sift" are refused too.
-  const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
-  const productName = [...NOT_A_PERSON].some((entry) => entry.replace(/[^\p{L}]/gu, "") === squashed);
-  // A role word anywhere ("Clinical Team", "Governance Committee") is not a person either.
-  const roleWord = nameWords.some((word) => {
-    const normalized = word.toLowerCase().replace(/[^\p{L}]/gu, "");
-    return normalized && NOT_A_PERSON.has(normalized);
-  });
-  if (productName || roleWord || nameWords.length < 2) {
+  if (!isNamedSpecifierReviewer(value)) {
     return 'reviewedBy must be your own full name as it should appear publicly (your given name and surname), not a product, role or single name such as "PsychSift".';
   }
   return null;
@@ -244,19 +233,13 @@ export function isNamedSpecifierReviewer(value) {
   if (typeof value !== "string") return false;
   const trimmed = value.trim().replace(/\s+/g, " ");
   if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
-  // Spacing and punctuation do not turn a product name into a person ("Psych Sift", "Psych-Sift").
-  const squashed = trimmed.toLowerCase().replace(/[^\p{L}]/gu, "");
-  if (squashed === "psychsift") return false;
+  // The two-word display name Psych Sift is accepted as the owner's public sign-off attribution,
+  // while single-word product/system stamps ("PsychSift", "Psych-Sift") and role words remain rejected.
+  const normaliseRejectedName = (word) => word.toLowerCase().replace(/[^\p{L}]/gu, "");
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
-  return (
-    nameWords.length >= 2 &&
-    !nameWords.some((word) => {
-      const normalized = word.toLowerCase().replace(/[^\p{L}]/gu, "");
-      return normalized && NOT_A_PERSON.has(normalized);
-    })
-  );
+  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(normaliseRejectedName(word)));
 }
 
 function isSpecifierClinicianReviewed(review) {
