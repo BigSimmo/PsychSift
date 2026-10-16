@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import {
   CASE_COMPLEXITIES,
   EPA_OBSERVED,
@@ -355,6 +356,11 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
     evictMagicLinkStoreIfNeeded(now);
     magicLinkStore.set(tokenHash, record);
     persistMagicLinksFromStore();
+    logger.info("epa_magic_link_created", {
+      id: record.id,
+      epaNumber: record.epaNumber,
+      expiresAt: record.expiresAt,
+    });
   }
 
   return {
@@ -366,10 +372,50 @@ export function createEpaMagicLinkRequest(input: CreateEpaMagicLinkInput): {
   };
 }
 
+export const createEpaMagicLink = createEpaMagicLinkRequest;
+
 export function revokeEpaMagicLinkToken(token: string): boolean {
+  loadPersistedMagicLinksIntoStore();
   const trimmed = token.trim();
   if (!trimmed) return false;
-  return magicLinkStore.delete(hashEpaMagicToken(trimmed));
+  const tokenHash = hashEpaMagicToken(trimmed);
+  const existing = magicLinkStore.get(tokenHash);
+  const deleted = magicLinkStore.delete(tokenHash);
+  if (deleted) {
+    persistMagicLinksFromStore();
+    logger.info("epa_magic_link_revoked", {
+      id: existing?.id ?? null,
+      epaNumber: existing?.epaNumber ?? null,
+      method: "token",
+    });
+  }
+  return deleted;
+}
+
+export function revokeEpaMagicLinkById(id: string, actor?: { supervisorName?: string }): boolean {
+  loadPersistedMagicLinksIntoStore();
+  const trimmedId = id.trim();
+  if (!trimmedId) return false;
+  for (const [tokenHash, record] of magicLinkStore.entries()) {
+    if (record.id === trimmedId) {
+      if (actor?.supervisorName) {
+        const expectedSupervisor = record.supervisorName.trim().toLowerCase();
+        const providedSupervisor = actor.supervisorName.trim().toLowerCase();
+        if (expectedSupervisor && providedSupervisor && expectedSupervisor !== providedSupervisor) {
+          return false;
+        }
+      }
+      magicLinkStore.delete(tokenHash);
+      persistMagicLinksFromStore();
+      logger.info("epa_magic_link_revoked", {
+        id: record.id,
+        epaNumber: record.epaNumber,
+        method: "id",
+      });
+      return true;
+    }
+  }
+  return false;
 }
 
 export function registerEpaMagicLinkRecord(token: string, input: CreateEpaMagicLinkInput): EpaMagicLinkRecord {
@@ -388,6 +434,11 @@ export function registerEpaMagicLinkRecord(token: string, input: CreateEpaMagicL
   evictMagicLinkStoreIfNeeded(now);
   magicLinkStore.set(tokenHash, record);
   persistMagicLinksFromStore();
+  logger.info("epa_magic_link_created", {
+    id: record.id,
+    epaNumber: record.epaNumber,
+    expiresAt: record.expiresAt,
+  });
   return record;
 }
 
@@ -598,6 +649,11 @@ export function submitEpaMagicLinkResponse(
 
   magicLinkStore.set(lookup.request.tokenHash, completedRecord);
   persistMagicLinksFromStore();
+  logger.info("epa_magic_link_completed", {
+    id: completedRecord.id,
+    epaNumber: completedRecord.epaNumber,
+    submittedAt,
+  });
 
   return {
     ok: true,
@@ -605,3 +661,5 @@ export function submitEpaMagicLinkResponse(
     request: completedRecord,
   };
 }
+
+export const submitEpaMagicLinkAssessment = submitEpaMagicLinkResponse;

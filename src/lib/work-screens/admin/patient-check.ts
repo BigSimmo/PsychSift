@@ -1,3 +1,5 @@
+import { formatRecordedDate } from "@/lib/admin/renewal-dates";
+import type { AdminPaperwork } from "@/lib/work-screens/admin/paperwork-model";
 import {
   checkPatientDetail,
   looksLikePatientDetail,
@@ -35,4 +37,38 @@ export function firstAdminPatientProblem(
     if (problem) return problem;
   }
   return null;
+}
+
+function stripRequestDates(req: AdminPaperwork["requests"][number]): string {
+  let message = req.message;
+  if (req.dueOn) {
+    const formattedDue = formatRecordedDate(req.dueOn);
+    if (formattedDue) message = message.replaceAll(formattedDue, "");
+    message = message.replaceAll(req.dueOn, "");
+  }
+  if (req.askedFor) {
+    const formattedAsked = formatRecordedDate(req.askedFor);
+    if (formattedAsked) message = message.replaceAll(formattedAsked, "");
+    message = message.replaceAll(req.askedFor, "");
+  }
+  return message;
+}
+
+export function firstPaperworkPatientProblem(record: AdminPaperwork, thisYear?: number): string | null {
+  const freeTextProblem = firstAdminPatientProblem(
+    [
+      ...record.documents.flatMap((doc) => [doc.title, doc.keptAt, doc.note, doc.url]),
+      ...record.payslips.map((slip) => slip.note),
+      ...Object.values(record.tax).flatMap((sheet) => sheet.expenses.map((exp) => exp.title)),
+      ...record.requests.flatMap((req) => [req.title, req.note, req.outcomeNote, req.toEmail, stripRequestDates(req)]),
+    ],
+    { allowCapitals: true, thisYear },
+  );
+  if (freeTextProblem) return freeTextProblem.title;
+
+  const recipientProblem = firstAdminPatientProblem(
+    [...record.requests.map((req) => req.to), record.sharing.recipient, ...record.sharing.log.map((entry) => entry.to)],
+    { allowName: true, allowCapitals: true, thisYear },
+  );
+  return recipientProblem ? recipientProblem.title : null;
 }

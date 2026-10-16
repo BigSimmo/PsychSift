@@ -1,7 +1,7 @@
 {
   "note": "sha256 of every migration this repository has shipped, with newlines normalised. An entry whose hash changes means an applied migration was edited, which cannot reach the live database. See scripts/check-migration-immutability.mjs.",
   "generator": "scripts/check-migration-immutability.mjs",
-  "sealed_at": "2026-10-16T13:44:26.240Z",
+  "sealed_at": "2026-10-16T16:11:31.274Z",
   "versions": {
     "20260527000000_bulk_ingestion.sql": "813e8e314064a6dcbaaa55e2765a8ce901d5783b304b4a7af7bb7417a07daf7c",
     "20260527001000_documents_policy_cleanup.sql": "559c26f3172bf75e545a41adef75538b2bf648ea7d53c8eb3d3ea7c244c65a48",
@@ -318,6 +318,7 @@
     "20261015181500_roster_open_post_keys_posted_by_fk.sql": "57963eee880db9542b6e9a3383dcef01625a0d05bcbbc3465cd43ec613860639",
     "20261015185000_fenced_ingestion_reset_and_deep_memory.sql": "8802ed4429f139fb5abbb689a1c8817d845f2116defc0365c2329d15e399539b",
     "20261015200000_fenced_ingestion_followups.sql": "21bee7afaf86007b24890ff7abd553ea9cea24d9889cfa12589cccf1dc59357a",
-    "20261016134500_teaching_admin_attendance_export.sql": "a9fc28336706aee579e18ec782213627e26eb6ca1cd60ab46f4625cf5efee94e"
+    "20261016134500_teaching_admin_attendance_export.sql": "a9fc28336706aee579e18ec782213627e26eb6ca1cd60ab46f4625cf5efee94e",
+    "20261016210000_adversarial_review_rpc_and_credential_hardening.sql": "5b8b994854516a0cd841a24809f2965b490e4d1a979e2169a24d7105284a0b43"
   }
 }

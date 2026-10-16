@@ -4455,6 +4455,16 @@
         "catalogued": true
       },
       {
+        "path": "docs/branch-review-index.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/branch-review-index.md",
+        "section": "root",
+        "catalogued": true
+      },
+      {
         "path": "docs/audit/2026-09-17-external-audit-refutations.md",
         "section": "audit",
         "catalogued": true
@@ -21555,6 +21565,14 @@
         "scope": "Run PR sweep: CI fix + threads + drift",
         "outcome": "2 Codex P2 → skip placeholders in compactBestUseTitle; gate subtitle compaction to services mode; threads unreplied (API 403)",
         "checks": "vitest services-catalog+document-search-record-fault 20 passed; no provider-backed checks"
+      },
+      {
+        "date": "2026-10-16",
+        "ref": "codex/cloud-policy-clarity",
+        "head": "bdb0cea521800eb85f47fa3a0de3ce7869082a4c",
+        "scope": "Codex Cloud reasoning-effort and raw-env policy overhaul",
+        "outcome": "PASS (0 blocking findings; removed all xhigh prompt-marker references across policies/skills/RAG launch checks, added GH_TOKEN to known launcher scrub path, clarified activation guidance)",
+        "checks": "check:codex-cloud, vitest (tests/codex-cloud-setup.test.ts, tests/rag-local-agent-policy.test.ts, tests/rag-plan-package-parity.test.ts, tests/organisation-decisions.test.ts: 150 passed), docs:maintain, check:instructions, check:decisions, check:organisation"
       },
       {
         "date": "2026-07-20",

@@ -11,6 +11,8 @@ function expectPublicFixtureCache(response: Response) {
 
 function expectPrivateCache(response: Response) {
   expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("vary")).toContain("Cookie");
+  expect(response.headers.get("vary")).toContain("Authorization");
 }
 
 type QueryError = { message: string };
@@ -81,7 +83,7 @@ class QueryBuilder implements PromiseLike<QueryResult> {
 
 function createSupabaseMock(
   resolve: QueryResolver = () => ok([]),
-  options: { canonicalRows?: unknown[]; limited?: boolean } = {},
+  options: { canonicalRows?: unknown[]; limited?: boolean; canonicalRead?: () => Promise<QueryResult> } = {},
 ) {
   const calls: QueryCall[] = [];
   const from = vi.fn((table: string) => {
@@ -110,7 +112,9 @@ function createSupabaseMock(
               reset_at: new Date(Date.now() + 60_000).toISOString(),
             },
           ])
-        : ok(options.canonicalRows ?? [{ initialized: false, record: null, render_payload: null, snapshot: null }]),
+        : options.canonicalRead
+          ? options.canonicalRead()
+          : ok(options.canonicalRows ?? [{ initialized: false, record: null, render_payload: null, snapshot: null }]),
     ),
   };
 }
@@ -374,7 +378,7 @@ describe("differentials API routes", () => {
     };
 
     expect(response.status).toBe(404);
-    expectPrivateCache(response);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(payload.detailContext).toBeUndefined();
     expect(client.from).not.toHaveBeenCalled();
   });
@@ -532,6 +536,7 @@ describe("differentials API routes", () => {
     const payload = (await response.json()) as { records?: Array<{ slug: string }>; total?: number };
 
     expect(response.status).toBe(200);
+    expectPrivateCache(response);
     expect(payload.total ?? 0).toBeGreaterThan(0);
     expect(payload.records?.length).toBeGreaterThan(0);
     expect(consoleError).not.toHaveBeenCalled();
@@ -580,4 +585,46 @@ describe("differentials API routes", () => {
     expect(response.headers.get("retry-after")).toBe("60");
     expect(client.from).not.toHaveBeenCalled();
   });
+});
+
+describe("differentials survive an unusable catalogue", () => {
+  afterEach(async () => {
+    const { clearCatalogueSeedFallbackCooldown } = await import("@/lib/site-content/catalogue-seed-fallback");
+    clearCatalogueSeedFallbackCooldown();
+    const { clearSiteContentRecordCache } = await import("@/lib/site-content/site-content-record-cache");
+    clearSiteContentRecordCache();
+  });
+
+  it.each(["diagnosis", "presentation"] as const)(
+    "never publicly caches authenticated seed_uninitialized or degraded %s responses",
+    async (kind) => {
+      const { clearCatalogueSeedFallbackCooldown } = await import("@/lib/site-content/catalogue-seed-fallback");
+      clearCatalogueSeedFallbackCooldown();
+      const { clearSiteContentRecordCache } = await import("@/lib/site-content/site-content-record-cache");
+      clearSiteContentRecordCache();
+
+      const uninitializedClient = createSupabaseMock();
+      mockRuntime(uninitializedClient);
+      const { GET } = await import("../src/app/api/differentials/route");
+
+      const authedSeedResponse = await GET(authenticatedRequest(`/api/differentials?kind=${kind}`));
+      expect(authedSeedResponse.status).toBe(200);
+      expectPrivateCache(authedSeedResponse);
+
+      clearCatalogueSeedFallbackCooldown();
+      clearSiteContentRecordCache();
+      const degradedClient = createSupabaseMock(undefined, {
+        canonicalRead: () => Promise.reject(new Error("canonical read failed")),
+      });
+      mockRuntime(degradedClient);
+      const { GET: getDegraded } = await import("../src/app/api/differentials/route");
+
+      const degradedResponse = await getDegraded(request(`/api/differentials?kind=${kind}`));
+      const degradedPayload = (await degradedResponse.json()) as { degraded?: boolean };
+
+      expect(degradedResponse.status).toBe(200);
+      expect(degradedPayload.degraded).toBe(true);
+      expectPrivateCache(degradedResponse);
+    },
+  );
 });

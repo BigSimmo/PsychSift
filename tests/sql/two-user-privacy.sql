@@ -425,6 +425,178 @@ select pg_temp.assert_true(not exists (
 ), 'known_parent_document_gap no longer matches the probe; found: ' || coalesce((
   select string_agg(rel::text, ', ' order by rel::text) from parent_document_gap_seen), 'none'));
 
+-- ---------------------------------------------------------------------------------------------
+-- R15: Stale aal2 administrator JWT claims are refused when live auth.users row is demoted.
+-- ---------------------------------------------------------------------------------------------
+savepoint sp_r15_demoted_admin;
+update auth.users
+set raw_app_meta_data = '{"site_role":"doctor"}'::jsonb
+where id = pg_temp.uid('b');
+
+do $$
+declare
+  v_uid uuid := pg_temp.uid('b');
+  v_now_epoch bigint := extract(epoch from pg_catalog.statement_timestamp())::bigint;
+begin
+  perform set_config('request.jwt.claim.sub', v_uid::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    pg_catalog.jsonb_build_object(
+      'sub', v_uid::text,
+      'role', 'authenticated',
+      'aal', 'aal2',
+      'app_metadata', pg_catalog.jsonb_build_object('site_role', 'administrator'),
+      'amr', pg_catalog.jsonb_build_array(
+        pg_catalog.jsonb_build_object('method', 'totp', 'timestamp', v_now_epoch)
+      )
+    )::text,
+    true
+  );
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.admit_administrator_document('{}'::jsonb, '{}'::jsonb, false);
+    raise exception 'PRIVACY LEAK: demoted administrator admitted document via stale JWT claims';
+  exception
+    when sqlstate '42501' then
+      if sqlerrm not like '%administrator_assurance_required%' then
+        raise exception 'expected administrator_assurance_required, got: %', sqlerrm;
+      end if;
+  end;
+end $$;
+reset role;
+rollback to savepoint sp_r15_demoted_admin;
+release savepoint sp_r15_demoted_admin;
+
+-- ---------------------------------------------------------------------------------------------
+-- R29: Positive own-row INSERT, UPDATE, and DELETE controls on public.document_labels.
+-- ---------------------------------------------------------------------------------------------
+savepoint sp_r29_own_row_controls;
+select pg_temp.act_as(pg_temp.uid('a'));
+do $$
+declare
+  v_doc_a uuid := pg_temp.uid('a');
+  v_label_id uuid;
+  v_rows integer;
+begin
+  insert into public.document_labels (document_id, owner_id, label, label_type, source)
+  values (v_doc_a, v_doc_a, 'own-positive-control', 'custom', 'manual')
+  returning id into v_label_id;
+  perform pg_temp.assert_true(v_label_id is not null, 'doctor A should insert own document_labels row');
+
+  update public.document_labels
+  set label = 'own-positive-control-updated'
+  where id = v_label_id and owner_id = v_doc_a;
+  get diagnostics v_rows = row_count;
+  perform pg_temp.assert_true(v_rows = 1, 'doctor A should update own document_labels row');
+
+  delete from public.document_labels
+  where id = v_label_id and owner_id = v_doc_a;
+  get diagnostics v_rows = row_count;
+  perform pg_temp.assert_true(v_rows = 1, 'doctor A should delete own document_labels row');
+end $$;
+reset role;
+rollback to savepoint sp_r29_own_row_controls;
+release savepoint sp_r29_own_row_controls;
+
+-- ---------------------------------------------------------------------------------------------
+-- R26: Savepoint-isolated retention boundary and SQLSTATE 22023 parameter validation checks.
+-- ---------------------------------------------------------------------------------------------
+savepoint sp_r26_retention_boundaries;
+do $$
+declare
+  v_deleted integer;
+  v_old_course uuid := gen_random_uuid();
+  v_fresh_course uuid := gen_random_uuid();
+begin
+  -- 1. public.purge_expired_api_rate_limit_subjects(7)
+  insert into public.api_rate_limit_subjects (subject_key, bucket, window_start, request_count, updated_at)
+  values
+    ('subject-expired', 'cme', now() - interval '8 days', 1, now() - interval '8 days'),
+    ('subject-fresh', 'cme', now() - interval '6 days', 1, now() - interval '6 days');
+  v_deleted := public.purge_expired_api_rate_limit_subjects(7);
+  perform pg_temp.assert_true(v_deleted = 1, 'purge_expired_api_rate_limit_subjects(7) should delete 1 expired row');
+  perform pg_temp.assert_true(
+    exists (select 1 from public.api_rate_limit_subjects where subject_key = 'subject-fresh')
+    and not exists (select 1 from public.api_rate_limit_subjects where subject_key = 'subject-expired'),
+    'purge_expired_api_rate_limit_subjects(7) boundary preservation failed'
+  );
+  begin
+    perform public.purge_expired_api_rate_limit_subjects(0);
+    raise exception 'expected SQLSTATE 22023 from purge_expired_api_rate_limit_subjects(0)';
+  exception when sqlstate '22023' then null;
+  end;
+
+  -- 2. public.work_bookings_retention_purge()
+  insert into public.work_booking_courses (
+    id, organiser_id, organiser_label, kind, title, course_date, start_time, end_time, location, capacity, status
+  ) values
+    (v_old_course, pg_temp.uid('a'), 'Med Ed', 'course', 'Expired Course', public.work_bookings_today() - 366, '09:00', '10:00', 'Room 1', 10, 'posted'),
+    (v_fresh_course, pg_temp.uid('a'), 'Med Ed', 'course', 'Fresh Course', public.work_bookings_today() - 365, '09:00', '10:00', 'Room 1', 10, 'posted');
+  insert into public.work_course_bookings (course_id, owner_id, display_name, status)
+  values
+    (v_old_course, pg_temp.uid('a'), 'Dr A', 'booked'),
+    (v_fresh_course, pg_temp.uid('a'), 'Dr A', 'booked');
+  v_deleted := public.work_bookings_retention_purge();
+  perform pg_temp.assert_true(v_deleted = 1, 'work_bookings_retention_purge() should delete 1 expired course');
+  perform pg_temp.assert_true(
+    not exists (select 1 from public.work_booking_courses where id = v_old_course)
+    and not exists (select 1 from public.work_course_bookings where course_id = v_old_course)
+    and exists (select 1 from public.work_booking_courses where id = v_fresh_course)
+    and exists (select 1 from public.work_course_bookings where course_id = v_fresh_course),
+    'work_bookings_retention_purge() cutoff or cascade failed'
+  );
+
+  -- 3. public.purge_expired_rag_queries(30)
+  insert into public.rag_queries (owner_id, query, created_at)
+  values (pg_temp.uid('a'), 'expired rag query', now() - interval '31 days');
+  v_deleted := public.purge_expired_rag_queries(30);
+  perform pg_temp.assert_true(v_deleted = 1, 'purge_expired_rag_queries(30) should delete 1 expired row');
+  perform pg_temp.assert_true(
+    (select count(*) from public.rag_queries) = 2,
+    'purge_expired_rag_queries(30) should preserve rows inside 30-day cutoff'
+  );
+  begin
+    perform public.purge_expired_rag_queries(0);
+    raise exception 'expected SQLSTATE 22023 from purge_expired_rag_queries(0)';
+  exception when sqlstate '22023' then null;
+  end;
+
+  -- 4. public.purge_expired_rag_query_misses(30)
+  insert into public.rag_query_misses (owner_id, query, normalized_query, created_at)
+  values (pg_temp.uid('a'), 'expired miss', 'expired miss', now() - interval '31 days');
+  v_deleted := public.purge_expired_rag_query_misses(30);
+  perform pg_temp.assert_true(v_deleted = 1, 'purge_expired_rag_query_misses(30) should delete 1 expired row');
+  perform pg_temp.assert_true(
+    (select count(*) from public.rag_query_misses) = 2,
+    'purge_expired_rag_query_misses(30) should preserve rows inside 30-day cutoff'
+  );
+  begin
+    perform public.purge_expired_rag_query_misses(0);
+    raise exception 'expected SQLSTATE 22023 from purge_expired_rag_query_misses(0)';
+  exception when sqlstate '22023' then null;
+  end;
+
+  -- 5. public.purge_expired_rag_response_cache(7)
+  insert into public.rag_response_cache (owner_id, cache_kind, scope_key, normalized_query, payload, expires_at)
+  values
+    (pg_temp.uid('a'), 'search', 'scope-expired', 'q-expired', '{}'::jsonb, now() - interval '1 minute'),
+    (pg_temp.uid('a'), 'search', 'scope-fresh', 'q-fresh', '{}'::jsonb, now() + interval '10 minutes');
+  v_deleted := public.purge_expired_rag_response_cache(7);
+  perform pg_temp.assert_true(v_deleted = 1, 'purge_expired_rag_response_cache(7) should delete 1 expired row');
+  perform pg_temp.assert_true(
+    exists (select 1 from public.rag_response_cache where scope_key = 'scope-fresh')
+    and not exists (select 1 from public.rag_response_cache where scope_key = 'scope-expired'),
+    'purge_expired_rag_response_cache(7) boundary preservation failed'
+  );
+  begin
+    perform public.purge_expired_rag_response_cache(0);
+    raise exception 'expected SQLSTATE 22023 from purge_expired_rag_response_cache(0)';
+  exception when sqlstate '22023' then null;
+  end;
+end $$;
+rollback to savepoint sp_r26_retention_boundaries;
+release savepoint sp_r26_retention_boundaries;
+
 select 'TWO_USER_PRIVACY_SQL_PASS: browser roles fail closed on every table, function allowlist, '
   || 'admin functions refuse doctors, owner policies isolate two doctors' as result;
 rollback;

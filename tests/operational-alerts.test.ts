@@ -104,4 +104,43 @@ describe("evaluateOperationalAlerts", () => {
     });
     expect(alerts.every((item) => item.escalationOwner && item.runbook)).toBe(true);
   });
+
+  it("emits source-gap, unsupported-answer, and latency-budget warnings when >15% with at least 20 queries", () => {
+    expect(
+      evaluateOperationalAlerts(
+        snapshot({
+          totalQueries: 19,
+          sourceGapRate: 0.5,
+          unsupportedRate: 0.5,
+          latencyBudgetBreachRate: 0.5,
+        }),
+      ),
+    ).toEqual([]);
+
+    expect(
+      evaluateOperationalAlerts(
+        snapshot({
+          totalQueries: 20,
+          sourceGapRate: 0.15,
+          unsupportedRate: 0.15,
+          latencyBudgetBreachRate: 0.15,
+        }),
+      ),
+    ).toEqual([]);
+
+    const warnings = evaluateOperationalAlerts(
+      snapshot({
+        totalQueries: 25,
+        sourceGapRate: 0.2,
+        unsupportedRate: 0.24,
+        latencyBudgetBreachRate: 0.16,
+      }),
+    );
+    expect(warnings.map((w) => w.code)).toEqual([
+      "OPS_ANSWER_LATENCY_BUDGET_WARNING",
+      "OPS_SOURCE_GAP_RATE_WARNING",
+      "OPS_UNSUPPORTED_ANSWER_RATE_WARNING",
+    ]);
+    expect(warnings.every((w) => w.severity === "warning" && Boolean(w.runbook))).toBe(true);
+  });
 });

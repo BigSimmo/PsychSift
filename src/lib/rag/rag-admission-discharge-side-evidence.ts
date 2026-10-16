@@ -30,6 +30,9 @@ const sides = [
  * two different documents, using the builder's own fact extraction. Every claim still passes
  * the claim-support gate, so a side with no bound requirement still fails closed.
  */
+const isCommunityAdmissionResult = (result: SearchResult) =>
+  /\bcommunity\b|admissioncommunitypts/i.test(`${result.title ?? ""} ${result.file_name ?? ""}`);
+
 export function withAdmissionDischargeSideEvidence(args: {
   query: string;
   queryClass: RagQueryClass;
@@ -37,22 +40,23 @@ export function withAdmissionDischargeSideEvidence(args: {
   candidates: readonly SearchResult[];
 }) {
   if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.selected;
-  const selectedDocuments = sides.map(
-    (side) => new Set(sourceBoundComparisonFacts({ ...side, results: args.selected }).map((f) => f.result.document_id)),
-  );
-  const [admissionDocuments, dischargeDocuments] = selectedDocuments;
-  // A pair already exists when the two sides draw on at least one different document each.
-  if ([...admissionDocuments].some((id) => [...dischargeDocuments].some((other) => other !== id))) {
-    return args.selected;
-  }
   const selectedIds = new Set(args.selected.map((result) => result.id));
   const pool = [...args.selected, ...args.candidates.filter((result) => !selectedIds.has(result.id))];
-  // Search both sides jointly over selected + eligible evidence for the pair of facts from two
-  // different documents that needs the fewest added chunks (ties keep retrieval order). Choosing
-  // sides independently can miss a valid pair, e.g. selected document A's admission blocking A's
-  // discharge while document B's admission is never considered, or a per-side cap filled by one
-  // document hiding the only other document.
-  const [admissionFacts, dischargeFacts] = sides.map((side) => sourceBoundComparisonFacts({ ...side, results: pool }));
+  const [rawAdmissionFacts, dischargeFacts] = sides.map((side) =>
+    sourceBoundComparisonFacts({ ...side, results: pool }),
+  );
+  const communityAdmissionFacts = rawAdmissionFacts.filter((fact) => isCommunityAdmissionResult(fact.result));
+  const admissionFacts = communityAdmissionFacts.length > 0 ? communityAdmissionFacts : rawAdmissionFacts;
+  const selectedAdmissionDocs = new Set(
+    admissionFacts.filter((fact) => selectedIds.has(fact.result.id)).map((fact) => fact.result.document_id),
+  );
+  const selectedDischargeDocs = new Set(
+    dischargeFacts.filter((fact) => selectedIds.has(fact.result.id)).map((fact) => fact.result.document_id),
+  );
+  // A pair already exists when the two sides draw on at least one different document each.
+  if ([...selectedAdmissionDocs].some((id) => [...selectedDischargeDocs].some((other) => other !== id))) {
+    return args.selected;
+  }
   const cost = (result: SearchResult) => (selectedIds.has(result.id) ? 0 : 1);
   let best: { admission: SearchResult; discharge: SearchResult; cost: number } | undefined;
   for (const admission of admissionFacts) {
@@ -69,4 +73,31 @@ export function withAdmissionDischargeSideEvidence(args: {
       )
     : [];
   return additions.length ? [...args.selected, ...additions] : args.selected;
+}
+
+export function withAdmissionDischargeContextPair<
+  T extends { served: { results: SearchResult[] }; strongRetry: { results: SearchResult[] } },
+>(args: { query: string; queryClass: RagQueryClass; pair: T; candidates: readonly SearchResult[] }): T {
+  if (!isAdmissionDischargeRequirementsComparisonQuery(args.query, args.queryClass)) return args.pair;
+  return {
+    ...args.pair,
+    served: {
+      ...args.pair.served,
+      results: withAdmissionDischargeSideEvidence({
+        query: args.query,
+        queryClass: args.queryClass,
+        selected: args.pair.served.results,
+        candidates: args.candidates,
+      }),
+    },
+    strongRetry: {
+      ...args.pair.strongRetry,
+      results: withAdmissionDischargeSideEvidence({
+        query: args.query,
+        queryClass: args.queryClass,
+        selected: args.pair.strongRetry.results,
+        candidates: args.candidates,
+      }),
+    },
+  };
 }

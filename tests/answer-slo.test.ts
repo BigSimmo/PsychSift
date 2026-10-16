@@ -199,4 +199,28 @@ describe("answerSloSnapshot", () => {
       answerSloSnapshot(fakeClient({ total: 0, hybrid: 0, degraded: 0 }, { message: "boom" })),
     ).rejects.toThrow(/boom/);
   });
+
+  it("computes sourceGap, unsupported, and latencyBudgetBreach metrics even when hybrid_rpc_errors is zero (R27)", async () => {
+    const snapshot = await answerSloSnapshot(
+      fakeClient({
+        total: 10,
+        hybrid: 0,
+        degraded: 0,
+        hybridRows: [
+          { metadata: { source_gap: true, latency_ms: 4000, mode: "fast" } },
+          { metadata: { unsupported: true, latency_ms: 12000, mode: "fast" } },
+          { metadata: { latency_ms: 30000, mode: "strong" } },
+          { metadata: { latency_ms: 2000, mode: "fast" } },
+        ],
+      }),
+    );
+    expect(snapshot.hybridRpcErrorQueries).toBe(0);
+    expect(snapshot.hybridRpcIdentityEvidenceComplete).toBe(true);
+    expect(snapshot.sourceGapQueries).toBe(1);
+    expect(snapshot.sourceGapRate).toBeCloseTo(0.1, 5);
+    expect(snapshot.unsupportedQueries).toBe(1);
+    expect(snapshot.unsupportedRate).toBeCloseTo(0.1, 5);
+    expect(snapshot.latencyBudgetBreachQueries).toBe(2);
+    expect(snapshot.latencyBudgetBreachRate).toBeCloseTo(0.2, 5);
+  });
 });

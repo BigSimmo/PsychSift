@@ -7,6 +7,7 @@ import {
   readXlsxRows,
   type SheetRow,
 } from "@/lib/teaching/import-sheet-reader";
+import { readBoundedFormData } from "@/lib/validation/body";
 
 export const runtime = "nodejs";
 
@@ -16,16 +17,15 @@ export const runtime = "nodejs";
  * previews them through the depth route as before. Stateless, so demo mode reads too (Import's
  * demo preview), while a signed-in read spends from the Teaching rate limit.
  */
-// A little slack over the file limit for multipart boundary and header overhead.
-const MAX_CONTENT_LENGTH = IMPORT_MAX_FILE_BYTES + 64 * 1024;
 
 async function readRows(request: Request): Promise<{ rows: SheetRow[] }> {
-  const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_CONTENT_LENGTH) {
-    throw new PublicApiError(IMPORT_TOO_LARGE_MESSAGE, 413, { code: "payload_too_large" });
-  }
-  const form = await request.formData().catch(() => null);
-  const file = form?.get("file");
+  const form = await readBoundedFormData(request, IMPORT_MAX_FILE_BYTES, {
+    tooLargeMessage: IMPORT_TOO_LARGE_MESSAGE,
+    tooLargeCode: "payload_too_large",
+    invalidFormMessage: "Choose a CSV or XLSX file.",
+    invalidFormCode: "invalid_form_data",
+  });
+  const file = form.get("file");
   if (!(file instanceof File))
     throw new PublicApiError("Choose a CSV or XLSX file.", 400, { code: "invalid_form_data" });
   if (file.size > IMPORT_MAX_FILE_BYTES) {

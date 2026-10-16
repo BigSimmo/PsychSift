@@ -30,6 +30,7 @@ import {
   type TrustedAdmissionAuthority,
   type TrustedDocumentAdmission,
 } from "@/lib/trusted-document-admission";
+import { readBoundedFormData } from "@/lib/validation/body";
 import { optionalFormText, parseFormDataFields } from "@/lib/validation/form-data";
 import { acquireUploadAdmission, parseUploadContentLength } from "@/lib/upload-admission";
 import { assertUploadStructure } from "@/lib/upload-structure";
@@ -262,7 +263,8 @@ export async function POST(request: Request) {
     }
 
     const multipartOverheadBytes = 1024 * 1024;
-    const maximumBodyBytes = env.MAX_UPLOAD_MB * 1024 * 1024 + multipartOverheadBytes;
+    const maxUploadBytes = env.MAX_UPLOAD_MB * 1024 * 1024;
+    const maximumBodyBytes = maxUploadBytes + multipartOverheadBytes;
     const contentLength = parseUploadContentLength(request.headers.get("content-length"));
     if (contentLength !== null && contentLength > maximumBodyBytes) {
       throw new PublicApiError("Upload body exceeds the configured size limit.", 413, {
@@ -282,12 +284,12 @@ export async function POST(request: Request) {
     releaseAdmission = admission.release;
     assertUploadNotAborted(request);
 
-    const formData = await request.formData().catch((cause) => {
-      throw new PublicApiError("Invalid upload form data.", 400, {
-        code: "invalid_form_data",
-        causeName: cause instanceof Error ? cause.name : null,
-        causeMessage: cause instanceof Error ? cause.message : null,
-      });
+    const formData = await readBoundedFormData(request, maxUploadBytes, {
+      envelopeBytes: multipartOverheadBytes,
+      tooLargeMessage: `Uploaded file exceeds maximum allowed size (${env.MAX_UPLOAD_MB}MB).`,
+      tooLargeCode: "file_too_large",
+      invalidFormMessage: "Invalid upload form data.",
+      invalidFormCode: "invalid_form_data",
     });
     const file = formData.get("file");
     if (!(file instanceof File)) {

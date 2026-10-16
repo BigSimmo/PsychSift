@@ -59,80 +59,100 @@ const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const shortText = z.string().trim().max(120);
 const listItemText = z.string().trim().min(1).max(160);
 
-const milestoneSchema = z.object({ dueOn: dateKey, doneOn: dateKey.nullable() });
+const milestoneSchema = z.object({ dueOn: dateKey, doneOn: dateKey.nullable() }).strict();
 
-const termSchema = z.object({
-  id: z.string().min(1).max(40),
-  number: z.number().int().min(1).max(20).nullable(),
-  unit: shortText,
-  site: shortText,
-  startsOn: dateKey,
-  endsOn: dateKey,
-  supervisor: shortText,
-  milestones: z.object({ start: milestoneSchema, mid: milestoneSchema, end: milestoneSchema }),
-  goals: z.array(z.object({ id: z.string().min(1).max(40), text: listItemText, done: z.boolean() })).max(20),
-  toRaise: z.array(z.object({ id: z.string().min(1).max(40), text: listItemText })).max(20),
-  meeting: z
-    .object({
-      on: dateKey,
-      time: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/)
-        .or(z.literal("")),
-      place: shortText,
-    })
-    .nullable(),
-});
-
-const termTrackerSchema = z.object({
-  version: z.literal(1),
-  currentTermId: z.string().nullable(),
-  terms: z.array(termSchema).max(12),
-  epas: z
-    .array(
-      z.object({
-        id: z.string().min(1).max(40),
-        termId: z.string().min(1).max(40),
-        epa: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+const termSchema = z
+  .object({
+    id: z.string().min(1).max(40),
+    number: z.number().int().min(1).max(20).nullable(),
+    unit: shortText,
+    site: shortText,
+    startsOn: dateKey,
+    endsOn: dateKey,
+    supervisor: shortText,
+    milestones: z.object({ start: milestoneSchema, mid: milestoneSchema, end: milestoneSchema }).strict(),
+    goals: z.array(z.object({ id: z.string().min(1).max(40), text: listItemText, done: z.boolean() }).strict()).max(20),
+    toRaise: z.array(z.object({ id: z.string().min(1).max(40), text: listItemText }).strict()).max(20),
+    meeting: z
+      .object({
         on: dateKey,
-      }),
-    )
-    .max(200),
-  /** Null until the doctor confirms a target. */
-  targets: z.object({ perTerm: z.number().int().min(1).max(20), perYear: z.number().int().min(1).max(60) }).nullable(),
-});
+        time: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/)
+          .or(z.literal("")),
+        place: shortText,
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export const termTrackerSchema = z
+  .object({
+    version: z.literal(1),
+    currentTermId: z.string().nullable(),
+    terms: z.array(termSchema).max(12),
+    epas: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(40),
+            termId: z.string().min(1).max(40),
+            epa: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+            on: dateKey,
+          })
+          .strict(),
+      )
+      .max(200),
+    /** Null until the doctor confirms a target. */
+    targets: z
+      .object({ perTerm: z.number().int().min(1).max(20), perYear: z.number().int().min(1).max(60) })
+      .strict()
+      .nullable(),
+  })
+  .strict();
 
 export type TermRecord = z.infer<typeof termSchema>;
 export type TermTrackerState = z.infer<typeof termTrackerSchema>;
 export type EpaEntry = TermTrackerState["epas"][number];
 
-const examPrepSchema = z.object({
-  version: z.literal(1),
-  exam: z.object({ name: shortText.min(1), on: dateKey, planStartsOn: dateKey }).nullable(),
-  /** Minutes studied, by date. */
-  study: z.record(
-    dateKey,
-    z
-      .number()
-      .int()
-      .min(0)
-      .max(24 * 60),
-  ),
-  topics: z
-    .array(z.object({ id: z.string().min(1).max(40), name: listItemText, percent: z.number().int().min(0).max(100) }))
-    .max(40),
-  group: z
-    .object({
-      title: shortText.min(1),
-      on: dateKey,
-      time: z
-        .string()
-        .regex(/^\d{2}:\d{2}$/)
-        .or(z.literal("")),
-      place: shortText,
-    })
-    .nullable(),
-});
+export const examPrepSchema = z
+  .object({
+    version: z.literal(1),
+    exam: z
+      .object({ name: shortText.min(1), on: dateKey, planStartsOn: dateKey })
+      .strict()
+      .nullable(),
+    /** Minutes studied, by date. */
+    study: z.record(
+      dateKey,
+      z
+        .number()
+        .int()
+        .min(0)
+        .max(24 * 60),
+    ),
+    topics: z
+      .array(
+        z
+          .object({ id: z.string().min(1).max(40), name: listItemText, percent: z.number().int().min(0).max(100) })
+          .strict(),
+      )
+      .max(40),
+    group: z
+      .object({
+        title: shortText.min(1),
+        on: dateKey,
+        time: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/)
+          .or(z.literal("")),
+        place: shortText,
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
 
 export type ExamPrepState = z.infer<typeof examPrepSchema>;
 export type StudyTopic = ExamPrepState["topics"][number];

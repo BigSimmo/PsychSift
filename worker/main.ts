@@ -66,6 +66,12 @@ import { annotateChunkAssertions, defaultAssertionTargets } from "./assertion-ta
 import { runShadowExtraction } from "./shadow-extraction";
 import { buildTableFactRows } from "./table-facts";
 import {
+  WORKER_CONTROL_PLANE_TIMEOUT_MS,
+  WORKER_SUPABASE_TIMEOUT_MS,
+  resolveWorkerControlPlaneTimeoutMs,
+  resolveWorkerSupabaseTimeoutMs,
+  controlPlaneAbortSignal,
+  withControlPlaneAbortClient,
   buildDocumentPageRowsForPersistence,
   serializeDocumentPageRowsForCommit,
   registerClaimedJobAttempt,
@@ -81,8 +87,18 @@ import {
 } from "./behavior";
 import { WorkerRuntimeControl, WorkerAbortError } from "./runtime-control";
 import { runWorkerLoop } from "./run-loop";
-import { recordClaimProcessed, startWorkerHealthServerIfConfigured } from "./health";
+import { isWorkerClaimLoopPaused, recordClaimProcessed, startWorkerHealthServerIfConfigured } from "./health";
 import type { JobRow } from "./types";
+
+export {
+  WORKER_CONTROL_PLANE_TIMEOUT_MS,
+  WORKER_SUPABASE_TIMEOUT_MS,
+  resolveWorkerControlPlaneTimeoutMs,
+  resolveWorkerSupabaseTimeoutMs,
+  controlPlaneAbortSignal,
+  withControlPlaneAbortClient,
+  isWorkerClaimLoopPaused,
+};
 import {
   captureGenerationImages,
   buildGenerationRetentionPacket,
@@ -165,7 +181,10 @@ export type WorkerRuntimeOptions = {
 
 /** Importing this module neither creates a provider client nor claims work. */
 export function createWorkerRuntime(options: WorkerRuntimeOptions) {
-  const supabase = options.client;
+  let activeStopSignal: AbortSignal | undefined;
+  const supabase = withControlPlaneAbortClient(options.client, (stopSignal) =>
+    controlPlaneAbortSignal(stopSignal ?? activeStopSignal),
+  );
   // Dynamic fixed-operation transport is validated by the shared response parser and SQL payload guards.
   const ingestionRpcClient: SupabaseClient = supabase;
   const workerId = `${os.hostname()}-${process.pid}-${randomUUID().slice(0, 8)}`;
@@ -233,7 +252,13 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     return attempt;
   }
   const mutation = (attempt: IngestionAttempt, name: string, args: Record<string, unknown> = {}) =>
-    runIngestionMutation(attempt, (rpcName, payload) => ingestionRpcClient.rpc(rpcName, payload), name, args);
+    runIngestionMutation(
+      attempt,
+      (rpcName, payload) =>
+        ingestionRpcClient.rpc(rpcName, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
+      name,
+      args,
+    );
   async function updateJob(jobId: string, patch: { stage?: string; progress?: number }) {
     await updateJobProgress(jobId, { stage: patch.stage ?? "processing", progress: patch.progress ?? 0 });
   }
@@ -258,12 +283,16 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     progressUpdateState.set(jobId, { updatedAt: now, ...patch });
   }
 
-  async function updateDocument(documentId: string, _ownerId: string | null, patch: TablesUpdate<"documents">) {
+  async function patchDocumentState(documentId: string, _ownerId: string | null, patch: TablesUpdate<"documents">) {
     const { metadata, ...state } = patch;
     await mutation(attemptForDocument(documentId), "patch_ingestion_document_state", {
       p_state: state,
       p_metadata: sanitizeJsonbRecord(metadata ?? {}),
     });
+  }
+
+  async function updateDocument(documentId: string, ownerId: string | null, patch: TablesUpdate<"documents">) {
+    await patchDocumentState(documentId, ownerId, patch);
   }
 
   async function completeJob(job: JobRow, stage: string) {
@@ -275,9 +304,10 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   }
 
   async function completeStrictEnrichmentJob(job: JobRow) {
+    const attempt = attemptForJob(job.id);
     return runIngestionStrictCompletion(
-      attemptForJob(job.id),
-      (name, payload) => ingestionRpcClient.rpc(name, payload),
+      attempt,
+      (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
       {
         p_stage: "indexed; enrichment completed",
         p_agent_version: "visual-core-v3",
@@ -332,7 +362,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     const now = Date.now();
     if (now - lastAnalyzeRagTablesAt < analyzeRagTablesThrottleMs) return;
 
-    const { error } = await supabase.rpc("analyze_rag_tables");
+    const { error } = await supabase.rpc("analyze_rag_tables").abortSignal(controlPlaneAbortSignal(activeStopSignal));
     lastAnalyzeRagTablesAt = now;
     if (!error) return;
 
@@ -344,19 +374,24 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   }
 
   // The declared JobRow[] return is the compile-time proof that the claim contract's
-  // inferred row type stays assignable to JobRow â€” weakening the schema fails here.
-  async function claimJobs(): Promise<JobRow[]> {
-    const { data, error } = await supabase.rpc("claim_ingestion_jobs", {
-      p_worker_id: workerId,
-      p_claim_limit: env.WORKER_CONCURRENCY,
-      p_stale_after_minutes: env.WORKER_STALE_AFTER_MINUTES,
-    });
+  // inferred row type stays assignable to JobRow — weakening the schema fails here.
+  async function claimJobs(stopSignal?: AbortSignal): Promise<JobRow[]> {
+    if (isWorkerClaimLoopPaused(process.env)) {
+      return [];
+    }
+    const { data, error } = await supabase
+      .rpc("claim_ingestion_jobs", {
+        p_worker_id: workerId,
+        p_claim_limit: env.WORKER_CONCURRENCY,
+        p_stale_after_minutes: env.WORKER_STALE_AFTER_MINUTES,
+      })
+      .abortSignal(controlPlaneAbortSignal(stopSignal ?? activeStopSignal));
 
     if (error) throw supabaseStageError("claim ingestion jobs", error);
 
     // #212 T4: per-row fail-soft validation. A batch-wide throw here would bypass the job
-    // lifecycle entirely â€” the run-loop claim catch backs off and repolls (and exits the
-    // process under --once) â€” while the RPC has already committed leases and attempt_count
+    // lifecycle entirely — the run-loop claim catch backs off and repolls (and exits the
+    // process under --once) — while the RPC has already committed leases and attempt_count
     // increments for every row, orphaning valid siblings. A row that fails the contract is
     // failed terminally instead (a shape mismatch is deterministic; retrying reruns the same
     // to_jsonb over the same columns) and never reaches processJob. Only a row whose claim
@@ -370,7 +405,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
   async function terminallyFailRejectedClaimedRow(rejection: RejectedClaimedJobRow) {
     try {
       if (
-        await failRejectedClaimedJobRow(rejection, workerId, (name, payload) => ingestionRpcClient.rpc(name, payload))
+        await failRejectedClaimedJobRow(rejection, workerId, (name, payload) =>
+          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(activeStopSignal)),
+        )
       )
         return;
       console.warn("Claimed job row failed the shape contract without a current worker fence", {
@@ -1023,7 +1060,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         attempt,
         generation: indexGenerationId,
         extension: ext.slice(1).toLowerCase(),
-        rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+        rpc: (name, payload) =>
+          ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
         upload: (storagePath, options) =>
           supabase.storage
             .from(env.SUPABASE_IMAGE_BUCKET)
@@ -1430,9 +1468,10 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
       metadata: sanitizeJsonbRecord({ ...row.metadata, index_generation_id: indexGenerationId }),
     }));
     if (tableFacts.length > 0) {
+      const attempt = attemptForJob(job.id);
       await writeIngestionTableFacts(
-        attemptForJob(job.id),
-        (name, payload) => ingestionRpcClient.rpc(name, payload),
+        attempt,
+        (name, payload) => ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
         indexGenerationId,
         tableFacts,
       );
@@ -1857,7 +1896,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
             attempt,
             packet: terminalPacket,
             stopHeartbeat: () => clearInterval(heartbeat),
-            rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+            rpc: (name, payload) =>
+              ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
           });
           invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
           return;
@@ -1900,7 +1940,9 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
               () => mutation(attempt, "heartbeat_ingestion_job"),
               async () => {
                 try {
-                  const { data, error } = await ingestionRpcClient.rpc(name, payload);
+                  const { data, error } = await ingestionRpcClient
+                    .rpc(name, payload)
+                    .abortSignal(controlPlaneAbortSignal(attempt.signal));
                   attempt.check();
                   if (error) throw supabaseStageError("read private candidate rows", error);
                   if (!data || data.ok !== true) {
@@ -1956,7 +1998,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                   nativePopulationDigest: nativeReadback.sqlPopulationDigest,
                 }),
                 stopHeartbeat: () => clearInterval(heartbeat),
-                rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+                rpc: (name, payload) =>
+                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
               });
               return;
             }
@@ -1977,7 +2020,8 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
                 attempt,
                 packet: evaluated.packet,
                 stopHeartbeat: () => clearInterval(heartbeat),
-                rpc: (name, payload) => ingestionRpcClient.rpc(name, payload),
+                rpc: (name, payload) =>
+                  ingestionRpcClient.rpc(name, payload).abortSignal(controlPlaneAbortSignal(attempt.signal)),
               });
               invalidateRagCachesForDocumentMutation(job.documents.owner_id ?? "anonymous");
               return;
@@ -2341,6 +2385,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     const healthServer = startWorkerHealthServerIfConfigured();
     const controller = new WorkerRuntimeControl();
     controller.attachSignals();
+    activeStopSignal = controller.signal;
 
     const prereqs = await checkPythonPdfPrerequisites();
     console.log(`PsychSift worker started. worker=${workerId}`);
@@ -2372,11 +2417,12 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
         pollMs: env.WORKER_POLL_MS,
         healthBackoffMs: env.WORKER_HEALTH_BACKOFF_MS,
         maxClaimFailures: env.WORKER_MAX_CLAIM_FAILURES,
-        claim: claimJobs,
+        claim: () => claimJobs(controller.signal),
         process: processJob,
-        probe: () => probeSupabaseHealth(supabase),
+        probe: () => probeSupabaseHealth(supabase, controlPlaneAbortSignal(controller.signal)),
         backoff: workerBackoffMs,
         controller,
+        isPaused: () => isWorkerClaimLoopPaused(process.env),
         log: (message, level, extra) => (extra ? console[level](message, extra) : console[level](message)),
         captureException: captureWorkerException,
       });
@@ -2388,7 +2434,7 @@ export function createWorkerRuntime(options: WorkerRuntimeOptions) {
     await flushWorkerErrorTracking();
   }
 
-  return { claimJobs, processJob, run: main, attemptForJob };
+  return { claimJobs, processJob, run: main, attemptForJob, patchDocumentState };
 }
 
 /** Upper bound on the fatal-exit alert, so a stalled webhook cannot delay the exit and restart. */
@@ -2396,7 +2442,10 @@ const FAILURE_WEBHOOK_TIMEOUT_MS = 5_000;
 
 export async function runWorkerMain() {
   try {
-    const client = createAdminClient({ timeoutMs: null });
+    const client = withControlPlaneAbortClient(
+      createAdminClient({ timeoutMs: resolveWorkerSupabaseTimeoutMs(process.env) }),
+      (stopSignal) => controlPlaneAbortSignal(stopSignal),
+    );
     const adminSourceOptions = await loadAdminSourceRuntimeOptions(client, env.SUPABASE_DOCUMENT_BUCKET);
     await createWorkerRuntime({ client, ...adminSourceOptions }).run();
     process.exit(0);
