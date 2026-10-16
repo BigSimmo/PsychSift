@@ -525,10 +525,7 @@ export function createTrustedDocumentAdmission(input: TrustedAdmissionInput): Tr
     ],
     "Trusted admission input",
   );
-  if (input.sourceChannel !== "admin_api") {
-    if (input.sourceChannel === "backend_import") {
-      throw new Error("Trusted backend admission is not enabled until admit_backend_document is deployed.");
-    }
+  if (input.sourceChannel !== "admin_api" && input.sourceChannel !== "backend_import") {
     throw new Error("Trusted admission sourceChannel is invalid.");
   }
   const documentId = canonicalUuid(input.documentId, "documentId");
