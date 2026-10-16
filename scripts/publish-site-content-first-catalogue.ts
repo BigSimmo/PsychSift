@@ -135,6 +135,17 @@ function validateSignOffEntry(
       reason: `status is "${review.status}" (requires "reviewed")`,
     };
   }
+  if (
+    typeof review.reviewedContentSha256 !== "string" ||
+    !/^[a-f0-9]{64}$/.test(review.reviewedContentSha256.trim())
+  ) {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason: "reviewedContentSha256 is missing or is not a valid SHA-256 content pin",
+    };
+  }
   if (!isNamedPerson(review.reviewedBy)) {
     return {
       kind,
@@ -420,6 +431,10 @@ export async function runFirstPublicationCli(
     throw new Error(
       "Refusing live first-publication execution: --execute requires ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true.",
     );
+  }
+
+  if (options.execute) {
+    throw new Error("--execute is not implemented; run without it to generate a publication plan.");
   }
 
   const plan = buildFirstPublicationCataloguePlan({
