@@ -14,7 +14,7 @@ name: Eval Canary
 on:
   # repository_dispatch always loads this secret-bearing workflow and its code
   # from the trusted default branch. Optional client_payload keys are
-  # answer_case_limit, rag_ranking_config, and answer_quality_eval.
+  # answer_case_limit, rag_ranking_config, answer_quality_eval, and dump_rag_cases.
   repository_dispatch:
     types: [eval-canary]
   schedule:
@@ -147,6 +147,10 @@ jobs:
         id: answer_quality
         env:
           ANSWER_CASE_LIMIT: ${{ github.event.client_payload.answer_case_limit || '44' }}
+          # Dispatch-only: when 'true', also write per-case answers and each source's ranking
+          # scores and pipeline reasons, so a live misorder is diagnosable offline. Off for the
+          # weekly schedule; costs nothing extra because the same answers are already generated.
+          DUMP_RAG_CASES: ${{ github.event.client_payload.dump_rag_cases || '' }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           # Canary-only latency allowance: cross-region runner -> Sydney Supabase
@@ -159,7 +163,11 @@ jobs:
           fi
           mkdir -p .local/eval-canary
           set -o pipefail
-          npm run eval:quality -- --rag-only --limit "$ANSWER_CASE_LIMIT" --source-governance-results .local/eval-canary/golden-retrieval.json --output-dir .local/eval-canary/quality-reports --fail-on-threshold 2>&1 | tee .local/eval-canary/answer-quality.log
+          dump_args=()
+          if [[ "$DUMP_RAG_CASES" == "true" ]]; then
+            dump_args=(--dump-rag-cases .local/eval-canary/rag-cases.json)
+          fi
+          npm run eval:quality -- --rag-only --limit "$ANSWER_CASE_LIMIT" --source-governance-results .local/eval-canary/golden-retrieval.json --output-dir .local/eval-canary/quality-reports --fail-on-threshold "${dump_args[@]}" 2>&1 | tee .local/eval-canary/answer-quality.log
 
       # Phase E baseline/paired-run instrument: the five answer-quality metrics (relevance,
       # readability, artifact leaks, intent coverage, fail-closed) + per-intent structural
