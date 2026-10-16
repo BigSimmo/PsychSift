@@ -50,20 +50,28 @@ export function ClinicalNoteEditor({
   const currentValue = internalValue;
   const sharedDevice = useSharedDevice();
 
-  // Keep controlled updates as the source of truth when the parent changes them,
-  // but do not switch away from the locally typed value while it is being checked.
-  // Adjusted during render (not in an effect) so the new value shows in the same pass.
-  const [syncedControlledValue, setSyncedControlledValue] = useState(controlledValue);
-  if (isControlled && controlledValue !== syncedControlledValue) {
-    setSyncedControlledValue(controlledValue);
-    setInternalValue(controlledValue);
-    setPrivacyProblem(checkPatientDetail(controlledValue));
-  }
-
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(() =>
     checkPatientDetail(controlledValue ?? initialValue) ? "error" : "idle",
   );
   const [lastSavedValue, setLastSavedValue] = useState(controlledValue ?? initialValue);
+
+  // Keep controlled updates as the source of truth when the parent changes them.
+  // Adjusted during render (not in an effect) so the new value shows in the same pass.
+  // A parent echoing what was just typed is not an external change, so it leaves the
+  // pending save alone. A genuinely new value is treated as the stored copy.
+  const [syncedControlledValue, setSyncedControlledValue] = useState(controlledValue);
+  const [externalValueVersion, setExternalValueVersion] = useState(0);
+  if (isControlled && controlledValue !== syncedControlledValue) {
+    setSyncedControlledValue(controlledValue);
+    if (controlledValue !== internalValue) {
+      const problem = checkPatientDetail(controlledValue);
+      setInternalValue(controlledValue);
+      setPrivacyProblem(problem);
+      setLastSavedValue(controlledValue);
+      setSaveStatus(problem ? "error" : "idle");
+      setExternalValueVersion((version) => version + 1);
+    }
+  }
   const hasSavedRef = useRef(false);
   // Refs, not state, so a timer or a save finishing late compares against what is really stored.
   const lastSavedRef = useRef(controlledValue ?? initialValue);
@@ -78,6 +86,17 @@ export function ClinicalNoteEditor({
   useEffect(() => {
     latestValueRef.current = currentValue;
   }, [currentValue]);
+
+  // After an external value arrives, drop any save queued for the old text.
+  useEffect(() => {
+    if (externalValueVersion === 0) return;
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    pendingSaveRef.current = null;
+    lastSavedRef.current = latestValueRef.current;
+  }, [externalValueVersion]);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);

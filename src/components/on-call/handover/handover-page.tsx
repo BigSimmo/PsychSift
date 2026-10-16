@@ -1060,8 +1060,8 @@ export function OnCallHandoverPage() {
                       }
                     }}
                     onSave={(text) => {
+                      // Save now is the deliberate save, so it keeps text even on a shared device.
                       setScratchpadText(text);
-                      if (isSharedDevice()) return;
                       persistScratchpad(text);
                     }}
                   />

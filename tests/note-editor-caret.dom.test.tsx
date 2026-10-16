@@ -324,4 +324,40 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     expect(onSave).toHaveBeenCalledWith("Reviewed overnight by night registrar");
     expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saved");
   });
+
+  it("drops a queued save and resets the status when the parent supplies a new value", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const React = await import("react");
+    let setExternal: (next: string) => void = () => {};
+
+    function Wrapper() {
+      const [draft, setDraft] = React.useState("Morning review stable");
+      setExternal = setDraft;
+      return <ClinicalNoteEditor value={draft} onChange={setDraft} onSave={onSave} debounceMs={300} />;
+    }
+
+    render(<Wrapper />);
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+
+    // The parent echoing typed text keeps the queued save.
+    fireEvent.change(textarea, { target: { value: "Morning review stable, plan unchanged" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    // A genuinely new value from the parent replaces the draft and cancels that save.
+    act(() => setExternal("Evening handover note"));
+    expect(textarea.value).toBe("Evening handover note");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Idle");
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Typing after the external change still auto-saves.
+    fireEvent.change(textarea, { target: { value: "Evening handover note reviewed" } });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledWith("Evening handover note reviewed");
+  });
 });
