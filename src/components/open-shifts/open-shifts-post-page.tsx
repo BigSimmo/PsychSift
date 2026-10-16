@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useRosterNow } from "@/components/roster/roster-format";
 import { postRosterAction } from "@/components/roster/use-roster-team";
 import { Button } from "@/components/ui/button";
+import { subscribeAccountTransition } from "@/lib/account-scoped-browser-state";
 import { formatHours, gapTimes, gradeLabel, hoursBetween, kindLabel } from "@/lib/open-shifts/model";
 import {
   MAX_POST_DATES,
@@ -118,9 +119,19 @@ export function OpenShiftsPostPage() {
   // Keep the current actor available to an in-progress post, whose render state can otherwise be stale after
   // authentication changes.
   const actorIdRef = useRef(state.actorId);
-  actorIdRef.current = state.actorId;
+  useEffect(() => {
+    actorIdRef.current = state.actorId;
+  }, [state.actorId]);
   // Keys belong to the signed-in person, so someone else signing in on this tab never reuses one.
   const keyFor = (on: string, actorId = state.actorId) => `${actorId ?? ""}|${signature(on)}`;
+  // Signing out drops this tab's keys, so the same person signing back in never replays an older post.
+  useEffect(
+    () =>
+      subscribeAccountTransition(() => {
+        postKeys.current = {};
+      }),
+    [],
+  );
   const [copied, setCopied] = useState(false);
   // The last partial-failure report, kept on the page so closing the sheet never hides what went live.
   const [report, setReport] = useState<string | null>(null);

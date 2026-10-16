@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PostedShift, PostedShiftsState } from "@/components/open-shifts/use-posted-shifts";
+import { clearAccountScopedBrowserStorage } from "@/lib/account-scoped-browser-state";
 import { gapTimes } from "@/lib/open-shifts/model";
 import { sampleListings } from "@/lib/open-shifts/sample";
 
@@ -237,6 +238,27 @@ describe("Posting a shift", () => {
       actorId: "5e000000-0000-4000-8000-000000000002",
       readAt: new Date(Date.now() + 1000),
     };
+    view.rerender(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
+
+    const [first, second] = mocks.post.mock.calls.map((call) => (call[1] as { postKey?: string }).postKey);
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+
+  it("never replays an older post key after the same person signs out and back in on this tab", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    mocks.post.mockResolvedValue({ ok: false, code: "roster_unavailable", message: "Couldn't reach the server." });
+    const view = render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Review and post" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // Sign out and back in as the same manager without the page closing, then post the same shift.
+    clearAccountScopedBrowserStorage();
+    mocks.state = { ...mocks.state, readAt: new Date(Date.now() + 1000) };
     view.rerender(<OpenShiftsPostPage />);
     fireEvent.click(screen.getByRole("button", { name: "Yes, post it" }));
     await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
