@@ -115,6 +115,7 @@ export function AnswerSuggestionChips({
   layout = "wrap",
   className,
   icon: Icon,
+  chipShape = "pill",
 }: {
   suggestions: string[];
   onPick: (suggestion: string) => void;
@@ -129,6 +130,12 @@ export function AnswerSuggestionChips({
   // Optional leading glyph rendered inside every chip — used to signal a chip's
   // kind (e.g. a history icon on recent-search chips) without changing the label.
   icon?: LucideIcon;
+  // "control" squares the chip to the Clinical control rung (`rounded-lg`, as
+  // `controlBase`): rounded pills are a Work-mode shape only (owner decision,
+  // 15 Oct 2026). The chip's base rule in globals.css is unlayered, so the
+  // utility needs the important modifier to win. Default stays "pill" so the
+  // answer-thread follow-ups and any Work caller keep their shape.
+  chipShape?: "pill" | "control";
 }) {
   const scrolls = layout === "scroll";
   const { ref: railRef, node: railNode, edges } = useRailScrollEdges();
@@ -166,7 +173,7 @@ export function AnswerSuggestionChips({
           type="button"
           disabled={disabled}
           onClick={() => onPick(suggestion)}
-          className={cn("answer-suggestion-chip", focusRing)}
+          className={cn("answer-suggestion-chip", chipShape === "control" && "!rounded-lg", focusRing)}
         >
           {Icon ? (
             <>

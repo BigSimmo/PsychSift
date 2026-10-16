@@ -2511,6 +2511,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-admin-shows-the-date-line.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/product/clinical-trust-direction.md",
         "section": "product",
         "catalogued": true
@@ -2717,6 +2722,11 @@
       },
       {
         "path": "docs/decisions/2026-10-16-original-section-delivery-scope.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-keep-migration-history.md",
         "section": "decisions",
         "catalogued": true
       },
@@ -5062,6 +5072,11 @@
       },
       {
         "path": "docs/decisions/2026-10-15-no-default-ai-coding-tool.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-duplicate-sighting-receipt-merge.md",
         "section": "decisions",
         "catalogued": true
       },

@@ -227,9 +227,9 @@ function FindArea() {
             <Link
               key={suggestion}
               href={appModeHomeHref("prescribing", { query: suggestion, run: true })}
-              className={cn(focusRing, "inline-flex min-h-12 shrink-0 items-center rounded-xl no-underline")}
+              className={cn(focusRing, "inline-flex min-h-12 shrink-0 items-center rounded-lg no-underline")}
             >
-              <span className="whitespace-nowrap rounded-xl border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 py-1.5 text-sm text-[color:var(--dash-ink)] forced-colors:border">
+              <span className="whitespace-nowrap rounded-lg border border-[color:var(--dash-line-strong)] bg-[color:var(--dash-raised)] px-3 py-1.5 text-sm text-[color:var(--dash-ink)] forced-colors:border">
                 {suggestion}
               </span>
             </Link>
