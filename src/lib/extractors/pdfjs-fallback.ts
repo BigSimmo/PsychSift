@@ -100,26 +100,31 @@ export class PdfjsFallbackParser {
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
       if (!params.partial.includes(pageNumber)) continue;
       const page = await doc.getPage(pageNumber);
-      const ops = await page.getOperatorList();
-      const pageImages: PdfjsImageResult["pages"][number] = { pageNumber, images: [] };
-      result.pages.push(pageImages);
-      for (let index = 0; index < ops.fnArray.length; index += 1) {
-        const fn = ops.fnArray[index];
-        if (fn !== pdfjs.OPS.paintInlineImageXObject && fn !== pdfjs.OPS.paintImageXObject) continue;
-        const name = ops.argsArray[index][0] as string;
-        const objects = page.commonObjs.has(name) ? page.commonObjs : page.objs;
-        const { width, height, kind, data } = await resolveEmbeddedImage(objects, name, canvasFactory);
-        if (params.imageThreshold >= width || params.imageThreshold >= height) continue;
-        const { canvas, context } = canvasFactory.create(width, height);
-        const imageData = context.createImageData(width, height);
-        if (kind === pdfjs.ImageKind.RGBA_32BPP) {
-          imageData.data.set(data);
-        } else {
-          convertToRgba(pdfjs, { src: data, dest: new Uint32Array(imageData.data.buffer), width, height, kind });
+      try {
+        const ops = await page.getOperatorList();
+        const pageImages: PdfjsImageResult["pages"][number] = { pageNumber, images: [] };
+        result.pages.push(pageImages);
+        for (let index = 0; index < ops.fnArray.length; index += 1) {
+          const fn = ops.fnArray[index];
+          if (fn !== pdfjs.OPS.paintInlineImageXObject && fn !== pdfjs.OPS.paintImageXObject) continue;
+          const name = ops.argsArray[index][0] as string;
+          const objects = page.commonObjs.has(name) ? page.commonObjs : page.objs;
+          const { width, height, kind, data } = await resolveEmbeddedImage(objects, name, canvasFactory);
+          if (params.imageThreshold >= width || params.imageThreshold >= height) continue;
+          const { canvas, context } = canvasFactory.create(width, height);
+          const imageData = context.createImageData(width, height);
+          if (kind === pdfjs.ImageKind.RGBA_32BPP) {
+            imageData.data.set(data);
+          } else {
+            convertToRgba(pdfjs, { src: data, dest: new Uint32Array(imageData.data.buffer), width, height, kind });
+          }
+          context.putImageData(imageData, 0, 0);
+          const png = canvas.toBuffer?.("image/png");
+          pageImages.images.push({ data: png ? new Uint8Array(png) : new Uint8Array(), name, width, height });
         }
-        context.putImageData(imageData, 0, 0);
-        const png = canvas.toBuffer?.("image/png");
-        pageImages.images.push({ data: png ? new Uint8Array(png) : new Uint8Array(), name, width, height });
+      } finally {
+        // Release the page's decoded images before the next page, so memory stays one page deep.
+        page.cleanup();
       }
     }
     return result;
