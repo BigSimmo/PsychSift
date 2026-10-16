@@ -43,6 +43,7 @@ import {
   ON_CALL_HANDOVER_NOT_SET_UP,
   ON_CALL_HANDOVER_TYPES,
   clearOnCallHandover,
+  readOnCallHandoverStoredExpiry,
   emptyOnCallHandoverDraft,
   HANDOVER_SCRATCHPAD_STORAGE_KEY,
   loadOnCallHandoverScratchpad,
@@ -647,9 +648,15 @@ export function OnCallHandoverPage() {
     resetForm();
   }, [currentGone, resetForm]);
 
+  // The view hides an expired shift, so a late timer also checks the stored stamp before writing.
+  const shiftHasEnded = useCallback(() => {
+    const expiresAt = shiftExpiresAt ?? readOnCallHandoverStoredExpiry();
+    return expiresAt !== null && Date.now() >= expiresAt;
+  }, [shiftExpiresAt]);
+
   const persistScratchpad = useCallback(
     (text: string) => {
-      if (shiftExpiresAt !== null && Date.now() >= shiftExpiresAt) {
+      if (shiftHasEnded()) {
         clearExpiredPatientLabels();
         reset();
         setProblem("The shift has ended. This handover was cleared.");
@@ -665,12 +672,12 @@ export function OnCallHandoverPage() {
       }
       saveOnCallHandoverScratchpad(text);
     },
-    [shiftExpiresAt, reset],
+    [shiftExpiresAt, shiftHasEnded, reset],
   );
 
   /** Every change is kept as it is typed, so nothing is lost if the phone locks. */
   const commit = (next: OnCallHandoverDraft, id: string | null = currentId) => {
-    if (shiftExpiresAt !== null && Date.now() >= shiftExpiresAt) {
+    if (shiftHasEnded()) {
       clearExpiredPatientLabels();
       reset();
       setProblem("The shift has ended. This handover was cleared.");
@@ -809,9 +816,9 @@ export function OnCallHandoverPage() {
                   <p className="text-sm text-[color:var(--text-heading)]">
                     {patients.length === 0
                       ? "Clear the shift scratchpad from this phone? This cannot be undone."
-                      : patients.length === 1
-                        ? "Clear the one patient from this phone? This cannot be undone."
-                        : `Clear all ${patients.length} patients from this phone? This cannot be undone.`}
+                      : `Clear ${patients.length === 1 ? "the one patient" : `all ${patients.length} patients`}${
+                          scratchpadText.trim() !== "" ? " and the shift scratchpad" : ""
+                        } from this phone? This cannot be undone.`}
                   </p>
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Button
@@ -827,9 +834,9 @@ export function OnCallHandoverPage() {
                     >
                       {patients.length === 0
                         ? "Clear scratchpad"
-                        : patients.length === 1
-                          ? "Clear the patient"
-                          : `Clear all ${patients.length} patients`}
+                        : `${patients.length === 1 ? "Clear the patient" : `Clear all ${patients.length} patients`}${
+                            scratchpadText.trim() !== "" ? " and scratchpad" : ""
+                          }`}
                     </Button>
                     <Button
                       variant="ghost"

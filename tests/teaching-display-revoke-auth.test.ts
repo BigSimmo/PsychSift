@@ -174,12 +174,17 @@ describe("teachingServiceMutation display.revoke authorization", () => {
     expect(rpc).toHaveBeenCalledOnce();
   });
 
-  it("rejects an organiser when granted_at or joined_at timestamp is missing or unparseable", async () => {
+  it.each([
+    { field: "granted_at", value: "", roleGrantedAt: "", memberJoinedAt: "2026-01-01T00:00:00Z" },
+    { field: "granted_at", value: "unparseable", roleGrantedAt: "not-a-date", memberJoinedAt: "2026-01-01T00:00:00Z" },
+    { field: "joined_at", value: "", roleGrantedAt: "2026-01-02T00:00:00Z", memberJoinedAt: "" },
+    { field: "joined_at", value: "unparseable", roleGrantedAt: "2026-01-02T00:00:00Z", memberJoinedAt: "not-a-date" },
+  ])("rejects an organiser when $field is $value", async ({ roleGrantedAt, memberJoinedAt }) => {
     const { client, rpc } = createMockClient({
       link: { id: "link-1", created_by: null },
       isOrganiser: true,
-      roleGrantedAt: "",
-      memberJoinedAt: "2026-01-01T00:00:00Z",
+      roleGrantedAt,
+      memberJoinedAt,
     });
 
     await expect(

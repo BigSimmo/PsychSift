@@ -65,6 +65,11 @@ export function ClinicalNoteEditor({
   );
   const [lastSavedValue, setLastSavedValue] = useState(controlledValue ?? initialValue);
   const hasSavedRef = useRef(false);
+  // Refs, not state, so a timer or a save finishing late compares against what is really stored.
+  const lastSavedRef = useRef(controlledValue ?? initialValue);
+  const inFlightSaveRef = useRef<string | null>(null);
+  const pendingSaveRef = useRef<string | null>(null);
+  const performSaveRef = useRef<(textToSave: string) => Promise<void>>(async () => {});
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -140,7 +145,12 @@ export function ClinicalNoteEditor({
         setSaveStatus("idle");
         return;
       }
-      if (textToSave === lastSavedValue && saveStatus !== "error") {
+      // One save at a time: a change made while a save is in flight is saved straight after it.
+      if (inFlightSaveRef.current !== null) {
+        pendingSaveRef.current = textToSave;
+        return;
+      }
+      if (textToSave === lastSavedRef.current && saveStatus !== "error") {
         if (saveStatus === "unsaved") {
           setSaveStatus(hasSavedRef.current ? "saved" : "idle");
         }
@@ -150,20 +160,32 @@ export function ClinicalNoteEditor({
       // Capture caret position before triggering save
       recordSelection();
       setSaveStatus("saving");
+      inFlightSaveRef.current = textToSave;
 
       try {
         await onSave(textToSave);
         hasSavedRef.current = true;
+        lastSavedRef.current = textToSave;
         setLastSavedValue(textToSave);
         if (latestValueRef.current === textToSave) {
           setSaveStatus("saved");
         }
       } catch {
         setSaveStatus("error");
+      } finally {
+        inFlightSaveRef.current = null;
+        const pending = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        if (pending !== null && pending === latestValueRef.current && pending !== lastSavedRef.current) {
+          void performSaveRef.current(pending);
+        }
       }
     },
-    [readOnly, lastSavedValue, saveStatus, onSave, recordSelection],
+    [readOnly, saveStatus, onSave, recordSelection],
   );
+  useEffect(() => {
+    performSaveRef.current = performSave;
+  }, [performSave]);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -194,7 +216,7 @@ export function ClinicalNoteEditor({
       return;
     }
 
-    if (newValue === lastSavedValue) {
+    if (newValue === lastSavedRef.current && inFlightSaveRef.current === null) {
       setSaveStatus(hasSavedRef.current ? "saved" : "idle");
       return;
     }
@@ -251,6 +273,8 @@ export function ClinicalNoteEditor({
       selectionRef.current = { start: 0, end: 0, direction: "none" };
       hasSavedRef.current = false;
       setInternalValue("");
+      lastSavedRef.current = "";
+      pendingSaveRef.current = null;
       setLastSavedValue("");
       setPrivacyProblem(null);
       setSaveStatus("idle");

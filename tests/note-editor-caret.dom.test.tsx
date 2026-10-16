@@ -117,6 +117,35 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     expect(textarea.selectionEnd).toBe(41);
   });
 
+  it("saves a revert typed while an earlier save is still in flight", async () => {
+    let finishFirstSave: () => void = () => {};
+    const onSave = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<void>((resolve) => (finishFirstSave = resolve)))
+      .mockResolvedValue(undefined);
+    render(<ClinicalNoteEditor initialValue="Original draft" onSave={onSave} debounceMs={300} />);
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, { target: { value: "Edited draft" } });
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledWith("Edited draft");
+
+    // Back to the stored text before the first save has finished.
+    fireEvent.change(textarea, { target: { value: "Original draft" } });
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finishFirstSave();
+    });
+    expect(onSave).toHaveBeenCalledTimes(2);
+    expect(onSave).toHaveBeenLastCalledWith("Original draft");
+  });
+
   it("manual Save now button triggers save immediately", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 

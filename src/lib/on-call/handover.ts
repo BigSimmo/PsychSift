@@ -238,6 +238,21 @@ export function removeOnCallHandoverPatient(id: string, now: Date = new Date()):
   );
 }
 
+/**
+ * The shift's stored end time, kept even once it has passed. The on-screen view hides an expired
+ * shift, so a late timer must check this before it starts a fresh stamp for stale text.
+ */
+export function readOnCallHandoverStoredExpiry(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (
+      parsePatientLabelExpiryStamp(window.localStorage.getItem(PATIENT_LABEL_EXPIRY_STORAGE_KEY))?.expiresAt ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function loadOnCallHandoverScratchpad(now: Date = new Date()): string {
   if (typeof window === "undefined") return "";
   try {
