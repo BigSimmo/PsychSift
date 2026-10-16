@@ -749,11 +749,10 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
     num_cols = len(effective_ranges)
     top_segments = []
     bottom_segments = []
+    lateral_segments = []
     for sx0, sy0, sx1, sy1, text in all_segments:
         seg_rect = fitz.Rect(sx0, sy0, sx1, sy1)
         if (extended_rect & seg_rect).is_empty:
-            continue
-        if sx0 < original_rect.x0 - 8.0 or sx1 > original_rect.x1 + 8.0:
             continue
         outside_bottom = sy1 > original_rect.y1 + 0.5 and sy0 >= original_rect.y1 - 2.0
         outside_top = sy0 < original_rect.y0 - 0.5 and sy1 <= original_rect.y0 + 2.0
@@ -761,6 +760,8 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
             top_segments.append((sx0, sy0, sx1, sy1, text))
         elif outside_bottom:
             bottom_segments.append((sx0, sy0, sx1, sy1, text))
+        elif sx1 < original_rect.x0 - 0.5 or sx0 > original_rect.x1 + 0.5:
+            lateral_segments.append((sx0, sy0, sx1, sy1, text))
 
     def collect_rows(strip_segments):
         if not strip_segments:
@@ -787,7 +788,13 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
             if not valid_band:
                 continue
             populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
-            if populated_cols < 2:
+            if populated_cols == 0:
+                continue
+            if populated_cols == 1 and rows_out:
+                continuation_col = next(index for index, cell in enumerate(row_cells) if clean_cell(cell))
+                rows_out[-1][continuation_col] = clean_cell(
+                    f"{rows_out[-1][continuation_col]} {row_cells[continuation_col]}"
+                )
                 continue
             key = tuple(row_cells)
             if key in existing_keys:
@@ -796,7 +803,7 @@ def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows,
             rows_out.append(row_cells)
         return rows_out
 
-    return collect_rows(top_segments), collect_rows(bottom_segments)
+    return collect_rows(top_segments), collect_rows(bottom_segments + lateral_segments)
 
 
 def recover_table_rows_from_edge_strip(
@@ -1770,5 +1777,8 @@ if __name__ == "__main__":
         print(f"PDF_EXTRACTION_BUDGET_EXCEEDED: {exc}", file=sys.stderr)
         sys.exit(3)
     except PdfUnreadable as exc:
+        print(f"PDF_UNREADABLE: {exc}", file=sys.stderr)
+        sys.exit(4)
+readable as exc:
         print(f"PDF_UNREADABLE: {exc}", file=sys.stderr)
         sys.exit(4)
