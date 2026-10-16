@@ -7,11 +7,11 @@ This package executes P00–P17 only. One fresh Cloud session completes exactly 
 The user prompt must declare `TARGET_PHASE`, `PACKAGE_SOURCE_REF`, `PACKAGE_HEAD_SHA`, `PACKAGE_BASE_SHA`, `PROGRAMME_BRANCH` and selected Cloud effort. Do not inspect receipts to choose a phase after launch. Confirm the declared target is exactly next using the receipt checker.
 
 - Use high for P00, P04, P10 and P11.
-- Use xhigh for every other P01–P17 phase. The prompt must begin with the exact repository xhigh confirmation marker and the user must select xhigh in the Cloud control before launch.
+- Use xhigh for every other P01–P17 phase. Select xhigh in the Cloud control before launch.
 
-If target, prompt marker or UI effort is wrong, stop before substantive inspection. Cloud cannot raise its own effort.
+If target or UI effort is wrong, stop before substantive inspection. Cloud cannot raise its own effort.
 
-As the first repository-local validation after the raw boundary and setup, run `node scripts/rag-phase-launch-check.mjs --target TARGET_PHASE --effort SELECTED_EFFORT`. Add `--xhigh-confirmed` only when the xhigh prompt marker is present. A failure stops the task.
+As the first repository-local validation after the raw boundary and setup, run `node scripts/rag-phase-launch-check.mjs --target TARGET_PHASE --effort SELECTED_EFFORT`. A failure stops the task.
 
 ## Raw environment boundary — first command
 

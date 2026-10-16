@@ -167,9 +167,6 @@ function validateCanonicalBodies() {
   ) {
     errors.push("programme-manifest.json: adaptive effort launch sets must partition every Cloud phase exactly once");
   }
-  if (manifest.adaptiveEffortPolicy?.xhighConfirmationMarker !== "[xhigh-confirmed]") {
-    errors.push("programme-manifest.json: xhigh confirmation marker must match the repository Cloud gate");
-  }
   if (manifest.defaultAgentPolicy?.allowModelFallback !== false) {
     errors.push("programme-manifest.json: model fallback must remain disabled");
   }

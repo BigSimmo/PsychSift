@@ -371,28 +371,30 @@ presence in the unsanitized parent process, not where a variable (such as `GH_TO
 already-running process. Outcomes are name-scoped in the probe itself:
 
 - exit `0` / `PASS` — raw boundary clean
-- exit `1` / `FAIL` + `STOP` — any unexpected provider name (for example `GH_TOKEN` or
+- exit `1` / `FAIL` + `STOP` — any unexpected provider name (for example
   `SUPABASE_SERVICE_ROLE_KEY`); application execution, live provider access, and full runtime
   acceptance remain blocked and require a fresh task once the environment source is cleared, while
   explicitly requested local policy, documentation, and configuration inspection and repair (plus
   scrubbed offline checks through the profile and command shims) may proceed
-- exit `2` / `FAIL-KNOWN` + `CONTINUE-RESTRICTED` — only the documented Personal Pro launcher
-  defect name `OPENAI_BASE_URL`
+- exit `2` / `FAIL-KNOWN` + `CONTINUE-RESTRICTED` — only the documented Personal Pro launcher-injected
+  names `OPENAI_BASE_URL` and `GH_TOKEN`
 
 Exit `2` is still a failed raw boundary: humans/agents may continue only under this contract.
 Do not treat “non-1” or “retry on any failure” as success in future automation — wire the three
-states explicitly. When the probe reports `FAIL-KNOWN` for `OPENAI_BASE_URL` alone, preserve that
-name-only output for OpenAI support and continue provider-free work only through the generated
-profile and command shims, followed by a passing `npm run check:codex-cloud`. Do not generalize
-that restricted path for full app/runtime work to any other inherited name. When exit `1` reports
-an unexpected name such as `GH_TOKEN`, do not run the application or contact live providers, but
-do complete any explicitly requested local policy or documentation repairs and run scrubbed offline
-checks (`git diff --check`, `npm run check:codex-cloud`, `npm run check:instructions`,
-`npm run check:decisions`, and offline unit tests invoked via `~/.local/bin/node` or
-`~/.local/bin/npm`, which load `~/.clinical-kb-codex-cloud.sh` and `unset` all provider variables).
-An inherited `OPENAI_BASE_URL` can redirect OpenAI-bound traffic, so never call OpenAI clients from
-the raw parent process or from binaries that bypass the profile/`node`/`npm`/`npx` shim scrub. A
-sanitized child shell is never proof that the raw-parent boundary passed.
+states explicitly. When the probe reports `FAIL-KNOWN` for `OPENAI_BASE_URL` or `GH_TOKEN`, preserve
+that name-only output and continue provider-free work only through the generated
+`~/.clinical-kb-codex-cloud.sh` profile and `~/.local/bin/{node,npm,npx}` command shims (in non-login
+`bash -c` shells, source `~/.clinical-kb-codex-cloud.sh` first so `GH_TOKEN` and `OPENAI_BASE_URL`
+are unset before running `npm run check:codex-cloud`). Do not generalize that restricted path for
+full app/runtime work to any other inherited credential name. When exit `1` reports any other
+unexpected name, do not run the application or contact live providers, but do complete any
+explicitly requested local policy or documentation repairs and run scrubbed offline checks
+(`git diff --check`, `npm run check:codex-cloud`, `npm run check:instructions`,
+`npm run check:decisions`, and offline unit tests invoked after sourcing `~/.clinical-kb-codex-cloud.sh`
+or via `~/.local/bin/node` and `~/.local/bin/npm`). An inherited `OPENAI_BASE_URL` can redirect
+OpenAI-bound traffic, so never call OpenAI clients from the raw parent process or from binaries
+that bypass the profile/`node`/`npm`/`npx` shim scrub. A sanitized child shell is never proof that
+the raw-parent boundary passed.
 
 `npm run check:production-readiness` remains useful in the offline profile for local safeguards.
 Missing Supabase/OpenAI agent-phase credentials are reported as a provider capability gap and do

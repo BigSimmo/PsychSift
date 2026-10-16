@@ -15,16 +15,15 @@ It does not change the running main-chat model or reasoning effort.
 **Cloud reasoning effort and plain-language confirmation.** A running Cloud task cannot inspect or
 raise its own reasoning effort at runtime, and `.codex/config.toml` intentionally does not force a
 model or reasoning setting.
-The general `[xhigh-confirmed]` prompt marker and prompt-resubmission gate were retired on 2026-10-16:
-there is no `[xhigh-confirmed]` token requirement for ordinary or high-risk chat requests, and agents must no longer ask the user to resubmit a prompt with `[xhigh-confirmed]`.
+The former Cloud prompt-marker and prompt-resubmission gate was retired on 2026-10-16:
+there is no special token requirement for ordinary or high-risk chat requests, and agents must no longer ask the user to resubmit a prompt with a confirmation tag.
 When a request touches the high-consequence surfaces in the table below (architecture, Supabase
 migrations/RLS, RAG ranking surfaces, auth/privacy, or ingestion contracts), `xhigh` remains the
 recommended planning effort. Plain-language confirmation from the user (or an explicit instruction
 to proceed) suffices; accept it at face value without repeating a gate prompt or claiming to verify
 the runtime picker. Only if a high-consequence Cloud planning task starts with no indication of
 reasoning preference and material uncertainty remains, mention the `xhigh` recommendation once and
-accept a plain-language reply. The specialist RAG upgrade programme (`docs/superpowers/rag-upgrade/`
-and `scripts/rag-phase-launch-check.mjs`) retains its own CLI `--xhigh-confirmed` launch check.
+accept a plain-language reply.
 
 Reasoning effort is a budget in the same way verification is a budget, and it is misspent the same
 way — by defaulting to the maximum instead of matching the spend to the risk. **Scale effort to how

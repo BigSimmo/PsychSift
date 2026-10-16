@@ -15,7 +15,7 @@ Every phase owns exactly the plan tasks listed in `programme-manifest.json`. Eve
 | high          | P00, P04, P10, P11         | high         | manifest high/xhigh |
 | xhigh         | P01–P03, P05–P09, P12A–P17 | high         | xhigh               |
 
-The exact lettered phase list is in the manifest and is machine-validated. `TARGET_PHASE` must be present before substantive inspection. A running Cloud task cannot raise its own effort. An xhigh target therefore starts from the xhigh launch prompt with the repository confirmation marker; a high target starts from the high prompt. Implementations remain high because the task plans name files, interfaces, ordered steps and proof gates. P00 and P11 may use Terra/high implementers; all other implementation and all reviews use Sol at the manifest effort. No provider mapping or silent fallback is allowed.
+The exact lettered phase list is in the manifest and is machine-validated. `TARGET_PHASE` must be present before substantive inspection. A running Cloud task cannot raise its own effort, so select the matching high or xhigh effort in the Cloud control before launching the phase. Implementations remain high because the task plans name files, interfaces, ordered steps and proof gates. P00 and P11 may use Terra/high implementers; all other implementation and all reviews use Sol at the manifest effort. No provider mapping or silent fallback is allowed.
 
 Before dispatch, prove the controller route and one real fresh subagent dispatch from authoritative sanitized host metadata. Each task receipt binds the controller, implementer, task reviewer and phase reviewer separately. Self-report is invalid evidence.
 

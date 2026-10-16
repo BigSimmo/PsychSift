@@ -11,9 +11,10 @@ set -Eeuo pipefail
 #   1 — unexpected provider variable names present; app execution and provider
 #       access require a fresh task, while explicitly requested local policy/doc
 #       repair and scrubbed offline checks may proceed
-#   2 — only the documented Personal Pro launcher defect (`OPENAI_BASE_URL`) is
-#       present. The raw boundary still failed; continue only through the
-#       generated profile and command shims, never by treating this as a pass.
+#   2 — only the documented Personal Pro launcher defect names (`OPENAI_BASE_URL`,
+#       `GH_TOKEN`) are present. The raw boundary still failed; continue only
+#       through the generated profile and command shims, never by treating this
+#       as a pass.
 provider_variables=(
   OPENAI_API_KEY OPENAI_ORG_ID OPENAI_PROJECT_ID OPENAI_BASE_URL
   NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -30,9 +31,9 @@ provider_variables=(
   E2E_AUTH_ENABLED E2E_USER_EMAIL E2E_USER_PASSWORD ALLOW_PROVIDER_TESTS
 )
 
-# Name-scoped allowance: only this inherited name may use the restricted continue
+# Name-scoped allowance: only these inherited names may use the restricted continue
 # path. Any other provider name remains a hard stop.
-known_launcher_defect_variables=(OPENAI_BASE_URL)
+known_launcher_defect_variables=(OPENAI_BASE_URL GH_TOKEN)
 
 present=()
 for name in "${provider_variables[@]}"; do

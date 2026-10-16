@@ -50,26 +50,29 @@ Use `docs/codex-cloud.md` as the environment contract:
 - In a fresh Cloud task, run `bash scripts/check-codex-cloud-raw-env.sh` before sourcing a
   profile or entering a login shell. It must report only provider variable names and presence,
   never values. The probe establishes presence in the unsanitized parent process, not where a
-  variable (such as `GH_TOKEN` or `OPENAI_BASE_URL`) originated, and repository edits cannot
-  remove a variable from an already-running process. When exit `1` / `FAIL`+`STOP` or a failed
-  credential check occurs, application execution (`npm run ensure`), live provider access, and
-  full runtime acceptance remain blocked and require a fresh task once the environment source is
-  cleared; however, explicitly requested local policy, documentation, and configuration inspection
-  and repair are permitted, along with scrubbed offline checks (`git diff --check`,
-  `npm run check:codex-cloud`, `npm run check:instructions`, `npm run check:decisions`, and offline
-  unit tests run through the generated profile and `~/.local/bin/{node,npm,npx}` command shims,
-  which `unset` `GH_TOKEN` and other provider variables before Node executes). Only exit `2` /
-  `FAIL-KNOWN` for `OPENAI_BASE_URL` alone may use
-  the restricted profile-and-shim continue path for broader provider-free app/runtime work; do not
-  generalize that allowance. Exit `2` is still a failed raw boundary — future automation must not
-  treat non-1 as success or as a blind retry. That name can redirect OpenAI-bound traffic, so never
-  invoke OpenAI clients from the raw parent or any binary that bypasses the
-  profile/`node`/`npm`/`npx` scrub. Then run `npm run check:codex-cloud` directly; it must report
-  the static-and-environment PASS line. Run `npm run check:codex-cloud -- --runtime` with
-  `CODEX_CLOUD_EXPECTED_BASE_SHA` set to the intended merge/base commit when the checkout has only
-  a task HEAD. Setup and maintenance may report freshness as unverified so provisioning remains
-  repairable, but explicit acceptance must not pass an arbitrary HEAD. The command shims load the
-  generated profile for normal `node`, `npm`, and `npx` work. Also run `npm run check:runtime` and
+  variable originated, and repository edits cannot remove a variable from an already-running
+  process. When exit `1` / `FAIL`+`STOP` or a failed credential check occurs, application
+  execution (`npm run ensure`), live provider access, and full runtime acceptance remain blocked
+  and require a fresh task once the environment source is cleared; however, explicitly requested
+  local policy, documentation, and configuration inspection and repair are permitted, along with
+  scrubbed offline checks (`git diff --check`, `npm run check:codex-cloud`,
+  `npm run check:instructions`, `npm run check:decisions`, and offline unit tests run after
+  sourcing `~/.clinical-kb-codex-cloud.sh` or through `~/.local/bin/{node,npm,npx}` command shims,
+  which `unset` `GH_TOKEN`, `OPENAI_BASE_URL`, and all other provider variables before Node
+  executes). Exit `2` / `FAIL-KNOWN` for the documented launcher-injected names (`OPENAI_BASE_URL`
+  and `GH_TOKEN`) uses the restricted profile-and-shim continue path for provider-free work; do
+  not generalize that allowance to other provider credentials. Exit `2` is still a failed raw
+  boundary — future automation must not treat non-1 as success or as a blind retry. Because
+  `OPENAI_BASE_URL` can redirect OpenAI-bound traffic and `GH_TOKEN` carries host GitHub
+  credentials, never invoke OpenAI or GitHub clients from the raw parent or any binary that
+  bypasses the profile/`node`/`npm`/`npx` scrub. In non-login shells (`bash -c`), source
+  `~/.clinical-kb-codex-cloud.sh` before running `npm run check:codex-cloud` so the scrubbed
+  profile is active; it must report the static-and-environment PASS line. Run
+  `npm run check:codex-cloud -- --runtime` with `CODEX_CLOUD_EXPECTED_BASE_SHA` set to the
+  intended merge/base commit when the checkout has only a task HEAD. Setup and maintenance may
+  report freshness as unverified so provisioning remains repairable, but explicit acceptance must
+  not pass an arbitrary HEAD. The command shims load the generated profile for normal `node`,
+  `npm`, and `npx` work. Also run `npm run check:runtime` and
   `npm run check:installed-lock-parity` before trusting a new or reset environment. A skipped
   browser install is not full browser readiness. Output is limited to approved mode values,
   presence booleans, full Git commit identities, and MCP server/command/environment-variable
