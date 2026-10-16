@@ -56,11 +56,11 @@ if [[ -n "$resolved_node_version" && "$resolved_node_version" != "N/A" ]]; then
 else
   fallback_node="$(PATH="$fallback_path" command -v node 2>/dev/null || true)"
   [[ -n "$fallback_node" ]] || fail "Node ${expected_node_major} is unavailable through nvm or PATH."
-  fallback_node_version="$($fallback_node -p 'process.versions.node' 2>/dev/null || true)"
+  fallback_node_version="$("$fallback_node" -p 'process.versions.node' 2>/dev/null || true)"
   node_version_supported "$fallback_node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${fallback_node_version:-unavailable}."
   node_bin="$(cd "$(dirname "$fallback_node")" && pwd)"
 fi
-node_version="$($node_bin/node -p 'process.versions.node' 2>/dev/null || true)"
+node_version="$("$node_bin/node" -p 'process.versions.node' 2>/dev/null || true)"
 node_version_supported "$node_version" || fail "Node ${expected_node_major}.x >=24.15.0 and <25 is required; detected ${node_version:-unavailable}."
 mkdir -p "$HOME/.local/bin"
 for command_name in node npm npx; do
