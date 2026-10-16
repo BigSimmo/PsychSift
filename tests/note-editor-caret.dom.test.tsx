@@ -360,4 +360,42 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     });
     expect(onSave).toHaveBeenCalledWith("Evening handover note reviewed");
   });
+
+  it("ignores a save that finishes after the parent supplies a new value", async () => {
+    let finishSave: () => void = () => {};
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    const React = await import("react");
+    let setExternal: (next: string) => void = () => {};
+
+    function Wrapper() {
+      const [draft, setDraft] = React.useState("Morning review stable");
+      setExternal = setDraft;
+      return <ClinicalNoteEditor value={draft} onChange={setDraft} onSave={onSave} debounceMs={300} />;
+    }
+
+    render(<Wrapper />);
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, { target: { value: "Morning review stable, plan unchanged" } });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saving");
+
+    act(() => setExternal("Evening handover note"));
+    await act(async () => {
+      finishSave();
+    });
+
+    // The late save must not mark the new note as saved or offer Save now for it.
+    expect(textarea.value).toBe("Evening handover note");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Idle");
+    expect(screen.getByTestId("note-editor-save-btn")).toBeDisabled();
+  });
 });

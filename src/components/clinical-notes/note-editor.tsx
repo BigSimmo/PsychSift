@@ -78,6 +78,8 @@ export function ClinicalNoteEditor({
   const inFlightSaveRef = useRef<string | null>(null);
   const pendingSaveRef = useRef<string | null>(null);
   const performSaveRef = useRef<(textToSave: string) => Promise<void>>(async () => {});
+  // Bumped when the parent supplies a new value, so a save started before it cannot touch the new note.
+  const saveGenerationRef = useRef(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -95,6 +97,7 @@ export function ClinicalNoteEditor({
       saveTimerRef.current = null;
     }
     pendingSaveRef.current = null;
+    saveGenerationRef.current += 1;
     lastSavedRef.current = latestValueRef.current;
   }, [externalValueVersion]);
   useEffect(() => {
@@ -180,9 +183,11 @@ export function ClinicalNoteEditor({
       recordSelection();
       setSaveStatus("saving");
       inFlightSaveRef.current = textToSave;
+      const generation = saveGenerationRef.current;
 
       try {
         await onSave(textToSave);
+        if (generation !== saveGenerationRef.current) return;
         hasSavedRef.current = true;
         lastSavedRef.current = textToSave;
         setLastSavedValue(textToSave);
@@ -190,7 +195,7 @@ export function ClinicalNoteEditor({
           setSaveStatus("saved");
         }
       } catch {
-        setSaveStatus("error");
+        if (generation === saveGenerationRef.current) setSaveStatus("error");
       } finally {
         inFlightSaveRef.current = null;
         const pending = pendingSaveRef.current;
