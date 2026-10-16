@@ -63,13 +63,49 @@ function adoptedSigned(overrides: Partial<SourceAcquisitionRecord> = {}): Source
 
 const links = { clozapine: ["fixture-clozapine-pi"] };
 
+const HIGH_RISK_MEDICATION_SLUGS = [
+  "clozapine",
+  "lithium-carbonate-ir-sr",
+  "sodium-valproate-oral-iv",
+  "carbamazepine",
+  "lamotrigine",
+  "aripiprazole-lai",
+  "flupentixol-decanoate",
+  "haloperidol-decanoate",
+  "olanzapine-pamoate-lai",
+  "paliperidone-lai",
+  "risperidone-lai",
+  "zuclopenthixol-decanoate",
+  "zuclopenthixol-acetate",
+  "methadone",
+  "citalopram",
+  "escitalopram",
+  "amisulpride",
+  "ziprasidone",
+  "ziprasidone-im",
+  "droperidol",
+  "chlorpromazine",
+  "amitriptyline",
+  "clomipramine",
+  "nortriptyline",
+  "phenelzine",
+  "tranylcypromine",
+] as const;
+
 describe("medication source links", () => {
-  it("maps only real medication slugs to real register records", () => {
+  it("maps only real medication slugs (including all 26 high-risk slugs) to real register records", () => {
     const slugs = new Set(loadMedicationSnapshot().map((record) => record.slug));
     const ids = new Set(sourceAcquisitionRecords.map((record) => record.id));
     for (const [slug, recordIds] of Object.entries(medicationSourceLinkIds)) {
       expect(slugs.has(slug), `unknown medication slug ${slug}`).toBe(true);
+      expect(recordIds.length, `empty source links for ${slug}`).toBeGreaterThan(0);
       for (const id of recordIds) expect(ids.has(id), `unknown register record ${id}`).toBe(true);
+    }
+    for (const slug of HIGH_RISK_MEDICATION_SLUGS) {
+      expect(
+        (medicationSourceLinkIds as Record<string, readonly string[]>)[slug]?.length,
+        `missing high-risk medication slug ${slug}`,
+      ).toBeGreaterThan(0);
     }
   });
 

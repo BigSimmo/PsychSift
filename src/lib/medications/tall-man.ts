@@ -12,37 +12,41 @@ export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Objec
   olanzapine: "OLANZapine",
   quetiapine: "QUEtiapine",
   aripiprazole: "ARIPiprazole",
+  rabeprazole: "rabePRAZOLE",
   risperidone: "risperiDONE",
+  ropinirole: "ropiniROLE",
   chlorpromazine: "chlorproMAZINE",
+  chlorpropamide: "chlorproPAMIDE",
+  clomipramine: "clomiPRAMINE",
   promethazine: "proMETHAZINE",
   fluphenazine: "fluPHENazine",
-  flupentixol: "fluPENtixol",
-  zuclopenthixol: "zucloPENthixol",
+  flupentixol: "FLUpentixol",
+  flupenthixol: "FLUpenthixol",
+  zuclopenthixol: "ZUCLOpenthixol",
 
   // Antidepressants & Anxiolytics
   fluoxetine: "FLUoxetine",
   fluvoxamine: "fluvoxaMINE",
   paroxetine: "PARoxetine",
   sertraline: "serTRALine",
-  citalopram: "citaloPRAM",
-  escitalopram: "escitaloPRAM",
+  citalopram: "CITalopram",
+  escitalopram: "ESCitalopram",
   duloxetine: "DULoxetine",
   venlafaxine: "venlaFAXine",
   bupropion: "buPROPion",
   buspirone: "busPIRone",
 
-  // Benzodiazepines & Sedatives
+  // Benzodiazepines & Sedatives (aligned on differentiating prefixes per ACSQHC)
   clonazepam: "CLONazepam",
   lorazepam: "LORazepam",
-  diazepam: "diazePAM",
-  oxazepam: "oxazePAM",
-  temazepam: "temazePAM",
+  diazepam: "DIAZepam",
+  oxazepam: "OXazepam",
+  temazepam: "TEMazepam",
   alprazolam: "ALPRAZolam",
-  midazolam: "midazolAM",
+  midazolam: "MIDazolam",
 
   // Mood Stabilizers & Anticonvulsants
   carbamazepine: "carBAMazepine",
-  valproate: "VALproate",
   lamotrigine: "lamoTRIgine",
 
   // Vasodilators / Antihistamines
@@ -51,20 +55,37 @@ export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Objec
 });
 
 /**
- * Formats a medication name using standard ISMP Tall Man lettering if recognized.
- * Returns the original medication name unmodified if not present in the LASA registry.
+ * Formats a medication name using standard ISMP / ACSQHC Tall Man lettering if recognized.
+ * Supports both exact generic names and compound strings (e.g. "Flupentixol decanoate", "Clozapine (Clopine)")
+ * via word-boundary token matching.
  */
 export function formatTallMan(name: string): string {
   if (!name) return name;
   const key = name.toLowerCase().trim();
-  return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key) ? ISMP_TALL_MAN_MEDICATIONS[key] : name;
+  if (Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key)) {
+    return ISMP_TALL_MAN_MEDICATIONS[key]!;
+  }
+  return name.replace(/\b([A-Za-z]+)\b/g, (token) => {
+    const lower = token.toLowerCase();
+    return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, lower)
+      ? ISMP_TALL_MAN_MEDICATIONS[lower]!
+      : token;
+  });
 }
 
 /**
- * Checks whether a given medication is an ISMP / ACSQHC identified high-alert LASA drug.
+ * Checks whether a given medication (or compound medication string) contains an
+ * ISMP / ACSQHC identified high-alert LASA drug.
  */
 export function isTallManMedication(name: string): boolean {
   if (!name) return false;
   const key = name.toLowerCase().trim();
-  return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key);
+  if (Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key)) {
+    return true;
+  }
+  const tokens = name.match(/\b([A-Za-z]+)\b/g);
+  if (!tokens) return false;
+  return tokens.some((token) =>
+    Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, token.toLowerCase()),
+  );
 }

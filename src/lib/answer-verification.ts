@@ -1477,7 +1477,7 @@ export function failClosedForLabelledNumericBandConflict(
 // on the answer and an explicit "verify against source" caveat is appended so a
 // paraphrased/mis-transcribed dose can never read as authoritative.
 const actionableNumericAnswerPattern =
-  /\b(?:dose|dosage|dosing|mg|mcg|microgram|micrograms|route|oral|intramuscular|\bim\b|\bpo\b|frequency|daily|twice|weekly|monthly|hourly|threshold|cutoff|cut-off|anc|fbc|wbc|withhold|cease|stop|discontinue|red\s+(?:result|range|zone)|amber\s+(?:result|range|zone)|green\s+(?:result|range|zone)|monitor|monitoring|interval|repeat|review|risk\s+score|risk|score|escalat|urgent)\b/i;
+  /\b(?:dose|dosage|dosing|mg|mcg|microgram|micrograms|route|oral|intramuscular|\bim\b|\bpo\b|frequency|daily|twice|weekly|monthly|hourly|threshold|cutoff|cut-off|anc|fbc|wbc|withhold|cease|stop|discontinue|red\s+(?:result|range|zone)|amber\s+(?:result|range|zone)|green\s+(?:result|range|zone)|monitor|monitoring|interval|repeat|review|risk\s+score|risk|score|escalat(?:e|ed|es|ing|ion|ions)|urgent)\b/i;
 
 const actionableNumericSectionKinds = new Set<AnswerSectionKind>([
   "medication_dose",

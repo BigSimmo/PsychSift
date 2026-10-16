@@ -101,7 +101,7 @@ function mapOwnerRpcError(error: { message?: string | null }): PublicApiError {
   return unavailable();
 }
 
-/** Exact counts, including teams whose membership exceeds PostgREST's row cap. */
+/** Batched member and manager counts across all services in O(1) queries. */
 export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam[] }> {
   const { data: services, error } = await client
     .from("on_call_services")
@@ -109,34 +109,49 @@ export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam
     .order("created_at", { ascending: false })
     .limit(200);
   if (error || !services) throw unavailable();
-  const teams = await Promise.all(
-    services.map(async (service) => {
-      const [members, roles] = await Promise.all([
-        client
-          .from("on_call_service_members")
-          .select("user_id", { count: "exact", head: true })
-          .eq("service_id", service.id)
-          .is("revoked_at", null),
-        client
-          .from("roster_member_roles")
-          .select("user_id", { count: "exact", head: true })
-          .eq("service_id", service.id)
-          .eq("role", "manager")
-          .is("revoked_at", null),
-      ]);
-      if (members.error || roles.error || members.count === null || roles.count === null) throw unavailable();
-      return {
-        serviceId: service.id,
-        name: service.name,
-        createdAt: service.created_at,
-        verifiedAt: service.verified_at,
-        isDemo: service.is_demo,
-        activeMembers: members.count,
-        managers: roles.count,
-      };
-    }),
-  );
-  return { teams };
+  if (services.length === 0) return { teams: [] };
+
+  const serviceIds = services.map((service) => service.id);
+  const [members, roles] = await Promise.all([
+    client
+      .from("on_call_service_members")
+      .select("service_id,user_id")
+      .in("service_id", serviceIds)
+      .is("revoked_at", null)
+      .limit(10000),
+    client
+      .from("roster_member_roles")
+      .select("service_id,user_id")
+      .in("service_id", serviceIds)
+      .eq("role", "manager")
+      .is("revoked_at", null)
+      .limit(10000),
+  ]);
+  if (members.error || roles.error || !members.data || !roles.data) throw unavailable();
+
+  const memberCounts = new Map<string, number>();
+  for (const row of members.data as Array<{ service_id?: string }>) {
+    const key = row.service_id ?? (serviceIds.length === 1 ? serviceIds[0] : undefined);
+    if (key) memberCounts.set(key, (memberCounts.get(key) ?? 0) + 1);
+  }
+
+  const managerCounts = new Map<string, number>();
+  for (const row of roles.data as Array<{ service_id?: string }>) {
+    const key = row.service_id ?? (serviceIds.length === 1 ? serviceIds[0] : undefined);
+    if (key) managerCounts.set(key, (managerCounts.get(key) ?? 0) + 1);
+  }
+
+  return {
+    teams: services.map((service) => ({
+      serviceId: service.id,
+      name: service.name,
+      createdAt: service.created_at,
+      verifiedAt: service.verified_at,
+      isDemo: service.is_demo,
+      activeMembers: memberCounts.get(service.id) ?? 0,
+      managers: managerCounts.get(service.id) ?? 0,
+    })),
+  };
 }
 
 export async function listOwnerMembers(client: Client, serviceId: string): Promise<{ members: OwnerMember[] }> {

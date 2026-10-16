@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { QrCheckInHelper } from "@/components/teaching/qr-check-in-helper";
+import { TeachingCodeSheet } from "@/components/teaching/teaching-code-sheet";
 
 describe("QrCheckInHelper (#ZTDZ4Z)", () => {
   let mockTracks: { stop: ReturnType<typeof vi.fn> }[];
@@ -31,13 +32,20 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     delete window.BarcodeDetector;
   });
 
-  it("renders camera viewport fallback and typed-code input", () => {
+  it("renders camera viewport fallback and typed-code input with privacy attributes", () => {
     render(<QrCheckInHelper onScanCode={vi.fn()} />);
 
     expect(screen.getByTestId("qr-check-in-helper")).toBeInTheDocument();
     expect(screen.getByTestId("qr-viewport-fallback")).toBeInTheDocument();
     expect(screen.getByTestId("start-camera-scan-btn")).toBeInTheDocument();
-    expect(screen.getByTestId("qr-typed-code-input")).toBeInTheDocument();
+
+    const input = screen.getByTestId("qr-typed-code-input");
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveAttribute("id", "manual-session-code-input");
+    expect(input).toHaveAttribute("autocomplete", "off");
+    expect(input).toHaveAttribute("spellcheck", "false");
+    expect(input).toHaveAttribute("data-gramm", "false");
+    expect(input).toHaveAttribute("data-enable-grammarly", "false");
   });
 
   it("starts camera with mobile back camera constraints", async () => {
@@ -124,5 +132,28 @@ describe("QrCheckInHelper (#ZTDZ4Z)", () => {
     });
 
     expect(onScan).toHaveBeenCalledWith("951753");
+  });
+
+  it("toggles QrCheckInHelper inside TeachingCodeSheet and populates scanned code", () => {
+    render(
+      <TeachingCodeSheet
+        open={true}
+        onClose={vi.fn()}
+        session={{ serviceId: "svc-1", occurrenceId: "occ-1", hasJoinLink: false }}
+        live={false}
+        onDone={vi.fn()}
+      />,
+    );
+
+    const toggleBtn = screen.getByTestId("toggle-in-app-qr-scanner");
+    fireEvent.click(toggleBtn);
+
+    expect(screen.getByTestId("qr-check-in-helper")).toBeInTheDocument();
+
+    const helperInput = screen.getByTestId("qr-typed-code-input");
+    fireEvent.change(helperInput, { target: { value: "654321" } });
+    fireEvent.click(screen.getByTestId("qr-typed-code-submit-btn"));
+
+    expect(screen.getByLabelText("Or type the six digits")).toHaveValue("654321");
   });
 });

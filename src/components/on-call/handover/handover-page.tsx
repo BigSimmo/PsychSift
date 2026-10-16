@@ -21,6 +21,7 @@ import {
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { focusRing } from "@/components/card-recipes";
+import { ClinicalNoteEditor } from "@/components/clinical-notes/note-editor";
 import { InformationPageShell } from "@/components/information-page-shell";
 import { useOnCallCallLog } from "@/components/on-call/handover/call-log";
 import { FieldLabel, OnCallLegalField } from "@/components/on-call/handover/legal-picker";
@@ -558,6 +559,7 @@ export function OnCallHandoverPage() {
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
   const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
+  const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
 
   const reset = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
@@ -565,6 +567,7 @@ export function OnCallHandoverPage() {
     setCopiedWard("");
     setDraftExpiresAt(null);
     setMode("form");
+    setScratchpadResetKey((k) => k + 1);
   }, []);
 
   // A wipe (end of shift, sign-out, another user, another tab) also drops the half-typed record.
@@ -974,6 +977,8 @@ export function OnCallHandoverPage() {
                   </div>
 
                   <CallsToAdd patients={patients} onAdd={(next) => commit(next, null)} />
+
+                  <ClinicalNoteEditor key={scratchpadResetKey} label="Shift scratchpad (de-identified)" />
                 </>
               )}
             </>

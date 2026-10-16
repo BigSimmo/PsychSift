@@ -404,7 +404,7 @@ function tokens(text: string) {
 const normalizeAnalysisText = normalizeGuardQuery;
 
 /** Corrected tokens. */
-function correctedTokens(query: string) {
+export function correctedTokens(query: string) {
   return tokens(query).map((token) => typoCorrections.get(token) ?? token);
 }
 
@@ -1478,12 +1478,12 @@ export function buildClinicalTextSearchQuery(query: string) {
     /\b(?:risk|red\s*zone|red|urgent|escalat(?:e|es|ed|ing|ion|ions)|next step)\b/i.test(query);
   const wantsClozapineBloodMonitoring =
     /\bclozapine\b/i.test(correctedQueryText) &&
-    /\b(?:blood|bloods|fbc|wcc|full blood count|white cell|observation|observations|monitor|monitoring)\b/i.test(
+    /\b(?:blood|bloods|anc|fbc|wbc|wcc|neutrophil|neutrophils|full blood count|white cell|observation|observations|monitor|monitoring)\b/i.test(
       correctedQueryText,
     );
   const wantsClozapineBloodActionThreshold =
     wantsClozapineBloodMonitoring &&
-    /\b(?:threshold|withhold|withheld|withholding|cease|stop|stopped|discontinue|discontinued)\b/i.test(
+    /\b(?:threshold|withhold|withheld|withholding|cease|ceased|ceasing|stop|stopped|stopping|discontinue|discontinued|discontinuing|discontinuation)\b/i.test(
       correctedQueryText,
     );
   const wantsClozapineMissedDose =

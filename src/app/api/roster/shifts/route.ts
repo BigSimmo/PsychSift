@@ -13,7 +13,7 @@ import { clearRosterSettings } from "@/lib/roster/settings";
 import { removeAllOwnerSubscriptions } from "@/lib/roster/alerts/subscriptions";
 import { removeAllOwnerLeave, withdrawRosterRequests } from "@/lib/roster/team/delete-my-data";
 import { demoOnCallShifts } from "@/lib/roster/shifts/demo-shifts";
-import { shiftIsInWindow } from "@/lib/roster/shifts/diff";
+import { detectOwnShiftConflicts, shiftIsInWindow } from "@/lib/roster/shifts/diff";
 import { onCallShiftImportRequestSchema } from "@/lib/roster/shifts/model";
 import {
   deleteOwnerShifts,
@@ -157,7 +157,8 @@ export async function POST(request: Request) {
       fetchOwnerShifts(supabase, user.id, listFrom()),
       fetchLatestShiftImport(supabase, user.id),
     ]);
-    return NextResponse.json({ shifts, latestImport }, { headers: noStore });
+    const conflicts = detectOwnShiftConflicts(shifts);
+    return NextResponse.json({ shifts, latestImport, conflicts }, { headers: noStore });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);

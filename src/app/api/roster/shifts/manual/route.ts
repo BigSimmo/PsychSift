@@ -7,6 +7,7 @@ import {
 } from "@/lib/api-rate-limit";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
+import { detectOwnShiftConflicts } from "@/lib/roster/shifts/diff";
 import { onCallManualShiftRequestSchema } from "@/lib/roster/shifts/model";
 import { addManualShifts } from "@/lib/roster/shifts/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -37,7 +38,8 @@ export async function POST(request: Request) {
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
     const body = await parseJsonBody(request, onCallManualShiftRequestSchema, "That shift could not be saved.");
     const shifts = await addManualShifts(supabase, user.id, [body.shift], body.repeatWeeks);
-    return NextResponse.json({ shifts }, { headers: noStore });
+    const conflicts = detectOwnShiftConflicts(shifts);
+    return NextResponse.json({ shifts, conflicts }, { headers: noStore });
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);

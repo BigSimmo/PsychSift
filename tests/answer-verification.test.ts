@@ -1634,3 +1634,25 @@ it("P12B R3 honors original request details and explicit latest-context omission
   expect(plan.subquestions[0]?.requestedFacets).toEqual(["monitoring", "risk"]);
   expect(plan.subquestions[0]?.requestedFacetDetails).toBeUndefined();
 });
+
+describe("dead stem regex fixes (#HD1C6W)", () => {
+  it.each([
+    "Escalate to the consultant when the value is below 2.0.",
+    "Care was escalated to the consultant when the value fell below 2.0.",
+    "Escalation to the consultant is required when the value is below 2.0.",
+  ])("treats %s as an actionable numeric answer and fails closed on unverified figures", (answerText) => {
+    const cited = source({ id: "chunk-esc", content: "Notify the team when the value is below 3.0." });
+    const input: RagAnswer = {
+      answer: answerText,
+      grounded: true,
+      confidence: "high",
+      citations: [citationFromResult(cited, "model_selected")],
+      sources: [cited],
+    };
+
+    const verified = applyNumericVerification(input);
+    expect(verified.grounded).toBe(false);
+    expect(verified.confidence).toBe("unsupported");
+    expect(verified.responseMode).toBe("evidence_gap");
+  });
+});

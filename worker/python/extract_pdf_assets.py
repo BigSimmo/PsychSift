@@ -554,45 +554,269 @@ def extend_table_rect_for_edge_content(page, rect, max_gap=TABLE_EDGE_CONTENT_GA
     }
 
 
-def recover_table_rows_from_edge_strip(page, original_rect, extended_rect, existing_rows, column_count=0):
-    """Recover structured rows from text that continues past a truncated find_tables bbox."""
+def _extract_table_column_ranges(table, column_count=0):
+    col_bounds = {}
+    try:
+        raw_rows = getattr(table, "rows", None) or []
+        for row in raw_rows:
+            cells = getattr(row, "cells", row)
+            if not isinstance(cells, (list, tuple)):
+                continue
+            for col_idx, cell in enumerate(cells):
+                if not cell or len(cell) < 4 or cell[0] is None or cell[2] is None:
+                    continue
+                try:
+                    x0, x1 = float(cell[0]), float(cell[2])
+                except (TypeError, ValueError):
+                    continue
+                if x1 <= x0:
+                    continue
+                if col_idx not in col_bounds:
+                    col_bounds[col_idx] = [x0, x1]
+                else:
+                    col_bounds[col_idx][0] = min(col_bounds[col_idx][0], x0)
+                    col_bounds[col_idx][1] = max(col_bounds[col_idx][1], x1)
+        if col_bounds:
+            max_col = max(col_bounds.keys())
+            total_cols = max(int(column_count or 0), max_col + 1)
+            ranges = []
+            for idx in range(total_cols):
+                if idx in col_bounds:
+                    ranges.append((round(col_bounds[idx][0], 2), round(col_bounds[idx][1], 2)))
+            if len(ranges) >= 2:
+                return ranges
+    except Exception:
+        pass
+    return []
+
+
+def _extract_page_line_segments(page):
+    segments = []
+    try:
+        text_dict = page.get_text("dict") or {}
+        for block in text_dict.get("blocks") or []:
+            if block.get("type", 0) != 0:
+                continue
+            for line in block.get("lines") or []:
+                spans = [
+                    span
+                    for span in (line.get("spans") or [])
+                    if clean_cell(span.get("text")) and len(span.get("bbox") or ()) >= 4
+                ]
+                if not spans:
+                    line_bbox = line.get("bbox")
+                    line_text = clean_cell(line.get("text"))
+                    if line_bbox and len(line_bbox) >= 4 and line_text:
+                        segments.append(
+                            (
+                                float(line_bbox[0]),
+                                float(line_bbox[1]),
+                                float(line_bbox[2]),
+                                float(line_bbox[3]),
+                                line_text,
+                            )
+                        )
+                    continue
+                spans.sort(key=lambda s: float(s["bbox"][0]))
+                cur_x0, cur_y0, cur_x1, cur_y1 = (
+                    float(spans[0]["bbox"][0]),
+                    float(spans[0]["bbox"][1]),
+                    float(spans[0]["bbox"][2]),
+                    float(spans[0]["bbox"][3]),
+                )
+                cur_text = clean_cell(spans[0].get("text"))
+                for span in spans[1:]:
+                    sx0, sy0, sx1, sy1 = (
+                        float(span["bbox"][0]),
+                        float(span["bbox"][1]),
+                        float(span["bbox"][2]),
+                        float(span["bbox"][3]),
+                    )
+                    stext = clean_cell(span.get("text"))
+                    if sx0 - cur_x1 <= 8.0 and abs(sy0 - cur_y0) <= 3.0:
+                        cur_x1 = max(cur_x1, sx1)
+                        cur_y0 = min(cur_y0, sy0)
+                        cur_y1 = max(cur_y1, sy1)
+                        cur_text = clean_cell(f"{cur_text} {stext}")
+                    else:
+                        segments.append((cur_x0, cur_y0, cur_x1, cur_y1, cur_text))
+                        cur_x0, cur_y0, cur_x1, cur_y1, cur_text = sx0, sy0, sx1, sy1, stext
+                segments.append((cur_x0, cur_y0, cur_x1, cur_y1, cur_text))
+    except Exception:
+        segments = []
+    return segments
+
+
+def _resolve_effective_column_ranges(original_rect, column_count, column_ranges, all_segments):
+    if column_ranges and len(column_ranges) >= 2:
+        normalized = [
+            (float(r[0]), float(r[1]))
+            for r in column_ranges
+            if isinstance(r, (list, tuple)) and len(r) >= 2 and float(r[1]) > float(r[0])
+        ]
+        if len(normalized) >= 2:
+            return normalized
+
+    col_count = int(column_count or 0)
+    if col_count < 2:
+        return []
+
+    in_table = [
+        seg
+        for seg in all_segments
+        if seg[1] >= original_rect.y0 - 2.0
+        and seg[3] <= original_rect.y1 + 2.0
+        and seg[0] >= original_rect.x0 - 6.0
+        and seg[2] <= original_rect.x1 + 6.0
+    ]
+    if in_table:
+        in_table.sort(key=lambda s: (s[1], s[0]))
+        bands = []
+        for seg in in_table:
+            if not bands or abs(seg[1] - bands[-1][0][1]) > 3.0:
+                bands.append([seg])
+            else:
+                bands[-1].append(seg)
+        matching_bands = [sorted(b, key=lambda s: s[0]) for b in bands if len(b) == col_count]
+        if matching_bands:
+            starts = [
+                min(band[col_idx][0] for band in matching_bands)
+                for col_idx in range(col_count)
+            ]
+            if all(starts[i] < starts[i + 1] - 4.0 for i in range(col_count - 1)):
+                inferred = []
+                for col_idx in range(col_count):
+                    c_x0 = float(original_rect.x0) if col_idx == 0 else max(float(original_rect.x0), starts[col_idx] - 2.0)
+                    c_x1 = (
+                        float(original_rect.x1)
+                        if col_idx == col_count - 1
+                        else max(c_x0 + 4.0, starts[col_idx + 1] - 2.0)
+                    )
+                    inferred.append((c_x0, c_x1))
+                return inferred
+
+    total_width = float(original_rect.x1) - float(original_rect.x0)
+    if total_width <= 0:
+        return []
+    step = total_width / col_count
+    return [
+        (float(original_rect.x0) + idx * step, float(original_rect.x0) + (idx + 1) * step)
+        for idx in range(col_count)
+    ]
+
+
+def _match_segment_to_column(sx0, sx1, effective_ranges):
+    seg_width = max(0.0, sx1 - sx0)
+    overlapping_cols = []
+    for col_idx, (cx0, cx1) in enumerate(effective_ranges):
+        overlap = min(sx1, cx1) - max(sx0, cx0)
+        if overlap > 4.0 or (seg_width <= 4.0 and sx0 >= cx0 - 4.0 and sx1 <= cx1 + 4.0):
+            overlapping_cols.append(col_idx)
+    if len(overlapping_cols) != 1:
+        return None
+    col_idx = overlapping_cols[0]
+    cx0, cx1 = effective_ranges[col_idx]
+    col_width = max(1.0, cx1 - cx0)
+    if sx0 < cx0 - 6.0 or sx1 > cx1 + 6.0:
+        return None
+    if seg_width > col_width * 1.35:
+        return None
+    return col_idx
+
+
+def _recover_table_rows_split(page, original_rect, extended_rect, existing_rows, column_count=0, column_ranges=None):
     existing_keys = {
         tuple(clean_cell(cell) for cell in row)
         for row in existing_rows or []
         if any(clean_cell(cell) for cell in row)
     }
-    recovered = []
-    for block in page.get_text("blocks") or []:
-        if len(block) < 5:
+    inferred_col_count = int(
+        column_count
+        or (len(column_ranges) if column_ranges else 0)
+        or max((len(row) for row in (existing_rows or [])), default=0)
+        or 0
+    )
+    all_segments = _extract_page_line_segments(page)
+    effective_ranges = _resolve_effective_column_ranges(
+        original_rect,
+        inferred_col_count,
+        column_ranges,
+        all_segments,
+    )
+    if len(effective_ranges) < 2 or not all_segments:
+        return [], []
+
+    num_cols = len(effective_ranges)
+    top_segments = []
+    bottom_segments = []
+    for sx0, sy0, sx1, sy1, text in all_segments:
+        seg_rect = fitz.Rect(sx0, sy0, sx1, sy1)
+        if (extended_rect & seg_rect).is_empty:
             continue
-        block_rect = fitz.Rect(block[:4])
-        intersection = extended_rect & block_rect
-        if intersection.is_empty:
+        if sx0 < original_rect.x0 - 8.0 or sx1 > original_rect.x1 + 8.0:
             continue
-        # Only consider text that sits in the strip beyond the original detection.
-        outside_bottom = block_rect.y1 > original_rect.y1 + 0.5 and block_rect.y0 >= original_rect.y1 - 2.0
-        outside_top = block_rect.y0 < original_rect.y0 - 0.5 and block_rect.y1 <= original_rect.y0 + 2.0
-        outside_right = block_rect.x1 > original_rect.x1 + 0.5 and block_rect.x0 >= original_rect.x1 - 2.0
-        outside_left = block_rect.x0 < original_rect.x0 - 0.5 and block_rect.x1 <= original_rect.x0 + 2.0
-        if not (outside_bottom or outside_top or outside_right or outside_left):
-            continue
-        lines = [clean_cell(line) for line in str(block[4] or "").splitlines() if clean_cell(line)]
-        if not lines:
-            continue
-        # Prefer blocks that match the known column count (one cell per line).
-        if column_count and len(lines) == column_count:
-            row = lines
-        elif column_count and len(lines) > 1 and len(lines) < column_count:
-            # Partial remnant still useful for search/OCR text.
-            row = lines + [""] * (column_count - len(lines))
-        else:
-            continue
-        key = tuple(row)
-        if key in existing_keys:
-            continue
-        existing_keys.add(key)
-        recovered.append(row)
-    return recovered
+        outside_bottom = sy1 > original_rect.y1 + 0.5 and sy0 >= original_rect.y1 - 2.0
+        outside_top = sy0 < original_rect.y0 - 0.5 and sy1 <= original_rect.y0 + 2.0
+        if outside_top:
+            top_segments.append((sx0, sy0, sx1, sy1, text))
+        elif outside_bottom:
+            bottom_segments.append((sx0, sy0, sx1, sy1, text))
+
+    def collect_rows(strip_segments):
+        if not strip_segments:
+            return []
+        strip_segments.sort(key=lambda s: (s[1], s[0]))
+        bands = []
+        for seg in strip_segments:
+            if not bands or abs(seg[1] - bands[-1][0][1]) > 3.0:
+                bands.append([seg])
+            else:
+                bands[-1].append(seg)
+
+        rows_out = []
+        for band in bands:
+            band.sort(key=lambda s: s[0])
+            row_cells = [""] * num_cols
+            valid_band = True
+            for sx0, _sy0, sx1, _sy1, text in band:
+                col_idx = _match_segment_to_column(sx0, sx1, effective_ranges)
+                if col_idx is None:
+                    valid_band = False
+                    break
+                row_cells[col_idx] = clean_cell(f"{row_cells[col_idx]} {text}") if row_cells[col_idx] else clean_cell(text)
+            if not valid_band:
+                continue
+            populated_cols = sum(1 for cell in row_cells if clean_cell(cell))
+            if populated_cols < 2:
+                continue
+            key = tuple(row_cells)
+            if key in existing_keys:
+                continue
+            existing_keys.add(key)
+            rows_out.append(row_cells)
+        return rows_out
+
+    return collect_rows(top_segments), collect_rows(bottom_segments)
+
+
+def recover_table_rows_from_edge_strip(
+    page,
+    original_rect,
+    extended_rect,
+    existing_rows,
+    column_count=0,
+    column_ranges=None,
+):
+    """Recover structured rows from text that continues past a truncated find_tables bbox."""
+    top_rows, bottom_rows = _recover_table_rows_split(
+        page,
+        original_rect,
+        extended_rect,
+        existing_rows,
+        column_count=column_count,
+        column_ranges=column_ranges,
+    )
+    return top_rows + bottom_rows
 
 
 def rect_intersection_ratio(a, b):
@@ -659,6 +883,7 @@ def extract_table_payload(table):
         rows = table.extract()
         cleaned = [[clean_cell(cell) for cell in row] for row in rows if any(clean_cell(cell) for cell in row)]
         column_count = max((len(row) for row in cleaned), default=0)
+        column_ranges = _extract_table_column_ranges(table, column_count)
         return {
             "text": table_rows_to_markdown(rows),
             "rows": cleaned[:MAX_TABLE_ROWS],
@@ -667,6 +892,7 @@ def extract_table_payload(table):
             "row_count": len(cleaned),
             "rows_truncated": len(cleaned) > MAX_TABLE_ROWS,
             "column_count": column_count,
+            "column_ranges": column_ranges,
         }
     except Exception:
         return {
@@ -677,6 +903,7 @@ def extract_table_payload(table):
             "row_count": 0,
             "rows_truncated": False,
             "column_count": 0,
+            "column_ranges": [],
         }
 
 
@@ -921,6 +1148,7 @@ def likely_table_candidates(page):
                     "accessible_table_markdown": payload.get("accessible_markdown") or table_text,
                     "row_count": row_count,
                     "column_count": column_count,
+                    "column_ranges": payload.get("column_ranges", []),
                     "heading_text": heading_text,
                     "extraction_method": "pymupdf_find_tables",
                     "table_index": index + 1,
@@ -1371,15 +1599,17 @@ def _extract_document(document, output_dir, budget):
             column_count = int(table_candidate.get("column_count") or (len(table_rows[0]) if table_rows else 0) or 0)
             recovered_rows = []
             if edge_info["extended"]:
-                recovered_rows = recover_table_rows_from_edge_strip(
+                top_rows, bottom_rows = _recover_table_rows_split(
                     page,
                     detected_rect,
                     edge_rect,
                     table_rows,
                     column_count,
+                    table_candidate.get("column_ranges"),
                 )
+                recovered_rows = top_rows + bottom_rows
                 if recovered_rows:
-                    table_rows = (table_rows + recovered_rows)[:MAX_TABLE_ROWS]
+                    table_rows = (top_rows + table_rows + bottom_rows)[:MAX_TABLE_ROWS]
             rows_truncated = bool(table_candidate.get("rows_truncated")) or bool(edge_info["clipped_by_page"])
             if edge_info["clipped_by_page"]:
                 warnings.append(

@@ -105,6 +105,7 @@ import {
 import type { ClinicalDocument, SearchScopeSummary } from "@/lib/types";
 import type { ClientDocumentMatch } from "@/lib/answer-client-payload";
 import type { RegistryRequestStatus } from "@/lib/use-registry-records";
+import { useVirtualWindow } from "@/lib/ui/use-virtual-window";
 import { sortResultItems } from "@/lib/result-sort";
 import { documentRelevanceLabel } from "./relevance-score";
 
@@ -953,21 +954,23 @@ function DocumentSearchResultsPanelImpl({
     activeFacetKeys.join(","),
     sortedMatches.map((document) => document.document_id).join(","),
   ].join("\0");
-  const [visibleCountState, setVisibleCountState] = useState({
-    signature: resultsSignature,
-    count: DOCUMENT_RESULTS_INITIAL_WINDOW,
+  const {
+    visibleCount,
+    hasMore: hasMoreMatches,
+    showMore: showMoreMatches,
+    sentinelRef: documentResultsSentinelRef,
+  } = useVirtualWindow({
+    totalCount: sortedMatches.length,
+    initialCount: DOCUMENT_RESULTS_INITIAL_WINDOW,
+    stepCount: DOCUMENT_RESULTS_PAGE_SIZE,
+    resetKey: resultsSignature,
   });
-  if (visibleCountState.signature !== resultsSignature) {
-    setVisibleCountState({ signature: resultsSignature, count: DOCUMENT_RESULTS_INITIAL_WINDOW });
-  }
-  const visibleCount = Math.min(visibleCountState.count, sortedMatches.length);
   const renderedMatches = sortedMatches.slice(0, visibleCount);
   const coverImageIds = useMemo(
     () => renderedMatches.map((doc) => doc.coverImageId).filter((id): id is string => Boolean(id)),
     [renderedMatches],
   );
   useBatchSignedImageUrls(coverImageIds);
-  const hasMoreMatches = visibleCount < sortedMatches.length;
   const recordMatchCount = recordMatches.length;
   const shouldShowHome = showHome || !trimmedQuery;
 
@@ -1791,17 +1794,13 @@ function DocumentSearchResultsPanelImpl({
               </div>
               {hasMoreMatches ? (
                 <button
+                  ref={documentResultsSentinelRef}
                   type="button"
                   className={cn(
                     floatingControl,
                     "min-h-tap w-full justify-center rounded-xl px-4 text-sm font-semibold",
                   )}
-                  onClick={() =>
-                    setVisibleCountState((current) => ({
-                      signature: resultsSignature,
-                      count: Math.min(current.count + DOCUMENT_RESULTS_PAGE_SIZE, sortedMatches.length),
-                    }))
-                  }
+                  onClick={showMoreMatches}
                   data-testid="document-search-show-more"
                 >
                   Show more ({sortedMatches.length - visibleCount} remaining)

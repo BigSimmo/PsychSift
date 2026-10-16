@@ -19,13 +19,58 @@ import { perthDateOf } from "@/lib/roster/shifts/perth-time";
  * left over is "added" or "removed".
  */
 
+export type OwnShiftConflict = {
+  readonly first: OnCallShiftInput;
+  readonly second: OnCallShiftInput;
+  readonly overlapMinutes: number;
+};
+
 export type RosterDiff = {
   readonly added: number;
   readonly changed: number;
   readonly removed: number;
   /** The first lines of the change list, in date order, capped for storage. */
   readonly changes: OnCallShiftChange[];
+  /** Pairs of shifts that overlap in time (`startA < endB && endA > startB`). */
+  readonly conflicts: OwnShiftConflict[];
 };
+
+/**
+ * Find every pair of shifts whose intervals strictly overlap (`startA < endB && endA > startB`).
+ * Adjacent shifts where `endA === startB` do not conflict.
+ */
+export function detectOwnShiftConflicts(shifts: readonly OnCallShiftInput[]): OwnShiftConflict[] {
+  const indexed = shifts
+    .map((shift, index) => ({
+      shift,
+      index,
+      startMs: Date.parse(shift.startsAt),
+      endMs: Date.parse(shift.endsAt),
+    }))
+    .filter((item) => Number.isFinite(item.startMs) && Number.isFinite(item.endMs) && item.endMs > item.startMs)
+    .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs || a.index - b.index);
+
+  const conflicts: OwnShiftConflict[] = [];
+  for (let i = 0; i < indexed.length; i += 1) {
+    const first = indexed[i]!;
+    for (let j = i + 1; j < indexed.length; j += 1) {
+      const second = indexed[j]!;
+      if (second.startMs >= first.endMs) break;
+      if (first.startMs < second.endMs && first.endMs > second.startMs) {
+        const overlapMs = Math.min(first.endMs, second.endMs) - Math.max(first.startMs, second.startMs);
+        const overlapMinutes = Math.round(overlapMs / 60_000);
+        if (overlapMinutes > 0) {
+          conflicts.push({
+            first: first.shift,
+            second: second.shift,
+            overlapMinutes,
+          });
+        }
+      }
+    }
+  }
+  return conflicts;
+}
 
 /** The Perth dates a roster covers, inclusive, or null for an empty roster. */
 export function rosterWindow(shifts: readonly OnCallShiftInput[]): { start: string; end: string } | null {
@@ -61,9 +106,10 @@ function differs(a: OnCallShiftInput, b: OnCallShiftInput): boolean {
 export function diffRoster(
   stored: readonly OnCallShiftInput[],
   incoming: readonly OnCallShiftInput[],
-  window: { start: string; end: string },
+  window: { start: string; end: string } | null = rosterWindow(incoming),
 ): RosterDiff {
-  const before = stored.filter((shift) => shiftIsInWindow(shift, window));
+  const before = window ? stored.filter((shift) => shiftIsInWindow(shift, window)) : [...stored];
+  const retainedOutsideWindow = window ? stored.filter((shift) => !shiftIsInWindow(shift, window)) : [];
   const unmatchedBefore = new Set(before.map((_, index) => index));
   const pairs: Array<{ before: OnCallShiftInput; after: OnCallShiftInput }> = [];
   const added: OnCallShiftInput[] = [];
@@ -116,5 +162,6 @@ export function diffRoster(
     changed: moved.length,
     removed: removed.length,
     changes: changes.slice(0, ON_CALL_SHIFT_CHANGES_MAX).map((entry) => entry.change),
+    conflicts: detectOwnShiftConflicts([...retainedOutsideWindow, ...incoming]),
   };
 }

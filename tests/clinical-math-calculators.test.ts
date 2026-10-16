@@ -102,6 +102,44 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(pediatric.stage).toBeNull();
       expect(pediatric.errors).toEqual(expect.arrayContaining([expect.stringContaining("Schwartz")]));
     });
+
+    it("uses Devine Ideal Body Weight (IBW) and warns when actual weight exceeds IBW with heightCm provided", () => {
+      // 170 cm male -> IBW = 50 + 0.9 * (170 - 152.4) = 65.8 kg
+      // Actual weight 110 kg > 65.8 kg -> uses 65.8 kg
+      const obeseWithHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 110,
+        heightCm: 170,
+        sex: "male",
+        serumCreatinine: 100,
+        creatinineUnit: "umol/L",
+      });
+
+      expect(obeseWithHeight.isValid).toBe(true);
+      expect(obeseWithHeight.ibwKg).toBeCloseTo(65.8, 1);
+      expect(obeseWithHeight.effectiveWeightKg).toBeCloseTo(65.8, 1);
+      expect(obeseWithHeight.weightBasis).toBe("ideal");
+      expect(obeseWithHeight.crClMlMin).toBeCloseTo(((140 - 50) * 65.8 * 1.23) / 100, 1);
+      expect(obeseWithHeight.warnings).toEqual(
+        expect.arrayContaining([expect.stringContaining("exceeds Ideal Body Weight")]),
+      );
+    });
+
+    it("warns when weight >= 85 kg without heightCm supplied", () => {
+      const heavyWithoutHeight = calculateCockcroftGault({
+        age: 50,
+        weightKg: 95,
+        sex: "female",
+        serumCreatinine: 90,
+        creatinineUnit: "umol/L",
+      });
+
+      expect(heavyWithoutHeight.isValid).toBe(true);
+      expect(heavyWithoutHeight.weightBasis).toBe("actual");
+      expect(heavyWithoutHeight.warnings).toEqual(
+        expect.arrayContaining([expect.stringContaining("Weight >= 85 kg without height supplied")]),
+      );
+    });
   });
 
   describe("Renal Clearance: CKD-EPI 2021 eGFR", () => {
@@ -272,7 +310,15 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(result.targetRange).toEqual({ min: 0.8, max: 1.0 });
     });
 
-    it("flags toxic levels > 1.2 and severe toxicity > 2.0 mmol/L", () => {
+    it("flags toxic levels >= 1.2 and severe toxicity > 2.0 mmol/L", () => {
+      const boundaryTox = evaluateLithiumLevel({
+        serumLevelMmolL: 1.2,
+        indication: "maintenance",
+        age: 40,
+      });
+      expect(boundaryTox.status).toBe("toxic");
+      expect(boundaryTox.severity).toBe("moderate");
+
       const mildTox = evaluateLithiumLevel({
         serumLevelMmolL: 1.4,
         indication: "maintenance",
@@ -287,12 +333,13 @@ describe("Clinical Math Calculators (CS-001)", () => {
         age: 40,
       });
       expect(severeTox.status).toBe("toxic");
-      expect(severeTox.severity).toBe("severe_dialysis_threshold");
+      expect(severeTox.severity).toBe("severe");
+      expect(severeTox.clinicalGuidance.join(" ")).toContain("> 4.0 mmol/L");
     });
 
-    it("calculates proportional dose adjustment accurately", () => {
+    it("calculates proportional dose adjustment rounded to Australian tablet increments (125 mg IR / 225 mg SR)", () => {
       // Current dose 750mg yields 0.5 mmol/L. Desired target 0.8 mmol/L.
-      // New dose = 750 * (0.8 / 0.5) = 1200 mg
+      // Raw dose = 750 * (0.8 / 0.5) = 1200 mg -> rounded to nearest 125 mg (Lithicarb 250 mg half-tablet) = 1250 mg
       const adjustment = calculateProportionalLithiumDose({
         currentDoseMg: 750,
         currentLevelMmolL: 0.5,
@@ -300,11 +347,24 @@ describe("Clinical Math Calculators (CS-001)", () => {
       });
 
       expect(adjustment.isValid).toBe(true);
-      expect(adjustment.suggestedDoseMg).toBe(1200);
+      expect(adjustment.rawDoseMg).toBe(1200);
+      expect(adjustment.suggestedDoseMg).toBe(1250);
+      expect(adjustment.warnings).toEqual(expect.arrayContaining([expect.stringContaining("125 mg -> 1250 mg")]));
       expect(adjustment.note).toContain("Linear kinetics");
+
+      // Priadel / Quilonum SR 450 mg half-tablet = 225 mg increment
+      const srAdjustment = calculateProportionalLithiumDose({
+        currentDoseMg: 900,
+        currentLevelMmolL: 0.6,
+        targetLevelMmolL: 0.75,
+        tabletIncrementMg: 225,
+      });
+      expect(srAdjustment.isValid).toBe(true);
+      expect(srAdjustment.rawDoseMg).toBe(1125);
+      expect(srAdjustment.suggestedDoseMg).toBe(1125);
     });
 
-    it("withholds proportional dose suggestions when current lithium level is in the toxic range (>=1.2)", () => {
+    it("withholds proportional dose suggestions when current or target lithium level is in the toxic range (>=1.2)", () => {
       const toxicAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 1000,
         currentLevelMmolL: 1.5,
@@ -314,9 +374,17 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(toxicAdjustment.isValid).toBe(false);
       expect(toxicAdjustment.suggestedDoseMg).toBeNull();
       expect(toxicAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("toxic range")]));
+
+      const toxicTarget = calculateProportionalLithiumDose({
+        currentDoseMg: 1000,
+        currentLevelMmolL: 0.8,
+        targetLevelMmolL: 1.2,
+      });
+      expect(toxicTarget.isValid).toBe(false);
+      expect(toxicTarget.suggestedDoseMg).toBeNull();
     });
 
-    it("fails closed when calculated proportional dose rounds to zero mg", () => {
+    it("fails closed when calculated proportional dose rounds to zero mg or rounds above the 2000 mg/day ceiling", () => {
       const zeroAdjustment = calculateProportionalLithiumDose({
         currentDoseMg: 20,
         currentLevelMmolL: 0.8,
@@ -326,6 +394,19 @@ describe("Clinical Math Calculators (CS-001)", () => {
       expect(zeroAdjustment.isValid).toBe(false);
       expect(zeroAdjustment.suggestedDoseMg).toBeNull();
       expect(zeroAdjustment.errors).toEqual(expect.arrayContaining([expect.stringContaining("rounds to zero")]));
+
+      // rawDose = 1100 * (0.9 / 0.5) = 1980 mg, but rounding to 225 mg increment yields 2025 mg > 2000 mg ceiling
+      const roundedAboveCeiling = calculateProportionalLithiumDose({
+        currentDoseMg: 1100,
+        currentLevelMmolL: 0.5,
+        targetLevelMmolL: 0.9,
+        tabletIncrementMg: 225,
+      });
+      expect(roundedAboveCeiling.isValid).toBe(false);
+      expect(roundedAboveCeiling.suggestedDoseMg).toBeNull();
+      expect(roundedAboveCeiling.errors).toEqual(
+        expect.arrayContaining([expect.stringContaining("outside safe limits")]),
+      );
     });
   });
 });

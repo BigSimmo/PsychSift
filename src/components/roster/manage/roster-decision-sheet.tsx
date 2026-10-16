@@ -111,9 +111,19 @@ export async function recheckDecision(serviceId: string, decision: ManagerDecisi
 }
 
 /** The action a decision sends, worked out from the rechecked request rather than the listed one. */
-export function decisionAction(current: ManagerDecision, approve: boolean): RosterAction {
+export function decisionAction(
+  current: ManagerDecision,
+  approve: boolean,
+  options?: { acknowledgeRuleWarnings?: boolean },
+): RosterAction {
   return current.kind === "swap"
-    ? { action: approve ? "swap.approve" : "swap.decline", swapId: current.item.id }
+    ? approve
+      ? {
+          action: "swap.approve",
+          swapId: current.item.id,
+          ...(options?.acknowledgeRuleWarnings ? { acknowledgeRuleWarnings: true } : {}),
+        }
+      : { action: "swap.decline", swapId: current.item.id }
     : current.item.status === "reported"
       ? approve
         ? { action: "open.release", openShiftId: current.item.id, urgent: true }
@@ -174,7 +184,10 @@ export function RosterDecisionSheet({
       return;
     }
     setReview(null);
-    const action = decisionAction(fresh.current, approve);
+    const hasRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
+    const action = decisionAction(fresh.current, approve, {
+      acknowledgeRuleWarnings: approve && hasRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint,
+    });
     const result = await postRosterAction(serviceId, action);
     setBusy(false);
     onChanged();

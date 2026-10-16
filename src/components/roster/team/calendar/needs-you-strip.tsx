@@ -29,8 +29,8 @@ type Flags = ReadonlyMap<string, readonly RuleFlag[]>;
 
 /**
  * What the manager layer knows about the waiting swaps' team rules. The server
- * does not recheck team rules when a manager approves a swap, so these are the
- * only check on them (see `useManagerCalendar`).
+ * also rechecks team rules when a manager approves a swap unless warnings are
+ * explicitly acknowledged (see `rosterCommand` and `useManagerCalendar`).
  */
 export type SwapChecks = {
   /** Rule flags on the roster as it is, by assignment id. */
@@ -214,8 +214,13 @@ export function useRosterDecision(serviceId: string, onChanged: () => void) {
       return;
     }
     setReview(null);
+    const hasRuleWarnings = Boolean(fresh.rules?.checkable && fresh.rules.warnings.length > 0);
+    const acknowledged = approve && hasRuleWarnings && reviewedFingerprint === fresh.rules?.fingerprint;
     const action = decisionAction(fresh.current, approve);
-    const sent = await post(action);
+    let sent = await post(action);
+    if (!sent.ok && sent.code === "roster_swap_rule_warning" && acknowledged) {
+      sent = await post(decisionAction(fresh.current, approve, { acknowledgeRuleWarnings: true }));
+    }
     setBusy(false);
     setMessage(null);
     if (!sent.ok) setErrors([sent.message]);

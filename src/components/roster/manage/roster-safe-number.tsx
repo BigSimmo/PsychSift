@@ -24,6 +24,7 @@ import {
   undoSafeNumberChanges,
   type SafeNumberKind,
 } from "@/lib/roster/team/safe-number";
+import { checkOptimisticLock } from "@/lib/on-call/cover";
 import { useOnlineStatus } from "@/lib/use-online-status";
 
 /**
@@ -52,7 +53,12 @@ const SAMPLE_SAVE = "This is the example team, so nothing is saved.";
 const WRITE_ATTEMPTS = 3;
 
 type SaveState =
-  { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "example" } | { kind: "error"; message: string };
+  | { kind: "idle" }
+  | { kind: "saving" }
+  | { kind: "saved" }
+  | { kind: "example" }
+  | { kind: "error"; message: string }
+  | { kind: "conflict"; freshGrid: SafeNumberGrid; freshNeeds: RosterMaker["needs"] };
 
 const isOffline = () => typeof navigator !== "undefined" && navigator.onLine === false;
 
@@ -184,11 +190,27 @@ function Editor({
    */
   async function writeOverFresh(
     build: (fresh: SafeNumberGrid) => SafeNumberGrid,
+    options?: { checkCellConflicts?: boolean },
   ): Promise<{ written: SafeNumberGrid; read: SafeNumberGrid; needs: RosterMaker["needs"] } | null> {
     for (let attempt = 1; ; attempt += 1) {
       const fresh = await readFresh();
       if (!fresh) return null;
       const read = safeNumberGrid(fresh.needs);
+      if (options?.checkCellConflicts) {
+        const hasCellConflict = SAFE_NUMBER_KINDS.some((kind) =>
+          grid[kind].some((value, index) => {
+            if (value === confirmed[kind][index]) return false;
+            return checkOptimisticLock(
+              { version: read[kind][index] },
+              { expectedVersion: confirmed[kind][index] },
+            ).conflict;
+          }),
+        );
+        if (hasCellConflict) {
+          setState({ kind: "conflict", freshGrid: read, freshNeeds: fresh.needs });
+          return null;
+        }
+      }
       const written = build(read);
       const result = await postRosterAction(serviceId, {
         action: "needs.set",
@@ -223,7 +245,7 @@ function Editor({
     }
   }
 
-  async function save() {
+  async function save(forceOverwrite = false) {
     if (saving || !dirty || busy.current) return;
     if (example) {
       setState({ kind: "example" });
@@ -233,7 +255,10 @@ function Editor({
     try {
       setState({ kind: "saving" });
       // Build on a fresh read, so a need or a number another manager set since this page opened is kept.
-      const result = await writeOverFresh((fresh) => applySafeNumberChanges(fresh, confirmed, grid));
+      const result = await writeOverFresh(
+        (fresh) => applySafeNumberChanges(fresh, confirmed, grid),
+        { checkCellConflicts: !forceOverwrite },
+      );
       if (!result) return;
       const { written: saved, read: previous } = result;
       setConfirmed(saved);
@@ -302,6 +327,37 @@ function Editor({
         <p role="status" className="text-sm">
           {SAMPLE_SAVE}
         </p>
+      ) : state.kind === "conflict" ? (
+        <div
+          role="alert"
+          data-testid="safe-number-conflict-banner"
+          className="grid gap-2 rounded-lg border border-[color:var(--warning-border)] bg-[color:var(--warning-soft)] p-3 text-sm text-[color:var(--warning-text)]"
+        >
+          <p className="font-semibold">
+            Another manager updated one of the shifts you changed while this editor was open.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <WorkButton
+              variant="quiet"
+              testId="safe-number-conflict-reload"
+              onClick={() => {
+                setConfirmed(state.freshGrid);
+                setDraft(null);
+                setOthers(otherNeedCount(state.freshNeeds));
+                setState({ kind: "idle" });
+              }}
+            >
+              Reload latest
+            </WorkButton>
+            <WorkButton
+              variant="primary"
+              testId="safe-number-conflict-overwrite"
+              onClick={() => void save(true)}
+            >
+              Overwrite with my changes
+            </WorkButton>
+          </div>
+        </div>
       ) : state.kind === "error" ? (
         <p role="alert" className="text-sm text-[color:var(--danger-text)]">
           {state.message}

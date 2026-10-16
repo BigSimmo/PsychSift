@@ -41,6 +41,7 @@ import { usePhoneMedia } from "@/components/compare/use-phone-media";
 import { differentialRouteWithQuery, differentialSelectedCompareHref } from "@/lib/differentials-navigation";
 import { usePublishDifferentialsCompareCount } from "@/components/differentials/compare-presence";
 import { differentialsMobileCompareAddonSlotId } from "@/lib/mode-home-composer";
+import { useVirtualWindow } from "@/lib/ui/use-virtual-window";
 import type {
   DifferentialStreamItem,
   DifferentialStreamModel,
@@ -158,7 +159,7 @@ const StreamCard = memo(function StreamCard({
       // Off-screen cards are skipped when the page's styles change (the header
       // and bottom box slide on every scroll turn). With 200 cards that redraw
       // held the header back for well over a second on a phone (13 Oct 2026).
-      className={`relative p-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_9rem] ${outsideFilter ? "" : cardTone}`}
+      className={`content-auto relative p-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_9rem] ${outsideFilter ? "" : cardTone}`}
       onFocus={() => onFocus(item.slug)}
     >
       <div className="flex items-start justify-between gap-3">
@@ -493,10 +494,53 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
         : model.chapters
       : model.chapters;
 
+  const collectOrderedSlugs = (items: DifferentialStreamItem[]) => {
+    if (items.length === 0) return [];
+    if (hasQuery || familyMode || activeChapters.length === 0) {
+      return items.map((item) => item.slug);
+    }
+    const ids = new Set(items.map((item) => item.id));
+    const slugs: string[] = [];
+    for (const chapter of activeChapters) {
+      for (const id of chapter.itemIds) {
+        const item = itemById.get(id);
+        if (item && ids.has(item.id)) {
+          slugs.push(item.slug);
+        }
+      }
+    }
+    return slugs;
+  };
+  const orderedCardSlugs = [...collectOrderedSlugs(visibleItems), ...collectOrderedSlugs(outsideItems)];
+
+  const windowResetKey = [
+    model.stream,
+    query.trim(),
+    resultScope,
+    [...selectedChapterFilters].sort().join(","),
+    browseGrouping,
+  ].join("|");
+
+  const { visibleCount, hasMore, showMore, showAll, ensureIndexVisible, sentinelRef } = useVirtualWindow({
+    totalCount: orderedCardSlugs.length,
+    initialCount: 60,
+    stepCount: 60,
+    resetKey: windowResetKey,
+  });
+
+  const visibleCardSlugs = orderedCardSlugs.slice(0, visibleCount);
+  const visibleSlugSet = new Set(visibleCardSlugs);
+
   function scrollToSlug(slug: string) {
     setFocusedSlug(slug);
     setFamilyMode(false);
     setPresentationPriority("all");
+    const targetIndex = orderedCardSlugs.indexOf(slug);
+    if (targetIndex >= 0) {
+      ensureIndexVisible(targetIndex);
+    } else {
+      showAll();
+    }
     window.requestAnimationFrame(() => {
       const node = document.getElementById(`differential-stream-card-${slug}`);
       if (!node) return;
@@ -510,17 +554,26 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
     if (!target || !itemBySlug.has(target)) return;
     const focusKey = `${model.stream}:${target}:${resultSignature}`;
     if (didAutoJumpForFocus.current === focusKey) return;
-    didAutoJumpForFocus.current = focusKey;
+    ensureIndexVisible(model.items.length);
     // Defer one frame so cards are in the DOM after hydration.
     const frame = window.requestAnimationFrame(() => {
       const node = document.getElementById(`differential-stream-card-${target}`);
       if (!node) return;
+      didAutoJumpForFocus.current = focusKey;
       const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
       node.scrollIntoView({ behavior, block: "center" });
       setFocusedSlug(target);
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [initialFocus, itemBySlug, model.stream, resultSignature]);
+  }, [
+    ensureIndexVisible,
+    initialFocus,
+    itemBySlug,
+    model.items.length,
+    model.stream,
+    resultSignature,
+    visibleCardSlugs.length,
+  ]);
 
   function highlightFor(item: DifferentialStreamItem): "match" | "related" | "dim" | "neutral" {
     if (!hasQuery && !familyMode) {
@@ -718,14 +771,18 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
   }
 
   function renderGrouped(items: DifferentialStreamItem[], outsideFilter: boolean): ReactNode {
-    if (items.length === 0) return null;
-    if (hasQuery || familyMode || activeChapters.length === 0) return renderCardGrid(items, outsideFilter);
+    if (items.length === 0 || visibleSlugSet.size === 0) return null;
+    if (hasQuery || familyMode || activeChapters.length === 0) {
+      const windowed = items.filter((item) => visibleSlugSet.has(item.slug));
+      if (windowed.length === 0) return null;
+      return renderCardGrid(windowed, outsideFilter);
+    }
     const ids = new Set(items.map((item) => item.id));
     return activeChapters.map((chapter) => {
       const chapterItems = chapter.itemIds
         .map((id) => itemById.get(id))
         .filter((item): item is DifferentialStreamItem => Boolean(item))
-        .filter((item) => ids.has(item.id));
+        .filter((item) => ids.has(item.id) && visibleSlugSet.has(item.slug));
       if (chapterItems.length === 0) return null;
       const keyPrefix = outsideFilter ? "outside-" : "";
       return (
@@ -966,6 +1023,18 @@ export function DifferentialStreamWorkspace({ model, query, initialFocus = "" }:
                     testId="differentials-stream-outside-heading"
                   />
                   {renderGrouped(outsideItems, true)}
+                </div>
+              ) : null}
+              {hasMore ? (
+                <div ref={sentinelRef} className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={showMore}
+                    data-testid="differentials-stream-show-more"
+                    className="inline-flex min-h-tap w-full items-center justify-center rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] px-4 text-sm font-semibold text-[color:var(--text)] transition hover:border-[color:var(--clinical-accent-border)] hover:text-[color:var(--clinical-accent)]"
+                  >
+                    Show more ({orderedCardSlugs.length - visibleCount} remaining)
+                  </button>
                 </div>
               ) : null}
             </>

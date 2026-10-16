@@ -12,6 +12,7 @@ export type RenalStage =
 export type CockcroftGaultInput = {
   age: number;
   weightKg: number;
+  heightCm?: number;
   sex: BiologicalSex;
   serumCreatinine: number;
   creatinineUnit: CreatinineUnit;
@@ -21,6 +22,10 @@ export type CockcroftGaultResult = {
   isValid: boolean;
   crClMlMin: number | null;
   stage: RenalStage | null;
+  ibwKg?: number | null;
+  effectiveWeightKg?: number | null;
+  weightBasis?: "actual" | "ideal";
+  lithiumClinicalNote?: string;
   errors: string[];
   warnings: string[];
 };
@@ -64,7 +69,7 @@ export type LithiumIndication = "maintenance" | "acute_mania";
 
 export type LithiumLevelStatus = "invalid" | "subtherapeutic" | "therapeutic" | "supratherapeutic" | "toxic";
 
-export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe_dialysis_threshold";
+export type LithiumToxicitySeverity = "none" | "mild" | "moderate" | "severe";
 
 export type LithiumLevelInput = {
   serumLevelMmolL: number;
@@ -76,6 +81,8 @@ export type LithiumLevelEvaluation = {
   status: LithiumLevelStatus;
   isWithinTarget: boolean;
   severity: LithiumToxicitySeverity;
+  toxicitySeverity?: LithiumToxicitySeverity;
+  requiresUrgentAction?: boolean;
   targetRange: { min: number; max: number };
   clinicalGuidance: string[];
 };
@@ -84,11 +91,14 @@ export type LithiumDoseAdjustmentInput = {
   currentDoseMg: number;
   currentLevelMmolL: number;
   targetLevelMmolL: number;
+  tabletIncrementMg?: 125 | 225 | 250 | 450;
 };
 
 export type LithiumDoseAdjustmentResult = {
   isValid: boolean;
   suggestedDoseMg: number | null;
+  rawDoseMg?: number | null;
+  warnings?: string[];
   errors: string[];
   note: string;
 };

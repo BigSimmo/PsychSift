@@ -194,6 +194,7 @@ const envSchema = z
     // than fail-closed; strong reasoning effort is also query-class-capped to keep the
     // tail latency in budget (see strongReasoningEffortForQueryClass).
     OPENAI_ANSWER_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
+    OPENAI_INTERACTIVE_EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(4000),
     OPENAI_MAX_RETRIES: z.coerce.number().int().nonnegative().default(2),
     OPENAI_GENERATION_MAX_RETRIES: z.coerce.number().int().nonnegative().default(0),
     // Legacy Responses prompt-cache retention for pre-5.6 models. GPT-5.6 uses

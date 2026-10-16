@@ -122,7 +122,10 @@ export function AttendanceRoster({
           aria-label="Filter registrars"
           className={fieldControlPlain}
           data-testid="attendance-roster-search"
+          autoComplete="off"
           spellCheck={false}
+          data-gramm="false"
+          data-enable-grammarly="false"
         />
         {filterQuery && (
           <button
@@ -144,12 +147,25 @@ export function AttendanceRoster({
           displayedRegistrars.map((registrar) => (
             <div
               key={registrar.userId}
+              role={onSelectRegistrar ? "button" : undefined}
+              tabIndex={onSelectRegistrar ? 0 : undefined}
               onClick={() => onSelectRegistrar?.(registrar)}
+              onKeyDown={
+                onSelectRegistrar
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onSelectRegistrar(registrar);
+                      }
+                    }
+                  : undefined
+              }
               className={cn(
                 "flex items-center justify-between rounded px-3 py-2.5 transition-colors motion-reduce:transition-none",
                 registrar.hasGap
                   ? "border-l-4 border-[color:var(--warning)] bg-[color:var(--warning-soft)] pl-2"
                   : "hover:bg-[color:var(--surface-subtle)]",
+                onSelectRegistrar ? cn("cursor-pointer", focusRing) : "",
               )}
               data-testid={`attendance-roster-row-${registrar.userId}`}
               data-has-gap={registrar.hasGap ? "true" : "false"}
