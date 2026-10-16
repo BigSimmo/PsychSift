@@ -464,6 +464,7 @@ function mockRuntime(
   vi.doUnmock("@/lib/deep-memory");
   vi.doUnmock("@/lib/demo-data");
   vi.doUnmock("@/lib/answer-telemetry");
+  vi.doUnmock("@/lib/validation/body");
   vi.doMock("@/lib/env", () => ({
     env: {
       NEXT_PUBLIC_SUPABASE_URL: "https://sjrfecxgysukkwxsowpy.supabase.co",
@@ -1809,19 +1810,23 @@ describe("private document API access", () => {
   it("stops after multipart parsing when the client aborts before buffering", async () => {
     const client = createSupabaseMock();
     mockRuntime(client);
-    const { POST } = await import("../src/app/api/upload/route");
     const controller = new AbortController();
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
+    form.set("authority", uploadAuthorityJson);
+    // The route reads the multipart body through the bounded reader; abort the client as it finishes parsing.
+    vi.doMock("@/lib/validation/body", async (importOriginal) => ({
+      ...(await importOriginal<typeof import("@/lib/validation/body")>()),
+      readBoundedFormData: vi.fn(async () => {
+        controller.abort();
+        return form;
+      }),
+    }));
+    const { POST } = await import("../src/app/api/upload/route");
     const uploadRequest = authenticatedRequest("/api/upload", {
       method: "POST",
       body: new FormData(),
       signal: controller.signal,
-    });
-    const form = new FormData();
-    form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));
-    form.set("authority", uploadAuthorityJson);
-    vi.spyOn(uploadRequest, "formData").mockImplementation(async () => {
-      controller.abort();
-      return form;
     });
 
     const response = await POST(uploadRequest);
@@ -1864,18 +1869,26 @@ describe("private document API access", () => {
       return ok([]);
     });
     mockRuntime(client, undefined, { maxConcurrentUploads: 1 });
+    let resolveForm!: (form: FormData) => void;
+    // The first request's body read is held open; later requests read their bodies normally.
+    const readForm = vi.fn();
+    vi.doMock("@/lib/validation/body", async (importOriginal) => {
+      const actual = await importOriginal<typeof import("@/lib/validation/body")>();
+      readForm.mockImplementation((...args: Parameters<typeof actual.readBoundedFormData>) =>
+        readForm.mock.calls.length === 1
+          ? new Promise<FormData>((resolve) => {
+              resolveForm = resolve;
+            })
+          : actual.readBoundedFormData(...args),
+      );
+      return { ...actual, readBoundedFormData: readForm };
+    });
     const { POST } = await import("../src/app/api/upload/route");
     const firstRequest = authenticatedRequest("/api/upload", {
       method: "POST",
       headers: { "content-length": "1024" },
       body: new FormData(),
     });
-    let resolveForm!: (form: FormData) => void;
-    vi.spyOn(firstRequest, "formData").mockReturnValue(
-      new Promise<FormData>((resolve) => {
-        resolveForm = resolve;
-      }),
-    );
 
     const firstResponsePromise = POST(firstRequest);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1884,10 +1897,10 @@ describe("private document API access", () => {
       headers: { "content-length": "1024" },
       body: new FormData(),
     });
-    const rejectedFormData = vi.spyOn(rejectedRequest, "formData");
     const rejectedResponse = await POST(rejectedRequest);
     expect(rejectedResponse.status).toBe(503);
-    expect(rejectedFormData).not.toHaveBeenCalled();
+    // Only the admitted first request ever started reading its body.
+    expect(readForm).toHaveBeenCalledTimes(1);
 
     const form = new FormData();
     form.set("file", new File(["%PDF-1.7\n%%EOF"], "guideline.pdf", { type: "application/pdf" }));

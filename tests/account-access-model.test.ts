@@ -19,7 +19,7 @@ describe("public content and account authorization model", () => {
   it("requires administrator authorization before any upload work", () => {
     const uploadRoute = source("src/app/api/upload/route.ts");
     const authCheck = uploadRoute.indexOf("requireAuthenticatedUser(request, adminSupabase, { administrator: true })");
-    const formRead = uploadRoute.indexOf("request.formData()");
+    const formRead = uploadRoute.indexOf("await readBoundedFormData(request,");
     // Storage bytes are written through the trusted-admission helper, whose only Storage
     // write is the `.upload(` call pinned below; the route-side call site is what must follow
     // the administrator check.
