@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page, type TestInfo } from "playwright/test";
 import { stubZeroTouchPoints } from "./helpers/zero-touch";
 import { readPrimaryScrollGeometry } from "./playwright-scroll";
-import { visibleByTestId, visibleByText } from "./playwright-settlement";
+import { clickWhenSettled, visibleByTestId, visibleByText } from "./playwright-settlement";
 
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
@@ -97,7 +97,7 @@ test("searches patient language, opens a mechanism guide, and carries it into th
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("formulation-section-sheet")).toBeHidden();
 
-  await page.getByRole("link", { name: "Use in formulation", exact: true }).first().click();
+  await clickWhenSettled(page.getByRole("link", { name: "Use in formulation", exact: true }).first());
   await expect(page.getByRole("heading", { name: "Build a formulation that can be tested" })).toBeVisible();
   await expect(page.getByRole("checkbox", { name: /Rumination/ })).toBeChecked();
   await expect(visibleByText(page, /Rumination appears to keep the patient caught/i).first()).toBeVisible();
@@ -237,7 +237,9 @@ test("moves a selected mechanism through framework, quality review, and an edita
   await expect(previousStep).toBeDisabled();
   await expect(previousStep).toHaveCSS("opacity", "1");
   await expect(continueStep).toBeEnabled();
-  await continueStep.click();
+  // Scrolling to the footer can collapse the tablet header after the target was measured.
+  // Use the shared settlement helper so the click lands on this control.
+  await clickWhenSettled(continueStep);
   await expect(page.getByTestId("formulation-builder-structure")).toBeVisible();
   const frameworkGroup = page.getByRole("radiogroup", { name: "Formulation framework" });
   const cbtCycle = frameworkGroup.getByRole("radio", { name: /CBT cycle/ });
@@ -250,7 +252,7 @@ test("moves a selected mechanism through framework, quality review, and an edita
     .getByRole("textbox", { name: "Presenting problem" })
     .fill("De-identified recurring low mood and overthinking.");
 
-  await page.getByRole("button", { name: "Review quality", exact: true }).click();
+  await clickWhenSettled(page.getByRole("button", { name: "Review quality", exact: true }));
   await page
     .getByRole("textbox", { name: "Evidence supporting this mechanism" })
     .fill("Repetitive review follows perceived failures and delays sleep.");
@@ -258,7 +260,7 @@ test("moves a selected mechanism through framework, quality review, and an edita
     .getByRole("textbox", { name: "Alternative explanation" })
     .fill("Check future-focused worry and realistic problem solving.");
 
-  await page.getByRole("button", { name: "Create draft" }).click();
+  await clickWhenSettled(page.getByRole("button", { name: "Create draft" }));
   const draft = page.getByRole("textbox", { name: "Formulation draft" });
   await expect(draft).toHaveValue(/CBT cycle formulation/);
   await expect(draft).toHaveValue(/Rumination appears to keep the patient caught/);
