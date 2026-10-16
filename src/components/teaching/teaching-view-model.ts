@@ -133,9 +133,24 @@ export function dayGroups(
     });
 }
 
-export function nextSession(sessions: readonly SessionSummaryRead[], now: Date): SessionSummaryRead | null {
+export function nextSession(
+  sessions: readonly SessionSummaryRead[],
+  now: Date = new Date(),
+): SessionSummaryRead | null {
+  const todayKey = perthDateKey(now);
+  const nowMs = now.getTime();
   return (
-    [...sessions].sort(byStart).find((s) => running(s) && !s.allDay && Date.parse(s.endsAt) > now.getTime()) ?? null
+    [...sessions]
+      .sort(byStart)
+      .find(
+        (s) =>
+          running(s) &&
+          (s.allDay
+            ? perthDateKey(s.startsAt) >= todayKey
+            : s.endsAt
+              ? Date.parse(s.endsAt) > nowMs
+              : Date.parse(s.startsAt) >= nowMs),
+      ) ?? null
   );
 }
 

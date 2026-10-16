@@ -6,7 +6,10 @@ const consumeSubjectApiRateLimit = vi.fn();
 const resolveSearchScope = vi.fn();
 const persistAnswerDiagnostics = vi.fn();
 
-vi.mock("@/lib/env", () => ({ isDemoMode: () => false }));
+vi.mock("@/lib/env", () => ({
+  isDemoMode: () => false,
+  env: { RAG_INCREMENTAL_EVIDENCE_PREVIEW: true },
+}));
 vi.mock("@/lib/rag/rag", () => ({ answerQuestionWithScope, summarizeDocument: vi.fn() }));
 vi.mock("@/lib/public-api-access", () => ({ publicAccessContext }));
 vi.mock("@/lib/api-rate-limit", () => ({
@@ -289,5 +292,171 @@ describe("answer stream verified preview ordering", () => {
     expect(bodySettled).toBe(false);
     release();
     expect(await body).toContain("event: final");
+  });
+
+  it("emits zero evidence_preview units over SSE when all candidate sources have danger-level governance status", async () => {
+    const { buildEvidencePreviewProgress, readLastEvidencePreviewReason } = await import("../src/lib/answer-preview");
+    const dangerSource = {
+      id: "danger-chunk-1",
+      document_id: "danger-doc-1",
+      title: "Superseded Clozapine Protocol",
+      file_name: "superseded-clozapine.pdf",
+      page_number: 1,
+      chunk_index: 0,
+      section_heading: "Monitoring",
+      content: "Outdated ANC monitoring interval from a retired guideline.",
+      image_ids: [],
+      images: [],
+      similarity: 0.89,
+      source_metadata: {
+        document_status: "outdated",
+        clinical_validation_status: "unverified",
+        extraction_quality: "poor",
+      } as unknown as import("../src/lib/types").SearchResult["source_metadata"],
+    };
+
+    answerQuestionWithScope.mockImplementationOnce(
+      async ({ onProgress }: { onProgress?: (event: unknown) => void }) => {
+        onProgress?.({
+          stage: "ranking",
+          ...buildEvidencePreviewProgress({
+            normalResults: [dangerSource],
+            fallbackResults: [dangerSource],
+          }),
+        });
+        onProgress?.({ stage: "generating" });
+        return { answer: "Refusal response.", grounded: false, confidence: "unsupported", citations: [], sources: [] };
+      },
+    );
+
+    const { POST } = await import("../src/app/api/answer/stream/route");
+    const response = await POST(
+      new Request("http://localhost/api/answer/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "clozapine monitoring interval" }),
+      }),
+    );
+    const frames = parseSseFrames(await response.text());
+
+    expect(frames.filter((frame) => frame.data.verifiedUnit !== undefined)).toEqual([]);
+    expect(
+      frames.filter((frame) => (frame.data.verifiedUnit as { kind?: string } | undefined)?.kind === "evidence_preview"),
+    ).toEqual([]);
+    const rankingFrame = frames.find((frame) => frame.event === "progress" && frame.data.stage === "ranking");
+    expect(rankingFrame).toBeDefined();
+    expect(rankingFrame?.data.previewReason).toBe("all_sources_danger");
+    expect(rankingFrame?.data.verifiedUnit).toBeUndefined();
+    expect(readLastEvidencePreviewReason()?.reason).toBe("all_sources_danger");
+  });
+
+  it("emits zero evidence_preview units over SSE when answer-level relevance has danger status", async () => {
+    const { buildEvidencePreviewProgress, readLastEvidencePreviewReason } = await import("../src/lib/answer-preview");
+    const cleanSource = {
+      id: "clean-chunk-1",
+      document_id: "clean-doc-1",
+      title: "Approved Clozapine Guideline",
+      file_name: "approved-clozapine.pdf",
+      page_number: 2,
+      chunk_index: 1,
+      section_heading: "Monitoring",
+      content: "Standard weekly ANC monitoring requirements for clozapine initiation.",
+      image_ids: [],
+      images: [],
+      similarity: 0.85,
+    };
+
+    answerQuestionWithScope.mockImplementationOnce(
+      async ({ onProgress }: { onProgress?: (event: unknown) => void }) => {
+        onProgress?.({
+          stage: "ranking",
+          ...buildEvidencePreviewProgress({
+            normalResults: [cleanSource],
+            fallbackResults: [cleanSource],
+            relevance: {
+              isSourceBacked: false,
+              verdict: "none",
+              label: "Not covered",
+              score: 0,
+              directSourceCount: 0,
+              weakSourceCount: 0,
+              matchedTerms: [],
+              missingTerms: ["lithium"],
+              supportReason: "Retrieved passages do not back the query.",
+            },
+          }),
+        });
+        onProgress?.({ stage: "generating" });
+        return {
+          answer: "Unsupported response.",
+          grounded: false,
+          confidence: "unsupported",
+          citations: [],
+          sources: [],
+        };
+      },
+    );
+
+    const { POST } = await import("../src/app/api/answer/stream/route");
+    const response = await POST(
+      new Request("http://localhost/api/answer/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "lithium toxicity dialysis threshold" }),
+      }),
+    );
+    const frames = parseSseFrames(await response.text());
+
+    expect(frames.filter((frame) => frame.data.verifiedUnit !== undefined)).toEqual([]);
+    expect(
+      frames.filter((frame) => (frame.data.verifiedUnit as { kind?: string } | undefined)?.kind === "evidence_preview"),
+    ).toEqual([]);
+    const rankingFrame = frames.find((frame) => frame.event === "progress" && frame.data.stage === "ranking");
+    expect(rankingFrame).toBeDefined();
+    expect(rankingFrame?.data.previewReason).toBe("answer_level_danger");
+    expect(rankingFrame?.data.verifiedUnit).toBeUndefined();
+    expect(readLastEvidencePreviewReason()?.reason).toBe("answer_level_danger");
+  });
+
+  it("drops an undeliverable verifiedUnit at the route boundary and records contract_rejected", async () => {
+    const { readLastEvidencePreviewReason } = await import("../src/lib/answer-preview");
+
+    answerQuestionWithScope.mockImplementationOnce(
+      async ({ onProgress }: { onProgress?: (event: unknown) => void }) => {
+        onProgress?.({
+          stage: "ranking",
+          previewReason: "ok",
+          verifiedUnit: {
+            schemaVersion: 1,
+            kind: "evidence_preview",
+            sequence: 0,
+            sources: [],
+            selectedContextCount: 0,
+          },
+        });
+        onProgress?.({ stage: "generating" });
+        return { answer: "Source-backed answer.", grounded: true, confidence: "high", citations: [], sources: [] };
+      },
+    );
+
+    const { POST } = await import("../src/app/api/answer/stream/route");
+    const response = await POST(
+      new Request("http://localhost/api/answer/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "clozapine monitoring" }),
+      }),
+    );
+    const frames = parseSseFrames(await response.text());
+
+    expect(frames.filter((frame) => frame.data.verifiedUnit !== undefined)).toEqual([]);
+    expect(
+      frames.filter((frame) => (frame.data.verifiedUnit as { kind?: string } | undefined)?.kind === "evidence_preview"),
+    ).toEqual([]);
+    const rankingFrame = frames.find((frame) => frame.event === "progress" && frame.data.stage === "ranking");
+    expect(rankingFrame).toBeDefined();
+    expect(rankingFrame?.data.previewReason).toBe("contract_rejected");
+    expect(rankingFrame?.data.verifiedUnit).toBeUndefined();
+    expect(readLastEvidencePreviewReason()?.reason).toBe("contract_rejected");
   });
 });
