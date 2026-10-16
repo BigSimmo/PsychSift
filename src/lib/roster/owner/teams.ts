@@ -155,7 +155,8 @@ export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam
               .from("on_call_service_members")
               .select("service_id")
               .in("service_id", chunk)
-              .is("revoked_at", null) as unknown as PagedFilterBuilder,
+              .is("revoked_at", null)
+              .order("service_id", { ascending: true }) as unknown as PagedFilterBuilder,
         ),
       ),
     ),
@@ -168,7 +169,8 @@ export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam
               .select("service_id")
               .in("service_id", chunk)
               .eq("role", "manager")
-              .is("revoked_at", null) as unknown as PagedFilterBuilder,
+              .is("revoked_at", null)
+              .order("service_id", { ascending: true }) as unknown as PagedFilterBuilder,
         ),
       ),
     ),
