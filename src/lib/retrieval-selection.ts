@@ -390,11 +390,31 @@ function titleWords(value: string) {
 }
 
 /**
- * Core title words: the title (or file name) without its extension or bracketed publisher code,
- * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation".
+ * Core title words: the title (or file name) without its extension or an identifiable
+ * publisher/duplicate annotation. Clinical qualifiers and revision identifiers remain part of
+ * the title, so "Tracheostomy Management (Adult)" cannot match an unqualified lookup.
  */
 function coreDocumentTitle(value: string) {
-  return titleWords(value.replace(/\.(?:pdf|docx?|txt|md)$/i, "").replace(/\([^)]*\)/g, " "));
+  const withoutExtension = value.replace(/\.(?:pdf|docx?|txt|md)$/i, "");
+  const withoutAnnotations = withoutExtension.replace(
+    /\((?:[A-Z][A-Z0-9]{2,5}|(?:[Cc]opy|[Dd]uplicate)(?:\s+\d+)?)\)/g,
+    " ",
+  );
+  return titleWords(withoutAnnotations);
+}
+
+function documentRevisionIdentifiers(value: string) {
+  const identifiers = new Set<string>();
+  for (const match of value.matchAll(/\b(?:v|version)[\s._-]*(\d+(?:\.\d+){0,3})\b/gi)) {
+    identifiers.add(`v${match[1]}`.toLowerCase());
+  }
+  for (const match of value.matchAll(/\b(20\d{2})[-_. ]?([01]\d)[-_. ]?([0-3]\d)\b/g)) {
+    identifiers.add(`${match[1]}-${match[2]}-${match[3]}`);
+  }
+  for (const match of value.matchAll(/\b([0-3]\d)[-_. ]([01]\d)[-_. ](20\d{2})\b/g)) {
+    identifiers.add(`${match[3]}-${match[2]}-${match[1]}`);
+  }
+  return identifiers;
 }
 
 /**
@@ -404,9 +424,15 @@ function coreDocumentTitle(value: string) {
  */
 function queryNamesWholeDocumentTitle(query: string, result: SearchResult) {
   const paddedQuery = ` ${titleWords(query)} `;
+  const queryIdentifiers = documentRevisionIdentifiers(query);
   return [result.title, result.file_name].some((value) => {
-    const core = coreDocumentTitle(value ?? "");
-    return core.split(" ").length >= 2 && paddedQuery.includes(` ${core} `);
+    const rawValue = value ?? "";
+    const core = coreDocumentTitle(rawValue);
+    const candidateIdentifiers = documentRevisionIdentifiers(rawValue);
+    const identifiersMatch = [...queryIdentifiers].every((identifier) =>
+      candidateIdentifiers.has(identifier),
+    );
+    return core.split(" ").length >= 2 && identifiersMatch && paddedQuery.includes(` ${core} `);
   });
 }
 
