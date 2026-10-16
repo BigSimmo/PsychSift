@@ -1371,6 +1371,13 @@ if (isDirectEntrypoint(import.meta.url)) {
       ],
       { cwd: repoRoot, stdio: "inherit" },
     );
+    if (reexec.error) {
+      console.error(
+        `[Codex Cloud Check] FAIL: could not re-exec through bash to load ${runtimeProfilePath}: ${reexec.error.message}`,
+      );
+    } else if (reexec.signal) {
+      console.error(`[Codex Cloud Check] FAIL: bash re-exec was terminated by signal ${reexec.signal}.`);
+    }
     process.exitCode = reexec.status ?? 1;
   } else {
     const errors = validateCodexCloudSetup();
