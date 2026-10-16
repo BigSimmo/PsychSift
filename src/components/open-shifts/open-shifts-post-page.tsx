@@ -116,6 +116,8 @@ export function OpenShiftsPostPage() {
   // that post already saved instead of saving a second one. A key is dropped once its date is posted;
   // changing anything in the shift makes a new key.
   const postKeys = useRef<Record<string, string>>({});
+  // Counts sign-outs on this tab, so a post in progress stops at once, before the team list catches up.
+  const signIns = useRef(0);
   // Keep the current actor available to an in-progress post, whose render state can otherwise be stale after
   // authentication changes.
   const actorIdRef = useRef(state.actorId);
@@ -129,6 +131,7 @@ export function OpenShiftsPostPage() {
     () =>
       subscribeAccountTransition(() => {
         postKeys.current = {};
+        signIns.current += 1;
       }),
     [],
   );
@@ -239,6 +242,7 @@ export function OpenShiftsPostPage() {
    */
   async function post(): Promise<string | null> {
     const postingActorId = actorIdRef.current;
+    const postingSignIn = signIns.current;
     if (!team || !times) return "Choose a team, date and times.";
     // A post that got no answer for a team that couldn't be read just now: wait, rather than let the form
     // fall back to another team and post there instead. A team the manager picked themselves still posts.
@@ -258,7 +262,7 @@ export function OpenShiftsPostPage() {
     let stopped = false;
     for (const [index, on] of toPost.entries()) {
       // Do not issue another request after the account changes while a previous date is pending.
-      if (actorIdRef.current !== postingActorId) {
+      if (actorIdRef.current !== postingActorId || signIns.current !== postingSignIn) {
         stopped = true;
         break;
       }

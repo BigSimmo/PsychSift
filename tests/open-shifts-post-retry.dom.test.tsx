@@ -297,6 +297,23 @@ describe("Posting a shift", () => {
     expect(sent[1]).not.toBe(sent[0]);
   });
 
+  it("stops before the next date as soon as the account signs out, even before the team list catches up", async () => {
+    mocks.state = { ...mocks.state, shifts: [] };
+    let answerFirst: (value: unknown) => void = () => undefined;
+    mocks.post.mockImplementationOnce(() => new Promise((resolve) => (answerFirst = resolve)));
+    render(<OpenShiftsPostPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Add another date" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review and post 2 shifts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Yes, post all 2" }));
+    await waitFor(() => expect(mocks.post).toHaveBeenCalledOnce());
+
+    // The account signs out while the first date is still being sent; the team list has not re-read yet.
+    clearAccountScopedBrowserStorage();
+    answerFirst({ ok: true, result: { openShiftId: "5e000000-0000-4000-8000-0000000000b8", status: "open" } });
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/Posting stopped/));
+    expect(mocks.post).toHaveBeenCalledOnce();
+  });
+
   it("gives a deliberate new post its own key once the last one went live", async () => {
     mocks.post.mockResolvedValue({
       ok: true,
