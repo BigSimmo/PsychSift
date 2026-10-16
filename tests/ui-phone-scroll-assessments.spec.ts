@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
-import { expect, test } from "playwright/test";
+import { expect, test, type Page } from "playwright/test";
+import { clickWhenHydrated, expectHydrated } from "./playwright-settlement";
 import {
   blockExternalRequests,
   dragScrollBy,
@@ -8,6 +9,16 @@ import {
   phoneViewport,
   readGeometry,
 } from "./helpers/phone-scroll";
+
+// Visible server markup precedes the effects that install work-mode geometry.
+// Measure gestures only after the actual tab measurement and loaded fonts.
+async function expectAssessmentReady(page: Page) {
+  await expectHydrated(page.getByTestId("assess-doctor-hero"));
+  await expect(page.getByTestId("mode-band")).toHaveAttribute("data-pinned", "");
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+}
 
 test.beforeEach(async ({ page }) => {
   await blockExternalRequests(page);
@@ -22,6 +33,7 @@ for (const standalone of [false, true]) {
       await page.emulateMedia({ reducedMotion });
       await gotoPhoneSurface(page, "/teaching/assessments");
       await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
+      await expectAssessmentReady(page);
       if (standalone) expect(await forceCompiledStandalonePhoneCss(page)).toBeGreaterThan(0);
       await expect.poll(async () => (await readGeometry(page)).scrollOwner).toBe(standalone ? "main" : "document");
       const band = page.getByTestId("mode-band");
@@ -93,7 +105,8 @@ for (const standalone of [false, true]) {
       // reveal container), which a strict locator rejects at once. Wait for the single settled copy.
       await expect(page.getByTestId("assess-doctor-hero")).toHaveCount(1, { timeout: 15_000 });
       await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
-      await page.getByRole("button", { name: /^Request an EPA From/ }).click();
+      await expectAssessmentReady(page);
+      await clickWhenHydrated(page.getByRole("button", { name: /^Request an EPA From/ }));
       await expect(page.getByRole("dialog")).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -107,6 +120,7 @@ for (const standalone of [false, true]) {
 test("assessment controls fit all required widths, enlarged text and forced colours", async ({ page }) => {
   await gotoPhoneSurface(page, "/teaching/assessments");
   await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
+  await expectAssessmentReady(page);
   for (const width of [320, 390, 639, 768, 1440, 1920]) {
     await page.setViewportSize({ width, height: 844 });
     await expect.poll(async () => (await readGeometry(page)).horizontalOverflow).toBeLessThanOrEqual(1);
@@ -128,6 +142,7 @@ test("assessment controls fit all required widths, enlarged text and forced colo
 test("installed assessment focus clears the bottom action dock", async ({ page }) => {
   await gotoPhoneSurface(page, "/teaching/assessments");
   await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
+  await expectAssessmentReady(page);
   expect(await forceCompiledStandalonePhoneCss(page)).toBeGreaterThan(0);
   const clearance = await page.locator("#main-content").evaluate((main) => {
     const css = getComputedStyle(main);
@@ -150,6 +165,7 @@ test("assessment direction changes capture a warmed performance trace", async ({
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await gotoPhoneSurface(page, "/teaching/assessments");
   await expect(page.getByTestId("assess-doctor-hero")).toBeVisible();
+  await expectAssessmentReady(page);
   await dragScrollBy(page, 180, 18);
   await dragScrollBy(page, -180, 18);
   await page.waitForTimeout(400);
