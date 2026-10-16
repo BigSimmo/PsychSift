@@ -17,7 +17,17 @@ export async function readBoundedJson(request: Request, maxBytes = defaultJsonBo
   let total = 0;
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      let readResult: ReadableStreamReadResult<Uint8Array>;
+      try {
+        readResult = await reader.read();
+      } catch (cause) {
+        throw new PublicApiError("Invalid request body.", 400, {
+          code: "invalid_request_body",
+          causeName: cause instanceof Error ? cause.name : null,
+          causeMessage: cause instanceof Error ? cause.message : null,
+        });
+      }
+      const { done, value } = readResult;
       if (done) break;
       total += value.byteLength;
       if (total > maxBytes) {
@@ -96,7 +106,17 @@ export async function readBoundedFormData(
   let total = 0;
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      let readResult: ReadableStreamReadResult<Uint8Array>;
+      try {
+        readResult = await reader.read();
+      } catch (cause) {
+        throw new PublicApiError(invalidFormMessage, 400, {
+          code: invalidFormCode,
+          causeName: cause instanceof Error ? cause.name : null,
+          causeMessage: cause instanceof Error ? cause.message : null,
+        });
+      }
+      const { done, value } = readResult;
       if (done) break;
       total += value.byteLength;
       if (total > maxEnvelopeBytes) {
