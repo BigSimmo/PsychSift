@@ -17,6 +17,7 @@ import {
   type AnswerQualityEvalCase,
   type AnswerQualityMetric,
 } from "@/lib/rag/rag-eval-cases";
+import { rankAnswerEvidence } from "@/lib/answer-ranking";
 import type { RagAnswer } from "@/lib/types";
 import { estimateCostUsd, loadAdminClient, resolveEvalOwnerId, withProviderBackoff } from "./eval-utils";
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
@@ -148,6 +149,7 @@ export function selectAnswerQualityCases(args: { caseIds?: string[]; intent?: st
 }
 
 const MAX_DIAGNOSTIC_SOURCES = 10;
+const MAX_DIAGNOSTIC_MATCH_REASONS = 48;
 const MAX_SOURCE_PREVIEW_CHARS = 800;
 const MAX_IMAGE_PREVIEW_CHARS = 800;
 const MAX_DIAGNOSTIC_QUESTION_CHARS = 1_000;
@@ -192,7 +194,14 @@ export function resolveLocalDiagnosticOutputPath(requestedPath: string, cwd = pr
   return resolvedPath;
 }
 
-export function buildBoundedRagSourceDiagnostics(sources: RagAnswer["sources"]) {
+function diagnosticScore(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? Number(value.toFixed(4)) : null;
+}
+
+export function buildBoundedRagSourceDiagnostics(
+  sources: RagAnswer["sources"],
+  answerEvidenceScores?: ReadonlyMap<string, number>,
+) {
   return sources.slice(0, MAX_DIAGNOSTIC_SOURCES).map((source, index) => {
     const tableFacts = source.table_facts ?? [];
     const images = source.images ?? [];
@@ -243,6 +252,22 @@ export function buildBoundedRagSourceDiagnostics(sources: RagAnswer["sources"]) 
       image_table_preview: imageTablePreview
         ? displaySafeDiagnosticText(imageTablePreview, MAX_IMAGE_PREVIEW_CHARS)
         : null,
+      // Ordering evidence: which scores and pipeline steps put this source at this rank, so a
+      // live misorder (e.g. a later rerank undoing a selection boost) is diagnosable offline.
+      ranking: {
+        // rankAnswerEvidence score, the first answer-stage reorder after retrieval. Context
+        // selection can still move sources afterwards, so where this score's order disagrees
+        // with `rank`, that later stage moved the source. Retrieval scores follow.
+        answer_evidence_score: diagnosticScore(answerEvidenceScores?.get(source.id)),
+        hybrid_score: diagnosticScore(source.hybrid_score),
+        rank_score: diagnosticScore(source.score_explanation?.rankScore),
+        release_rank_score: diagnosticScore(source.score_explanation?.releaseRankScore),
+        final_score: diagnosticScore(source.score_explanation?.finalScore),
+        final_rank: source.score_explanation?.finalRank ?? null,
+        match_reasons: (source.match_explanation?.reasons ?? [])
+          .slice(0, MAX_DIAGNOSTIC_MATCH_REASONS)
+          .map((reason) => displaySafeDiagnosticText(reason, 120)),
+      },
       content_preview: displaySafeDiagnosticText(source.content, MAX_SOURCE_PREVIEW_CHARS),
     };
   });
@@ -257,6 +282,9 @@ export function buildRagDiagnosticDumpRecord(id: string, question: string, answe
   const hasOpenAIUsage = openAIUsage.input_tokens + openAIUsage.cached_input_tokens + openAIUsage.output_tokens > 0;
   const observedProviderRequestIdCount = answer.openAIRequestIds?.filter(Boolean).length ?? 0;
   const generationLatencyMs = answer.latencyTimings?.generation_latency_ms ?? 0;
+  // Re-score the emitted sources with the answer-stage ranking, as answerScopedEvidenceMetadata
+  // does for telemetry. It explains rankAnswerEvidence's reorder, not later context selection.
+  const answerEvidenceScores = rankAnswerEvidence(question, answer.sources, answer.queryClass).scoresByChunkId;
   const providerAttempted = Boolean(
     hasOpenAIUsage ||
     observedProviderRequestIdCount > 0 ||
@@ -306,6 +334,7 @@ export function buildRagDiagnosticDumpRecord(id: string, question: string, answe
       answer.sources.filter((source) =>
         answer.citations.some((citation) => citation?.chunk_id && citation.chunk_id === source.id),
       ),
+      answerEvidenceScores,
     ),
     answer_length: answer.answer?.length ?? 0,
     answer: displaySafeDiagnosticText(answer.answer ?? "", MAX_DIAGNOSTIC_ANSWER_CHARS),
@@ -313,7 +342,7 @@ export function buildRagDiagnosticDumpRecord(id: string, question: string, answe
       heading: displaySafeDiagnosticText(section.heading, 240),
       body: displaySafeDiagnosticText(section.body, MAX_DIAGNOSTIC_SECTION_CHARS),
     })),
-    sources: buildBoundedRagSourceDiagnostics(answer.sources),
+    sources: buildBoundedRagSourceDiagnostics(answer.sources, answerEvidenceScores),
   };
 }
 
