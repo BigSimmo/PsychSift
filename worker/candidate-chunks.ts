@@ -506,5 +506,3 @@ export async function stageCandidateChunks(args: {
     nativeMapping: "unavailable" as const,
   });
 }
-
-export { prepareScopedCandidateProjection, stageScopedCandidateProjection } from "./scoped-candidate-projection";

@@ -19,9 +19,11 @@ import {
   type CandidateChunkRow,
   type CandidateImageRow,
   type CandidateTableFactRow,
+} from "../worker/candidate-chunks";
+import {
   prepareScopedCandidateProjection,
   stageScopedCandidateProjection,
-} from "../worker/candidate-chunks";
+} from "../worker/scoped-candidate-projection";
 
 const documentId = "00000000-0000-4000-8000-000000000001";
 const generationId = "00000000-0000-4000-8000-000000000002";
