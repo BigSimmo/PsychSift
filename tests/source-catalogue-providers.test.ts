@@ -216,7 +216,24 @@ describe("repository source providers", () => {
     expect(medicationReferences.filter((reference) => reference.usage.field !== "sourceLinks")).toHaveLength(
       medicationSourceRows.length,
     );
-    expect(medicationReferences.filter((reference) => reference.usage.field === "sourceLinks")).toHaveLength(3);
+    expect(
+      medicationReferences
+        .filter((reference) => reference.usage.field === "sourceLinks")
+        .map((reference) => [reference.usage.recordId, reference.canonicalUrl]),
+    ).toEqual([
+      [
+        "clozapine",
+        "https://www.health.wa.gov.au/~/media/Corp/Documents/Health-for/MTU/Guidelines-for-the-Safe-and-Quality-Use-of-Clozapine-Therapy-in-the-WA-health-system.pdf",
+      ],
+      [
+        "lithium-carbonate-ir-sr",
+        "https://australianprescriber.tg.org.au/articles/lithium-therapy-and-its-interactions.html",
+      ],
+      [
+        "lithium-carbonate-ir-sr",
+        "https://australianprescriber.tg.org.au/articles/lithium-therapy-and-its-interactions-correction.html",
+      ],
+    ]);
 
     const serviceReferences = provider("services").references();
     const services = loadServicesSnapshot().services;
