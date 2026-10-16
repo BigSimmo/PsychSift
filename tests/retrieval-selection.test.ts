@@ -1179,6 +1179,30 @@ describe("whole document title named in the query", () => {
     expect(signalsFor("Arousal and agitation drug management CAMHS")).toContain("document_title_phrase");
   });
 
+  it("does not count a title as named when the query asks for a version the title lacks", () => {
+    const protocol = (title: string) =>
+      source({
+        id: title,
+        document_id: title,
+        title,
+        file_name: `${title}.pdf`,
+        content: "Clozapine titration protocol.",
+        hybrid_score: 0.5,
+      });
+    const signalsFor = (query: string, title: string) =>
+      selectRetrievalEvidence({
+        query,
+        queryClass: "document_lookup",
+        results: [protocol(title)],
+        topK: 8,
+        maxResultsPerDocument: 4,
+      }).candidates[0]?.matchedSignals ?? [];
+
+    expect(signalsFor("Clozapine Protocol v2", "Clozapine Protocol (AKG)")).not.toContain("document_title_phrase");
+    expect(signalsFor("Clozapine Protocol 2023", "Clozapine Protocol (AKG)")).not.toContain("document_title_phrase");
+    expect(signalsFor("Clozapine Protocol v2", "Clozapine Protocol v2 (AKG)")).toContain("document_title_phrase");
+  });
+
   it("keeps the boost inside the clamped score", () => {
     const selection = selectRetrievalEvidence({
       query,

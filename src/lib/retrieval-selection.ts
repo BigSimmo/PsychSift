@@ -441,10 +441,19 @@ function coreDocumentTitle(value: string) {
  */
 function queryNamesWholeDocumentTitle(query: string, result: SearchResult) {
   const paddedQuery = ` ${titleWords(query)} `;
+  const queryRevisions = revisionTokens(paddedQuery);
   return [result.title, result.file_name].some((value) => {
     const core = coreDocumentTitle(value ?? "");
-    return core.split(" ").length >= 2 && paddedQuery.includes(` ${core} `);
+    if (core.split(" ").length < 2 || !paddedQuery.includes(` ${core} `)) return false;
+    // A query that names a version or year only counts when this title or file name has it too.
+    const paddedValue = ` ${titleWords(value ?? "")} `;
+    return queryRevisions.every((token) => paddedValue.includes(` ${token} `));
   });
+}
+
+/** Version and year words in already-normalised text, such as "v2", "version 3" or "2024". */
+function revisionTokens(paddedWords: string) {
+  return [...paddedWords.matchAll(/ (v\d+|version \d+|(?:19|20)\d{2})(?= )/g)].map((match) => match[1]);
 }
 
 function matchedSignalsForResult(args: {
