@@ -117,6 +117,35 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     expect(textarea.selectionEnd).toBe(41);
   });
 
+  it("saves a revert typed while an earlier save is still in flight", async () => {
+    let finishFirstSave: () => void = () => {};
+    const onSave = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise<void>((resolve) => (finishFirstSave = resolve)))
+      .mockResolvedValue(undefined);
+    render(<ClinicalNoteEditor initialValue="Original draft" onSave={onSave} debounceMs={300} />);
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, { target: { value: "Edited draft" } });
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledWith("Edited draft");
+
+    // Back to the stored text before the first save has finished.
+    fireEvent.change(textarea, { target: { value: "Original draft" } });
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      finishFirstSave();
+    });
+    expect(onSave).toHaveBeenCalledTimes(2);
+    expect(onSave).toHaveBeenLastCalledWith("Original draft");
+  });
+
   it("manual Save now button triggers save immediately", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
 
@@ -256,5 +285,117 @@ describe("ClinicalNoteEditor (#TDKF8T)", () => {
     });
     expect(onSave).toHaveBeenCalledWith("Review de-identified overnight admission");
     expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saved");
+  });
+
+  it("does not cancel debounced auto-save when parent re-renders with a new inline onChange, and clears Unsaved changes when reverting to lastSavedValue", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const React = await import("react");
+
+    function Wrapper() {
+      const [, setDraft] = React.useState("Initial assessment stable");
+      return (
+        <ClinicalNoteEditor
+          initialValue="Initial assessment stable"
+          onChange={(next) => setDraft(next)}
+          onSave={onSave}
+          debounceMs={300}
+        />
+      );
+    }
+
+    render(<Wrapper />);
+
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "Initial assessment stablex" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    // Reverting back to the initial/lastSavedValue before debounce fires resets status to Idle
+    fireEvent.change(textarea, { target: { value: "Initial assessment stable" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Idle");
+    expect(screen.getByTestId("note-editor-save-btn")).toBeDisabled();
+
+    // Typing a new change still auto-saves even though Wrapper creates a new inline onChange every render
+    fireEvent.change(textarea, { target: { value: "Reviewed overnight by night registrar" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledWith("Reviewed overnight by night registrar");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saved");
+  });
+
+  it("drops a queued save and resets the status when the parent supplies a new value", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const React = await import("react");
+    let setExternal: (next: string) => void = () => {};
+
+    function Wrapper() {
+      const [draft, setDraft] = React.useState("Morning review stable");
+      setExternal = setDraft;
+      return <ClinicalNoteEditor value={draft} onChange={setDraft} onSave={onSave} debounceMs={300} />;
+    }
+
+    render(<Wrapper />);
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+
+    // The parent echoing typed text keeps the queued save.
+    fireEvent.change(textarea, { target: { value: "Morning review stable, plan unchanged" } });
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Unsaved changes");
+
+    // A genuinely new value from the parent replaces the draft and cancels that save.
+    act(() => setExternal("Evening handover note"));
+    expect(textarea.value).toBe("Evening handover note");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Idle");
+
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Typing after the external change still auto-saves.
+    fireEvent.change(textarea, { target: { value: "Evening handover note reviewed" } });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledWith("Evening handover note reviewed");
+  });
+
+  it("ignores a save that finishes after the parent supplies a new value", async () => {
+    let finishSave: () => void = () => {};
+    const onSave = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    const React = await import("react");
+    let setExternal: (next: string) => void = () => {};
+
+    function Wrapper() {
+      const [draft, setDraft] = React.useState("Morning review stable");
+      setExternal = setDraft;
+      return <ClinicalNoteEditor value={draft} onChange={setDraft} onSave={onSave} debounceMs={300} />;
+    }
+
+    render(<Wrapper />);
+    const textarea = screen.getByTestId("note-editor-textarea") as HTMLTextAreaElement;
+
+    fireEvent.change(textarea, { target: { value: "Morning review stable, plan unchanged" } });
+    await act(async () => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Saving");
+
+    act(() => setExternal("Evening handover note"));
+    await act(async () => {
+      finishSave();
+    });
+
+    // The late save must not mark the new note as saved or offer Save now for it.
+    expect(textarea.value).toBe("Evening handover note");
+    expect(screen.getByTestId("note-editor-status")).toHaveTextContent("Idle");
+    expect(screen.getByTestId("note-editor-save-btn")).toBeDisabled();
   });
 });

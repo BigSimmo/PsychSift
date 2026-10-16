@@ -495,10 +495,17 @@ export async function runFirstPublicationCli(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<FirstPublicationCataloguePlan> {
   const options = parseFirstPublicationCliArgs(argv);
-  if (options.execute && env.ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT !== "true") {
-    throw new Error(
-      "Refusing live first-publication execution: --execute requires ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true.",
-    );
+  if (options.execute) {
+    if (env.ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT !== "true") {
+      throw new Error(
+        "Refusing live first-publication execution: --execute requires ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true.",
+      );
+    }
+    if (!env.NEXT_PUBLIC_SUPABASE_URL?.trim() || !env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+      throw new Error(
+        "Refusing live first-publication execution: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for --execute (use --dry-run for offline plan generation).",
+      );
+    }
   }
 
   const plan = buildFirstPublicationCataloguePlan({
