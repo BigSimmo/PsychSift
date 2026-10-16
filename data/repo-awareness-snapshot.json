@@ -2706,6 +2706,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-keep-migration-history.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/archive/TOOLS_CONTEXT_FOR_NEW_CHAT.md",
         "section": "archive",
         "catalogued": true
