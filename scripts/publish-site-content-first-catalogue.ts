@@ -18,8 +18,10 @@
  *    signed, worked out the same way npm run clinical:review wrote it. A record edited after its
  *    sign-off is refused, so a stale approval can never publish changed text.
  *    The owner decided the pin covers the reviewed source record, not the published copy.
- *    (A form's catalogue entry and guidance, or a curated service record.) That keeps every
- *    existing sign-off valid, and the projected row is built only from that pinned source.
+ *    For a form that is the review record with its sign-off fields removed, the catalogue
+ *    entry fields and the guidance rendered from them. For a service it is the curated record.
+ *    That keeps every existing sign-off valid. Metadata added only when the row is projected
+ *    (for example aliases, search terms and risk level) is not covered by the pin.
  * 3. Offline by default: `--dry-run` and `--out <path>` never import or call a live Supabase
  *    client. Live execution requires BOTH `--execute` and `ALLOW_DESTRUCTIVE_SITE_CONTENT_INIT=true`.
  *
