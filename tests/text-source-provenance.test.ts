@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import JSZip from "jszip";
 import ExcelJS from "exceljs";
-import { PDFParse } from "pdf-parse";
+import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
 import { extractDocument, extractPdf, parseExtractedDocumentPayload } from "@/lib/extractors/document";
 import { extractedTextSha256 } from "@/lib/extractors/docx-source-provenance";
 import {
@@ -231,7 +231,7 @@ describe("TXT source-only provenance", () => {
   it("rejects schema-valid TXT supplied by a native PDF process without fallback", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "clinical-kb-txt-pdf-test-"));
     const script = path.join(root, "fake.py");
-    const fallback = vi.spyOn(PDFParse.prototype, "getText");
+    const fallback = vi.spyOn(PdfjsFallbackParser.prototype, "getText");
     try {
       await writeFile(
         script,

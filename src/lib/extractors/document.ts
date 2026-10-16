@@ -26,7 +26,6 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import path from "node:path";
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import JSZip from "jszip";
 import { z } from "zod";
 import type { ExtractedDocument, ExtractedPage } from "@/lib/types";
@@ -47,6 +46,7 @@ import {
   type PdfExtractionBudget,
 } from "@/lib/extractors/pdf-extraction-budget";
 import { resolvePythonBin } from "@/lib/python-bin";
+import { PdfjsFallbackParser } from "@/lib/extractors/pdfjs-fallback";
 
 const extractedPageSchema = z.object({
   pageNumber: z.number().int().positive(),
@@ -448,11 +448,11 @@ export async function extractPdf(
     // Fallback for developer machines without PyMuPDF/pytesseract. It still
     // indexes text PDFs, but scanned PDFs and image extraction need the Python
     // helper dependencies listed in worker/python/requirements.txt.
-    const textParser = new PDFParse({
+    const textParser = new PdfjsFallbackParser({
       data: buffer,
       maxImageSize: limits.maxRenderPixels,
     });
-    const imageParser = new PDFParse({
+    const imageParser = new PdfjsFallbackParser({
       data: buffer,
       maxImageSize: limits.maxRenderPixels,
       // pdf.js only raises its pre-decode maxImageSize rejection when parse
@@ -480,12 +480,10 @@ export async function extractPdf(
       // Extract one page at a time so aggregate limits can stop subsequent decoding, and
       // request only binary data to avoid holding a duplicate base64 representation.
       for (const rawPage of rawPages) {
-        let imageResult: Awaited<ReturnType<PDFParse["getImage"]>>;
+        let imageResult: Awaited<ReturnType<PdfjsFallbackParser["getImage"]>>;
         try {
           imageResult = await imageParser.getImage({
             partial: [rawPage.pageNumber],
-            imageBuffer: true,
-            imageDataUrl: false,
             imageThreshold: 20,
           });
         } catch (imageError) {
