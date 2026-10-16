@@ -27,7 +27,7 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { isNamedPerson } from "@/lib/admin/rule-sign-off";
@@ -47,7 +47,7 @@ import {
 import { compareCanonicalSiteContentIdentifiers, siteContentValueHash } from "@/lib/site-content/site-content-manifest";
 import { reconciliationHash } from "@/lib/site-content/site-content-reconciliation";
 
-import { recordContentSha256 } from "./lib/clinical-record-review-contract.mjs";
+import { recordPinState } from "./lib/clinical-record-review-contract.mjs";
 import { loadContext as loadServiceSignOffContext } from "./lib/signoff-kinds/services.mjs";
 
 export type FirstPublicationKind = "service" | "form" | "all";
@@ -68,11 +68,7 @@ export type ClinicalSignOffEntry = {
  */
 export type SignOffPinState = "current" | "stale" | "unsigned" | "unverifiable";
 
-export type SignOffPinCheck = (
-  kind: "service" | "form",
-  review: ClinicalSignOffEntry,
-  record?: ServiceRecord | FormRecord,
-) => SignOffPinState | { state: SignOffPinState; reason?: string };
+export type SignOffPinCheck = (kind: "service" | "form", review: ClinicalSignOffEntry) => SignOffPinState;
 
 export type FirstPublicationRejectedRecord = {
   kind: "service" | "form";
@@ -128,6 +124,8 @@ export type FirstPublicationCliOptions = {
   formsReviewPath: string;
 };
 
+const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
 const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 
 function isValidReviewTimestamp(value: string | null | undefined): boolean {
@@ -145,36 +143,13 @@ export function createSignOffPinCheck(
   options: { serviceContext?: object; formsCatalogPath?: string } = {},
 ): SignOffPinCheck {
   let formsCatalog: unknown;
-  return (kind, review, record) => {
-    try {
-      if (kind === "service") {
-        if (!options.serviceContext || !record) return { state: "unverifiable", reason: "service record is unavailable" };
-        const context = options.serviceContext as { services?: Record<string, unknown> };
-        const stableId = String((record.catalogPayload as { stableId?: string } | undefined)?.stableId ?? "").trim();
-        if (!stableId || !context.services?.[stableId]) {
-          return { state: "unverifiable", reason: `no curated service record exists for ${stableId || "the selected record"}` };
-        }
-        // The curated service pin does not attest legacy catalogue fields (notably cost).
-        // Refuse merged rows rather than allowing those fields to reach publication.
-        if (typeof record.cost === "string" && record.cost.trim()) {
-          return { state: "unverifiable", reason: "selected service contains legacy cost content outside the curated sign-off" };
-        }
-        return {
-          state: recordContentSha256({ ...review, id: stableId }, "service", options.serviceContext) === review.reviewedContentSha256
-            ? "current"
-            : "stale",
-        };
-      }
-      formsCatalog ??= JSON.parse(readFileSync(resolve(options.formsCatalogPath ?? "data/forms-catalog.json"), "utf8"));
-      if (!record) return { state: "unverifiable", reason: "form record is unavailable" };
-      return {
-        state: recordContentSha256(review, "form", { catalog: formsCatalog }) === review.reviewedContentSha256
-          ? "current"
-          : "stale",
-      };
-    } catch (error) {
-      return { state: "unverifiable", reason: error instanceof Error ? error.message : String(error) };
+  return (kind, review) => {
+    if (kind === "service") {
+      if (!options.serviceContext) return "unverifiable";
+      return recordPinState(review, "service", options.serviceContext);
     }
+    formsCatalog ??= JSON.parse(readFileSync(resolve(options.formsCatalogPath ?? "data/forms-catalog.json"), "utf8"));
+    return recordPinState(review, "form", { catalog: formsCatalog });
   };
 }
 
@@ -184,7 +159,6 @@ function validateSignOffEntry(
   slug: string,
   review: ClinicalSignOffEntry | undefined,
   pinState: SignOffPinCheck,
-  record: ServiceRecord | FormRecord,
 ): FirstPublicationRejectedRecord | null {
   if (!review) {
     return {
@@ -226,20 +200,24 @@ function validateSignOffEntry(
       reason: `reviewedContentSha256 ${JSON.stringify(review.reviewedContentSha256)} is missing or not a valid 64-character hex SHA-256 digest`,
     };
   }
-  const reviewedIdentity = kind === "service" ? review.id : review.code ?? review.id;
-  if (typeof reviewedIdentity !== "string" || reviewedIdentity.trim().toLowerCase() !== recordId.trim().toLowerCase()) {
-    return { kind, recordId, slug, reason: "clinical review identifies a different publication record" };
+  // The pin covers the record its own id (service) or code (form) names, so that must be the
+  // record being published, not one the review was only matched to through a slug alias.
+  const reviewIdentity = kind === "service" ? review.id : review.code;
+  if (typeof reviewIdentity !== "string" || reviewIdentity.trim().toLowerCase() !== recordId.trim().toLowerCase()) {
+    return {
+      kind,
+      recordId,
+      slug,
+      reason: `its review names ${JSON.stringify(reviewIdentity ?? null)}, not this record, so its sign-off does not cover it`,
+    };
   }
-  const pinResult = pinState(kind, review, record);
-  const pin = typeof pinResult === "string" ? pinResult : pinResult.state;
+  const pin = pinState(kind, review);
   if (pin === "unverifiable") {
     return {
       kind,
       recordId,
       slug,
-      reason: typeof pinResult === "string"
-        ? "the content its sign-off covers could not be loaded, so the content pin could not be checked"
-        : `the signed content could not be loaded: ${pinResult.reason ?? "unknown error"}`,
+      reason: "the content its sign-off covers could not be loaded, so the content pin could not be checked",
     };
   }
   if (pin !== "current") {
@@ -326,7 +304,7 @@ export function buildFirstPublicationCataloguePlan(
       serviceReviewByKey.get(stableId.toLowerCase()) ??
       serviceReviewByKey.get(service.slug.trim().toLowerCase()) ??
       (serviceWithId.id ? serviceReviewByKey.get(serviceWithId.id.trim().toLowerCase()) : undefined);
-    const problem = validateSignOffEntry("service", stableId, service.slug, review, pinState, service);
+    const problem = validateSignOffEntry("service", stableId, service.slug, review, pinState);
     if (problem) {
       rejected.push(problem);
       continue;
@@ -351,7 +329,7 @@ export function buildFirstPublicationCataloguePlan(
       formReviewByKey.get(formCode.toLowerCase()) ??
       formReviewByKey.get(form.slug.trim().toLowerCase()) ??
       formReviewByKey.get(formRecordId.toLowerCase());
-    const problem = validateSignOffEntry("form", formCode, form.slug, review, pinState, form);
+    const problem = validateSignOffEntry("form", formCode, form.slug, review, pinState);
     if (problem) {
       rejected.push(problem);
       continue;
@@ -529,9 +507,7 @@ export async function runFirstPublicationCli(
     serviceReviews: loadDefaultServiceReviews(options.servicesReviewPath),
     formReviews: loadDefaultFormReviews(options.formsReviewPath),
     serviceSignOffContext:
-      options.kind === "form"
-        ? undefined
-        : await loadServiceSignOffContext("service", resolve(fileURLToPath(new URL("..", import.meta.url)))),
+      options.kind === "form" ? undefined : await loadServiceSignOffContext("service", REPOSITORY_ROOT),
   });
 
   if (options.out) {
