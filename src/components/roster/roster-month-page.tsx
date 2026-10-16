@@ -782,6 +782,7 @@ export function RosterMonthPage({ now: pinnedNow }: { readonly now?: Date } = {}
           onClose={() => setAddView(null)}
           today={today}
           workplaces={[...new Set(shifts.shifts.flatMap((shift) => (shift.workplace ? [shift.workplace] : [])))]}
+          existingShifts={shifts.shifts}
           hasTeam={enabledTeams.length > 0}
           onDates={() => {
             setAddView(null);

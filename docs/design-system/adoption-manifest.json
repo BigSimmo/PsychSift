@@ -2875,6 +2875,7 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/starter/starter-date-sheet.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
+        "src/components/calculators/clinical-math-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/password-recovery-form.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -2926,6 +2927,7 @@
         "src/components/admin/renewals/record-dates-sheet.tsx",
         "src/components/admin/starter/starter-date-sheet.tsx",
         "src/components/alerts/remind-me-sheet.tsx",
+        "src/components/calculators/clinical-math-panel.tsx",
         "src/components/clinical-dashboard/email-auth-form.tsx",
         "src/components/clinical-dashboard/password-recovery-form.tsx",
         "src/components/clinical-dashboard/patient-profile-panel.tsx",
@@ -3444,6 +3446,7 @@
         "src/app/(search-app)/teaching/assessments/help/page.tsx",
         "src/app/(search-app)/teaching/assessments/page.tsx",
         "src/app/(search-app)/teaching/assessments/record/page.tsx",
+        "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
         "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
         "src/app/(search-app)/teaching/c/[token]/page.tsx",
@@ -5105,6 +5108,16 @@
           "sanctionedPatternsPresent": []
         },
         {
+          "file": "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
+          "exists": true,
+          "imports": [],
+          "importedFamilies": [],
+          "literalCkbV2": false,
+          "dynamicCkbV2": false,
+          "v2MountMode": "inherited-global-root",
+          "sanctionedPatternsPresent": []
+        },
+        {
           "file": "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
           "exists": true,
           "imports": [],
@@ -6626,6 +6639,7 @@
       "src/app/(search-app)/teaching/assessments/help/page.tsx",
       "src/app/(search-app)/teaching/assessments/page.tsx",
       "src/app/(search-app)/teaching/assessments/record/page.tsx",
+      "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
       "src/app/(search-app)/teaching/c/[token]/page.tsx",
@@ -6853,6 +6867,7 @@
       "src/app/(search-app)/teaching/assessments/help/page.tsx",
       "src/app/(search-app)/teaching/assessments/page.tsx",
       "src/app/(search-app)/teaching/assessments/record/page.tsx",
+      "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/[id]/page.tsx",
       "src/app/(search-app)/teaching/assessments/trainee/page.tsx",
       "src/app/(search-app)/teaching/c/[token]/page.tsx",
@@ -6895,7 +6910,7 @@
   },
   "adoption": {
     "literalCkbV2RootCount": 1,
-    "inheritedCkbV2RootCount": 233,
+    "inheritedCkbV2RootCount": 234,
     "dynamicCkbV2RootCount": 0,
     "v2MountedSurfaceCount": 15,
     "declaredV2SurfaceCount": 15
@@ -6904,8 +6919,8 @@
     "registeredComponentCount": 55,
     "previewCount": 55,
     "productImportedComponentCount": 48,
-    "rootCount": 234,
-    "productionRouteCount": 225,
-    "nextUiEntryCount": 345
+    "rootCount": 235,
+    "productionRouteCount": 226,
+    "nextUiEntryCount": 346
   }
 }

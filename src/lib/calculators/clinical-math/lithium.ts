@@ -18,6 +18,8 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
       status: "invalid",
       isWithinTarget: false,
       severity: "none",
+      toxicitySeverity: "none",
+      requiresUrgentAction: false,
       targetRange: { min: 0, max: 0 },
       clinicalGuidance: ["Invalid lithium age or serum concentration; do not use this result for clinical decisions."],
     };
@@ -76,21 +78,21 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
     status,
     isWithinTarget,
     severity,
+    toxicitySeverity: severity,
+    requiresUrgentAction: status === "toxic",
     targetRange: { min: minTarget, max: maxTarget },
     clinicalGuidance,
   };
 }
 
-const VALID_DOSE_INCREMENTS = new Set([50, 125, 225, 250]);
+const VALID_DOSE_INCREMENTS = new Set([50, 125, 225, 250, 450]);
 
 /**
- * Calculates suggested proportional dose adjustment based on lithium's linear first-order pharmacokinetics.
- * Formula: New Dose = Current Dose * (Target Level / Current Level)
- * Rounds by default to 125 mg (half of a scored 250 mg Australian immediate-release lithium carbonate tablet).
+ * Validates inputs for proportional lithium dose adjustment.
  */
-export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInput): LithiumDoseAdjustmentResult {
+export function validateLithiumDoseInput(input: LithiumDoseAdjustmentInput): string[] {
   const errors: string[] = [];
-  const incrementMg = input.doseIncrementMg ?? 125;
+  const incrementMg = input.doseIncrementMg ?? input.tabletIncrementMg ?? 125;
 
   if (!Number.isFinite(input.currentDoseMg) || input.currentDoseMg <= 0) {
     errors.push("Current dose must be greater than zero mg");
@@ -111,10 +113,23 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
     errors.push("Dose increment must be a supported tablet strength fraction (50, 125, 225, or 250 mg)");
   }
 
+  return errors;
+}
+
+/**
+ * Calculates suggested proportional dose adjustment based on lithium's linear first-order pharmacokinetics.
+ * Formula: New Dose = Current Dose * (Target Level / Current Level)
+ */
+export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInput): LithiumDoseAdjustmentResult {
+  const errors = validateLithiumDoseInput(input);
+  const warnings: string[] = [];
+
   if (errors.length > 0) {
     return {
       isValid: false,
       suggestedDoseMg: null,
+      rawDoseMg: null,
+      warnings,
       errors,
       note: "Invalid calculation inputs",
     };
@@ -122,16 +137,20 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
 
   const ratio = input.targetLevelMmolL / input.currentLevelMmolL;
   const rawDose = input.currentDoseMg * ratio;
-  // Fail closed on adjustments beyond a two-fold change or an unsafe absolute dose.
-  if (!Number.isFinite(ratio) || ratio < 0.5 || ratio > 2 || rawDose > 2000) {
+  const rawDoseMg = Math.round(rawDose);
+  const incrementMg = input.doseIncrementMg ?? input.tabletIncrementMg ?? 125;
+  const suggestedDoseMg = Math.round(rawDose / incrementMg) * incrementMg;
+  // Fail closed on adjustments beyond a two-fold change or an unsafe absolute dose (raw or rounded).
+  if (!Number.isFinite(ratio) || ratio < 0.5 || ratio > 2 || rawDose > 2000 || suggestedDoseMg > 2000) {
     return {
       isValid: false,
       suggestedDoseMg: null,
+      rawDoseMg: Number.isFinite(rawDoseMg) ? rawDoseMg : null,
+      warnings,
       errors: ["Calculated dose adjustment is outside safe limits and requires clinical review"],
       note: "Do not use an extreme proportional adjustment without specialist review.",
     };
   }
-  const suggestedDoseMg = Math.round(rawDose / incrementMg) * incrementMg;
   const predictedLevelMmolL = input.currentLevelMmolL * (suggestedDoseMg / input.currentDoseMg);
   if (
     suggestedDoseMg <= 0 ||
@@ -147,13 +166,22 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
     return {
       isValid: false,
       suggestedDoseMg: null,
+      rawDoseMg,
+      warnings,
       errors: [error],
       note: "Do not use a rounded dose that exceeds safe limits without specialist review.",
     };
   }
+  if (suggestedDoseMg !== rawDoseMg) {
+    warnings.push(
+      `Raw proportional dose (${rawDoseMg} mg) was rounded to the nearest practical Australian tablet increment (${incrementMg} mg -> ${suggestedDoseMg} mg; e.g. Lithicarb 250 mg IR half-tablet = 125 mg, Priadel/Quilonum SR 450 mg half-tablet = 225 mg).`,
+    );
+  }
   return {
     isValid: true,
     suggestedDoseMg,
+    rawDoseMg,
+    warnings,
     errors: [],
     note: `Linear kinetics assumed (rounded to nearest ${incrementMg} mg tablet increment). Confirm patient has reached steady state (>=5 days at current dose) and sample was drawn exactly 12 hours post-dose. Recheck trough 5-7 days after dosage modification.`,
   };

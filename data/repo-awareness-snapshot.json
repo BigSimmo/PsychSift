@@ -664,6 +664,11 @@
         "area": "mockup"
       },
       {
+        "path": "/teaching/assessments/respond/[token]",
+        "file": "src/app/(search-app)/teaching/assessments/respond/[token]/page.tsx",
+        "area": "product"
+      },
+      {
         "path": "/my-day/alerts/earlier",
         "file": "src/app/(search-app)/my-day/alerts/earlier/page.tsx",
         "area": "product"
@@ -1930,6 +1935,10 @@
       {
         "path": "/api/on-call/shifts",
         "file": "src/app/api/on-call/shifts/route.ts"
+      },
+      {
+        "path": "/api/teaching/assessments/respond/[token]",
+        "file": "src/app/api/teaching/assessments/respond/[token]/route.ts"
       },
       {
         "path": "/api/alerts/test",

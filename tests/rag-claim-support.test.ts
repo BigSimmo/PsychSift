@@ -2128,4 +2128,35 @@ describe("high-risk answer support (#ZZ4RAP)", () => {
     const relation = source("relation", "Dehydration increased lithium levels.");
     expect(sourceDirectlySupportsAnswerText("Lithium levels increased dehydration.", relation)).toBe(false);
   });
+
+  it("matches full English inflections for contraindicated, escalate, initiate, and recommended (#HD1C6W)", () => {
+    const contraindicatedSource = source(
+      "contra",
+      "Clozapine is contraindicated in patients with a history of agranulocytosis.",
+    );
+    const allowedSource = source("allowed", "Clozapine may be used in patients with a history of agranulocytosis.");
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Clozapine is contraindicated in patients with a history of agranulocytosis.",
+        contraindicatedSource,
+      ),
+    ).toBe(true);
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Clozapine is contraindicated in patients with a history of agranulocytosis.",
+        allowedSource,
+      ),
+    ).toBe(false);
+
+    const compoundEscalationSource = source(
+      "compound-esc",
+      "Withhold the dose and escalate to the treating consultant if distress persists.",
+    );
+    expect(
+      sourceDirectlySupportsAnswerText(
+        "Escalate to the treating consultant if distress persists.",
+        compoundEscalationSource,
+      ),
+    ).toBe(true);
+  });
 });

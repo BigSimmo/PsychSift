@@ -35,6 +35,17 @@ function computeRawCrCl(
 }
 
 /**
+ * Devine formula for Ideal Body Weight (IBW) in kilograms.
+ * Used by Australian Medicines Handbook (AMH) and Therapeutic Guidelines (eTG)
+ * when actual body weight exceeds IBW in Cockcroft-Gault renal clearance estimation.
+ */
+export function calculateIdealBodyWeightKg(heightCm: number, sex: BiologicalSex): number {
+  const baseKg = sex === "female" ? 45.5 : 50;
+  const ibw = baseKg + 0.9 * (heightCm - 152.4);
+  return Math.round(ibw * 10) / 10;
+}
+
+/**
  * Cockcroft-Gault Creatinine Clearance (CrCl) calculation.
  * Standard Australian and international nephrology formula for psychotropic dose adjustment
  * (e.g. Lithium, Gabapentin, Pregabalin, Amisulpride).
@@ -66,6 +77,12 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     );
   }
 
+  if (input.heightCm !== undefined) {
+    if (!Number.isFinite(input.heightCm) || input.heightCm < 120 || input.heightCm > 230) {
+      errors.push("Height must be within adult physiological range (120–230 cm)");
+    }
+  }
+
   if (!Number.isFinite(input.serumCreatinine) || input.serumCreatinine <= 0) {
     errors.push("Serum creatinine must be greater than zero");
   } else if (input.creatinineUnit === "umol/L" && (input.serumCreatinine < 15 || input.serumCreatinine > 3000)) {
@@ -79,23 +96,27 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
       isValid: false,
       crClMlMin: null,
       stage: null,
+      ibwKg: null,
+      effectiveWeightKg: null,
       errors,
       warnings,
     };
   }
 
+  let ibwKg: number | null = null;
   let effectiveWeightKg = input.weightKg;
+  let weightBasis: "actual" | "ideal" = "actual";
 
   if (input.heightCm !== undefined) {
     if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
-      const rawIbw = (input.sex === "male" ? 50 : 45.5) + 0.9 * (input.heightCm - 152.4);
-      const ibwKg = Math.round(rawIbw * 10) / 10;
+      ibwKg = calculateIdealBodyWeightKg(input.heightCm, input.sex);
       // Only characterize the alternative weights as overweight/obesity guidance at BMI >= 25.
       const bmi = input.weightKg / (input.heightCm / 100) ** 2;
       if (ibwKg > 0 && input.weightKg > ibwKg && bmi >= 25) {
         const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
         const isObeseExcess = input.weightKg > ibwKg * 1.2;
         effectiveWeightKg = isObeseExcess ? abwKg : ibwKg;
+        weightBasis = "ideal";
         const ibwCrCl =
           Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
           100;
@@ -126,14 +147,27 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
       isValid: false,
       crClMlMin: null,
       stage: null,
+      ibwKg,
+      effectiveWeightKg,
+      weightBasis,
       errors: ["Calculated creatinine clearance is not finite"],
       warnings,
     };
   }
+
+  const lithiumClinicalNote =
+    rounded < 60
+      ? "Renal impairment (CrCl < 60 mL/min): lithium clearance is reduced; lower doses and closer serum monitoring are required (avoid or seek specialist advice in severe impairment)."
+      : "Confirm baseline renal function before initiating renally cleared psychotropics (lithium, amisulpride, pregabalin, gabapentin, paliperidone).";
+
   return {
     isValid: true,
     crClMlMin: rounded,
     stage: classifyRenalStage(rounded),
+    ibwKg,
+    effectiveWeightKg,
+    weightBasis,
+    lithiumClinicalNote,
     errors: [],
     warnings,
   };

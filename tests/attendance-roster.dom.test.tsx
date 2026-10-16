@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { AttendanceRoster, type RegistrarMember } from "@/components/teaching/attendance-roster";
+import { AttendanceGapsSheet } from "@/components/teaching/organise-sheets";
+import type { OrganiseRead } from "@/components/teaching/organise-model";
 
 afterEach(cleanup);
 
@@ -79,5 +81,42 @@ describe("AttendanceRoster (#WVS32F)", () => {
     render(<AttendanceRoster members={MOCK_MEMBERS} checkInCountsByUserId={allAttended} initialFilterGapsOnly />);
 
     expect(screen.getByTestId("attendance-roster-empty")).toHaveTextContent("No attendance gaps recorded.");
+  });
+
+  it("wires AttendanceRoster inside AttendanceGapsSheet with initialFilterGapsOnly enabled", () => {
+    const organise: OrganiseRead = {
+      series: [],
+      groups: [],
+      members: [
+        {
+          userId: "00000000-0000-4000-8000-000000000001",
+          name: "Dr. Gregory House",
+          role: "doctor",
+          joinedAt: "2026-01-10T00:00:00Z",
+        },
+        {
+          userId: "00000000-0000-4000-8000-000000000002",
+          name: "Dr. James Wilson",
+          role: "doctor",
+          joinedAt: "2026-01-12T00:00:00Z",
+        },
+      ],
+    };
+
+    render(
+      <AttendanceGapsSheet
+        organise={organise}
+        checkInCountsByUserId={{ "00000000-0000-4000-8000-000000000002": 3 }}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(screen.getByTestId("teaching-attendance-roster")).toBeInTheDocument();
+    expect(screen.getByTestId("attendance-roster-row-00000000-0000-4000-8000-000000000001")).toBeInTheDocument();
+    expect(screen.queryByTestId("attendance-roster-row-00000000-0000-4000-8000-000000000002")).toBeNull();
+
+    // Toggling to All Registrars reveals Wilson as well
+    fireEvent.click(screen.getByTestId("roster-view-all-btn"));
+    expect(screen.getByTestId("attendance-roster-row-00000000-0000-4000-8000-000000000002")).toBeInTheDocument();
   });
 });

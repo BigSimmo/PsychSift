@@ -306,10 +306,15 @@ export function QrCheckInHelper({
         <span className="text-xs font-semibold text-[color:var(--text)]">Or check in with 6-digit code:</span>
         <form onSubmit={handleTypedSubmit} className="flex gap-2">
           <input
+            id="manual-session-code-input"
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={6}
+            autoComplete="off"
+            spellCheck={false}
+            data-gramm="false"
+            data-enable-grammarly="false"
             value={typedCode}
             onChange={(e) => {
               setTypedCode(e.target.value.replace(/\D/g, "").slice(0, 6));

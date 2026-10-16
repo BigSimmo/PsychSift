@@ -29,6 +29,8 @@ export type IngestionOpenAIOptions = {
   signal?: AbortSignal;
   ingestionEgress?: IngestionProviderEgressContext;
   ingestionPurpose?: ProviderEgressPurpose;
+  timeoutMs?: number;
+  maxRetries?: number;
 };
 
 type OpenAIOperation =
@@ -749,7 +751,12 @@ export async function embedTexts(texts: string[], options?: IngestionOpenAIOptio
                 // IDX-C2: request the exact dimension the schema's vector(N) columns expect.
                 dimensions: env.EMBEDDING_DIMENSIONS,
               },
-              requestOptions({ operation: "embedding", signal: options?.signal }),
+              requestOptions({
+                operation: "embedding",
+                signal: options?.signal,
+                timeoutMs: options?.timeoutMs,
+                maxRetries: options?.maxRetries,
+              }),
             ),
           );
 
@@ -888,7 +895,11 @@ export async function embedTextWithTelemetry(text: string, options?: IngestionOp
       waiters: 0,
       settled: false,
     };
-    entry.promise = embedTexts([text], { signal: controller.signal })
+    entry.promise = embedTexts([text], {
+      signal: controller.signal,
+      timeoutMs: options?.timeoutMs,
+      maxRetries: options?.maxRetries,
+    })
       .then((embeddings) => {
         const embedding = embeddings[0];
         if (!embedding) {

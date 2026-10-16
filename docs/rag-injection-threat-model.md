@@ -12,7 +12,7 @@ without checking those implementation-status sections.
 
 ## 1. What document-derived text actually reaches the prompt
 
-The answer prompt is assembled by `buildRagSourceBlock` ([`rag-source-block.ts:864`](../src/lib/rag/rag-source-block.ts)), consumed inside `buildAnswerInput` ([`rag.ts:3070`](../src/lib/rag/rag.ts)) under a plain `Sources:` header, alongside the system prompt `answerInstructions` ([`rag-answer-instructions.ts:8`](../src/lib/rag/rag-answer-instructions.ts)). Two content defenses exist:
+The answer prompt is assembled by `buildRagSourceBlock` ([`rag-source-block.ts:864`](../src/lib/rag/rag-source-block.ts)), consumed inside `buildAnswerInput` ([`rag.ts:3118`](../src/lib/rag/rag.ts)) under a plain `Sources:` header, alongside the system prompt `answerInstructions` ([`rag-answer-instructions.ts:8`](../src/lib/rag/rag-answer-instructions.ts)). Two content defenses exist:
 
 - **`neutralizePromptInstructions`** ([`source-text-sanitizer.ts:444`](../src/lib/source-text-sanitizer.ts)) — six sequential regex `.replace()` calls that blank a fixed set of English injection idioms.
 - **`fenceSourceEvidence`** ([`source-text-sanitizer.ts:498`](../src/lib/source-text-sanitizer.ts)) — wraps text in `<<<SOURCE_EXCERPT>>> … <<<END_SOURCE_EXCERPT>>>` sentinels; `escapeEvidenceFenceSentinels` ([`:491`](../src/lib/source-text-sanitizer.ts)) defuses forged sentinels _inside_ the fenced text.

@@ -78,6 +78,7 @@
     "tests/calendar-*",
     "tests/challenger-m4-2-empirical-stress.test.ts",
     "tests/cme-*",
+    "tests/epa-magic-link.test.ts",
     "tests/example-data-roster.test.ts",
     "tests/favourite-set-name-sheet.dom.test.tsx",
     "tests/favourite-set-name.test.ts",

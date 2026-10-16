@@ -1,5 +1,6 @@
 import type { RawPublishedOriginalRowObserver } from "@/lib/rag/rag-source-block";
 import { rankClinicalResults } from "@/lib/clinical-search";
+import { env } from "@/lib/env";
 import { governedPublicRetrievalAccessScope } from "@/lib/owner-scope";
 import { embedTextWithTelemetry } from "@/lib/openai";
 import { searchGovernedCorpora } from "@/lib/rag/rag-candidate-sources";
@@ -119,7 +120,11 @@ export async function routeGovernedSearch(input: {
     embedQuery: async (embeddingQuery, signal) => {
       const embeddingStartedAt = Date.now();
       try {
-        const result = await embedTextWithTelemetry(embeddingQuery, { signal });
+        const result = await embedTextWithTelemetry(embeddingQuery, {
+          signal,
+          timeoutMs: env.OPENAI_INTERACTIVE_EMBEDDING_TIMEOUT_MS,
+          maxRetries: 0,
+        });
         telemetry.embedding_cache_hit = result.cacheHit;
         return result.embedding;
       } finally {

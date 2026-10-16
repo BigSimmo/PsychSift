@@ -15,6 +15,11 @@ export const ROSTER_ERRORS: Record<string, { status: number; message: string }> 
   roster_conflict: { status: 409, message: "The roster changed while you were looking. Refresh and try again." },
   roster_request_exists: { status: 409, message: "There's already a request for this shift." },
   roster_swap_not_eligible: { status: 409, message: "That no longer fits the team roster or grades." },
+  roster_swap_rule_warning: {
+    status: 409,
+    message:
+      "Approving this swap introduces roster rule warnings. Review and acknowledge the warnings before approving.",
+  },
   roster_open_shift_taken: { status: 409, message: "Someone else took this shift first." },
 };
 
@@ -22,6 +27,12 @@ export const ROSTER_ERRORS: Record<string, { status: number; message: string }> 
 const INVALID_INPUT_SQLSTATES = new Set(["22P02", "22007", "22008", "23503", "23514"]);
 
 export type RosterErrorCode = keyof typeof ROSTER_ERRORS | "roster_duplicate" | "roster_unavailable";
+
+export function rosterError(code: keyof typeof ROSTER_ERRORS): PublicApiError {
+  const known = ROSTER_ERRORS[code];
+  if (!known) return rosterUnavailable();
+  return new PublicApiError(known.message, known.status, { code });
+}
 
 export function rosterInvalidRequest(message = ROSTER_ERRORS.roster_invalid_request.message): PublicApiError {
   return new PublicApiError(message, 400, { code: "roster_invalid_request" });

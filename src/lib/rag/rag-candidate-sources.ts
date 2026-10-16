@@ -1291,30 +1291,48 @@ export async function loadChunksForMemoryCards(
   supabase: ReturnType<typeof createAdminClient>,
   cards: DocumentMemoryCard[],
   accessScope: RetrievalAccessScope,
+  cache?: ChunkLoadCache,
 ) {
   const documentIds = Array.from(new Set(cards.map((card) => card.document_id))).slice(0, 80);
   if (documentIds.length === 0) return [] as SearchResult[];
-  let documentQuery = supabase
-    .from("documents")
-    .select("id,title,file_name,metadata,owner_id,status")
-    .in("id", documentIds)
-    .eq("status", "indexed");
-  if (accessScope.ownerId && accessScope.includePublic) {
-    documentQuery = documentQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
-  } else if (accessScope.ownerId) {
-    documentQuery = documentQuery.eq("owner_id", accessScope.ownerId);
-  } else {
-    documentQuery = documentQuery.is("owner_id", null);
-  }
-  const chunkColumns =
-    "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id";
-  const fetchChunks = (ids: string[], documentIdsForChunks: string[]) =>
-    supabase
+  const chunkCache = cache ?? createChunkLoadCache();
+  const cacheScopeKey = retrievalAccessScopeKey(accessScope);
+
+  const fetchDocuments = async (missingDocIds: string[]) => {
+    let documentQuery = supabase
+      .from("documents")
+      .select("id,title,file_name,metadata,owner_id,status")
+      .in("id", missingDocIds)
+      .eq("status", "indexed");
+    if (accessScope.ownerId && accessScope.includePublic) {
+      documentQuery = documentQuery.or(`owner_id.eq.${accessScope.ownerId},owner_id.is.null`);
+    } else if (accessScope.ownerId) {
+      documentQuery = documentQuery.eq("owner_id", accessScope.ownerId);
+    } else {
+      documentQuery = documentQuery.is("owner_id", null);
+    }
+    const { data, error } = await documentQuery;
+    return { data: data as HydratedDocumentRow[] | null, error };
+  };
+
+  const fetchChunks = async (ids: string[], documentIdsForChunks: string[]) => {
+    const { data, error } = await supabase
       .from("document_chunks")
-      .select(chunkColumns)
+      .select(HYDRATED_CHUNK_COLUMNS)
       .in("id", ids)
       .in("document_id", documentIdsForChunks)
       .limit(ids.length);
+    if (!error && data) {
+      for (const row of data as HydratedChunkRow[]) {
+        chunkCache.chunkScopes.set(
+          `${cacheScopeKey}\0${row.id}`,
+          Promise.resolve({ id: row.id, document_id: row.document_id }),
+        );
+      }
+    }
+    return { data: data as HydratedChunkRow[] | null, error };
+  };
+
   // The chunk read only needs the document gate to filter its rows, not to build its query, so when
   // the candidate set is small it runs alongside the document read instead of after it (one fewer
   // cross-region round trip). The rows kept below are exactly the ones the serial read returned.
@@ -1324,11 +1342,24 @@ export async function loadChunksForMemoryCards(
     ),
   );
   const prefetchChunks = candidateChunkIds.length > 0 && candidateChunkIds.length <= 80;
-  const [{ data: documents, error: documentsError }, prefetched] = await Promise.all([
-    documentQuery,
-    prefetchChunks ? fetchChunks(candidateChunkIds, documentIds) : Promise.resolve(null),
+  const [documentsResults, prefetchedChunks] = await Promise.all([
+    loadRowsWithCache<HydratedDocumentRow>({
+      cache: chunkCache.documents,
+      ids: documentIds,
+      scopeKey: cacheScopeKey,
+      fetchRows: fetchDocuments,
+    }),
+    prefetchChunks
+      ? loadRowsWithCache<HydratedChunkRow>({
+          cache: chunkCache.chunks,
+          ids: candidateChunkIds,
+          scopeKey: cacheScopeKey,
+          fetchRows: (missingChunkIds) => fetchChunks(missingChunkIds, documentIds),
+        })
+      : Promise.resolve(null),
   ]);
-  if (documentsError || !documents?.length) return [] as SearchResult[];
+  const documents = documentsResults.filter((doc): doc is HydratedDocumentRow => doc !== null);
+  if (!documents.length) return [] as SearchResult[];
 
   const documentById = new Map(documents.map((document) => [document.id, document]));
   const allowedDocumentIds = new Set(documentById.keys());
@@ -1339,12 +1370,19 @@ export async function loadChunksForMemoryCards(
   ).slice(0, 80);
   if (chunkIds.length === 0) return [] as SearchResult[];
   const chunkIdSet = new Set(chunkIds);
-  const { data: fetchedChunks, error: chunksError } =
-    prefetched ?? (await fetchChunks(chunkIds, [...allowedDocumentIds]));
-  const chunks = fetchedChunks?.filter(
-    (chunk) => chunkIdSet.has(chunk.id) && allowedDocumentIds.has(chunk.document_id),
+  const fetchedChunks =
+    prefetchedChunks ??
+    (await loadRowsWithCache<HydratedChunkRow>({
+      cache: chunkCache.chunks,
+      ids: chunkIds,
+      scopeKey: cacheScopeKey,
+      fetchRows: (missingChunkIds) => fetchChunks(missingChunkIds, [...allowedDocumentIds]),
+    }));
+  const chunks = fetchedChunks.filter(
+    (chunk): chunk is HydratedChunkRow =>
+      chunk !== null && chunkIdSet.has(chunk.id) && allowedDocumentIds.has(chunk.document_id),
   );
-  if (chunksError || !chunks?.length) return [] as SearchResult[];
+  if (!chunks.length) return [] as SearchResult[];
   const bestCardByChunk = new Map<string, DocumentMemoryCard>();
   for (const card of cards) {
     for (const chunkId of card.source_chunk_ids ?? []) {
@@ -1357,7 +1395,7 @@ export async function loadChunksForMemoryCards(
     .map((chunk) => {
       const document = documentById.get(chunk.document_id);
       if (!document) return null;
-      const committedGeneration = committedIndexGeneration(document.metadata);
+      const committedGeneration = committedIndexGeneration(document.metadata) ?? document.index_generation_id ?? null;
       if (chunk.index_generation_id && chunk.index_generation_id !== committedGeneration) return null;
       const card = bestCardByChunk.get(chunk.id);
       // Not a cosine: fabricated from memory-card confidence (RC9 — tagged below).
@@ -1393,6 +1431,8 @@ type ChunkScopeRow = { id: string; document_id: string };
 const HYDRATED_CHUNK_COLUMNS =
   "id,document_id,page_number,chunk_index,section_heading,section_path,heading_level,parent_heading,anchor_id,content,retrieval_synopsis,image_ids,index_generation_id";
 
+const HYDRATED_CHUNK_WITH_DOCUMENT_COLUMNS = `${HYDRATED_CHUNK_COLUMNS},documents!inner(id,title,file_name,metadata,owner_id,status,index_generation_id)`;
+
 type HydratedDocumentRow = {
   id: string;
   title: string;
@@ -1400,6 +1440,7 @@ type HydratedDocumentRow = {
   metadata: unknown;
   owner_id: string | null;
   status: string;
+  index_generation_id?: string | null;
 };
 
 type HydratedChunkRow = {
@@ -1417,6 +1458,20 @@ type HydratedChunkRow = {
   image_ids: string[] | null;
   index_generation_id: string | null;
 };
+
+function matchesDocumentAccessScope(
+  document: Pick<HydratedDocumentRow, "owner_id" | "status">,
+  accessScope: RetrievalAccessScope,
+) {
+  if (document.status !== "indexed") return false;
+  if (accessScope.ownerId && accessScope.includePublic) {
+    return document.owner_id === accessScope.ownerId || document.owner_id === null;
+  }
+  if (accessScope.ownerId) {
+    return document.owner_id === accessScope.ownerId;
+  }
+  return document.owner_id === null;
+}
 
 export interface ChunkLoadCache {
   chunkScopes: Map<string, Promise<ChunkScopeRow | null>>;
@@ -1493,9 +1548,9 @@ export async function loadChunksForSignalMatches(args: {
   const accessScope = retrievalAccessScopeForArgs(args);
   const cacheScopeKey = retrievalAccessScopeKey(accessScope);
 
-  // The scope read fetches the full chunk rows, not just id + document_id, so the chunk read further
-  // down can use them once the document gate has passed instead of paying a third serial round trip.
-  // Rows reach the result only after that gate, exactly as before.
+  // Single joined query on document_chunks + documents!inner(...) populates chunkScopes, documents,
+  // and chunks in one round trip. If a unit-test double omits the embedded `documents` relation,
+  // `cache.documents` transparently falls back to querying `documents`.
   const prefetchedChunkRows = new Map<string, HydratedChunkRow>();
   const chunkScopesResults = await loadRowsWithCache<ChunkScopeRow>({
     cache: cache.chunkScopes,
@@ -1504,10 +1559,22 @@ export async function loadChunksForSignalMatches(args: {
     fetchRows: async (missingChunkIds) => {
       const { data, error } = await args.supabase
         .from("document_chunks")
-        .select(HYDRATED_CHUNK_COLUMNS)
+        .select(HYDRATED_CHUNK_WITH_DOCUMENT_COLUMNS)
         .in("id", missingChunkIds)
         .limit(missingChunkIds.length);
-      if (!error) for (const row of (data ?? []) as HydratedChunkRow[]) prefetchedChunkRows.set(row.id, row);
+      if (!error) {
+        for (const rawRow of (data ?? []) as Array<
+          HydratedChunkRow & { documents?: HydratedDocumentRow | HydratedDocumentRow[] | null }
+        >) {
+          prefetchedChunkRows.set(rawRow.id, rawRow);
+          if ("documents" in rawRow && rawRow.documents !== undefined) {
+            const joinedDoc = Array.isArray(rawRow.documents) ? (rawRow.documents[0] ?? null) : rawRow.documents;
+            const validDoc = joinedDoc && matchesDocumentAccessScope(joinedDoc, accessScope) ? joinedDoc : null;
+            cache.documents.set(`${cacheScopeKey}\0${rawRow.document_id}`, Promise.resolve(validDoc));
+            cache.chunks.set(`${cacheScopeKey}\0${rawRow.id}`, Promise.resolve(validDoc ? rawRow : null));
+          }
+        }
+      }
       return { data: data as ChunkScopeRow[] | null, error };
     },
   });
@@ -1574,7 +1641,7 @@ export async function loadChunksForSignalMatches(args: {
       const document = documentById.get(chunk.document_id);
       const match = bestMatchByChunk.get(chunk.id);
       if (!document || !match) return null;
-      const committedGeneration = committedIndexGeneration(document.metadata);
+      const committedGeneration = committedIndexGeneration(document.metadata) ?? document.index_generation_id ?? null;
       if (chunk.index_generation_id && chunk.index_generation_id !== committedGeneration) return null;
       return {
         id: chunk.id,
@@ -1855,6 +1922,7 @@ export async function loadMemoryBoostArtifacts(args: {
   documentIds?: string[];
   matchCount: number;
   cardCache?: MemoryCardCache;
+  chunkLoadCache?: ChunkLoadCache;
 }): Promise<MemoryBoostArtifacts> {
   const effectiveMatchCount = Math.max(args.matchCount, 48);
   const documentScope = args.documentIds?.length ? [...args.documentIds].sort().join(",") : "all-documents";
@@ -1880,7 +1948,7 @@ export async function loadMemoryBoostArtifacts(args: {
   }
   const cards = await cardsPromise;
   const memoryChunkResults = cards.length
-    ? await loadChunksForMemoryCards(args.supabase, cards, retrievalAccessScopeForArgs(args))
+    ? await loadChunksForMemoryCards(args.supabase, cards, retrievalAccessScopeForArgs(args), args.chunkLoadCache)
     : [];
   return { cards, memoryChunkResults };
 }
@@ -1911,6 +1979,7 @@ export async function withMemoryBoostedCandidates(args: {
   documentIds?: string[];
   matchCount: number;
   cardCache?: MemoryCardCache;
+  chunkLoadCache?: ChunkLoadCache;
 }) {
   const artifacts = await loadMemoryBoostArtifacts(args);
   return applyMemoryBoostArtifacts(args.query, args.candidates, artifacts);

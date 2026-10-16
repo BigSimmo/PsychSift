@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { createElement as h } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ClinicalMathPanel } from "@/components/calculators/clinical-math-panel";
 import { PatientProfileProvider } from "@/components/clinical-dashboard/patient-profile-context";
 import { PatientProfilePanel } from "@/components/clinical-dashboard/patient-profile-panel";
 import { TextField } from "@/components/ui/text-field";
@@ -106,6 +107,30 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       expect(minWeight.warnings).toContain(
         "Low body weight (<35 kg): Cockcroft-Gault may overestimate creatinine clearance in cachexia or low muscle mass.",
       );
+    });
+
+    it("rejects height outside 120–230 cm when heightCm is provided", () => {
+      const tooShort = calculateCockcroftGault({
+        age: 45,
+        weightKg: 70,
+        heightCm: 119,
+        sex: "female",
+        serumCreatinine: 80,
+        creatinineUnit: "umol/L",
+      });
+      expect(tooShort.isValid).toBe(false);
+      expect(tooShort.errors).toContain("Height must be within adult physiological range (120–230 cm)");
+
+      const tooTall = calculateCockcroftGault({
+        age: 45,
+        weightKg: 70,
+        heightCm: 231,
+        sex: "male",
+        serumCreatinine: 80,
+        creatinineUnit: "umol/L",
+      });
+      expect(tooTall.isValid).toBe(false);
+      expect(tooTall.errors).toContain("Height must be within adult physiological range (120–230 cm)");
     });
 
     it("enforces unit-aware serum creatinine bounds (15–3000 umol/L and 0.17–34.0 mg/dL) in Cockcroft-Gault", () => {
@@ -322,7 +347,7 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
     });
   });
 
-  describe("TextField wheel-blur and PatientProfilePanel creatinine step (P1-6)", () => {
+  describe("TextField wheel-blur, PatientProfilePanel, and ClinicalMathPanel bedside UI (P1-6)", () => {
     beforeEach(() => {
       window.sessionStorage.clear();
     });
@@ -363,6 +388,20 @@ describe("Clinical Math Physiological Bounds & Input Ergonomics", () => {
       await user.click(screen.getByRole("radio", { name: "mg/dL" }));
       const scrMgDlInput = screen.getByTestId("patient-scr");
       expect(scrMgDlInput).toHaveAttribute("step", "0.01");
+    });
+
+    it("renders ClinicalMathPanel bedside tabs for Renal, QTc, and Lithium calculators", async () => {
+      const user = userEvent.setup();
+      render(h(ClinicalMathPanel, { defaultOpen: true }));
+
+      expect(screen.getByTestId("clinical-math-renal-results")).toBeInTheDocument();
+
+      await user.click(screen.getByTestId("clinical-math-tab-qtc"));
+      expect(screen.getByTestId("clinical-math-qtc-results")).toBeInTheDocument();
+
+      await user.click(screen.getByTestId("clinical-math-tab-lithium"));
+      expect(screen.getByTestId("clinical-math-lithium-results")).toBeInTheDocument();
+      expect(screen.getByTestId("clinical-math-lithium-suggested-dose")).toHaveTextContent("875 mg/day");
     });
   });
 });

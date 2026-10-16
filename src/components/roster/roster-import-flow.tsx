@@ -20,7 +20,8 @@ import {
 } from "@/lib/roster/import/grid";
 import { RosterReadError, tableToGrid } from "@/lib/roster/import/table";
 import { type ShiftKind } from "@/lib/roster/shift-kind";
-import { diffRoster, rosterWindow } from "@/lib/roster/shifts/diff";
+import { detectOwnConflicts } from "@/lib/roster/shifts/conflicts";
+import { diffRoster, rosterWindow, shiftIsInWindow } from "@/lib/roster/shifts/diff";
 import {
   ON_CALL_SHIFT_FILE_NAME_MAX,
   type OnCallShiftChange,
@@ -231,7 +232,16 @@ export function RosterImportFlow({
     if (!window) return null;
     const stored = shifts.shifts.filter((shift) => shift.source === "import" && (shift.workplace ?? "") === place);
     const diff = diffRoster(stored, read.shifts, window);
-    return { ...read, window, diff, unchanged: Math.max(0, read.shifts.length - diff.added - diff.changed) };
+    const retainedOther = shifts.shifts.filter(
+      (shift) => !(shift.source === "import" && (shift.workplace ?? "") === place && shiftIsInWindow(shift, window)),
+    );
+    const readShiftKeys = new Set(read.shifts.map((s) => `${s.startsAt}|${s.endsAt}|${s.title}|${s.location ?? ""}`));
+    const conflicts = detectOwnConflicts([...retainedOther, ...read.shifts]).filter(
+      (c) =>
+        readShiftKeys.has(`${c.first.startsAt}|${c.first.endsAt}|${c.first.title}|${c.first.location ?? ""}`) ||
+        readShiftKeys.has(`${c.second.startsAt}|${c.second.endsAt}|${c.second.title}|${c.second.location ?? ""}`),
+    );
+    return { ...read, window, diff, conflicts, unchanged: Math.max(0, read.shifts.length - diff.added - diff.changed) };
   }, [loaded, rowIndex, codes, shifts.shifts, place]);
 
   function goToRows(next: Loaded) {
@@ -422,6 +432,14 @@ export function RosterImportFlow({
             <span className="text-[color:var(--text)]">{loaded.fileName}</span> ·{" "}
             {plural(review.shifts.length, "shift")} found
           </p>
+
+          {review.conflicts.length > 0 ? (
+            <ModeNotice tone="warning" testId="roster-own-shift-conflict-warning">
+              {review.conflicts.length === 1
+                ? `Double-booked shift: ${review.conflicts[0]!.first.title} overlaps ${review.conflicts[0]!.second.title}.`
+                : `${review.conflicts.length} overlapping shifts found in your roster.`}
+            </ModeNotice>
+          ) : null}
 
           {review.unknown.length ? (
             <ModeGroupedList eyebrow="Unknown codes" testId="roster-import-unknown">

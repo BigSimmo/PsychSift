@@ -23,6 +23,10 @@ export type CockcroftGaultResult = {
   isValid: boolean;
   crClMlMin: number | null;
   stage: RenalStage | null;
+  ibwKg?: number | null;
+  effectiveWeightKg?: number | null;
+  weightBasis?: "actual" | "ideal";
+  lithiumClinicalNote?: string;
   errors: string[];
   warnings: string[];
 };
@@ -78,6 +82,8 @@ export type LithiumLevelEvaluation = {
   status: LithiumLevelStatus;
   isWithinTarget: boolean;
   severity: LithiumToxicitySeverity;
+  toxicitySeverity?: LithiumToxicitySeverity;
+  requiresUrgentAction?: boolean;
   targetRange: { min: number; max: number };
   clinicalGuidance: string[];
 };
@@ -94,6 +100,7 @@ export type LithiumDoseAdjustmentInput = {
    * slow-release Quilonum SR is 450 mg / 225 mg half-tablet).
    */
   doseIncrementMg?: LithiumDoseIncrementMg;
+  tabletIncrementMg?: 50 | 125 | 225 | 250 | 450;
 };
 
 export type ProportionalLithiumDoseInput = LithiumDoseAdjustmentInput;
@@ -101,6 +108,8 @@ export type ProportionalLithiumDoseInput = LithiumDoseAdjustmentInput;
 export type LithiumDoseAdjustmentResult = {
   isValid: boolean;
   suggestedDoseMg: number | null;
+  rawDoseMg?: number | null;
+  warnings?: string[];
   errors: string[];
   note: string;
 };
