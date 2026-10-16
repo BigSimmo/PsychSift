@@ -1330,6 +1330,7 @@ export async function validateCodexCloudRuntime(env = process.env) {
   return errors;
 }
 
+/** @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env] */
 function readableRuntimeProfile(env = process.env) {
   if (!env.HOME) return null;
   const profilePath = path.join(env.HOME, ".clinical-kb-codex-cloud.sh");
@@ -1340,6 +1341,7 @@ function readableRuntimeProfile(env = process.env) {
   }
 }
 
+/** @param {NodeJS.ProcessEnv | Record<string, string | undefined>} [env] */
 export function shouldAutoSourceCloudProfile(env = process.env) {
   return (
     env.CODEX_CLOUD === "1" &&
