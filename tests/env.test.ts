@@ -20,3 +20,24 @@ describe("developer-area access-key environment parsing", () => {
     }
   });
 });
+
+describe("deep-probe secret environment parsing", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it("treats a blank secret as unset, as the offline test wrapper leaves it", async () => {
+    vi.stubEnv("HEALTH_DEEP_PROBE_SECRET", "");
+
+    await expect(import("@/lib/env")).resolves.toMatchObject({
+      env: { HEALTH_DEEP_PROBE_SECRET: undefined },
+    });
+  });
+
+  it("still rejects a non-blank secret shorter than 16 characters", async () => {
+    vi.stubEnv("HEALTH_DEEP_PROBE_SECRET", "too-short");
+
+    await expect(import("@/lib/env")).rejects.toThrow();
+  });
+});

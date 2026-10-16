@@ -1087,7 +1087,7 @@ function validateMaintenanceAndCommandShims(sources, errors) {
   ]) {
     requireMatch(errors, commandShims, pattern, message);
   }
-  if (!commandShims.includes('exec "$node_bin/$command_name" "\\$@"')) {
+  if (!commandShims.includes('exec "$command_path" "\\$@"')) {
     errors.push("Cloud command shims must execute absolute Node commands.");
   }
 }

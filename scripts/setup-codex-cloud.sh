@@ -274,6 +274,8 @@ for shell_profile in "$HOME/.bashrc" "$HOME/.profile" "$HOME/.bash_profile"; do
   profile_existing="$(<"$shell_profile")"
   profile_existing="$(printf '%s\n' "$profile_existing" | grep -Fvx '# PsychSift Codex Cloud runtime' || true)"
   profile_existing="$(printf '%s\n' "$profile_existing" | grep -Fvx "$profile_source" || true)"
+  # Drop the separator a previous run wrote after the block so reruns stay idempotent.
+  profile_existing="$(printf '%s\n' "$profile_existing" | sed '/./,$!d')"
   profile_candidate="$(mktemp "${shell_profile}.XXXXXX")"
   if [[ -n "$profile_existing" ]]; then
     printf '# PsychSift Codex Cloud runtime\n%s\n\n%s\n' "$profile_source" "$profile_existing" > "$profile_candidate"

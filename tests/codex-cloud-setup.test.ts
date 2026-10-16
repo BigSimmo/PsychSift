@@ -690,7 +690,9 @@ describe("Codex Cloud environment contract", () => {
       new URL("../scripts/delete-codex-cloud-branch-with-pat.sh", import.meta.url),
       "utf8",
     );
-    expect(setup).toContain("if ! grep -Fq '.clinical-kb-codex-cloud.sh'");
+    expect(setup).toContain('profile_source=\'[ -f "$HOME/.clinical-kb-codex-cloud.sh" ]');
+    expect(setup).toContain('grep -Fvx "$profile_source"');
+    expect(setup).toContain("sed '/./,$!d'");
     expect(setup).toContain('if [[ "$actual_version" != "$expected_version" ]]');
     expect(setup).toContain('expected_node_range="$(sed');
     expect(setup).toContain('if ! node_version_supported "$actual_node_version"; then');
@@ -778,7 +780,12 @@ describe("Codex Cloud environment contract", () => {
     mkdirSync(nodeBin, { recursive: true });
     for (const command of ["node", "npm", "npx"]) {
       const executable = path.join(nodeBin, command);
-      writeFileSync(executable, '#!/usr/bin/env bash\nprintf "%s\\n" "$PATH"\n');
+      writeFileSync(
+        executable,
+        command === "node"
+          ? `#!/usr/bin/env bash\nif [[ "\${1:-}" = "-p" ]]; then printf "%s\\n" "${nodeVersion.slice(1)}"; else printf "%s\\n" "$PATH"; fi\n`
+          : '#!/usr/bin/env bash\nprintf "%s\\n" "$PATH"\n',
+      );
       chmodSync(executable, 0o755);
     }
     writeFileSync(
