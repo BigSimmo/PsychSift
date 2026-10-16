@@ -7,13 +7,38 @@ import type {
   LithiumToxicitySeverity,
 } from "./types";
 
+const SEVERE_TOXICITY_GUIDANCE =
+  "CRITICAL: Serum lithium >= 2.0 mmol/L represents severe toxicity requiring immediate cessation, urgent hospital admission, and toxicology/nephrology review. Haemodialysis decisions depend on clinical neurotoxicity, renal function, and EXTRIP extracorporeal criteria (recommended for severe clinical signs regardless of level or > 4.0 mmol/L with impaired kidney function; suggested > 5.0 mmol/L or with significant confusion) rather than an automatic dialysis cutoff at 2.0 mmol/L.";
+
+const MODERATE_TOXICITY_GUIDANCE =
+  "TOXICITY ALERT: Serum lithium >= 1.2 mmol/L. Withhold lithium, assess for dehydration, tremor, ataxia, dysarthria, and nausea. Check renal function (eGFR) and electrolytes.";
+
 /**
  * Evaluates serum lithium 12-hour post-dose trough concentration against
  * Australian Therapeutic Guidelines (eTG) and RANZCP clinical monitoring standards.
  */
 export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEvaluation {
   const level = input.serumLevelMmolL;
-  if (!Number.isFinite(input.age) || input.age <= 0 || !Number.isFinite(level) || level < 0) {
+  const ageKnown = Number.isFinite(input.age) && input.age > 0;
+  // The toxicity thresholds do not depend on age, so a toxic level is flagged even before an age
+  // is entered. Only the target range, which does depend on age, is withheld.
+  if (!ageKnown && Number.isFinite(level) && level >= 1.2) {
+    const severe = level >= 2.0;
+    return {
+      status: "toxic",
+      isWithinTarget: false,
+      severity: severe ? "severe" : "moderate",
+      toxicitySeverity: severe ? "severe" : "moderate",
+      requiresUrgentAction: true,
+      targetRange: { min: 0, max: 0 },
+      targetRangeKnown: false,
+      clinicalGuidance: [
+        severe ? SEVERE_TOXICITY_GUIDANCE : MODERATE_TOXICITY_GUIDANCE,
+        "Enter patient age to see the target range.",
+      ],
+    };
+  }
+  if (!ageKnown || !Number.isFinite(level) || level < 0) {
     return {
       status: "invalid",
       isWithinTarget: false,
@@ -47,15 +72,11 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
   if (level >= 2.0) {
     status = "toxic";
     severity = "severe";
-    clinicalGuidance.push(
-      "CRITICAL: Serum lithium >= 2.0 mmol/L represents severe toxicity requiring immediate cessation, urgent hospital admission, and toxicology/nephrology review. Haemodialysis decisions depend on clinical neurotoxicity, renal function, and EXTRIP extracorporeal criteria (recommended for severe clinical signs regardless of level or > 4.0 mmol/L with impaired kidney function; suggested > 5.0 mmol/L or with significant confusion) rather than an automatic dialysis cutoff at 2.0 mmol/L.",
-    );
+    clinicalGuidance.push(SEVERE_TOXICITY_GUIDANCE);
   } else if (level >= 1.2) {
     status = "toxic";
     severity = "moderate";
-    clinicalGuidance.push(
-      "TOXICITY ALERT: Serum lithium >= 1.2 mmol/L. Withhold lithium, assess for dehydration, tremor, ataxia, dysarthria, and nausea. Check renal function (eGFR) and electrolytes.",
-    );
+    clinicalGuidance.push(MODERATE_TOXICITY_GUIDANCE);
   } else if (level > maxTarget) {
     status = "supratherapeutic";
     severity = "mild";
@@ -81,6 +102,7 @@ export function evaluateLithiumLevel(input: LithiumLevelInput): LithiumLevelEval
     toxicitySeverity: severity,
     requiresUrgentAction: status === "toxic",
     targetRange: { min: minTarget, max: maxTarget },
+    targetRangeKnown: true,
     clinicalGuidance,
   };
 }
