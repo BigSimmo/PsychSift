@@ -158,12 +158,13 @@ export function TeachingQrCheckinSheet({
     let cancelled = false;
     // @ts-expect-error - native BarcodeDetector
     const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+    const generation = scanGenerationRef.current;
     const tick = async () => {
       if (cancelled || !videoRef.current) return;
       try {
         const codes = await detector.detect(videoRef.current);
         // The scanner may have been stopped or closed while detect() was pending.
-        if (cancelled) return;
+        if (cancelled || generation !== scanGenerationRef.current) return;
         if (codes?.length) {
           const raw = String(codes[0]?.rawValue ?? "").trim();
           if (raw.includes("/teaching/c/")) {
