@@ -39,6 +39,34 @@ describe("evidence relevance", () => {
     expect(terms).not.toContain("reviewed");
   });
 
+  it("treats requirement verbs as question wording, not evidence terms", () => {
+    expect(queryCoreTerms("What assessment documentation is required?")).toEqual(["assessment", "documentation"]);
+    expect(queryCoreTerms("What monitoring does lithium require?")).not.toContain("require");
+    expect(queryCoreTerms("What monitoring is needed for valproate?")).not.toContain("needed");
+    expect(queryCoreTerms("What does the infant need?")).not.toContain("need");
+    expect(queryCoreTerms("What documentation requirements apply?")).toContain("requirement");
+  });
+
+  it("gives the on-topic guideline the same match level as a passage that merely says required", () => {
+    const query = "What assessment documentation is required?";
+    const [onTopic, offTopic] = annotateSearchResults(query, [
+      result({
+        id: "assessment-documentation",
+        title: "Assessment Documentation",
+        content:
+          "Any outstanding assessments must be documented, and assessment documentation is completed on admission.",
+      }),
+      result({
+        id: "admissions",
+        title: "Admissions Policy",
+        content: "Patients accepted for admission must have accompanying assessment documentation where required.",
+      }),
+    ]);
+
+    expect(onTopic?.relevance?.verdict).toBe("direct");
+    expect(offTopic?.relevance?.verdict).toBe("direct");
+  });
+
   it("classifies weak lithium-style neighboring sources as nearby, not direct", () => {
     const relevance = buildEvidenceRelevance("What toxicity safety-net symptoms should be reviewed for lithium?", [
       result({
