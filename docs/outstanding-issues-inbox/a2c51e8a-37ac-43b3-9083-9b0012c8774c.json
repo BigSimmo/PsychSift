@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "a2c51e8a-37ac-43b3-9083-9b0012c8774c",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#315621",
+    "outcome": "Validated each inbox file via inboxRecordSchema.safeParse inside a per-file try/catch so malformed files are skipped without dropping valid sibling requests (src/lib/developer-area/ledger-snapshot.ts, tests/developer-ledger-snapshot.test.ts).",
+    "targetUlid": "01M4T67N2F3156217SG5N7Z6B7"
+  }
+}

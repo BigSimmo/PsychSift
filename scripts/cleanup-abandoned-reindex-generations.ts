@@ -2,6 +2,8 @@ import { loadEnvConfig } from "@next/env";
 import {
   abandonedReindexGenerationAlertExitCode,
   abandonedReindexGenerationTotal,
+  buildAbandonedGenerationStorageCleanupJobs,
+  clampAbandonedCleanupLimit,
   hasAbandonedReindexGenerations,
   type AbandonedReindexGenerationCounts,
 } from "@/lib/reindex-pipeline";
@@ -51,7 +53,7 @@ async function main() {
   requireServerEnv();
 
   const args = parseArgs(process.argv.slice(2));
-  const limit = Number.isFinite(args.limit) ? args.limit : 100;
+  const limit = clampAbandonedCleanupLimit(args.limit);
   const supabase = createAdminClient();
 
   console.log("=== Abandoned Reindex Generation Cleanup ===");
@@ -78,13 +80,54 @@ async function main() {
   console.log("Rows by table:");
   console.log(formatCounts(counts));
 
-  if (!hasAbandonedReindexGenerations(counts)) {
-    console.log("\nNo abandoned staged generation rows found.");
+  // Determine orphaned storage objects from candidate documents
+  const targetDocIds = (result.document_ids ?? []).filter((id): id is string => typeof id === "string" && Boolean(id));
+  let cleanupJobs: ReturnType<typeof buildAbandonedGenerationStorageCleanupJobs> = [];
+  let totalOrphanedPaths = 0;
+
+  if (targetDocIds.length > 0) {
+    const { data: candidateDocs, error: docsError } = await supabase
+      .from("documents")
+      .select("id,owner_id,metadata")
+      .in("id", targetDocIds);
+    if (docsError) throw new Error(`Failed to load candidate documents: ${docsError.message}`);
+
+    const { data: candidateImages, error: imagesError } = await supabase
+      .from("document_images")
+      .select("id,document_id,storage_path,metadata,created_at")
+      .in("document_id", targetDocIds);
+    if (imagesError) throw new Error(`Failed to load candidate images: ${imagesError.message}`);
+
+    const imageRowsByDoc = new Map<string, Array<NonNullable<typeof candidateImages>[number]>>();
+    for (const img of candidateImages ?? []) {
+      const list = imageRowsByDoc.get(img.document_id);
+      if (list) list.push(img);
+      else imageRowsByDoc.set(img.document_id, [img]);
+    }
+
+    cleanupJobs = (candidateDocs ?? []).flatMap((doc) =>
+      buildAbandonedGenerationStorageCleanupJobs({
+        documentId: doc.id,
+        documentMetadata: doc.metadata,
+        ownerId: doc.owner_id,
+        imageRows: imageRowsByDoc.get(doc.id) ?? [],
+      }),
+    );
+    totalOrphanedPaths = cleanupJobs.reduce((sum, job) => sum + job.image_paths.length, 0);
+  }
+
+  console.log(`Orphaned storage objects: ${totalOrphanedPaths}`);
+
+  if (!hasAbandonedReindexGenerations(counts) && totalOrphanedPaths === 0) {
+    console.log("\nNo abandoned staged generation rows or orphaned storage objects found.");
     return;
   }
 
   if (!args.apply) {
-    console.log("\nDry run only. Re-run with --apply to delete these abandoned staged rows.");
+    console.log("\nDry run only. Re-run with --apply to enqueue storage cleanup and delete abandoned staged rows.");
+    if (totalOrphanedPaths > 0) {
+      console.log(`  Storage cleanup jobs that would be enqueued on apply: ${cleanupJobs.length}`);
+    }
     const alertExitCode = abandonedReindexGenerationAlertExitCode({
       counts,
       alertOnAbandoned: args.alertOnAbandoned,
@@ -101,11 +144,20 @@ async function main() {
   }
 
   if (!args.yes) {
-    const shouldApply = await confirm("Delete the abandoned staged generation rows listed above?");
+    const shouldApply = await confirm(
+      `Delete abandoned staged generation rows and enqueue storage cleanup for ${totalOrphanedPaths} orphaned object(s)?`,
+    );
     if (!shouldApply) {
       console.log("\nNo changes applied.");
       return;
     }
+  }
+
+  // Enqueue storage cleanup jobs BEFORE deleting database rows so image storage_paths are preserved
+  if (cleanupJobs.length > 0) {
+    const { error: insertError } = await supabase.from("storage_cleanup_jobs").insert(cleanupJobs);
+    if (insertError) throw new Error(`Failed to enqueue storage cleanup jobs: ${insertError.message}`);
+    console.log(`Enqueued ${cleanupJobs.length} storage cleanup job(s) for ${totalOrphanedPaths} orphaned object(s).`);
   }
 
   const applied = await supabase.rpc("cleanup_abandoned_document_index_generations", {

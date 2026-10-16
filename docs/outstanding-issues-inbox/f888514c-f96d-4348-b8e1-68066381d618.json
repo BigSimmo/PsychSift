@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "f888514c-f96d-4348-b8e1-68066381d618",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#2S5NFB",
+    "outcome": "Added scripts/lib/is-entrypoint.mjs to live-domain-monitor.yml sparse-checkout, converted both live monitor scripts to isDirectEntrypoint, and emptied ALLOWED_RAW (tests/script-entrypoint-guard.test.ts).",
+    "targetUlid": "01M4TNNWC62S5NFBQ3WQJ8Q26B"
+  }
+}

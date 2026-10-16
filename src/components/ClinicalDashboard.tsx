@@ -20,7 +20,7 @@ import { useDashboardDocumentActions } from "@/components/clinical-dashboard/use
 import { useIndexingAdminDesktopLayout } from "@/components/clinical-dashboard/use-indexing-admin-desktop-layout";
 import { extractSafetyFindings } from "@/lib/clinical-safety";
 import { resolveScrollBehavior } from "@/lib/scroll-behavior";
-import { ownsVerticalScroll, scrollSurface } from "@/components/clinical-dashboard/scroll-surface";
+import { scrollSurface } from "@/components/clinical-dashboard/scroll-surface";
 import { incrementalEvidencePreviewRenderingEnabled, isLocalNoAuthMode, resolveClientDemoMode } from "@/lib/client-env";
 import { isAdministratorUser } from "@/lib/authorization";
 import { readLocalProjectIdentity, unsafeLocalProjectMessage } from "@/lib/local-project-identity";
@@ -62,7 +62,7 @@ import {
   type IngestionQualityReviewItem,
 } from "@/components/clinical-dashboard/document-manager-contracts";
 import { GuideTrigger } from "@/components/clinical-dashboard/dashboard-shell";
-import { LazyGuideDialog, loadGuideDialog } from "@/components/clinical-dashboard/lazy-guide-dialog";
+import { loadGuideDialog } from "@/components/clinical-dashboard/lazy-guide-dialog";
 import { SystemNotice, DegradedNoticeFrame } from "@/components/clinical-dashboard/dashboard-notices";
 import { resolveModeHomeCanvasClass } from "@/components/clinical-dashboard/mode-home-canvas";
 import { sanitizeAnswerDisplayText } from "@/components/clinical-dashboard/display-text";
@@ -109,9 +109,18 @@ import {
   shorterPollDelay,
 } from "@/components/clinical-dashboard/clinical-dashboard-helpers";
 import { answerRecovery, errorCopy } from "@/lib/ui-copy";
-import { summarizeBulkReindexPayload } from "@/lib/bulk-reindex-results";
+import { useDashboardBulkActions } from "@/components/clinical-dashboard/dashboard-bulk-actions";
+import { useDashboardAnswerFeedback } from "@/components/clinical-dashboard/dashboard-answer-feedback";
+import { buildTagSearchScopeFilters } from "@/components/clinical-dashboard/dashboard-tag-search";
 import {
-  type DocumentDrawerMode,
+  useDashboardScrollSync,
+  useDashboardSectionNavigation,
+} from "@/components/clinical-dashboard/dashboard-scroll-sync";
+import { useDashboardRecentQueries } from "@/components/clinical-dashboard/dashboard-recent-queries";
+import { DashboardSidebarDialogs } from "@/components/clinical-dashboard/dashboard-sidebar-dialogs";
+import { useDashboardDrawerOpeners } from "@/components/clinical-dashboard/dashboard-drawer-openers";
+import { useDashboardClipboard } from "@/components/clinical-dashboard/dashboard-clipboard";
+import {
   type DocumentDrawerStatusFilter,
   type DocumentPagination,
 } from "@/components/clinical-dashboard/dashboard-contracts";
@@ -144,12 +153,7 @@ import {
   StagedAnswerResultSurface,
 } from "@/components/clinical-dashboard/clinical-dashboard-lazy";
 
-import {
-  clearLegacyRecentQueries,
-  loadRecentQueries,
-  recentQueriesChangeEvent,
-  saveRecentQueries,
-} from "@/lib/recent-query-storage";
+import { clearLegacyRecentQueries } from "@/lib/recent-query-storage";
 import { useAppPreferences } from "@/components/clinical-dashboard/use-app-preferences";
 import type { SearchFacets } from "@/components/clinical-dashboard/document-search-results";
 import { isWeakRelevance } from "@/components/clinical-dashboard/relevance";
@@ -247,7 +251,6 @@ import {
   maxVisiblePriorTurns,
   PriorAnswerTurnSurface,
 } from "@/components/clinical-dashboard/answer-thread-turn";
-import type { AnswerFeedbackType } from "@/lib/answer-feedback";
 // Loaded on the first Answer question rather than with the page (bundle budget, 2026-10-13).
 function loadClinicalQuestionPatientCheck() {
   return import("@/lib/clinical-question-patient-check");
@@ -454,8 +457,6 @@ function ClinicalDashboardContent({
   // drawer replaced that panel. The state and its resets stay until the panel itself
   // is removed (handover §8), so re-wiring a view mode does not have to be rebuilt.
   const [, setAnswerViewMode] = useState<AnswerViewMode>("high_yield");
-  const [bulkActionStatus, setBulkActionStatus] = useState<string | null>(null);
-  const [bulkActionBusy, setBulkActionBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [answerProgress, setAnswerProgress] = useState<string | null>(null);
   const [answerProgressEvents, setAnswerProgressEvents] = useState<TimedAnswerProgressUpdate[]>([]);
@@ -488,51 +489,13 @@ function ClinicalDashboardContent({
   useEffect(() => {
     queueMicrotask(() => setSelectedDocumentIds(scopedDocumentIds));
   }, [scopedDocumentIds]);
-  const [copiedAction, setCopiedAction] = useState<string | null>(null);
-  const [pendingFeedback, setPendingFeedback] = useState<AnswerFeedbackType | null>(null);
   const [actionNotice, setActionNotice] = useState<{ tone: "success" | "warning"; message: string } | null>(null);
   const [activeHash, setActiveHash] = useState("#search");
-  const navigateMobileSection = useCallback(
-    (href: string, options: { updateHistory?: boolean } = {}) => {
-      const shouldUpdateHistory = options.updateHistory ?? true;
-      const main = mainRef.current;
-      if (!main) return;
-
-      if (navSyncLockRef.current !== null) {
-        window.clearTimeout(navSyncLockRef.current);
-      }
-
-      if (href === "#search") {
-        setActiveHash(href);
-        scrollSurface(main, 0);
-        if (shouldUpdateHistory) window.history.replaceState(null, "", href);
-        navSyncLockRef.current = window.setTimeout(() => {
-          navSyncLockRef.current = null;
-        }, 350);
-        return;
-      }
-
-      const target = document.querySelector<HTMLElement>(href);
-      if (!target) return;
-      setActiveHash(href);
-      const targetTop = target.getBoundingClientRect().top;
-      const unclamped = ownsVerticalScroll(main)
-        ? main.scrollTop + targetTop - main.getBoundingClientRect().top - 8
-        : window.scrollY + targetTop - 8;
-      // Clamp like settings-dialog: short #quotes|#images|#sources sections can
-      // compute a top past the runway. scrollSurface also clamps; keep the
-      // local clamp so this hash path does not fight use-hide-on-scroll.
-      const scroller = ownsVerticalScroll(main) ? main : (document.scrollingElement ?? document.documentElement);
-      const maxOffset = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-      const top = Math.min(Math.max(0, unclamped), maxOffset);
-      scrollSurface(main, top);
-      if (shouldUpdateHistory) window.history.replaceState(null, "", href);
-      navSyncLockRef.current = window.setTimeout(() => {
-        navSyncLockRef.current = null;
-      }, 350);
-    },
-    [mainRef],
-  );
+  const { navigateMobileSection } = useDashboardSectionNavigation({
+    mainRef,
+    navSyncLockRef,
+    setActiveHash,
+  });
   const settingsState = useSettingsState();
   const documentsDrawerReturnFocusRef = useRef<HTMLElement | null>(null);
   // Same contract as the documents drawer above: UtilityDrawer's default return target is its own
@@ -542,7 +505,6 @@ function ClinicalDashboardContent({
   const indexingAdminUsesDesktopRegions = useIndexingAdminDesktopLayout();
   const [documentDrawerStatusFilter, setDocumentDrawerStatusFilter] = useState<DocumentDrawerStatusFilter>("indexed");
   const [indexingMonitorFilter, setIndexingMonitorFilter] = useState<IndexingMonitorFilter>("all");
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const searchCommandContextValue = useMemo(
     () => ({
       query: deferredQuery,
@@ -809,42 +771,10 @@ function ClinicalDashboardContent({
   // leak queries against a remote opt-out while local defaults still say on.
   const { canRecordRecentSearches } = useAppPreferences();
 
-  useEffect(() => {
-    if (!answerThreadOwnerId) {
-      queueMicrotask(() => setRecentQueries([]));
-      return;
-    }
-    let cancelled = false;
-    const reload = () => {
-      if (cancelled) return;
-      setRecentQueries(loadRecentQueries(answerThreadOwnerId));
-    };
-    queueMicrotask(reload);
-    window.addEventListener(recentQueriesChangeEvent, reload);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(recentQueriesChangeEvent, reload);
-    };
-  }, [answerThreadOwnerId]);
-
-  const rememberRecentQuery = useCallback(
-    (value: string) => {
-      const trimmedValue = value.trim();
-      if (!trimmedValue) return;
-      // "Save recent searches" off (or bootstrap still in flight) means nothing
-      // is recorded at all, so bail before touching state too.
-      if (!canRecordRecentSearches) return;
-      setRecentQueries((current) => {
-        const next = [
-          trimmedValue,
-          ...current.filter((item) => item.toLowerCase() !== trimmedValue.toLowerCase()),
-        ].slice(0, 5);
-        saveRecentQueries(answerThreadOwnerId, next);
-        return next;
-      });
-    },
-    [answerThreadOwnerId, canRecordRecentSearches],
-  );
+  const { recentQueries, rememberRecentQuery } = useDashboardRecentQueries({
+    answerThreadOwnerId,
+    canRecordRecentSearches,
+  });
 
   usePersistedAnswerThread({
     ownerId: answerThreadOwnerId,
@@ -1420,17 +1350,6 @@ function ClinicalDashboardContent({
     window.addEventListener("hashchange", updateHash);
     return () => window.removeEventListener("hashchange", updateHash);
   }, [navigateMobileSection]);
-
-  useEffect(() => {
-    return () => {
-      if (scrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollFrameRef.current);
-      }
-      if (navSyncLockRef.current !== null) {
-        window.clearTimeout(navSyncLockRef.current);
-      }
-    };
-  }, []);
 
   function searchNetworkFailure(label: string) {
     const offline = typeof navigator !== "undefined" && !navigator.onLine;
@@ -2260,64 +2179,14 @@ function ClinicalDashboardContent({
     });
   }
 
-  async function submitAnswerFeedback(feedbackType: AnswerFeedbackType) {
-    if (!answer || pendingFeedback) return;
-    if (clientDemoMode) {
-      setActionNotice({ tone: "warning", message: "Answer review is unavailable for synthetic demo answers." });
-      return;
-    }
-    if (!answer.interactionId || !answer.feedbackToken) {
-      setActionNotice({ tone: "warning", message: "This answer predates traceable feedback. Run the question again." });
-      return;
-    }
-
-    setPendingFeedback(feedbackType);
-    try {
-      const sourceChunkIds = Array.from(new Set(sources.map((source) => source.id).filter(Boolean)));
-      const citedChunkIds = Array.from(new Set(answer.citations.map((citation) => citation.chunk_id).filter(Boolean)));
-      const digest = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(answer.answer));
-      const answerHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-      const response = await fetch("/api/answer-feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authorizationHeader,
-        },
-        body: JSON.stringify({
-          interactionId: answer.interactionId,
-          feedbackToken: answer.feedbackToken,
-          feedbackCategory: feedbackType,
-          answerHash,
-          sourceIds: sourceChunkIds,
-          citedSourceIds: citedChunkIds,
-          route: answer.routingMode ?? null,
-          model: null,
-          providerRequestIds: [],
-        }),
-      });
-
-      if (response.status === 401) {
-        markSessionExpired();
-        setActionNotice({ tone: "warning", message: "The session could not be validated for feedback." });
-        return;
-      }
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(typeof payload.error === "string" ? payload.error : "Answer review could not be saved.");
-      }
-      setActionNotice({
-        tone: "success",
-        message: feedbackType === "verified" ? "Verified answer feedback saved." : "Answer issue feedback saved.",
-      });
-    } catch (feedbackError) {
-      setActionNotice({
-        tone: "warning",
-        message: feedbackError instanceof Error ? feedbackError.message : "Answer review could not be saved.",
-      });
-    } finally {
-      setPendingFeedback(null);
-    }
-  }
+  const { pendingFeedback, submitAnswerFeedback } = useDashboardAnswerFeedback({
+    answer,
+    sources,
+    clientDemoMode,
+    authorizationHeader,
+    markSessionExpired,
+    setActionNotice,
+  });
 
   function toggleDocumentScope(documentId: string) {
     setSelectedDocumentIds((current) =>
@@ -2432,59 +2301,27 @@ function ClinicalDashboardContent({
   }
 
   function handleTagSearch(tag: SmartDocumentTag | SmartDocumentTagFacet) {
-    const searchText = tag.searchText || tag.label;
-    const nextFilters: SearchScopeFilters = { ...scopeFilters };
-    if (tag.group === "Site") nextFilters.sites = [searchText];
-    if (tag.group === "Medication") nextFilters.medications = [tag.searchText || tag.label];
-    if (tag.group === "Document type") nextFilters.documentTypes = [tag.searchText || tag.label];
-    if (tag.group === "Topic") nextFilters.topics = [tag.searchText || tag.label];
-    if (tag.group === "Service") nextFilters.services = [searchText];
-    if (tag.group === "Setting") nextFilters.settings = [searchText];
-    if (tag.group === "Population") nextFilters.populations = [searchText];
-    if (tag.group === "Risk") nextFilters.risks = [searchText];
-    if (tag.group === "Workflow") nextFilters.workflows = [searchText];
-    if (tag.group === "Clinical action") nextFilters.clinicalActions = [searchText];
-    if (tag.group === "Care phase") nextFilters.carePhases = [searchText];
-    if (tag.group === "Document intent") nextFilters.documentIntents = [searchText];
-    if (tag.group === "Content feature") nextFilters.contentFeatures = [searchText];
+    const { searchText, nextFilters } = buildTagSearchScopeFilters(scopeFilters, tag);
     setScopeFilters(nextFilters);
     const targetMode = appModeCanUseSourceLibraryShortcut(searchMode) ? searchMode : "documents";
     void runDocumentSearchShortcut(searchText, nextFilters, true, targetMode);
   }
 
-  async function bulkReindexSelected(mode: "enrichment" | "full" | "retry_failed") {
-    if (!selectedDocumentIds.length) return;
-    setBulkActionBusy(true);
-    setBulkActionStatus(null);
-    try {
-      const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk/reindex", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authorizationHeader,
-        },
-        body: JSON.stringify({ documentIds: selectedDocumentIds, mode }),
-      });
-      if (response.status === 401) {
-        markSessionExpired();
-        return;
-      }
-      const payload = await response.json().catch(() => ({}));
-      if (!isAuthEpochCurrent(requestEpoch)) return;
-      if (!response.ok) throw new Error(payload.error || errorCopy.bulkReindexFailed);
-      const summary = summarizeBulkReindexPayload(payload);
-      setBulkActionStatus(summary.message);
-      if (!summary.hasSuccessfulWork) return;
-      setUserStartedIngestion(true);
-      setIndexingActive(true);
-      await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
-    } catch (error) {
-      if (isAbortError(error)) return;
-      setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkReindexFailed);
-    } finally {
-      setBulkActionBusy(false);
-    }
-  }
+  const {
+    bulkActionStatus,
+    bulkActionBusy,
+    bulkReindexSelected,
+    bulkUpdateMetadata: runBulkUpdateMetadata,
+  } = useDashboardBulkActions({
+    selectedDocumentIds,
+    authBoundFetch,
+    authorizationHeader,
+    markSessionExpired,
+    isAuthEpochCurrent,
+    setUserStartedIngestion,
+    setIndexingActive,
+    refresh,
+  });
 
   async function bulkAssignCollection(collection: string) {
     if (!selectedDocumentIds.length || !collection.trim()) return;
@@ -2492,33 +2329,7 @@ function ClinicalDashboardContent({
   }
 
   async function bulkUpdateMetadata(metadata: Record<string, unknown>) {
-    if (!selectedDocumentIds.length || Object.keys(metadata).length === 0) return;
-    setBulkActionBusy(true);
-    setBulkActionStatus(null);
-    try {
-      const { response, requestEpoch } = await authBoundFetch("/api/documents/bulk", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authorizationHeader,
-        },
-        body: JSON.stringify({ documentIds: selectedDocumentIds, metadata }),
-      });
-      if (response.status === 401) {
-        markSessionExpired();
-        return;
-      }
-      const payload = await response.json().catch(() => ({}));
-      if (!isAuthEpochCurrent(requestEpoch)) return;
-      if (!response.ok) throw new Error(payload.error || errorCopy.bulkMetadataUpdateFailed);
-      setBulkActionStatus(`${payload.updatedCount ?? 0} selected documents updated.`);
-      await refresh({ includeSetup: false, includeDashboardData: true, includeDocumentMeta: false });
-    } catch (error) {
-      if (isAbortError(error)) return;
-      setBulkActionStatus(error instanceof Error ? error.message : errorCopy.bulkMetadataUpdateFailed);
-    } finally {
-      setBulkActionBusy(false);
-    }
+    await runBulkUpdateMetadata(metadata);
   }
 
   function selectSearchMode(mode: AppModeId) {
@@ -2621,118 +2432,29 @@ function ClinicalDashboardContent({
     focusComposerInput();
   }
 
-  function openDocumentsDrawer(mode: DocumentDrawerMode) {
-    documentsDrawerReturnFocusRef.current =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    closeDashboardTransientSurfaces("documents");
-    setSearchMode("documents");
-    setDocumentDrawerStatusFilter("indexed");
-    settingsState.setDocumentsDrawerMode(mode);
-    settingsState.setDocumentsDrawerOpen(true);
-  }
-
-  function openRecentDocuments() {
-    openDocumentsDrawer("recent");
-  }
-
-  function openSourceLibrary() {
-    openDocumentsDrawer("library");
-  }
-
-  function openSourcePdfBrowser() {
-    openDocumentsDrawer("source");
-  }
-
-  function openEvidenceDrawer() {
-    closeDashboardTransientSurfaces();
-    const reviewTrigger = document.getElementById("answer-evidence-drawer-mobile-trigger") as HTMLButtonElement | null;
-    if (reviewTrigger) {
-      reviewTrigger.scrollIntoView({ block: "center", behavior: resolveScrollBehavior() });
-      reviewTrigger.click();
-      return;
-    }
-
-    setActionNotice({
-      tone: "warning",
-      message: "Evidence appears after a source-backed answer is generated.",
+  const { openRecentDocuments, openSourceLibrary, openSourcePdfBrowser, openEvidenceDrawer } =
+    useDashboardDrawerOpeners({
+      documentsDrawerReturnFocusRef,
+      closeDashboardTransientSurfaces,
+      setSearchMode,
+      setDocumentDrawerStatusFilter,
+      setDocumentsDrawerMode: settingsState.setDocumentsDrawerMode,
+      setDocumentsDrawerOpen: settingsState.setDocumentsDrawerOpen,
+      setActionNotice,
     });
-  }
 
-  const syncActiveSectionFromScroll = useCallback(() => {
-    const main = mainRef.current;
-    if (!main) return;
-    if (main.scrollLeft !== 0) main.scrollLeft = 0;
-    if (navSyncLockRef.current !== null) return;
+  const { handleMainScroll } = useDashboardScrollSync({
+    mainRef,
+    navSyncLockRef,
+    scrollFrameRef,
+    setActiveHash,
+  });
 
-    const innerScrollOwner = ownsVerticalScroll(main);
-    const offset = innerScrollOwner ? main.scrollTop : window.scrollY;
-    if (offset < 120) {
-      setActiveHash((current) => (current === "#search" ? current : "#search"));
-      return;
-    }
-
-    const marker = (innerScrollOwner ? main.getBoundingClientRect().top : 0) + 96;
-    const sections = ["#quotes", "#images", "#sources"];
-    const current =
-      sections
-        .map((section) => {
-          const target = document.querySelector<HTMLElement>(section);
-          if (!target) return null;
-          const rect = target.getBoundingClientRect();
-          if (rect.top > marker + 220) return null;
-          return { section, distance: Math.abs(rect.top - marker) };
-        })
-        .filter((item): item is { section: string; distance: number } => Boolean(item))
-        .sort((a, b) => a.distance - b.distance)[0]?.section ?? "#search";
-    setActiveHash((active) => (active === current ? active : current));
-  }, [mainRef]);
-
-  const scheduleActiveSectionSync = useCallback(() => {
-    if (scrollFrameRef.current !== null) return;
-    scrollFrameRef.current = window.requestAnimationFrame(() => {
-      scrollFrameRef.current = null;
-      syncActiveSectionFromScroll();
-    });
-  }, [syncActiveSectionFromScroll]);
-
-  function handleMainScroll() {
-    scheduleActiveSectionSync();
-  }
-
-  useEffect(() => {
-    window.addEventListener("scroll", scheduleActiveSectionSync, { passive: true });
-    return () => window.removeEventListener("scroll", scheduleActiveSectionSync);
-  }, [scheduleActiveSectionSync]);
-
-  async function copyText(action: string, text: string) {
-    let copied = false;
-    try {
-      await navigator.clipboard.writeText(text);
-      copied = true;
-    } catch {
-      try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.setAttribute("readonly", "");
-        textArea.style.position = "fixed";
-        textArea.style.opacity = "0";
-        document.body.appendChild(textArea);
-        textArea.select();
-        copied = document.execCommand("copy");
-        document.body.removeChild(textArea);
-      } catch {
-        copied = false;
-      }
-    }
-    if (!copied) {
-      setError(errorCopy.clipboardCopyFailed);
-      setErrorKind(null);
-      setLastFailedQuery(null);
-      return;
-    }
-    setCopiedAction(action);
-    window.setTimeout(() => setCopiedAction((current) => (current === action ? null : current)), 1800);
-  }
+  const { copiedAction, copyText } = useDashboardClipboard({
+    setError,
+    setErrorKind,
+    setLastFailedQuery,
+  });
 
   const answerRenderModel = useMemo(
     () => (answer ? buildAnswerRenderModel(answer, { sources, includeDebugReasons: true }) : null),
@@ -3746,23 +3468,22 @@ function ClinicalDashboardContent({
           hidden
           onNavigate={navigateMobileSection}
         />
-        <LazyGuideDialog open={settingsState.guideOpen} onClose={settingsGuideFlow.closeGuideWithRestore} />
-        <SidebarDialogs.SidebarSettingsDialog
-          open={settingsState.settingsOpen}
-          onClose={closeSettings}
-          identity={sidebarIdentity}
+        <DashboardSidebarDialogs
+          guideOpen={settingsState.guideOpen}
+          onCloseGuide={settingsGuideFlow.closeGuideWithRestore}
+          settingsOpen={settingsState.settingsOpen}
+          onCloseSettings={closeSettings}
+          sidebarIdentity={sidebarIdentity}
           onSignOut={async () => {
             clinicalAskSession.clear();
             await auth.signOut();
           }}
-          onOpenGuide={settingsGuideFlow.openGuideFromSettings}
+          onOpenGuideFromSettings={settingsGuideFlow.openGuideFromSettings}
           onPrefetchGuide={loadGuideDialog}
-          initialFocus={settingsGuideFlow.settingsInitialFocus}
-        />
-        <SidebarDialogs.SidebarAccountSetupDialog
-          open={accountSetupOpen}
-          onClose={closeAccountSetup}
-          intent={accountSetupIntent}
+          settingsInitialFocus={settingsGuideFlow.settingsInitialFocus}
+          accountSetupOpen={accountSetupOpen}
+          onCloseAccountSetup={closeAccountSetup}
+          accountSetupIntent={accountSetupIntent}
         />
         {twoPaneSideMenu ? (
           <TwoPaneSideMenuHost
