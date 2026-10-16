@@ -1060,3 +1060,158 @@ describe("prevalidated atomic retrieval groups", () => {
     expect(selection.results.map((result) => result.id)).toEqual(["strong-1", "strong-2"]);
   });
 });
+
+describe("whole document title named in the query", () => {
+  const query = "What assessment documentation is required?";
+  const candidates = () => [
+    source({
+      id: "admissions",
+      document_id: "admissions",
+      title: "Admissions Policy and Procedure (RKPG)",
+      file_name: "Admissions Policy and Procedure (RKPG).pdf",
+      content: "Assessment documentation required on admission includes the risk assessment.",
+      hybrid_score: 0.52,
+    }),
+    source({
+      id: "radiotherapy",
+      document_id: "radiotherapy",
+      title: "Radiotherapy Skin Care Assessment and Management (FSH)",
+      file_name: "Radiotherapy Skin Care Assessment and Management (FSH).pdf",
+      content: "Skin assessment documentation is required at each review.",
+      hybrid_score: 0.52,
+    }),
+    source({
+      id: "pressure-injury",
+      document_id: "pressure-injury",
+      title: "Pressure Injury Prevention and Management (FSH)",
+      file_name: "Pressure Injury Prevention and Management (FSH).pdf",
+      content: "In the ICU environment, all risk assessment documentation is required.",
+      hybrid_score: 0.52,
+    }),
+    source({
+      id: "assessment-documentation",
+      document_id: "assessment-documentation",
+      title: "Assessment Documentation(AKG)",
+      file_name: "Assessment Documentation (AKG).pdf",
+      content: "CRHTT suitability assessment (pre-admission). CRHTT complete the following documentation.",
+      hybrid_score: 0.48,
+    }),
+  ];
+
+  it("ranks the document whose whole title the query names above documents sharing one word", () => {
+    const selection = selectRetrievalEvidence({
+      query,
+      queryClass: "document_lookup",
+      results: candidates(),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+
+    expect(selection.results[0]?.id).toBe("assessment-documentation");
+  });
+
+  it("still matches when the query ends with punctuation", () => {
+    const selection = selectRetrievalEvidence({
+      query: "Find Assessment Documentation.",
+      queryClass: "document_lookup",
+      results: candidates(),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+
+    expect(selection.results[0]?.id).toBe("assessment-documentation");
+  });
+
+  it("does not treat one shared title word as naming the document", () => {
+    const selection = selectRetrievalEvidence({
+      query: "What skin assessment is required?",
+      queryClass: "document_lookup",
+      results: candidates().filter((candidate) => candidate.id !== "assessment-documentation"),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+    const scores = new Map(selection.candidates.map((candidate) => [candidate.chunkId, candidate.score]));
+
+    expect(scores.get("radiotherapy")).toBe(scores.get("admissions"));
+  });
+
+  it("does not count a title as named when the query leaves out its population qualifier", () => {
+    const tracheostomy = source({
+      id: "tracheostomy-adult",
+      document_id: "tracheostomy-adult",
+      title: "Tracheostomy Management (Adult) (FSH)",
+      file_name: "Tracheostomy Management (Adult) (FSH).pdf",
+      content: "Tracheostomy management steps for adult inpatients.",
+      hybrid_score: 0.5,
+    });
+    const signalsFor = (query: string) =>
+      selectRetrievalEvidence({
+        query,
+        queryClass: "document_lookup",
+        results: [tracheostomy],
+        topK: 8,
+        maxResultsPerDocument: 4,
+      }).candidates[0]?.matchedSignals ?? [];
+
+    expect(signalsFor("Tracheostomy management in children")).not.toContain("document_title_phrase");
+    expect(signalsFor("Tracheostomy management adult")).toContain("document_title_phrase");
+  });
+
+  it("does not drop a setting or population acronym such as (CAMHS) from the title", () => {
+    const camhs = source({
+      id: "camhs-agitation",
+      document_id: "camhs-agitation",
+      title: "Arousal and Agitation Drug Management (CAMHS)",
+      file_name: "Arousal and Agitation Drug Management (CAMHS).pdf",
+      content: "Agitation drug management for young people.",
+      hybrid_score: 0.5,
+    });
+    const signalsFor = (query: string) =>
+      selectRetrievalEvidence({
+        query,
+        queryClass: "document_lookup",
+        results: [camhs],
+        topK: 8,
+        maxResultsPerDocument: 4,
+      }).candidates[0]?.matchedSignals ?? [];
+
+    expect(signalsFor("Arousal and agitation drug management for adults")).not.toContain("document_title_phrase");
+    expect(signalsFor("Arousal and agitation drug management CAMHS")).toContain("document_title_phrase");
+  });
+
+  it("does not count a title as named when the query asks for a version the title lacks", () => {
+    const protocol = (title: string) =>
+      source({
+        id: title,
+        document_id: title,
+        title,
+        file_name: `${title}.pdf`,
+        content: "Clozapine titration protocol.",
+        hybrid_score: 0.5,
+      });
+    const signalsFor = (query: string, title: string) =>
+      selectRetrievalEvidence({
+        query,
+        queryClass: "document_lookup",
+        results: [protocol(title)],
+        topK: 8,
+        maxResultsPerDocument: 4,
+      }).candidates[0]?.matchedSignals ?? [];
+
+    expect(signalsFor("Clozapine Protocol v2", "Clozapine Protocol (AKG)")).not.toContain("document_title_phrase");
+    expect(signalsFor("Clozapine Protocol 2023", "Clozapine Protocol (AKG)")).not.toContain("document_title_phrase");
+    expect(signalsFor("Clozapine Protocol v2", "Clozapine Protocol v2 (AKG)")).toContain("document_title_phrase");
+  });
+
+  it("keeps the boost inside the clamped score", () => {
+    const selection = selectRetrievalEvidence({
+      query,
+      queryClass: "document_lookup",
+      results: candidates().map((candidate) => ({ ...candidate, hybrid_score: 0.98 })),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+
+    expect(Math.max(...selection.candidates.map((candidate) => candidate.score))).toBeLessThanOrEqual(1);
+  });
+});

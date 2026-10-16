@@ -4556,6 +4556,7 @@ function shouldPreserveSourceBackedGeneratedAnswer(answer: RagAnswer, reason: st
       signal.startsWith("index_unit:") ||
       [
         "document_title",
+        "document_title_phrase",
         "document_label",
         "table_fact",
         "source_image",
