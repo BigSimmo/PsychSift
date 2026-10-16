@@ -160,6 +160,7 @@ import {
   composerPrivacyWarningId,
   phoneSearchLayoutMediaQuery,
   scopeSheetMediaQuery,
+  desktopPageComposerMediaQuery,
   modeHomeComposerMediaQuery,
   modeHomeComposerSmUpMediaQuery,
   type MasterSearchHeaderProps,
@@ -170,9 +171,6 @@ import {
   DEFAULT_SCOPE_FILTERS,
   NOOP_HANDLER,
 } from "./master-search-header-types";
-
-const desktopPageComposerMediaQuery = "(min-width: 640px)";
-type PhoneMotionMode = { phoneMotion?: "collapse" | "overlay" };
 
 export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const { searchState, headerActions, mobileControls } = props;
@@ -243,8 +241,7 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   const mobileBottomSearchAddonSlotId =
     mobileControls?.mobileBottomSearchAddonSlotId ?? props.mobileBottomSearchAddonSlotId;
   const mobileBottomSearchAddonKind = mobileControls?.mobileBottomSearchAddonKind ?? props.mobileBottomSearchAddonKind;
-  const hideOnScroll: (MasterSearchHeaderProps["hideOnScroll"] & PhoneMotionMode) | undefined =
-    mobileControls?.hideOnScroll ?? props.hideOnScroll;
+  const hideOnScroll = mobileControls?.hideOnScroll ?? props.hideOnScroll;
   const showDesktopNewChat = mobileControls?.showDesktopNewChat ?? props.showDesktopNewChat ?? true;
   // Hosts pass the precomputed session decision in canAccessFavourites (auth || demo).
   // Do not OR demoMode again here — that would reopen Favourites when props diverge.
@@ -612,18 +609,6 @@ export function MasterSearchHeader(props: MasterSearchHeaderProps) {
   }
 
   function runModeAction(actionId: ModeActionId) {
-    if (actionId === "dsm-compare") {
-      pushIfLeaveConfirmed("/dsm/compare");
-      return;
-    }
-    if (actionId === "specifiers-builder") {
-      pushIfLeaveConfirmed("/specifiers/builder");
-      return;
-    }
-    if (actionId === "formulation-map") {
-      pushIfLeaveConfirmed("/formulation/map");
-      return;
-    }
     executeMasterSearchHeaderModeAction({
       actionId,
       trimmedQuery,

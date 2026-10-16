@@ -14,7 +14,7 @@ export interface DashboardSidebarDialogsProps {
   settingsInitialFocus?: "close" | "guide";
   accountSetupOpen: boolean;
   onCloseAccountSetup: () => void;
-  intent: "default" | "favourites" | "indexing";
+  accountSetupIntent: "default" | "favourites" | "indexing";
 }
 
 export function DashboardSidebarDialogs({
@@ -29,7 +29,7 @@ export function DashboardSidebarDialogs({
   settingsInitialFocus,
   accountSetupOpen,
   onCloseAccountSetup,
-  intent,
+  accountSetupIntent,
 }: DashboardSidebarDialogsProps) {
   return (
     <>
@@ -46,7 +46,7 @@ export function DashboardSidebarDialogs({
       <SidebarDialogs.SidebarAccountSetupDialog
         open={accountSetupOpen}
         onClose={onCloseAccountSetup}
-        intent={intent === "indexing" ? "default" : intent}
+        intent={accountSetupIntent === "indexing" ? "default" : accountSetupIntent}
       />
     </>
   );

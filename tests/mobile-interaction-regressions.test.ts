@@ -76,6 +76,7 @@ describe("mobile interaction regressions", () => {
     const evidencePanels = source("src/components/clinical-dashboard/evidence-panels.tsx");
     const tools = source("src/components/applications-launcher-page.tsx");
     const header = source("src/components/clinical-dashboard/master-search-header.tsx");
+    const headerActions = source("src/components/clinical-dashboard/master-search-header-actions.ts");
 
     // `aria-disabled` + an inert handler, and NOT the native `disabled` attribute
     // alongside it: the native one wins on focus, so pairing them left the reason
@@ -104,9 +105,10 @@ describe("mobile interaction regressions", () => {
       /data-testid="tools-local-search-submit"[\s\S]{0,120}?className=\{cn\(\s*"grid h-tap w-tap place-items-center/,
     );
 
-    expect(header).toContain('pushIfLeaveConfirmed("/dsm/compare")');
-    expect(header).toContain('pushIfLeaveConfirmed("/specifiers/builder")');
-    expect(header).toContain('pushIfLeaveConfirmed("/formulation/map")');
+    expect(headerActions).toContain('pushIfLeaveConfirmed("/dsm/compare")');
+    expect(headerActions).toContain('pushIfLeaveConfirmed("/specifiers/builder")');
+    expect(headerActions).toContain('pushIfLeaveConfirmed("/formulation/map")');
     expect(header).not.toContain("window.location.assign");
+    expect(headerActions).not.toContain("window.location.assign");
   });
 });
