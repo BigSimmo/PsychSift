@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClipboardList, Info, Pin, PinOff, Search, ShieldCheck, Waves, type LucideIcon } from "lucide-react";
-import { useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import { useFavouritesAccess } from "@/components/clinical-dashboard/use-favourites-access";
 import { useSearchCommand } from "@/components/clinical-dashboard/search-command-context";
@@ -135,7 +135,7 @@ function ToolGroupSection({
   tools: ToolCatalogRecord[];
   onAbout: AboutTool;
 }) {
-  const headingId = `tools-group-${group.id}`;
+  const headingId = useId();
   return (
     <section aria-labelledby={headingId} data-testid={`tools-group-${group.id}`} className="grid gap-2">
       {/* Plain heading, no coloured group dot (Clinical audit, 13 Oct 2026, item 15). */}
@@ -163,12 +163,10 @@ function ToolGroupSection({
  * group's one mark.
  */
 function SafetySection({ tools, onAbout }: { tools: ToolCatalogRecord[]; onAbout: AboutTool }) {
+  const headingId = useId();
   return (
-    <section aria-labelledby="tools-group-safety" data-testid="tools-group-safety" className="grid gap-2">
-      <h2
-        id="tools-group-safety"
-        className="flex items-center gap-2 px-1 text-base font-bold text-[color:var(--text-heading)]"
-      >
+    <section aria-labelledby={headingId} data-testid="tools-group-safety" className="grid gap-2">
+      <h2 id={headingId} className="flex items-center gap-2 px-1 text-base font-bold text-[color:var(--text-heading)]">
         <ShieldCheck className="size-icon-md text-[color:var(--text-muted)]" aria-hidden="true" />
         Safety
       </h2>
@@ -187,13 +185,11 @@ function SafetySection({ tools, onAbout }: { tools: ToolCatalogRecord[]; onAbout
 }
 
 function PinnedTools({ tools }: { tools: ToolCatalogRecord[] }) {
+  const headingId = useId();
   return (
-    <section aria-labelledby="tools-pinned-heading" data-testid="tools-pinned" className="grid gap-2">
+    <section aria-labelledby={headingId} data-testid="tools-pinned" className="grid gap-2">
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2
-          id="tools-pinned-heading"
-          className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-muted)]"
-        >
+        <h2 id={headingId} className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-muted)]">
           Pinned
         </h2>
         <p className="text-xs text-[color:var(--text-muted)]">Pin or unpin from a tool&apos;s About button</p>
@@ -364,6 +360,7 @@ export function ToolsSearchResultsPage({
   const query = localQuery ?? (hydrated ? (searchCommand?.query ?? initialQuery) : initialQuery);
   const searching = query.trim().length > 0;
   // The sheet keeps its last tool after closing so the close animation has content.
+  const aboutTitleId = useId();
   const [aboutToolId, setAboutToolId] = useState<string | null>(null);
   const [aboutOpen, setAboutOpen] = useState(false);
   const aboutReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -508,28 +505,34 @@ export function ToolsSearchResultsPage({
       </div>
 
       {aboutTool ? (
-        <Sheet
-          open={aboutOpen}
-          onClose={() => setAboutOpen(false)}
-          title={aboutTool.title}
-          closeLabel={`Close ${aboutTool.title}`}
-          headerLeading={<ToolIcon tool={aboutTool} large />}
-          titleClassName="text-xl font-extrabold"
-          contentClassName="sm:max-w-[36rem]"
-          bodyClassName="grid gap-4"
-          portal={false}
-          returnFocusRef={aboutReturnFocusRef}
-          testId="tools-search-detail-sheet"
-          footer={
-            <ToolDetailActions
-              tool={aboutTool}
-              pinned={pinnedToolIds.includes(aboutTool.id)}
-              onTogglePin={() => togglePinnedTool(aboutTool.id)}
-            />
-          }
-        >
-          <ToolDetail tool={aboutTool} />
-        </Sheet>
+        <aside role="complementary" aria-labelledby={aboutTitleId} data-testid="tools-detail-panel">
+          <h2 id={aboutTitleId} className="sr-only">
+            {aboutTool.title}
+          </h2>
+          <Sheet
+            open={aboutOpen}
+            onClose={() => setAboutOpen(false)}
+            title={aboutTool.title}
+            ariaLabel={aboutTool.title}
+            closeLabel={`Close ${aboutTool.title}`}
+            headerLeading={<ToolIcon tool={aboutTool} large />}
+            titleClassName="text-xl font-extrabold"
+            contentClassName="sm:max-w-[36rem]"
+            bodyClassName="grid gap-4"
+            portal={false}
+            returnFocusRef={aboutReturnFocusRef}
+            testId="tools-search-detail-sheet"
+            footer={
+              <ToolDetailActions
+                tool={aboutTool}
+                pinned={pinnedToolIds.includes(aboutTool.id)}
+                onTogglePin={() => togglePinnedTool(aboutTool.id)}
+              />
+            }
+          >
+            <ToolDetail tool={aboutTool} />
+          </Sheet>
+        </aside>
       ) : null}
     </main>
   );

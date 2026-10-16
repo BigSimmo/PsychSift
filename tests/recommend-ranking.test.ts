@@ -88,7 +88,10 @@ describe("recommend situation ranking", () => {
     expect(ranked.length).toBeLessThanOrEqual(6);
     const names = ranked.map((row) => row.therapy.name.toLowerCase());
     expect(names.some((name) => name.includes("insomnia"))).toBe(false);
-    expect(names[0]).toMatch(/anxiety|cbt|cognitive behavioural|cognitive behavioral|panic|exposure/);
+    expect(names[0]).toMatch(
+      /anxiety|cbt|cognitive behavioural|cognitive behavioral|panic|exposure|applied relaxation/,
+    );
+    expect(names.some((name) => /cbt|cognitive behavioural|cognitive behavioral/.test(name))).toBe(true);
     expect(names[0]).not.toMatch(/psychiatric management/);
     expect(ranked[0]?.reasons.length).toBeGreaterThan(0);
   });

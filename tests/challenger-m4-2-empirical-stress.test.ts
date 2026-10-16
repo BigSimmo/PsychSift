@@ -303,7 +303,8 @@ describe("Challenger M4-2: Empirical Stress Test & Technical Verification", () =
       expect(toolsCode).toContain('test("tool links point to the expected in-app modes", async ({ page }) => {');
       expect(toolsCode).toContain('["services", "Services", "/?mode=services"],');
       expect(toolsCode).toContain('["forms", "Forms", "/?mode=forms"],');
-      expect(toolsCode).toContain('await clickWhenSettled(results.getByRole("button", { name: `About ${title}` }));');
+      expect(toolsCode).toContain('const aboutButton = results.getByRole("button", { name: `About ${title}` });');
+      expect(toolsCode).toContain("await clickWhenSettled(aboutButton);");
       expect(toolsCode).toContain(
         "const detail = page.locator('[data-testid=\"tools-search-detail-sheet\"]:visible');",
       );

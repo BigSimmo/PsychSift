@@ -50,7 +50,7 @@ function signed(record: SourceAcquisitionRecord): SourceAcquisitionRecord {
   const reviewed = { ...record, validationStatus: "locally_reviewed" as const };
   return {
     ...reviewed,
-    attestedBy: "Fixture Owner",
+    attestedBy: "Dr Alex Morgan",
     attestedAt: "2026-10-03T00:00:00.000Z",
     attestedAgainstSha256: acquisitionAttestedContentSha256(reviewed),
   };
@@ -73,14 +73,24 @@ describe("medication source links", () => {
     }
   });
 
-  it("shows nothing on the live pages until the owner signs the records off", () => {
-    for (const slug of Object.keys(medicationSourceLinkIds)) {
-      expect(medicationSourceLinks(slug)).toEqual([]);
-    }
+  it("returns the confirmed source links on the live pages now that the owner has signed the adopted records", () => {
+    expect(medicationSourceLinks("clozapine").map((link) => link.id)).toEqual(["wa-health-clozapine-guideline-2024"]);
+    expect(medicationSourceLinks("lithium-carbonate-ir-sr").map((link) => link.id)).toEqual([
+      "australian-prescriber-lithium-therapy-and-its-interactions",
+      "australian-prescriber-lithium-therapy-interactions-correction",
+    ]);
   });
 
   it("hides an unconfirmed record", () => {
     expect(medicationSourceLinks("clozapine", { links, records: [candidate()] })).toEqual([]);
+  });
+
+  it("hides a record attested by a single-word product stamp while accepting the owner's two-word display name", () => {
+    expect(medicationSourceLinks("clozapine", { links, records: [adoptedSigned()] })).not.toEqual([]);
+    const displayName = { ...adoptedSigned(), attestedBy: "Psych Sift" };
+    expect(medicationSourceLinks("clozapine", { links, records: [displayName] })).not.toEqual([]);
+    const productName = { ...adoptedSigned(), attestedBy: "PsychSift" };
+    expect(medicationSourceLinks("clozapine", { links, records: [productName] })).toEqual([]);
   });
 
   it("hides a reviewed record that carries no attestation", () => {

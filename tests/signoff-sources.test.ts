@@ -37,8 +37,8 @@ import { repositorySourceReferences } from "@/lib/sources/repository-providers";
  * validationStatus and attestation fields so the queue, /sources and check:source-acquisitions
  * all read it without a second file.
  */
-
-const NOW = new Date("2026-10-02T06:00:00.000Z");
+// Real ledger signatures carry real dates, so "now" must be the real clock or they read as future-dated.
+const NOW = new Date();
 const REVIEWED_AT = "2026-09-25T05:00:00.000Z";
 const REVIEWER = "Dr Clinical Owner";
 const ATTESTATION_FIELDS = ["attestedBy", "attestedAt", "attestedAgainstSha256"];

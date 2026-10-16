@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "id": "ef7e6803-0600-4348-9b43-344fd4ff4b1a",
+  "createdOn": "2026-10-16",
+  "action": "add",
+  "payload": {
+    "pri": "P2",
+    "type": "task",
+    "summary": "CPD: connect the Training page to registrar training milestone storage (follow-up to #T983N9)",
+    "detail": "The registrar_training_milestones table and RLS policies exist, but no application code reads or writes it, the Training page still hard-codes not-recorded, and its milestone reader queries a different table. Implement owner-scoped storage and sync and replace the hard-coded state before closing.",
+    "source": "PR #3570 review; src/app/(search-app)/cme/training/page.tsx; src/lib/cme/training-repository.ts",
+    "issueUlid": "01M51JV9EEXNAHY22XVMGMAD14"
+  }
+}

@@ -29,7 +29,10 @@ html[data-mode-identity="cme"] {
   --cme-hero-track: color-mix(in srgb, white 14%, transparent);
   --cme-hero-line: color-mix(in srgb, white 22%, transparent);
   --cme-hero-panel: color-mix(in srgb, white 10%, transparent);
-  --cme-hero-soft-text: color-mix(in srgb, white 82%, transparent);
+  /* The hero's quieter words (the kicker, "of 50 h", the legend, the pace line):
+     the hero's own ink, barely lifted, so they stay readable on the copper
+     (design follow-up 15 Oct 2026: at 82% white they read as faint). */
+  --cme-hero-soft-text: color-mix(in srgb, var(--mode-identity-contrast) 94%, transparent);
 }
 
 html.dark [data-mode-identity="cme"],
@@ -39,6 +42,8 @@ html.dark[data-mode-identity="cme"] {
   --cme-cat-4: color-mix(in oklab, var(--mode-identity) 24%, var(--surface-raised));
   --cme-hero-cat-2: color-mix(in oklab, var(--mode-identity) 70%, white);
   --cme-hero-cat-3: var(--mode-identity);
+  /* The dark hero is inked with the heading colour, not white. */
+  --cme-hero-soft-text: color-mix(in srgb, var(--text-heading) 92%, transparent);
 }
 
 /* --------------------------------------------------------------- page body */

@@ -5644,6 +5644,7 @@ test.describe("PsychSift UI smoke coverage", () => {
     // A click that lands before hydration is dropped (Firefox, release matrix 2026-09-25).
     // Re-click only while the indexed-text disclosure is still closed.
     const indexedTextPanel = page.locator("#source-text");
+    await expectHydrated(indexedTextPanel);
     await expect(async () => {
       if (!(await indexedTextPanel.evaluate((node) => (node as HTMLDetailsElement).open))) {
         await page.getByTestId("inspect-indexed-text").click();
@@ -5704,6 +5705,7 @@ test.describe("PsychSift UI smoke coverage", () => {
       });
     });
     const nextHitClicks = () => page.evaluate(() => (window as unknown as { __nextHitClicks: number }).__nextHitClicks);
+    await expectHydrated(nextHit);
     await nextHit.click();
     await expect(async () => {
       if ((await nextHitClicks()) === 0) await nextHit.click();

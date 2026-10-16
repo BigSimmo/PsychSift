@@ -1,7 +1,7 @@
 {
   "version": "repo-awareness-snapshot-v3",
   "captured_revision": {
-    "committed_at": "2026-10-15"
+    "committed_at": "2026-10-16"
   },
   "routes": {
     "modes": [
@@ -2501,6 +2501,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-admin-shows-the-date-line.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/product/clinical-trust-direction.md",
         "section": "product",
         "catalogued": true
@@ -2703,6 +2708,11 @@
       {
         "path": "docs/process-hardening.md",
         "section": "root",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-keep-migration-history.md",
+        "section": "decisions",
         "catalogued": true
       },
       {
@@ -3448,6 +3458,11 @@
       {
         "path": "docs/care-plan/reports/task-11-report.md",
         "section": "care-plan",
+        "catalogued": true
+      },
+      {
+        "path": "docs/decisions/2026-10-16-psych-sift-display-name-sign-off.md",
+        "section": "decisions",
         "catalogued": true
       },
       {

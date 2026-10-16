@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "id": "5c675282-61b1-4926-a8aa-7f76e35abcd7",
+  "createdOn": "2026-10-16",
+  "action": "done",
+  "payload": {
+    "id": "#MS6VXW",
+    "outcome": "Added detectOwnConflicts and checkManualShiftConflicts across diffRoster and manual shift entry (src/lib/roster/shifts/conflicts.ts, diff.ts, repository.ts, tests/roster-own-shift-conflicts.test.ts).",
+    "targetUlid": "01M4T67NCKMS6VXW9VZAYRPFGT"
+  }
+}

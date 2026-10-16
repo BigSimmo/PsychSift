@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page, type TestInfo } from "playwright/test";
-import { clickWhenSettled, expectSingleSettledOwner, visibleByTestId, visibleByText } from "./playwright-settlement";
+import { clickWhenSettled, expectSingleSettledOwner, visibleByTestId } from "./playwright-settlement";
 
 const axeWcagTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const axeBlockingImpacts = new Set(["critical", "serious"]);
@@ -141,12 +141,9 @@ test("searches clinical language without provenance fields and carries a result 
     await page.goto(guidesUrl.toString());
   }
   await expect(page).toHaveURL(/scope=guides/);
-  // `visibleByText`, not a bare getByText: until React's `$RV` reveal runs, the
-  // streamed copy of this route is still parked in a `<div hidden id="S:n">` at
-  // the end of <body> (see `(search-app)/loading.tsx`), so a page-level query
-  // resolves to the live badge plus that hidden twin and trips strict mode.
-  // Chromium reveals before this line; WebKit loses the race (#093).
-  await expect(visibleByText(page, "Top match", { exact: true })).toBeVisible();
+  // `expectSingleSettledOwner` waits for the streamed twin to settle (#093)
+  // and asserts that exactly one single Top match badge is mounted and visible.
+  await expectSingleSettledOwner(page.getByText("Top match", { exact: true }));
   // Below the sm breakpoint the results band swaps the desktop trigger for its phone twin.
   // `visibleByTestId` for the same hidden streamed twin as the badge above (#093): the
   // trigger renders in both copies, and WebKit can still hold the parked one here.
