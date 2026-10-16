@@ -4885,6 +4885,11 @@
         "catalogued": true
       },
       {
+        "path": "docs/decisions/2026-10-16-teaching-admins-export-named-attendance.md",
+        "section": "decisions",
+        "catalogued": true
+      },
+      {
         "path": "docs/care-plan/reports/task-10-report.md",
         "section": "care-plan",
         "catalogued": true
