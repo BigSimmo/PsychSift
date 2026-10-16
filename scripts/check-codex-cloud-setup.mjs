@@ -1081,7 +1081,10 @@ function validateMaintenanceAndCommandShims(sources, errors) {
   }
   for (const [pattern, message] of [
     [/nvm version/, "Cloud command shims must resolve the selected Node version without following their own wrappers."],
-    [/clean_path=.*\.local.*bin/, "Cloud command shims must remove their directory before running child npm scripts."],
+    [
+      /\[\[ "\\\$path_entry" == "\\\$HOME\/\.local\/bin" \]\] && continue[\s\S]*clean_path\+="\\\$path_entry"/,
+      "Cloud command shims must remove their directory before running child npm scripts.",
+    ],
     [/mkdir -p "\$HOME\/\.local\/bin"/, "Cloud command shims must create their destination directory."],
     [/\.clinical-kb-codex-cloud\.sh/, "Cloud command shims must load the generated profile."],
   ]) {
