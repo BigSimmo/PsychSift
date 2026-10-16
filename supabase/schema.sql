@@ -23928,7 +23928,7 @@ begin
     raise exception 'teaching_role_denied';
 
   elsif p_action = 'export.attendance' then
-    if v_role <> 'organiser' then raise exception 'teaching_role_denied'; end if;
+    if v_role not in ('organiser','admin') then raise exception 'teaching_role_denied'; end if;
     v_from := public.teaching_date_arg(p_payload, 'from');
     v_to := public.teaching_date_arg(p_payload, 'to');
     if v_from is null or v_to is null or v_to < v_from or v_to - v_from > 366 then raise exception 'teaching_invalid_request'; end if;

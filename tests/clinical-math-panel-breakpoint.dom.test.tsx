@@ -61,4 +61,23 @@ describe("bedside calculator panel across the desktop breakpoint", () => {
     setDesktop(false);
     expect(screen.getByLabelText("Age (years)")).toHaveValue(72);
   });
+
+  it("shows the lithium toxicity alert from 1.2 mmol/L before an age is entered", () => {
+    installDesktopQuery(false);
+    render(<CalculatorsSearchPage />);
+
+    fireEvent.click(screen.getByTestId("clinical-math-panel-toggle"));
+    fireEvent.click(screen.getByTestId("clinical-math-tab-lithium"));
+    const level = screen.getByTestId("clinical-math-lithium-level");
+
+    fireEvent.change(level, { target: { value: "0.9" } });
+    expect(screen.getByTestId("clinical-math-lithium-results")).toHaveTextContent("Enter current 12-hour trough level");
+
+    fireEvent.change(level, { target: { value: "1.2" } });
+    const results = screen.getByTestId("clinical-math-lithium-results");
+    expect(results).toHaveTextContent("Level status: toxic");
+    expect(results).toHaveTextContent("TOXICITY ALERT");
+    expect(results).toHaveTextContent("Enter patient age to see the target range.");
+    expect(results).not.toHaveTextContent("target 0");
+  });
 });
