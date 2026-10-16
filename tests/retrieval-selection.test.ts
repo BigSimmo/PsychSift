@@ -1060,3 +1060,78 @@ describe("prevalidated atomic retrieval groups", () => {
     expect(selection.results.map((result) => result.id)).toEqual(["strong-1", "strong-2"]);
   });
 });
+
+describe("whole document title named in the query", () => {
+  const query = "What assessment documentation is required?";
+  const candidates = () => [
+    source({
+      id: "admissions",
+      document_id: "admissions",
+      title: "Admissions Policy and Procedure (RKPG)",
+      file_name: "Admissions Policy and Procedure (RKPG).pdf",
+      content: "Assessment documentation required on admission includes the risk assessment.",
+      hybrid_score: 0.52,
+    }),
+    source({
+      id: "radiotherapy",
+      document_id: "radiotherapy",
+      title: "Radiotherapy Skin Care Assessment and Management (FSH)",
+      file_name: "Radiotherapy Skin Care Assessment and Management (FSH).pdf",
+      content: "Skin assessment documentation is required at each review.",
+      hybrid_score: 0.52,
+    }),
+    source({
+      id: "pressure-injury",
+      document_id: "pressure-injury",
+      title: "Pressure Injury Prevention and Management (FSH)",
+      file_name: "Pressure Injury Prevention and Management (FSH).pdf",
+      content: "In the ICU environment, all risk assessment documentation is required.",
+      hybrid_score: 0.52,
+    }),
+    source({
+      id: "assessment-documentation",
+      document_id: "assessment-documentation",
+      title: "Assessment Documentation(AKG)",
+      file_name: "Assessment Documentation (AKG).pdf",
+      content: "CRHTT suitability assessment (pre-admission). CRHTT complete the following documentation.",
+      hybrid_score: 0.48,
+    }),
+  ];
+
+  it("ranks the document whose whole title the query names above documents sharing one word", () => {
+    const selection = selectRetrievalEvidence({
+      query,
+      queryClass: "document_lookup",
+      results: candidates(),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+
+    expect(selection.results[0]?.id).toBe("assessment-documentation");
+  });
+
+  it("does not treat one shared title word as naming the document", () => {
+    const selection = selectRetrievalEvidence({
+      query: "What skin assessment is required?",
+      queryClass: "document_lookup",
+      results: candidates().filter((candidate) => candidate.id !== "assessment-documentation"),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+    const scores = new Map(selection.candidates.map((candidate) => [candidate.chunkId, candidate.score]));
+
+    expect(scores.get("radiotherapy")).toBe(scores.get("admissions"));
+  });
+
+  it("keeps the boost inside the clamped score", () => {
+    const selection = selectRetrievalEvidence({
+      query,
+      queryClass: "document_lookup",
+      results: candidates().map((candidate) => ({ ...candidate, hybrid_score: 0.98 })),
+      topK: 8,
+      maxResultsPerDocument: 4,
+    });
+
+    expect(Math.max(...selection.candidates.map((candidate) => candidate.score))).toBeLessThanOrEqual(1);
+  });
+});

@@ -382,8 +382,35 @@ function medicationClinicalSubjectMatches(query: string, result: SearchResult) {
   return hasMedicationMonitoringSubjectEvidence(query, result);
 }
 
+/**
+ * Core title words: the title (or file name) without its extension or bracketed publisher code,
+ * so "Assessment Documentation (AKG).pdf" becomes "assessment documentation".
+ */
+function coreDocumentTitle(value: string) {
+  return normalize(
+    value
+      .replace(/\.(?:pdf|docx?|txt|md)$/i, "")
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/[._]+/g, " "),
+  );
+}
+
+/**
+ * True when the query contains the document's whole core title as a phrase of at least two words
+ * ("What assessment documentation is required?" names "Assessment Documentation (AKG)"). A shared
+ * single word, such as "assessment" in "Radiotherapy Skin Care Assessment", does not count.
+ */
+function queryNamesWholeDocumentTitle(query: string, result: SearchResult) {
+  const paddedQuery = ` ${normalize(query)} `;
+  return [result.title, result.file_name].some((value) => {
+    const core = coreDocumentTitle(value ?? "");
+    return core.split(" ").length >= 2 && paddedQuery.includes(` ${core} `);
+  });
+}
+
 function matchedSignalsForResult(args: {
   query: string;
+  queryClass: RagQueryClass;
   intent: RetrievalIntent;
   result: SearchResult;
   chunkType: RetrievalChunkType;
@@ -397,6 +424,10 @@ function matchedSignalsForResult(args: {
     args.intent.preferredDocumentSignals.some((signal) => titleText.includes(signal))
   ) {
     signals.push("document_title");
+  }
+  // Document lookups only: a question that names a whole title is asking for that document.
+  if (args.queryClass === "document_lookup" && queryNamesWholeDocumentTitle(args.query, args.result)) {
+    signals.push("document_title_phrase");
   }
   if (args.result.match_explanation?.labelHit) signals.push("document_label");
   if (args.result.match_explanation?.tableHit || (args.result.table_facts?.length ?? 0) > 0) signals.push("table_fact");
@@ -483,6 +514,9 @@ function resultBoost(args: { intent: RetrievalIntent; candidate: RetrievalCandid
   }
   if (args.intent.needsComparison && args.result.document_summary) boost += 0.03;
   if (signals.has("document_title")) boost += 0.05;
+  // The query names this document's whole title. Still added inside the clamp below, so it can
+  // only lift an unsaturated candidate and never outvotes saturated relevance.
+  if (signals.has("document_title_phrase")) boost += 0.12;
   if (signals.has("direct_relevance")) boost += 0.06;
   if (args.intent.requiredTermSignals.length > 0 && args.candidate.lexicalScore === 1) boost += 0.1;
   if (args.intent.requiredTermSignals.length > 0 && (args.candidate.lexicalScore ?? 0) === 0) boost -= 0.08;
@@ -643,7 +677,7 @@ export function buildRetrievalCandidates(
       matchedSignals: [],
       sourceHref: documentCitationHref(citationFromResult(result)),
     };
-    const matchedSignals = matchedSignalsForResult({ query, intent, result, chunkType });
+    const matchedSignals = matchedSignalsForResult({ query, queryClass, intent, result, chunkType });
     const lexicalScore = lexicalScoreForSignals(intent.requiredTermSignals, matchedSignals);
     const candidate = { ...initial, lexicalScore, matchedSignals };
     // The relevance score stays CLAMPED: live hybrid scores routinely saturate at 1.0, and letting
