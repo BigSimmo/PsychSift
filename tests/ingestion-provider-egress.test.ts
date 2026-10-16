@@ -200,6 +200,21 @@ describe("request-scoped ingestion provider egress", () => {
       );
     },
   );
+  it("refuses a dispatch whose authority load fails without refusing the whole attempt", async () => {
+    let calls = 0;
+    const context = createIngestionProviderEgressContext({
+      binding,
+      loadCurrent: async (request) => {
+        calls += 1;
+        if (calls === 1) throw new Error("synthetic authority timeout");
+        return current(request);
+      },
+    });
+    await expect(assertIngestionProviderEgress(context, "embedding", "synthetic")).rejects.toThrow(
+      "synthetic authority timeout",
+    );
+    await expect(assertIngestionProviderEgress(context, "embedding", "synthetic")).resolves.toBeUndefined();
+  });
   it("fails closed without independently verified source observations", async () => {
     const context = createIngestionProviderEgressContext({
       binding,

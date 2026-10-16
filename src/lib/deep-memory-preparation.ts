@@ -5,7 +5,7 @@ import { modelIndexExtractionVersion } from "@/lib/model-index-version";
 import type { ModelIndexProfile, ModelIndexProfileItem } from "@/lib/model-index-extraction";
 import type { ClinicalDocument, DocumentMemoryCard, DocumentMemoryCardType, DocumentSectionMemory } from "@/lib/types";
 
-export const ragDeepMemoryVersion = "rag-deep-memory-v1" as const;
+export const ragDeepMemoryVersion = "rag-deep-memory-v2" as const;
 export const localDeepMemoryProducer = "local-worker" as const;
 export type MemoryChunk = {
   id: string;

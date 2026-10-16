@@ -454,6 +454,35 @@ describe("trusted document Storage upload recovery", () => {
     expect(download).toHaveBeenCalledWith(intendedStoragePath);
   });
 
+  it("recognises Storage's HTTP 400 duplicate response by its 409 markers", async () => {
+    const upload = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          status: 400,
+          statusCode: "409",
+          code: "ResourceAlreadyExists",
+          message: "The resource already exists",
+        },
+      })
+      .mockResolvedValueOnce({ data: { path: "created" }, error: null });
+    const download = vi.fn(async () => ({ data: new Blob([bytes]), error: null }));
+    await expect(
+      uploadTrustedDocumentBytes({
+        storage: { upload, download },
+        ownerId: administratorId,
+        documentId,
+        intendedStoragePath,
+        bytes,
+        byteCount: bytes.byteLength,
+        contentSha256,
+        contentType: "application/pdf",
+        createRecoveryId: () => recoveryId,
+      }),
+    ).resolves.toMatchObject({ collisionRecovered: true });
+  });
+
   it("refuses a collided path whose complete bytes do not match", async () => {
     const upload = vi.fn(async () => ({
       data: null,

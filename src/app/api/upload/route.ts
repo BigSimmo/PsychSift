@@ -467,6 +467,14 @@ export async function POST(request: Request) {
           );
           if (recovered.outcome !== "not_found") {
             durableAdmission = true;
+            // The ambiguous commit may have been this request's own, so it owns the audit row.
+            await writeAuditLog(supabase, {
+              ownerId: uploadOwnerId,
+              action: "document_upload",
+              resourceType: "document",
+              resourceId: documentId,
+              metadata: { fileType: file.type, fileSize: file.size },
+            });
             return NextResponse.json({ document: recovered.document, job: recovered.job }, { status: 201 });
           }
         } catch {

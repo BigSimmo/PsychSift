@@ -238,9 +238,8 @@ export async function assertIngestionProviderEgress(
     }
     if (attempt.refusal) throw attempt.refusal;
     signal?.throwIfAborted();
-    attempt.refusal ??= new IngestionProviderEgressRefusal("provider_egress_denied", [
-      { code: "scanner_unavailable", action: "repeat_safety_checks" },
-    ]);
-    throw attempt.refusal;
+    // A failed authority load is not a safety verdict: refuse this dispatch, but leave the
+    // attempt unrefused so the ordinary retry budget applies.
+    throw error;
   }
 }

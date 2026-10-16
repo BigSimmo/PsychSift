@@ -230,8 +230,9 @@ export function assertTrustedDocumentStoragePath(ownerId: string, documentId: st
 }
 
 function isConfirmedExistingObjectError(error: TrustedDocumentStorageError | null) {
-  if (!error || Number(error.status) !== 409) return false;
-  return error.code === "ResourceAlreadyExists" || error.statusCode === "409";
+  // Storage reports a duplicate as HTTP 400 with statusCode "409", so the markers decide, not the HTTP status.
+  if (!error) return false;
+  return error.code === "ResourceAlreadyExists" || String(error.statusCode) === "409";
 }
 
 function contentDigest(bytes: Uint8Array) {
