@@ -6,8 +6,24 @@ import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 
 import { lockPythonVersion, workerPythonLockTargets } from "./worker-python-lock-config.mjs";
 
+const NODE_MINIMUM_VERSION = "24.15.0";
+
 function major(version) {
   return version?.match(/\d+/)?.[0] ?? null;
+}
+
+function isSupportedNodeVersion(version) {
+  if (!version || major(version) !== "24") return false;
+  const parts = version
+    .match(/^\d+(?:\.\d+){1,2}/)?.[0]
+    ?.split(".")
+    .map(Number);
+  if (!parts || parts.length < 3 || parts.some((part) => !Number.isFinite(part))) return false;
+  const required = NODE_MINIMUM_VERSION.split(".").map(Number);
+  for (let index = 0; index < 3; index += 1) {
+    if (parts[index] !== required[index]) return parts[index] > required[index];
+  }
+  return true;
 }
 
 export function diagnoseCodexCloud({
@@ -19,11 +35,11 @@ export function diagnoseCodexCloud({
   setupExitCode,
 }) {
   const issues = [];
-  if (major(nodeVersion) !== "24") {
+  if (!isSupportedNodeVersion(nodeVersion)) {
     issues.push({
       code: "NODE_RUNTIME",
-      issue: `Node 24.x is required; detected ${nodeVersion || "unavailable"}.`,
-      fix: "Select Node 24 in the Cloud environment or rerun setup with nvm available.",
+      issue: `Node >=${NODE_MINIMUM_VERSION} <25 is required; detected ${nodeVersion || "unavailable"}.`,
+      fix: "Select Node 24 (>=24.15.0) in the Cloud environment or rerun setup with nvm available.",
     });
   }
   if (major(npmVersion) !== "11") {

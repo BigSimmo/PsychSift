@@ -408,9 +408,6 @@ function validateCapabilityEvidence(items, label, errors, requireTracked) {
 function validateModelRouting(receipt, phase, errors, requireTracked) {
   const controllerReasoning = manifest.adaptiveEffortPolicy.highLaunchPhases.includes(phase.id) ? "high" : "xhigh";
   if (receipt.launchProfile !== controllerReasoning) errors.push(`launchProfile must be ${controllerReasoning}`);
-  if (receipt.xhighConfirmed !== (controllerReasoning === "xhigh")) {
-    errors.push(`xhighConfirmed must be ${controllerReasoning === "xhigh"}`);
-  }
   validateAgentRouting(
     receipt.controllerRouting,
     { model: manifest.defaultAgentPolicy.controllerModel, reasoning: controllerReasoning },

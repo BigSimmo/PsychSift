@@ -119,14 +119,17 @@ The generated shell profile removes known OpenAI, Supabase, Railway, GitHub/GitL
 database, CI-trigger, test-user, and emergency-PAT variables. This prevents an unrelated
 Cloud task from silently becoming provider-backed.
 
-Set all five offline values in the environment UI. The setup also writes the generated
-profile to `.bashrc`, `.profile`, and `.bash_profile`. Covering `.bash_profile` is required:
-Bash stops login-profile discovery at the first matching file, so an existing `.bash_profile`
-can otherwise prevent `.profile` from running. Offline mode values are forced after inherited
-platform values so stale `auto`/`false` settings cannot outrank the repository contract.
-Do not manually source the profile as an acceptance workaround: start a fresh task and invoke
-the direct `npm run check:codex-cloud` commands below. The tracked command shims make those
-ordinary Node commands load the profile themselves.
+Set all five offline values in the environment UI. The setup also prepends the generated
+profile to the top of `.bashrc`, `.profile`, and `.bash_profile` (ahead of Ubuntu's
+non-interactive `return` guard in `.bashrc`) and runs `scripts/install-codex-cloud-command-shims.sh`.
+Covering `.bash_profile` is required: Bash stops login-profile discovery at the first matching
+file, so an existing `.bash_profile` can otherwise prevent `.profile` from running. Offline mode
+values are forced after inherited platform values so stale `auto`/`false` settings cannot outrank
+the repository contract. Do not manually source the profile as an acceptance workaround: start a
+fresh task and invoke the direct `npm run check:codex-cloud` commands below. Both the tracked
+command shims and `scripts/check-codex-cloud-setup.mjs` itself automatically load
+`$HOME/.clinical-kb-codex-cloud.sh` when invoked in a Cloud shell (including raw `bash -c`
+invocations where `/root/.nvm/versions/node/.../bin` precedes `$HOME/.local/bin` on `PATH`).
 
 ### Connected (explicit opt-in)
 

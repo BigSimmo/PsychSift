@@ -71,7 +71,9 @@ const envSchema = z
         .optional(),
     ),
     SUPABASE_DB_URL: z.string().url().optional(),
-    HEALTH_DEEP_PROBE_SECRET: z.string().min(16).optional(),
+    // Blank means unset (offline wrappers blank inherited secrets); an unset secret keeps the
+    // deep probe closed, and a non-blank value must still be at least 16 characters.
+    HEALTH_DEEP_PROBE_SECRET: z.preprocess(coerceBlankEnv, z.string().min(16).optional()),
     // Inbound webhook receivers. Each shared secret gates a machine-to-machine
     // endpoint under /api/webhooks/* and fails closed when unset (the route 503s
     // rather than trusting an unauthenticated caller). See docs/webhooks.md.
