@@ -46,8 +46,9 @@ import { useWorkTimeZone } from "@/components/work-time/use-work-time-zone";
  *
  * Phone is one column in that order. From a laptop width it splits into what
  * to act on (left) and what is ahead (right); left then right IS the phone
- * order. The band names the page "Admin" (audit D15, 13 Oct 2026): no greeting,
- * and no date line, which the owner asked to drop from Admin.
+ * order. The band names the page "Admin" (audit D15, 13 Oct 2026) with no
+ * greeting. The owner brought the date line back on 16 Oct 2026, after seeing it
+ * beside the other Work pages, so Admin shows the date over its title like them.
  *
  * Fail-closed: while loading, signed out or after a failed load nothing from
  * the reader's records is drawn, never a saved copy (the device cache holds

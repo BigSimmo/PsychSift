@@ -143,7 +143,12 @@ describe("Now: the safety order", () => {
   });
 
   it("offers no Change hospital pill when the reader has only one hospital", () => {
-    handbook.state = readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }]));
+    handbook.state = {
+      ...readyHandbook(handbookItems([{ id: "sw", title: "Switchboard", phone: "9000 0000" }])),
+      hospitals: [
+        { serviceId: "svc", serviceName: "Synthetic Health Service", siteId: "a", siteName: "Synthetic Hospital" },
+      ],
+    };
     render(<OnCallHome now={IN_HOURS} />);
     expect(screen.queryByRole("button", { name: /Change hospital/ })).toBeNull();
     expect(screen.getByTestId("on-call-now-hospital")).toHaveTextContent("Synthetic Hospital");
