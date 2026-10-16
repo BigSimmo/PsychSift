@@ -58,7 +58,7 @@ describe("worker visual capture hardening", () => {
     expect(workerSource).toContain("p_generation: args.indexGenerationId");
     expect(behaviorSource).toContain("job_id: job.id,");
     expect(behaviorSource).toContain("worker_id: job.locked_by,");
-    expect(behaviorSource).toContain("const result = await rpc(name, { ...payload, p_fence: attempt.fence });");
+    expect(behaviorSource).toContain("result = await rpc(name, { ...payload, p_fence: attempt.fence });");
     expect(workerSource).not.toContain("await replacePageRows(args.documentId, args.pages)");
     // The commit RPC prunes stale/legacy generation rows and upserts index quality atomically
     // server-side; the worker must surface any RPC failure (fail closed) rather than run a
