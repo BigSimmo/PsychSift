@@ -3104,7 +3104,7 @@ function ClinicalDashboardContent({
           settingsInitialFocus={settingsGuideFlow.settingsInitialFocus}
           accountSetupOpen={accountSetupOpen}
           onCloseAccountSetup={closeAccountSetup}
-          accountSetupIntent={accountSetupIntent}
+          intent={accountSetupIntent}
         />
         {twoPaneSideMenu ? (
           <TwoPaneSideMenuHost

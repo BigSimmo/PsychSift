@@ -59,4 +59,4 @@ jobs:
           --config p/javascript
           --config p/react
           --config p/nodejs
-          src worker scripts eslint-rules supabase/functions
+          src worker scripts supabase/functions

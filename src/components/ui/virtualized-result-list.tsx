@@ -229,7 +229,17 @@ export function VirtualizedResultList<T>({
 
   const readScrollOffset = useCallback((target?: EventTarget | null) => {
     if (target && target instanceof HTMLElement && typeof target.scrollTop === "number" && target.scrollTop >= 0) {
-      if (target === containerRef.current || target === listRef.current || target.contains(containerRef.current)) {
+      if (target === containerRef.current || target === listRef.current) {
+        if (target.scrollTop > 0 || (window.scrollY ?? 0) === 0) {
+          return target.scrollTop;
+        }
+      }
+      if (containerRef.current && target.contains(containerRef.current)) {
+        const targetRect = target.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+        if (targetRect.height > 0 || containerRect.height > 0 || targetRect.top !== containerRect.top) {
+          return Math.max(0, targetRect.top - containerRect.top);
+        }
         if (target.scrollTop > 0 || (window.scrollY ?? 0) === 0) {
           return target.scrollTop;
         }

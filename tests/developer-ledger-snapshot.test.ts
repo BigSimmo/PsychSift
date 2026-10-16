@@ -248,7 +248,7 @@ describe("developer-area ledger-snapshot inbox validation (#315621)", () => {
 
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
-      fs.rmSync(dir, { recursive: true, force: true });
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 50 });
     }
   });
 

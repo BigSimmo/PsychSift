@@ -688,13 +688,12 @@ test.describe("PsychSift tools directory and legacy launcher", () => {
     ] as const) {
       await expect(toolRowLink(results, id)).toHaveAttribute("href", href);
       // Most rows sit below the fold, and the header's scroll-hide moves them mid-click.
-      const aboutButton = results.getByRole("button", { name: `About ${title}` });
-      await clickWhenSettled(aboutButton);
+      await clickWhenSettled(results.getByRole("button", { name: `About ${title}` }));
       const detail = page.locator('[data-testid="tools-search-detail-sheet"]:visible');
       await expect(detail.getByRole("link", { name: `Open ${title}` })).toHaveAttribute("href", href);
       await detail.getByRole("button", { name: `Close ${title}` }).click();
       await expect(detail).toHaveCount(0);
-      await expect(aboutButton).toBeFocused({ timeout: 10_000 });
+      await expect(results.getByRole("button", { name: `About ${title}` })).toBeFocused({ timeout: 10_000 });
     }
     // External companion-app launchers were removed; no localhost links should remain.
     await expect(page.locator('a[href^="http://localhost"], a[href^="http://127.0.0.1"]')).toHaveCount(0);
