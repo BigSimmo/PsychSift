@@ -132,15 +132,24 @@ export function calculateProportionalLithiumDose(input: LithiumDoseAdjustmentInp
     };
   }
   const suggestedDoseMg = Math.round(rawDose / incrementMg) * incrementMg;
-  if (suggestedDoseMg <= 0) {
+  const predictedLevelMmolL = input.currentLevelMmolL * (suggestedDoseMg / input.currentDoseMg);
+  if (
+    suggestedDoseMg <= 0 ||
+    suggestedDoseMg > 2000 ||
+    suggestedDoseMg / input.currentDoseMg < 0.5 ||
+    suggestedDoseMg / input.currentDoseMg > 2 ||
+    predictedLevelMmolL >= 1.2
+  ) {
+    const error = suggestedDoseMg <= 0
+      ? "Calculated dose rounds to zero; clinical review required"
+      : "Rounded dose exceeds safe dose or predicted lithium level limits and requires clinical review";
     return {
       isValid: false,
       suggestedDoseMg: null,
-      errors: ["Calculated dose rounds to zero; clinical review required"],
-      note: "Calculated dose rounds to zero; clinical review required.",
+      errors: [error],
+      note: "Do not use a rounded dose that exceeds safe limits without specialist review.",
     };
   }
-
   return {
     isValid: true,
     suggestedDoseMg,
