@@ -4,8 +4,10 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   formatInboxRecord,
+  inboxRecordSchema,
   loadLedgerSnapshot,
   openItemsByPriority,
+  readDevPendingRequests,
   resolveFreshness,
 } from "@/lib/developer-area/ledger-snapshot";
 
@@ -232,5 +234,101 @@ describe("dev-only pending inbox loading (#707F09)", () => {
         payload: {},
       }).summary,
     ).toBe("(no summary in the custom request)");
+  });
+});
+
+describe("developer-area ledger-snapshot inbox validation (#315621)", () => {
+  const tempDirs: string[] = [];
+
+  function makeTempDir() {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ledger-inbox-test-"));
+    tempDirs.push(dir);
+    return dir;
+  }
+
+  afterEach(() => {
+    for (const dir of tempDirs.splice(0)) {
+      fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  });
+
+  it("validates InboxRecord shape and preserves passthrough metadata", () => {
+    const valid = inboxRecordSchema.safeParse({
+      version: 2,
+      id: "req-1",
+      action: "add",
+      createdOn: "2026-10-16",
+      targetId: "#ABC123",
+      payload: {
+        pri: "P2",
+        summary: "Example summary",
+        issueUlid: "01M4T67N2F3156217SG5N7Z6B7",
+      },
+    });
+    expect(valid.success).toBe(true);
+
+    expect(inboxRecordSchema.safeParse({ foo: 123 }).success).toBe(false);
+    expect(inboxRecordSchema.safeParse([]).success).toBe(false);
+    expect(inboxRecordSchema.safeParse({ id: "", action: "add" }).success).toBe(false);
+    expect(inboxRecordSchema.safeParse({ id: "req-2", action: "add", payload: "not-an-object" }).success).toBe(false);
+  });
+
+  it("skips corrupt JSON and schema-invalid files without dropping valid sibling inbox records", () => {
+    const dir = makeTempDir();
+
+    // (a) Second valid record (written with later filename to verify deterministic sort)
+    fs.writeFileSync(
+      path.join(dir, "20-valid-second.json"),
+      JSON.stringify({
+        version: 2,
+        id: "req-second",
+        action: "update",
+        createdOn: "2026-10-16",
+        payload: {
+          id: "#315621",
+          pri: "P1",
+          summary: "Validate InboxRecord per file",
+        },
+      }),
+      "utf8",
+    );
+
+    // (b) Truncated / corrupt JSON file
+    fs.writeFileSync(path.join(dir, "15-corrupt.json"), '{"id": "broken", "action": "add", ', "utf8");
+
+    // (c) Schema-invalid JSON files (missing id/action and top-level array)
+    fs.writeFileSync(path.join(dir, "12-invalid-object.json"), JSON.stringify({ foo: 123 }), "utf8");
+    fs.writeFileSync(path.join(dir, "13-invalid-array.json"), JSON.stringify(["not", "a", "record"]), "utf8");
+
+    // (a) First valid record
+    fs.writeFileSync(
+      path.join(dir, "10-valid-first.json"),
+      JSON.stringify({
+        version: 2,
+        id: "req-first",
+        action: "add",
+        createdOn: "2026-10-15",
+        payload: {
+          summary: "First valid request",
+        },
+      }),
+      "utf8",
+    );
+
+    const results = readDevPendingRequests(dir);
+    expect(results).toEqual([
+      {
+        request_id: "req-first",
+        action: "add",
+        summary: "First valid request",
+        created_at: "2026-10-15",
+      },
+      {
+        request_id: "req-second",
+        action: "update",
+        summary: "#315621: summary → Validate InboxRecord per file; priority → P1",
+        created_at: "2026-10-16",
+      },
+    ]);
   });
 });

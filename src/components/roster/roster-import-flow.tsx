@@ -465,6 +465,12 @@ export function RosterImportFlow({
             </ModeGroupedList>
           ) : null}
 
+          {review.diff.conflicts.length ? (
+            <ModeNotice tone="warning" data-testid="roster-import-conflicts">
+              {plural(review.diff.conflicts.length, "overlapping shift")} found in this file.
+            </ModeNotice>
+          ) : null}
+
           <p className={cn(eyebrowText, "px-3")} data-testid="roster-import-unchanged">
             {review.unchanged} unchanged
           </p>

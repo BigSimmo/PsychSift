@@ -420,6 +420,7 @@ export function demoRosterCommand(action: RosterAction): RosterCommandResult {
     case "swap.undo":
       return { ok: true, swapId: action.swapId, status: "cancelled" };
     case "open.post":
+      // A post key is accepted and ignored: nothing is saved here, so there is nothing to post twice.
       return { ok: true, openShiftId: id, status: "open" };
     case "open.claim":
       return { ok: true, openShiftId: action.openShiftId, status: "claimed" };

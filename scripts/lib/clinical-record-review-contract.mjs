@@ -94,6 +94,22 @@ export function reviewerAttributionProblem(value) {
   return null;
 }
 
+/**
+ * The check for a NEW signature, applied only when a reviewer signs. A product or role name
+ * ("PsychSift", "Clinical Team") or a single name is refused, so every new sign-off carries a
+ * named person (owner decision 2026-10-15, docs/decisions/2026-10-15-specifiers-need-a-named-sign-off.md).
+ * Records already on disk are judged by reviewerAttributionProblem alone, so this does not
+ * change the status of anything signed before.
+ */
+export function newSignatureAttributionProblem(value) {
+  const problem = reviewerAttributionProblem(value);
+  if (problem) return problem;
+  if (!isNamedSpecifierReviewer(value)) {
+    return 'reviewedBy must be your own full name as it should appear publicly (your given name and surname), not a product, role or single name such as "PsychSift".';
+  }
+  return null;
+}
+
 /** Example names that have appeared in this tool's guide, help text or tests: never a sign-off. */
 const EXAMPLE_REVIEWER_NAMES = new Set([
   "dr j smith",
@@ -217,10 +233,13 @@ export function isNamedSpecifierReviewer(value) {
   if (typeof value !== "string") return false;
   const trimmed = value.trim().replace(/\s+/g, " ");
   if (NOT_A_PERSON.has(trimmed.toLowerCase())) return false;
+  // The two-word display name Psych Sift is accepted as the owner's public sign-off attribution,
+  // while single-word product/system stamps ("PsychSift", "Psych-Sift") and role words remain rejected.
+  const normaliseRejectedName = (word) => word.toLowerCase().replace(/[^\p{L}]/gu, "");
   const words = trimmed.split(" ").filter((word) => /\p{L}/u.test(word));
   const titles = new Set(["dr", "dr.", "prof", "prof.", "professor", "a/prof", "mr", "ms", "mrs", "mx"]);
   const nameWords = words.filter((word) => !titles.has(word.toLowerCase()));
-  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(word.toLowerCase()));
+  return nameWords.length >= 2 && !nameWords.some((word) => NOT_A_PERSON.has(normaliseRejectedName(word)));
 }
 
 function isSpecifierClinicianReviewed(review) {

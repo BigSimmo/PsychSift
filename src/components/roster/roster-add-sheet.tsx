@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { cn } from "@/components/ui-primitives";
 import { SHIFT_KIND_LABEL, SHIFT_KINDS, type ShiftKind } from "@/lib/roster/shift-kind";
-import { detectOwnShiftConflicts } from "@/lib/roster/shifts/diff";
+import { detectOwnConflicts } from "@/lib/roster/shifts/conflicts";
 import {
   ON_CALL_MANUAL_SHIFT_REPEAT_MAX_WEEKS,
   type OnCallManualShiftRequest,
@@ -124,7 +124,7 @@ function ShiftForm({
       if (candidate) candidateShifts.push(candidate);
     }
     if (candidateShifts.length === 0) return [];
-    return detectOwnShiftConflicts([...existingShifts, ...candidateShifts]);
+    return detectOwnConflicts([...existingShifts, ...candidateShifts]);
   }, [date, start, end, kind, place, repeatWeeks, existingShifts]);
 
   async function submit(event: FormEvent) {
@@ -234,7 +234,7 @@ function ShiftForm({
         <div data-testid="roster-own-shift-conflict-warning">
           <InlineNotice tone="warning">
             {conflicts.length === 1
-              ? `Double-booked shift: ${conflicts[0]!.first.title} overlaps ${conflicts[0]!.second.title} by ${conflicts[0]!.overlapMinutes} min.`
+              ? `Double-booked shift: ${conflicts[0]!.first.title} overlaps ${conflicts[0]!.second.title}.`
               : `${conflicts.length} overlapping shifts found in your roster.`}
           </InlineNotice>
         </div>

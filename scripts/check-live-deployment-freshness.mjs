@@ -31,6 +31,8 @@
  * modes, and a detector depending on the thing it watches is not a detector.
  */
 
+import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
+
 const MS_PER_HOUR = 3_600_000;
 
 /**
@@ -126,7 +128,7 @@ async function main() {
   process.exitCode = 1;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isDirectEntrypoint(import.meta.url)) {
   main().catch((error) => {
     console.log(`::error::Deployment freshness check failed: ${error.message}`);
     process.exitCode = 1;

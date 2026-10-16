@@ -12,6 +12,7 @@ describe("favourites auth gate", () => {
     const modes = source("src/lib/app-modes.ts");
     const shell = source("src/components/clinical-dashboard/global-search-shell.tsx");
     const dashboard = source("src/components/ClinicalDashboard.tsx");
+    const dashboardDialogs = source("src/components/clinical-dashboard/dashboard-sidebar-dialogs.tsx");
     const header = source("src/components/clinical-dashboard/master-search-header.tsx");
     const library = source("src/components/clinical-dashboard/favourites-command-library-page.tsx");
     const accountSetup = source("src/components/clinical-dashboard/account-setup-dialog.tsx");
@@ -61,7 +62,8 @@ describe("favourites auth gate", () => {
     expect(dashboard).toContain("showAccountLibrary={favouritesAccessible}");
     expect(dashboard).toContain("useDashboardShellActions");
     expect(dashboard).toContain('openAccountSetup("favourites")');
-    expect(dashboard).toContain("intent={accountSetupIntent}");
+    expect(dashboard).toContain("accountSetupIntent={accountSetupIntent}");
+    expect(dashboardDialogs).toMatch(/<SidebarDialogs\.SidebarAccountSetupDialog[\s\S]*?intent=\{accountSetupIntent/);
     expect(dashboard).toContain('mode === "favourites" && !favouritesAccessible');
     expect(dashboard).toContain("FavouritesGuestGate");
 

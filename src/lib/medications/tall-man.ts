@@ -1,91 +1,67 @@
 /**
- * ISMP & ACSQHC (Australian Commission on Safety and Quality in Health Care)
- * Standard Tall Man Lettering Registry for High-Risk Psychotropics and Confusable Pairs.
+ * Mixed-case ("Tall Man") lettering for look-alike, sound-alike (LASA) medicine names, taken from
+ * the Australian Commission on Safety and Quality in Health Care, National Mixed-Case Lettering
+ * List (April 2024), Tables 1 and 3, limited to medicines this catalogue lists.
  *
- * Look-Alike / Sound-Alike (LASA) drug errors can lead to fatal inadvertent administrations
- * (e.g. cloZAPine vs cloNIDine, hydrOXYzine vs hydrALAZINE).
+ * The Commission warns that overuse reduces the technique's effect, so names that appear only on
+ * the US (FDA and ISMP) list are not lettered here. One local exception is kept: cloZAPine, because
+ * a clozapine selection error is high harm and the name is widely lettered in Australian practice.
  */
-export const ISMP_TALL_MAN_MEDICATIONS: Readonly<Record<string, string>> = Object.freeze({
-  // Antipsychotics & Confusable Pairs
-  clozapine: "cloZAPine",
-  clonidine: "cloNIDine",
-  olanzapine: "OLANZapine",
-  quetiapine: "QUEtiapine",
+export const ACSQHC_MIXED_CASE_MEDICATIONS: Readonly<Record<string, string>> = Object.freeze({
+  // Antipsychotics
   aripiprazole: "ARIPiprazole",
-  rabeprazole: "rabePRAZOLE",
-  risperidone: "risperiDONE",
-  ropinirole: "ropiniROLE",
-  chlorpromazine: "chlorproMAZINE",
-  chlorpropamide: "chlorproPAMIDE",
-  clomipramine: "clomiPRAMINE",
-  promethazine: "proMETHAZINE",
-  fluphenazine: "fluPHENazine",
-  flupentixol: "FLUpentixol",
-  flupenthixol: "FLUpenthixol",
-  zuclopenthixol: "ZUCLOpenthixol",
+  chlorpromazine: "cHLORPROMAZine",
+  quetiapine: "QUETIAPine",
+  risperidone: "riSPERIDONe",
+  clozapine: "cloZAPine", // local exception, not on the ACSQHC list
 
-  // Antidepressants & Anxiolytics
-  fluoxetine: "FLUoxetine",
-  fluvoxamine: "fluvoxaMINE",
-  paroxetine: "PARoxetine",
-  sertraline: "serTRALine",
-  citalopram: "CITalopram",
-  escitalopram: "ESCitalopram",
+  // Antidepressants
+  amitriptyline: "amiTRIPTYLine",
+  clomipramine: "cLOMIPRAMine",
+  dosulepin: "doSULepin",
+  doxepin: "doXepin",
   duloxetine: "DULoxetine",
-  venlafaxine: "venlaFAXine",
-  bupropion: "buPROPion",
-  buspirone: "busPIRone",
+  fluvoxamine: "fluVOXAMine",
+  paroxetine: "PARoxetine",
+  sertraline: "SERTRALine",
 
-  // Benzodiazepines & Sedatives (aligned on differentiating prefixes per ACSQHC)
+  // Benzodiazepines
+  clobazam: "cloBAZam",
   clonazepam: "CLONazepam",
+  diazepam: "DIAzepam",
   lorazepam: "LORazepam",
-  diazepam: "DIAZepam",
   oxazepam: "OXazepam",
-  temazepam: "TEMazepam",
-  alprazolam: "ALPRAZolam",
-  midazolam: "MIDazolam",
 
-  // Mood Stabilizers & Anticonvulsants
-  carbamazepine: "carBAMazepine",
-  lamotrigine: "lamoTRIgine",
+  // Mood stabilisers and anticonvulsants
+  carbamazepine: "CARBAMazepine",
+  oxcarbazepine: "OXCARBazepine",
+  lamotrigine: "lamOTRIGine",
 
-  // Vasodilators / Antihistamines
-  hydroxyzine: "hydrOXYzine",
+  // Other
+  methadone: "methADONe",
+  methylphenidate: "methYLPHENIDATE",
+  promethazine: "proMETHazine",
+  prochlorperazine: "proCHLORPERazine",
   hydralazine: "hydrALAZINE",
 });
 
 /**
- * Formats a medication name using standard ISMP / ACSQHC Tall Man lettering if recognized.
- * Supports both exact generic names and compound strings (e.g. "Flupentixol decanoate", "Clozapine (Clopine)")
- * via word-boundary token matching.
+ * Formats a medicine name with its mixed-case lettering when it is on the list.
+ * Returns the name unchanged when it is not.
  */
 export function formatTallMan(name: string): string {
   if (!name) return name;
   const key = name.toLowerCase().trim();
-  if (Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key)) {
-    return ISMP_TALL_MAN_MEDICATIONS[key]!;
-  }
-  return name.replace(/\b([A-Za-z]+)\b/g, (token) => {
-    const lower = token.toLowerCase();
-    return Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, lower)
-      ? ISMP_TALL_MAN_MEDICATIONS[lower]!
-      : token;
-  });
+  return Object.prototype.hasOwnProperty.call(ACSQHC_MIXED_CASE_MEDICATIONS, key)
+    ? ACSQHC_MIXED_CASE_MEDICATIONS[key]
+    : name;
 }
 
 /**
- * Checks whether a given medication (or compound medication string) contains an
- * ISMP / ACSQHC identified high-alert LASA drug.
+ * Checks whether a medicine name has mixed-case lettering on the list.
  */
 export function isTallManMedication(name: string): boolean {
   if (!name) return false;
   const key = name.toLowerCase().trim();
-  if (Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, key)) {
-    return true;
-  }
-  const tokens = name.match(/\b([A-Za-z]+)\b/g);
-  if (!tokens) return false;
-  return tokens.some((token) =>
-    Object.prototype.hasOwnProperty.call(ISMP_TALL_MAN_MEDICATIONS, token.toLowerCase()),
-  );
+  return Object.prototype.hasOwnProperty.call(ACSQHC_MIXED_CASE_MEDICATIONS, key);
 }

@@ -670,7 +670,10 @@ export function CmeLogPage({
           </p>
         ) : null}
 
-        {showFinish ? finish : activities}
+        {/* The rows end with a reserve the floating dock's height plus 16px, so the last ones never sit under it. */}
+        <div className="cpd-dock-reserve grid min-w-0 content-start gap-[calc(var(--spacing)*2.25)]">
+          {showFinish ? finish : activities}
+        </div>
 
         <div
           className="work-dock"

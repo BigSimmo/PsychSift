@@ -45,7 +45,7 @@ class EmptyQuery implements PromiseLike<{ data: unknown[]; error: null }> {
 
 async function loadSearch(
   corpusGroundingVerdict: "inconclusive" | "out_of_corpus" | "in_corpus_topic",
-  options: { openAiApiKey?: string } = {},
+  options: { openAiApiKey?: string; sourceOnly?: boolean; correctionError?: boolean } = {},
 ) {
   const setCachedSearch = vi.fn(async () => undefined);
 
@@ -84,7 +84,7 @@ async function loadSearch(
     };
   });
   vi.doMock("@/lib/rag/rag-provider", () => ({
-    isSourceOnlyMode: () => true,
+    isSourceOnlyMode: () => options.sourceOnly ?? true,
     allowsAutoDegrade: () => true,
     sourceOnlyReason: () => "source_only",
     classifyProviderFailure: () => "provider_failure",
@@ -92,7 +92,19 @@ async function loadSearch(
   }));
   vi.doMock("@/lib/supabase/admin", () => ({
     createAdminClient: () => ({
-      rpc: vi.fn(async () => ({ data: [], error: null })),
+      rpc: vi.fn((name: string) => {
+        // The query-correction call is awaited after an optional abortSignal(), so it returns a
+        // thenable builder. A timeout surfaces as an error with null data.
+        const response =
+          name === "correct_clinical_query_terms"
+            ? options.correctionError
+              ? { data: null, error: { message: "AbortError: signal timed out" } }
+              : { data: null, error: null }
+            : { data: [], error: null };
+        const builder = Promise.resolve(response) as Promise<typeof response> & { abortSignal: () => unknown };
+        builder.abortSignal = () => builder;
+        return builder;
+      }),
       from: vi.fn(() => new EmptyQuery()),
     }),
   }));
@@ -169,6 +181,39 @@ describe("unsupported short-circuit cache write", () => {
 
     const result = await searchChunksWithTelemetry({
       query: "catatonia",
+      ownerId,
+      lexicalOnly: true,
+    });
+
+    expect(result.results).toEqual([]);
+    expect(result.telemetry.retrieval_strategy).toBe("unsupported_short_circuit");
+    expect(setCachedSearch).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it("does not cache the zero when the query-correction call failed or timed out", async () => {
+    // Qodo review on PR #3560: a timed-out correction resolves with an error and null data, which
+    // is not evidence that the query has no match, so the empty result must not become sticky.
+    const { searchChunksWithTelemetry, setCachedSearch } = await loadSearch("inconclusive", {
+      sourceOnly: false,
+      correctionError: true,
+    });
+
+    const result = await searchChunksWithTelemetry({
+      query: "Show me the airport travel policy",
+      ownerId,
+      lexicalOnly: true,
+    });
+
+    expect(result.results).toEqual([]);
+    expect(result.telemetry.retrieval_strategy).toBe("unsupported_short_circuit");
+    expect(setCachedSearch).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it("still caches the deterministic zero when the query-correction call succeeded", async () => {
+    const { searchChunksWithTelemetry, setCachedSearch } = await loadSearch("inconclusive", { sourceOnly: false });
+
+    const result = await searchChunksWithTelemetry({
+      query: "Show me the airport travel policy",
       ownerId,
       lexicalOnly: true,
     });

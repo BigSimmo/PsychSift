@@ -101,7 +101,42 @@ function mapOwnerRpcError(error: { message?: string | null }): PublicApiError {
   return unavailable();
 }
 
-/** Batched member and manager counts across all services in O(1) queries. */
+const SERVICE_ID_CHUNK_SIZE = 40;
+const COUNT_PAGE_SIZE = 1000;
+
+function chunkServiceIds(ids: readonly string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += SERVICE_ID_CHUNK_SIZE) {
+    chunks.push(ids.slice(index, index + SERVICE_ID_CHUNK_SIZE));
+  }
+  return chunks;
+}
+
+type ServiceIdRow = { service_id: string };
+type CountQueryResult = { data: ServiceIdRow[] | null; error: unknown };
+type PagedFilterBuilder = PromiseLike<CountQueryResult> & {
+  limit: (count: number) => PromiseLike<CountQueryResult>;
+  range?: (from: number, to: number) => PromiseLike<CountQueryResult>;
+};
+
+async function fetchAllServiceIdRows(buildQuery: () => PagedFilterBuilder): Promise<ServiceIdRow[]> {
+  const rows: ServiceIdRow[] = [];
+  let offset = 0;
+  while (true) {
+    const query = buildQuery();
+    const hasRange = typeof query.range === "function";
+    const response = await (hasRange
+      ? query.range!(offset, offset + COUNT_PAGE_SIZE - 1)
+      : query.limit(COUNT_PAGE_SIZE));
+    if (response.error || !response.data) throw unavailable();
+    rows.push(...response.data);
+    if (!hasRange || response.data.length < COUNT_PAGE_SIZE) break;
+    offset += COUNT_PAGE_SIZE;
+  }
+  return rows;
+}
+
+/** Batched team counts across all returned services in 40-ID chunks with pagination safety. */
 export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam[] }> {
   const { data: services, error } = await client
     .from("on_call_services")
@@ -110,37 +145,44 @@ export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam
     .limit(200);
   if (error || !services) throw unavailable();
   if (services.length === 0) return { teams: [] };
-
-  const serviceIds = services.map((service) => service.id);
-  const [members, roles] = await Promise.all([
-    client
-      .from("on_call_service_members")
-      .select("service_id,user_id")
-      .in("service_id", serviceIds)
-      .is("revoked_at", null)
-      .limit(10000),
-    client
-      .from("roster_member_roles")
-      .select("service_id,user_id")
-      .in("service_id", serviceIds)
-      .eq("role", "manager")
-      .is("revoked_at", null)
-      .limit(10000),
+  const chunks = chunkServiceIds(services.map((service) => service.id));
+  const [memberChunks, roleChunks] = await Promise.all([
+    Promise.all(
+      chunks.map((chunk) =>
+        fetchAllServiceIdRows(
+          () =>
+            client
+              .from("on_call_service_members")
+              .select("service_id")
+              .in("service_id", chunk)
+              .is("revoked_at", null)
+              .order("service_id", { ascending: true }) as unknown as PagedFilterBuilder,
+        ),
+      ),
+    ),
+    Promise.all(
+      chunks.map((chunk) =>
+        fetchAllServiceIdRows(
+          () =>
+            client
+              .from("roster_member_roles")
+              .select("service_id")
+              .in("service_id", chunk)
+              .eq("role", "manager")
+              .is("revoked_at", null)
+              .order("service_id", { ascending: true }) as unknown as PagedFilterBuilder,
+        ),
+      ),
+    ),
   ]);
-  if (members.error || roles.error || !members.data || !roles.data) throw unavailable();
-
-  const memberCounts = new Map<string, number>();
-  for (const row of members.data as Array<{ service_id?: string }>) {
-    const key = row.service_id ?? (serviceIds.length === 1 ? serviceIds[0] : undefined);
-    if (key) memberCounts.set(key, (memberCounts.get(key) ?? 0) + 1);
+  const activeMembersByService = new Map<string, number>();
+  for (const member of memberChunks.flat()) {
+    activeMembersByService.set(member.service_id, (activeMembersByService.get(member.service_id) ?? 0) + 1);
   }
-
-  const managerCounts = new Map<string, number>();
-  for (const row of roles.data as Array<{ service_id?: string }>) {
-    const key = row.service_id ?? (serviceIds.length === 1 ? serviceIds[0] : undefined);
-    if (key) managerCounts.set(key, (managerCounts.get(key) ?? 0) + 1);
+  const managersByService = new Map<string, number>();
+  for (const role of roleChunks.flat()) {
+    managersByService.set(role.service_id, (managersByService.get(role.service_id) ?? 0) + 1);
   }
-
   return {
     teams: services.map((service) => ({
       serviceId: service.id,
@@ -148,8 +190,8 @@ export async function listOwnerTeams(client: Client): Promise<{ teams: OwnerTeam
       createdAt: service.created_at,
       verifiedAt: service.verified_at,
       isDemo: service.is_demo,
-      activeMembers: memberCounts.get(service.id) ?? 0,
-      managers: managerCounts.get(service.id) ?? 0,
+      activeMembers: activeMembersByService.get(service.id) ?? 0,
+      managers: managersByService.get(service.id) ?? 0,
     })),
   };
 }

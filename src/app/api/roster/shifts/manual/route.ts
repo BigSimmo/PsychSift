@@ -7,9 +7,8 @@ import {
 } from "@/lib/api-rate-limit";
 import { isDemoMode } from "@/lib/env";
 import { jsonError, publicErrorResponse } from "@/lib/http";
-import { detectOwnShiftConflicts } from "@/lib/roster/shifts/diff";
 import { onCallManualShiftRequestSchema } from "@/lib/roster/shifts/model";
-import { addManualShifts } from "@/lib/roster/shifts/repository";
+import { addManualShifts, checkManualShiftConflicts } from "@/lib/roster/shifts/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { AuthenticationError, requireAuthenticatedUser, unauthorizedResponse } from "@/lib/supabase/auth";
 import { parseJsonBody } from "@/lib/validation/body";
@@ -38,8 +37,18 @@ export async function POST(request: Request) {
     if (rateLimit.limited) return rateLimitJsonResponse("Too many requests. Try again shortly.", rateLimit);
     const body = await parseJsonBody(request, onCallManualShiftRequestSchema, "That shift could not be saved.");
     const shifts = await addManualShifts(supabase, user.id, [body.shift], body.repeatWeeks);
-    const conflicts = detectOwnShiftConflicts(shifts);
-    return NextResponse.json({ shifts, conflicts }, { headers: noStore });
+    let conflicts: Awaited<ReturnType<typeof checkManualShiftConflicts>> = [];
+    let conflictsUnavailable = false;
+    try {
+      conflicts = await checkManualShiftConflicts(supabase, user.id, shifts.length > 0 ? shifts : [body.shift]);
+    } catch (conflictError) {
+      conflictsUnavailable = true;
+      console.warn("Manual shift conflict check unavailable after save", conflictError);
+    }
+    return NextResponse.json(
+      { shifts, conflicts, ...(conflictsUnavailable ? { conflictsUnavailable: true } : {}) },
+      { headers: noStore },
+    );
   } catch (error) {
     if (error instanceof AuthenticationError) return unauthorizedResponse();
     return jsonError(error);
