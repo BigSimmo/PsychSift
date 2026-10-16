@@ -314,6 +314,7 @@ function scanPythonTests(source) {
   let skipped = 0;
   let pendingMultiplier = 1;
   let pendingSkip = false;
+  let skippedClassIndent = null;
   let currentDecorator = "";
   let decoratorDepth = 0;
 
@@ -347,15 +348,24 @@ function scanPythonTests(source) {
       }
       continue;
     }
+    const indent = line.match(/^\s*/)?.[0].length ?? 0;
+    if (skippedClassIndent !== null && line.trim() !== "" && indent <= skippedClassIndent) {
+      skippedClassIndent = null;
+    }
     if (/^\s*(?:async\s+)?def\s+test_[A-Za-z0-9_]*\s*\(/.test(line)) {
       cases += pendingMultiplier;
-      if (pendingSkip) skipped += pendingMultiplier;
+      if (pendingSkip || (skippedClassIndent !== null && indent > skippedClassIndent)) {
+        skipped += pendingMultiplier;
+      }
       pendingMultiplier = 1;
       pendingSkip = false;
       continue;
     }
     if (/^\s*(?:async\s+)?def\s+/.test(line) || /^\s*class\s+/.test(line)) {
-      if (pendingSkip) skipped += 1;
+      if (pendingSkip) {
+        if (/^\s*class\s+/.test(line)) skippedClassIndent = indent;
+        else skipped += 1;
+      }
       pendingMultiplier = 1;
       pendingSkip = false;
       continue;
@@ -419,6 +429,27 @@ function curriedCaseWeight(members, args) {
     return firstArg.elements.length;
   }
   return 1;
+}
+
+/** @param {ts.CallExpression} node @returns {ts.ArrowFunction | ts.FunctionExpression | null} */
+function skippedSuiteCallback(node) {
+  const chain = calleeChain(node.expression);
+  if (
+    chain &&
+    (chain[0] === "describe" || chain.includes("describe")) &&
+    chain.slice(1).some((member) => member === "skip" || member === "fixme")
+  ) {
+    const callback = node.arguments[1];
+    return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback : null;
+  }
+  if (ts.isCallExpression(node.expression)) {
+    const curriedChain = calleeChain(node.expression.expression);
+    if (curriedChain && curriedChain.includes("describe") && curriedChain.includes("skipIf")) {
+      const callback = node.arguments[1];
+      return callback && (ts.isArrowFunction(callback) || ts.isFunctionExpression(callback)) ? callback : null;
+    }
+  }
+  return null;
 }
 
 /**
@@ -491,6 +522,11 @@ export function countSkippedCases(source, fileName = "spec.ts") {
   /** @param {ts.Node} node */
   const visit = (node) => {
     if (ts.isCallExpression(node)) {
+      const suiteCallback = skippedSuiteCallback(node);
+      if (suiteCallback) {
+        skipped += Math.max(1, countTestCases(suiteCallback.getText(sourceFile), fileName));
+        return;
+      }
       const chain = calleeChain(node.expression);
       if (chain && SKIP_ROOTS.has(chain[0]) && chain.length <= 3) {
         const members = chain.slice(1);
