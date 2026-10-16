@@ -551,7 +551,7 @@ describe("superseded collision object release", () => {
   it("removes the collided object once the recovery sibling is committed", async () => {
     const remove = vi.fn(async () => ok);
     const queueCleanup = vi.fn();
-    await expect(release(remove, queueCleanup)).resolves.toBe("removed");
+    await expect(release(remove, queueCleanup)).resolves.toEqual({ outcome: "removed", failures: [] });
     expect(remove).toHaveBeenCalledWith([intended]);
     expect(queueCleanup).not.toHaveBeenCalled();
   });
@@ -559,30 +559,33 @@ describe("superseded collision object release", () => {
   it("queues the object on the cleanup ledger when removal fails or throws", async () => {
     for (const remove of [vi.fn(async () => failed), vi.fn(async () => Promise.reject(new Error("network")))]) {
       const queueCleanup = vi.fn(async () => ok);
-      await expect(release(remove, queueCleanup)).resolves.toBe("queued");
+      await expect(release(remove, queueCleanup)).resolves.toMatchObject({ outcome: "queued" });
       expect(queueCleanup).toHaveBeenCalledWith(intended);
     }
   });
 
-  it("reports an unrecorded object when both removal and the ledger fail", async () => {
+  it("reports an unrecorded object, with both failure reasons, when removal and the ledger fail", async () => {
     await expect(
       release(
         vi.fn(async () => failed),
         vi.fn(async () => failed),
       ),
-    ).resolves.toBe("unrecorded");
+    ).resolves.toEqual({
+      outcome: "unrecorded",
+      failures: ["remove: storage unavailable", "queue: storage unavailable"],
+    });
     await expect(
       release(
         vi.fn(async () => failed),
         vi.fn(async () => Promise.reject(new Error("db"))),
       ),
-    ).resolves.toBe("unrecorded");
+    ).resolves.toEqual({ outcome: "unrecorded", failures: ["remove: storage unavailable", "queue: db"] });
   });
 
   it("never touches the path the committed document still uses", async () => {
     const remove = vi.fn();
     const queueCleanup = vi.fn();
-    await expect(release(remove, queueCleanup, recovery)).resolves.toBe("skipped");
+    await expect(release(remove, queueCleanup, recovery)).resolves.toEqual({ outcome: "skipped", failures: [] });
     expect(remove).not.toHaveBeenCalled();
     expect(queueCleanup).not.toHaveBeenCalled();
   });

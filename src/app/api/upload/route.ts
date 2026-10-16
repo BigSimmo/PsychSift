@@ -173,14 +173,21 @@ async function duplicateUploadResponse(args: {
   });
 }
 
-async function releaseSupersededUpload(
-  supabase: ReturnType<typeof createAdminClient>,
-  args: { ownerId: string; documentId: string; supersededPath: string | null; committedPath: string },
-) {
+// Each cleanup call gets a short deadline so a committed upload is not held open by storage or
+// ledger stalls (about 10 s worst case); a timed-out removal falls back to the ledger.
+const SUPERSEDED_RELEASE_TIMEOUT_MS = 5_000;
+
+async function releaseSupersededUpload(args: {
+  ownerId: string;
+  documentId: string;
+  supersededPath: string | null;
+  committedPath: string;
+}) {
   if (!args.supersededPath) return;
   const supersededPath = args.supersededPath;
+  const supabase = createAdminClient({ timeoutMs: SUPERSEDED_RELEASE_TIMEOUT_MS });
   // The admission is already durable, so a failure here is logged and never fails the upload.
-  const outcome = await releaseSupersededDocumentObject({
+  const release = await releaseSupersededDocumentObject({
     remove: (paths) => supabase.storage.from(env.SUPABASE_DOCUMENT_BUCKET).remove(paths),
     queueCleanup: (path) =>
       supabase.from("storage_cleanup_jobs").insert({
@@ -195,11 +202,15 @@ async function releaseSupersededUpload(
     documentId: args.documentId,
     supersededPath,
     committedPath: args.committedPath,
-  }).catch(() => "unrecorded" as const);
-  if (outcome === "unrecorded") {
+  }).catch((error: unknown) => ({
+    outcome: "unrecorded" as const,
+    failures: [error instanceof Error ? error.message : "release failed"],
+  }));
+  if (release.outcome === "unrecorded") {
     logger.error("Superseded upload object cleanup failed; object requires manual reconciliation", {
       storagePath: supersededPath,
       ownerId: args.ownerId,
+      failures: release.failures,
     });
   }
 }
@@ -511,7 +522,7 @@ export async function POST(request: Request) {
               resourceId: documentId,
               metadata: { fileType: file.type, fileSize: file.size },
             });
-            await releaseSupersededUpload(adminSupabase, {
+            await releaseSupersededUpload({
               ownerId: uploadOwnerId,
               documentId,
               supersededPath: supersededStoragePath,
@@ -625,7 +636,7 @@ export async function POST(request: Request) {
       // record, not in the durable audit trail.
       metadata: { fileType: file.type, fileSize: file.size },
     });
-    await releaseSupersededUpload(adminSupabase, {
+    await releaseSupersededUpload({
       ownerId: uploadOwnerId,
       documentId,
       supersededPath: supersededStoragePath,

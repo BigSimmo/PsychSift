@@ -22,5 +22,10 @@ describe("superseded collision object cleanup", () => {
       expect(uploadRoute.slice(durable, call)).not.toContain("catch");
     }
     expect(uploadRoute).toContain("storageUpload.collisionRecovered ? intendedStoragePath : null");
+    for (const call of calls) {
+      const callArgs = uploadRoute.slice(call, uploadRoute.indexOf("});", call));
+      expect(callArgs).toContain("supersededPath: supersededStoragePath,");
+      expect(callArgs).toContain("committedPath: admissionStoragePath,");
+    }
   });
 });

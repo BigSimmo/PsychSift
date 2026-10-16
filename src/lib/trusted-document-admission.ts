@@ -345,7 +345,15 @@ export async function uploadTrustedDocumentBytes(
   return Object.freeze({ storagePath: recoveryPath, collisionRecovered: true });
 }
 
-type SupersededObjectOutcome = "skipped" | "removed" | "queued" | "unrecorded";
+type SupersededObjectRelease = Readonly<{
+  outcome: "skipped" | "removed" | "queued" | "unrecorded";
+  failures: readonly string[];
+}>;
+
+function releaseFailureMessage(step: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : isRecord(error) ? String(error.message ?? "") : "";
+  return `${step}: ${message.slice(0, 200) || "unknown error"}`;
+}
 
 /**
  * After this request's own admission commits on a recovery sibling, the collided object at the
@@ -362,22 +370,26 @@ export async function releaseSupersededDocumentObject(
     supersededPath: string;
     committedPath: string;
   }>,
-): Promise<SupersededObjectOutcome> {
+): Promise<SupersededObjectRelease> {
   const supersededPath = assertTrustedDocumentStoragePath(args.ownerId, args.documentId, args.supersededPath);
   const committedPath = assertTrustedDocumentStoragePath(args.ownerId, args.documentId, args.committedPath);
-  if (supersededPath === committedPath) return "skipped";
+  if (supersededPath === committedPath) return { outcome: "skipped", failures: [] };
+  const failures: string[] = [];
   try {
     const { error } = await args.remove([supersededPath]);
-    if (!error) return "removed";
-  } catch {
-    // Fall through to the durable cleanup ledger.
+    if (!error) return { outcome: "removed", failures };
+    failures.push(releaseFailureMessage("remove", error));
+  } catch (error) {
+    failures.push(releaseFailureMessage("remove", error));
   }
   try {
     const { error } = await args.queueCleanup(supersededPath);
-    return error ? "unrecorded" : "queued";
-  } catch {
-    return "unrecorded";
+    if (!error) return { outcome: "queued", failures };
+    failures.push(releaseFailureMessage("queue", error));
+  } catch (error) {
+    failures.push(releaseFailureMessage("queue", error));
   }
+  return { outcome: "unrecorded", failures };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
