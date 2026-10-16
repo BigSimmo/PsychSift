@@ -88,7 +88,9 @@ export function calculateCockcroftGault(input: CockcroftGaultInput): CockcroftGa
     if (Number.isFinite(input.heightCm) && input.heightCm >= 120 && input.heightCm <= 230) {
       const rawIbw = (input.sex === "male" ? 50 : 45.5) + 0.9 * (input.heightCm - 152.4);
       const ibwKg = Math.round(rawIbw * 10) / 10;
-      if (ibwKg > 0 && input.weightKg > ibwKg) {
+      // Only characterize the alternative weights as overweight/obesity guidance at BMI >= 25.
+      const bmi = input.weightKg / (input.heightCm / 100) ** 2;
+      if (ibwKg > 0 && input.weightKg > ibwKg && bmi >= 25) {
         const abwKg = Math.round((ibwKg + 0.4 * (input.weightKg - ibwKg)) * 10) / 10;
         const ibwCrCl =
           Math.round(computeRawCrCl(input.age, ibwKg, input.sex, input.serumCreatinine, input.creatinineUnit) * 100) /
