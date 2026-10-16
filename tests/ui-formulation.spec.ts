@@ -246,7 +246,7 @@ test("moves a selected mechanism through framework, quality review, and an edita
   // Controlled `sr-only` radios still flake under `locator.check({ force })` on
   // Production UI shard 1 (state does not flip). Drive selection through the
   // visible label click handler instead, then assert the radio role.
-  await frameworkGroup.getByText("CBT cycle", { exact: true }).click();
+  await clickWhenSettled(frameworkGroup.getByText("CBT cycle", { exact: true }));
   await expect(cbtCycle).toBeChecked();
   await page
     .getByRole("textbox", { name: "Presenting problem" })
@@ -269,14 +269,14 @@ test("moves a selected mechanism through framework, quality review, and an edita
   // The step rail shows each step's description ("Mechanisms", "Formulation") from lg up only, so
   // below that the accessible names are the bare labels. Address the rail's own buttons by label.
   const stepRail = page.getByRole("list", { name: "Formulation builder steps" });
-  await stepRail.getByRole("button", { name: /\bSelect\b/ }).click();
+  await clickWhenSettled(stepRail.getByRole("button", { name: /\bSelect\b/ }));
   await expect(page.getByTestId("formulation-builder-select")).toBeVisible();
-  await page.getByRole("button", { name: "Clear" }).click();
+  await clickWhenSettled(page.getByRole("button", { name: "Clear" }));
   // Clear unmounts the selected-hypotheses strip; wait for that layout settle
   // before the step-rail click so it is not lost to a mid-reflow miss
   // (Production UI shard flake on PR #1791).
   await expect(page.getByRole("heading", { name: "No mechanisms selected" })).toBeVisible();
-  await stepRail.getByRole("button", { name: /\bDraft\b/ }).click();
+  await clickWhenSettled(stepRail.getByRole("button", { name: /\bDraft\b/ }));
   await expect(page.getByTestId("formulation-builder-draft")).toBeVisible();
   await expect(draft).not.toHaveValue("Stale edited draft");
   await expect(draft).toHaveValue(/Select mechanisms and add case evidence/);
