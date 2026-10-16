@@ -565,13 +565,8 @@ export function OnCallHandoverPage() {
   // When this shift's labels are wiped (epoch ms). Checked before every write, as the call log does,
   // so a draft left on screen past the end of the shift is cleared rather than saved under a fresh stamp.
   const [draftExpiresAt, setDraftExpiresAt] = useState<number | null>(null);
-  const [scratchpadText, setScratchpadText] = useState<string>("");
+  const [scratchpadText, setScratchpadText] = useState<string>(() => loadOnCallHandoverScratchpad());
   const [scratchpadResetKey, setScratchpadResetKey] = useState(0);
-
-  useEffect(() => {
-    setScratchpadText(loadOnCallHandoverScratchpad());
-    setScratchpadResetKey((key) => key + 1);
-  }, []);
 
   const reset = useCallback(() => {
     setDraft(emptyOnCallHandoverDraft);
