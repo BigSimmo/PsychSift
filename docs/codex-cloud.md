@@ -20,7 +20,26 @@ profile when shell PATH ordering bypasses a shim; that child-process protection 
 raw parent clean or select the legacy workflow for an unrelated current host. Raw-boundary guards
 still run before setup or maintenance mutations; follow the canonical recovery policy below.
 
+Setup writes shell exclusions to the selected `CODEX_HOME/config.toml`, falling back to
+`~/.codex/config.toml` only when `CODEX_HOME` is unset. It preserves unrelated settings and
+rejects conflicting shell policies before replacing the generated runtime profile. These
+files protect subsequent child commands; they do not remove variables from an existing parent.
+The shim installer validates all three target commands before replacing any installed wrapper,
+so an incompatible npm/npx fallback leaves the existing wrappers intact.
+This includes bundled npm/npx binaries beside Node. Setup and shim installation reject directories
+at file destinations before replacing anything. Maintenance reruns setup when shim validation
+fails, retaining the ordinary raw-boundary checks on that repair path.
+
+The Python selector removes cached virtual-environment PATH entries using literal comparisons,
+including repeated entries and home directories containing brackets or spaces. Local diagnostic
+version probes have a five-second timeout; an unresponsive tool is reported as unavailable.
+
 ## Tools and authentication
+
+Retired imported review prompts have been removed, including the old full-stack master prompt,
+its stress-test commentary and its duplicate working agreement. Use the maintained
+[detailed-task prompt](prompts/codex-cloud-detailed-task.md) and canonical operating policy for new
+work. The supported optional legacy runbook and dated audit evidence remain available.
 
 For the cross-client Desktop/CLI template versus a separately installed/authenticated workspace app,
 see [tools and providers](agents/codex-cloud-environment.md#tools-providers-and-credentials).

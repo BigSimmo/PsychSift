@@ -99,6 +99,18 @@ describe("retired rules: negation handling", () => {
     ).toEqual([]);
   });
 
+  it("fires when an instruction names either removed full-stack review prompt path", () => {
+    expect(hitsFor("Read docs/prompts/codex-full-stack-master-review.md first.")).toEqual([
+      "cloud-imported-working-agreement",
+    ]);
+    expect(hitsFor("Read docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md first.")).toEqual([
+      "cloud-imported-working-agreement",
+    ]);
+    expect(
+      hitsFor("The removed docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md is historical."),
+    ).toEqual([]);
+  });
+
   it("fires when the label gate is stated as current", () => {
     expect(hitsFor("- Never add the `owner-approved` label.")).toEqual(["owner-approved-label-gate"]);
     expect(hitsFor("The required `Owner approval` status stays yellow until Josh approves.")).toEqual([
@@ -189,6 +201,9 @@ describe("retired rules: the list itself", () => {
     "plugins/clinical-kb/skills/new-workflow/references/cloud.md",
     "docs/prompts/codex-cloud-detailed-task.md",
     "docs/prompts/new-codex-cloud-task.md",
+    "docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md",
+    "docs/prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md",
+    "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md",
     "docs/prompts/mode-aware-clinical-ask-codex-cloud-handover.md",
     "docs/prompts/rag-coverage-gate-extraction.md",
     "docs/superpowers/plans/2026-08-22-mode-aware-clinical-ask-implementation.md",
@@ -212,9 +227,6 @@ describe("retired rules: the list itself", () => {
   });
 
   it.each([
-    "docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md",
-    "docs/prompts/codex-cloud-review/2-codex-full-stack-master-prompt-review-and-stress-test.md",
-    "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md",
     "docs/archive/codex-cloud-legacy-profile-2026-10-16.md",
     "docs/audit/codex-cloud-reliability-20260907.md",
     "plugins/clinical-kb/skills-archive/clinical-kb-workflow/SKILL.md",
@@ -231,6 +243,11 @@ describe("retired rules: the list itself", () => {
 
 describe("retired rules: Cloud instruction copies", () => {
   it.each([
+    {
+      file: "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md",
+      text: "Default to `CODEX_CLOUD_ACCESS_PROFILE=offline`.\n",
+      rule: "cloud-legacy-profile-default",
+    },
     {
       file: "docs/prompts/new-codex-cloud-task.md",
       text: "If the prompt does not contain the exact marker [xhigh-confirmed], stop.\n",
@@ -262,13 +279,12 @@ describe("retired rules: Cloud instruction copies", () => {
     }
   });
 
-  it("does not rewrite verbatim review inputs or dated evidence when checking Cloud retirements", () => {
+  it("does not rewrite dated evidence when checking Cloud retirements", () => {
     const { root, base } = repo({
       "docs/organisation/retired-rules.json": fs.readFileSync(REPO_RULES, "utf8"),
     });
     const historicalText = "Default to `CODEX_CLOUD_ACCESS_PROFILE=offline`.\n";
     const head = commit(root, {
-      "docs/prompts/codex-cloud-review/3-codex-agents-md-companion.md": historicalText,
       "docs/archive/codex-cloud-legacy-profile-2026-10-16.md": historicalText,
       "docs/audit/codex-cloud-reliability-20260907.md": historicalText,
       "docs/superpowers/plans/2026-08-21-developer-hub-phase-1-HANDOFF.md": historicalText,

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { closeSync, fstatSync, mkdtempSync, openSync, readFileSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 import { isDirectEntrypoint } from "./lib/is-entrypoint.mjs";
 import { configuredProviderCredentialNames } from "./check-codex-cloud-setup.mjs";
@@ -85,10 +87,40 @@ export function diagnoseCodexCloud({
   return issues;
 }
 
-function commandVersion(command, args = ["--version"]) {
-  const result = spawnSync(command, args, { encoding: "utf8", shell: false });
-  if (result.status !== 0) return null;
-  return `${result.stdout || result.stderr}`.match(/\d+(?:\.\d+){1,2}/)?.[0] ?? null;
+// Version output is a single short line; anything larger is a malfunction.
+export const VERSION_PROBE_OUTPUT_LIMIT_BYTES = 64 * 1024;
+
+export function commandVersion(command, args = ["--version"], timeoutMilliseconds = 5000) {
+  // File-backed stdio prevents descendants of a wrapper from keeping pipes
+  // open after the timed-out process is killed.
+  const outputDirectory = mkdtempSync(path.join(os.tmpdir(), "codex-cloud-version-"));
+  const stdoutPath = path.join(outputDirectory, "stdout");
+  const stderrPath = path.join(outputDirectory, "stderr");
+  const stdout = openSync(stdoutPath, "w+");
+  const stderr = openSync(stderrPath, "w+");
+  // On POSIX hosts a file-size limit stops a noisy probe from filling
+  // temporary storage before its deadline (SIGXFSZ fails the probe).
+  const limitBlocks = String(Math.floor(VERSION_PROBE_OUTPUT_LIMIT_BYTES / 1024));
+  const [spawnCommand, spawnArgs] =
+    process.platform === "win32"
+      ? [command, args]
+      : ["/bin/sh", ["-c", 'ulimit -f "$1" || exit 125; shift; exec "$@"', "sh", limitBlocks, command, ...args]];
+  try {
+    const result = spawnSync(spawnCommand, spawnArgs, {
+      shell: false,
+      stdio: ["ignore", stdout, stderr],
+      timeout: timeoutMilliseconds,
+      killSignal: "SIGKILL",
+    });
+    const outputBytes = fstatSync(stdout).size + fstatSync(stderr).size;
+    closeSync(stdout);
+    closeSync(stderr);
+    if (result.status !== 0 || outputBytes > VERSION_PROBE_OUTPUT_LIMIT_BYTES) return null;
+    const output = `${readFileSync(stdoutPath, "utf8")}${readFileSync(stderrPath, "utf8")}`;
+    return output.match(/\d+(?:\.\d+){1,2}/)?.[0] ?? null;
+  } finally {
+    rmSync(outputDirectory, { recursive: true, force: true });
+  }
 }
 
 function npmVersion() {

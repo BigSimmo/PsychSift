@@ -4,14 +4,22 @@ set -Eeuo pipefail
 
 select_codex_cloud_python() {
   local expected_version="$1"
-  local command_name command_path actual_version host_path
+  local command_name command_path actual_version host_path path_entry
   local candidates=("python${expected_version}" python3 python)
-  host_path=":${PATH}:"
-  while [[ "$host_path" == *":$HOME/.cache/clinical-kb-codex/ocr-venv-${expected_version}/bin:"* ]]; do
-    host_path="${host_path//:$HOME/.cache/clinical-kb-codex/ocr-venv-${expected_version}/bin:/:}"
+  local path_entry_seen=false
+  local -a path_entries
+  host_path=""
+  # Compare entries literally: HOME may contain shell-pattern characters.
+  # The extra delimiter preserves a trailing empty PATH entry when read into an array.
+  IFS=: read -r -a path_entries <<< "${PATH}:"
+  for path_entry in "${path_entries[@]}"; do
+    [[ "$path_entry" == "$HOME/.cache/clinical-kb-codex/ocr-venv-${expected_version}/bin" ]] && continue
+    if $path_entry_seen; then
+      host_path+=:
+    fi
+    host_path+="$path_entry"
+    path_entry_seen=true
   done
-  host_path="${host_path#:}"
-  host_path="${host_path%:}"
 
   for command_name in "${candidates[@]}"; do
     command_path="$(PATH="$host_path" command -v "$command_name" 2>/dev/null || true)"
