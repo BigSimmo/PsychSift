@@ -136,26 +136,32 @@ merge, rebase, or pull the stale original planning branch into the implementatio
 
 ## Preflight and isolation
 
-1. Work from a fresh, clean Codex Cloud checkout based on current `origin/main`. Fetching for read-only
-   comparison is allowed. Do not edit protected `main`, a detached checkout, or a dirty/shared worktree.
+1. For a new task, work from a fresh, clean Codex Cloud checkout based on current `origin/main`.
+   For a same-task continuation, retain the established task checkout and verify its original base,
+   current `HEAD`, owned changes and checkpoint. Fetching for read-only comparison is allowed.
+   Do not edit protected `main`, a detached checkout or another task's worktree. Preserve unrelated work.
 2. Create or use a task-specific non-protected branch following the Cloud isolation contract. Do not run the
    Windows task-start script in Linux and do not overwrite, stash, reset, clean, or absorb existing work.
-3. Run `bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh`, then the acceptance commands named in
-   `docs/codex-cloud.md`: `npm run check:codex-cloud`, `npm run check:runtime`,
-   `npm run check:installed-lock-parity`, `npm run check:playwright-browser-revision`, and
-   `npm run check:codex-cloud -- --runtime`. Record every exit code and decisive line without printing
-   environment values.
+3. Read `docs/codex-cloud.md` and establish current-host readiness. Run the runtime, installed-lock
+   and browser-revision checks relevant to this implementation. The archived raw-probe/profile
+   acceptance procedure applies only if that legacy setup is explicitly selected. Record each
+   check's scope, exit code and decisive line without printing credential values.
 4. Inspect branch, upstream, full HEAD, worktree list, concise status, relevant recent history, runtime,
    package-manager version, and active repository-owned processes.
-5. In Cloud, keep the repository's strict Node 24 and npm 11 contract. Use the documented Cloud setup;
-   do not weaken engines or package-manager checks.
+5. Keep the repository's strict Node 24 and npm 11 contract. Use the current host's supported
+   provisioning; do not weaken engines or package-manager checks or force a legacy bootstrap.
 6. If the prompt-perfector verifier exists, run it before editing. For a clean Cloud task, use its
    `--cloud` mode with the expected repository, branch, and HEAD. Proceed only on
-   `SAFE_TO_EDIT=true` and `PRECHECK_RESULT=SAFE`.
+   `SAFE_TO_EDIT=true` and `PRECHECK_RESULT=SAFE`. For an intentional same-task dirty
+   continuation, first run without `--allow-dirty`, inventory every changed path and record the
+   emitted `SAFE_STATUS_HASH`. Rerun with `--allow-dirty --expected-status-hash <hash>` plus the
+   same `--cloud`, expected repository, branch and `HEAD`, requiring both SAFE outputs.
+   The hash does not grant ownership of unrelated changes.
 7. Run the plan's repository flightplan against the refreshed path set and retain its new evidence. Use
    its current classification to refine verification, not to broaden product scope.
 
-Stop before editing if the checkout is dirty or protected, the binding files are missing, another
+Stop before dependent edits if dirty-state ownership is unresolved, the continuation status hash changed,
+the branch is protected, the binding files are missing, another
 task owns the worktree, the plan has already been partially implemented in an incompatible shape, or
 the current mainline creates a material design conflict. Report all blockers together in one concise
 ask. Do not ask low-yield or routine questions that inspection can answer.
@@ -249,8 +255,10 @@ the approved contract. Do not replace source evidence with generated summaries, 
 thought/provider internals/retrieval scores, log raw questions or context, or weaken validation,
 access scope, clinical safety, tests, types, or source governance to get green checks.
 
-Load `superpowers:executing-plans` first. It owns admission, the sequential task graph, blocker handling, and
-closeout. Then inspect the current session's actual skills and tools:
+Inspect the current session's actual skills and tools first. When available, load
+`superpowers:executing-plans` for admission, the sequential task graph, blocker handling and
+closeout. If that skill is unavailable, apply the approved plan's task order, verification and
+checkpoint contracts directly and report that limitation; do not invent a skill invocation.
 
 - If `superpowers:subagent-driven-development`, its review/finish dependencies, callable `spawn_agent`,
   `followup_task`, `wait_agent`, and `list_agents` equivalents, and a worker slot are all available, use the
@@ -258,14 +266,19 @@ closeout. Then inspect the current session's actual skills and tools:
   dispatch one fresh clean-context implementer per task; require a local task commit; verify the report; dispatch
   a fresh read-only task reviewer; send fixes back to the same implementer; and advance only after approval.
   Never run parallel implementation agents in the shared checkout.
-- If any capability is absent, record the reason once and use the plan's **inline executing-plans route** for the
-  identical checkboxes. Do not pause merely because a local-only plugin or subagent tool is unavailable, and do
+- If SDD is unavailable, use the plan's inline executing-plans route when that skill exists; otherwise
+  record `Execution route: direct sequential` and follow the identical checkboxes with current tools.
+  Record the missing capability once. Do not pause merely because a plugin or subagent tool is unavailable, and do
   not fabricate subagent/review evidence.
 
-For every subagent spawn, explicitly select a model from the current allowed list, set reasoning effort, and use
-clean context rather than inheriting the full controller conversation. Use bounded 5–10 minute event waits rather
-than short polling. The controller must verify diffs, commits, and decisive test output itself. After Task 12, run
-one fresh whole-branch review and at most one fix wave before the selected final gate.
+For each authorised subagent spawn, use the current host's supported model/effort controls and
+`docs/agents/smart-agent-allocation.md`, preserving required review floors. If those controls are
+absent, report that the requested route cannot be enforced; never invent arguments or claim an
+observed route. Use bounded context and event waits suited to the actual tools. The controller must
+verify diffs, commits and decisive test output itself. After Task 12, obtain
+one fresh whole-branch review and at most one fix wave before the selected final gate. If an
+independent reviewer is unavailable, continue authorised local verification and leave that
+independent review explicitly unmet; a controller self-review does not satisfy it.
 
 Do not force all 12 tasks into one Cloud context. Use clean, reviewed task commits and the plan's ignored SDD
 ledger as same-checkout compaction recovery. Prefer checkpoint tranches 1–4, 5–8, and 9–12. If session budget is

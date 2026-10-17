@@ -175,6 +175,7 @@ Non-negotiable, and the reason the saving is allowed at all:
   UI jobs are skipped — the planner says so and tells you to consider `--full`, because
   there the local run is the only browser evidence there will be.
 
-Cloud sessions are told this at SessionStart by `.claude/hooks/testing-policy.sh`, which
-is read-only, exits 0 on every path, and states the reporting rules alongside the
-commands.
+Claude Code sessions with the configured SessionStart hook receive this guidance from
+`.claude/hooks/testing-policy.sh`, which is read-only, exits 0 on every path, and states the
+reporting rules alongside the commands. Other hosts must use this policy directly; the
+repository hook does not prove guidance was loaded in those sessions.

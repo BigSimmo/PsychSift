@@ -7,7 +7,8 @@ This document turns the current process review into phased, durable repo practic
 The [Cloud reliability audit](audit/codex-cloud-reliability-20260907.md) records passing hosted
 GitHub/runtime checks and the remaining external boundaries: the known raw `OPENAI_BASE_URL`
 launcher injection and incomplete production privacy/governance evidence. Keep the raw guard
-and release validator fail-closed. GitHub connectivity is not clinical production acceptance;
+fail-closed when the legacy setup is selected under [the current Cloud policy](agents/codex-cloud-environment.md).
+Keep the release validator fail-closed for applicable release work. GitHub connectivity is not clinical production acceptance;
 new lifecycle code still needs hosted branch evidence before its PR can claim that proof.
 
 ## Testing speed playbook (pointer)

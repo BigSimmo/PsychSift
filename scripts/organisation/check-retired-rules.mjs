@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Retired-rules check (organisation framework, suggestion 1). When the owner drops a rule, its key
 // phrase goes on docs/organisation/retired-rules.json. This check flags any live instruction file
-// (AGENTS.md, CLAUDE.md, the agent guides, skills and agent definitions) that still states one of
-// those rules as current, so agents stop following instructions that no longer apply.
+// (entrypoints, agent guides, skills, copyable prompts and binding launch contracts) that still
+// states one of those rules as current, so agents stop following instructions that no longer apply.
 //
 // A line hits a rule when it matches the rule's `pattern` and does not match its `allowedContext`
 // (wording that records the retirement, such as "there is no ... gate" or "no longer"). Matching is
@@ -38,14 +38,36 @@ import {
 
 export const RULES_FILE = "docs/organisation/retired-rules.json";
 
-/** The live instruction files: exact files, and folders (ending in "/") whose files all count. */
+const RAG_PROGRAMME_ROOT = "docs/superpowers/rag-upgrade";
+const RAG_LIFECYCLE_FILES = [
+  "approval-matrix.md",
+  "connected-execution.md",
+  "execution-order.md",
+  "programme-manifest.json",
+  "sdd-execution.md",
+];
+
+/** Live exact files and folders (ending in "/"), subject to the explicit source-input exclusions. */
 export const INSTRUCTION_SCOPE = Object.freeze([
   "AGENTS.md",
   "PROJECT-INSTRUCTIONS-CONTINUATION.md",
   "CLAUDE.md",
   "GEMINI.md",
   "docs/agents-guide.md",
+  "docs/codex-cloud.md",
   "docs/codex-review-protocol.md",
+  // Copyable task prompts are instructions too; verbatim review inputs are excluded below.
+  "docs/prompts/",
+  // This dated implementation plan remains a binding task contract, not historical evidence.
+  "docs/superpowers/plans/2026-08-22-mode-aware-clinical-ask-implementation.md",
+  `${RAG_PROGRAMME_ROOT}/CLOUD-EXECUTION-PROMPT.md`,
+  `${RAG_PROGRAMME_ROOT}/canonical/START-HERE.cloud.md`,
+  `${RAG_PROGRAMME_ROOT}/canonical/START-HERE.local.md`,
+  `${RAG_PROGRAMME_ROOT}/cloud/START-HERE.md`,
+  `${RAG_PROGRAMME_ROOT}/local/START-HERE.md`,
+  ...["canonical", "cloud", "local"].flatMap((directory) =>
+    RAG_LIFECYCLE_FILES.map((file) => `${RAG_PROGRAMME_ROOT}/${directory}/${file}`),
+  ),
   ".github/pull_request_template.md",
   ".agents/README.md",
   "docs/agents/",
@@ -56,6 +78,7 @@ export const INSTRUCTION_SCOPE = Object.freeze([
   ".agents/skills/",
   ".cursor/agents/",
   ".cursor/skills/",
+  "plugins/clinical-kb/skills/",
   // Orientation docs every tool is pointed at; a dropped rule restated here misleads just as much.
   "README.md",
   "CONTRIBUTING.md",
@@ -68,6 +91,10 @@ export const INSTRUCTION_SCOPE = Object.freeze([
   ".codex/",
 ]);
 
+// These are preserved source inputs, not the repository's active working agreement.
+// Dated plans, audits, archives and execution evidence otherwise remain outside the scope above.
+const INSTRUCTION_EXCLUSIONS = Object.freeze(["docs/prompts/codex-cloud-review/"]);
+
 const PATHSPECS = INSTRUCTION_SCOPE.map((entry) => `:(literal)${entry.replace(/\/$/, "")}`);
 const RULE_KEYS = new Set(["id", "retired", "summary", "pattern", "allowedContext", "record", "decision"]);
 const REQUIRED_RULE_KEYS = ["id", "retired", "summary", "pattern", "allowedContext"];
@@ -75,6 +102,7 @@ const EXCERPT_MAX = 160;
 
 export function isInstructionFile(file) {
   const normal = file.replaceAll("\\", "/");
+  if (INSTRUCTION_EXCLUSIONS.some((prefix) => normal.startsWith(prefix))) return false;
   return INSTRUCTION_SCOPE.some((entry) => (entry.endsWith("/") ? normal.startsWith(entry) : normal === entry));
 }
 

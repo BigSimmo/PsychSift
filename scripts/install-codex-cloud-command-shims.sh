@@ -10,6 +10,18 @@ fail() {
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || fail "Run this script from the PsychSift repository."
 cd "$repo_root"
 
+# The documented launcher-name exception may use an existing generated profile;
+# unexpected provider names must never be hidden by sourcing that profile.
+if bash --noprofile --norc scripts/check-codex-cloud-raw-env.sh; then
+  :
+else
+  raw_boundary_status="$?"
+  case "$raw_boundary_status" in
+    2) ;; # Restricted continuation; the raw boundary remains failed.
+    *) exit "$raw_boundary_status" ;;
+  esac
+fi
+
 expected_node_major="$(tr -cd '0-9' < .node-version)"
 [[ -n "$expected_node_major" ]] || fail "Could not read the Node major from .node-version."
 

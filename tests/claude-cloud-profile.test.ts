@@ -1,5 +1,17 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -30,6 +42,15 @@ const applier = join(repoRoot, "scripts", "apply-claude-cloud-profile.mjs");
 const provisioner = join(repoRoot, "scripts", "setup-claude-cloud.sh");
 const profileDir = join(repoRoot, ".claude", "cloud-profile");
 const skillsDir = join(profileDir, "skills");
+const retiredSessionMemoryNames = [
+  "dev-drive-project-location.md",
+  "db-remediation-coordination-state.md",
+  "rag-programme-coordination-state.md",
+  "ingestion-review-remediation-state.md",
+  "lighthouse-mobile-root-cls-flake.md",
+  "local-test-failures-windows.md",
+  "codex-chat-import-tooling.md",
+];
 const bashCommand =
   process.platform === "win32"
     ? ([
@@ -68,8 +89,13 @@ function markerDirFor(sandboxHome: string): string {
 
 // `--skip=skills` by default: the skills part is several megabytes across ~500 files and dominates the
 // runtime of every spawn. Tests that actually exercise skill installation opt back in.
-function runApplier(configDir: string, env: Record<string, string> = {}, extraArgs: string[] = ["--skip=skills"]) {
-  return spawnSync(process.execPath, [applier, ...extraArgs], {
+function runApplier(
+  configDir: string,
+  env: Record<string, string> = {},
+  extraArgs: string[] = ["--skip=skills"],
+  scriptPath = applier,
+) {
+  return spawnSync(process.execPath, [scriptPath, ...extraArgs], {
     encoding: "utf8",
     env: {
       ...process.env,
@@ -79,6 +105,26 @@ function runApplier(configDir: string, env: Record<string, string> = {}, extraAr
       ...env,
     },
   });
+}
+
+function makeMemoryProfileFixture() {
+  const fixtureRoot = makeConfigDir();
+  const fixtureScript = join(fixtureRoot, "scripts", "apply-claude-cloud-profile.mjs");
+  const memorySource = join(fixtureRoot, ".claude", "cloud-profile", "memory");
+  mkdirSync(join(fixtureRoot, "scripts"));
+  mkdirSync(join(fixtureRoot, ".claude", "cloud-profile"), { recursive: true });
+  cpSync(applier, fixtureScript);
+  cpSync(join(profileDir, "memory"), memorySource, { recursive: true });
+  const configDir = makeConfigDir();
+  const slug = repoRoot.replace(/[/\\:]/g, "-");
+  return {
+    configDir,
+    fixtureRoot,
+    fixtureScript,
+    memorySource,
+    memoryTarget: join(configDir, "projects", slug, "memory"),
+    run: () => runApplier(configDir, {}, ["--skip=settings,claude-md,skills"], fixtureScript),
+  };
 }
 
 afterEach(() => {
@@ -137,6 +183,64 @@ describe("apply-claude-cloud-profile", () => {
     expect(Object.keys(merged.enabledPlugins).length).toBeGreaterThan(0);
   });
 
+  it("rejects a misspelled applier option before writing the profile", () => {
+    const configDir = makeConfigDir();
+    const result = runApplier(configDir, {}, ["--dryrun", "--skip=skills,memory,claude-md"]);
+    expect(result.status).toBe(2);
+    expect(existsSync(join(configDir, "settings.json"))).toBe(false);
+  });
+
+  it.each(["null", '["host data"]', '"host data"'])(
+    "preserves nonobject host settings %s before replacing them",
+    (settings) => {
+      const configDir = makeConfigDir();
+      const settingsPath = join(configDir, "settings.json");
+      writeFileSync(settingsPath, settings);
+      const result = runApplier(configDir);
+      expect(result.status, result.stderr).toBe(0);
+      expect(readFileSync(`${settingsPath}.unparseable`, "utf8")).toBe(settings);
+      expect(JSON.parse(readFileSync(settingsPath, "utf8")).permissions.defaultMode).toBe("auto");
+    },
+  );
+
+  it("does not echo malformed host settings in the JSON parse warning", () => {
+    const configDir = makeConfigDir();
+    const syntheticSecret = "SYNTHETIC_PRIVATE_SETTING";
+    writeFileSync(join(configDir, "settings.json"), syntheticSecret);
+    const result = runApplier(configDir);
+    expect(result.status).toBe(0);
+    expect(`${result.stdout}\n${result.stderr}`).not.toContain(syntheticSecret);
+    expect(readFileSync(join(configDir, "settings.json.unparseable"), "utf8")).toBe(syntheticSecret);
+  });
+
+  it("rejects nonobject profile settings without replacing host settings", () => {
+    const fixture = makeMemoryProfileFixture();
+    writeFileSync(join(fixture.fixtureRoot, ".claude", "cloud-profile", "settings.json"), "[]");
+    writeFileSync(join(fixture.configDir, "settings.json"), '{"host":"preserve"}');
+    const result = runApplier(fixture.configDir, {}, ["--skip=skills,memory,claude-md"], fixture.fixtureScript);
+    expect(result.status).toBe(1);
+    expect(readFileSync(join(fixture.configDir, "settings.json"), "utf8")).toBe('{"host":"preserve"}');
+  });
+
+  it("validates memory seeds before changing any other profile part", () => {
+    const fixture = makeMemoryProfileFixture();
+    const source = join(fixture.fixtureRoot, ".claude", "cloud-profile");
+    writeFileSync(join(source, "settings.json"), '{"profileSetting":true}');
+    writeFileSync(join(source, "CLAUDE.md"), "profile instructions\n");
+    writeFileSync(join(fixture.memorySource, "seed-manifest.json"), "invalid manifest");
+    writeFileSync(join(fixture.configDir, "settings.json"), '{"hostSetting":true}');
+    writeFileSync(join(fixture.configDir, "CLAUDE.md"), "host instructions\n");
+
+    const result = runApplier(fixture.configDir, {}, ["--skip=skills"], fixture.fixtureScript);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("memory seed manifest");
+    expect(readFileSync(join(fixture.configDir, "settings.json"), "utf8")).toBe('{"hostSetting":true}');
+    expect(readFileSync(join(fixture.configDir, "CLAUDE.md"), "utf8")).toBe("host instructions\n");
+    expect(existsSync(join(fixture.configDir, "CLAUDE.md.pre-cloud-profile"))).toBe(false);
+    expect(existsSync(fixture.memoryTarget)).toBe(false);
+  });
+
   it("preserves a newly malformed settings file when an earlier backup already exists", () => {
     const configDir = makeConfigDir();
     const settingsPath = join(configDir, "settings.json");
@@ -174,7 +278,117 @@ describe("apply-claude-cloud-profile", () => {
     expect(runApplier(configDir).status).toBe(0);
 
     expect(readFileSync(join(memoryDir, firstMemory), "utf8")).toBe("newer, written inside the container\n");
-    expect(readdirSync(memoryDir).length).toBe(readdirSync(join(profileDir, "memory")).length);
+    const manifest = JSON.parse(readFileSync(join(profileDir, "memory", "seed-manifest.json"), "utf8"));
+    expect(readdirSync(memoryDir).length).toBe(manifest.files.length);
+  });
+
+  it("seeds reusable guidance without retired workstation state or coordination tasks", () => {
+    const configDir = makeConfigDir();
+    const slug = repoRoot.replace(/[/\\:]/g, "-");
+    const memoryDir = join(configDir, "projects", slug, "memory");
+
+    const result = runApplier(configDir);
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+
+    const seededNames = readdirSync(memoryDir);
+    const index = readFileSync(join(memoryDir, "MEMORY.md"), "utf8");
+    for (const name of retiredSessionMemoryNames) {
+      expect(seededNames).not.toContain(name);
+      expect(index).not.toContain(name);
+      expect(existsSync(join(repoRoot, "docs", "archive", "cloud-session-state-2026-10-16", name))).toBe(true);
+    }
+    expect(index).not.toMatch(/R1-first|D4 UNRESOLVED|Phase 5 \+ reconcile left|PR A′\/C local|D:\\Repos\\Database/);
+    expect(seededNames).toContain("never-print-env-values.md");
+    expect(seededNames).not.toContain("seed-manifest.json");
+    expect(readFileSync(join(memoryDir, "never-print-env-values.md"), "utf8")).toBe(
+      readFileSync(join(profileDir, "memory", "never-print-env-values.md"), "utf8"),
+    );
+    // Guidance is installed outside the checkout: sibling links must still resolve there,
+    // while repository references explicitly use the verified checkout root.
+    for (const name of seededNames) {
+      const content = readFileSync(join(memoryDir, name), "utf8");
+      for (const match of content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+        expect(existsSync(join(memoryDir, match[1])), `${name}: ${match[1]}`).toBe(true);
+      }
+      for (const match of content.matchAll(/`(docs\/[^`]+\.md)`/g)) {
+        expect(existsSync(join(repoRoot, match[1])), `${name}: ${match[1]}`).toBe(true);
+        expect(content).toContain("Resolve repository paths against the verified current checkout root");
+      }
+    }
+  });
+
+  it("preserves existing host memories and indexes even when their seed names were retired", () => {
+    const configDir = makeConfigDir();
+    const slug = repoRoot.replace(/[/\\:]/g, "-");
+    const memoryDir = join(configDir, "projects", slug, "memory");
+    mkdirSync(memoryDir, { recursive: true });
+    const hostIndex = "Host-authored index; retained session references are the host's records.\n";
+    writeFileSync(join(memoryDir, "MEMORY.md"), hostIndex);
+    for (const name of retiredSessionMemoryNames) writeFileSync(join(memoryDir, name), `Host-authored ${name}\n`);
+
+    const result = runApplier(configDir);
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+
+    expect(readFileSync(join(memoryDir, "MEMORY.md"), "utf8")).toBe(hostIndex);
+    for (const name of retiredSessionMemoryNames) {
+      expect(readFileSync(join(memoryDir, name), "utf8")).toBe(`Host-authored ${name}\n`);
+    }
+    expect(existsSync(join(memoryDir, "never-print-env-values.md"))).toBe(true);
+  });
+
+  it.skipIf(process.platform === "win32")("preserves a host memory symlink whose target is temporarily absent", () => {
+    const fixture = makeMemoryProfileFixture();
+    mkdirSync(fixture.memoryTarget, { recursive: true });
+    const hostTarget = join(fixture.configDir, "unmounted-host-index.md");
+    const index = join(fixture.memoryTarget, "MEMORY.md");
+    symlinkSync(hostTarget, index);
+    const result = fixture.run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(lstatSync(index).isSymbolicLink()).toBe(true);
+    expect(existsSync(hostTarget)).toBe(false);
+  });
+
+  it("does not seed an unlisted session file added to the source directory", () => {
+    const fixture = makeMemoryProfileFixture();
+    writeFileSync(join(fixture.memorySource, "stale-session.md"), "Resume the obsolete task queue.\n");
+
+    const result = fixture.run();
+    expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
+    expect(existsSync(join(fixture.memoryTarget, "stale-session.md"))).toBe(false);
+    expect(existsSync(join(fixture.memoryTarget, "never-print-env-values.md"))).toBe(true);
+  });
+
+  it.each([
+    ["../outside.md", "plain Markdown filenames"],
+    ["nested/unsafe.md", "plain Markdown filenames"],
+    ["C:\\unsafe.md", "plain Markdown filenames"],
+    [17, "plain Markdown filenames"],
+    ["MEMORY.md", "duplicate filenames"],
+    ["memory.md", "duplicate filenames"],
+    ["missing.md", "missing or is not a regular file"],
+  ])("rejects invalid memory seed entry %j without seeding any memories", (entry, message) => {
+    const fixture = makeMemoryProfileFixture();
+    const manifestPath = join(fixture.memorySource, "seed-manifest.json");
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifest.files.push(entry);
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+
+    const result = fixture.run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(message);
+    expect(existsSync(fixture.memoryTarget)).toBe(false);
+  });
+
+  it("rejects an index that tries to restore an unlisted session record", () => {
+    const fixture = makeMemoryProfileFixture();
+    writeFileSync(join(fixture.memorySource, "stale-session.md"), "Resume the obsolete task queue.\n");
+    const indexPath = join(fixture.memorySource, "MEMORY.md");
+    writeFileSync(indexPath, `${readFileSync(indexPath, "utf8")}\n- [Old task](stale-session.md)\n`);
+
+    const result = fixture.run();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("memory seed index refers to an unlisted seed");
+    expect(existsSync(fixture.memoryTarget)).toBe(false);
   });
 
   it.skipIf(!hasVendoredSkills)("replaces a skill entry that is not a directory", () => {
@@ -221,8 +435,8 @@ describe("setup-claude-cloud", () => {
   // here because the provisioner is a shell script, where `$HOME` is just an environment variable —
   // the applier needs CLAUDE_CONFIG_DIR instead, for the Windows reason recorded at the top of this
   // file.
-  function runProvisioner(args: string[], env: Record<string, string> = {}) {
-    return spawnSync(bashCommand, [provisioner, ...args], {
+  function runProvisioner(args: string[], env: Record<string, string> = {}, scriptPath = provisioner) {
+    return spawnSync(bashCommand, [scriptPath, ...args], {
       encoding: "utf8",
       env: { ...process.env, CLAUDE_CODE_REMOTE: "", HOME: makeSandboxHome(), ...env },
     });
@@ -239,6 +453,112 @@ describe("setup-claude-cloud", () => {
     const result = runProvisioner(["--list"]);
     expect(result.status).toBe(0);
     expect(result.stdout.trim().split(/\r?\n/)).toEqual(["profile", "plugins", "gh", "deno", "browsers", "python"]);
+  });
+
+  it.each([
+    { invalidTier: "definitely-not-a-tier", sessionMode: false },
+    { invalidTier: "profile plugins", sessionMode: false },
+    { invalidTier: "*", sessionMode: false },
+    { invalidTier: "definitely-not-a-tier", sessionMode: true },
+  ])(
+    "validates selected tier $invalidTier before provisioning (session=$sessionMode)",
+    ({ invalidTier, sessionMode }) => {
+      const project = makeConfigDir();
+      const home = makeSandboxHome();
+      mkdirSync(join(project, "scripts"));
+      const script = join(project, "scripts", "setup-claude-cloud.sh");
+      cpSync(provisioner, script);
+      writeFileSync(
+        join(project, "scripts", "apply-claude-cloud-profile.mjs"),
+        'import { writeFileSync } from "node:fs"; writeFileSync(process.env.CLAUDE_CONFIG_DIR + "/mutation", "profile applied");',
+      );
+      const args = sessionMode ? ["--session"] : [];
+      const result = runProvisioner(
+        [...args, "profile", invalidTier],
+        {
+          HOME: home,
+          CLAUDE_CODE_REMOTE: "true",
+          CLAUDE_PROJECT_DIR: project,
+          CLAUDE_CONFIG_DIR: home,
+          CLAUDE_CLOUD_SKIP_TIERS: "",
+          CLAUDE_CLOUD_BACKGROUND_TIERS: "",
+        },
+        script,
+      );
+      expect(result.status).toBe(sessionMode ? 0 : 1);
+      expect(result.stderr).toContain("unknown tier");
+      expect(existsSync(join(home, "mutation"))).toBe(false);
+      expect(existsSync(markerDirFor(home))).toBe(false);
+    },
+  );
+
+  it.each(["CLAUDE_CLOUD_SESSION_TIERS", "CLAUDE_CLOUD_BACKGROUND_TIERS"])(
+    "validates the %s override before provisioning",
+    (override) => {
+      const home = makeSandboxHome();
+      const result = runProvisioner(["--session"], {
+        HOME: home,
+        CLAUDE_CODE_REMOTE: "true",
+        CLAUDE_CLOUD_SESSION_TIERS: "profile",
+        CLAUDE_CLOUD_BACKGROUND_TIERS: "",
+        [override]: "definitely-not-a-tier",
+        // If validation regresses, keep this fixture from running any real installers.
+        CLAUDE_CLOUD_SKIP_TIERS: "profile,plugins,gh,deno,browsers,python",
+      });
+      expect(result.status).toBe(0);
+      expect(result.stderr).toContain("unknown tier");
+      expect(result.stdout).not.toMatch(/tier \w+:|provisioning in the background/);
+      expect(existsSync(markerDirFor(home))).toBe(false);
+    },
+  );
+
+  it("does not trust a cached deno marker when the runtime no longer works", () => {
+    const home = makeSandboxHome();
+    const binaries = join(home, "bin");
+    mkdirSync(binaries);
+    for (const [name, body] of [
+      ["deno", "exit 127"],
+      ["npm", "exit 97"],
+    ]) {
+      const path = join(binaries, name);
+      writeFileSync(path, `#!/bin/bash\n${body}\n`);
+      chmodSync(path, 0o755);
+    }
+    mkdirSync(markerDirFor(home), { recursive: true });
+    writeFileSync(join(markerDirFor(home), "deno.marker"), "v2\n");
+    const result = runProvisioner(["deno"], {
+      HOME: home,
+      CLAUDE_CODE_REMOTE: "true",
+      CLAUDE_CLOUD_SKIP_TIERS: "",
+      PATH: `${binaries}${process.platform === "win32" ? ";" : ":"}${process.env.PATH}`,
+    });
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("tier deno: provisioning");
+    expect(result.stdout).not.toContain("already provisioned");
+    expect(result.stdout).not.toContain("all selected tiers complete");
+  });
+
+  it.each([["--tier"], ["--tier="], ["--tier", "--force"], ["--nonsense"], ["deno", "--nonsense"]])(
+    "rejects malformed selector arguments %j before entering any tier",
+    (...args) => {
+      const result = runProvisioner(["--allow-local", ...args], {
+        CLAUDE_CLOUD_SKIP_TIERS: "profile,plugins,gh,deno,browsers,python",
+      });
+      expect(result.status).toBe(2);
+      expect(result.stdout).not.toMatch(/tier \w+:/);
+    },
+  );
+
+  it("keeps a session nonfatal and reports when its project directory is unavailable", () => {
+    const result = runProvisioner(["--session", "deno"], {
+      CLAUDE_CODE_REMOTE: "true",
+      CLAUDE_PROJECT_DIR: join(makeSandboxHome(), "missing-project"),
+      CLAUDE_CLOUD_BACKGROUND_TIERS: "",
+    });
+    expect(result.status).toBe(0);
+    const envelope = result.stdout.split(/\r?\n/).find((line) => line.startsWith('{"hookSpecificOutput"'));
+    expect(envelope).toBeDefined();
+    expect(JSON.parse(envelope!).hookSpecificOutput.additionalContext).toContain("project directory");
   });
 
   it("repairs plugin npm dependencies even when the claude CLI is absent", () => {
@@ -292,7 +612,7 @@ describe("setup-claude-cloud", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toMatch(/"hookEventName":"SessionStart"/);
     expect(result.stdout).toMatch(
-      /"additionalContext":"claude-cloud provisioning incomplete:[^"]*definitely-not-a-tier/,
+      /"additionalContext":"claude-cloud provisioning incomplete:[^"]*invalid tier selection/,
     );
   });
 
@@ -315,7 +635,7 @@ describe("setup-claude-cloud", () => {
     expect(result.stdout).not.toMatch(/all selected tiers complete/);
   });
 
-  it("resolves its marker directory from the sandbox HOME it was given", () => {
+  it("keeps tier listing read-only even when its project directory is unavailable", () => {
     // Guards the isolation the test above depends on. This suite used to plant its lock in the REAL
     // ~/.cache/clinical-kb-claude-cloud, so it both read and wrote the machine's actual provisioning
     // state. A completed-tier marker there short-circuited the tier before the code under test ran,
@@ -328,15 +648,17 @@ describe("setup-claude-cloud", () => {
     // hook detaches the browsers and python tiers, so a marker can legitimately appear there mid-test
     // and fail the comparison while the spawn was correctly sandboxed all along.
     //
-    // `--list` is enough because the script creates its marker directory before it parses arguments,
-    // so this observes the HOME resolution itself and nothing downstream of it.
+    // Listing is metadata only: it must need neither a working checkout nor a writable cache.
     const sandboxHome = makeSandboxHome();
     expect(existsSync(markerDirFor(sandboxHome))).toBe(false);
 
-    const result = runProvisioner(["--list"], { HOME: sandboxHome });
+    const result = runProvisioner(["--list"], {
+      HOME: sandboxHome,
+      CLAUDE_PROJECT_DIR: join(sandboxHome, "missing-project"),
+    });
 
     expect(result.status).toBe(0);
-    expect(existsSync(markerDirFor(sandboxHome))).toBe(true);
+    expect(existsSync(markerDirFor(sandboxHome))).toBe(false);
   });
 
   it("tries the pinned Python minor before ever falling back to a different python3", () => {
@@ -381,6 +703,21 @@ describe("setup-claude-cloud", () => {
 });
 
 describe("SessionStart registration", () => {
+  it("injects conditional CI guidance and requires ensure before browser execution", () => {
+    const result = spawnSync(bashCommand, [join(repoRoot, ".claude", "hooks", "testing-policy.sh")], {
+      encoding: "utf8",
+      input: "malformed hook payload is harmless",
+      env: { ...process.env, CLAUDE_CODE_REMOTE: "true", CLAUDE_PROJECT_DIR: repoRoot },
+    });
+    expect(result.status).toBe(0);
+    const context = JSON.parse(result.stdout).hookSpecificOutput.additionalContext;
+    expect(context).toContain("npm run ensure");
+    expect(context).toContain("event, draft and scope");
+    expect(context).toContain("pending until");
+    expect(context).not.toMatch(/646|25 min|CI re-runs the browser suite on every change/);
+    expect(context).not.toContain("full suite left to CI");
+  });
+
   it("runs the provisioner after Node and node_modules exist", () => {
     // The browsers tier shells out to ./node_modules/.bin/playwright, so ordering is load-bearing:
     // session-start.sh is what installs Node and runs npm ci.

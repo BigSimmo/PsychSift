@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "files": [
+    "MEMORY.md",
+    "checks-that-cannot-fail.md",
+    "claude-hook-exec-bit-trap.md",
+    "claude-plugin-native-deps-trap.md",
+    "communication-style-plain-and-brief.md",
+    "never-print-env-values.md",
+    "token-usage-hygiene.md"
+  ]
+}

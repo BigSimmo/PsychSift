@@ -13,14 +13,13 @@ Higher-priority instructions and the repository's own `AGENTS.md` / `CLAUDE.md` 
 
 ## Branch and worktree (repository writes)
 
-- Start every task in its own fresh worktree on its own new branch. Fetch first, then branch off the latest remote default branch (`git fetch origin && git worktree add <path> -b <branch> origin/<default>`), using absolute paths for the worktree. Do not edit in the main checkout, and do not reuse another task's worktree or branch for unrelated work.
-- A stale base is the most common multi-worktree trap: confirm the new branch actually starts from the current remote default branch, not a days-old local copy.
-- Name the branch with a short kebab-case phrase that identifies the task, following the repository's existing prefix convention when one exists.
-- Inspect first: current branch, upstream, other worktrees, and `git status`. Never assume the branch or remote.
-- Do not commit directly to a protected or base branch (`main`, `master`, `develop`, `release/*`). If you find yourself on one, create the worktree/branch above before editing.
-- If the environment already placed you in a dedicated per-task worktree on a fresh branch, use it as-is; do not nest another one.
-- Preserve unrelated staged, unstaged, and untracked work. Do not stash, reset, clean, or discard changes you did not create.
-- Commit or push only when the task explicitly asks for it. Never force-push, rebase shared history, delete branches, or merge into a base branch without explicit confirmation.
+- Inspect the current repository, branch, HEAD, upstream, worktrees, active Git operation and changed paths. Establish task ownership before editing; never assume the branch or remote.
+- Continue verified same-task work in the supplied task checkout. A dirty status or a branch behind the default branch alone does not require a fresh task, new worktree or discarded analysis. Inventory and preserve owned and unrelated changes; reassess relevant drift.
+- For new unrelated work, use an isolated task branch/worktree when needed to protect concurrent changes. Follow repository-specific setup and isolation checks. A host-provided disposable task checkout may already supply that isolation; do not nest another worktree merely for procedure.
+- Establish the appropriate base from available local evidence. Remote freshness checks such as `git fetch` require applicable provider/network authority; if unavailable, disclose the unverified remote state and continue independent authorised local work.
+- Do not commit directly to a protected or base branch (`main`, `master`, `develop`, `release/*`). Establish an appropriate task branch before edits there.
+- Preserve unrelated staged, unstaged, and untracked work. Do not stash, reset, clean, relocate or absorb changes you did not create.
+- Commit or push only with applicable task authority. Never force-push, rebase shared history, delete branches, or merge into a base branch without applicable explicit confirmation.
 
 ## Environment (repository writes)
 

@@ -37,5 +37,7 @@ const expectedEffort = manifest.adaptiveEffortPolicy.highLaunchPhases.includes(t
 if (selectedEffort !== expectedEffort) {
   fail(`Cloud effort must be ${expectedEffort} for ${target}`, "BLOCKED_WRONG_REASONING_EFFORT");
 }
+// User confirmation may be in ordinary language; legacy attestation arguments
+// remain optional compatibility input. Runtime routes require separate evidence.
 
 console.log(`[rag-phase-launch] PASS: ${target} requires ${expectedEffort}; launch profile matches.`);

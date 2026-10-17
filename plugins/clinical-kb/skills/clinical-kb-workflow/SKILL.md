@@ -1,12 +1,17 @@
 ---
 name: clinical-kb-workflow
-description: Use when working in the D:\Repos\Database PsychSift repo, especially for local run, UI/browser QA, Supabase/OpenAI/RAG changes, clinical governance, dependency/upload shortcuts, or choosing verification.
+description: Use when working in the verified PsychSift checkout, especially for local run, UI/browser QA, Supabase/OpenAI/RAG changes, clinical governance, dependency/upload shortcuts, or choosing verification.
 ---
 
 # PsychSift Workflow
 
-Use this skill for `D:\Repos\Database`, the PsychSift Next.js clinical reference RAG app.
+Use this skill for the PsychSift Next.js clinical reference RAG app. Establish the actual
+checkout root with `git rev-parse --show-toplevel` and verify repository identity and ownership.
 Root `AGENTS.md` remains authoritative. If these notes drift, inspect the repo before acting.
+Follow the [current Cloud policy](../../../../docs/agents/codex-cloud-environment.md),
+[user-controlled reasoning guidance](../../../../docs/agents/codex-reasoning-effort.md) and
+[agent allocation policy](../../../../docs/agents/smart-agent-allocation.md); this plugin neither
+selects a host profile nor changes the user's main-chat model or effort.
 
 ## Repo Basics
 
@@ -27,8 +32,11 @@ Root `AGENTS.md` remains authoritative. If these notes drift, inspect the repo b
 ## OpenAI And API Cost Safety
 
 - Do not run OpenAI API-backed tasks, live evals, ingestion enrichment, embeddings, image captioning, or provider-backed answer generation unless the user explicitly asks for API usage.
-- Prefer local/static/mocked checks. When a no-API guard is needed, clear `OPENAI_API_KEY`, `OPENAI_ORG_ID`, and `OPENAI_PROJECT_ID` for that command.
-- Safe local server checks such as `npm run ensure` do not require provider calls.
+- Prefer repository-supported local/static/mocked or offline test launchers. Inspect their current
+  scope before execution; do not alter authentication or unset credentials as an acceptance workaround.
+  A sanitized child process does not prove the raw host boundary accepted a selected legacy profile.
+- `npm run ensure` verifies local server ownership; it does not by itself prove the selected app
+  configuration is provider-free or authorise live requests. Apply current host and task boundaries.
 - Broad browser aggregates can be slower or flaky in no-API mode; prefer focused Vitest or focused Chromium specs first.
 
 ## Next.js Changes

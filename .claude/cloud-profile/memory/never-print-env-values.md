@@ -1,6 +1,6 @@
 ---
 name: never-print-env-values
-description: "When inspecting a .env file, mask every value by default — a partial-mask script leaked a staging sb_secret_ key into a transcript on 2026-08-18"
+description: "Report configuration names/presence without inspecting credential values; retain the lesson from a 2026-08-18 disclosure incident"
 metadata:
   node_type: memory
   type: feedback
@@ -8,8 +8,16 @@ metadata:
   modified: 2026-08-18T05:59:12.504Z
 ---
 
-When inspecting any `.env*` file, print **variable names and value _shapes_ only** (length, prefix, set/unset). Mask **every** value by default — never allowlist "the sensitive ones".
+Use host readiness metadata or **variable names and presence only** when checking configuration.
+Never print, inspect, decode, copy or persist credential values to diagnose a problem. Follow the
+current credential and host policy (`docs/agents/codex-cloud-environment.md`); a dated
+incident note does not authorize secret inspection.
 
 **Why:** on 2026-08-18 an env-inspection script special-cased only `SUPABASE_SERVICE_ROLE_KEY` and printed every other line raw. That dumped a live staging `sb_secret_…` key, the publishable key, and the anon JWT into the transcript, forcing a key rotation. The masking logic was correct for the one variable it anticipated and wrong for the file as a whole — an allowlist fails open on exactly the variable you did not think of. A denylist-by-default is the only safe shape, because you cannot enumerate in advance what a user has put in their env file.
 
-**How to apply:** mask unconditionally, e.g. `printf "%s = <%d chars>\n" "$k" "${#v}"` for every key, and only unmask a specific variable when the user asks for that one and it is provably non-secret (a URL, a project ref, a boolean). Ask for verification of a credential by _shape_ (prefix, length, decoded JWT `ref`/`role` claim) rather than by printing it — decoding a JWT's claims to prove which project it targets is safe and was the right call in that same session. Also: deleting the line afterwards does not undo exposure; the value persists in the session transcript on disk, so rotation is the only real remedy — say so plainly and immediately rather than burying it. Related: [[db-remediation-coordination-state]].
+**How to apply:** Report names/presence or supported readiness evidence without reading out values.
+Do not decode a JWT or inspect prefixes/lengths as a diagnostic shortcut. Deleting a printed value
+afterwards does not undo exposure; use the authorized incident response process if exposure occurs.
+Related: archived database coordination (`docs/archive/cloud-session-state-2026-10-16/db-remediation-coordination-state.md`).
+
+Resolve repository paths against the verified current checkout root, not this installed memory directory.

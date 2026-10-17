@@ -27,20 +27,49 @@ Follow `AGENTS.md` review throttling and `docs/codex-review-protocol.md` before 
 
 ## Review Checklist
 
-### 1. Local-eval trap — diagnose config before touching code
+### 1. Diagnose the actual environment and harness
 
-- **Degraded local output is usually not a code bug.** Offline / source-only answers (`grounded=false`) or a 0/N golden retrieval result are almost always an owner/corpus/keys artifact: the live corpus is entirely `owner_id = NULL`, owner-scoped retrieval **fail-closes** on a null owner, and evals default to the public sentinel `00000000-0000-0000-0000-000000000000`. Diagnose owner/corpus/keys first.
-- **Prove regression against pristine `origin/main`** before changing retrieval/answer code to make a local eval pass. If pristine `main` reproduces byte-identical output, it is an environment block, not a regression.
-- **Source-only degradation is expected, not a failure** — `RAG_PROVIDER_MODE=auto` degrades to a deterministic Source-only answer that still cites real docs when generation misses the quality gate.
+- Separate intended source-only/offline degradation from a regression using the current
+  `src/lib/env.ts`, provider route, eval harness, fixtures and applicable RAG behaviour docs.
+  Earlier sessions reported null-owner corpora and public-sentinel eval defaults; those are
+  dated observations, not current corpus facts. Do not query live rows or inspect keys to
+  validate them. Use permitted offline evidence and report any remaining capability gap.
+- Compare the affected behaviour with an appropriate unchanged baseline before attributing
+  a failure to this diff. Record the exact revision, inputs and environment. A failure that
+  reproduces on the baseline is pre-existing; it may still be a real bug requiring separate
+  work and must not automatically be dismissed as an environment problem.
+- Confirm the current conservative fallback contract in source and tests. A source-only
+  answer can be expected degradation, but fabricated grounding, lost citations or unsupported
+  claims remain defects even when provider generation is unavailable.
 
-### 2. Token budget & reasoning-effort starvation (gpt-5.5)
+### 2. Provider effort, token budgets and failure evidence
 
-- **Never raise strong reasoning effort to `high`.** On gpt-5.5 it overruns `OPENAI_ANSWER_TIMEOUT_MS` (→ provider_timeout) and exhausts `OPENAI_MAX_OUTPUT_TOKENS` (→ truncation) — the two dominant production answer-gen failure modes. `medium` is ample.
-- **Effort is only lowered, never raised.** `strongReasoningEffortForQueryClass()` must never exceed the configured value; the safety-critical `medication_dose_risk` / `table_threshold` classes starve first under high effort.
-- Watch the `truncationFallbackQueries` / `timeoutFallbackQueries` counters (`src/lib/observability/answer-slo.ts`) for the fallback signature.
+- Derive the application model IDs, configured effort, supported provider controls, deadlines
+  and output budgets from the current runtime owners and tests. Historical gpt-5.5 timeout
+  and truncation findings are useful failure examples, not a universal model/effort rule or
+  proof that `medium` fits every current route.
+- Preserve the query-class effort clamp: `strongReasoningEffortForQueryClass()` must not
+  exceed the configured value. Review safety-critical `medication_dose_risk` and
+  `table_threshold` cases for starvation, timeouts and truncation. A provider-effort change
+  needs the applicable evidence and approval; this review does not authorise it.
+- Inspect current SLO counter definitions and existing authorised evidence for timeout and
+  truncation signatures. Do not infer current performance from an old counter name or case
+  count, or run provider-backed experiments without approval. The application provider model
+  is separate from the user's main-chat selection.
 
-### 3. No re-index / retrieval change without a real golden miss
+### 3. Retrieval changes retain measured benefit and non-regression safeguards
 
-- A retrieval/ranking/selection/chunking/scoring change requires a **real golden miss proving a gain**; `eval:retrieval:quality` (36/36) must _improve_, not merely not-regress. Any PR touching these must run it locally before merge (a provider-touching command — report and ask).
+- Follow `AGENTS.md` RAG ranking protection and `docs/rag-behaviour/` before reviewing protected
+  changes. Derive the golden population and metric definitions from the current harness and
+  fixtures; the historical 36-case figure is not a universal current count.
+- Require evidence for the claimed retrieval benefit rather than changing ranking to satisfy
+  a misleading local eval. A retrieval/ranking/ordering behaviour change requires the root
+  policy's explicitly approved live eval-canary before/after pair: document/content recall
+  pinned at 1.0 and zero per-case reciprocal-rank regressions. A regression requires the
+  documented immediate revert and confirmation run. Static or offline proof cannot replace
+  that live gate; provider calls and paid canaries remain confirmation-required.
+- Preserve the protected scoring, imputation and comparator contracts. Never apply tuner
+  recommendations or refuted ranking approaches without the measured evidence and authority
+  required by the RAG safeguards.
 - Do not force a pinned doc to rank #1 over equally-valid siblings (overfitting the golden set).
 - **Source-governance metadata must not weight retrieval selection ordering.**

@@ -120,6 +120,7 @@
     "tests/branch-review-index.test.ts",
     "tests/check-docs-links.test.ts",
     "tests/claude-*",
+    "tests/cloud-installed-guidance.test.ts",
     "tests/codebase-index-coverage.test.ts",
     "tests/codex-*",
     "tests/cursor-mcp-contract.test.ts",
