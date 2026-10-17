@@ -2242,7 +2242,7 @@ a.work-hero:focus-visible {
    opening on a field) scrolls clear of the dock rather than under it. */
 html:has(.work-dock),
 html:has(.work-dock) #main-content {
-  scroll-padding-bottom: calc(5.75rem + var(--safe-area-bottom, 0px));
+  scroll-padding-bottom: calc(5.75rem + var(--safe-area-bottom, 0px) + var(--keyboard-height, 0px));
 }
 
 .work-dock__capsule {

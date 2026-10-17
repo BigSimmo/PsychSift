@@ -25,7 +25,9 @@ describe("mobile sheet top safe-area ownership", () => {
   it("keeps the standalone calculator sheet below the unsafe top band on phones", () => {
     const calculatorSheet = source("src/components/calculators/calculator-sheet.tsx");
 
-    expect(calculatorSheet).toContain("max-h-[calc(100dvh-max(0.75rem,var(--safe-area-top)))]");
+    expect(calculatorSheet).toContain(
+      "max-h-[calc(100dvh-max(0.75rem,var(--safe-area-top))-var(--keyboard-height,0px))]",
+    );
     expect(calculatorSheet).toContain("sm:max-h-[92dvh]");
   });
 });

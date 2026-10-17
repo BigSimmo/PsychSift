@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
+
+import { readWithoutComments as withoutComments, sourceFileEntries } from "./helpers/type-weight-scanner";
 
 /*
  * Teaching's type and wording rules: nothing heavier than 700, every figure
@@ -11,21 +12,7 @@ import { describe, expect, it } from "vitest";
  */
 const ROOTS = ["src/components/teaching", "src/app/(search-app)/teaching", "src/app/(display)/teaching"];
 
-function sourceFiles(): string[] {
-  const files: string[] = [];
-  const walk = (dir: string) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) walk(path);
-      else if (/\.(ts|tsx)$/.test(entry.name)) files.push(path);
-    }
-  };
-  for (const root of ROOTS) if (existsSync(join(process.cwd(), root))) walk(join(process.cwd(), root));
-  return files;
-}
-
-const files = sourceFiles().map((path) => [relative(process.cwd(), path).split(sep).join("/"), path] as const);
-const withoutComments = (path: string) => readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+const files = sourceFileEntries(ROOTS);
 
 describe("Teaching type weight and wording", () => {
   it("finds Teaching's files", () => {

@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { myDayTeachingWeekUrl } from "@/components/my-day/use-my-day-items";
 import { useMyDayWhosOn, type MyDayWhosOn } from "@/components/my-day/use-my-day-whos-on";
 import { useRosterShifts, type MyShift } from "@/components/roster/use-roster-shifts";
 import { useTeachingResource } from "@/components/teaching/use-teaching-resource";
 import { totalAllocatedHours } from "@/lib/cme/evaluate";
 import { cpdCategoryTargets, cpdHoursByCategory, cpdHoursByMonth, type CpdByCategory } from "@/lib/my-day/figures";
 import type { CmeCategory, CmeEntry, CmeRequirementSet } from "@/lib/cme/types";
-import { addDaysToDate, perthDateOf } from "@/lib/roster/shifts/perth-time";
+import { perthDateOf } from "@/lib/roster/shifts/perth-time";
 import { useAuthSession } from "@/lib/supabase/client";
 import type { SessionSummary, TeachingWeekResponse } from "@/lib/teaching/model";
 import { sharedGet } from "@/lib/shared-get";
@@ -176,17 +177,12 @@ const NO_CPD = {
 } as const;
 
 const NO_SESSIONS: readonly SessionSummary[] = [];
-const TEACHING_DAYS_AHEAD = 41;
 
 function useTodaysTeaching(
   today: string,
   allowSample: boolean,
 ): { readonly teaching: MyDayDashboardSources["teaching"]; readonly retry: () => void } {
-  const week = useTeachingResource<TeachingWeekResponse>(
-    // Six weeks from today (the longest range the week view takes): today's
-    // sessions for the hero and agenda, and the next talk the reader gives.
-    `/api/teaching?${new URLSearchParams({ view: "week", from: today, to: addDaysToDate(today, TEACHING_DAYS_AHEAD) })}`,
-  );
+  const week = useTeachingResource<TeachingWeekResponse>(myDayTeachingWeekUrl(today));
   const data = week.status === "ready" ? week.data : null;
   const ahead = useMemo(() => {
     if (!data) return NO_SESSIONS;
@@ -195,10 +191,11 @@ function useTodaysTeaching(
       .filter(
         (session) =>
           session.status !== "cancelled" &&
+          perthDateOf(session.startsAt) >= today &&
           (allowSample || session.source === "on_call_relocated" || !demoTeams.has(session.serviceId)),
       )
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.occurrenceId.localeCompare(b.occurrenceId));
-  }, [data, allowSample]);
+  }, [data, allowSample, today]);
   const sessions = useMemo(
     () => ahead.filter((session) => !session.allDay && perthDateOf(session.startsAt) === today),
     [ahead, today],

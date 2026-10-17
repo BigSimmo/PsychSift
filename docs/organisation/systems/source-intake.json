@@ -102,6 +102,7 @@
     "src/lib/ingestion-recovery.ts",
     "src/lib/ingestion.ts",
     "src/lib/model-index-extraction.ts",
+    "src/lib/ooxml-workbook.ts",
     "src/lib/public-source-acquisition.ts",
     "src/lib/public-source-activation-manifest.ts",
     "src/lib/python-bin.ts",

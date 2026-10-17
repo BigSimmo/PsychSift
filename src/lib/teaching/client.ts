@@ -100,6 +100,7 @@ const MESSAGES: Record<string, string> = {
   teaching_no_health_service: "Your service has no health service yet. Ask for it to be set.",
   cme_year_missing: "Set up this year in CPD first, then log the session.",
   cme_year_closed: "That CPD year is closed. Open CPD to record an amendment.",
+  too_many_rows: "Use a sheet with up to 2,000 rows.",
 };
 
 export function teachingErrorMessage(error: unknown, context?: "cpd"): string {

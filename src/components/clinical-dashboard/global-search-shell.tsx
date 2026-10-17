@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type ReactNode,
   type UIEvent,
+  useDeferredValue,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -456,6 +457,7 @@ function GlobalStandaloneSearchShellBody({
       ? requestedMode
       : initialSearchMode;
   const [query, setQuery] = useState(requestedQuery);
+  const deferredQuery = useDeferredValue(query);
   const [, setLastAppMode] = useLastAppMode();
   // Previous URL snapshot for during-render sync (React "adjusting state when a
   // prop changes"). Pathname must be tracked separately: with the shared
@@ -480,10 +482,10 @@ function GlobalStandaloneSearchShellBody({
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
   const searchCommandContextValue = useMemo(
     () => ({
-      query,
+      query: deferredQuery,
       modeId: searchMode,
     }),
-    [query, searchMode],
+    [deferredQuery, searchMode],
   );
   const auth = useAuthSession();
   const sidebarIdentity = useMemo(() => deriveSidebarIdentity(auth.session?.user.email), [auth.session?.user.email]);

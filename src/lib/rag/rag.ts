@@ -1,3 +1,4 @@
+import { toPgVectorRpcParam } from "@/lib/rag/pgvector-literal";
 import { createSearchTelemetry } from "@/lib/rag/rag-search-telemetry";
 import {
   buildAdaptiveAnswerPlan,
@@ -1839,7 +1840,7 @@ async function searchChunksWithTiming(
         "match_document_chunks_hybrid_v2",
         "match_document_chunks_hybrid",
         {
-          query_embedding: embedding as unknown as string,
+          query_embedding: toPgVectorRpcParam(embedding),
           query_text: args.forceEmbedding ? "" : textSearchQuery,
           match_count: candidateCount,
           min_similarity: minSimilarity,
@@ -1957,7 +1958,7 @@ async function searchChunksWithTiming(
         "match_document_chunks_v2",
         "match_document_chunks",
         {
-          query_embedding: embedding as unknown as string,
+          query_embedding: toPgVectorRpcParam(embedding),
           match_count: candidateCount,
           min_similarity: minSimilarity,
           document_filter: documentFilter ?? undefined,
