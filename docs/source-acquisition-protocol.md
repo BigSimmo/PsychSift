@@ -119,7 +119,11 @@ A record may also carry `attestedBy`, `attestedAt` and `attestedAgainstSha256`. 
 optional, and all three are the owner's to write; an agent never records a sign-off on the owner's
 behalf. The owner writes them with `npm run clinical:review -- --kind source` (one at a time with
 `--walk`, or a whole review pack with `--pack` then `--write --batch`), which sets
-`validationStatus` to `locally_reviewed` and computes the digest. Signing a source does not adopt
+`validationStatus` to `locally_reviewed` and computes the digest. The tool also offers a source
+already marked `locally_reviewed` whose review lives only in prose, meaning it has no
+attestation field at all; signing it records the three fields and leaves `validationStatus` as
+it is (owner decision, 2026-10-17). A record with any attestation field, complete or partial,
+is not offered this way. Signing a source does not adopt
 it: `disposition` stays as it is until a separate adoption decision. Sources with Aboriginal,
 Torres Strait Islander or other Indigenous content are never offered (owner rule 2026-09-26).
 

@@ -90,9 +90,9 @@ describe("clinical sign-off queue page", () => {
     render(<SignOffQueuePageContent />);
 
     expect(screen.getByTestId("developer-sign-off-count-signed-value")).toHaveTextContent(String(ledger.totalSigned));
-    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("0");
+    expect(screen.getByTestId("developer-sign-off-count-signable-now-value")).toHaveTextContent("2");
     expect(screen.getByTestId("developer-sign-off-count-indigenous-hold-value")).toHaveTextContent("26");
-    expect(screen.getByTestId("developer-sign-off-count-prerequisites-value")).toHaveTextContent("610");
+    expect(screen.getByTestId("developer-sign-off-count-prerequisites-value")).toHaveTextContent("608");
 
     for (const domain of ledger.domains) {
       const card = screen.getByTestId(`developer-sign-off-ledger-domain-${domain.id}`);
