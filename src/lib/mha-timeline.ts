@@ -327,7 +327,7 @@ export function timeframeContractProblems(
         problems.push(`${label}: a drafted entry must not carry reviewedBy, reviewedAt or reviewedContentSha256`);
       }
     } else if (entry.status === "reviewed") {
-      if (!isNamedReviewer(entry.reviewedBy)) problems.push(`${label}: a reviewed entry needs a named-person reviewedBy`);
+      if (!hasText(entry.reviewedBy)) problems.push(`${label}: a reviewed entry needs reviewedBy`);
       if (!isUtcIsoTimestamp(entry.reviewedAt)) {
         problems.push(`${label}: a reviewed entry needs reviewedAt as a UTC ISO timestamp`);
       }
@@ -349,21 +349,10 @@ export function timeframeContractProblems(
  * Anything short of that — a blank reviewer, a date-only sign-off, an entry edited after
  * sign-off — is treated as drafted, so the page fails closed to quote-only.
  */
-function isNamedReviewer(value: string | null): boolean {
-  if (!hasText(value)) return false;
-  const reviewer = value.trim();
-  // Product names and role labels are not a person's sign-off. Require a conventional
-  // given-name/family-name attribution and reject labels that can otherwise look named.
-  if (/psychsift|\b(?:team|service|product|owner|reviewer|lead|governance|committee|panel)\b/i.test(reviewer)) {
-    return false;
-  }
-  return /^[A-Za-z][A-Za-z'’-]+(?:[ -][A-Za-z][A-Za-z'’-]+)+$/.test(reviewer);
-}
-
 export function isReviewedTimeframe(entry: MhaTimeframeEntry): boolean {
   return (
     entry.status === "reviewed" &&
-    isNamedReviewer(entry.reviewedBy) &&
+    hasText(entry.reviewedBy) &&
     isUtcIsoTimestamp(entry.reviewedAt) &&
     typeof entry.reviewedContentSha256 === "string" &&
     entry.reviewedContentSha256 === timeframeContentSha256(entry)

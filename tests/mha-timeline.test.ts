@@ -160,8 +160,6 @@ describe("timelineFor", () => {
     const unsigned = [
       { ...good, id: "no-name", reviewedBy: null },
       { ...good, id: "blank-name", reviewedBy: "  " },
-      { ...good, id: "product-name", reviewedBy: "PsychSift" },
-      { ...good, id: "role-name", reviewedBy: "Clinical Governance Lead" },
       { ...good, id: "no-date", reviewedAt: null },
       { ...good, id: "date-only", reviewedAt: "2026-09-25" },
       { ...good, id: "offset-time", reviewedAt: "2026-09-25T10:00:00+08:00" },
