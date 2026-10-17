@@ -99,6 +99,18 @@ describe("retired rules: negation handling", () => {
     ).toEqual([]);
   });
 
+  it("fires when an instruction names either removed full-stack review prompt path", () => {
+    expect(hitsFor("Read docs/prompts/codex-full-stack-master-review.md first.")).toEqual([
+      "cloud-imported-working-agreement",
+    ]);
+    expect(hitsFor("Read docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md first.")).toEqual([
+      "cloud-imported-working-agreement",
+    ]);
+    expect(
+      hitsFor("The removed docs/prompts/codex-cloud-review/1-codex-full-stack-master-review-prompt.md is historical."),
+    ).toEqual([]);
+  });
+
   it("fires when the label gate is stated as current", () => {
     expect(hitsFor("- Never add the `owner-approved` label.")).toEqual(["owner-approved-label-gate"]);
     expect(hitsFor("The required `Owner approval` status stays yellow until Josh approves.")).toEqual([

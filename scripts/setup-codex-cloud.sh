@@ -74,7 +74,8 @@ case "$codex_config_dir" in
   /*|[A-Za-z]:[\\/]*) ;;
   *) fail "CODEX_HOME must be a nonempty absolute directory path when set." ;;
 esac
-if [[ -e "$codex_config_dir" && ! -d "$codex_config_dir" ]]; then
+# A dangling symlink fails -e, so test -L too before any runtime or package work.
+if [[ ( -e "$codex_config_dir" || -L "$codex_config_dir" ) && ! -d "$codex_config_dir" ]]; then
   fail "CODEX_HOME must identify a directory."
 fi
 for setup_target in "$codex_config_dir/config.toml" "$HOME/.clinical-kb-codex-cloud.sh" "$HOME/.bashrc" "$HOME/.profile" "$HOME/.bash_profile"; do
