@@ -88,7 +88,7 @@ for command_name in node npm npx; do
     fi
     # Bundled tools can drift too; validate every selected npm/npx executable.
     if [[ -x "$command_path" ]]; then
-      tool_version="$("$command_path" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+      tool_version="$(PATH="$node_bin${fallback_path:+:$fallback_path}" "$command_path" --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
       [[ "${tool_version%%.*}" = "$expected_npm_major" ]] ||
         fail "${command_name} ${expected_npm_major}.x is required (package.json engines.npm); detected ${tool_version:-unavailable}."
     fi
